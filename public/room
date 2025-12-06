@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ห้องแชท</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f0ffef; padding: 20px; display: none; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 80vh;} /* ปรับให้เป็น Flex Container */
+        
+        .header-btns { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .back-btn { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        
+        .restart-btn { background: #fd7e14; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; display: none; }
+        .restart-btn:hover { background: #e36d0a; }
+
+        .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; background: #e9f5ff; } /* พื้นที่แชท */
+        
+        /* สไตล์ข้อความแชท */
+        .chat-msg { 
+            background: #ffffff; 
+            padding: 8px 12px; 
+            border-radius: 15px; 
+            margin-bottom: 8px; 
+            max-width: 70%; 
+            word-wrap: break-word;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            clear: both;
+        }
+        .my-msg { 
+            float: right; 
+            background: #007bff; 
+            color: white; 
+            margin-left: auto;
+        }
+        .other-msg { 
+            float: left; 
+            background: #ffffff; 
+            color: #333; 
+        }
+
+        .chat-input { display: flex; justify-content: space-between; gap: 10px; }
+        .chat-input input { flex-grow: 1; padding: 10px; border: 1px solid #007bff; border-radius: 5px; }
+        .chat-input button { width: 100px; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header-btns">
+            <button class="back-btn" onclick="goBack()">⬅ กลับหน้าหลัก</button>
+            <button id="restart-btn" class="restart-btn" onclick="restartRoom()">🔄 รีสตาร์ทห้อง</button>
+        </div>
+        
+        <h1 id="room-title" style="margin-top:0;">กำลังโหลดห้องแชท...</h1>
+        <div style="color:gray; font-size:0.9em; margin-bottom: 15px;">โดย <span id="room-author">...</span> • <span id="room-time">...</span></div>
+        <p id="room-content" style="font-size:1em; line-height:1.4; color:#555; border-left: 3px solid #ccc; padding-left: 10px;">...</p>
+        
+        <hr style="margin: 10px 0;">
+
+        <div id="chat-messages" class="chat-messages">
+            </div>
+
+        <div id="chat-input" class="chat-input">
+            <input type="text" id="message-input" placeholder="พิมพ์ข้อความ..." autocomplete="off">
+            <button onclick="sendMessage()">ส่ง</button>
+        </div>
+        
+        <div id="closed-msg" style="display:none; color:red; text-align:center; margin-top:20px;">🔒 ห้องแชทนี้ถูกปิดแล้ว</div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('id'); // <-- เปลี่ยนชื่อตัวแปร
+        const myUsername = localStorage.getItem('myUsername');
+
+        if (!myUsername || !roomId) {
+            alert('ไม่พบข้อมูลผู้ใช้หรือห้องแชท');
+            location.href = '/';
+        }
+
+        socket.on('connect', () => {
+            socket.emit('register', myUsername);
+            socket.emit('join-room', { roomId, username: myUsername }); // <-- เปลี่ยน Socket Event
+        });
+
+        socket.on('access-granted', (room) => { // <-- รับ room แทน post
+            document.body.style.display = 'flex';
+            renderRoom(room);
+        });
+
+        socket.on('access-denied', (reason) => {
+            alert(reason);
+            location.href = '/';
+        });
+
+        socket.on('force-leave', (reason) => {
+            alert(reason);
+            location.href = '/'; 
+        });
+
+        socket.on('restart-success', (msg) => {
+            alert(msg);
+        });
+
+        // --- NEW: รับข้อความใหม่แบบ Real-time ---
+        socket.on('new-room-message', (data) => {
+            if(data.roomId == roomId) {
+                appendMessage(data.message);
+            }
+        });
+        
+        function renderRoom(room) { // <-- รับ room แทน post
+            document.getElementById('room-title').innerText = room.title;
+            document.getElementById('room-author').innerText = room.author;
+            document.getElementById('room-time').innerText = new Date(room.id).toLocaleString();
+            document.getElementById('room-content').innerText = room.content;
+            
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = room.messages.map(m => createMessageHTML(m)).join(''); // <-- ใช้ messages
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            if (myUsername === room.author || myUsername === 'Admin') {
+                document.getElementById('restart-btn').style.display = 'block';
+            }
+
+            if (room.isClosed) {
+                document.getElementById('chat-input').style.display = 'none';
+                document.getElementById('closed-msg').style.display = 'block';
+            }
+        }
+        
+        function createMessageHTML(message) {
+            const isMine = message.author === myUsername;
+            const floatClass = isMine ? 'my-msg' : 'other-msg';
+            
+            return `
+                <div class="chat-msg ${floatClass}">
+                    <b>${message.author}</b>: ${message.content}
+                    <div style="font-size:0.75em; opacity:0.7; text-align:${isMine ? 'right' : 'left'};">${new Date(message.timestamp).toLocaleTimeString()}</div>
+                </div>
+            `;
+        }
+        
+        function appendMessage(message) {
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.insertAdjacentHTML('beforeend', createMessageHTML(message));
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // --- NEW: ฟังก์ชันส่งข้อความผ่าน Socket.io ---
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            if(!content) return;
+            
+            // ส่ง Socket Event สำหรับข้อความในห้องแชท
+            socket.emit('room-message', { roomId: roomId, sender: myUsername, msg: content }); 
+            
+            input.value = '';
+        }
+
+        function restartRoom() {
+            if(confirm('ต้องการรีสตาร์ทห้องใช่ไหม? (คนที่ดูอยู่จะถูกเตะออกทันที ยกเว้น Admin และเจ้าของห้อง)')) {
+                socket.emit('restart-room', roomId); // <-- เปลี่ยน Socket Event
+            }
+        }
+
+        function goBack() {
+            socket.emit('leave-room', roomId); // <-- เปลี่ยน Socket Event
+            location.href = '/';
+        }
+        
+        // --- Event Listeners ---
+        window.onbeforeunload = function() { socket.emit('leave-room', roomId); }; // <-- เปลี่ยน Socket Event
+        document.getElementById('message-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>อ่านกระทู้</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            background-color: #e9ebee; 
+            padding: 0; 
+            margin: 0;
+            display: none; 
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 20px auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+
+        /* --- HEADER & ACTIONS --- */
+        .header-btns { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 30px; 
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        .back-btn, .send-btn, .restart-btn { 
+            border: none; 
+            padding: 10px 18px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-weight: 600;
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+        .back-btn { 
+            background: #6c757d; 
+            color: white; 
+        }
+        .back-btn:hover { background: #5a6268; }
+
+        .restart-btn { 
+            background: #dc3545; 
+            color: white; 
+            display: none; 
+        }
+        .restart-btn:hover { background: #c82333; }
+        
+        .manual-close-btn { 
+            background: #e98514; 
+            color: white;
+            padding: 10px 18px; 
+            border-radius: 20px; 
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+            font-size: 14px;
+            border: none;
+            display: none;
+        }
+        .manual-close-btn:hover { background: #cf7010; }
+
+        /* --- POST BODY --- */
+        #post-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .post-meta {
+            color: #6c757d; 
+            font-size: 0.9em;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        .post-meta strong { color: #333; font-weight: 400;}
+        
+        #post-content {
+            font-size: 1.1em; 
+            line-height: 1.8; 
+            min-height: 100px;
+            padding: 20px 0;
+            border-top: 1px dashed #ddd;
+            white-space: pre-wrap; 
+        }
+        
+        /* --- COMMENTS SECTION --- */
+        h3 {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 20px;
+            color: #007bff;
+            font-weight: 600;
+        }
+        .comment-box { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-top: 10px; 
+            border-left: 5px solid #007bff; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .comment-box.odd { 
+            background: #fff;
+            border-left-color: #28a745; 
+        } 
+        .comment-author {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .comment-content {
+            font-size: 0.8em;
+            margin-bottom: 8px;
+        }
+        .comment-time {
+            font-size: 0.75em; 
+            color: #999; 
+            text-align: right;
+        }
+
+        /* --- COMMENT FORM --- */
+        #comment-form {
+            margin-top: 30px; 
+            padding: 10px 0; 
+            background: white; 
+            border-radius: 40px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        #chat-input-area {
+            display: flex;
+            align-items: center;
+            gap: 5px; 
+            padding: 0 10px;
+        }
+        #comment-input { 
+            flex-grow: 1; 
+            padding: 10px 15px; 
+            border: none; 
+            border-radius: 20px; 
+            box-sizing: border-box; 
+            font-family: 'Kanit';
+            font-size: 1em;
+            background-color: #f1f1f1; 
+        }
+        #comment-input:focus {
+            outline: none; 
+            background-color: #fff;
+        }
+        #add-media-btn, #send-comment-btn { 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: background 0.2s;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #add-media-btn {
+            background: #e4e6eb; 
+            color: #007bff;
+        }
+        #add-media-btn:hover { background: #d0d3d6; }
+        #send-comment-btn { 
+            background: #007bff; 
+            color: white; 
+        }
+        #send-comment-btn:hover { background: #0056b3; }
+        #comment-image {
+            display: none !important;
+        }
+        
+        /* --- CLOSED MESSAGE --- */
+        #closed-msg {
+            display:none; 
+            color: #dc3545; 
+            text-align:center; 
+            margin-top:20px; 
+            padding: 15px;
+            border: 1px solid #f5c6cb;
+            background-color: #f8d7da;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        /* --- MODAL / OVERLAY --- */
+        .modal-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); z-index: 2000; display: flex; 
+            justify-content: center; align-items: center; 
+        }
+        .modal-box { 
+            background: white; width: 90%; max-width: 500px; padding: 30px; 
+            border-radius: 15px; max-height: 80vh; overflow-y: auto; 
+        }
+        .hidden { display: none !important; }
+
+        /* --- NEW: STATUS NOTIFICATION (Toast) --- */
+        #status-notif-modal {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            padding: 15px;
+            background: #007bff;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 3000;
+            font-size: 14px;
+            transition: opacity 0.3s ease;
+            opacity: 0; /* เริ่มต้นซ่อนไว้ */
+            pointer-events: none; /* ป้องกันการบล็อกการคลิก */
+        }
+        #status-notif-modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #notif-content {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="map-container" style="margin-top: 20px; display:none;">
+    <h3>📍 Location</h3>
+    
+    <button id="start-nav-btn" 
+       class="send-btn" 
+       style="background:#28a745; margin-bottom: 10px; padding: 10px 18px; text-decoration: none; display:none;">
+        <i class="fas fa-route"></i> เริ่มนำทางไปที่นี่ (Google Maps)
+    </button> 
+
+    <iframe
+      id="post-map-iframe"
+      width="100%"
+      height="350"
+      style="border:0; border-radius: 8px;"
+      loading="lazy"
+      allowfullscreen
+      referrerpolicy="no-referrer-when-downgrade"
+      src=""
+    ></iframe>
+</div>
+
+        <div class="header-btns">
+            <button id="back-btn" class="back-btn" onclick="goBack()" data-i18n-title="btn_back_tooltip">
+                <i class="fas fa-arrow-left"></i> 
+            </button>
+
+            <button id="manual-close-btn" class="manual-close-btn" onclick="manualClosePost()" 
+                data-i18n-key="btn_close_post" 
+                data-i18n-title="title_close_post">
+                <i class="fas fa-lock"></i> ปิดกระทู้
+            </button>
+            
+            <button id="final-finish-btn" class="send-btn" style="background:#6f42c1; display:none;" onclick="requestFinishJob()" 
+                data-i18n-key="btn_finish_job">
+                <i class="fas fa-flag-checkered"></i> จบงาน/แยกย้าย
+            </button>
+
+            <button id="handover-btn" class="restart-btn" style="background:#007bff; display:none;" onclick="openHandoverModal()" 
+                data-i18n-key="btn_handover" 
+                data-i18n-title="title_handover">
+                <i class="fas fa-check-circle"></i> ส่งมอบงาน
+            </button>
+            
+            <button id="restart-btn" class="restart-btn" onclick="restartPost()" 
+                data-i18n-key="btn_kick" 
+                data-i18n-title="title_kick">
+                <i class="fas fa-redo"></i> เตะออก
+            </button>
+        </div>
+        
+        <h1 id="post-title">กำลังโหลด...</h1>
+        <div class="post-meta">
+            <span>
+                <i class="fas fa-user-circle"></i> ID: 
+                <strong id="post-author">...</strong>
+                <!-- ✅ FIX: การแสดงคะแนนดาว -->
+                <span style="color:#ffc107; font-weight:bold; font-size:1.1em;" id="post-author-rating"></span>
+            </span>
+            <span>
+                <i class="fas fa-clock"></i> 
+                <strong id="post-time">...</strong>
+            </span>
+        </div>
+        
+        <div id="post-image-container"></div>
+        
+        <p id="post-content"></p>
+        
+        <h3><i class="fas fa-comments"></i> ความคิดเห็น</h3>
+        <div id="comments-list"></div>
+
+        <div id="comment-form" style="display: flex; flex-direction: column;"> <div id="file-name-display" style="display: none; font-size: 0.85em; color: #007bff; margin-bottom: 5px; padding-left: 55px; text-align: left;"></div>
+
+    <div id="chat-input-area">
+        <button id="add-media-btn" onclick="document.getElementById('comment-image').click()" title="แนบไฟล์">
+            <i class="fas fa-plus"></i>
+        </button>
+        
+        <input type="file" id="comment-image" name="image" accept="image/*" class="hidden"> 
+
+        <input type="text" id="comment-input" placeholder="แสดงความคิดเห็น..." autocomplete="off">
+        
+        <button id="send-comment-btn" onclick="sendComment()" title="ส่งข้อความ">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+        <div id="closed-msg">
+            <i class="fas fa-lock"></i> กระทู้นี้ปิดรับความคิดเห็นแล้ว หรือหมดเวลา
+        </div>
+    </div>
+	
+	<div id="image-viewer-modal" class="modal-overlay hidden" onclick="closeImageViewer()" style="background: rgba(0,0,0,0.9);">
+    <span style="position: absolute; top: 20px; right: 30px; color: white; font-size: 40px; cursor: pointer; font-weight: bold;">&times;</span>
+    
+    <img id="full-image" style="max-width: 90%; max-height: 90%; border-radius: 5px; box-shadow: 0 0 20px rgba(255,255,255,0.2); transition: transform 0.2s;">
+</div>
+
+    
+    <div id="offer-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="text-align:center;">
+        <h2 data-i18n-key="offer_modal_title">🔔 ได้รับข้อเสนอส่งมอบงาน</h2>
+        <p data-i18n-key="offer_modal_desc">เจ้าของกระทู้ต้องการส่งมอบงาน/ปิดดีลนี้ให้กับคุณ</p>
+        
+        <div style="margin-top:20px; display:flex; justify-content:center; gap:15px;">
+            <button class="restart-btn" style="display:block; background:#dc3545; padding:10px 20px;" onclick="replyOffer(false)" data-i18n-key="btn_reject">
+                ❌ ปฏิเสธ
+            </button>
+            <button class="send-btn" style="padding:10px 20px;" onclick="replyOffer(true)" data-i18n-key="btn_accept">
+                ✅ ยอมรับ
+            </button>
+        </div>
+    </div>
+</div>
+
+    <div id="finish-job-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="text-align:center;">
+        <h2 data-i18n-key="modal_finish_title">🏁 อีกฝ่ายขอจบงาน</h2>
+        
+        <p id="finish-job-desc">
+            คุณ <strong id="finish-requester-name">...</strong> ต้องการปิดงานและแยกย้าย
+        </p>
+
+        <p data-i18n-key="modal_finish_warning">หากยืนยัน ทั้งคู่จะออกจากหน้านี้และกลับสู่หน้าหลัก</p>
+        
+        <div style="margin-top:20px; display:flex; justify-content:center; gap:15px;">
+            <button class="restart-btn" style="display:block; background:#dc3545; padding:10px 20px;" onclick="replyFinishJob(false)" data-i18n-key="btn_not_yet">
+                ❌ ยังไม่จบ
+            </button>
+            <button class="send-btn" style="padding:10px 20px;" onclick="replyFinishJob(true)" data-i18n-key="btn_confirm_finish">
+                ✅ ยืนยันจบงาน
+            </button>
+        </div>
+    </div>
+</div>
+    
+    <div id="rating-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="text-align:center;">
+        <h2 data-i18n-key="rating_title">⭐ ให้คะแนนความพึงพอใจ</h2>
+        
+        <p data-i18n-key="rating_desc">งานเสร็จสิ้นแล้ว โปรดให้คะแนนอีกฝ่ายเพื่อปิดงาน</p>
+        
+        <div style="font-size: 2em; margin: 20px 0; cursor: pointer;">
+            <span onclick="setRating(1)">⭐</span>
+            <span onclick="setRating(2)">⭐</span>
+            <span onclick="setRating(3)">⭐</span>
+            <span onclick="setRating(4)">⭐</span>
+            <span onclick="setRating(5)">⭐</span>
+        </div>
+        
+        <p>
+            <span data-i18n-key="rating_selected">คะแนนที่เลือก:</span> 
+            <strong id="selected-rating" style="font-size:1.5em; color:#ffc107;">0</strong> / 5
+        </p>
+        
+        <button class="send-btn" style="width:100%; margin-top:20px;" onclick="submitRating()" data-i18n-key="btn_submit_rating">
+            ยืนยันการให้คะแนน
+        </button>
+    </div>
+</div>
+
+    <div id="handover-modal" class="modal-overlay hidden">
+        <div class="modal-box" style="text-align:center;">
+            <h2 id="handover-title" data-i18n-key="modal_handover_title" style="margin-bottom: 10px;">กำลังตรวจสอบ...</h2>
+
+            <p id="handover-message" style="color: #6c757d; margin-bottom: 15px;">
+                กรุณารอสักครู่...
+            </p>
+
+            <div id="handover-viewer-container" class="hidden" style="font-size: 1.2em; margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                <i class="fas fa-user-check" style="color: #28a745;"></i> ผู้รับงาน: 
+                <strong id="target-viewer-display" style="color: #333;">...</strong>
+            </div>
+
+            <div id="handover-actions" class="hidden" style="margin-top: 10px;">
+                <button id="send-handover-btn" class="send-btn" onclick="closeDealWithViewer()" 
+                        data-i18n-key="modal_handover_btn"
+                        style="
+                    width: auto; 
+                    background: #28a745; 
+                    color: white; 
+                    padding: 10px 30px; 
+                    border: none; 
+                    border-radius: 8px; 
+                    font-weight: bold;
+                    cursor: pointer;
+                    margin-bottom: 10px;
+                ">
+                    ส่งมอบงาน
+                </button>
+            </div>
+
+            <button id="close-handover-modal" class="back-btn" 
+                    onclick="document.getElementById('handover-modal').classList.add('hidden')" 
+                    data-i18n-key="btn_close"
+                    style="
+                width:auto; 
+                margin-top:20px; 
+                background: #dc3545; 
+                color: white;
+            ">
+                ❌ ปิด
+            </button>
+        </div>
+    </div>
+    
+    <!-- NEW: Status Notification Toast -->
+    <div id="status-notif-modal">
+        <div id="notif-content">
+            <i class="fas fa-info-circle"></i>
+            <span id="notif-message"></span>
+        </div>
+    </div>
+
+    <!-- 💥 [FIX] ย้าย Script มาไว้ล่างสุดของ Body เพื่อให้โหลด Socket.IO เสร็จก่อน -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- NEW HELPER: Custom Notification Function ---
+        let notifTimeout;
+        function showNotification(message, iconClass = 'fas fa-info-circle', duration = 3000) {
+            clearTimeout(notifTimeout);
+            const modal = document.getElementById('status-notif-modal');
+            const content = document.getElementById('notif-message');
+            const icon = modal.querySelector('i');
+
+            icon.className = iconClass;
+            content.innerText = message;
+            modal.classList.add('show');
+
+            // ซ่อนหลังจากระยะเวลาที่กำหนด
+            notifTimeout = setTimeout(() => {
+                modal.classList.remove('show');
+            }, duration);
+        }
+
+        // --- GLOBAL SETUP (unchanged logic) ---
+        const socket = io();
+		
+		const postTranslations = {
+    'th': {
+        'btn_back_tooltip': 'ย้อนกลับ',
+        'btn_close_post': 'ปิดกระทู้',
+        'title_close_post': 'ปิดกระทู้นี้ทันที (ห้ามคอมเมนต์/รับงาน)',
+        'btn_finish_job': 'จบงาน/แยกย้าย',
+        'btn_handover': 'ส่งมอบงาน',
+        'title_handover': 'ส่งมอบงาน/ปิดดีลกับผู้ที่กำลังดูอยู่',
+        'btn_kick': 'เตะออก',
+        'title_kick': 'ใช้สำหรับเตะคนดูทั้งหมดที่ไม่ใช่เจ้าของ/แอดมิน',
+        'confirm_close_post': 'คุณแน่ใจหรือไม่ที่จะปิดกระทู้นี้ทันที? ระบบจะห้ามไม่ให้มีการคอมเมนต์/รับงานใดๆ อีกต่อไป',
+        'alert_post_closed': '✅ กระทู้นี้ถูกปิดโดยเจ้าของแล้ว',
+        'modal_handover_title': 'ส่งมอบงาน / ปิดดีล',
+        'modal_handover_desc': 'คุณกำลังจะปิดดีลงานนี้ให้กับผู้ดู (Viewer) ที่เลือก โปรดตรวจสอบให้แน่ใจว่าได้ตกลงรายละเอียดและราคาเรียบร้อยแล้ว การกระทำนี้ไม่สามารถย้อนกลับได้',
+        'modal_handover_btn': 'ปิดดีลนี้',
+        'modal_handover_success': '✅ ส่งมอบงานเรียบร้อยแล้ว โปรดรอการตอบรับจากผู้ที่ได้รับงาน',
+		'confirm_handover_offer': 'ส่งคำขอปิดดีลไปให้ "[VIEWER]" กดยอมรับใช่หรือไม่?',
+        'notif_offer_sent': '📤 ส่งคำขอปิดดีลให้ [VIEWER] แล้ว',
+		'notif_deal_accepted': '✅ [VIEWER] รับงานแล้ว! กระทู้ถูกปิดเรียบร้อย',
+        'notif_deal_rejected': '❌ [VIEWER] ปฏิเสธการรับงาน',
+		'generic_viewer_name': 'ผู้รับงาน',
+        'handover_status_loading_title': '⏳ กำลังตรวจสอบสถานะผู้ชม...',
+        'handover_status_loading_msg': 'ระบบกำลังติดต่อ Server เพื่อเช็คว่าใครกำลังดูอยู่...',
+        'handover_status_found_title': '✅ พร้อมส่งมอบงาน',
+        'handover_status_found_msg': 'พบสมาชิกที่กำลังออนไลน์อยู่!',
+        'handover_status_not_found_title': '⚠️ ไม่มีผู้รับงาน',
+        'handover_status_not_found_msg': 'ยังไม่มีสมาชิกอื่นใดกำลังรับชมกระทู้นี้อยู่ในขณะนี้',
+        'handover_status_error_title': '❌ ตรวจสอบล้มเหลว',
+        'handover_status_error_timeout': 'การเชื่อมต่อล่าช้าเกินไป (Timeout)',
+        'handover_status_error_general': 'เกิดข้อผิดพลาด:',
+        'btn_close': '❌ ปิด',
+		'offer_modal_title': '🔔 ได้รับข้อเสนอส่งมอบงาน',
+        'offer_modal_desc': 'เจ้าของกระทู้ต้องการส่งมอบงาน/ปิดดีลนี้ให้กับคุณ',
+        'btn_reject': '❌ ปฏิเสธ',
+        'btn_accept': '✅ ยอมรับ',
+		'confirm_finish_request': 'ต้องการขอจบงานและออกจากห้องนี้ใช่หรือไม่?\n(ต้องรอให้อีกฝ่ายกดยืนยัน)',
+        'modal_finish_title': '🏁 อีกฝ่ายขอจบงาน',
+        'modal_finish_desc_prefix': 'คุณ',
+        'modal_finish_desc_suffix': 'ต้องการปิดงานและแยกย้าย',
+        'modal_finish_warning': 'หากยืนยัน ทั้งคู่จะออกจากหน้านี้และกลับสู่หน้าหลัก',
+        'btn_not_yet': '❌ ยังไม่จบ',
+        'btn_confirm_finish': '✅ ยืนยันจบงาน',
+        'notif_wait_finish_confirm': '⏳ ส่งคำขอแล้ว กรุณารออีกฝ่ายยืนยัน...',
+        'SYS_FINISH_REJECTED': '❌ อีกฝ่ายยังไม่ยืนยันการจบงาน',
+		'rating_title': '⭐ ให้คะแนนความพึงพอใจ',
+        'rating_desc': 'งานเสร็จสิ้นแล้ว โปรดให้คะแนนอีกฝ่ายเพื่อปิดงาน',
+        'rating_selected': 'คะแนนที่เลือก:',
+        'btn_submit_rating': 'ยืนยันการให้คะแนน',
+        'SYS_RATING_SUCCESS': '🎉 ให้คะแนนสำเร็จ! คุณได้ปิดงานในส่วนของคุณแล้ว',
+        'SYS_RATING_ALREADY': '🎉 คุณได้ให้คะแนนไปแล้ว!',
+        'SYS_OPPONENT_RATED': '🔔 อีกฝ่ายได้ให้คะแนนคุณแล้ว! ถึงตาคุณให้คะแนนบ้าง',
+		'confirm_kick': 'ต้องการรีสตาร์ทกระทู้ใช่ไหม? (คนที่ดูอยู่จะถูกเตะออกทันที ยกเว้น Admin)',
+		'btn_show_route': '🗺️ แสดงเส้นทางนำทางในเว็บ',
+    },
+    'en': {
+        'btn_back_tooltip': 'Back',
+        'btn_close_post': 'Close Post',
+        'title_close_post': 'Close this post immediately (No comments/jobs)',
+        'btn_finish_job': 'Finish Job',
+        'btn_handover': 'Handover',
+        'title_handover': 'Handover job/Close deal with current viewer',
+        'btn_kick': 'Kick',
+        'title_kick': 'Kick all viewers (except Owner/Admin)',
+        'confirm_close_post': 'Are you sure you want to close this post immediately? The system will prohibit any further comments or job applications.',
+        'alert_post_closed': '✅ This post has been closed by the owner.',
+        'modal_handover_title': 'Handover Job / Close Deal',
+        'modal_handover_desc': 'You are about to close this deal to the selected Viewer. Please ensure all details and pricing are agreed upon. This action is irreversible.',
+        'modal_handover_btn': 'Deal',
+        'modal_handover_success': '✅ Job Handover completed. Please wait for acceptance from the recipient.',
+		'confirm_handover_offer': 'Send deal close request to "[VIEWER]". Confirm acceptance?',
+        'notif_offer_sent': '📤 Handover offer sent to [VIEWER]',
+		'notif_deal_accepted': '✅ [VIEWER] accepted the deal! Post closed successfully.',
+        'notif_deal_rejected': '❌ [VIEWER] rejected the deal offer.',
+		'generic_viewer_name': 'The Recipient',
+        'handover_status_loading_title': '⏳ Checking viewer status...',
+        'handover_status_loading_msg': 'System is contacting server to check for viewers...',
+        'handover_status_found_title': '✅ Ready for Handover',
+        'handover_status_found_msg': 'Active viewer found!',
+        'handover_status_not_found_title': '⚠️ No Viewer Found',
+        'handover_status_not_found_msg': 'No other members are currently viewing this post.',
+        'handover_status_error_title': '❌ Check Failed',
+        'handover_status_error_timeout': 'Connection delayed (Timeout)',
+        'handover_status_error_general': 'Error occurred:',
+        'btn_close': '❌ Close',
+		'offer_modal_title': '🔔 Job Handover Offer Received',
+        'offer_modal_desc': 'The post owner wants to handover/close this deal with you.',
+        'btn_reject': '❌ Reject',
+        'btn_accept': '✅ Accept',
+		'confirm_finish_request': 'Do you want to finish this job and leave?\n(Waiting for confirmation from the other party)',
+        'modal_finish_title': '🏁 Finish Job Request',
+        'modal_finish_desc_prefix': 'User',
+        'modal_finish_desc_suffix': 'wants to finish the job.',
+        'modal_finish_warning': 'If confirmed, both will be redirected to the home page.',
+        'btn_not_yet': '❌ Not yet',
+        'btn_confirm_finish': '✅ Confirm Finish',
+        'notif_wait_finish_confirm': '⏳ Request sent. Waiting for confirmation...',
+        'SYS_FINISH_REJECTED': '❌ The other party denied the finish request.',
+		'rating_title': '⭐ Rate Satisfaction',
+        'rating_desc': 'The job is finished. Please rate the other party to close the deal.',
+        'rating_selected': 'Selected Rating:',
+        'btn_submit_rating': 'Submit Rating',
+        'SYS_RATING_SUCCESS': '🎉 Rating submitted! You have closed your part.',
+        'SYS_RATING_ALREADY': '🎉 You have already submitted a rating!',
+        'SYS_OPPONENT_RATED': '🔔 The other party has rated you! Now it\'s your turn.',
+		'confirm_kick': 'Do you want to restart the post room? (All current viewers will be kicked immediately, except Admin)',
+		'btn_show_route': '🗺️ Show In-Web Navigation',
+    }
+};
+
+        function applyLanguage() {
+            // ใช้ภาษาจาก localStorage ที่ index.html บันทึกไว้ หรือ default เป็น 'th'
+            const lang = localStorage.getItem('preferredLanguage') || 'th';
+            const t = postTranslations[lang] || postTranslations['th'];
+
+            // 1. แปลข้อความในปุ่ม (innerHTML) โดยรักษา Icon ไว้
+            document.querySelectorAll('[data-i18n-key]').forEach(el => {
+                const key = el.getAttribute('data-i18n-key');
+                if (t[key]) {
+                    // เก็บ Icon ตัวแรกไว้ (ถ้ามี)
+                    const iconHtml = el.querySelector('i') ? el.querySelector('i').outerHTML : '';
+                    // อัปเดตข้อความใหม่
+                    el.innerHTML = `${iconHtml} ${t[key]}`;
+                }
+            });
+
+            // 2. แปล Tooltip (title attribute)
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const key = el.getAttribute('data-i18n-title');
+                if (t[key]) {
+                    el.title = t[key];
+                }
+            });
+        }
+		
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('id'); 
+        const myUsername = localStorage.getItem('myUsername');
+		const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+		
+        let currentDestination = null;
+        let finishRequester = '';
+        let currentPost = null; // เก็บข้อมูลกระทู้ปัจจุบัน
+		let currentViewerLocation = null;
+
+        if (!myUsername || !postId) {
+            showNotification('ไม่พบข้อมูลผู้ใช้หรือกระทู้ กรุณาเข้าสู่ระบบใหม่', 'fas fa-exclamation-triangle', 4000); 
+            setTimeout(() => { location.href = '/'; }, 1000);
+        }
+
+        socket.on('connect', () => {
+			applyLanguage();
+            socket.emit('register', myUsername);
+            socket.emit('join-post-room', { postId, username: myUsername, lang: currentLang });
+            
+            // Get and send viewer's location (one-time on join)
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const location = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    // ส่งพิกัดไปให้ Server
+                    socket.emit('update-viewer-location', { 
+                        postId: postId, 
+                        username: myUsername, 
+                        location: location
+                    });
+                }, (error) => {
+                    console.warn('Geolocation denied or failed:', error.message);
+                });
+            }
+        });
+
+        socket.on('access-granted', (post) => {
+            currentPost = post; // บันทึกข้อมูลกระทู้
+            document.body.style.display = 'block';
+            renderPost(post);
+        });
+
+        socket.on('access-denied', (reason) => {
+            // ✅ ต้องสั่งให้แสดงหน้าเว็บก่อน ไม่งั้นมองไม่เห็นการแจ้งเตือน
+            document.body.style.display = 'block'; 
+            showNotification(reason, 'fas fa-exclamation-triangle', 2000);
+            setTimeout(() => { location.href = '/'; }, 2000); // เพิ่มเวลาเป็น 2 วินาทีให้อ่านทัน
+        });
+
+        socket.on('force-leave', (reason) => {
+            // ✅ ต้องสั่งให้แสดงหน้าเว็บก่อนเช่นกัน
+            document.body.style.display = 'block';
+            showNotification(reason, 'fas fa-door-open', 2000);
+            setTimeout(() => { location.href = '/'; }, 2000); 
+        });
+
+        socket.on('restart-success', (msg) => {
+            showNotification(msg, 'fas fa-redo');
+        });
+        
+        let currentRating = 0;
+
+        // 1. ฟังคำสั่งเริ่มให้คะแนนจาก Server
+        socket.on('start-rating-phase', () => {
+            document.getElementById('finish-job-modal').classList.add('hidden');
+            document.getElementById('rating-modal').classList.remove('hidden');
+        });
+
+        // 2. ฟังก์ชันเลือกดาว
+        window.setRating = function(score) {
+            currentRating = score;
+            document.getElementById('selected-rating').innerText = score;
+        }
+
+        // 3. ฟังก์ชันกดส่งคะแนน (Client)
+        window.submitRating = function() {
+            if (currentRating === 0) {
+                showNotification('กรุณาเลือกดาวอย่างน้อย 1 ดวง', 'fas fa-exclamation-circle', 2000);
+                return;
+            }
+            const comment = "";
+            
+            // 🚀 ส่งข้อมูลไป Server เพื่อปิดงานทันที
+            socket.emit('submit-rating', {
+                postId,
+                rater: myUsername,
+                rating: currentRating,
+                comment: comment
+            });
+            
+            document.getElementById('rating-modal').classList.add('hidden');
+        }
+		
+		// ฟังก์ชันเปิดรูปภาพขยาย
+window.openImageViewer = function(src) {
+    const modal = document.getElementById('image-viewer-modal');
+    const img = document.getElementById('full-image');
+    img.src = src;
+    modal.classList.remove('hidden');
+}
+
+// ฟังก์ชันปิดรูปภาพ
+window.closeImageViewer = function() {
+    document.getElementById('image-viewer-modal').classList.add('hidden');
+}
+
+        // 4. ฟังคำสั่ง "รออีกฝ่าย" (ลบ Logic การรอออกไป)
+        socket.on('rating-waiting', (msg) => {
+            showNotification('✅ บันทึกคะแนนสำเร็จ', 'fas fa-check-circle', 3000);
+        });
+        
+        // --- CORE LOGIC (unchanged for brevity) ---
+
+        function displayMap(location) {
+            const mapContainer = document.getElementById('map-container');
+            const mapIframe = document.getElementById('post-map-iframe');
+            const navButton = document.getElementById('start-nav-btn');
+			const lang = localStorage.getItem('preferredLanguage') || 'th';
+			const t = postTranslations[lang] || postTranslations['th'];			
+            
+            if (location && location.lat && location.lng) {
+                const lat = location.lat.toFixed(6); 
+                const lng = location.lng.toFixed(6);
+                
+                currentDestination = { lat, lng };
+
+                const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
+                
+                mapIframe.src = initialMapUrl;
+                mapContainer.style.display = 'block'; 
+                
+                navButton.style.display = 'block';
+                navButton.onclick = startEmbeddedNavigation; 
+                navButton.innerText = t['btn_show_route'];
+                
+            } else {
+                mapContainer.style.display = 'none'; 
+                navButton.style.display = 'none';
+            }
+        }
+		
+		function displayMapWithViewer(postLocation, viewerLocation) {
+    const mapContainer = document.getElementById('map-container');
+    const mapIframe = document.getElementById('post-map-iframe');
+    const navButton = document.getElementById('start-nav-btn'); 
+    const mapTitle = document.getElementById('map-title');
+	const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+
+    // 1. ตรวจสอบพิกัดกระทู้
+    if (!postLocation || !postLocation.lat || !postLocation.lng) {
+        mapContainer.style.display = 'none'; 
+        navButton.style.display = 'none';
+        return;
+    }
+
+    const p_lat = postLocation.lat.toFixed(6); 
+    const p_lng = postLocation.lng.toFixed(6);
+    let mapUrl = '';
+    let viewerText = '';
+    let zoomLevel = 15;
+    
+    // ตรวจสอบว่าเป็นเจ้าของกระทู้หรือ Admin
+    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
+
+    if (viewerLocation && viewerLocation.lat && isOwnerOrAdmin) {
+        const v_lat = viewerLocation.lat.toFixed(6);
+        const v_lng = viewerLocation.lng.toFixed(6);
+        const centerLat = ((parseFloat(p_lat) + parseFloat(v_lat)) / 2).toFixed(6);
+        const centerLng = ((parseFloat(p_lng) + parseFloat(v_lng)) / 2).toFixed(6);
+        
+        // ⭐ แก้ไข: ใช้ ${centerLat} เพื่อฝังตัวแปร Lat กลาง
+        // ใช้ &markers= เพื่อปักหมุดหลายจุด
+        mapUrl = `https://maps.google.com/maps?q=$${centerLat},${centerLng}&hl=en&z=13&output=embed&markers=${p_lat},${p_lng}|${v_lat},${v_lng}`;
+        
+        viewerText = `<br><span style="color:#007bff; font-weight:bold; margin-top:5px;">
+                      📍 ผู้ชมกำลังอยู่ที่: Lat ${v_lat}, Lng ${v_lng}
+                      </span>`;
+        zoomLevel = 13; // ซูมออกเล็กน้อยเพื่อแสดง 2 จุด
+    } else {
+        // ⭐ แก้ไข: ใช้ ${p_lat} เพื่อฝังตัวแปร Lat ของกระทู้
+        mapUrl = `https://maps.google.com/maps?q=$${p_lat},${p_lng}&hl=en&z=${zoomLevel}&output=embed`;
+    }
+    
+    mapIframe.src = mapUrl;
+    mapTitle.innerHTML = `📍 Location${viewerText}`;
+
+    mapContainer.style.display = 'block'; 
+    navButton.style.display = 'block';
+    navButton.onclick = startEmbeddedNavigation; 
+    navButton.innerText = t['btn_show_route'];
+}
+
+window.startEmbeddedNavigation = function() {
+    if (!currentDestination) {
+        showNotification('ไม่พบพิกัดปลายทาง', 'fas fa-exclamation-triangle');
+        return;
+    }
+
+    const lat = currentDestination.lat;
+    const lng = currentDestination.lng;
+    const mapIframe = document.getElementById('post-map-iframe');
+
+    // ⭐ แก้ไข: ใช้ ${lat} เพื่อฝังตัวแปร Lat
+    const mapDirectionsUrl = `https://maps.google.com/maps?q=$${lat},${lng}&hl=en&z=14&output=embed&entry=open&layer=transit&dir_action=navigate`;
+    
+    mapIframe.src = mapDirectionsUrl;
+    
+    showNotification('✅ โหมดนำทางแสดงผลแล้ว กรุณาระบุจุดเริ่มต้นในแผนที่', 'fas fa-map-signs', 4000);
+}
+
+socket.on('viewer-location-update', (data) => {
+    // อัปเดตเมื่อเป็นเจ้าของ/Admin และไม่ใช่ตัวเอง
+    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
+
+    if (isOwnerOrAdmin && data.viewer !== myUsername) {
+         currentViewerLocation = data.location;
+         // เรียก re-render แผนที่ทันที
+         displayMapWithViewer(currentPost.location, currentViewerLocation); 
+         showNotification(`(${data.viewer}) Walk in`, 'fas fa-map-marker-alt', 3000);
+    }
+});
+
+// เมื่อ Viewer ออกจากห้อง (เพื่อลบ Pin)
+socket.on('viewer-left-location', (data) => {
+    if (myUsername === currentPost.author || myUsername === 'Admin') {
+         if (data.viewer === (currentPost.acceptedViewer || '')) { // เช็คชื่อ Viewer ที่เราสนใจ
+             currentViewerLocation = null;
+             displayMapWithViewer(currentPost.location, currentViewerLocation); 
+             showNotification(`${data.viewer} Walk Out`, 'fas fa-map-marker-alt', 3000);
+         }
+    }
+});
+
+        function createCommentHTML(c, index) {
+            const isOdd = index % 2 !== 0;
+            let commentImageHtml = c.imageUrl 
+                ? `<div style="margin-top: 10px; margin-bottom:5px;">
+        <img src="${c.imageUrl}" 
+             onclick="openImageViewer('${c.imageUrl}')"
+             style="max-width: 200px; max-height: 200px; border-radius: 5px; border: 1px solid #ddd; cursor: pointer;">
+       </div>`
+    : '';
+
+            return `<div class="comment-box ${isOdd ? 'odd' : ''}">
+                <div class="comment-author"><i class="fas fa-user"></i> ${c.author}</div>
+                <div class="comment-content">${c.content}</div>
+                ${commentImageHtml} <div class="comment-time">${new Date(c.timestamp).toLocaleString()}</div>
+            </div>`;
+        }
+
+        function renderPost(post) {
+            // 1. แสดงข้อมูลพื้นฐาน
+            document.getElementById('post-title').innerText = post.title;
+            document.getElementById('post-author').innerText = post.author;
+            document.getElementById('post-time').innerText = new Date(post.id).toLocaleString();
+            
+            // 2. แสดงคะแนนดาว
+            const ratingDisplay = document.getElementById('post-author-rating');
+            // ✅ FIX: ใช้ค่าที่ Server ส่งมาโดยตรง และกำหนดค่าเริ่มต้นเป็น '0.00'
+            const displayRating = post.authorRating || '0.00'; 
+            ratingDisplay.innerHTML = ` (⭐ ${displayRating} / 5.0)`;
+            // ------------------------
+
+            // 3. เตรียม Element
+            const contentDiv = document.getElementById('post-content');
+            const imageContainer = document.getElementById('post-image-container');
+            const mapDiv = document.getElementById('map-container');
+            const list = document.getElementById('comments-list');
+            const commentForm = document.getElementById('comment-form');
+            const closedMsg = document.getElementById('closed-msg');
+            
+            const backBtn = document.getElementById('back-btn');
+            const finishBtn = document.getElementById('final-finish-btn');
+            const restartBtn = document.getElementById('restart-btn');
+            const handoverBtn = document.getElementById('handover-btn');
+            const manualCloseBtn = document.getElementById('manual-close-btn');
+
+            contentDiv.style.display = 'block';
+            imageContainer.style.display = 'block'; 
+            mapDiv.style.display = 'block';
+            list.style.display = 'block';
+            commentForm.style.display = 'flex';
+            closedMsg.style.display = 'none';
+
+            contentDiv.innerText = post.content;
+            displayMap(post.location);
+
+            if (post.imageUrl) {
+                imageContainer.innerHTML = `
+        <div style="text-align:center; margin-bottom: 20px;">
+            <img src="${post.imageUrl}" 
+                 onclick="openImageViewer('${post.imageUrl}')"
+                 style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'" 
+                 onmouseout="this.style.transform='scale(1)'">
+        </div>
+    `;
+            } else {
+                imageContainer.innerHTML = '';
+                imageContainer.style.display = 'none';
+            }
+
+            list.innerHTML = post.comments.map((c, index) => createCommentHTML(c, index)).join('');
+            
+            const oldAlert = document.getElementById('status-alert');
+            if (oldAlert) oldAlert.remove();
+
+            // --- LOGIC การแสดงปุ่มและการล็อค ---
+            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin';
+
+            // ซ่อนปุ่มทั้งหมดก่อน
+            finishBtn.style.display = 'none';
+            restartBtn.style.display = 'none';
+            handoverBtn.style.display = 'none';
+            manualCloseBtn.style.display = 'none'; 
+			
+			if (post.isPinned) {
+                // ถ้ากระทู้ถูกปิดแล้ว
+                if (post.isClosed) {
+                    commentForm.style.display = 'none';
+                    closedMsg.style.display = 'block';
+                    closedMsg.innerHTML = '<i class="fas fa-lock"></i> ประกาศนี้ถูกปิดแล้ว';
+                    backBtn.style.display = 'block';
+                    
+                    // Admin สามารถเปิดปิดใหม่ได้ไหม? (ในที่นี้ให้ Admin เห็นปุ่มปิดไม่ได้แล้ว เพราะปิดไปแล้ว)
+                } else {
+                    // ถ้ายังเปิดอยู่
+                    backBtn.style.display = 'block';
+                    
+                    // ถ้าเป็น Admin ให้โชว์ปุ่มปิดกระทู้ได้
+                    if (myUsername === 'Admin') {
+                        manualCloseBtn.style.display = 'block';
+                    }
+                }
+                // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
+                return; 
+            }
+
+            if (post.status === 'finished') {
+                const isParticipant = myUsername === post.author || myUsername === post.acceptedViewer || myUsername === 'Admin';
+
+                if (!isParticipant) {
+                    contentDiv.style.display = 'none';
+                    imageContainer.style.display = 'none';
+                    mapDiv.style.display = 'none';
+                    list.style.display = 'none';
+                    commentForm.style.display = 'none';
+                    
+                    closedMsg.style.display = 'block';
+                    closedMsg.innerHTML = `
+                        <div style="background:#fff3cd; color:#856404; padding:20px; border:1px solid #ffeeba; border-radius:10px;">
+                            <h2>⛔ ปิดดีลแล้ว</h2>
+                            <p>จำกัดสิทธิ์เฉพาะผู้ตั้งกระทู้และผู้รับงาน (${post.acceptedViewer || '-'}) เท่านั้น</p>
+                        </div>
+                    `;
+                    backBtn.style.display = 'block';
+                } else {
+                    const statusAlert = document.createElement('div');
+                    statusAlert.id = 'status-alert';
+                    statusAlert.innerHTML = `
+                        <div style="background:#d4edda; color:#155724; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #c3e6cb; text-align:center;">
+                            <strong>✅ ปิดดีลสำเร็จ!</strong><br>
+                            งานนี้ถูกส่งมอบให้กับคุณ <strong>${post.acceptedViewer}</strong> แล้ว <br>
+                            เมื่อเสร็จสิ้นภารกิจ กรุณากดปุ่ม <strong>"จบงาน/แยกย้าย"</strong> ด้านบน
+                        </div>
+                    `;
+                    list.parentNode.insertBefore(statusAlert, list);
+
+                    backBtn.style.display = 'none';
+                    finishBtn.style.display = 'block';
+                }
+            } else if (post.isClosed) {
+                commentForm.style.display = 'none';
+                closedMsg.style.display = 'block';
+                
+                const closeMessage = post.status === 'closed_by_user' || post.status === 'rating_pending' || post.status === 'closed_permanently'
+                    ? '<i class="fas fa-lock"></i> กระทู้นี้ถูกปิดการใช้งานแล้ว'
+                    : '<i class="fas fa-lock"></i> กระทู้นี้ปิดรับความคิดเห็นแล้ว หรือหมดเวลา';
+                closedMsg.innerHTML = closeMessage;
+                
+                backBtn.style.display = 'block';
+                // ถ้าเป็นเจ้าของหรือ Admin ยังคงมีสิทธิ์ในการรีสตาร์ท (ถ้ายังไม่ปิดถาวร)
+                if (isOwnerOrAdmin && post.status !== 'closed_permanently') {
+                    restartBtn.style.display = 'block'; 
+                }
+            } else {
+                // 🟢 สถานะปกติ
+                backBtn.style.display = 'block';
+                
+                if (isOwnerOrAdmin) {
+                    restartBtn.style.display = 'block';
+                    handoverBtn.style.display = 'block';
+                    manualCloseBtn.style.display = 'block'; 
+                }
+            }
+        }
+        
+        // --- NEW ACTION: ปิดกระทู้ด้วยตนเอง ---
+        async function manualClosePost() {
+			const lang = localStorage.getItem('preferredLanguage') || 'th';
+            const t = postTranslations[lang] || postTranslations['th'];
+			if (confirm(t['confirm_close_post'])) { 
+                socket.emit('manual-close-post', postId);
+                document.getElementById('manual-close-btn').disabled = true;
+                alert(t['alert_post_closed']); 
+            }
+            if (!currentPost) return showNotification('ไม่พบข้อมูลกระทู้', 'fas fa-exclamation-triangle');
+            
+            if (currentPost.isClosed) {
+                return showNotification('กระทู้นี้ถูกปิดอยู่แล้ว', 'fas fa-info-circle');
+            }
+        }
+        
+        function restartPost() { 
+    // 1. ดึงภาษาปัจจุบัน
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+
+    // 2. ใช้ข้อความจากตัวแปร translation
+    if(confirm(t['confirm_kick'])) {
+        socket.emit('restart-post-room', postId);
+    }
+}
+
+        async function sendComment() { 
+            const content = document.getElementById('comment-input').value.trim();
+            const imageFile = document.getElementById('comment-image').files[0];
+
+            if(!content && !imageFile) {
+                showNotification("กรุณาใส่ข้อความหรือเลือกรูปภาพ", 'fas fa-exclamation-circle', 2000);
+                return;
+            }
+            
+            document.getElementById('comment-input').disabled = true;
+
+            const formData = new FormData();
+            formData.append('content', content);
+            formData.append('author', myUsername);
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            const res = await fetch(`/api/posts/${postId}/comments`, { 
+                method: 'POST',
+                body: formData 
+            });
+            
+            document.getElementById('comment-input').disabled = false;
+
+            if (res.status === 200) {
+                document.getElementById('comment-input').value = '';
+				document.getElementById('comment-image').value = '';
+				const fileNameDisplay = document.getElementById('file-name-display');
+				fileNameDisplay.innerText = '';
+				fileNameDisplay.style.display = 'none';
+            } else {
+                // ✅ [FIXED] จัดการ Error และป้องกัน SyntaxError
+                try {
+                    const d = await res.json();
+                    showNotification(d.error, 'fas fa-times-circle', 4000); 
+                    if(d.error.includes('ปิด') || d.error.includes('หมดเวลา')) location.reload();
+                } catch (e) {
+                     // ถ้าไม่ใช่ JSON (เช่น Server ตอบ 404 HTML)
+                     showNotification(`❌ เกิดข้อผิดพลาดในการส่งข้อมูล: ${res.status}`, 'fas fa-times-circle', 5000); 
+                }
+            }
+        }
+        
+        async function openHandoverModal() {
+            document.getElementById('handover-modal').classList.remove('hidden');
+
+            const titleEl = document.getElementById('handover-title');
+            const messageEl = document.getElementById('handover-message'); 
+            const viewerContainer = document.getElementById('handover-viewer-container'); 
+            const viewerEl = document.getElementById('target-viewer-display'); 
+            const actionsEl = document.getElementById('handover-actions');
+
+            // --- 1. ดึงชุดคำแปล ---
+            const lang = localStorage.getItem('preferredLanguage') || 'th';
+            const t = postTranslations[lang] || postTranslations['th'];
+            // ------------------------
+
+            // 2. ตั้งค่าสถานะเริ่มต้น (ใช้คำแปล)
+            titleEl.innerText = t['handover_status_loading_title'];
+            messageEl.innerText = t['handover_status_loading_msg'];
+            messageEl.style.color = '#6c757d'; 
+            messageEl.classList.remove('hidden');
+
+            viewerContainer.classList.add('hidden'); 
+            viewerEl.innerText = '...'; 
+            actionsEl.classList.add('hidden'); 
+
+            try {
+                const controller = new AbortController();
+                const signal = controller.signal;
+                const timeoutId = setTimeout(() => controller.abort(), 5000); 
+                
+                const fetchPromise = fetch(`/api/posts/${postId}/viewer-status?requestBy=${myUsername}`, { signal });
+                
+                const res = await fetchPromise;
+                clearTimeout(timeoutId); 
+
+                if (res.status !== 200) {
+                    const errorData = await res.json().catch(() => ({ error: 'Unknown Server Error' }));
+                    throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.error) {
+                    // ❌ กรณี Error จาก Server
+                    titleEl.innerText = t['handover_status_error_title'];
+                    messageEl.innerText = data.error;
+                    messageEl.style.color = '#dc3545';
+                } else if (data.isOccupied) {
+                    // ✅ กรณีพบ Viewer
+                    const ratingShow = data.rating !== undefined 
+                        ? parseFloat(data.rating).toFixed(2) 
+                        : '0.00'; 
+
+                    titleEl.innerText = t['handover_status_found_title'];
+                    
+                    messageEl.innerHTML = `<span style="color:#28a745"><i class="fas fa-check-circle"></i> ${t['handover_status_found_msg']}</span>`;
+                    
+                    viewerEl.innerHTML = `${data.viewer} <span style="color:#ffc107; margin-left:5px;">⭐ ${ratingShow}</span>`;
+                    
+                    viewerContainer.classList.remove('hidden'); 
+                    actionsEl.classList.remove('hidden');
+                    
+                } else {
+                    // ⚠️ กรณีไม่พบ Viewer
+                    titleEl.innerText = t['handover_status_not_found_title'];
+                    messageEl.innerText = t['handover_status_not_found_msg'];
+                    messageEl.style.color = '#e0a800'; 
+                    viewerContainer.classList.add('hidden');
+                }
+
+            } catch (e) {
+                // ❌ กรณี Network Error / Timeout
+                showNotification('❌ ตรวจสอบล้มเหลว: ไม่สามารถติดต่อ Server ได้', 'fas fa-exclamation-triangle', 5000);
+
+                titleEl.innerText = t['handover_status_error_title'];
+                messageEl.innerText = (e.name === 'AbortError') 
+                    ? t['handover_status_error_timeout'] 
+                    : `${t['handover_status_error_general']} ${e.message}`; // ใช้ Key + e.message
+                messageEl.style.color = '#dc3545';
+            }
+        }
+        
+function closeDealWithViewer() {
+            // ดึง Element ที่แสดงชื่อผู้รับงาน
+            const viewerElement = document.getElementById('target-viewer-display');
+            
+            if (!viewerElement) {
+                return showNotification('ระบบขัดข้อง: ไม่พบชื่อผู้รับงาน กรุณารีเฟรชหน้าเว็บแล้วลองใหม่', 'fas fa-bug', 5000);
+            }
+
+            // ดึงข้อความทั้งหมด (เช่น "Aoy ⭐ 4.31")
+            const fullText = viewerElement.textContent || ''; 
+            let viewer = fullText.trim();
+
+            // ตัดส่วนคะแนนดาวออกไป (⭐ 4.31)
+            if (viewer.includes('⭐')) {
+                viewer = viewer.substring(0, viewer.indexOf('⭐')).trim();
+            }
+
+            // 1. ตรวจสอบชื่อผู้รับงาน
+            if (!viewer || viewer === '...' || viewer === '') {
+                return showNotification('❌ ไม่พบชื่อผู้รับงาน (ข้อมูลไม่สมบูรณ์)', 'fas fa-user-times', 3000);
+            }
+
+            // 2. ดึงชุดคำแปลสำหรับ Notification
+            const lang = localStorage.getItem('preferredLanguage') || 'th';
+            const t = postTranslations[lang] || postTranslations['th']; 
+            
+            // ⭐ [แก้ไข] ตัด confirm() ออก และส่งคำขอทันที
+            socket.emit('offer-deal', { postId, targetViewer: viewer });
+            document.getElementById('handover-modal').classList.add('hidden');
+            
+            // 3. แสดง Notification ว่าส่งคำขอแล้ว
+            showNotification(t['notif_offer_sent'].replace('[VIEWER]', viewer), 'fas fa-hourglass-half');
+            
+            // หมายเหตุ: ข้อความแจ้งเตือนความสำเร็จ (Deal Result) จะถูกจัดการต่อที่ socket.on('deal-result')
+        }
+
+        // --- SOCKET LISTENERS ---
+
+        socket.on('receive-offer', (data) => {
+            if (data.postId == postId) {
+                document.getElementById('offer-modal').classList.remove('hidden');
+            }
+        });
+
+        function replyOffer(accepted) {
+            const ownerName = document.getElementById('post-author').innerText;
+            socket.emit('reply-offer', { 
+                postId, 
+                accepted, 
+                viewer: myUsername, 
+                owner: ownerName 
+            });
+            document.getElementById('offer-modal').classList.add('hidden');
+        }
+
+        socket.on('deal-result', (data) => {
+            // ดึงชุดคำแปลตามภาษาที่เลือก
+            const lang = localStorage.getItem('preferredLanguage') || 'th';
+            const t = postTranslations[lang] || postTranslations['th'];
+            let message = '';
+            let icon = '';
+            const duration = 4000; 
+
+            // ⭐ [แก้ไขที่นี่] ดึงชื่อตั้งต้นที่ถูกแปลแล้ว
+            const fallbackViewerName = t['generic_viewer_name'];
+            
+            // ⭐ [แก้ไขที่นี่] ใช้ชื่อจาก Server หรือใช้ชื่อตั้งต้นที่แปลแล้ว
+            const viewerName = data.targetViewer || fallbackViewerName; 
+
+            // 1. ตรวจสอบว่าสำเร็จหรือไม่
+            if (data.success) {
+                message = t['notif_deal_accepted'].replace('[VIEWER]', viewerName);
+                icon = 'fas fa-check-circle';
+
+                location.reload(); 
+            } else {
+                // Deal REJECTED หรือข้อผิดพลาด: 
+                message = t['notif_deal_rejected'].replace('[VIEWER]', viewerName);
+                icon = 'fas fa-times-circle';
+            }
+            
+            showNotification(message, icon, duration);
+        });
+        
+        // --- FINISH JOB ---
+
+        function requestFinishJob() {
+    // 1. ดึงภาษาและคำแปล
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+
+    // 2. ใช้คำแปลใน confirm
+    if(confirm(t['confirm_finish_request'])) {
+        socket.emit('request-finish-job', { postId });
+        showNotification(t['notif_wait_finish_confirm'], 'fas fa-hourglass-start', 3000); 
+    }
+}
+
+        socket.on('receive-finish-request', (data) => {
+    finishRequester = data.requester;
+    
+    // 1. ดึงคำแปล
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+
+    // 2. สร้างประโยค: "คุณ [Name] ต้องการปิดงาน..."
+    const descElement = document.getElementById('finish-job-desc');
+    descElement.innerHTML = `${t['modal_finish_desc_prefix']} <strong id="finish-requester-name">${data.requester}</strong> ${t['modal_finish_desc_suffix']}`;
+    
+    // 3. เรียก applyLanguage เพื่อแปลส่วนหัวข้อและปุ่ม (เผื่อไว้)
+    applyLanguage();
+
+    document.getElementById('finish-job-modal').classList.remove('hidden');
+});
+
+        function replyFinishJob(accepted) {
+            socket.emit('confirm-finish-job', { 
+                postId, 
+                accepted, 
+                requester: finishRequester 
+            });
+            document.getElementById('finish-job-modal').classList.add('hidden');
+        }
+
+        socket.on('finish-request-rejected', (data) => {
+    let msg = data; // ค่าเดิม (กรณี Server เก่าส่งมาเป็น String)
+    
+    // ถ้า Server ส่งมาเป็น Object { msgKey: '...' }
+    if (typeof data === 'object' && data.msgKey) {
+        const lang = localStorage.getItem('preferredLanguage') || 'th';
+        const t = postTranslations[lang] || postTranslations['th'];
+        msg = t[data.msgKey] || data.msgKey;
+    }
+
+    showNotification(msg, 'fas fa-times-circle', 3000); 
+});
+
+        // 🚀 Event นี้จะถูกเรียกทันทีหลังให้คะแนนและสั่งกลับหน้าหลัก
+        socket.on('job-completed-success', (data) => {
+    let msg = data;
+
+    // ถ้า Server ส่งมาเป็น Object { msgKey: ... }
+    if (typeof data === 'object' && data.msgKey) {
+        const lang = localStorage.getItem('preferredLanguage') || 'th';
+        const t = postTranslations[lang] || postTranslations['th'];
+        msg = t[data.msgKey] || data.msgKey;
+    }
+
+    showNotification(msg, 'fas fa-trophy', 4000); 
+    
+    // หน่วงเวลาเล็กน้อยก่อนเปลี่ยนหน้า เพื่อให้อ่านข้อความทัน
+    setTimeout(() => {
+        window.location.replace('/'); 
+    }, 2000);
+});
+
+        socket.on('new-comment', (data) => { 
+            if(data.postId == postId) {
+                const list = document.getElementById('comments-list');
+                list.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, list.children.length));
+                list.scrollTop = list.scrollHeight;
+            }
+        });
+
+        function goBack() {
+            socket.emit('leave-post-room', postId); 
+            location.href = '/';
+        }
+
+        window.onbeforeunload = function() { socket.emit('leave-post-room', postId); }; 
+        document.getElementById('comment-input').addEventListener('keypress', (e) => { 
+            if(e.key === 'Enter') sendComment(); 
+        });
+        
+        // --- EXPOSE GLOBAL FUNCTIONS ---
+        window.restartPost = restartPost;
+        window.sendComment = sendComment;
+        window.closeDealWithViewer = closeDealWithViewer;
+        window.openHandoverModal = openHandoverModal;
+        window.replyOffer = replyOffer;
+        window.replyFinishJob = replyFinishJob;
+        window.requestFinishJob = requestFinishJob;
+        window.setRating = setRating;
+        window.submitRating = submitRating;
+        window.goBack = goBack;
+        window.manualClosePost = manualClosePost;
+		applyLanguage();
+		
+		document.getElementById('comment-image').addEventListener('change', function() {
+    const fileNameDisplay = document.getElementById('file-name-display');
+    if (this.files && this.files.length > 0) {
+        // ⭐ ปรับรูปแบบการแสดงผลให้สวยงามขึ้น
+        fileNameDisplay.innerHTML = `<i class="fas fa-image"></i> ${this.files[0].name} <span style="font-size:0.8em; color:#999;"></span>`;
+        fileNameDisplay.style.display = 'block'; // เปลี่ยนเป็น block เพื่อกินพื้นที่เต็มบรรทัดบน
+    } else {
+        fileNameDisplay.innerText = '';
+        fileNameDisplay.style.display = 'none';
+    }
+});
+
+    </script>
+</body>
+</html>

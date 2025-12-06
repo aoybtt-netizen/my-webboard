@@ -1,0 +1,58 @@
+// server.js
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// 1. ตั้งค่าให้ Server เข้าถึงไฟล์ในโฟลเดอร์ public (HTML/CSS)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 2. จำลองข้อมูลกระทู้ (Database ชั่วคราวเก็บในแรม)
+let posts = [
+    { id: 1, title: 'ยินดีต้อนรับสู่เว็บบอร์ด', content: 'นี่คือกระทู้แรกครับ' }
+];
+
+// 3. API สำหรับ Webboard
+// ดึงกระทู้ทั้งหมด
+app.get('/api/posts', (req, res) => {
+    res.json(posts);
+});
+
+// ตั้งกระทู้ใหม่
+app.use(express.json());
+app.post('/api/posts', (req, res) => {
+    const newPost = {
+        id: posts.length + 1,
+        title: req.body.title,
+        content: req.body.content
+    };
+    posts.push(newPost);
+    // ส่งสัญญาณบอกทุกคนว่ามีกระทู้ใหม่มาแล้ว (Real-time Webboard!)
+    io.emit('new-post', newPost); 
+    res.json({ success: true, post: newPost });
+});
+
+// 4. ระบบ Chat (Socket.io)
+io.on('connection', (socket) => {
+    console.log('A user connected: ' + socket.id);
+
+    // เมื่อมีคนส่งข้อความ
+    socket.on('chat-message', (msg) => {
+        // ส่งข้อความกลับไปหา "ทุกคน" รวมทั้งคนส่งด้วย
+        io.emit('chat-message', msg);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+// เริ่มรัน Server
+const PORT = 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});

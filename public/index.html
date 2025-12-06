@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f0f2f5; margin: 0; }
+        
+        .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background: white; z-index: 1000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto;}
+        .sidebar.active { left: 0; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 900; display: none; }
+        .overlay.active { display: block; }
+        .menu-btn { position: fixed; top: 20px; left: 20px; z-index: 800; background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 20px; }
+
+        .sidebar-btn { background: #f8f9fa; border: none; padding: 15px; width: 100%; text-align: left; margin-bottom: 10px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #333; }
+        .sidebar-btn:hover { background: #e2e6ea; }
+        .create-btn { background: #007bff; color: white; font-weight: bold; text-align: center; }
+        .create-btn:hover { background: #0056b3; }
+        .admin-btn { background: #ffc107; color: #333; font-weight: bold; }
+		
+		.my-active-posts-btn {
+		background: #007bff; 
+		color: white; 
+		font-weight: bold; 
+		text-align: left;
+		}
+		.my-active-posts-btn:hover { 
+		background: #0056b3; 
+		}
+
+        .content-area { padding: 80px 20px 20px 20px; max-width: 800px; margin: 0 auto; position: relative; }
+        
+        .header-tools { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; align-items: center; z-index: 800; }
+        .coin-badge { background: white; padding: 8px 15px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-weight: bold; color: #333; border: 2px solid #e67e22; display: flex; align-items: center; width: auto; cursor: pointer; transition: transform 0.2s; position: relative; }
+        .coin-badge:hover { transform: scale(1.05); }
+        
+        #coin-notif-dot { top: -2px; right: 0px; }
+        
+        .mail-btn { background: white; width: 45px; height: 45px; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; font-size: 1.5em; position: relative; transition: transform 0.2s; }
+        .mail-btn:hover { transform: scale(1.1); background: #f0f2f5; }
+        
+        .notif-dot { position: absolute; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: flex; justify-content: center; align-items: center; border: 2px solid white; animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+
+        .post-card { background: white; padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
+        .post-card:first-child { border-top-left-radius: 10px; border-top-right-radius: 10px; }
+        .post-card:last-child { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; border-bottom: none; }
+        .post-card.occupied { background: #fff3cd; border-left: 5px solid #ffc107 !important; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; justify-content: center; align-items: center; }
+        .modal-box { background: white; width: 90%; max-width: 500px; padding: 30px; border-radius: 15px; max-height: 80vh; overflow-y: auto; }
+        .hidden { display: none !important; }
+        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Kanit'; }
+
+        #user-search-input { margin-bottom: 20px; padding: 10px; border: 2px solid #007bff; border-radius: 8px; font-size: 1em; }
+        .user-list-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .user-list-item:hover { background: #f0f2f5; }
+        .unread-indicator { width: 20px; height: 20px; background: red; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.75em; margin-left: 10px; }
+
+        #private-chat-modal { z-index: 3000; }
+        .chat-window { display: flex; flex-direction: column; height: 400px; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 10px; background: #f9f9f9; border: 1px solid #eee; margin-bottom: 10px; border-radius: 8px;}
+        .chat-input-area { display: flex; gap: 5px; }
+        
+        .give-coin-btn { background: #ffc107; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; font-size: 1.2em; transition: 0.2s; }
+        .give-coin-btn:hover { background: #e0a800; }
+        .deduct-coin-btn { background: #dc3545; color: white; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; font-size: 1.2em; transition: 0.2s; }
+        .deduct-coin-btn:hover { background: #c82333; }
+
+        .msg { margin-bottom: 5px; font-size: 0.9em; padding: 5px 10px; border-radius: 10px; max-width: 80%; display: block; clear: both;}
+        .my-msg { float: right; background: #007bff; color: white; }
+        .other-msg { float: left; background: #e4e6eb; color: #333; }
+        
+        .system-msg { text-align: center; font-size: 0.8em; color: gray; margin: 10px 0; clear: both; float: none;}
+        .system-link { cursor: pointer; color: #007bff; text-decoration: underline; background: #e9ecef; padding: 5px 10px; border-radius: 15px; display: inline-block; transition: background 0.2s; }
+        .system-link:hover { background: #dde2e6; }
+
+        .sidebar-btn.active-menu { background-color: #e2e6ea; border-left: 5px solid #007bff; font-weight: bold; }
+        
+        .version-display { position: fixed; bottom: 10px; right: 10px; font-size: 0.75em; color: #6c757d; background: #f8f9fa; padding: 3px 8px; border-radius: 5px; z-index: 9999; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .transaction-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .tx-plus { color: #28a745; font-weight: bold; } 
+        .tx-minus { color: #dc3545; font-weight: bold; } 
+        
+        .location-btn { background: white; border: 1px solid #28a745; color: #28a745; padding: 8px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.9em; width: 100%; justify-content: center; margin-bottom: 10px; }
+        .location-btn:hover { background: #e9f7ef; }
+        .location-btn.active { background: #28a745; color: white; }
+    </style>
+</head>
+<body>
+
+    <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
+    <div class="overlay" onclick="toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+    <h2 style="text-align:center; margin-top:0;">Webboard</h2>
+    
+    <div style="text-align:center; margin-bottom:20px;">
+        <div style="font-size:40px;">👤</div>
+        <div id="user-display">Guest</div>
+        <div style="color:black; font-weight:bold; margin-top:5px;">
+            ⭐ <span id="sidebar-rating" style="color:black;">5.0</span> / 5.0
+        </div>
+        <div style="color:#28a745; font-weight:bold; margin-top:5px; line-height: 1.1;">
+            <div id="sidebar-coins">
+                <div id="sidebar-usd-display">0 USD</div> 
+                <div id="sidebar-converted-display" style="font-size:0.75em; color:#6c757d; font-weight: normal;">(0.00 THB)</div>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin: 0 15px 15px 15px; display: flex; align-items: center; gap: 10px;">
+    <label for="currency-select" style="font-size: 0.85em; color: #6c757d; margin-bottom:0;" data-i18n-key="label_currency">สกุลเงิน:</label>
+    <select id="currency-select" onchange="setPreferredCurrency(this.value)" style="flex-grow: 1; padding: 8px; border-radius: 5px; border:1px solid #ddd; font-family: 'Kanit';">
+        <option value="THB">฿ THB </option>
+        <option value="USD">$ USD </option>
+        <option value="EUR">€ EUR </option>
+        <option value="JPY">¥ JPY </option>
+    </select>
+</div>
+
+<div style="margin: 0 15px 15px 15px; display: flex; align-items: center; gap: 10px;">
+    <label for="lang-select" style="font-size: 0.85em; color: #6c757d; margin-bottom:0;" data-i18n-key="label_language">ภาษา:</label>
+    <select id="lang-select" onchange="setLanguage(this.value)" style="flex-grow: 1; padding: 8px; border-radius: 5px; border:1px solid #ddd; font-family: 'Kanit';">
+        <option value="th">🇹🇭 ไทย</option>
+        <option value="en">🇺🇸 English</option>
+    </select>
+</div>
+    
+    <button class="sidebar-btn" onclick="switchView('home')" data-i18n-key="home">🏠 หน้าหลัก</button>
+    <button class="sidebar-btn create-btn" onclick="openCreateModal()" data-i18n-key="create_post">+ สร้างกระทู้</button>
+	
+	<button class="sidebar-btn my-active-posts-btn" onclick="showMyActivePosts()">
+    <span data-i18n-key="my_active_posts">กระทู้ของฉันที่ยังไม่ปิด</span>
+    <span id="active-post-count" style="margin-left:5px; padding: 2px 7px; border-radius: 50%; background:#dc3545; color:white; font-size:0.8em; line-height:1;">0</span>
+</button>
+	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
+กระทู้ของฉันที่ปิดแล้ว
+</button>
+    
+    <div id="admin-panel" class="hidden">
+        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+        <div style="font-size:0.8em; color:gray; margin-bottom:5px;" data-i18n-key="admin_section">ส่วนของแอดมิน</div>
+        <button class="sidebar-btn admin-btn" onclick="openAdminPinnedModal()" data-i18n-key="admin_create_pinned">📌 สร้างกระทู้พิเศษ</button> <button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
+        <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
+        <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
+        <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
+    </div>
+
+    <button class="sidebar-btn" style="margin-top:auto;" onclick="logout()" data-i18n-key="logout">ออกจากระบบ</button>
+</div>
+
+    <div class="content-area">
+    <div class="header-tools">
+        <div class="coin-badge" onclick="contactAdmin()" title="คลิกเพื่อดูประวัติการเงิน">
+            <div id="header-coins-container" style="text-align: right; line-height: 1.1;">
+                <div id="header-usd-display" style="font-size:1.4em; color:#e67e22; font-weight: bold;">0 USD</div>
+                <div id="header-converted-display" style="font-size:0.75em; color:#6c757d; font-weight: normal;">(0.00 THB)</div>
+            </div>
+            <div id="coin-notif-dot" class="notif-dot hidden">!</div>
+        </div>
+        
+        <div class="mail-btn" onclick="openInbox()" title="กล่องข้อความ / แจ้งเตือน">
+            📩
+            <div id="notif-badge" class="notif-dot hidden">!</div>
+        </div>
+    </div>
+
+    <h2 style="margin-top:0;" id="page-title" data-i18n-key="page_title">📌 รายการ</h2>
+    
+    <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
+        <div id="post-list" style="background:white; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.05);"></div>
+    </div>
+    
+    <div id="post-pagination" style="text-align: center; margin-top: 20px; display: none;">
+    <button class="sidebar-btn" id="post-prev-btn" onclick="changePostPage(-1)" style="width:auto; padding: 5px 15px; font-size: 0.9em; display:inline-block;" data-i18n-key="post_btn_prev"></button>
+    <span id="post-page-info" style="margin: 0 10px; font-size: 0.9em; font-weight: bold;"></span>
+    <button class="sidebar-btn" id="post-next-btn" onclick="changePostPage(1)" style="width:auto; padding: 5px 15px; font-size: 0.9em; display:inline-block;" data-i18n-key="post_btn_next"></button>
+</div>
+</div>
+
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-box" style="text-align:center;">
+            <h2 data-i18n-key="login_title">ยินดีต้อนรับ</h2>
+            <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus data-i18n-key="login_placeholder">
+            <button class="sidebar-btn create-btn" onclick="login()" data-i18n-key="login_btn">เข้าสู่ระบบ</button>
+        </div>
+    </div>
+
+    <div id="create-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2 id="create-modal-title" data-i18n-key="title_create">สร้างกระทู้ใหม่</h2>
+        
+        <p style="color:#e67e22;" id="modal-cost-row"> 
+            <span data-i18n-key="cost_fee">ค่าธรรมเนียม:</span> <span id="modal-cost-display">0 USD</span>
+        </p>
+        
+        <input type="text" id="title-input" class="hidden" placeholder="⭐ ชื่อกระทู้พิเศษ (Admin)" style="margin-bottom: 15px;" data-i18n-key="placeholder_title_admin">
+        
+        <select id="category-select" required style="margin-bottom: 15px;"></select>
+        
+        <textarea id="content" rows="5" placeholder="รายละเอียด..." required data-i18n-key="placeholder_content"></textarea>
+        
+        <button type="button" class="location-btn" id="geo-btn" onclick="getLocation()" data-i18n-key="geo_btn">
+            📍 ระบุตำแหน่งปัจจุบัน (เช็คอิน)
+        </button>
+        <div id="location-display" style="font-size:0.8em; color:gray; margin-bottom:15px; text-align:center;"></div>
+        
+        <div class="input-group" style="margin-top: 15px;">
+            <label for="post-image" data-i18n-key="label_image_max">รูปภาพประกอบ (สูงสุด 5MB):</label>
+            <input type="file" id="post-image" name="image" accept="image/*" style="padding: 8px 0;">
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="sidebar-btn" onclick="closeCreateModal()" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
+            <button class="sidebar-btn create-btn" onclick="createPost()" style="width:auto;" data-i18n-key="post_btn">โพสต์</button>
+        </div>
+        <div style="font-size:0.8em; color:gray; margin-top:10px;" data-i18n-key="create_note">
+            * การสร้างกระทู้จะหักค่าธรรมเนียมตามที่ Admin กำหนด
+        </div>
+    </div>
+</div>
+
+    <div id="user-list-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 id="user-list-title" data-i18n-key="modal_user_list_title">👥 รายชื่อ</h2>
+                <button onclick="document.getElementById('user-list-modal').classList.add('hidden')" style="border:none; background:none; font-size:1.5em; cursor:pointer;">×</button>
+            </div>
+            <p id="user-list-desc" style="font-size:0.9em; color:gray;" data-i18n-key="modal_user_list_desc"></p>
+
+            <input type="text" id="user-search-input" placeholder="🔍 ค้นหาสมาชิกด้วยชื่อ..." onkeyup="openAllUserList(this.value)" style="width:100%;" data-i18n-key="search_placeholder">
+
+            <div id="pagination-controls" style="text-align: center; margin-top: 15px; margin-bottom: 10px; display: none;">
+    <button class="sidebar-btn" id="list-prev-btn" onclick="changeListPage(-1)" style="width:auto; padding: 5px 15px; font-size: 0.9em;" data-i18n-key="btn_prev">⬅️ ก่อนหน้า</button>
+    <span id="page-info" style="margin: 0 10px; font-size: 0.9em; font-weight: bold;"></span>
+    <button class="sidebar-btn" id="list-next-btn" onclick="changeListPage(1)" style="width:auto; padding: 5px 15px; font-size: 0.9em;" data-i18n-key="btn_next">ถัดไป ➡️</button>
+</div>
+
+            <div id="user-list-container">Loading...</div>
+        </div>
+    </div>
+
+    <div id="private-chat-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0;"><span data-i18n-key="chat_with">💬 แชทกับ:</span> <span id="chat-partner-name">...</span></h3>
+                <button onclick="closePrivateChat()" style="border:none; background:none; font-size:1.5em; cursor:pointer;">×</button>
+            </div>
+            <div class="chat-window">
+                <div id="private-chat-messages" class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <div id="admin-chat-tools" class="hidden" style="display:flex; gap:5px;">
+                        <button class="give-coin-btn" title="โอนเหรียญให้สมาชิก" onclick="sendCoinInChat()">💸</button>
+                        <button class="deduct-coin-btn" title="ดึงเหรียญคืนจากสมาชิก" onclick="deductCoinInChat()">🧲</button>
+                    </div>
+                    
+                    <input type="text" id="private-chat-input" placeholder="พิมพ์ข้อความ..." style="margin-bottom:0;" autocomplete="off" data-i18n-key="chat_placeholder">
+                    <button class="sidebar-btn create-btn" style="width:auto; margin-bottom:0;" onclick="sendPrivateMessage()" data-i18n-key="chat_send">ส่ง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="admin-topic-modal" class="modal-overlay hidden">
+        <div class="modal-box" style="width: 90%; max-width: 600px;">
+            <h2 style="text-align: center;" data-i18n-key="admin_topic_title">⚙️ จัดการหัวข้อเว็บบอร์ด</h2>
+            <div style="max-height: 400px; overflow-y: auto; padding: 10px; border: 1px solid #ccc; margin-bottom: 20px; border-radius: 8px;">
+                <table id="admin-topic-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="border-bottom: 2px solid #333; padding: 8px; text-align: left;" data-i18n-key="th_topic_name">ชื่อหัวข้อ (ID)</th>
+                            <th style="border-bottom: 2px solid #333; padding: 8px; width: 100px;" data-i18n-key="th_action">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <h3 style="margin-top: 30px;" data-i18n-key="header_add_topic">+ เพิ่มหัวข้อใหม่</h3>
+            <input type="text" id="new-topic-name" placeholder="ชื่อหัวข้อใหม่ (เช่น กีฬา, อาหาร)" style="width: 100%; margin-bottom: 10px;" data-i18n-key="placeholder_new_topic">
+            <button class="sidebar-btn create-btn" onclick="addTopic()" style="margin-bottom: 10px;" data-i18n-key="btn_add_topic">เพิ่มหัวข้อ</button>
+            <button class="sidebar-btn" onclick="document.getElementById('admin-topic-modal').classList.add('hidden');" data-i18n-key="btn_close">ปิด</button>
+        </div>
+    </div>
+    
+    <div class="version-display">v: 3.7.0 (THB+I18N)</div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myUsername = "";
+        
+        // --- NEW: Global Configuration ---
+		const DEFAULT_CURRENCY = 'THB'; // สกุลเงินที่ต้องการแสดง
+        // ---------------------------------
+		let currentCurrency = DEFAULT_CURRENCY;
+		let currentLang = 'th';
+		
+		// Translation Data Structure (สำหรับ UI และ System Message Keys)
+		const translations = {
+    'th': {
+        'app_title': 'Webboard',
+        'label_currency': 'สกุลเงิน:',
+        'label_language': 'ภาษา:',
+        'menu': '☰ Menu',
+        'home': '🏠 หน้าหลัก',
+        'create_post': '+ สร้างกระทู้',
+        'my_active_posts': 'กระทู้ของฉันที่ยังไม่ปิด',
+        'my_closed_posts': 'กระทู้ของฉันที่ปิดแล้ว',
+        'logout': 'ออกจากระบบ',
+        'admin_section': 'ส่วนของแอดมิน',
+        'admin_create_pinned': '📌 สร้างกระทู้พิเศษ',
+        'admin_closed_posts': '🗄️ กระทู้ที่ปิดแล้ว',
+        'admin_manage_topics': '⚙️ จัดการหัวข้อ',
+        'admin_set_cost': '🏷️ กำหนดค่าธรรมเนียม',
+        'admin_user_list': '👥 รายชื่อสมาชิกทั้งหมด',
+        'page_title': '📌 รายการ',
+        'title_create': 'สร้างกระทู้ใหม่',
+        'cost_fee': 'ค่าธรรมเนียม:', 
+        'placeholder_title_admin': '⭐ ชื่อกระทู้พิเศษ (Admin)',
+        'placeholder_content': 'รายละเอียดของกระทู้...',
+        'geo_btn': '📍 ระบุตำแหน่งปัจจุบัน (เช็คอิน)',
+        'label_image_max': 'รูปภาพประกอบ (สูงสุด 5MB):',
+        'post_btn': 'โพสต์',
+        'cancel_btn': 'ยกเลิก',
+		'notif_currency_change': '✅ เปลี่ยนสกุลเงินเป็น [CURRENCY] เรียบร้อย',
+        
+        // ⭐ [NEW/MODIFIED GEO KEYS]
+        'geo_not_supported': 'เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง',
+        'geo_searching': '⏳ กำลังค้นหาตำแหน่ง...',
+        'geo_success_name': '✅ ระบุตำแหน่งเรียบร้อย',
+        'geo_success_coord': '✅ ระบุพิกัดเรียบร้อย',
+        'geo_display_name': '📍 คุณอยู่ที่:',
+        'geo_display_coord': '📍 พิกัด:',
+        'geo_error_permission': '🚫 ถูกปฏิเสธสิทธิ์: กรุณาไปที่การตั้งค่าเบราว์เซอร์และอนุญาตให้เว็บไซต์นี้เข้าถึงตำแหน่ง',
+        'geo_error_general': '🚨 ไม่สามารถระบุตำแหน่งได้',
+        'prompt_fee': 'ค่าธรรมเนียม (USD):', // ⭐ [NEW] สำหรับปุ่ม Admin
+        
+        'btn_prev': '⬅️',
+        'btn_next': '➡️',
+		'post_btn_prev': '⬅️', // ⭐ NEW: ปุ่มรายการกระทู้
+		'post_btn_next': '➡️', // ⭐ NEW: ปุ่มรายการกระทู้
+        'login_title': 'ยินดีต้อนรับ',
+        'login_placeholder': 'ชื่อเล่น...',
+        'login_btn': 'เข้าสู่ระบบ',
+        'create_note': '* การสร้างกระทู้จะหักค่าธรรมเนียมตามที่ Admin กำหนด',
+        'modal_user_list_title': '👥 รายชื่อ',
+        'modal_user_list_desc': 'รายชื่อสมาชิกในระบบ (และยอดเงินคงเหลือ)',
+        'search_placeholder': '🔍 ค้นหาสมาชิกด้วยชื่อ...',
+        'chat_with': '💬 แชทกับ:',
+        'chat_placeholder': 'พิมพ์ข้อความ...',
+        'chat_send': 'ส่ง',
+		
+		'prompt_transfer_admin': 'ระบุจำนวน USD ที่จะโอนให้',
+        'prompt_deduct_admin': 'ระบุจำนวน USD ที่จะดึงคืนจาก',
+        
+        'admin_topic_title': '⚙️ จัดการหัวข้อเว็บบอร์ด',
+        'th_topic_name': 'ชื่อหัวข้อ (ID)',
+        'th_action': 'การจัดการ',
+        'header_add_topic': '+ เพิ่มหัวข้อใหม่',
+        'placeholder_new_topic': 'ชื่อหัวข้อใหม่ (เช่น กีฬา, อาหาร)',
+        'btn_add_topic': 'เพิ่มหัวข้อ',
+        'btn_close': 'ปิด',
+		
+		'post_not_found': 'ไม่พบกระทู้',
+        'closed_or_finished': '⛔ กระทู้นี้ปิดรับงาน/เสร็จสิ้นแล้ว',
+        'room_occupied': '⚠️ มีผู้ใช้งานอื่นกำลังดูกระทู้นี้อยู่ กรุณารอสักครู่...',
+		
+		'prompt_confirm_ban': 'คุณแน่ใจที่จะ แบน (ระงับสิทธิ์) สมาชิก: [USERNAME] ใช่หรือไม่?',
+		'prompt_confirm_unban': 'คุณแน่ใจที่จะ ปลดแบน สมาชิก: [USERNAME] ใช่หรือไม่?',
+		'notif_user_banned': '❌ แบน [USERNAME] เรียบร้อย',
+        'notif_user_unbanned': '✅ ยกเลิกการแบน [USERNAME] เรียบร้อย',
+		
+		'tx_paid': 'จ่าย',
+		'tx_received': 'ได้รับ',
+		'tx_from': 'จาก',
+		'tx_to': 'ให้', 
+		'tx_post_fee_prefix': 'ค่าธรรมเนียมตั้งกระทู้',
+		'tx_handover_success': '✅ ปิดดีล/ส่งงานสำเร็จ',
+		
+		'admin_tx_title': 'ประวัติธุรกรรมเหรียญ USD',
+		'admin_tx_desc': 'รายได้และรายการโอนเหรียญทั้งหมด (ใหม่สุดขึ้นก่อน)',
+		'admin_tx_revenue': '💸 รายได้ (ค่าธรรมเนียม)',
+		'admin_tx_deduct': '🧲 ดึงเหรียญคืน',
+		'admin_tx_transfer_out': '➡️ โอนออก',
+		'member_tx_title': 'ประวัติการทำธุรกรรม USD',
+        'member_tx_desc': 'การเพิ่มและลดเหรียญทั้งหมดของคุณ (ใหม่สุดขึ้นก่อน)',
+
+        'SYS_FEE': (data) => `💸 คุณได้สร้างกระทู้ในหมวด "${data.topicName}" และถูกหัก ${data.cost} USD`,
+        'SYS_TRANSFER': (data) => `💰 Admin ได้โอนให้คุณจำนวน ${data.amount} USD`,
+        'SYS_DEDUCT': (data) => `💸 Admin ได้ทำการดึง USD ของคุณคืนจำนวน ${data.amount} USD`,
+        'SYS_NEW_COMMENT': (data) => `💬 มีความคิดเห็นใหม่ในกระทู้ "${data.postTitle}"`,
+		'tx_detail_create_post': 'ค่าธรรมเนียมสร้างกระทู้: [TITLE]',
+        'tx_detail_admin_give': 'โอนให้ [USER]',
+        'tx_detail_admin_deduct': 'ดึงคืนจาก [USER]',
+        'tx_detail_handover': 'ปิดดีล/ส่งงาน: [TITLE]',
+		'admin_warn_empty_topic': 'กรุณาใส่ชื่อหัวข้อใหม่',
+        'admin_confirm_delete_topic': 'คุณแน่ใจหรือไม่ว่าต้องการลบหัวข้อ "[NAME]"?',
+        'admin_success_add_topic': 'เพิ่มหัวข้อสำเร็จ',
+        'admin_success_delete_topic': 'ลบหัวข้อสำเร็จ',
+        'admin_error_topic': 'เกิดข้อผิดพลาด: ',
+    },
+    'en': {
+        'app_title': 'Webboard',
+        'label_currency': 'Currency:',
+        'label_language': 'Language:',
+        'menu': '☰ Menu',
+        'home': '🏠 Home',
+        'create_post': '+ Create Post',
+        'my_active_posts': 'My Active Posts',
+        'my_closed_posts': 'My Closed Posts',
+        'logout': 'Logout',
+        'admin_section': 'Admin Section',
+        'admin_create_pinned': '📌 Create Pinned Post',
+        'admin_closed_posts': '🗄️ Closed Posts',
+        'admin_manage_topics': '⚙️ Manage Topics',
+        'admin_set_cost': '🏷️ Set Fee',
+        'admin_user_list': '👥 All Members List',
+        'page_title': '📌 Listings',
+        'title_create': 'Create New Post',
+        'cost_fee': 'Fee:', 
+        'placeholder_title_admin': '⭐ Pinned Post Title (Admin)',
+        'placeholder_content': 'Post details...',
+        'geo_btn': '📍 Get Current Location (Check In)',
+        'label_image_max': 'Image (Max 5MB):',
+        'post_btn': 'Post',
+        'cancel_btn': 'Cancel',
+		'notif_currency_change': '✅ Currency changed to [CURRENCY]',
+        
+        // ⭐ [NEW/MODIFIED GEO KEYS]
+        'geo_not_supported': 'Your browser does not support geolocation.',
+        'geo_searching': '⏳ Searching location...',
+        'geo_success_name': '✅ Location found',
+        'geo_success_coord': '✅ Coordinates retrieved',
+        'geo_display_name': '📍 Your location is:',
+        'geo_display_coord': '📍 Coordinates:',
+        'geo_error_permission': '🚫 Permission denied: Please allow access to location in browser settings.',
+        'geo_error_general': '🚨 Cannot retrieve location',
+        'prompt_fee': 'Fee (USD):', 
+
+        'btn_prev': '⬅️',
+        'btn_next': '➡️',
+		'post_btn_prev': '⬅️', // ⭐ NEW: ปุ่มรายการกระทู้
+		'post_btn_next': '➡️', // ⭐ NEW: ปุ่มรายการกระทู้
+        'login_title': 'Welcome',
+        'login_placeholder': 'Nickname...',
+        'login_btn': 'Login',
+        'create_note': '* Creating a post incurs a fee set by Admin.',
+        'modal_user_list_title': '👥 Members',
+        'modal_user_list_desc': 'List of all members in the system (and remaining balance)',
+        'search_placeholder': '🔍 Search user...',
+        'chat_with': '💬 Chat with:',
+        'chat_placeholder': 'Type a message...',
+        'chat_send': 'Send',
+		
+		'prompt_transfer_admin': 'Enter USD amount to transfer to',
+        'prompt_deduct_admin': 'Enter USD amount to deduct from',
+
+        'admin_topic_title': '⚙️ Manage Topics',
+        'th_topic_name': 'Topic Name (ID)',
+        'th_action': 'Action',
+        'header_add_topic': '+ Add New Topic',
+        'placeholder_new_topic': 'New Topic Name...',
+        'btn_add_topic': 'Add Topic',
+        'btn_close': 'Close',
+		
+		'post_not_found': 'Post not found',
+        'closed_or_finished': '⛔ This post is closed/finished.',
+        'room_occupied': '⚠️ This post is currently occupied. Please wait...',
+		
+		'prompt_confirm_ban': 'Are you sure you want to BAN (suspend) member: [USERNAME]?',
+		'prompt_confirm_unban': 'Are you sure you want to UNBAN member: [USERNAME]?',
+		'notif_user_banned': '❌ [USERNAME] has been banned',
+        'notif_user_unbanned': '✅ [USERNAME] has been unbanned',
+		
+		'tx_paid': 'Paid',
+		'tx_received': 'Received',
+		'tx_from': 'From',
+		'tx_to': 'To',
+		'tx_post_fee_prefix': 'Post Creation Fee',
+		'tx_handover_success': '✅ Deal Closed/Handover Success',
+		
+		'admin_tx_title': 'History of All USD Transactions',
+		'admin_tx_desc': 'All income and transfers (newest first)',
+		'admin_tx_revenue': '💸 Revenue (Post Fee)',
+		'admin_tx_deduct': '🧲 Coins Deducted',
+		'admin_tx_transfer_out': '➡️ Coins Transferred Out',
+		'member_tx_title': 'USD Transaction History',
+        'member_tx_desc': 'Your complete coin history (newest first)',
+
+        'SYS_FEE': (data) => `💸 You created a post in category "${data.topicName}" and were charged ${data.cost} USD`,
+        'SYS_TRANSFER': (data) => `💰 Admin transferred ${data.amount} USD to you`,
+        'SYS_DEDUCT': (data) => `💸 Admin deducted ${data.amount} USD from your account`,
+        'SYS_NEW_COMMENT': (data) => `💬 New comment in post "${data.postTitle}"`,
+		'tx_detail_create_post': 'Post Creation Fee: [TITLE]',
+        'tx_detail_admin_give': 'Transfer to [USER]',
+        'tx_detail_admin_deduct': 'Deduct from [USER]',
+        'tx_detail_handover': 'Job Handover: [TITLE]',
+		'admin_warn_empty_topic': 'Please enter a new topic name.',
+        'admin_confirm_delete_topic': 'Are you sure you want to delete the topic "[NAME]"?',
+        'admin_success_add_topic': 'Topic added successfully.',
+        'admin_success_delete_topic': 'Topic deleted successfully.',
+        'admin_error_topic': 'Error occurred: ',
+    }
+};
+
+		// ฟังก์ชันหลักในการเปลี่ยนภาษา (ต้องเรียกใช้ใน startApp)
+	function setLanguage(lang) {
+        if (!translations[lang]) return;
+        currentLang = lang;
+        localStorage.setItem('preferredLanguage', lang);
+        
+        // 1. แปลข้อความทั่วไปที่มี data-i18n-key
+        document.querySelectorAll('[data-i18n-key]').forEach(element => {
+            const key = element.getAttribute('data-i18n-key');
+            const translatedText = translations[lang][key];
+
+            if (translatedText) {
+                if (element.placeholder) {
+                    element.placeholder = translatedText;
+                } else {
+                    // โค้ดจัดการ icon/emoji คงเดิม
+                    const textOnly = element.innerText.replace(/(<i[^>]*><\/i>|[\u2600-\u26FF\u2700-\u27BF\u1F600-\u1F64F\u1F300-\u1F5FF\u2B06-\u2B07\u2B50\u23F3\u231B\u23E9-\u23EC\u23F0\u23F8-\u23FA\u23CF\u21AA\u21A9\u2190-\u21FF\u25AA-\u25FE\u2B1B\u2B1C\u2B55\u23E3\u2705\u274C\u274E\u2714\u2716\u2728\u2733\u2734\u2753\u2754\u2755\u2795-\u2797\u27A1\u27B0\u27BF\u27C0-\u27FF\u1F000-\u1F6FF\u1F900-\u1F9FF]+)/g, '').trim();
+                    const icon = element.innerHTML.substring(0, element.innerHTML.indexOf(textOnly));
+                    
+                    if(icon.trim() !== '') {
+                        element.innerHTML = `${icon} ${translatedText}`;
+                    } else {
+                        element.innerHTML = translatedText;
+                    }
+                }
+            }
+        });
+        
+        document.getElementById('post-prev-btn').innerText = translations[currentLang]['post_btn_prev'];
+		document.getElementById('post-next-btn').innerText = translations[currentLang]['post_btn_next'];
+
+        // 3. โหลดข้อมูลพื้นฐานใหม่
+        updateUserInfo(); 
+        loadPosts(); 
+
+        // 4. ⭐ [FIXED] ตรวจสอบว่า Modal ไหนเปิดอยู่ แล้วรีเฟรชหน้านั้นให้ถูกอัน
+        const modal = document.getElementById('user-list-modal');
+        if (!modal.classList.contains('hidden')) {
+            const listType = document.getElementById('pagination-controls').dataset.type;
+            
+            if (listType === 'adminTx') {
+                 // ถ้าเปิดหน้า "ประวัติรวม (Admin)" อยู่
+                 openTransactionModal(adminTxPage); 
+            } else if (listType === 'memberTx') {
+                 // ถ้าเปิดหน้า "ประวัติส่วนตัว" อยู่
+                 openMemberLedger(memberTxPage);
+            }
+        }
+    }
+        
+        let currentCost = 0;
+        let currentChatPartner = ""; 
+        let unreadUsers = new Set();
+        let currentView = 'home'; 
+        let hasNewTransaction = false; 
+		let currentRating = 5.0; 
+        
+        let currentLocationData = null;
+        let postStatusMap = {}; 
+
+        // Pagination States
+        let adminTxPage = 1;
+        let memberTxPage = 1;
+        let inboxPage = 1;
+        
+        let currentPostPage = 1;
+        const POST_LIMIT = 20; 
+        const PAGE_LIMIT = 20;
+
+        const notificationSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3');
+        const ADMIN_USERNAME = 'Admin'; 
+
+        window.onload = () => {
+    const savedName = localStorage.getItem('myUsername');
+    // โหลดภาษาที่ถูกเลือก
+    const savedLang = localStorage.getItem('preferredLanguage') || 'th';
+    currentLang = savedLang;
+    
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect) {
+        langSelect.value = savedLang;
+        setLanguage(savedLang); // แปล UI ครั้งแรก
+    } else {
+        // กรณีไม่มี Selector ให้ใช้ภาษาเริ่มต้น
+        setLanguage(currentLang);
+    }
+    
+    if (savedName) startApp(savedName);
+    else document.getElementById('login-modal').classList.remove('hidden');
+};
+        
+        document.getElementById('private-chat-input')?.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendPrivateMessage();
+        });
+
+        function login() {
+            const name = document.getElementById('username-input').value.trim();
+            if(!name) return;
+            localStorage.setItem('myUsername', name);
+            startApp(name);
+        }
+
+        function startApp(name) {
+    myUsername = name;
+    // ใช้ user-display แทน user-display-name เพื่อให้ตรงกับ HTML
+    const userDisplay = document.getElementById('user-display');
+    if(userDisplay) userDisplay.innerText = name;
+
+    document.getElementById('login-modal').classList.add('hidden');
+    socket.emit('register', myUsername);
+    
+    // ⭐ [FIXED] โหลดสกุลเงินที่ผู้ใช้เลือกจาก localStorage ก่อนที่จะเรียก updateUserInfo()
+    const preferred = localStorage.getItem('preferredCurrency');
+    if (preferred) {
+        currentCurrency = preferred;
+        const selectElement = document.getElementById('currency-select');
+        if (selectElement) selectElement.value = preferred;
+    }
+
+    if (name !== 'Admin') { 
+        checkAndRedirectActiveJob(name);
+    }
+
+    const adminPanelDiv = document.getElementById('admin-panel');
+    if (name === 'Admin') {
+        adminPanelDiv.classList.remove('hidden');
+    } else {
+        adminPanelDiv.classList.add('hidden');
+    }
+    
+    // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
+    checkNewTransaction();
+    loadUnreadStatus(); 
+    loadTopics(); 
+    loadPosts(); 
+    updateUserInfo();
+    updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
+}
+    
+    // บันทึกสกุลเงินที่ผู้ใช้เลือก
+    function setPreferredCurrency(currency) {
+        currentCurrency = currency;
+        localStorage.setItem('preferredCurrency', currency);
+        updateUserInfo(); // รีเฟรชยอดเงินทันที
+        
+        // ⭐ [FIXED] ใช้ Translation Key และแทนที่ [CURRENCY]
+        const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
+
+        showNotification(translatedMsg, 'fas fa-money-bill');
+    }
+
+     
+
+		async function checkAndRedirectActiveJob(username) {
+            try {
+                const res = await fetch(`/api/check-active-job?username=${username}`);
+                const data = await res.json();
+                if (data.hasJob) {
+                    location.href = `/post.html?id=${data.postId}`;
+                }
+            } catch (err) {
+                console.error("Error checking active job:", err);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('myUsername'); 
+            location.reload();
+        }
+            
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
+
+        // --- FIXED: updateUserInfo Function ---
+        async function updateUserInfo() {
+    if (!myUsername) return;
+
+    try {
+        // 1. ดึงข้อมูลจาก Server พร้อมส่งค่าสกุลเงินที่เลือก
+        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}`);
+        const data = await response.json();
+
+        if (data.error) {
+            // จัดการ Error การแบน
+            if (data.error.includes('ระงับ')) {
+                alert(data.error);
+                localStorage.removeItem('myUsername');
+                window.location.reload();
+            }
+            return;
+        }
+
+        // 2. จัดรูปแบบตัวเลข USD และสกุลเงินที่แปลงแล้ว
+        const formattedConvertedCoins = parseFloat(data.convertedCoins).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        const formattedUSD = parseFloat(data.coins).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        // ⭐ สร้าง String สำหรับแสดงผลบรรทัดที่ 2 (แบบวงเล็บ)
+        const convertedDisplay = `(${formattedConvertedCoins} ${data.currencySymbol})`;
+
+
+        // --- 3. อัปเดต Header (แสดง 2 บรรทัด: USD และ Converted) ---
+        const headerUsd = document.getElementById('header-usd-display');
+        const headerConverted = document.getElementById('header-converted-display');
+
+        if (headerUsd) {
+            headerUsd.innerText = `${formattedUSD} USD`;
+        }
+        if (headerConverted) {
+            headerConverted.innerText = convertedDisplay;
+        }
+
+
+        // --- 4. อัปเดต Sidebar (แสดง 2 บรรทัด: USD และ Converted) ---
+        const sidebarUsd = document.getElementById('sidebar-usd-display');
+        const sidebarConverted = document.getElementById('sidebar-converted-display');
+
+        if (sidebarUsd) {
+            sidebarUsd.innerText = `${formattedUSD} USD`;
+        }
+        if (sidebarConverted) {
+            sidebarConverted.innerText = convertedDisplay;
+        }
+
+
+        // --- 5. ✅ [FIXED] อัปเดตค่าใช้จ่ายในการโพสต์ (ใน Modal) ---
+        const modalCostDisplay = document.getElementById('modal-cost-display');
+		const postCostUSD = data.postCost; // ค่าธรรมเนียมต้นฉบับ (USD)
+		currentCost = postCostUSD; // อัปเดตตัวแปร Global
+
+        // คำนวณค่าธรรมเนียมที่แปลงแล้ว (โดยการเทียบอัตราส่วน)
+        let formattedConvertedCost = '0.00';
+        // ป้องกันการหารด้วยศูนย์
+        if (parseFloat(data.coins) > 0) {
+            const conversionRate = parseFloat(data.convertedCoins) / parseFloat(data.coins);
+            const convertedCost = postCostUSD * conversionRate;
+            formattedConvertedCost = convertedCost.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        // อัปเดตการแสดงผลใน Modal
+        if (modalCostDisplay) {
+            modalCostDisplay.innerHTML = 
+                `${postCostUSD.toFixed(2)} USD <span style="font-size:0.8em; color:#6c757d; font-weight:normal;">(${formattedConvertedCost} ${data.currencySymbol})</span>`;
+        }
+        
+        // --- สิ้นสุดการแก้ไขส่วนที่ 5 ---
+        
+
+        // 6. อัปเดตคะแนน
+        const sidebarRating = document.getElementById('sidebar-rating');
+        if (sidebarRating) sidebarRating.innerText = data.rating.toFixed(2);
+        
+        // 7. อัปเดตชื่อ (แก้ปัญหาชื่อไม่โชว์)
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) userDisplay.innerText = myUsername;
+
+
+        // 8. โหลดกระทู้
+        loadPosts();
+
+    } catch (e) {
+        console.error('Error fetching user info:', e);
+    }
+}
+		
+        async function toggleBanUser(targetUser, currentStatus) {
+        if (myUsername !== 'Admin') return; 
+        
+        const shouldBan = !currentStatus;
+        
+        let confirmMsgKey;
+        let notifMsgKey;
+        let notifIcon;
+        
+        // 1. กำหนดคีย์ข้อความสำหรับยืนยันและแจ้งเตือน
+        if (shouldBan) {
+            confirmMsgKey = 'prompt_confirm_ban';
+            notifMsgKey = 'notif_user_banned';
+            notifIcon = 'fas fa-ban';
+        } else {
+            confirmMsgKey = 'prompt_confirm_unban';
+            notifMsgKey = 'notif_user_unbanned';
+            notifIcon = 'fas fa-check-circle';
+        }
+        
+        // 2. ดึงข้อความต้นแบบและแทนที่ [USERNAME] สำหรับ PROMPT
+        const translatedTemplate = translations[currentLang][confirmMsgKey];
+        const finalPrompt = translatedTemplate.replace('[USERNAME]', targetUser);
+        
+        if (!confirm(finalPrompt)) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/toggle-ban', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUser, shouldBan, requestBy: myUsername })
+            });
+
+            const data = await res.json();
+            
+            // ⭐ 3. โค้ดแปลความสำเร็จต้องอยู่ภายใน IF BLOCK นี้เท่านั้น
+            if (data.success) { 
+                const translatedMsg = translations[currentLang][notifMsgKey].replace('[USERNAME]', targetUser);
+                showNotification(translatedMsg, notifIcon, 3000); 
+                
+                // ⭐ 4. [SAFE REFRESH] ใช้ Null Check อย่างถูกต้อง
+                const searchInput = document.getElementById('user-search-input');
+                const currentSearch = searchInput ? searchInput.value : ''; 
+
+                allUsersCache = []; 
+                if (!document.getElementById('user-list-modal').classList.contains('hidden')) {
+                    openAllUserList(currentSearch);
+                }
+            } else {
+                // 5. แจ้งเตือนข้อผิดพลาด
+                showNotification(`❌ ${data.error || 'ดำเนินการไม่สำเร็จ'}`, 'fas fa-times-circle', 4000);
+            }
+        } catch (error) {
+            // 6. แจ้งเตือนเมื่อการเชื่อมต่อล้มเหลว
+            showNotification('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ Server', 'fas fa-times-circle', 4000);
+            console.error('Ban toggle error:', error);
+        }
+    }
+
+        function setMemberRating(targetUser) {
+            let newRating = prompt(`⭐ Set Rating (1.0 - 5.0) User: ${targetUser}:`);
+            if (newRating === null || newRating.trim() === "") return;
+            newRating = parseFloat(newRating);
+
+            if (isNaN(newRating) || newRating < 1 || newRating > 5) {
+                alert('❌ คะแนนไม่ถูกต้อง! กรุณาระบุระหว่าง 1.0 ถึง 5.0');
+                return;
+            }
+            
+            fetch('/api/admin/set-rating', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUser, rating: newRating, requestBy: myUsername })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`❌ ตั้งค่าคะแนนไม่สำเร็จ: ${data.error}`);
+                } else {
+                    alert(`✅ ตั้งค่าคะแนน ${targetUser} เป็น ${data.newRating} ดาว สำเร็จ!`);
+                    openAllUserList(); 
+                    updateUserInfo(); 
+                }
+            })
+            .catch(err => alert('❌ Error: ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อตั้งค่าคะแนน'));
+        }
+
+        function changeListPage(delta) {
+            const listType = document.getElementById('pagination-controls').dataset.type;
+            if (listType === 'adminTx') {
+                adminTxPage += delta;
+                openTransactionModal(adminTxPage);
+            } else if (listType === 'memberTx') {
+                memberTxPage += delta;
+                openMemberLedger(memberTxPage);
+            } else if (listType === 'inbox') {
+                inboxPage += delta;
+                openInbox(inboxPage);
+            }
+        }
+        
+        function changePostPage(delta) {
+            currentPostPage += delta;
+            renderPostList();
+            document.querySelector('.content-area').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updatePaginationUI(data, listType) {
+            const controls = document.getElementById('pagination-controls');
+            const pageInfo = document.getElementById('page-info');
+            const prevBtn = document.getElementById('list-prev-btn');
+            const nextBtn = document.getElementById('list-next-btn');
+
+            controls.style.display = 'block'; 
+            controls.dataset.type = listType;
+
+            if (data.totalItems === 0) {
+                controls.style.display = 'none';
+                return;
+            }
+
+            pageInfo.innerText = `${data.currentPage} / ${data.totalPages} (${data.totalItems})`;
+            
+            prevBtn.disabled = data.currentPage === 1;
+            nextBtn.disabled = data.currentPage === data.totalPages;
+        }
+		
+		// ฟังก์ชันสร้างรายละเอียดธุรกรรมตามภาษา
+function getTransactionDetail(t) {
+    const lang = currentLang;
+    const tr = translations[lang];
+    let detail = t.note; // ค่าเริ่มต้นใช้ของเดิม (เผื่อข้อมูลเก่า)
+
+    if (t.type === 'POST_REVENUE' && t.postTitle) {
+        detail = tr['tx_detail_create_post'].replace('[TITLE]', t.postTitle);
+    } else if (t.type === 'ADMIN_GIVE') {
+        detail = tr['tx_detail_admin_give'].replace('[USER]', t.toUser);
+    } else if (t.type === 'ADMIN_DEDUCT') {
+        detail = tr['tx_detail_admin_deduct'].replace('[USER]', t.fromUser);
+    } else if (t.type === 'HANDOVER') {
+        // พยายามดึงชื่อกระทู้จาก note เดิม ถ้าไม่มี postTitle เก็บไว้
+        let title = t.postTitle;
+        if (!title && t.note.includes(':')) {
+            title = t.note.split(':').pop().trim();
+        }
+        detail = tr['tx_detail_handover'].replace('[TITLE]', title || '???');
+    }
+    
+    return `(${detail})`;
+}
+
+        // --- TRANSACTION LOGIC ---
+        
+        async function openTransactionModal(page = 1) {
+            if (myUsername !== 'Admin') return openPrivateChat('Admin');
+            
+            document.getElementById('user-list-modal').classList.remove('hidden');
+            
+            // 1. แปลหัวข้อ Modal
+            document.getElementById('user-list-title').innerText = translations[currentLang]['admin_tx_title'];
+            document.getElementById('user-list-desc').innerText = translations[currentLang]['admin_tx_desc'];
+            
+            // 2. เตรียม Container และซ่อนส่วนที่ไม่จำเป็น
+            const container = document.getElementById('user-list-container');
+            container.innerHTML = "Loading...";
+            
+            document.getElementById('user-search-input').style.display = 'none';
+            document.getElementById('pagination-controls').style.display = 'none';
+
+            // ⭐ [ส่วนที่หายไป] ดึงข้อมูลจาก Server
+            const res = await fetch(`/api/admin/transactions?requestBy=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
+            
+            // ตรวจสอบสถานะการเชื่อมต่อ
+            if (res.status !== 200) {
+                 container.innerHTML = "<p style='color:red;'>Error loading transactions</p>";
+                 return;
+            }
+
+            const data = await res.json();
+            const transactions = data.transactions;
+
+            // ตรวจสอบว่ามีข้อมูลไหม
+            if (transactions.length === 0 && data.currentPage > 1) {
+                return openTransactionModal(1);
+            } else if (transactions.length === 0) {
+                container.innerHTML = "<p style='text-align:center;color:gray;margin-top:20px;'>ไม่มีประวัติธุรกรรม</p>";
+                updatePaginationUI(data, 'adminTx');
+                return;
+            }
+
+            // 3. แสดงผลรายการ
+            container.innerHTML = transactions.map(t => {
+                const isRevenue = t.type === 'POST_REVENUE' || t.type === 'ADMIN_DEDUCT'; 
+                
+                let typeText;
+                // เลือกข้อความตามประเภทธุรกรรม
+                if (t.type === 'POST_REVENUE') {
+                    typeText = translations[currentLang]['admin_tx_revenue']; 
+                } else if (t.type === 'ADMIN_DEDUCT') {
+                    typeText = translations[currentLang]['admin_tx_deduct']; 
+                } else { // ADMIN_GIVE
+                    typeText = translations[currentLang]['admin_tx_transfer_out']; 
+                }
+
+                const styleClass = isRevenue ? 'tx-plus' : 'tx-minus';
+                const amountSign = isRevenue ? '+' : '';
+                const relatedUser = isRevenue ? t.fromUser : t.toUser;
+                
+                // คำนำหน้า (จาก/ให้)
+                const fromToPrefix = isRevenue 
+                    ? translations[currentLang]['tx_from'] 
+                    : translations[currentLang]['tx_to'];
+                
+                const detail = getTransactionDetail(t);
+                
+                return `
+                    <div class="transaction-item" style="border-left: 5px solid ${isRevenue ? '#28a745' : '#dc3545'}; margin-bottom:5px;">
+                        <div>
+                            <strong>${typeText}</strong> (${detail})<br>
+                            <small style="color:gray;">${new Date(t.timestamp).toLocaleString()} | ${fromToPrefix}: ${relatedUser}</small>
+                        </div>
+                        <span class="${styleClass}">${amountSign}${t.amount} USD</span>
+                    </div>
+                `;
+            }).join('');
+            
+            // 4. อัปเดตปุ่มเปลี่ยนหน้า
+            updatePaginationUI(data, 'adminTx');
+            adminTxPage = data.currentPage;
+            
+            // 5. แปลภาษาปุ่ม Pagination
+            document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
+            document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
+        }
+        
+        async function openMemberLedger(page = 1) {
+            document.getElementById('user-list-modal').classList.remove('hidden');
+            document.getElementById('user-list-title').innerText = translations[currentLang]['member_tx_title'];
+            document.getElementById('user-list-desc').innerText = translations[currentLang]['member_tx_desc'];
+            
+            localStorage.setItem(`hasNewTransaction_${myUsername}`, 'false');
+            document.getElementById('coin-notif-dot').classList.add('hidden'); 
+            
+            const container = document.getElementById('user-list-container');
+            container.innerHTML = "กำลังโหลด...";
+            
+            document.getElementById('user-search-input').style.display = 'none';
+            document.getElementById('pagination-controls').style.display = 'none';
+
+            const res = await fetch(`/api/member/transactions?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
+            
+            if(res.status !== 200) {
+                container.innerHTML = "<p style='color:red;'>ไม่สามารถโหลดประวัติได้</p>";
+                return;
+            }
+            
+            const data = await res.json();
+            const transactions = data.transactions;
+
+            if (transactions.length === 0 && data.currentPage > 1) {
+                return openMemberLedger(1);
+            } else if (transactions.length === 0) {
+                container.innerHTML = "<p style='text-align:center;color:gray;margin-top:20px;'>ไม่มีประวัติธุรกรรม</p>";
+                updatePaginationUI(data, 'memberTx');
+                return;
+            }
+
+            container.innerHTML = transactions.map(t => {
+                const isIncome = t.toUser === myUsername; 
+                const typeText = isIncome 
+                    ? `✅ ${translations[currentLang]['tx_received']}`
+                    : `❌ ${translations[currentLang]['tx_paid']}`;
+                const styleClass = isIncome ? 'tx-plus' : 'tx-minus';
+                const amountSign = isIncome ? '+' : '-';
+                
+                const detail = getTransactionDetail(t);
+
+                const relatedUser = isIncome ? t.fromUser : t.toUser;
+                const fromToPrefix = isIncome 
+                    ? translations[currentLang]['tx_from'] 
+                    : translations[currentLang]['tx_to'];
+
+                return `
+                    <div class="transaction-item" style="border-left: 5px solid ${isIncome ? '#28a745' : '#dc3545'}; margin-bottom:5px;">
+                        <div>
+                            <strong>${typeText}</strong> ${detail}<br>
+                            <small style="color:gray;">${new Date(t.timestamp).toLocaleString()} | ${fromToPrefix}: ${relatedUser}</small>
+                        </div>
+                        <span class="${styleClass}">${amountSign}${t.amount} USD</span>
+                    </div>
+                `;
+            }).join('');
+            
+            updatePaginationUI(data, 'memberTx');
+            memberTxPage = data.currentPage;
+			document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
+            document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
+        }
+
+        function contactAdmin() {
+            if (myUsername === 'Admin') openTransactionModal(); 
+            else openMemberLedger(); 
+        }
+
+        function checkNewTransaction() {
+            const status = localStorage.getItem(`hasNewTransaction_${myUsername}`);
+            if (status === 'true') {
+                document.getElementById('coin-notif-dot').classList.remove('hidden');
+                hasNewTransaction = true;
+            }
+        }
+        
+        function saveUnreadStatus() {
+            localStorage.setItem(`unreadUsers_${myUsername}`, JSON.stringify(Array.from(unreadUsers)));
+            if (unreadUsers.size > 0) {
+                document.getElementById('notif-badge').innerText = unreadUsers.size;
+                document.getElementById('notif-badge').classList.remove('hidden');
+            } else {
+                document.getElementById('notif-badge').classList.add('hidden');
+                document.title = "Webboard";
+            }
+        }
+
+        function loadUnreadStatus() {
+            const savedUnread = localStorage.getItem(`unreadUsers_${myUsername}`);
+            if (savedUnread) {
+                unreadUsers = new Set(JSON.parse(savedUnread));
+                saveUnreadStatus(); 
+            }
+        }
+        
+        function switchView(view) {
+    currentView = view;
+    currentPostPage = 1; 
+    
+    const title = document.getElementById('page-title');
+    if (view === 'home') {
+        title.innerText = translations[currentLang]['page_title']; // ใช้ translation key
+        title.style.color = "#333";
+        loadPosts(); 
+        
+        // 💡 ตั้งค่าปุ่ม Pagination ให้กลับไปเรียก loadPosts
+        document.getElementById('post-prev-btn').onclick = () => changePostPage(-1);
+        document.getElementById('post-next-btn').onclick = () => changePostPage(1);
+
+    } else if (view === 'closed') {
+        // ⭐ [FIXED] ใช้ translation key สำหรับหน้า Admin Closed
+        title.innerText = translations[currentLang]['admin_closed_posts'];
+        title.style.color = "#6c757d";
+        loadPosts(); // โหลดรายการปกติ (กระทู้ปิดทั้งหมด)
+
+    } else if (view === 'my_active') { 
+        showMyActivePosts(1); 
+        
+    } else if (view === 'my_closed') { 
+        showMyClosedPosts(1); 
+    }
+    
+    toggleSidebar();
+}
+
+        async function loadPosts() {
+            try {
+                // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
+                const res = await fetch('/api/posts?limit=1000');
+                const responseData = await res.json();
+                
+                // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
+                let postsArray = [];
+                if (Array.isArray(responseData)) {
+                    postsArray = responseData;
+                } else if (responseData.posts && Array.isArray(responseData.posts)) {
+                    postsArray = responseData.posts;
+                }
+
+                // นำข้อมูลลงในตัวแปร postStatusMap เพื่อให้ renderPostList ทำงานได้
+                postsArray.forEach(p => {
+                    if (postStatusMap[p.id]) {
+                        postStatusMap[p.id].data = p; // อัปเดตข้อมูลเดิม
+                    } else {
+                        postStatusMap[p.id] = { data: p, isOccupied: false }; // สร้างใหม่
+                    }
+                });
+
+                // เรียกฟังก์ชันแสดงผลหลัก (ที่มีอยู่แล้วด้านล่าง)
+                renderPostList(); 
+                
+            } catch (err) {
+                console.error("Error loading posts:", err);
+            }
+        }
+		
+		// ดูกระทู้ของฉันที่ยังไม่ปิด
+	async function showMyActivePosts(page = 1) {
+    if (!myUsername) return;
+    try {
+        currentView = 'my_active'; // 👈 [NEW] ตั้งค่า currentView
+        currentPostPage = page;
+
+        const response = await fetch(`/api/my-active-posts?username=${myUsername}&page=${page}&limit=${POST_LIMIT}`);
+        const data = await response.json();
+        const postListDiv = document.getElementById('post-list');
+        const pageTitle = document.getElementById('page-title');
+        const paginationDiv = document.getElementById('post-pagination');
+
+        postListDiv.innerHTML = '';
+        
+        // ⭐ [FIXED] ใช้ translations key สำหรับชื่อหน้า
+        pageTitle.innerText = `📝 ${translations[currentLang]['my_active_posts']}`;
+        
+        if (data.totalItems === 0) {
+            postListDiv.innerHTML = `<div style="text-align:center; padding: 50px; color:#6c757d; font-size:1.2em;">
+                                        ${currentLang === 'th' ? 'คุณไม่มีกระทู้ที่กำลังดำเนินการอยู่' : 'You currently have no active posts.'}
+                                     </div>`;
+            paginationDiv.style.display = 'none';
+            return;
+        }
+
+        data.posts.forEach((post) => {
+            const statusInfo = postStatusMap[post.id];
+            const isOccupied = statusInfo ? statusInfo.isOccupied : false;
+            addPostToDOM(post, isOccupied);
+        });
+
+        // อัปเดต Pagination UI
+        if (data.totalItems > POST_LIMIT) {
+            paginationDiv.style.display = 'block';
+            document.getElementById('post-page-info').innerText = `${data.currentPage} / ${data.totalPages} (${data.totalItems})`;
+            
+            document.getElementById('post-prev-btn').onclick = () => showMyActivePosts(data.currentPage - 1);
+            document.getElementById('post-next-btn').onclick = () => showMyActivePosts(data.currentPage + 1);
+            
+            document.getElementById('post-prev-btn').disabled = (data.currentPage === 1);
+            document.getElementById('post-next-btn').disabled = (data.currentPage === data.totalPages);
+        } else {
+            paginationDiv.style.display = 'none';
+        }
+        
+    } catch (e) {
+        console.error('Error fetching my active posts:', e);
+        showNotification('เกิดข้อผิดพลาดในการดึงรายการกระทู้', 'fas fa-exclamation-triangle', 3000, '#dc3545');
+    }
+}
+
+		// [NEW FUNCTION] อัปเดตตัวเลขแจ้งเตือนบนปุ่ม
+		async function updateActivePostCount() {
+		if (!myUsername || myUsername === 'Admin') return;
+    
+		try {
+        const response = await fetch(`/api/my-active-count?username=${myUsername}`);
+        const data = await response.json();
+        
+        const countSpan = document.getElementById('active-post-count');
+        if (countSpan) {
+            countSpan.innerText = data.count;
+            // เปลี่ยนสีปุ่มแจ้งเตือน
+            countSpan.style.background = data.count > 0 ? '#dc3545' : '#6c757d';
+        }
+    } catch(e) {
+        console.error('Error fetching active post count:', e);
+    }
+}
+
+		// [NEW FUNCTION] ดูกระทู้ของฉันที่ถูกปิดแล้ว
+async function showMyClosedPosts(page = 1) { 
+    if (!myUsername) return;
+    try {
+        currentView = 'my_closed'; // 👈 ตั้งค่า currentView ใหม่
+        currentPostPage = page;
+        
+        // 1. เรียก API พร้อมส่ง page และ limit
+        const response = await fetch(`/api/my-closed-posts?username=${myUsername}&page=${page}&limit=${POST_LIMIT}`);
+        const data = await response.json();
+        const postListDiv = document.getElementById('post-list');
+        const pageTitle = document.getElementById('page-title');
+        const paginationDiv = document.getElementById('post-pagination');
+        
+        // 2. ล้างรายการกระทู้เดิม
+        postListDiv.innerHTML = '';
+        
+        // ⭐ [FIXED] ใช้ translations key สำหรับชื่อหน้า และแปลคำว่า 'รายการ' / 'items'
+        const itemText = currentLang === 'th' ? 'รายการ' : 'items';
+        pageTitle.innerText = `🗄️ ${translations[currentLang]['my_closed_posts']} (${data.totalItems} ${itemText})`;
+        
+        if (data.totalItems === 0) {
+            postListDiv.innerHTML = `<div style="text-align:center; padding: 50px; color:#6c757d; font-size:1.2em;">
+                                        ${currentLang === 'th' ? 'คุณยังไม่มีกระทู้ที่ถูกปิด' : 'You have no closed posts yet.'}
+                                     </div>`;
+            paginationDiv.style.display = 'none';
+            return;
+        }
+
+        // 3. แสดงผลรายการกระทู้
+        data.posts.forEach((post) => {
+            const statusInfo = postStatusMap[post.id];
+            const isOccupied = statusInfo ? statusInfo.isOccupied : false;
+            addPostToDOM(post, isOccupied);
+        });
+
+        // 4. อัปเดต Pagination UI
+        if (data.totalItems > POST_LIMIT) {
+            paginationDiv.style.display = 'block';
+            document.getElementById('post-page-info').innerText = `${data.currentPage} / ${data.totalPages} (${data.totalItems})`;
+            
+            document.getElementById('post-prev-btn').onclick = () => showMyClosedPosts(data.currentPage - 1);
+            document.getElementById('post-next-btn').onclick = () => showMyClosedPosts(data.currentPage + 1);
+            
+            document.getElementById('post-prev-btn').disabled = (data.currentPage === 1);
+            document.getElementById('post-next-btn').disabled = (data.currentPage === data.totalPages);
+        } else {
+            paginationDiv.style.display = 'none';
+        }
+
+    } catch (e) {
+        console.error('Error fetching my closed posts:', e);
+        showNotification('เกิดข้อผิดพลาดในการดึงรายการกระทู้', 'fas fa-exclamation-triangle', 3000, '#dc3545');
+    }
+}
+
+        function renderPostList() {
+            const list = document.getElementById('post-list');
+            const paginationDiv = document.getElementById('post-pagination');
+            list.innerHTML = '';
+            
+            let postsArray = Object.values(postStatusMap).map(item => item);
+            let filteredPosts = postsArray;
+
+            if (currentView === 'home') {
+                filteredPosts = postsArray.filter(item => !item.data.isClosed);
+            } else if (currentView === 'closed') {
+                filteredPosts = postsArray.filter(item => item.data.isClosed);
+            }
+            
+            filteredPosts.sort((a, b) => {
+                const postA = a.data;
+                const postB = b.data;
+
+                // 1. เช็ค Pinned Post ก่อน (ให้ Pinned อยู่บนสุดเสมอ)
+                const aIsPinned = postA.isPinned && !postA.isClosed;
+				const bIsPinned = postB.isPinned && !postB.isClosed;
+                
+                if (aIsPinned && !bIsPinned) return -1; // a เป็น Pinned -> เอาขึ้นก่อน
+                if (!aIsPinned && bIsPinned) return 1;  // b เป็น Pinned -> เอาขึ้นก่อน
+
+                // 2. เช็คสถานะจบงาน/ปิด (ให้งานที่จบแล้วอยู่ล่าง)
+                const aDone = postA.status === 'finished' || postA.isClosed;
+                const bDone = postB.status === 'finished' || postB.isClosed;
+                
+                if (aDone && !bDone) return 1; 
+                if (!aDone && bDone) return -1; 
+
+                // 3. สุดท้ายเรียงตามเวลา (ใหม่สุดขึ้นก่อน)
+                return postB.id - postA.id; 
+            });
+
+            if (filteredPosts.length === 0) {
+                 list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีกระทู้ในหมวดหมู่นี้</h3></div>`;
+                 paginationDiv.style.display = 'none'; 
+                 return;
+            }
+            
+            const totalItems = filteredPosts.length;
+            const totalPages = Math.ceil(totalItems / POST_LIMIT);
+            
+            if (currentPostPage < 1) currentPostPage = 1;
+            if (currentPostPage > totalPages) currentPostPage = totalPages;
+
+            const startIndex = (currentPostPage - 1) * POST_LIMIT;
+            const endIndex = startIndex + POST_LIMIT;
+            const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
+
+            paginatedPosts.forEach(item => {
+                addPostToDOM(item.data, item.isOccupied);
+            });
+
+            if (totalItems > POST_LIMIT) {
+                paginationDiv.style.display = 'block';
+                document.getElementById('post-page-info').innerText = `${currentPostPage} / ${totalPages} (${totalItems})`;
+                
+                document.getElementById('post-prev-btn').disabled = (currentPostPage === 1);
+                document.getElementById('post-next-btn').disabled = (currentPostPage === totalPages);
+            } else {
+                paginationDiv.style.display = 'none'; 
+            }
+        }
+
+        // ---addPostToDOM (With Winner Display) ---
+        function addPostToDOM(post, isOccupied) {
+            const list = document.getElementById('post-list');
+            
+            let deleteBtn = myUsername === 'Admin' 
+                ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
+                : '';
+
+            let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
+            let occupiedText = isOccupied 
+                ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(กำลังคุย 💬)</span>`
+                : '';
+
+            let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
+			
+            // ✅ [FIXED] ส่วนแสดงผู้ชนะ
+			let winnerHtml = '';
+			if (post.acceptedViewer) {
+			    winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
+			}
+
+            let baseStyle = '';
+            let icon = '';
+			
+			//สำหรับ Pinned Post
+            let pinnedText = '';
+            if (post.isPinned) {
+                baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; // สีม่วง
+                icon = '📌'; 
+                pinnedText = ' (กระทู้ปักหมุด)';
+            }
+
+            if (post.status === 'finished' || post.status === 'closed_permanently') {
+                baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
+                icon = '🔒'; 
+            } else if (post.isClosed) {
+                baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
+                icon = '🔒';
+            } else if (!post.isPinned) {
+                baseStyle = 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
+                icon = '✅'; 
+            }
+
+            let action = (post.isClosed && myUsername !== 'Admin') 
+                ? "alert('⛔ กระทู้นี้ถูกปิดแล้ว')" 
+                : `location.href='post.html?id=${post.id}'`; 
+
+            let locationHtml = '';
+            if (post.location && post.location.lat && post.location.lng) {
+                const lat = post.location.lat.toFixed(4);
+                const lng = post.location.lng.toFixed(4);
+                const placeName = post.location.name;
+                
+                const mapsLink = `https://maps.google.com/maps?q=${post.location.lat},${post.location.lng}`;
+                
+                locationHtml = `
+                    <a href="${mapsLink}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none; color:#007bff; font-size:0.85em; margin-left:10px;" 
+                        title="พิกัด: Lat ${lat}, Lng ${lng}">
+                        📍 ${placeName} 
+                    </a>
+                `;
+            }
+
+            // ✅ แทรก winnerHtml ลงใน title
+            list.insertAdjacentHTML('beforeend', `
+                <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
+                    <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
+                        <br>
+                        <small>
+                            ${post.author} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
+                        </small>
+                        ${locationHtml}
+                        ${occupiedText}
+                    </div>
+                    
+                    <div style="display:flex; align-items:center;">
+                        ${deleteBtn}
+                    </div>
+                </div>
+            `);
+        }
+        
+        // --- SOCKET LOGIC ---
+		socket.on('force-logout', (msg) => {
+            alert(msg);
+            localStorage.removeItem('myUsername');
+            window.location.replace('/');
+        });
+
+        socket.on('catch-up-post-status', (occupiedList) => { 
+            occupiedList.forEach(item => {
+                const postId = item.postId;
+                if (postStatusMap[postId]) {
+                    postStatusMap[postId].isOccupied = item.isOccupied; 
+                }
+            });
+            renderPostList(); 
+        });
+
+        socket.on('post-list-update', (data) => { 
+            const postId = data.postId;
+            if (postStatusMap[postId]) {
+                if (data.status) postStatusMap[postId].data.status = data.status; // อัปเดต status (finished)
+                if (data.isOccupied !== undefined) postStatusMap[postId].isOccupied = data.isOccupied;
+                
+                // ถ้ารับ data.post กลับมาด้วยให้อัปเดตเลย (เผื่อมี acceptedViewer)
+                if (data.post) postStatusMap[postId].data = data.post;
+                
+                // หรือถ้าไม่มี ให้โหลดใหม่ทั้งหมดเพื่อความชัวร์ (แนะนำ)
+                loadPosts(); 
+            } else {
+                 loadPosts(); // กรณีเป็นโพสต์ใหม่ที่ยังไม่เคยโหลด
+            }
+        });
+        
+        socket.on('admin-new-transaction', () => {
+             if (myUsername === 'Admin') {
+                notificationSound.play().catch(()=>{});
+                localStorage.setItem(`hasNewTransaction_${myUsername}`, 'true');
+                hasNewTransaction = true;
+                document.getElementById('coin-notif-dot').classList.remove('hidden');
+             }
+        });
+        
+        // --- FIXED: Socket Balance Update ---
+        socket.on('balance-update', (data) => {
+    if (data.user === myUsername) {
+        // ⭐ [FIXED] เรียก updateUserInfo() เพื่อให้เกิดการ fetch ข้อมูลใหม่
+        // และแสดงผล 2 สกุลเงินอย่างถูกต้อง
+        updateUserInfo();
+        
+        // 💡 [Note] เนื่องจาก updateUserInfo ถูกเรียกแล้ว และ Server ส่งแค่ USD มาใน socket event นี้
+        // การเรียก updateUserInfo จึงเป็นวิธีที่ง่ายที่สุดในการรับค่า convertedCoins มาแสดงผล 2 สกุลเงิน
+
+        if (data.coins) {
+             const formattedUSD = parseFloat(data.coins).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+             });
+             // ใช้ formattedUSD ในการแจ้งเตือน
+             showNotification(`Update Balance: You have a balance. ${formattedUSD} USD`, 'fas fa-coins', 4000);
+        }
+    }
+});
+        
+        // --- Notification Helper ---
+        function showNotification(message, iconClass = 'fas fa-info-circle', duration = 3000) {
+             const modal = document.getElementById('comment-notif-modal');
+             if(!modal) return;
+             document.getElementById('notif-content').innerText = message;
+             modal.classList.remove('hidden');
+             setTimeout(() => modal.classList.add('hidden'), duration);
+        }
+		
+		// รับค่าธรรมเนียมใหม่จาก Admin
+        socket.on('config-update', (newCost) => {
+            currentCost = newCost; 
+            const costDisplay = document.getElementById('cost-display');
+            if (costDisplay) costDisplay.innerText = newCost;
+            document.getElementById('modal-cost').innerText = newCost; 
+            
+            if (myUsername === 'Admin') {
+                alert(`🔔 ค่าธรรมเนียมถูกเปลี่ยนเป็น ${newCost} USD`);
+            }
+        });
+		
+		socket.on('rating-update', (data) => {
+            if (data.user === myUsername) {
+                const sidebarRating = document.getElementById('sidebar-rating');
+                if(sidebarRating) sidebarRating.innerText = data.rating;
+                currentRating = parseFloat(data.rating);
+            }
+            if (!document.getElementById('user-list-modal').classList.contains('hidden')) {
+                const title = document.getElementById('user-list-title').innerText;
+                if (title.includes('สมาชิกทั้งหมด')) {
+                    const searchInput = document.getElementById('user-search-input');
+                    openAllUserList(searchInput ? searchInput.value : '');
+                }
+            }
+        });
+
+		socket.on('private-message', (data) => {
+            if (data.target === myUsername && data.sender === 'System' && data.msg.includes('ความคิดเห็นใหม่')) {
+                showCommentNotification(data.msg, data.postId);
+            }
+        });
+
+        function showCommentNotification(message, postId) {
+            const modal = document.getElementById('comment-notif-modal');
+            const content = document.getElementById('notif-content');
+            
+            content.innerText = message;
+            modal.classList.remove('hidden');
+            
+            modal.onclick = () => {
+                window.location.href = `/post.html?id=${postId}`;
+            };
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 5000);
+        }
+
+        // --- CRUD and ADMIN FUNCTIONS ---
+    function openCreateModal() { 
+    // แสดงค่าธรรมเนียม
+    document.getElementById('modal-cost-row').classList.remove('hidden');
+    
+    // กำหนด Title ของ Modal
+    document.getElementById('create-modal-title').innerText = translations[currentLang]['title_create'];
+    
+    // ซ่อนช่องกรอก Title (สำหรับกระทู้ปกติ)
+    const titleInput = document.getElementById('title-input');
+    titleInput.classList.add('hidden'); 
+    titleInput.value = '';
+    
+    // เรียก setLanguage เพื่อแปลทุกองค์ประกอบใน modal อีกครั้ง 
+    setLanguage(currentLang); 
+    
+    // รีเซ็ต Location และอัปเดตข้อความปุ่มอีกครั้ง (เพื่อให้ข้อความเป็นภาษาที่ถูกต้องหลัง setLanguage)
+    currentLocationData = null;
+    document.getElementById('geo-btn').classList.remove('active');
+    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
+    document.getElementById('location-display').innerHTML = '';
+    
+    // แสดง Modal
+    document.getElementById('create-modal').classList.remove('hidden'); 
+    toggleSidebar(); 
+}
+
+// ----------------------------------------------------
+
+// ฟังก์ชัน openAdminPinnedModal()
+function openAdminPinnedModal() {
+    // ตรวจสอบสิทธิ์ Admin
+    if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');
+    
+    // ซ่อนค่าธรรมเนียม
+    document.getElementById('modal-cost-row').classList.add('hidden');
+
+    // กำหนด Title ของ Modal (ใช้ key: 'admin_create_pinned')
+    document.getElementById('create-modal-title').innerText = translations[currentLang]['admin_create_pinned'];
+
+    // แสดงช่องกรอก Title (สำหรับ Admin Pinned Post)
+    const titleInput = document.getElementById('title-input');
+    titleInput.classList.remove('hidden'); 
+    titleInput.value = ''; 
+    // กำหนด placeholder ให้ถูกต้อง
+    titleInput.placeholder = translations[currentLang]['placeholder_title_admin']; 
+    
+    // เรียก setLanguage เพื่อแปลทุกองค์ประกอบใน modal อีกครั้ง
+    setLanguage(currentLang); 
+    
+    // รีเซ็ต Location และอัปเดตข้อความปุ่มอีกครั้ง
+    currentLocationData = null;
+    document.getElementById('geo-btn').classList.remove('active');
+    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
+    document.getElementById('location-display').innerHTML = '';
+    
+    // แสดง Modal
+    document.getElementById('create-modal').classList.remove('hidden'); 
+    toggleSidebar(); 
+}
+
+        function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); } 
+        
+        function getLocation() {
+    const btn = document.getElementById('geo-btn');
+    const display = document.getElementById('location-display');
+    const t = translations[currentLang]; // ตัวย่อสำหรับข้อความแปล
+
+    if (!navigator.geolocation) {
+        alert(t['geo_not_supported']); // ⭐ แปลข้อความแจ้งเตือน
+        return;
+    }
+
+    btn.classList.remove('active');
+    btn.innerHTML = t['geo_searching']; // ⭐ แปลสถานะกำลังค้นหา
+    display.innerHTML = '';
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        try {
+            // ⭐ [MODIFIED] ใช้ currentLang สำหรับ Nominatim เพื่อผลลัพธ์ที่เป็นภาษาถูกต้อง
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${currentLang}`); 
+            const data = await res.json();
+            
+            let placeName = data.address.city || data.address.town || data.address.village || data.address.state || (currentLang === 'th' ? 'ไม่ทราบชื่อสถานที่' : 'Unknown location name');
+            if(data.address.road) placeName = `${data.address.road}, ${placeName}`;
+
+            currentLocationData = { lat, lng, name: placeName };
+            
+            btn.innerHTML = t['geo_success_name']; // ⭐ แปลสถานะสำเร็จ (มีชื่อสถานที่)
+            btn.classList.add('active');
+            display.innerHTML = `${t['geo_display_name']} <b>${placeName}</b>`; // ⭐ แปลข้อความแสดงผล
+            
+        } catch (e) {
+            currentLocationData = { lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
+            btn.innerHTML = t['geo_success_coord']; // ⭐ แปลสถานะสำเร็จ (ไม่มีชื่อสถานที่ ใช้พิกัดแทน)
+            btn.classList.add('active');
+            display.innerHTML = `${t['geo_display_coord']} ${lat.toFixed(4)}, ${lng.toFixed(4)}`; // ⭐ แปลข้อความแสดงผล
+        }
+
+    }, (error) => {
+        let errorMessage = t['geo_error_general']; 
+        if (error.code === 1) {
+            errorMessage = t['geo_error_permission']; // ⭐ แปลข้อความถูกปฏิเสธสิทธิ์
+        }
+        
+        alert(errorMessage);
+        // รีเซ็ตปุ่มกลับสู่ข้อความตั้งต้น (ใช้ geo_btn)
+        btn.innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`; 
+    });
+}
+
+			async function createPost() {
+    const titleInput = document.getElementById('title-input');
+    const content = document.getElementById('content').value.trim();
+    const imageFile = document.getElementById('post-image').files[0];
+    const category = document.getElementById('category-select').value;
+    
+    let titleVal = "";
+    
+    // เช็ค Logic การส่ง Title
+    if (myUsername === 'Admin') {
+        // Admin ต้องเอาค่าจาก Input
+        titleVal = titleInput.value.trim();
+        if (!titleVal) return alert("Admin กรุณาระบุชื่อกระทู้พิเศษ");
+    } else {
+        // User ทั่วไป ส่งค่าว่างไป (Server จะจัดการตั้งชื่อตามหมวดหมู่เอง)
+        titleVal = ""; 
+        if (!content) return alert("กรุณาใส่รายละเอียดกระทู้");
+    }
+
+    const formData = new FormData();
+    formData.append('title', titleVal);
+    formData.append('category', category);
+    formData.append('content', content);
+    formData.append('author', myUsername);
+
+    if (imageFile) formData.append('image', imageFile); 
+    if (currentLocationData) formData.append('location', JSON.stringify(currentLocationData));
+
+    const res = await fetch('/api/posts', {
+        method: 'POST',
+        body: formData 
+    }); 
+
+    if (res.status !== 200) { 
+        const d = await res.json(); 
+        alert(d.error); 
+    } else { 
+        closeCreateModal(); 
+        titleInput.value = ''; 
+        document.getElementById('content').value = ''; 
+        document.getElementById('post-image').value = '';
+        
+        currentView = 'home';
+        loadPosts(); 
+        showNotification('✅ สร้างกระทู้สำเร็จ!', 'fas fa-check-circle', 3000);
+    } 
+}
+
+        socket.on('new-post', loadPosts); 
+        socket.on('delete-post', (id)=>{ 
+            delete postStatusMap[id];
+            renderPostList();
+        }); 
+        socket.on('update-post-status', loadPosts); 
+        
+        async function loadTopics(){ 
+            const res = await fetch('/api/topics'); 
+            if (res.status !== 200) return;
+            const c = await res.json(); 
+            document.getElementById('category-select').innerHTML = c.map(x => `<option value="${x.id}">${x.name}</option>`).join(''); 
+        }
+
+        async function setPostCost(){ 
+    const c=prompt(translations[currentLang]['prompt_fee'],currentCost); 
+    if(c) {
+        const res = await fetch('/api/admin/set-cost', {
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({cost:c,requestBy:myUsername})
+        });
+        
+        if (res.status === 200) {
+            updateUserInfo(); 
+            alert("✅ ตั้งค่าธรรมเนียมสำเร็จ!");
+        } else {
+            alert("❌ ตั้งค่าไม่สำเร็จ");
+        }
+    }
+}
+        
+        async function openAdminTopicModal() {
+            if (myUsername !== ADMIN_USERNAME) {
+                alert('คุณไม่มีสิทธิ์เข้าถึงส่วน Admin');
+                return;
+            }
+            document.getElementById('admin-topic-modal').classList.remove('hidden');
+            await fetchAndRenderAdminTopics();
+        }
+
+        async function fetchAndRenderAdminTopics() {
+    const tableBody = document.querySelector('#admin-topic-table tbody');
+    tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:gray;">กำลังโหลด...</td></tr>';
+    try {
+        const response = await fetch('/api/admin/topics');
+        if (response.status !== 200) {
+            tableBody.innerHTML = '<tr><td colspan="2" style="color:red; text-align:center;">ไม่สามารถโหลดหัวข้อได้</td></tr>';
+            return;
+        }
+        const topics = await response.json();
+        tableBody.innerHTML = '';
+        topics.forEach(topic => {
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">${topic.name} (ID: ${topic.id})</td>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">
+                    <button onclick="deleteTopic('${topic.id}', '${topic.name}')" style="
+                        background-color: #f44336; 
+                        color: white; 
+                        border: none; 
+                        padding: 5px 10px; 
+                        cursor: pointer; 
+                        border-radius: 5px;
+                        font-size: 1.1em; 
+                        line-height: 1; 
+                    ">
+                        🗑️
+                    </button>
+                </td>
+            `;
+        });
+    } catch (error) {
+        console.error('Error fetching admin topics:', error);
+    }
+}
+
+        async function addTopic() {
+    const nameInput = document.getElementById('new-topic-name');
+    const name = nameInput.value.trim();
+    
+    // 1. ดึงชุดคำแปล
+    const t = translations[currentLang] || translations['th'];
+
+    // 2. ตรวจสอบค่าว่าง (ใช้คำแปล)
+    if (!name) {
+        alert(t['admin_warn_empty_topic']);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/admin/topics/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'add', name: name })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // 3. แจ้งเตือนความสำเร็จ (ใช้คำแปลจากฝั่งเรา แทน message จาก Server)
+            alert(t['admin_success_add_topic']);
+            nameInput.value = ''; 
+            await fetchAndRenderAdminTopics(); 
+            loadTopics(); 
+        } else {
+            // กรณี Error ให้แสดงข้อความจาก Server (หรือจะใช้ t['admin_error_topic'] ก็ได้)
+            alert(`${t['admin_error_topic']} ${result.message}`);
+        }
+    } catch (error) {
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
+}
+
+        async function deleteTopic(id, name) {
+    // 1. ดึงชุดคำแปล
+    const t = translations[currentLang] || translations['th'];
+    
+    // 2. แสดง Confirm Box (ใช้คำแปล + แทนที่ชื่อ)
+    const confirmMsg = t['admin_confirm_delete_topic'].replace('[NAME]', name);
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const response = await fetch('/api/admin/topics/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', id: id })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // 3. แจ้งเตือนความสำเร็จ (ใช้คำแปลจากฝั่งเรา)
+            alert(t['admin_success_delete_topic']);
+            await fetchAndRenderAdminTopics(); 
+            loadTopics(); 
+        } else {
+             alert(`${t['admin_error_topic']} ${result.message}`);
+        }
+    } catch (error) {
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
+}
+
+        async function deletePost(e,id){ 
+            e.stopPropagation(); 
+            if(confirm('ลบกระทู้นี้?')) 
+                fetch(`/api/posts/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestBy:myUsername})}); 
+        }
+    
+    // --- PRIVATE CHAT/INBOX FUNCTIONS ---
+
+    function closePrivateChat() {
+        document.getElementById('private-chat-modal').classList.add('hidden');
+        currentChatPartner = "";
+        if (!document.getElementById('user-list-modal').classList.contains('hidden')) {
+            openInbox();
+        }
+    }
+
+    function sendPrivateMessage() {
+        const input = document.getElementById('private-chat-input');
+        const msg = input.value.trim();
+        if(!msg || !currentChatPartner) return; 
+        
+        socket.emit('private-message', { sender: myUsername, target: currentChatPartner, msg: msg });
+        input.value = '';
+    }
+
+    async function sendCoinInChat() {
+        if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');
+        const promptText = translations[currentLang]['prompt_transfer_admin'];
+        const amount = prompt(`${promptText} ${currentChatPartner}:`);
+        if(!amount || isNaN(amount) || parseInt(amount) <= 0) return;
+        const parsedAmount = parseInt(amount);
+
+        const res = await fetch('/api/admin/give-coins', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername }) 
+        });
+        
+        if (res.status === 200) {
+            alert(`✅ โอนเหรียญ ${parsedAmount} ให้ ${currentChatPartner} สำเร็จ!`);
+        } else {
+            const d = await res.json();
+            alert(`❌ โอนเหรียญไม่สำเร็จ: ${d.error || res.statusText}`);
+        }
+    }
+    
+    async function deductCoinInChat() {
+        if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');
+        const promptText = translations[currentLang]['prompt_deduct_admin'];
+        const amount = prompt(`🔴 ${promptText} ${currentChatPartner}:`);
+        if(!amount || isNaN(amount) || parseInt(amount) <= 0) return;
+        const parsedAmount = parseInt(amount);
+
+        const res = await fetch('/api/admin/deduct-coins', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername }) 
+        });
+        
+        if (res.status === 200) {
+            alert(`🧲 ดึงเหรียญคืน ${parsedAmount} จาก ${currentChatPartner} สำเร็จ!`);
+        } else {
+            const d = await res.json();
+            alert(`❌ ทำรายการไม่สำเร็จ: ${d.error || res.statusText}`);
+        }
+    }
+
+    async function checkAndGo(postId) {
+        const res = await fetch(`/api/posts/${postId}`);
+        if (res.status === 404) { alert('❌ ไม่พบกระทู้นี้ (อาจถูกลบไปแล้ว)'); return; }
+        const post = await res.json();
+        
+        if (post.isClosed) {
+            if (myUsername === 'Admin') {
+                if(confirm('🔒 กระทู้นี้ปิดแล้ว (คุณเข้าได้เพราะเป็น Admin) ต้องการไปต่อไหม?')) { location.href = `post.html?id=${post.id}`; }
+            } else { alert('⛔ กระทู้นี้ถูกปิดการใช้งานแล้ว'); }
+        } else { location.href = `post.html?id=${post.id}`; }
+    }
+
+    socket.on('private-history', (history) => {
+        const box = document.getElementById('private-chat-messages');
+        box.innerHTML = ''; 
+        if (history.length === 0) box.innerHTML = '<div class="system-msg">เริ่มการสนทนาใหม่</div>';
+        else history.forEach(data => appendMessage(data));
+        box.scrollTop = box.scrollHeight;
+    });
+
+    socket.on('private-message', (data) => {
+        const isChatOpen = !document.getElementById('private-chat-modal').classList.contains('hidden');
+        let isRelevant = false;
+        if (data.sender === currentChatPartner) isRelevant = true;
+        if (data.sender === myUsername && data.target === currentChatPartner) isRelevant = true;
+        if (data.sender === 'System' && currentChatPartner === 'Admin') isRelevant = true;
+        
+        if (isChatOpen && isRelevant) {
+            appendMessage(data);
+            const box = document.getElementById('private-chat-messages');
+            box.scrollTop = box.scrollHeight;
+            if (data.sender !== myUsername) notificationSound.play().catch(()=>{});
+        } else {
+            if (data.target === myUsername) {
+                const isFinancialSystemMsg = data.sender === 'System' && (data.msg.startsWith('💸') || data.msg.startsWith('USD'));
+
+                if (isFinancialSystemMsg) { 
+                    localStorage.setItem(`hasNewTransaction_${myUsername}`, 'true');
+                    document.getElementById('coin-notif-dot').classList.remove('hidden');
+                    notificationSound.play().catch(()=>{});
+
+                } else {
+                    if (data.sender !== 'System') unreadUsers.add(data.sender);
+                    else unreadUsers.add('System'); 
+                    notify(data);
+                    saveUnreadStatus(); 
+                }
+            }
+        }
+    });
+
+    function appendMessage(data) {
+    const box = document.getElementById('private-chat-messages');
+    const div = document.createElement('div');
+    
+    let translatedMsg = data.msg;
+
+    // ตรวจสอบและแปลข้อความ System Message
+    if (data.sender === 'System' && data.msgKey) {
+        const lang = currentLang;
+        const key = data.msgKey;
+        const t = translations[lang] || translations['th']; // Fallback เป็นไทย
+        const messageTemplateFunc = t[key];
+
+        if (typeof messageTemplateFunc === 'function') {
+            // เรียกใช้ฟังก์ชันแปล พร้อมส่งข้อมูลที่จำเป็น
+            translatedMsg = messageTemplateFunc(data.msgData);
+        } else {
+            translatedMsg = data.msg; // ใช้ข้อความเดิมหากไม่พบ Key
+        }
+    } else {
+        translatedMsg = data.msg; // ข้อความปกติ
+    }
+    // ----------------------------------------------------
+
+    if (data.sender === 'System') {
+        div.className = 'system-msg'; 
+        if (data.postId) {
+            div.innerHTML = `<span class="system-link" onclick="checkAndGo(${data.postId})">${translatedMsg} <br><small>👉 Go To  Topic</small></span>`;
+        } else {
+            div.innerHTML = `${translatedMsg}`; 
+        }
+    } else {
+        div.className = 'msg ' + (data.sender === myUsername ? 'my-msg' : 'other-msg');
+        div.innerHTML = `<b>${data.sender}:</b> ${translatedMsg}`;
+    }
+    box.appendChild(div);
+}
+
+    function notify(data) {
+        notificationSound.play().catch(()=>{});
+        document.getElementById('notif-badge').classList.remove('hidden');
+        document.title = "🔴 มีข้อความใหม่!";
+    }
+    
+    function openPrivateChat(targetUser) {
+        currentChatPartner = targetUser;
+        document.getElementById('user-list-modal').classList.add('hidden'); 
+        document.getElementById('private-chat-modal').classList.remove('hidden'); 
+        document.getElementById('chat-partner-name').innerText = targetUser;
+        
+        unreadUsers.delete(targetUser);
+        saveUnreadStatus();
+
+        if (myUsername === 'Admin') {
+            document.getElementById('admin-chat-tools').classList.remove('hidden');
+        } else {
+            document.getElementById('admin-chat-tools').classList.add('hidden');
+        }
+        
+        document.getElementById('private-chat-messages').innerHTML = '<div class="system-msg">กำลังโหลดประวัติ...</div>';
+        socket.emit('get-private-history', { me: myUsername, partner: targetUser });
+    }
+
+    async function openInbox(page = 1) {
+        if (myUsername !== 'Admin') {
+            openPrivateChat('Admin'); 
+            return;
+        }
+        
+        document.getElementById('user-list-modal').classList.remove('hidden');
+        //document.getElementById('user-list-title').innerText = "📩 แชทล่าสุด";
+        //document.getElementById('user-list-desc').innerText = "รายชื่อสมาชิกที่คุณสนทนาด้วยล่าสุด";
+        const container = document.getElementById('user-list-container');
+        container.innerHTML = "Loading...";
+        
+        document.getElementById('user-search-input').style.display = 'none';
+        document.getElementById('pagination-controls').style.display = 'none';
+
+        const res = await fetch(`/api/contacts?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
+        const data = await res.json();
+        const recentContacts = data.contacts;
+
+        if (recentContacts.length === 0 && data.currentPage > 1) {
+             return openInbox(1);
+        } else if (recentContacts.length === 0) {
+            container.innerHTML = "<div style='text-align:center;color:gray;margin-top:20px;'>ไม่มีการสนทนาล่าสุด</div>";
+            updatePaginationUI(data, 'inbox');
+            return;
+        }
+
+        container.innerHTML = recentContacts.map(u => {
+            const isUnread = unreadUsers.has(u);
+            const dot = isUnread ? `<span class="unread-indicator" style="animation: none;">${unreadUsers.size}</span>` : '';
+            const style = isUnread ? 'font-weight:bold; background:#fff8e1;' : '';
+            return `<div class="user-list-item" style="${style}" onclick="openPrivateChat('${u}')"><span>👤 ${u} ${dot}</span><span style="color:#007bff; font-size:0.8em;">open chat ></span></div>`;
+        }).join('');
+        
+        updatePaginationUI(data, 'inbox');
+        inboxPage = data.currentPage;
+		document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
+        document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
+    }
+    
+    let allUsersCache = [];
+    
+	async function openAllUserList(searchTerm = '') {
+            
+    if (searchTerm === '' && document.getElementById('user-list-modal').classList.contains('hidden')) {
+        document.getElementById('user-list-modal').classList.remove('hidden');
+        if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+    }
+    
+    document.getElementById('user-list-title').innerText = translations[currentLang]['modal_user_list_title'];
+    document.getElementById('user-list-desc').innerText = translations[currentLang]['modal_user_list_desc'];
+    
+    document.getElementById('pagination-controls').style.display = 'none';
+    document.getElementById('user-search-input').style.display = 'block'; 
+    
+    const container = document.getElementById('user-list-container');
+    
+    let users = [];
+    if (allUsersCache.length === 0) {
+        container.innerHTML = "กำลังโหลด...";
+        const res = await fetch(`/api/users-list?requestBy=${myUsername}`);
+        
+        if(res.status !== 200) {
+            const errorData = await res.json();
+            alert(`❌ ไม่สามารถดึงรายชื่อได้: ${errorData.error || res.statusText}`);
+            document.getElementById('user-list-modal').classList.add('hidden');
+            return;
+        }
+        users = await res.json();
+        allUsersCache = users; 
+    } else {
+        users = allUsersCache; 
+    }
+    
+    const searchTermLower = searchTerm.trim().toLowerCase();
+    let list = users.filter(u => u.name !== 'Admin');
+    
+    if (searchTermLower) {
+        list = list.filter(u => u.name.toLowerCase().includes(searchTermLower));
+    }
+
+    if(list.length === 0) { 
+        container.innerHTML = searchTermLower 
+            ? `<p style='text-align:center; color:red; margin-top:20px;'>ไม่พบสมาชิกชื่อ "${searchTerm}"</p>`
+            : "ไม่มีสมาชิก"; 
+        return; 
+    }
+    
+    // ⭐ [FIX]: กำหนดข้อความปุ่มตามภาษาปัจจุบัน
+    const banText = currentLang === 'th' ? 'แบน' : 'Ban';
+    const unbanText = currentLang === 'th' ? 'ปลดแบน' : 'Unban';
+    const chatText = currentLang === 'th' ? 'แชท/โอน' : 'Chat/Transfer';
+    const ratingText = currentLang === 'th' ? 'ตั้งค่าคะแนน' : 'Set Rating';
+
+    container.innerHTML = list.map(u => {
+        const isBanned = u.isBanned;
+        // ⭐ ใช้ตัวแปรที่ถูกแปลแล้ว
+        const banBtnText = isBanned ? `✅ ${unbanText}` : `❌ ${banText}`; 
+        const banBtnColor = isBanned ? '#28a745' : '#dc3545';
+        const banStatusText = isBanned ? ' (⛔ แบน)' : '';
+        
+        return `
+        <div class="user-list-item" style="display:flex; flex-direction:column; align-items:flex-start; background: ${isBanned ? '#f8d7da' : 'none'}; border-left: 5px solid ${isBanned ? '#dc3545' : 'none'};">
+            <span>
+                👤 ${u.name} ${banStatusText}
+                <span style="color:black; font-size:0.9em; font-weight:bold; margin-left:5px;">
+                    (⭐ ${u.rating.toFixed(2)} / 5.0)
+                </span>
+            </span>
+            <span style="color:#28a745; font-size:0.9em; font-weight:bold; margin-top:3px;">
+                💵 ${u.coins} USD
+            </span>
+            <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 10px;">
+                <button class="sidebar-btn create-btn" style="width:auto; padding: 5px 10px;" onclick="openPrivateChat('${u.name}')">
+                    ${chatText}
+                </button>
+                <button class="sidebar-btn admin-btn" style="width:auto; padding: 5px 10px; background:#dc3545;" onclick="setMemberRating('${u.name}')">
+                    ${ratingText}
+                </button>
+                
+                <button class="sidebar-btn" 
+                        style="width:auto; padding: 5px 10px; background:${banBtnColor}; color:white;"
+                        onclick="toggleBanUser('${u.name}', ${isBanned})">
+                    ${banBtnText}
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+	document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
+    document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
+}
+</script>
+
+<div id="comment-notif-modal" class="hidden" style="
+        position: fixed; 
+        top: 20px; 
+        right: 20px; 
+        width: 300px; 
+        padding: 15px; 
+        background: #007bff; 
+        color: white; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 3000;
+        cursor: pointer;
+        font-size: 14px;
+        transition: opacity 0.3s ease;
+    ">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-bell" style="font-size: 1.5em;"></i>
+            <div>
+                <div id="notif-content" style="font-weight: 600;">ข้อความแจ้งเตือน</div>
+                </div>
+        </div>
+    </div>
+    </div>
+	
+</body>
+</html>
