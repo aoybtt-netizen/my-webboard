@@ -1016,21 +1016,36 @@ socket.on('viewer-left-location', (data) => {
             }
         }
         
-        // --- NEW ACTION: ปิดกระทู้ด้วยตนเอง ---
+        // ปิดกระทู้ด้วยตนเอง ---
         async function manualClosePost() {
-			const lang = localStorage.getItem('preferredLanguage') || 'th';
-            const t = postTranslations[lang] || postTranslations['th'];
-			if (confirm(t['confirm_close_post'])) { 
-                socket.emit('manual-close-post', postId);
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+    
+    // ตรวจสอบยืนยันก่อนปิด
+    if (confirm(t['confirm_close_post'])) { 
+        try {
+            const res = await fetch(`/api/posts/${postId}/close-manual`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestBy: myUsername }) // ส่งชื่อคนกดไปด้วย
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
                 document.getElementById('manual-close-btn').disabled = true;
-                alert(t['alert_post_closed']); 
+                alert(t['alert_post_closed']);
+                // อาจจะรีโหลดหน้า หรือกลับหน้าหลัก เพื่ออัปเดตสถานะ
+                location.reload(); 
+            } else {
+                alert(`❌ Error: ${data.error || 'ปิดกระทู้ไม่สำเร็จ'}`);
             }
-            if (!currentPost) return showNotification('ไม่พบข้อมูลกระทู้', 'fas fa-exclamation-triangle');
-            
-            if (currentPost.isClosed) {
-                return showNotification('กระทู้นี้ถูกปิดอยู่แล้ว', 'fas fa-info-circle');
-            }
+        } catch (e) {
+            console.error(e);
+            alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
         }
+    }
+}
         
         function restartPost() { 
     // 1. ดึงภาษาปัจจุบัน
