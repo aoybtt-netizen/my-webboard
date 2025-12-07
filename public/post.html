@@ -636,22 +636,15 @@
             socket.emit('join-post-room', { postId, username: myUsername, lang: currentLang });
             
             // Get and send viewer's location (one-time on join)
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    const location = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    // ส่งพิกัดไปให้ Server
-                    socket.emit('update-viewer-location', { 
-                        postId: postId, 
-                        username: myUsername, 
-                        location: location
-                    });
-                }, (error) => {
-                    console.warn('Geolocation denied or failed:', error.message);
-                });
-            }
+            if (navigator.geolocation) { 
+    navigator.geolocation.getCurrentPosition((position) => { 
+        const location = { lat: position.coords.latitude, lng: position.coords.longitude }; 
+        // ส่งพิกัดไปให้ Server 
+        socket.emit('update-viewer-location', { postId: postId, username: myUsername, location: location }); 
+    }, (error) => { 
+        console.warn('Geolocation denied or failed:', error.message); 
+    }); 
+}
         });
 
         socket.on('access-granted', (post) => {
