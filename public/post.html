@@ -243,7 +243,7 @@
 
     <div class="container">
         <div id="map-container" style="margin-top: 20px; display:none;">
-    <h3>📍 Location</h3>
+    <h3 id="map-title">📍 Location</h3>
     
     <button id="start-nav-btn" 
        class="send-btn" 
@@ -763,8 +763,8 @@ window.closeImageViewer = function() {
     const mapContainer = document.getElementById('map-container');
     const mapIframe = document.getElementById('post-map-iframe');
     const navButton = document.getElementById('start-nav-btn'); 
-    const mapTitle = document.getElementById('map-title');
-	const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const mapTitle = document.getElementById('map-title'); // ต้องมี id="map-title" ใน HTML
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
     const t = postTranslations[lang] || postTranslations['th'];
 
     // 1. ตรวจสอบพิกัดกระทู้
@@ -774,11 +774,13 @@ window.closeImageViewer = function() {
         return;
     }
 
+    // อัปเดตตัวแปร Global เพื่อให้ปุ่ม "เริ่มนำทาง" ทำงานได้
+    currentDestination = { lat: postLocation.lat, lng: postLocation.lng };
+
     const p_lat = postLocation.lat.toFixed(6); 
     const p_lng = postLocation.lng.toFixed(6);
     let mapUrl = '';
     let viewerText = '';
-    let zoomLevel = 15;
     
     // ตรวจสอบว่าเป็นเจ้าของกระทู้หรือ Admin
     const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
@@ -786,36 +788,42 @@ window.closeImageViewer = function() {
     if (viewerLocation && viewerLocation.lat && isOwnerOrAdmin) {
         const v_lat = viewerLocation.lat.toFixed(6);
         const v_lng = viewerLocation.lng.toFixed(6);
+        
+        // คำนวณจุดกึ่งกลางระหว่าง 2 จุด
         const centerLat = ((parseFloat(p_lat) + parseFloat(v_lat)) / 2).toFixed(6);
         const centerLng = ((parseFloat(p_lng) + parseFloat(v_lng)) / 2).toFixed(6);
         
-        // --- ส่วนที่เพิ่มใหม่: คำนวณระยะห่าง ---
+        // --- คำนวณระยะห่าง ---
         const distanceKm = getDistanceFromLatLonInKm(
             postLocation.lat, postLocation.lng, 
             viewerLocation.lat, viewerLocation.lng
-        ).toFixed(2); // ทศนิยม 2 ตำแหน่ง
-        // -------------------------------------
+        ).toFixed(2);
+        // -------------------
 
-        mapUrl = `http://googleusercontent.com/maps.google.com/maps?q=${centerLat},${centerLng}&z=13&output=embed&t=m&hl=en&markers=color:red%7Clabel:A%7C${p_lat},${p_lng}&markers=color:blue%7Clabel:B%7C${v_lat},${v_lng}`;
+        // URL แบบแสดง 2 จุด (A=กระทู้, B=คนดู)
+        mapUrl = `https://maps.google.com/maps?q=${centerLat},${centerLng}&z=13&output=embed&t=m&hl=en&markers=color:red%7Clabel:A%7C${p_lat},${p_lng}&markers=color:blue%7Clabel:B%7C${v_lat},${v_lng}`;
         
-        // แสดงข้อความระยะห่าง
+        // HTML แสดงระยะห่าง
         viewerText = `<br>
-                      <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745;">
+                      <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
                           <span style="color:#007bff; font-weight:bold;">
-                              📍 ผู้ชมอยู่ที่: ${v_lat}, ${v_lng}
+                              📍 ผู้ชม: ${v_lat}, ${v_lng}
                           </span><br>
                           <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                              📏 ห่างจากจุดนัดพบ: ${distanceKm} กม.
+                              📏 ห่างกัน: ${distanceKm} กม.
                           </span>
                       </div>`;
-        zoomLevel = 13; 
     } else {
-        // ⭐ แก้ไข: ใช้ ${p_lat} เพื่อฝังตัวแปร Lat ของกระทู้
-        mapUrl = `https://maps.google.com/maps?q=$${p_lat},${p_lng}&hl=en&z=${zoomLevel}&output=embed`;
+        // URL แบบแสดงจุดเดียว (แก้ 1{p_lat} เป็น ${p_lat})
+        mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
     }
     
     mapIframe.src = mapUrl;
-    mapTitle.innerHTML = `📍 Location${viewerText}`;
+
+    // ป้องกัน Error ถ้าลืมใส่ ID ใน HTML
+    if (mapTitle) {
+        mapTitle.innerHTML = `📍 Location${viewerText}`;
+    }
 
     mapContainer.style.display = 'block'; 
     navButton.style.display = 'block';
