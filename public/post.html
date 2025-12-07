@@ -243,7 +243,7 @@
 
     <div class="container">
         <div id="map-container" style="margin-top: 20px; display:none;">
-    <h3 id="map-title">📍 Location</h3>
+    <h3>📍 Location</h3>
     
     <button id="start-nav-btn" 
        class="send-btn" 
@@ -732,40 +732,39 @@ window.closeImageViewer = function() {
         // --- CORE LOGIC (unchanged for brevity) ---
 
         function displayMap(location) {
-    const mapContainer = document.getElementById('map-container');
-    const mapIframe = document.getElementById('post-map-iframe');
-    const navButton = document.getElementById('start-nav-btn');
-    const lang = localStorage.getItem('preferredLanguage') || 'th';
-    const t = postTranslations[lang] || postTranslations['th'];         
-    
-    if (location && location.lat && location.lng) {
-        const lat = location.lat.toFixed(6); 
-        const lng = location.lng.toFixed(6);
-        
-        currentDestination = { lat, lng };
+            const mapContainer = document.getElementById('map-container');
+            const mapIframe = document.getElementById('post-map-iframe');
+            const navButton = document.getElementById('start-nav-btn');
+			const lang = localStorage.getItem('preferredLanguage') || 'th';
+			const t = postTranslations[lang] || postTranslations['th'];			
+            
+            if (location && location.lat && location.lng) {
+                const lat = location.lat.toFixed(6); 
+                const lng = location.lng.toFixed(6);
+                
+                currentDestination = { lat, lng };
 
-        // ✅ แก้ไข: ใช้ https://maps.google.com และใช้ ${lat} ให้ถูกต้อง
-        const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
-        
-        mapIframe.src = initialMapUrl;
-        mapContainer.style.display = 'block'; 
-        
-        navButton.style.display = 'block';
-        navButton.onclick = startEmbeddedNavigation; 
-        navButton.innerText = t['btn_show_route'];
-        
-    } else {
-        mapContainer.style.display = 'none'; 
-        navButton.style.display = 'none';
-    }
-}
+                const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
+                
+                mapIframe.src = initialMapUrl;
+                mapContainer.style.display = 'block'; 
+                
+                navButton.style.display = 'block';
+                navButton.onclick = startEmbeddedNavigation; 
+                navButton.innerText = t['btn_show_route'];
+                
+            } else {
+                mapContainer.style.display = 'none'; 
+                navButton.style.display = 'none';
+            }
+        }
 		
 		function displayMapWithViewer(postLocation, viewerLocation) {
     const mapContainer = document.getElementById('map-container');
     const mapIframe = document.getElementById('post-map-iframe');
     const navButton = document.getElementById('start-nav-btn'); 
-    const mapTitle = document.getElementById('map-title'); // ต้องมี id="map-title" ใน HTML
-    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const mapTitle = document.getElementById('map-title');
+	const lang = localStorage.getItem('preferredLanguage') || 'th';
     const t = postTranslations[lang] || postTranslations['th'];
 
     // 1. ตรวจสอบพิกัดกระทู้
@@ -775,13 +774,11 @@ window.closeImageViewer = function() {
         return;
     }
 
-    // อัปเดตตัวแปร Global เพื่อให้ปุ่ม "เริ่มนำทาง" ทำงานได้
-    currentDestination = { lat: postLocation.lat, lng: postLocation.lng };
-
     const p_lat = postLocation.lat.toFixed(6); 
     const p_lng = postLocation.lng.toFixed(6);
     let mapUrl = '';
     let viewerText = '';
+    let zoomLevel = 15;
     
     // ตรวจสอบว่าเป็นเจ้าของกระทู้หรือ Admin
     const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
@@ -789,41 +786,36 @@ window.closeImageViewer = function() {
     if (viewerLocation && viewerLocation.lat && isOwnerOrAdmin) {
         const v_lat = viewerLocation.lat.toFixed(6);
         const v_lng = viewerLocation.lng.toFixed(6);
-        
-        // คำนวณจุดกึ่งกลางระหว่าง 2 จุด
         const centerLat = ((parseFloat(p_lat) + parseFloat(v_lat)) / 2).toFixed(6);
         const centerLng = ((parseFloat(p_lng) + parseFloat(v_lng)) / 2).toFixed(6);
         
-        // --- คำนวณระยะห่าง ---
+        // --- ส่วนที่เพิ่มใหม่: คำนวณระยะห่าง ---
         const distanceKm = getDistanceFromLatLonInKm(
             postLocation.lat, postLocation.lng, 
             viewerLocation.lat, viewerLocation.lng
-        ).toFixed(2);
-        // -------------------
+        ).toFixed(2); // ทศนิยม 2 ตำแหน่ง
+        // -------------------------------------
 
-        // URL แบบแสดง 2 จุด (A=กระทู้, B=คนดู)
-        mapUrl = `https://maps.google.com/maps?q=${centerLat},${centerLng}&z=13&output=embed&t=m&hl=en`;
+        mapUrl = `http://googleusercontent.com/maps.google.com/maps?q=${centerLat},${centerLng}&z=13&output=embed&t=m&hl=en&markers=color:red%7Clabel:A%7C${p_lat},${p_lng}&markers=color:blue%7Clabel:B%7C${v_lat},${v_lng}`;
         
+        // แสดงข้อความระยะห่าง
         viewerText = `<br>
-                      <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
+                      <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745;">
                           <span style="color:#007bff; font-weight:bold;">
-                              📍 ผู้ชม: ${v_lat}, ${v_lng}
+                              📍 ผู้ชมอยู่ที่: ${v_lat}, ${v_lng}
                           </span><br>
                           <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                              📏 Distance: ${distanceKm} Km.
+                              📏 ห่างจากจุดนัดพบ: ${distanceKm} กม.
                           </span>
                       </div>`;
+        zoomLevel = 13; 
     } else {
-        // URL แบบแสดงจุดเดียว (แก้ 1{p_lat} เป็น ${p_lat})
-        mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
+        // ⭐ แก้ไข: ใช้ ${p_lat} เพื่อฝังตัวแปร Lat ของกระทู้
+        mapUrl = `https://maps.google.com/maps?q=$${p_lat},${p_lng}&hl=en&z=${zoomLevel}&output=embed`;
     }
     
     mapIframe.src = mapUrl;
-
-    // ป้องกัน Error ถ้าลืมใส่ ID ใน HTML
-    if (mapTitle) {
-        mapTitle.innerHTML = `📍 Location${viewerText}`;
-    }
+    mapTitle.innerHTML = `📍 Location${viewerText}`;
 
     mapContainer.style.display = 'block'; 
     navButton.style.display = 'block';
@@ -833,7 +825,7 @@ window.closeImageViewer = function() {
 
 window.startEmbeddedNavigation = function() {
     if (!currentDestination) {
-        showNotification('No coordinates found', 'fas fa-exclamation-triangle');
+        showNotification('ไม่พบพิกัดปลายทาง', 'fas fa-exclamation-triangle');
         return;
     }
 
@@ -841,12 +833,12 @@ window.startEmbeddedNavigation = function() {
     const lng = currentDestination.lng;
     const mapIframe = document.getElementById('post-map-iframe');
 
-    // ✅ แก้ไข: เปลี่ยน 2{lat} เป็น ${lat} และใช้ URL มาตรฐาน
-    const mapDirectionsUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=14&output=embed`;
+    // ⭐ แก้ไข: ใช้ ${lat} เพื่อฝังตัวแปร Lat
+    const mapDirectionsUrl = `https://maps.google.com/maps?q=$${lat},${lng}&hl=en&z=14&output=embed&entry=open&layer=transit&dir_action=navigate`;
     
     mapIframe.src = mapDirectionsUrl;
     
-    showNotification('✅ Navigation mode is now displayed.', 'fas fa-map-signs', 4000);
+    showNotification('✅ โหมดนำทางแสดงผลแล้ว กรุณาระบุจุดเริ่มต้นในแผนที่', 'fas fa-map-signs', 4000);
 }
 
 socket.on('viewer-location-update', (data) => {
