@@ -852,10 +852,6 @@ io.on('connection', (socket) => {
         if (socket.viewingPostId && postViewers[socket.viewingPostId] === socket.username) {
             delete postViewers[socket.viewingPostId];
             broadcastPostStatus(socket.viewingPostId, false);
-            if (viewerGeolocation[socket.viewingPostId] && viewerGeolocation[socket.viewingPostId][socket.username]) {
-                delete viewerGeolocation[socket.viewingPostId][socket.username];
-                io.to(`post-${socket.viewingPostId}`).emit('viewer-left-location', { viewer: socket.username });
-            }
         }
     });
 
@@ -863,10 +859,7 @@ io.on('connection', (socket) => {
         if (postViewers[postId] === socket.username) {
             delete postViewers[postId];
             broadcastPostStatus(postId, false);
-            if (viewerGeolocation[postId] && viewerGeolocation[postId][socket.username]) {
-                delete viewerGeolocation[postId][socket.username];
-                io.to(`post-${postId}`).emit('viewer-left-location', { viewer: socket.username });
-            }
+            // ส่วน Geolocation ถูกลบออกแล้ว
         }
         socket.leave(`post-${postId}`);
         socket.viewingPostId = null;
