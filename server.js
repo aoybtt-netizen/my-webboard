@@ -58,7 +58,7 @@ const DEFAULT_CURRENCY = 'THB';
 
 // --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) ---
 let postViewers = {}; 
-//let viewerGeolocation = {};
+let viewerGeolocation = {};
 
 // --- Translations ---
 const serverTranslations = {
@@ -839,19 +839,23 @@ io.on('connection', (socket) => {
     });
 
     // --- Geolocation & Disconnect Logic ---
-   /* socket.on('update-viewer-location', (data) => {
+    socket.on('update-viewer-location', (data) => {
         const { postId, username, location } = data;
         if (location && location.lat && location.lng) {
             if (!viewerGeolocation[postId]) viewerGeolocation[postId] = {};
             viewerGeolocation[postId][username] = location;
             io.to(`post-${postId}`).emit('viewer-location-update', { viewer: username, location: location });
         }
-    });*/
+    });
 
     socket.on('disconnect', () => {
         if (socket.viewingPostId && postViewers[socket.viewingPostId] === socket.username) {
             delete postViewers[socket.viewingPostId];
             broadcastPostStatus(socket.viewingPostId, false);
+            if (viewerGeolocation[socket.viewingPostId] && viewerGeolocation[socket.viewingPostId][socket.username]) {
+                delete viewerGeolocation[socket.viewingPostId][socket.username];
+                io.to(`post-${socket.viewingPostId}`).emit('viewer-left-location', { viewer: socket.username });
+            }
         }
     });
 
@@ -859,7 +863,10 @@ io.on('connection', (socket) => {
         if (postViewers[postId] === socket.username) {
             delete postViewers[postId];
             broadcastPostStatus(postId, false);
-            // ส่วน Geolocation ถูกลบออกแล้ว
+            if (viewerGeolocation[postId] && viewerGeolocation[postId][socket.username]) {
+                delete viewerGeolocation[postId][socket.username];
+                io.to(`post-${postId}`).emit('viewer-left-location', { viewer: socket.username });
+            }
         }
         socket.leave(`post-${postId}`);
         socket.viewingPostId = null;

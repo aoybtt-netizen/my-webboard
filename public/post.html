@@ -636,15 +636,22 @@
             socket.emit('join-post-room', { postId, username: myUsername, lang: currentLang });
             
             // Get and send viewer's location (one-time on join)
-            if (navigator.geolocation) { 
-    navigator.geolocation.getCurrentPosition((position) => { 
-        const location = { lat: position.coords.latitude, lng: position.coords.longitude }; 
-        // ส่งพิกัดไปให้ Server 
-        socket.emit('update-viewer-location', { postId: postId, username: myUsername, location: location }); 
-    }, (error) => { 
-        console.warn('Geolocation denied or failed:', error.message); 
-    }); 
-}
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const location = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    // ส่งพิกัดไปให้ Server
+                    socket.emit('update-viewer-location', { 
+                        postId: postId, 
+                        username: myUsername, 
+                        location: location
+                    });
+                }, (error) => {
+                    console.warn('Geolocation denied or failed:', error.message);
+                });
+            }
         });
 
         socket.on('access-granted', (post) => {
@@ -782,14 +789,26 @@ window.closeImageViewer = function() {
         const centerLat = ((parseFloat(p_lat) + parseFloat(v_lat)) / 2).toFixed(6);
         const centerLng = ((parseFloat(p_lng) + parseFloat(v_lng)) / 2).toFixed(6);
         
-        // ⭐ แก้ไข: ใช้ ${centerLat} เพื่อฝังตัวแปร Lat กลาง
-        // ใช้ &markers= เพื่อปักหมุดหลายจุด
-        mapUrl = `https://maps.google.com/maps?q=$${centerLat},${centerLng}&hl=en&z=13&output=embed&markers=${p_lat},${p_lng}|${v_lat},${v_lng}`;
+        // --- ส่วนที่เพิ่มใหม่: คำนวณระยะห่าง ---
+        const distanceKm = getDistanceFromLatLonInKm(
+            postLocation.lat, postLocation.lng, 
+            viewerLocation.lat, viewerLocation.lng
+        ).toFixed(2); // ทศนิยม 2 ตำแหน่ง
+        // -------------------------------------
+
+        mapUrl = `http://googleusercontent.com/maps.google.com/maps?q=${centerLat},${centerLng}&z=13&output=embed&t=m&hl=en&markers=color:red%7Clabel:A%7C${p_lat},${p_lng}&markers=color:blue%7Clabel:B%7C${v_lat},${v_lng}`;
         
-        viewerText = `<br><span style="color:#007bff; font-weight:bold; margin-top:5px;">
-                      📍 ผู้ชมกำลังอยู่ที่: Lat ${v_lat}, Lng ${v_lng}
-                      </span>`;
-        zoomLevel = 13; // ซูมออกเล็กน้อยเพื่อแสดง 2 จุด
+        // แสดงข้อความระยะห่าง
+        viewerText = `<br>
+                      <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745;">
+                          <span style="color:#007bff; font-weight:bold;">
+                              📍 ผู้ชมอยู่ที่: ${v_lat}, ${v_lng}
+                          </span><br>
+                          <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
+                              📏 ห่างจากจุดนัดพบ: ${distanceKm} กม.
+                          </span>
+                      </div>`;
+        zoomLevel = 13; 
     } else {
         // ⭐ แก้ไข: ใช้ ${p_lat} เพื่อฝังตัวแปร Lat ของกระทู้
         mapUrl = `https://maps.google.com/maps?q=$${p_lat},${p_lng}&hl=en&z=${zoomLevel}&output=embed`;
@@ -1375,6 +1394,23 @@ function closeDealWithViewer() {
         fileNameDisplay.style.display = 'none';
     }
 });
+
+	function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // รัศมีของโลก (กม.)
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // ระยะทางเป็น กม.
+    return d;
+}
+
+function deg2rad(deg) {
+    return deg * (Math.PI / 180);
+}
 
     </script>
 </body>
