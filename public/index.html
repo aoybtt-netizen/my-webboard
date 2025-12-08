@@ -868,11 +868,11 @@
                 }
             } else {
                 // 5. แจ้งเตือนข้อผิดพลาด
-                showNotification(`❌ ${data.error || 'ดำเนินการไม่สำเร็จ'}`, 'fas fa-times-circle', 4000);
+                showNotification(`❌ ${data.error || 'Operation failed'}`, 'fas fa-times-circle', 4000);
             }
         } catch (error) {
             // 6. แจ้งเตือนเมื่อการเชื่อมต่อล้มเหลว
-            showNotification('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ Server', 'fas fa-times-circle', 4000);
+            showNotification('❌ An error occurred while connecting to the server.', 'fas fa-times-circle', 4000);
             console.error('Ban toggle error:', error);
         }
     }
@@ -883,7 +883,7 @@
             newRating = parseFloat(newRating);
 
             if (isNaN(newRating) || newRating < 1 || newRating > 5) {
-                alert('❌ คะแนนไม่ถูกต้อง! กรุณาระบุระหว่าง 1.0 ถึง 5.0');
+                alert('❌ Incorrect rating! Please specify between 1.0 - 5.0');
                 return;
             }
             
@@ -895,15 +895,43 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    alert(`❌ ตั้งค่าคะแนนไม่สำเร็จ: ${data.error}`);
+                    alert(`❌ Failed to set rating: ${data.error}`);
                 } else {
-                    alert(`✅ ตั้งค่าคะแนน ${targetUser} เป็น ${data.newRating} ดาว สำเร็จ!`);
+                    alert(`✅ SetRating ${targetUser} To ${data.newRating} Success`);
                     openAllUserList(); 
                     updateUserInfo(); 
                 }
             })
-            .catch(err => alert('❌ Error: ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อตั้งค่าคะแนน'));
+            .catch(err => alert('❌ Error: Unable to connect to server to set score.'));
         }
+		
+		// setAdminLevel
+async function setAdminLevel(targetUser, newLevel) {
+    const levelName = newLevel === 0 ? 'User ทั่วไป' : `Admin Level ${newLevel}`;
+    const action = newLevel === 0 ? 'ถอนสิทธิ์ (Demote)' : 'แต่งตั้ง (Promote)';
+    
+    if (!confirm(`Are you sure you want to? ${action} ${targetUser} Let it be ${levelName} Or not?`)) return;
+
+    try {
+        const res = await fetch('/api/admin/set-level', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetUser, newLevel, requestBy: myUsername })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert(`✅ Successfully completed: ${targetUser} Promote ${levelName} `);
+            allUsersCache = []; // ล้าง Cache รายชื่อ
+            openAllUserList();  // รีเฟรชหน้ารายชื่อ
+        } else {
+            alert(`❌ Failed: ${data.error}`);
+        }
+    } catch (error) {
+        console.error(error);
+        alert('❌ Error connecting to server');
+    }
+}
 
         function changeListPage(delta) {
             const listType = document.getElementById('pagination-controls').dataset.type;
@@ -2249,36 +2277,54 @@ function openAdminPinnedModal() {
 
     container.innerHTML = list.map(u => {
         const isBanned = u.isBanned;
+		const targetLevel = u.adminLevel || 0;
         const banBtnText = isBanned ? `✅ ${unbanText}` : `❌ ${banText}`; 
         const banBtnColor = isBanned ? '#28a745' : '#dc3545';
         const banStatusText = isBanned ? ' (⛔ แบน)' : '';
 		
 		let promoteButtons = '';
 		
-		// ถ้าฉันเป็น Level 2 ขึ้นไป -> ตั้งคนอื่นเป็น Level 1 ได้
-        if (myAdminLevel >= 2) {
+		// 1. ถ้าฉันเป็น Level 2+ และเป้าหมายยศต่ำกว่า 1 -> แต่งตั้งเป็น Admin 1 ได้
+        if (myAdminLevel >= 2 && targetLevel < 1) {
              promoteButtons += `
                 <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#17a2b8; color:white; font-size:0.8em;" 
-                    onclick="alert('รอใส่ฟังก์ชันตั้งเป็น Admin Level 1 เร็วๆ นี้')">
-                    👮‍♂️ Admin 1
+                    onclick="setAdminLevel('${u.name}', 1)">
+                    👮‍♂️ ตั้งเป็น Admin 1
                 </button>
              `;
         }
 
-        // ถ้าฉันเป็น Level 3 ขึ้นไป -> ตั้งคนอื่นเป็น Level 2 ได้
-        if (myAdminLevel >= 3) {
+        // 2. ถ้าฉันเป็น Level 3+ และเป้าหมายยศต่ำกว่า 2 -> แต่งตั้งเป็น Admin 2 ได้
+        if (myAdminLevel >= 3 && targetLevel < 2) {
              promoteButtons += `
                 <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#6610f2; color:white; font-size:0.8em;" 
-                    onclick="alert('รอใส่ฟังก์ชันตั้งเป็น Admin Level 2 เร็วๆ นี้')">
-                    👨‍💼 Admin 2
+                    onclick="setAdminLevel('${u.name}', 2)">
+                    👨‍💼 ตั้งเป็น Admin 2
                 </button>
              `;
         }
         
+        // 3. ⭐ ปุ่มถอนสิทธิ์ (Demote)
+        // แสดงเมื่อ: ฉันยศสูงกว่าเป้าหมาย และ เป้าหมายมียศ (Level > 0)
+        if (myAdminLevel > targetLevel && targetLevel > 0) {
+            promoteButtons += `
+                <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#ffc107; color:black; font-size:0.8em;" 
+                    onclick="setAdminLevel('${u.name}', 0)">
+                    ⬇️ ถอนสิทธิ์
+                </button>
+             `;
+        }
+        
+        // แสดง Badge บอกยศปัจจุบัน
+        let levelBadge = '';
+        if (targetLevel > 0) {
+            levelBadge = `<span style="background:#007bff; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>`;
+        }
+
         return `
         <div class="user-list-item" style="display:flex; flex-direction:column; align-items:flex-start; background: ${isBanned ? '#f8d7da' : 'none'}; border-left: 5px solid ${isBanned ? '#dc3545' : 'none'};">
             <span>
-                👤 ${u.name} ${banStatusText}
+                👤 ${u.name} ${levelBadge} ${banStatusText}
                 <span style="color:black; font-size:0.9em; font-weight:bold; margin-left:5px;">
                     (⭐ ${u.rating.toFixed(2)} / 5.0)
                 </span>

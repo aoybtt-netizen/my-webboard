@@ -301,37 +301,58 @@ app.post('/api/admin/set-cost', async (req, res) => {
     res.json({ success: true, newCost: cost });
 });
 
-// 8. Give Coins
+
+	// 8. Give Coins 
 app.post('/api/admin/give-coins', async (req, res) => {
     const { targetUser, amount, requestBy } = req.body;
-	const requester = await getUserData(requestBy);
+    
+    // ดึงข้อมูลผู้โอน
+    const requester = await getUserData(requestBy);
+    
+    // เช็คสิทธิ์: ต้องเป็น Level 3 เท่านั้น
     if (requester.adminLevel < 3) {
         return res.status(403).json({ error: 'Level 3 Admin only (Permission Denied)' });
     }
-    if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+
     const parsedAmount = parseInt(amount);
-    if (parsedAmount <= 0) return res.status(400).json({ error: 'จำนวนเงินไม่ถูกต้อง' });
+    if (parsedAmount <= 0) return res.status(400).json({ error: 'Incorrect number' });
 
-    const adminUser = await getUserData('Admin');
-    if (adminUser.coins < parsedAmount) return res.status(400).json({ error: `❌ Admin มี USD ไม่พอ` });
+    // ถ้าเป็น Level 3 ไม่ต้องเช็คยอดและไม่ต้องหักเงิน
+    // (ข้ามขั้นตอนการตัดเงิน requester ไปเลย)
 
-    await updateUser('Admin', { coins: adminUser.coins - parsedAmount });
+    // เพิ่มเงินให้เป้าหมาย
     const targetData = await getUserData(targetUser);
     await updateUser(targetUser, { coins: targetData.coins + parsedAmount });
 
+    // บันทึก Transaction (ระบุว่าเป็น System Generate หรือ Admin Gift)
     await transactionsCollection.insertOne({
-        id: Date.now(), type: 'ADMIN_GIVE', amount: parsedAmount, fromUser: 'Admin', toUser: targetUser,
-        note: `Admin โอน USD ให้ ${targetUser}`, timestamp: Date.now()
+        id: Date.now(), 
+        type: 'ADMIN_GIVE', 
+        amount: parsedAmount, 
+        fromUser: requestBy, // แสดงชื่อคนเสกเงิน
+        toUser: targetUser,
+        note: `Admin (${requestBy}) Transfer USD to ${targetUser}`, 
+        timestamp: Date.now()
     });
 
-    const updatedAdmin = await getUserData('Admin');
+    // อัปเดตยอดเงิน Realtime
     const updatedTarget = await getUserData(targetUser);
     io.emit('balance-update', { user: targetUser, coins: updatedTarget.coins });
-    io.emit('balance-update', { user: 'Admin', coins: updatedAdmin.coins }); 
+    // ไม่ต้อง emit balance-update ของ Admin เพราะเงินไม่ได้ลด
     
-    const notifMsg = { sender: 'System', target: targetUser, msgKey: 'SYS_TRANSFER', msgData: { amount: parsedAmount }, msg: `💰 Admin ได้โอนให้คุณจำนวน ${parsedAmount} USD`, timestamp: Date.now() };
+    // แจ้งเตือนผู้รับ
+    const notifMsg = { 
+        sender: 'System', 
+        target: targetUser, 
+        msgKey: 'SYS_TRANSFER', 
+        msgData: { amount: parsedAmount }, 
+        msg: `💰 Admin has transferred the amount to you ${parsedAmount} USD`, 
+        timestamp: Date.now() 
+    };
     await messagesCollection.insertOne(notifMsg);
     io.to(targetUser).emit('private-message', { ...notifMsg, to: targetUser });
+    
+    // แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่
     io.to('Admin').emit('admin-new-transaction');
 
     res.json({ success: true });
@@ -539,7 +560,7 @@ app.put('/api/posts/:id/close-manual', async (req, res) => {
     const { requestBy } = req.body;
     const post = await postsCollection.findOne({ id: id });
 
-    if (!post) return res.status(404).json({ error: 'ไม่พบกระทู้' });
+    if (!post) return res.status(404).json({ error: 'No posts found' });
     if (requestBy !== post.author && requestBy !== 'Admin') return res.status(403).json({ error: 'No Permission' });
     if (post.isClosed) return res.json({ success: true, message: 'Closed already' });
 
@@ -554,7 +575,7 @@ app.put('/api/posts/:id/close-manual', async (req, res) => {
              for (const socketId of roomRef) {
                 const s = io.sockets.sockets.get(socketId);
                 if (s && s.username === viewerToKick) {
-                    s.emit('force-leave', '⚠️ กระทู้ถูกปิด คุณถูกเชิญออก');
+                    s.emit('force-leave', '⚠️ The topic is closed. You have been invited to leave.');
                 }
              }
         }
@@ -575,7 +596,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
     const parsedAmount = parseInt(amount);
     const user = await getUserData(targetUser);
     
-    if (user.coins < parsedAmount) return res.status(400).json({ error: 'เหรียญไม่พอให้หัก' });
+    if (user.coins < parsedAmount) return res.status(400).json({ error: 'Not enough coins to break' });
     await updateUser(targetUser, { coins: user.coins - parsedAmount });
     
     const adminUser = await getUserData('Admin');
@@ -583,7 +604,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
     
     await transactionsCollection.insertOne({
         id: Date.now(), type: 'ADMIN_DEDUCT', amount: parsedAmount, fromUser: targetUser, toUser: 'Admin',
-        note: `Admin ดึงเหรียญคืนจาก ${targetUser}`, timestamp: Date.now()
+        note: `Admin Retrieve coins from ${targetUser}`, timestamp: Date.now()
     });
 
     const updatedUser = await getUserData(targetUser);
@@ -606,18 +627,18 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
     if (targetUser === 'Admin') return res.status(400).json({ error: 'Cannot ban Admin' });
 
     await updateUser(targetUser, { isBanned: shouldBan });
-    io.to(targetUser).emit('force-logout', shouldBan ? '❌ บัญชีของคุณถูกระงับ' : '✅ บัญชีของคุณถูกปลดแบน');
+    io.to(targetUser).emit('force-logout', shouldBan ? '❌ Your account has been suspended.' : '✅ Your account has been unbanned.');
 
     if (shouldBan) {
         const allSockets = io.sockets.sockets;
         allSockets.forEach(socket => {
             if (socket.username === targetUser) {
                 if (socket.viewingPostId) {
-                    socket.emit('force-leave', '⛔ คุณถูกแบน');
+                    socket.emit('force-leave', '⛔ You are banned');
                     delete postViewers[socket.viewingPostId];
                     broadcastPostStatus(socket.viewingPostId, false);
                 }
-                socket.emit('force-logout', '⛔ คุณถูกแบน'); 
+                socket.emit('force-logout', '⛔ You are banned'); 
             }
         });
         await postsCollection.updateMany(
@@ -678,8 +699,8 @@ app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => 
     const imageUrl = req.file ? req.file.path : null; 
 
     const post = await postsCollection.findOne({ id: postId });
-    if (!post) return res.status(404).json({ error: 'ไม่พบกระทู้' });
-    if (post.isClosed && author !== 'Admin') return res.status(403).json({ error: '⛔ ปิดรับความคิดเห็นแล้ว' });
+    if (!post) return res.status(404).json({ error: 'No posts found' });
+    if (post.isClosed && author !== 'Admin') return res.status(403).json({ error: '⛔ Comments are closed.' });
 
     const newComment = { id: Date.now(), author, content, imageUrl, timestamp: Date.now() };
     await postsCollection.updateOne({ id: postId }, { $push: { comments: newComment } });
@@ -687,11 +708,42 @@ app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => 
     io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
     
     if (post.author !== author) {
-        const notifMsg = { sender: 'System', target: post.author, msgKey: 'SYS_NEW_COMMENT', msgData: { postTitle: post.title }, msg: `💬 คอมเมนต์ใหม่: ${post.title}`, timestamp: Date.now(), postId: postId };
+        const notifMsg = { sender: 'System', target: post.author, msgKey: 'SYS_NEW_COMMENT', msgData: { postTitle: post.title }, msg: `💬 New comment: ${post.title}`, timestamp: Date.now(), postId: postId };
         await messagesCollection.insertOne(notifMsg);
         io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
     }
     res.json({ success: true, comment: newComment });
+});
+
+// 24. Set Admin Level (Promote / Demote)
+app.post('/api/admin/set-level', async (req, res) => {
+    const { targetUser, newLevel, requestBy } = req.body;
+    
+    const requester = await getUserData(requestBy);
+    const target = await getUserData(targetUser);
+
+    // 1. ผู้สั่งการต้องเป็น Level 2 ขึ้นไป
+    if (requester.adminLevel < 2) {
+        return res.status(403).json({ error: 'Permission denied. Must be Admin Level 2+' });
+    }
+    
+    // 2. ห้ามจัดการคนที่ยศสูงกว่าหรือเท่ากับตัวเอง (เช่น 2 จะปลด 3 ไม่ได้, 2 จะปลด 2 ไม่ได้)
+    if (requester.adminLevel <= target.adminLevel) {
+        return res.status(403).json({ error: `Unable to manage Admins at higher or equal levels. (Target Level: ${target.adminLevel})` });
+    }
+    
+    // 3. ห้ามแต่งตั้งให้ยศสูงกว่าหรือเท่ากับตัวเอง
+    if (newLevel >= requester.adminLevel) {
+        return res.status(403).json({ error: 'Cannot be appointed to a higher or equal level to oneself.' });
+    }
+
+    // อัปเดต Level
+    await updateUser(targetUser, { adminLevel: newLevel });
+    
+    // บังคับ Logout เพื่อรีเฟรชสิทธิ์ (Optional)
+    io.to(targetUser).emit('force-logout', `🔔 Your license has changed (Level ${newLevel}) please log in again.`);
+
+    res.json({ success: true, newLevel: newLevel });
 });
 
 // --- Socket Helpers ---
