@@ -241,9 +241,22 @@ app.get('/api/user-info', async (req, res) => {
 
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
-    if (req.query.requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 1 ขึ้นไป (ไม่ใช่เช็คแค่ชื่อ "Admin")
+    const requester = await getUserData(req.query.requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
+    }
+    
     const users = await usersCollection.find({}).toArray();
-    res.json(users.map(u => ({ name: u.username, coins: u.coins, rating: u.rating, isBanned: u.isBanned })));
+    
+    // 2. ส่งข้อมูลกลับไป (เพิ่ม field adminLevel)
+    res.json(users.map(u => ({ 
+        name: u.username, 
+        coins: u.coins, 
+        rating: u.rating, 
+        isBanned: u.isBanned,
+        adminLevel: u.adminLevel || 0  // ⭐ สำคัญมาก: ต้องส่งค่านี้ ไม่งั้นปุ่มถอนสิทธิ์ไม่ขึ้น
+    })));
 });
 
 // 4. Contacts (Messages)
@@ -294,7 +307,8 @@ app.get('/api/check-active-job', async (req, res) => {
 
 // 7. Set Cost
 app.post('/api/admin/set-cost', async (req, res) => {
-    if (req.body.requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    const requester = await getUserData(req.body.requestBy);
+	if (requester.adminLevel < 1) return res.status(403).json({ error: 'Admin only' });
     const cost = parseFloat(req.body.cost);
     await configCollection.updateOne({ id: 'main_config' }, { $set: { postCost: cost } });
     io.emit('config-update', cost);
@@ -546,7 +560,8 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
 // 16. Delete Post
 app.delete('/api/posts/:id', async (req, res) => { 
-    if (req.body.requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    const requester = await getUserData(req.body.requestBy);
+	if (requester.adminLevel < 1) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id);
     await postsCollection.deleteOne({ id: id });
     delete postViewers[id];
@@ -592,7 +607,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
     if (requester.adminLevel < 1) {
         return res.status(403).json({ error: 'Admin permission required' });
     }
-    if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    //if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const parsedAmount = parseInt(amount);
     const user = await getUserData(targetUser);
     
@@ -623,7 +638,8 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
 // 19. Toggle Ban
 app.post('/api/admin/toggle-ban', async (req, res) => {
     const { targetUser, shouldBan, requestBy } = req.body;
-    if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    const requester = await getUserData(requestBy);
+	if (requester.adminLevel < 1) return res.status(403).json({ error: 'Admin only' });
     if (targetUser === 'Admin') return res.status(400).json({ error: 'Cannot ban Admin' });
 
     await updateUser(targetUser, { isBanned: shouldBan });
