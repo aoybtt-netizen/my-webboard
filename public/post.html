@@ -839,7 +839,7 @@ window.closeImageViewer = function() {
         
         // เช็คว่ามีตำแหน่งตัวเองไหม
         if (myCurrentLocation) {
-             // 1. คำนวณระยะห่าง
+             // 1. คำนวณระยะห่าง (ฉัน -> กระทู้)
              const distanceKm = getDistanceFromLatLonInKm(
                 location.lat, location.lng, 
                 myCurrentLocation.lat, myCurrentLocation.lng
@@ -852,14 +852,14 @@ window.closeImageViewer = function() {
                       </span>
                   </div>`;
 
-             // 2. สร้าง URL แบบเส้นทาง (Start -> Dest)
+             // 2. สร้าง URL แบบเส้นทาง (Start: Me -> Dest: Post)
              const myLat = myCurrentLocation.lat.toFixed(6);
              const myLng = myCurrentLocation.lng.toFixed(6);
-             initialMapUrl = `https://maps.google.com/maps?saddr=$${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
+             initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
 
         } else {
              // กรณีไม่รู้ตำแหน่งตัวเอง (แสดงแค่จุดปลายทาง)
-             initialMapUrl = `https://maps.google.com/maps?q=$${lat},${lng}&hl=en&z=15&output=embed`;
+             initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&t=m&hl=en`;
         }
 
         mapIframe.src = initialMapUrl;
@@ -878,9 +878,9 @@ window.closeImageViewer = function() {
             navButton.innerText = t['btn_show_route'];
             
             navButton.onclick = function() {
-                let googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=$${lat},${lng}`;
+                let googleMapsUrl = `https://maps.google.com/maps?q=${lat},${lng}`;
                 if (myCurrentLocation) {
-                    googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=$${myCurrentLocation.lat},${myCurrentLocation.lng}&destination=${lat},${lng}`;
+                    googleMapsUrl = `https://maps.google.com/maps?saddr=${myCurrentLocation.lat},${myCurrentLocation.lng}&daddr=${lat},${lng}`;
                 }
                 window.open(googleMapsUrl, '_blank');
             };
@@ -920,19 +920,18 @@ window.closeImageViewer = function() {
         const v_lat = viewerLocation.lat.toFixed(6);
         const v_lng = viewerLocation.lng.toFixed(6);
         
+        // ใช้ตำแหน่ง "Post" เป็นจุดอ้างอิงเสมอ 
+        // เพื่อดูว่า Rider อยู่ห่างจาก "จุดรับงาน" เท่าไหร่ (ไม่สนว่าตัวเจ้าของจะเดินไปไหน)
         let refLat = postLocation.lat;
         let refLng = postLocation.lng;
         
-        if (myCurrentLocation) {
-            refLat = myCurrentLocation.lat;
-            refLng = myCurrentLocation.lng;
-        }
-
-        // คำนวณระยะทางจาก "ฉัน -> คนดู" (หรือ โพสต์ -> คนดู ถ้าไม่มี GPS ฉัน)
+        // คำนวณระยะทางจาก "จุดปักหมุด -> คนดู"
         const distanceKm = getDistanceFromLatLonInKm(
             refLat, refLng, 
             viewerLocation.lat, viewerLocation.lng
         ).toFixed(2);
+        
+        // สร้างเส้นทางจาก จุดปักหมุด -> คนดู
         let originLat = p_lat;
         let originLng = p_lng;
 
@@ -944,11 +943,12 @@ window.closeImageViewer = function() {
                               📍 ผู้ชม: ${v_lat}, ${v_lng}
                           </span><br>
                           <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                              📏 ห่างจากฉัน: ${distanceKm} กม.
+                              📏 ห่างจากจุดปักหมุด: ${distanceKm} กม.
                           </span>
                       </div>`;
     } else {
-        mapUrl = `https://maps.google.com/maps?q=$${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
+        // กรณีไม่มี Viewer ให้แสดงจุด Post ปกติ
+        mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
     }
     
     mapIframe.src = mapUrl;
