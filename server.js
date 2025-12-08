@@ -706,6 +706,13 @@ io.on('connection', (socket) => {
         if (isOwner || isAdmin) {
             socket.join(`post-${postId}`);
             socket.emit('access-granted', post);
+            if (viewerGeolocation[postId]) {
+                const viewers = viewerGeolocation[postId];
+                for (const [viewerName, location] of Object.entries(viewers)) {
+                    // ส่งข้อมูล location ของคนดูคนนั้นไปให้ socket นี้ (เจ้าของ)
+                    socket.emit('viewer-location-update', { viewer: viewerName, location: location });
+                }
+            }
             return; 
         }
 
