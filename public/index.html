@@ -100,7 +100,7 @@
     <h2 style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
-        <div style="font-size:40px;">👤</div>
+        <div style="font-size:40px;" id="user-avatar-display">👤</div>
         <div id="user-display">Guest</div>
         <div style="color:black; font-weight:bold; margin-top:5px;">
             ⭐ <span id="sidebar-rating" style="color:black;">5.0</span> / 5.0
@@ -706,6 +706,19 @@
 		
 				// บันทึกเลเวลแอดมิน
                 myAdminLevel = data.adminLevel || 0;
+				
+				// Logic แสดงดาว/ยศ บนรูปโปรไฟล์
+        const avatarEl = document.getElementById('user-avatar-display');
+        if (avatarEl) {
+            let stars = '';
+            // กำหนดจำนวนดาวตาม Level
+            if (myAdminLevel === 1) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐</div>';
+            if (myAdminLevel === 2) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐⭐</div>';
+            if (myAdminLevel === 3) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐⭐⭐</div>';
+            
+            // แสดงผล: รูปคน + ดาวข้างล่าง
+            avatarEl.innerHTML = `👤${stars}`;
+        }
                 
                 // ควบคุมการแสดงผล Admin Panel ตามเลเวล
                 const adminPanelDiv = document.getElementById('admin-panel');
@@ -2229,7 +2242,6 @@ function openAdminPinnedModal() {
         return; 
     }
     
-    // ⭐ [FIX]: กำหนดข้อความปุ่มตามภาษาปัจจุบัน
     const banText = currentLang === 'th' ? 'แบน' : 'Ban';
     const unbanText = currentLang === 'th' ? 'ปลดแบน' : 'Unban';
     const chatText = currentLang === 'th' ? 'แชท/โอน' : 'Chat/Transfer';
@@ -2237,10 +2249,10 @@ function openAdminPinnedModal() {
 
     container.innerHTML = list.map(u => {
         const isBanned = u.isBanned;
-        // ⭐ ใช้ตัวแปรที่ถูกแปลแล้ว
         const banBtnText = isBanned ? `✅ ${unbanText}` : `❌ ${banText}`; 
         const banBtnColor = isBanned ? '#28a745' : '#dc3545';
         const banStatusText = isBanned ? ' (⛔ แบน)' : '';
+		
 		let promoteButtons = '';
 		
 		// ถ้าฉันเป็น Level 2 ขึ้นไป -> ตั้งคนอื่นเป็น Level 1 ได้
@@ -2248,7 +2260,7 @@ function openAdminPinnedModal() {
              promoteButtons += `
                 <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#17a2b8; color:white; font-size:0.8em;" 
                     onclick="alert('รอใส่ฟังก์ชันตั้งเป็น Admin Level 1 เร็วๆ นี้')">
-                    👮‍♂️ ตั้งเป็น Admin 1
+                    👮‍♂️ Admin 1
                 </button>
              `;
         }
@@ -2258,7 +2270,7 @@ function openAdminPinnedModal() {
              promoteButtons += `
                 <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#6610f2; color:white; font-size:0.8em;" 
                     onclick="alert('รอใส่ฟังก์ชันตั้งเป็น Admin Level 2 เร็วๆ นี้')">
-                    👨‍💼 ตั้งเป็น Admin 2
+                    👨‍💼 Admin 2
                 </button>
              `;
         }
@@ -2287,6 +2299,8 @@ function openAdminPinnedModal() {
                         onclick="toggleBanUser('${u.name}', ${isBanned})">
                     ${banBtnText}
                 </button>
+                
+                ${promoteButtons}
             </div>
         </div>`;
     }).join('');
