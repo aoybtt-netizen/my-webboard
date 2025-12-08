@@ -771,7 +771,7 @@ window.closeImageViewer = function() {
                   </div>`;
         }
 
-        const initialMapUrl = `http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
+        const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
         mapIframe.src = initialMapUrl;
 
         if (mapTitle) {
@@ -845,9 +845,6 @@ window.closeImageViewer = function() {
             viewerLocation.lat, viewerLocation.lng
         ).toFixed(2);
 
-        // ✅ แก้ไข 1: ใช้โหมดเส้นทาง (saddr -> daddr) เพื่อให้โชว์ 2 จุดแน่นอน
-        // ✅ แก้ไข 2: เปลี่ยน URL เป็น maps.google.com มาตรฐาน
-        // ✅ แก้ไข 3: แก้ Syntax 0{...} เป็น ${...}
         mapUrl = `https://maps.google.com/maps?saddr=${p_lat},${p_lng}&daddr=${v_lat},${v_lng}&z=13&output=embed&t=m&hl=en`;
         
         viewerText = `<br>
@@ -860,7 +857,6 @@ window.closeImageViewer = function() {
                           </span>
                       </div>`;
     } else {
-        // ✅ แก้ไข Syntax 0{...} เป็น ${...}
         mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
     }
     
@@ -890,10 +886,8 @@ window.startEmbeddedNavigation = function() {
         const myLat = myCurrentLocation.lat;
         const myLng = myCurrentLocation.lng;
         
-        // ✅ แก้ไข Syntax 21{...} เป็น ${...}
         mapDirectionsUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${destLat},${destLng}&hl=en&z=14&output=embed`;
     } else {
-        // ✅ แก้ไข Syntax 0{...} เป็น ${...}
         mapDirectionsUrl = `https://maps.google.com/maps?q=${destLat},${destLng}&hl=en&z=14&output=embed`;
     }
     
