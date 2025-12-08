@@ -534,7 +534,7 @@
         'SYS_RATING_ALREADY': '🎉 คุณได้ให้คะแนนไปแล้ว!',
         'SYS_OPPONENT_RATED': '🔔 อีกฝ่ายได้ให้คะแนนคุณแล้ว! ถึงตาคุณให้คะแนนบ้าง',
 		'confirm_kick': 'ต้องการรีสตาร์ทกระทู้ใช่ไหม? (คนที่ดูอยู่จะถูกเตะออกทันที ยกเว้น Admin)',
-		'btn_show_route': '🗺️ แสดงเส้นทาง3',
+		'btn_show_route': '🗺️ แสดงเส้นทาง4',
     },
     'en': {
         'btn_back_tooltip': 'Back',
@@ -756,6 +756,7 @@ window.closeImageViewer = function() {
 
         let viewerText = '';
         
+        // ถ้ามีตำแหน่งตัวเอง ให้คำนวณระยะทาง
         if (myCurrentLocation) {
              const distanceKm = getDistanceFromLatLonInKm(
                 location.lat, location.lng, 
@@ -770,9 +771,7 @@ window.closeImageViewer = function() {
                   </div>`;
         }
 
-        // ✅ แก้ไข Syntax 0{...} เป็น ${...} และเปลี่ยน URL
-        const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
-        
+        const initialMapUrl = `http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
         mapIframe.src = initialMapUrl;
 
         if (mapTitle) {
@@ -780,9 +779,32 @@ window.closeImageViewer = function() {
         }
 
         mapContainer.style.display = 'block'; 
-        navButton.style.display = 'block';
-        navButton.onclick = startEmbeddedNavigation; 
-        navButton.innerText = t['btn_show_route'];
+
+        // --- ✅ ส่วนที่แก้ไข: เช็คเจ้าของ และ เปลี่ยนปุ่มเป็น Google Maps ภายนอก ---
+        const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
+
+        if (isOwnerOrAdmin) {
+            // ถ้าเป็นเจ้าของ หรือ Admin ให้ซ่อนปุ่ม
+            navButton.style.display = 'none';
+        } else {
+            // ถ้าเป็นคนดู ให้โชว์ปุ่ม และกดแล้วไป Google Maps
+            navButton.style.display = 'block';
+            navButton.innerText = t['btn_show_route']; // หรือ "เปิดใน Google Maps"
+            
+            navButton.onclick = function() {
+                // สร้าง URL สำหรับ Google Maps (Universal Link)
+                let googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+                
+                // ถ้ามีตำแหน่งปัจจุบัน ให้ใส่เป็นจุดเริ่มต้น (origin)
+                if (myCurrentLocation) {
+                    googleMapsUrl += `&origin=${myCurrentLocation.lat},${myCurrentLocation.lng}`;
+                }
+                
+                // เปิดแท็บใหม่
+                window.open(googleMapsUrl, '_blank');
+            };
+        }
+        // -----------------------------------------------------------------
         
     } else {
         mapContainer.style.display = 'none'; 
@@ -849,9 +871,7 @@ window.closeImageViewer = function() {
     }
 
     mapContainer.style.display = 'block'; 
-    navButton.style.display = 'block';
-    navButton.onclick = startEmbeddedNavigation; 
-    navButton.innerText = t['btn_show_route'];
+    navButton.style.display = 'none';
 }
 
 window.startEmbeddedNavigation = function() {
