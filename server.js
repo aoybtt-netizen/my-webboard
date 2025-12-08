@@ -444,6 +444,12 @@ app.post('/api/posts/:id/handover', async (req, res) => {
 // 15. Create Post
 app.post('/api/posts', upload.single('image'), async (req, res) => {
     const { author, category, content, location, title } = req.body;
+	if (author !== 'Admin') {
+        if (!location || location === 'null' || location === 'undefined') {
+            return res.status(400).json({ error: '⛔ กรุณาระบุตำแหน่ง (เช็คอิน) ก่อนสร้างกระทู้' });
+        }
+    }
+
     if (await isUserBanned(author)) return res.status(403).json({ error: '⛔ คุณถูกระงับสิทธิ์การสร้างกระทู้' });
 
     if (author !== 'Admin') {

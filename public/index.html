@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+	<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webboard</title>
@@ -212,6 +213,16 @@
         <div class="input-group" style="margin-top: 15px;">
             <label for="post-image" data-i18n-key="label_image_max">รูปภาพประกอบ (สูงสุด 5MB):</label>
             <input type="file" id="post-image" name="image" accept="image/*" style="padding: 8px 0;">
+        </div>
+		
+		<div style="position: relative; margin-bottom: 15px;">
+            <textarea id="content" rows="5" placeholder="รายละเอียด..." required data-i18n-key="placeholder_content" style="margin-bottom: 5px;"></textarea>
+            
+            <button type="button" class="sidebar-btn" onclick="toggleEmojiPicker('create')" style="width: auto; padding: 5px 10px; font-size: 1.2em;">😊</button>
+            
+            <div id="emoji-picker-container-create" style="display: none; position: absolute; z-index: 100; bottom: 50px; left: 0;">
+                <emoji-picker id="picker-create"></emoji-picker>
+            </div>
         </div>
         
         <div style="display:flex; justify-content:flex-end; gap:10px;">
@@ -1686,11 +1697,51 @@ function openAdminPinnedModal() {
     });
 }
 
+		function toggleEmojiPicker(type) {
+        const pickerId = type === 'create' ? 'emoji-picker-container-create' : 'emoji-picker-container-chat';
+        const container = document.getElementById(pickerId);
+        container.style.display = container.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Event Listener สำหรับเลือก Emoji ตอนสร้างกระทู้
+    document.querySelector('#picker-create').addEventListener('emoji-click', event => {
+        const textarea = document.getElementById('content');
+        insertAtCursor(textarea, event.detail.unicode);
+        // ไม่ต้องปิด picker เผื่ออยากกดหลายตัว
+    });
+
+    // ฟังก์ชันช่วยแทรกข้อความตรงตำแหน่ง Cursor
+    function insertAtCursor(myField, myValue) {
+        if (myField.selectionStart || myField.selectionStart == '0') {
+            var startPos = myField.selectionStart;
+            var endPos = myField.selectionEnd;
+            myField.value = myField.value.substring(0, startPos)
+                + myValue
+                + myField.value.substring(endPos, myField.value.length);
+            myField.selectionStart = startPos + myValue.length;
+            myField.selectionEnd = startPos + myValue.length;
+        } else {
+            myField.value += myValue;
+        }
+        myField.focus();
+    }
+	
+
 			async function createPost() {
     const titleInput = document.getElementById('title-input');
     const content = document.getElementById('content').value.trim();
     const imageFile = document.getElementById('post-image').files[0];
     const category = document.getElementById('category-select').value;
+	
+	if (myUsername !== 'Admin' && !currentLocationData) {
+            alert("⛔ กรุณากด '📍 ระบุตำแหน่งปัจจุบัน' ก่อนสร้างกระทู้");
+            // เลื่อนหน้าจอไปหาปุ่มเช็คอิน
+            document.getElementById('geo-btn').scrollIntoView({ behavior: 'smooth' });
+            // เพิ่ม Effect ให้ปุ่มเด่นขึ้นชั่วคราว
+            document.getElementById('geo-btn').style.border = "2px solid red";
+            setTimeout(() => document.getElementById('geo-btn').style.border = "1px solid #28a745", 2000);
+            return;
+        }
     
     let titleVal = "";
     
