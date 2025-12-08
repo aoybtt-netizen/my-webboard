@@ -534,7 +534,11 @@
         'SYS_RATING_ALREADY': '🎉 คุณได้ให้คะแนนไปแล้ว!',
         'SYS_OPPONENT_RATED': '🔔 อีกฝ่ายได้ให้คะแนนคุณแล้ว! ถึงตาคุณให้คะแนนบ้าง',
 		'confirm_kick': 'ต้องการรีสตาร์ทกระทู้ใช่ไหม? (คนที่ดูอยู่จะถูกเตะออกทันที ยกเว้น Admin)',
-		'btn_show_route': '🗺️ แสดงเส้นทาง4',
+		'error_geo_required': '⛔ จำเป็นต้องเปิดตำแหน่ง (GPS) เพื่อเข้าดูกระทู้นี้',
+        'error_geo_denied': '❌ คุณปฏิเสธการเข้าถึงตำแหน่ง ไม่สามารถดูเนื้อหาได้',
+        'error_geo_unsupported': '❌ เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง',
+        'checking_location': '⏳ กำลังตรวจสอบตำแหน่งของคุณ...',
+		'btn_show_route': '🗺️ Google Map',
     },
     'en': {
         'btn_back_tooltip': 'Back',
@@ -587,7 +591,11 @@
         'SYS_RATING_ALREADY': '🎉 You have already submitted a rating!',
         'SYS_OPPONENT_RATED': '🔔 The other party has rated you! Now it\'s your turn.',
 		'confirm_kick': 'Do you want to restart the post room? (All current viewers will be kicked immediately, except Admin)',
-		'btn_show_route': '🗺️ Show Navigation',
+		'error_geo_required': '⛔ Location access (GPS) is required to view this post.',
+        'error_geo_denied': '❌ Location access denied. Cannot view content.',
+        'error_geo_unsupported': '❌ Your browser does not support geolocation.',
+        'checking_location': '⏳ Verifying your location...',
+		'btn_show_route': '🗺️ Show Navigation Google Map',
     }
 };
 
@@ -640,12 +648,27 @@
         });
 
         socket.on('access-granted', (post) => {
+            // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
             currentPost = post; 
-            document.body.style.display = 'block';
-            renderPost(post);
+            
+            // ดึงภาษาเพื่อใช้แสดงข้อความ
+            const lang = localStorage.getItem('preferredLanguage') || 'th';
+            const t = postTranslations[lang] || postTranslations['th'];
 
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((position) => {
+            // เช็คว่า Browser รองรับไหม
+            if (!navigator.geolocation) {
+                showNotification(t['error_geo_unsupported'], 'fas fa-map-marker-slash', 4000);
+                setTimeout(() => { location.href = '/'; }, 3000);
+                return;
+            }
+
+            // แจ้งเตือนว่ากำลังตรวจสอบ (เผื่อเน็ตช้าหรือ GPS ช้า)
+            showNotification(t['checking_location'], 'fas fa-satellite-dish', 2000);
+
+            // 🚀 ขอพิกัดก่อนแสดงผล (บังคับ)
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // ✅ กรณีสำเร็จ: ได้รับพิกัด
                     const location = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude
@@ -653,6 +676,10 @@
 
                     myCurrentLocation = location; // จำตำแหน่งตัวเอง
                     
+                    // 🎉 แสดงเนื้อหาเว็บ
+                    document.body.style.display = 'block';
+                    renderPost(post);
+
                     // ส่งพิกัดไปให้ Server
                     socket.emit('update-viewer-location', { 
                         postId: postId, 
@@ -660,13 +687,32 @@
                         location: location
                     });
                     
-                    // แสดงระยะทางทันที (สำหรับฝั่งคนดู)
+                    // โหลดแผนที่
                     displayMap(post.location);
+                }, 
+                (error) => {
+                    // ❌ กรณีล้มเหลว: ปฏิเสธ หรือ Error
+                    console.warn('Geolocation blocked:', error.message);
+                    
+                    // เลือกข้อความแจ้งเตือนตามเคส
+                    let msgKey = 'error_geo_required';
+                    if (error.code === 1) msgKey = 'error_geo_denied'; // 1 = Permission Denied
 
-                }, (error) => {
-                    console.warn('Geolocation denied or failed:', error.message);
-                });
-            }
+                    // แสดงหน้าเว็บเปล่าๆ เพื่อให้เห็น Notification (แต่ซ่อนเนื้อหาข้างใน)
+                    document.body.style.display = 'block';
+                    document.querySelector('.container').style.display = 'none'; 
+
+                    showNotification(t[msgKey], 'fas fa-user-lock', 4000);
+                    
+                    // ดีดกลับหน้าแรก
+                    setTimeout(() => { location.href = '/'; }, 3500);
+                },
+                {
+                    enableHighAccuracy: true, // ขอความแม่นยำสูง
+                    timeout: 10000,           // รอได้สูงสุด 10 วินาที
+                    maximumAge: 0             // ไม่ใช้ค่าเก่าที่ Cache ไว้
+                }
+            );
         });
 
         socket.on('access-denied', (reason) => {
