@@ -772,14 +772,14 @@ window.closeImageViewer = function() {
                       </span>
                   </div>`;
 
-             // 2. สร้าง URL แบบเส้นทาง (Start -> Dest)
+             // 2. สร้าง URL แบบเส้นทาง (Start -> Dest) โดยใช้ https และ maps.google.com มาตรฐาน
              const myLat = myCurrentLocation.lat.toFixed(6);
              const myLng = myCurrentLocation.lng.toFixed(6);
-             initialMapUrl = `http://googleusercontent.com/maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
+             initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
 
         } else {
-             // กรณีไม่รู้ตำแหน่งตัวเอง ให้แสดงแค่หมุดปลายทางแบบเดิม
-             initialMapUrl = `http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
+             // กรณีไม่รู้ตำแหน่งตัวเอง
+             initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
         }
 
         mapIframe.src = initialMapUrl;
@@ -798,9 +798,9 @@ window.closeImageViewer = function() {
             navButton.innerText = t['btn_show_route'];
             
             navButton.onclick = function() {
-                let googleMapsUrl = `http://googleusercontent.com/maps.google.com/maps?daddr=${lat},${lng}`;
+                let googleMapsUrl = `https://maps.google.com/maps?daddr=${lat},${lng}`;
                 if (myCurrentLocation) {
-                    googleMapsUrl = `http://googleusercontent.com/maps.google.com/maps?saddr=${myCurrentLocation.lat},${myCurrentLocation.lng}&daddr=${lat},${lng}`;
+                    googleMapsUrl = `https://maps.google.com/maps?saddr=${myCurrentLocation.lat},${myCurrentLocation.lng}&daddr=${lat},${lng}`;
                 }
                 window.open(googleMapsUrl, '_blank');
             };
@@ -870,31 +870,31 @@ window.closeImageViewer = function() {
     navButton.style.display = 'none';
 }
 
-window.startEmbeddedNavigation = function() {
-    if (!currentDestination) {
+	window.startEmbeddedNavigation = function() {
+		if (!currentDestination) {
         showNotification('ไม่พบพิกัดปลายทาง', 'fas fa-exclamation-triangle');
         return;
-    }
+		}
 
-    const destLat = currentDestination.lat;
-    const destLng = currentDestination.lng;
-    const mapIframe = document.getElementById('post-map-iframe');
+		const destLat = currentDestination.lat;
+		const destLng = currentDestination.lng;
+		const mapIframe = document.getElementById('post-map-iframe');
+	
+		let mapDirectionsUrl = '';
 
-    let mapDirectionsUrl = '';
-
-    if (typeof myCurrentLocation !== 'undefined' && myCurrentLocation) {
-        const myLat = myCurrentLocation.lat;
-        const myLng = myCurrentLocation.lng;
+		if (typeof myCurrentLocation !== 'undefined' && myCurrentLocation) {
+			const myLat = myCurrentLocation.lat;
+			const myLng = myCurrentLocation.lng;
         
-        mapDirectionsUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${destLat},${destLng}&hl=en&z=14&output=embed`;
-    } else {
-        mapDirectionsUrl = `https://maps.google.com/maps?q=${destLat},${destLng}&hl=en&z=14&output=embed`;
-    }
+			mapDirectionsUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${destLat},${destLng}&hl=en&z=14&output=embed`;
+			} else {
+			mapDirectionsUrl = `https://maps.google.com/maps?q=${destLat},${destLng}&hl=en&z=14&output=embed`;
+		}
     
-    mapIframe.src = mapDirectionsUrl;
+		mapIframe.src = mapDirectionsUrl;
     
-    showNotification('✅ กำลังคำนวณเส้นทาง...', 'fas fa-route', 4000);
-}	
+		showNotification('✅ กำลังคำนวณเส้นทาง...', 'fas fa-route', 4000);
+	}
 
 socket.on('viewer-location-update', (data) => {
     // อัปเดตเมื่อเป็นเจ้าของ/Admin และไม่ใช่ตัวเอง
