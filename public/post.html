@@ -855,12 +855,11 @@ window.closeImageViewer = function() {
              // 2. สร้าง URL แบบเส้นทาง (Start -> Dest)
              const myLat = myCurrentLocation.lat.toFixed(6);
              const myLng = myCurrentLocation.lng.toFixed(6);
-             // [FIXED] แก้ไข syntax URL ให้ถูกต้อง
-             initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
+             initialMapUrl = `https://maps.google.com/maps?saddr=$${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
 
         } else {
              // กรณีไม่รู้ตำแหน่งตัวเอง (แสดงแค่จุดปลายทาง)
-             initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
+             initialMapUrl = `https://maps.google.com/maps?q=$${lat},${lng}&hl=en&z=15&output=embed`;
         }
 
         mapIframe.src = initialMapUrl;
@@ -879,10 +878,9 @@ window.closeImageViewer = function() {
             navButton.innerText = t['btn_show_route'];
             
             navButton.onclick = function() {
-                // [FIXED] แก้ไข URL เปิดแท็บใหม่
-                let googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                let googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=$${lat},${lng}`;
                 if (myCurrentLocation) {
-                    googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${myCurrentLocation.lat},${myCurrentLocation.lng}&destination=${lat},${lng}`;
+                    googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=$${myCurrentLocation.lat},${myCurrentLocation.lng}&destination=${lat},${lng}`;
                 }
                 window.open(googleMapsUrl, '_blank');
             };
@@ -922,7 +920,6 @@ window.closeImageViewer = function() {
         const v_lat = viewerLocation.lat.toFixed(6);
         const v_lng = viewerLocation.lng.toFixed(6);
         
-        // [NEW LOGIC] ใช้ตำแหน่งของ "ตัวฉัน (Owner)" เป็นจุดอ้างอิง ถ้ามี
         let refLat = postLocation.lat;
         let refLng = postLocation.lng;
         
@@ -936,10 +933,8 @@ window.closeImageViewer = function() {
             refLat, refLng, 
             viewerLocation.lat, viewerLocation.lng
         ).toFixed(2);
-        
-        // [FIXED] สร้างเส้นทางจาก ตัวฉัน(หรือโพสต์) -> คนดู
-        let originLat = myCurrentLocation ? myCurrentLocation.lat : p_lat;
-        let originLng = myCurrentLocation ? myCurrentLocation.lng : p_lng;
+        let originLat = p_lat;
+        let originLng = p_lng;
 
         mapUrl = `https://maps.google.com/maps?saddr=${originLat},${originLng}&daddr=${v_lat},${v_lng}&z=13&output=embed&t=m&hl=en`;
         
@@ -953,8 +948,7 @@ window.closeImageViewer = function() {
                           </span>
                       </div>`;
     } else {
-        // [FIXED] แก้ไข URL map ปกติ
-        mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
+        mapUrl = `https://maps.google.com/maps?q=$${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
     }
     
     mapIframe.src = mapUrl;
