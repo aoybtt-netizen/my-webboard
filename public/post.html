@@ -755,9 +755,11 @@ window.closeImageViewer = function() {
         currentDestination = { lat, lng };
 
         let viewerText = '';
+        let initialMapUrl = '';
         
-        // ถ้ามีตำแหน่งตัวเอง ให้คำนวณระยะทาง
+        // เช็คว่ามีตำแหน่งตัวเองไหม
         if (myCurrentLocation) {
+             // 1. คำนวณระยะห่าง
              const distanceKm = getDistanceFromLatLonInKm(
                 location.lat, location.lng, 
                 myCurrentLocation.lat, myCurrentLocation.lng
@@ -769,9 +771,17 @@ window.closeImageViewer = function() {
                           📏 ห่างจากฉัน: ${distanceKm} กม.
                       </span>
                   </div>`;
+
+             // 2. สร้าง URL แบบเส้นทาง (Start -> Dest)
+             const myLat = myCurrentLocation.lat.toFixed(6);
+             const myLng = myCurrentLocation.lng.toFixed(6);
+             initialMapUrl = `http://googleusercontent.com/maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
+
+        } else {
+             // กรณีไม่รู้ตำแหน่งตัวเอง ให้แสดงแค่หมุดปลายทางแบบเดิม
+             initialMapUrl = `http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
         }
 
-        const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
         mapIframe.src = initialMapUrl;
 
         if (mapTitle) {
@@ -780,31 +790,21 @@ window.closeImageViewer = function() {
 
         mapContainer.style.display = 'block'; 
 
-        // --- ✅ ส่วนที่แก้ไข: เช็คเจ้าของ และ เปลี่ยนปุ่มเป็น Google Maps ภายนอก ---
         const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
-
         if (isOwnerOrAdmin) {
-            // ถ้าเป็นเจ้าของ หรือ Admin ให้ซ่อนปุ่ม
             navButton.style.display = 'none';
         } else {
-            // ถ้าเป็นคนดู ให้โชว์ปุ่ม และกดแล้วไป Google Maps
             navButton.style.display = 'block';
-            navButton.innerText = t['btn_show_route']; // หรือ "เปิดใน Google Maps"
+            navButton.innerText = t['btn_show_route'];
             
             navButton.onclick = function() {
-                // สร้าง URL สำหรับ Google Maps (Universal Link)
-                let googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-                
-                // ถ้ามีตำแหน่งปัจจุบัน ให้ใส่เป็นจุดเริ่มต้น (origin)
+                let googleMapsUrl = `http://googleusercontent.com/maps.google.com/maps?daddr=${lat},${lng}`;
                 if (myCurrentLocation) {
-                    googleMapsUrl += `&origin=${myCurrentLocation.lat},${myCurrentLocation.lng}`;
+                    googleMapsUrl = `http://googleusercontent.com/maps.google.com/maps?saddr=${myCurrentLocation.lat},${myCurrentLocation.lng}&daddr=${lat},${lng}`;
                 }
-                
-                // เปิดแท็บใหม่
                 window.open(googleMapsUrl, '_blank');
             };
         }
-        // -----------------------------------------------------------------
         
     } else {
         mapContainer.style.display = 'none'; 
@@ -894,7 +894,7 @@ window.startEmbeddedNavigation = function() {
     mapIframe.src = mapDirectionsUrl;
     
     showNotification('✅ กำลังคำนวณเส้นทาง...', 'fas fa-route', 4000);
-}
+}	
 
 socket.on('viewer-location-update', (data) => {
     // อัปเดตเมื่อเป็นเจ้าของ/Admin และไม่ใช่ตัวเอง
