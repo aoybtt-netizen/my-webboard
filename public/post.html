@@ -480,6 +480,7 @@
 
         // --- GLOBAL SETUP (unchanged logic) ---
         const socket = io();
+		let myCurrentLocation = null;
 		
 		const postTranslations = {
     'th': {
@@ -631,23 +632,30 @@
         }
 
         socket.on('connect', () => {
-			applyLanguage();
+            applyLanguage();
             socket.emit('register', myUsername);
             socket.emit('join-post-room', { postId, username: myUsername, lang: currentLang });
             
-            // Get and send viewer's location (one-time on join)
+            // Get and send viewer's location
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((position) => {
                     const location = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude
                     };
+
+                    myCurrentLocation = location; // ✅ บันทึกตำแหน่งตัวเองไว้คำนวณระยะทาง
+                    
                     // ส่งพิกัดไปให้ Server
                     socket.emit('update-viewer-location', { 
                         postId: postId, 
                         username: myUsername, 
                         location: location
                     });
+                    
+                    // ✅ ถ้ากระทู้โหลดเสร็จแล้ว ให้ลองรีเฟรชแผนที่เพื่อโชว์ระยะทางทันที
+                    if(currentPost) displayMap(currentPost.location);
+
                 }, (error) => {
                     console.warn('Geolocation denied or failed:', error.message);
                 });
@@ -732,32 +740,57 @@ window.closeImageViewer = function() {
         // --- CORE LOGIC (unchanged for brevity) ---
 
         function displayMap(location) {
-            const mapContainer = document.getElementById('map-container');
-            const mapIframe = document.getElementById('post-map-iframe');
-            const navButton = document.getElementById('start-nav-btn');
-			const lang = localStorage.getItem('preferredLanguage') || 'th';
-			const t = postTranslations[lang] || postTranslations['th'];			
-            
-            if (location && location.lat && location.lng) {
-                const lat = location.lat.toFixed(6); 
-                const lng = location.lng.toFixed(6);
-                
-                currentDestination = { lat, lng };
+    const mapContainer = document.getElementById('map-container');
+    const mapIframe = document.getElementById('post-map-iframe');
+    const navButton = document.getElementById('start-nav-btn');
+    const mapTitle = document.getElementById('map-title'); // ✅ เพิ่มการอ้างอิง Title
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];            
+    
+    if (location && location.lat && location.lng) {
+        const lat = location.lat.toFixed(6); 
+        const lng = location.lng.toFixed(6);
+        
+        currentDestination = { lat, lng };
 
-                const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
-                
-                mapIframe.src = initialMapUrl;
-                mapContainer.style.display = 'block'; 
-                
-                navButton.style.display = 'block';
-                navButton.onclick = startEmbeddedNavigation; 
-                navButton.innerText = t['btn_show_route'];
-                
-            } else {
-                mapContainer.style.display = 'none'; 
-                navButton.style.display = 'none';
-            }
+        let viewerText = '';
+        
+        // ✅ คำนวณระยะทาง (ถ้ามีตำแหน่งตัวเอง)
+        if (myCurrentLocation) {
+             const distanceKm = getDistanceFromLatLonInKm(
+                location.lat, location.lng, 
+                myCurrentLocation.lat, myCurrentLocation.lng
+            ).toFixed(2);
+            
+            viewerText = `<br>
+                  <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
+                      <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
+                          📏 ห่างจากฉัน: ${distanceKm} กม.
+                      </span>
+                  </div>`;
         }
+
+        // ✅ แก้ไข URL ให้ถูกต้อง (เปลี่ยน 0{lat} เป็น ${lat})
+        // ใช้ maps.google.com โดยตรงเพื่อให้เสถียรขึ้น
+        const initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=15&output=embed`;
+        
+        mapIframe.src = initialMapUrl;
+
+        // ✅ แสดงข้อความระยะห่างที่ Title
+        if (mapTitle) {
+            mapTitle.innerHTML = `📍 Location${viewerText}`;
+        }
+
+        mapContainer.style.display = 'block'; 
+        navButton.style.display = 'block';
+        navButton.onclick = startEmbeddedNavigation; 
+        navButton.innerText = t['btn_show_route'];
+        
+    } else {
+        mapContainer.style.display = 'none'; 
+        navButton.style.display = 'none';
+    }
+}
 		
 		function displayMapWithViewer(postLocation, viewerLocation) {
     const mapContainer = document.getElementById('map-container');
@@ -836,16 +869,27 @@ window.startEmbeddedNavigation = function() {
         return;
     }
 
-    const lat = currentDestination.lat;
-    const lng = currentDestination.lng;
+    const destLat = currentDestination.lat;
+    const destLng = currentDestination.lng;
     const mapIframe = document.getElementById('post-map-iframe');
 
-    // ✅ แก้ไข: เปลี่ยน 2{lat} เป็น ${lat} และใช้ URL มาตรฐาน
-    const mapDirectionsUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=14&output=embed`;
+    let mapDirectionsUrl = '';
+
+    if (myCurrentLocation) {
+        // ✅ กรณีรู้ตำแหน่งตัวเอง: ให้วาดเส้นทางจาก ตัวเรา -> ปลายทาง
+        const myLat = myCurrentLocation.lat;
+        const myLng = myCurrentLocation.lng;
+        
+        // saddr = Start Address, daddr = Destination Address
+        mapDirectionsUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${destLat},${destLng}&hl=en&z=14&output=embed`;
+    } else {
+        // กรณีไม่รู้ตำแหน่งตัวเอง: ให้ปักหมุดที่ปลายทางอย่างเดียว (แต่แก้ Syntax ให้ถูก)
+        mapDirectionsUrl = `https://maps.google.com/maps?q=${destLat},${destLng}&hl=en&z=14&output=embed`;
+    }
     
     mapIframe.src = mapDirectionsUrl;
     
-    showNotification('✅ โหมดนำทางแสดงผลแล้ว', 'fas fa-map-signs', 4000);
+    showNotification('✅ กำลังคำนวณเส้นทาง...', 'fas fa-route', 4000);
 }
 
 socket.on('viewer-location-update', (data) => {
