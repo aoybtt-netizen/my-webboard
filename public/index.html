@@ -301,6 +301,7 @@
     <script>
         const socket = io();
         let myUsername = "";
+		let myAdminLevel = 0;
         
         // --- NEW: Global Configuration ---
 		const DEFAULT_CURRENCY = 'THB'; // สกุลเงินที่ต้องการแสดง
@@ -641,11 +642,6 @@
     }
 
     const adminPanelDiv = document.getElementById('admin-panel');
-    if (name === 'Admin') {
-        adminPanelDiv.classList.remove('hidden');
-    } else {
-        adminPanelDiv.classList.add('hidden');
-    }
     
     // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
     checkNewTransaction();
@@ -707,6 +703,23 @@
             }
             return;
         }
+		
+				// บันทึกเลเวลแอดมิน
+                myAdminLevel = data.adminLevel || 0;
+                
+                // ควบคุมการแสดงผล Admin Panel ตามเลเวล
+                const adminPanelDiv = document.getElementById('admin-panel');
+                if (myAdminLevel >= 1) {
+                    adminPanelDiv.classList.remove('hidden');
+                } else {
+                    adminPanelDiv.classList.add('hidden');
+                }
+                
+                // ซ่อน/แสดงปุ่ม "ให้เหรียญ" ในแชท (เฉพาะ Level 3)
+                const giveCoinBtn = document.querySelector('.give-coin-btn');
+                if (giveCoinBtn) {
+                     giveCoinBtn.style.display = (myAdminLevel >= 3) ? 'inline-block' : 'none';
+                }
 
         // 2. จัดรูปแบบตัวเลข USD และสกุลเงินที่แปลงแล้ว
         const formattedConvertedCoins = parseFloat(data.convertedCoins).toLocaleString(undefined, {
@@ -2228,6 +2241,27 @@ function openAdminPinnedModal() {
         const banBtnText = isBanned ? `✅ ${unbanText}` : `❌ ${banText}`; 
         const banBtnColor = isBanned ? '#28a745' : '#dc3545';
         const banStatusText = isBanned ? ' (⛔ แบน)' : '';
+		let promoteButtons = '';
+		
+		// ถ้าฉันเป็น Level 2 ขึ้นไป -> ตั้งคนอื่นเป็น Level 1 ได้
+        if (myAdminLevel >= 2) {
+             promoteButtons += `
+                <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#17a2b8; color:white; font-size:0.8em;" 
+                    onclick="alert('รอใส่ฟังก์ชันตั้งเป็น Admin Level 1 เร็วๆ นี้')">
+                    👮‍♂️ ตั้งเป็น Admin 1
+                </button>
+             `;
+        }
+
+        // ถ้าฉันเป็น Level 3 ขึ้นไป -> ตั้งคนอื่นเป็น Level 2 ได้
+        if (myAdminLevel >= 3) {
+             promoteButtons += `
+                <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#6610f2; color:white; font-size:0.8em;" 
+                    onclick="alert('รอใส่ฟังก์ชันตั้งเป็น Admin Level 2 เร็วๆ นี้')">
+                    👨‍💼 ตั้งเป็น Admin 2
+                </button>
+             `;
+        }
         
         return `
         <div class="user-list-item" style="display:flex; flex-direction:column; align-items:flex-start; background: ${isBanned ? '#f8d7da' : 'none'}; border-left: 5px solid ${isBanned ? '#dc3545' : 'none'};">

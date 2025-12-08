@@ -123,20 +123,39 @@ async function seedInitialData() {
         console.log("Initialized Topics");
     }
     // 3. Admin User
-    if (!(await usersCollection.findOne({ username: 'Admin' }))) {
+    const adminUser = await usersCollection.findOne({ username: 'Admin' });
+    if (!adminUser) {
         await usersCollection.insertOne({ 
-            username: 'Admin', coins: 1000, rating: 5.0, ratingCount: 1, isBanned: false 
+            username: 'Admin', 
+            coins: 1000, 
+            rating: 5.0, 
+            ratingCount: 1, 
+            isBanned: false,
+            adminLevel: 3 // ✅ กำหนดเป็นระดับสูงสุด
         });
-        console.log("Initialized Admin User");
+        console.log("Initialized Admin User (Level 3)");
+    } else {
+        // ถ้ามีอยู่แล้ว ให้อัปเดตเป็น Level 3 เพื่อความชัวร์
+        await usersCollection.updateOne({ username: 'Admin' }, { $set: { adminLevel: 3 } });
     }
 }
 
 async function getUserData(username) {
     let user = await usersCollection.findOne({ username: username });
     if (!user) {
-        user = { username: username, coins: 0, rating: 0.0, ratingCount: 0, isBanned: false };
+        user = { 
+            username: username, 
+            coins: 0, 
+            rating: 0.0, 
+            ratingCount: 0, 
+            isBanned: false,
+            adminLevel: 0 // ✅ Default เป็น 0 (User ทั่วไป)
+        };
         await usersCollection.insertOne(user);
     }
+    // ป้องกันกรณี user เก่าไม่มี field นี้
+    if (user.adminLevel === undefined) user.adminLevel = 0;
+    
     return user;
 }
 
@@ -215,7 +234,8 @@ app.get('/api/user-info', async (req, res) => {
         convertedCoins: convertedCoins.toFixed(2), 
         currencySymbol: targetCurrency.toUpperCase(), 
         postCost: postCost, 
-        rating: user.rating 
+        rating: user.rating,
+        adminLevel: user.adminLevel || 0 // ✅ ส่งระดับแอดมินไปด้วย
     });
 });
 
@@ -284,6 +304,10 @@ app.post('/api/admin/set-cost', async (req, res) => {
 // 8. Give Coins
 app.post('/api/admin/give-coins', async (req, res) => {
     const { targetUser, amount, requestBy } = req.body;
+	const requester = await getUserData(requestBy);
+    if (requester.adminLevel < 3) {
+        return res.status(403).json({ error: 'Level 3 Admin only (Permission Denied)' });
+    }
     if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const parsedAmount = parseInt(amount);
     if (parsedAmount <= 0) return res.status(400).json({ error: 'จำนวนเงินไม่ถูกต้อง' });
@@ -543,6 +567,10 @@ app.put('/api/posts/:id/close-manual', async (req, res) => {
 // 18. Deduct Coins
 app.post('/api/admin/deduct-coins', async (req, res) => {
     const { targetUser, amount, requestBy } = req.body;
+	const requester = await getUserData(requestBy);
+    if (requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Admin permission required' });
+    }
     if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const parsedAmount = parseInt(amount);
     const user = await getUserData(targetUser);
