@@ -496,7 +496,6 @@
         // --- GLOBAL SETUP (unchanged logic) ---
         const socket = io();
 		let myCurrentLocation = null;
-		let myAdminLevel = 0;
 		
 		const postTranslations = {
     'th': {
@@ -687,20 +686,6 @@
             
             
         });
-		
-		// ฟังก์ชันดึงเลเวลแอดมิน
-    async function fetchUserLevel() {
-        if (myUsername === 'Guest') return;
-        try {
-            const response = await fetch(`/api/user-info?username=${myUsername}`);
-            const data = await response.json();
-            if (data.adminLevel) {
-                myAdminLevel = data.adminLevel;
-                console.log("Admin Level:", myAdminLevel);
-            }
-        } catch (e) { console.error("Error fetching admin level:", e); }
-    }
-	fetchUserLevel();
 
         socket.on('access-granted', (post) => {
             // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
@@ -901,7 +886,7 @@ window.closeImageViewer = function() {
 
         mapContainer.style.display = 'block'; 
 
-        const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
+        const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
         if (isOwnerOrAdmin) {
             navButton.style.display = 'none';
         } else {
@@ -940,7 +925,7 @@ window.closeImageViewer = function() {
     let mapUrl = '';
     let viewerText = '';
     
-    const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
+    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
 
     if (viewerLocation && viewerLocation.lat && isOwnerOrAdmin) {
         const v_lat = viewerLocation.lat.toFixed(6);
@@ -1003,7 +988,7 @@ window.closeImageViewer = function() {
 
 socket.on('viewer-location-update', (data) => {
     // อัปเดตเมื่อเป็นเจ้าของ/Admin และไม่ใช่ตัวเอง
-    const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
+    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
 
     if (isOwnerOrAdmin && data.viewer !== myUsername) {
          currentViewerLocation = data.location;
@@ -1099,7 +1084,7 @@ socket.on('viewer-left-location', (data) => {
             if (oldAlert) oldAlert.remove();
 
             // --- LOGIC การแสดงปุ่มและการล็อค ---
-            const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
+            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin';
 
             // ซ่อนปุ่มทั้งหมดก่อน
             finishBtn.style.display = 'none';
@@ -1121,16 +1106,16 @@ socket.on('viewer-left-location', (data) => {
                     backBtn.style.display = 'block';
                     
                     // ถ้าเป็น Admin ให้โชว์ปุ่มปิดกระทู้ได้
-                    if (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1) {
-						manualCloseBtn.style.display = 'block';
-					}
+                    if (myUsername === 'Admin') {
+                        manualCloseBtn.style.display = 'block';
+                    }
                 }
                 // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
                 return; 
             }
 
             if (post.status === 'finished') {
-                const isParticipant = myUsername === post.author || myUsername === post.acceptedViewer || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
+                const isParticipant = myUsername === post.author || myUsername === post.acceptedViewer || myUsername === 'Admin';
 
                 if (!isParticipant) {
                     contentDiv.style.display = 'none';
