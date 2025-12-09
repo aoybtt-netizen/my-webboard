@@ -1410,19 +1410,15 @@ function getTransactionDetail(t) {
                 return;
             }
 
-            // --- Render HTML (กลับมาใช้รูปแบบเดิม) ---
+            // --- Render HTML (Clean Style: ตัดบรรทัดสถานะและค่าธรรมเนียมออก) ---
             container.innerHTML = postsToDisplay.map(post => {
-                const isClosed = post.status !== 'open';
-                const statusLabel = isClosed ? 
-                    `<span style="color:red; font-weight:bold;">[${t.closed_or_finished}]</span>` : 
-                    `<span style="color:green; font-weight:bold;">[Open]</span>`;
-                
+                // ส่วนจัดการรูปภาพ
                 let imageThumbnail = '';
                 if (post.imageUrl) {
                     imageThumbnail = `<div style="margin-top:10px;"><img src="${post.imageUrl}" style="max-height:150px; border-radius:8px;"></div>`;
                 }
 
-                // 1. ระยะทาง (ใส่เป็น Badge เล็กๆ ต่อท้ายชื่อกระทู้)
+                // 1. ระยะทาง (Badge)
                 let distanceBadge = '';
                 if (filterLocation && post.location && post.location.lat) {
                      const dist = getDistanceFromLatLonInKm(
@@ -1434,7 +1430,7 @@ function getTransactionDetail(t) {
                     </span>`;
                 }
 
-                // 2. เรทติ้ง (โชว์ต่อท้ายชื่อคนโพสต์)
+                // 2. เรทติ้ง
                 const ratingVal = post.authorRating ? parseFloat(post.authorRating).toFixed(2) : '0.00';
                 const ratingHtml = `<span style="color:#ffc107; font-weight:bold; margin-left:5px;">(⭐ ${ratingVal})</span>`;
 
@@ -1453,7 +1449,7 @@ function getTransactionDetail(t) {
                     </button>`;
                 }
 
-                // ⭐ HTML รูปแบบเดิม (Classic Style)
+                // ⭐ HTML ปรับปรุง: แสดงเฉพาะ Title, Distance, Author, Rating, Time และ รูปภาพ
                 return `
                 <div class="post-card" onclick="viewPost('${post.id}')" style="cursor:pointer; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); ${cardStyle}">
                     <h3 style="margin-top:0;">
@@ -1463,7 +1459,7 @@ function getTransactionDetail(t) {
                     <p style="color:#666; font-size:0.9em;">
                         👤 ${post.author} ${ratingHtml} | 🕒 ${new Date(post.id).toLocaleString()}
                     </p>
-                    <p>${statusLabel} ค่าธรรมเนียม: ${post.cost} USD</p>
+                    
                     ${imageThumbnail}
                     ${deleteBtn}
                 </div>`;
