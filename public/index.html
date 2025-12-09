@@ -1344,123 +1344,35 @@ function getTransactionDetail(t) {
 }
 
         async function loadPosts() {
-        const container = document.getElementById('post-list');
-        const t = (typeof translations !== 'undefined' && translations[currentLang]) ? translations[currentLang] : { 
-            geo_searching: 'Loading...', 
-            msg_no_post_range: 'No posts in range', 
-            btn_show_all: 'Show All'
-        };
-        const kmText = currentLang === 'th' ? 'กม.' : 'km';
-        
-        container.innerHTML = `<p style="text-align:center;">${t.geo_searching}</p>`;
-        
-        try {
-            const response = await fetch('/api/posts');
-            if (!response.ok) throw new Error(`Server Error: ${response.status}`);
-
-            const rawData = await response.json();
-            let allPosts = [];
-
-            if (Array.isArray(rawData)) {
-                allPosts = rawData;
-            } else if (rawData && Array.isArray(rawData.posts)) {
-                allPosts = rawData.posts;
-            } else {
-                container.innerHTML = `<p style="text-align:center;">ยังไม่มีกระทู้</p>`;
-                return;
-            }
-            
-            // --- Logic แยกประเภทและกรอง ---
-            let pinnedPosts = allPosts.filter(p => p.isPinned);
-            let normalPosts = allPosts.filter(p => !p.isPinned && p.status === 'open'); // โชว์เฉพาะที่เปิดอยู่ (ไม่รวม Pinned)
-
-            // กรองระยะทาง
-            if (filterLocation && filterMaxDistance !== null) {
-                normalPosts = normalPosts.filter(post => {
-                    if (!post.location || !post.location.lat || !post.location.lng) return false;
-                    const dist = getDistanceFromLatLonInKm(
-                        filterLocation.lat, filterLocation.lng,
-                        post.location.lat, post.location.lng
-                    );
-                    return dist <= filterMaxDistance;
-                });
-            }
-
-            // เรียงลำดับ
-            pinnedPosts.sort((a, b) => b.id - a.id);
-            normalPosts.sort((a, b) => b.id - a.id);
-
-            const postsToDisplay = [...pinnedPosts, ...normalPosts];
-
-            if (postsToDisplay.length === 0) {
-                if (filterLocation && filterMaxDistance !== null) {
-                    container.innerHTML = `<div style="text-align:center; padding:20px; background:white; border-radius:8px;">
-                        <p>${t.msg_no_post_range} ${filterMaxDistance} ${kmText}</p>
-                        <button onclick="clearDistanceFilter()" style="cursor:pointer; color:blue; text-decoration:underline; border:none; background:none;">
-                            ${t.btn_show_all}
-                        </button>
-                    </div>`;
-                } else {
-                    container.innerHTML = `<p style="text-align:center;">ยังไม่มีกระทู้</p>`;
-                }
-                return;
-            }
-
-            // --- Render HTML (แบบ Minimal: เอาแค่หัวข้อ) ---
-            container.innerHTML = postsToDisplay.map(post => {
-                // ระยะทาง
-                let distanceBadge = '';
-                if (filterLocation && post.location && post.location.lat) {
-                     const dist = getDistanceFromLatLonInKm(
-                        filterLocation.lat, filterLocation.lng,
-                        post.location.lat, post.location.lng
-                    ).toFixed(1);
-                    distanceBadge = `<span style="background:#e9f7ef; color:#28a745; padding:2px 6px; border-radius:10px; font-size:0.75em; margin-left:8px; white-space:nowrap;">
-                        📍 ${dist} ${kmText}
-                    </span>`;
-                }
-
-                // สไตล์การ์ด
-                const cardStyle = post.isPinned 
-                    ? "background:#fffbf0; border-left: 4px solid #ffc107;" 
-                    : "background:white; border-left: 4px solid #007bff;";
-
-                // เช็คสิทธิ์ปุ่มลบ
-                const isOwner = myUsername === post.author;
-                const isAdmin = (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
+            try {
+                // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
+                const res = await fetch('/api/posts?limit=1000');
+                const responseData = await res.json();
                 
-                let deleteBtn = '';
-                if (isOwner || isAdmin) { 
-                    deleteBtn = `<button class="sidebar-btn delete-btn" style="background:none; color:#dc3545; border:none; padding:0 5px; margin-left:auto;" 
-                        onclick="event.stopPropagation(); deletePost('${post.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>`;
+                // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
+                let postsArray = [];
+                if (Array.isArray(responseData)) {
+                    postsArray = responseData;
+                } else if (responseData.posts && Array.isArray(responseData.posts)) {
+                    postsArray = responseData.posts;
                 }
 
-                // ⭐ HTML แบบย่อ (Title Only Style)
-                return `
-                <div class="post-card" onclick="viewPost('${post.id}')" style="cursor:pointer; padding:12px 15px; margin-bottom:10px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1); ${cardStyle} display:flex; flex-direction:column;">
-                    
-                    <div style="display:flex; align-items:center; width:100%;">
-                        <h3 style="margin:0; font-size:1.1em; color:#333; font-weight:500; min-width:0;">
-                            ${post.isPinned ? '📌 ' : ''} ${post.title}
-                        </h3>
-                        ${distanceBadge}
-                        ${deleteBtn} </div>
+                // นำข้อมูลลงในตัวแปร postStatusMap เพื่อให้ renderPostList ทำงานได้
+                postsArray.forEach(p => {
+                    if (postStatusMap[p.id]) {
+                        postStatusMap[p.id].data = p; // อัปเดตข้อมูลเดิม
+                    } else {
+                        postStatusMap[p.id] = { data: p, isOccupied: false }; // สร้างใหม่
+                    }
+                });
 
-                    <div style="font-size:0.8em; color:#999; margin-top:4px; margin-bottom: 8px;">
-                        👤 ${post.author} ${ratingHtml} | 🕒 ${new Date(post.id).toLocaleString()}
-                    </div>
-                    
-                    ${imageThumbnail}
-                </div>`;
-            }).join('');
-
-        } catch (error) {
-            console.error('Error loading posts:', error);
-            container.innerHTML = `<p style="text-align:center; color:red;">❌ โหลดข้อมูลล้มเหลว</p>`;
+                // เรียกฟังก์ชันแสดงผลหลัก (ที่มีอยู่แล้วด้านล่าง)
+                renderPostList(); 
+                
+            } catch (err) {
+                console.error("Error loading posts:", err);
+            }
         }
-    }
 		
 		// ดูกระทู้ของฉันที่ยังไม่ปิด
 	async function showMyActivePosts(page = 1) {
