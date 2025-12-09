@@ -1345,7 +1345,6 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
         const container = document.getElementById('post-list');
-        // ตรวจสอบตัวแปร translations (ป้องกัน error หากโหลดไม่ทัน)
         const t = (typeof translations !== 'undefined' && translations[currentLang]) ? translations[currentLang] : { 
             geo_searching: 'Loading...', 
             msg_no_post_range: 'No posts in range', 
@@ -1366,7 +1365,7 @@ function getTransactionDetail(t) {
             const rawData = await response.json();
             let allPosts = [];
 
-            // 1. แปลงข้อมูลให้เป็น Array ให้ชัวร์ที่สุด
+            // 1. แปลงข้อมูลให้เป็น Array
             if (Array.isArray(rawData)) {
                 allPosts = rawData;
             } else if (rawData && Array.isArray(rawData.posts)) {
@@ -1377,12 +1376,14 @@ function getTransactionDetail(t) {
                 return;
             }
             
-            // 2. Logic แยกประเภทและกรอง
-            let pinnedPosts = allPosts.filter(p => p.isPinned);
-            // แสดงเฉพาะกระทู้เปิด (Open) ในส่วนกระทู้ปกติ
-            let normalPosts = allPosts.filter(p => !p.isPinned && p.status === 'open');
+            // 2. Logic แยกประเภทและกรอง (แก้ใขให้สมาชิกเห็น Pinned แน่นอน)
+            // เช็ค isPinned แบบครอบคลุม (เผื่อ Database เก็บเป็น string "true")
+            let pinnedPosts = allPosts.filter(p => p.isPinned === true || p.isPinned === 'true');
+            
+            // กระทู้ปกติ: ต้องไม่ปักหมุด AND สถานะต้องเปิด (Open) เท่านั้น
+            let normalPosts = allPosts.filter(p => !p.isPinned && p.isPinned !== 'true' && p.status === 'open');
 
-            // 3. กรองระยะทาง (เฉพาะกระทู้ปกติ)
+            // 3. กรองระยะทาง (เฉพาะกระทู้ปกติเท่านั้นที่กรอง, ปักหมุดให้โชว์เสมอ)
             if (filterLocation && filterMaxDistance !== null) {
                 normalPosts = normalPosts.filter(post => {
                     if (!post.location || !post.location.lat || !post.location.lng) return false;
@@ -1398,10 +1399,9 @@ function getTransactionDetail(t) {
             pinnedPosts.sort((a, b) => b.id - a.id);
             normalPosts.sort((a, b) => b.id - a.id);
 
-            // 5. รวมกระทู้ (ใช้ Spread Operator)
+            // 5. รวมกระทู้
             const postsToDisplay = [...pinnedPosts, ...normalPosts];
 
-            // เช็คว่ามีกระทู้หรือไม่
             if (postsToDisplay.length === 0) {
                 if (filterLocation && filterMaxDistance !== null) {
                     container.innerHTML = `<div style="text-align:center; padding:20px; background:white; border-radius:8px;">
@@ -1416,28 +1416,24 @@ function getTransactionDetail(t) {
                 return;
             }
 
-            // 6. สร้าง HTML (แยกตัวแปรออกมาเพื่อป้องกัน Error บรรทัดเดียว)
+            // 6. สร้าง HTML (Clean Layout: หัวข้อซ้าย - ถังขยะขวา - ไม่มีรูป)
             const htmlContent = postsToDisplay.map(post => {
-                // --- ส่วนจัดการรูปภาพ ---
-                let imageThumbnail = '';
-                if (post.imageUrl) {
-                    imageThumbnail = `<div style="margin-top:10px;"><img src="${post.imageUrl}" style="max-height:150px; border-radius:8px;"></div>`;
-                }
-
-                // --- ส่วนจัดการระยะทาง (Badge) ---
+                
+                // --- จัดการระยะทาง (Badge) ---
                 let distanceBadge = '';
                 if (filterLocation && post.location && post.location.lat) {
                      const dist = getDistanceFromLatLonInKm(
                         filterLocation.lat, filterLocation.lng,
                         post.location.lat, post.location.lng
                     ).toFixed(1);
-                    // ใช้ white-space: nowrap เพื่อไม่ให้ข้อความตกบรรทัด
                     distanceBadge = `<span style="background:#e9f7ef; color:#28a745; padding:2px 6px; border-radius:10px; font-size:0.75em; margin-left:8px; white-space:nowrap; display:inline-block;">
                         📍 ${dist} ${kmText}
                     </span>`;
                 }
 
                 // --- สไตล์การ์ด ---
+                // ปักหมุด: ขอบเหลือง, พื้นเหลืองอ่อน
+                // ปกติ: ขอบฟ้า, พื้นขาว
                 const cardStyle = post.isPinned 
                     ? "background:#fffbf0; border-left: 4px solid #ffc107;" 
                     : "background:white; border-left: 4px solid #007bff;";
@@ -1448,14 +1444,17 @@ function getTransactionDetail(t) {
                 
                 let deleteBtn = '';
                 if (isOwner || isAdmin) { 
-                    // ⭐ [KEY FIX] margin-left: auto จะดันปุ่มไปขวาสุดใน Flex container
+                    // margin-left: auto จะดันปุ่มไปขวาสุด
                     deleteBtn = `<button class="sidebar-btn delete-btn" style="background:none; color:#dc3545; border:none; padding:0 5px; margin-left:auto; cursor:pointer;" 
                         onclick="event.stopPropagation(); deletePost('${post.id}')" title="ลบกระทู้">
                         <i class="fas fa-trash"></i>
                     </button>`;
+                } else {
+                    // ถ้าไม่มีปุ่มลบ ใส่ div เปล่าๆ ดันให้เต็มพื้นที่แทน
+                    deleteBtn = `<div style="margin-left:auto;"></div>`;
                 }
 
-                // --- RETURN HTML ---
+                // --- RETURN HTML (ไม่มีตัวแปร imageThumbnail แล้ว) ---
                 return `
                 <div class="post-card" onclick="viewPost('${post.id}')" style="cursor:pointer; padding:12px 15px; margin-bottom:10px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1); ${cardStyle} display:flex; flex-direction:column;">
                     
@@ -1470,16 +1469,13 @@ function getTransactionDetail(t) {
                         👤 ${post.author} | 🕒 ${new Date(post.id).toLocaleString()}
                     </div>
                     
-                    ${imageThumbnail}
                 </div>`;
-            }).join(''); // ⭐ อย่าลืม .join('') ตรงนี้
+            }).join(''); 
 
-            // 7. นำ HTML ไปแสดงผล
             container.innerHTML = htmlContent;
 
         } catch (error) {
             console.error('Error loading posts:', error);
-            // แสดง Error บนหน้าจอเพื่อให้รู้ว่าผิดตรงไหน
             container.innerHTML = `<p style="text-align:center; color:red;">❌ โหลดข้อมูลล้มเหลว: ${error.message}</p>`;
         }
     }
