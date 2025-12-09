@@ -169,9 +169,9 @@
     <div class="header-tools">
         <div class="coin-badge" onclick="contactAdmin()" title="คลิกเพื่อดูประวัติการเงิน">
             <div id="header-coins-container" style="text-align: right; line-height: 1.1;">
-                <div id="header-usd-display" style="font-size:1.4em; color:#e67e22; font-weight: bold;">0 USD</div>
-                <div id="header-converted-display" style="font-size:0.75em; color:#6c757d; font-weight: normal;">(0.00 THB)</div>
-            </div>
+    <div id="header-usd-display" style="font-size:1.0em; color:#e67e22; font-weight: bold;">0 USD</div> 
+    <div id="header-converted-display" style="font-size:0.75em; color:#6c757d; font-weight: normal;">(0.00 THB)</div>
+</div>
             <div id="coin-notif-dot" class="notif-dot hidden">!</div>
         </div>
         
@@ -185,8 +185,7 @@
     
     <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
 	
-		<div id="filter-container" style="text-align: center; margin: 5px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
-    </div>
+		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
         <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
     <button id="clear-filter-btn" style="display:none; margin-left:10px; cursor:pointer; background:none; border:none; color:red; text-decoration:underline; font-size: 0.8em;" onclick="clearDistanceFilter()" data-i18n-key="btn_cancel_filter">❌ ยกเลิก</button>
@@ -938,11 +937,12 @@ if (homeBtn) {
 
         // --- 3. อัปเดต Header (แสดง 2 บรรทัด: USD และ Converted) ---
         const headerUsd = document.getElementById('header-usd-display');
-        const headerConverted = document.getElementById('header-converted-display');
+        const headerConverted = document.getElementById('header-converted-display');
 
-        if (headerUsd) {
-            headerUsd.innerText = `${formattedUSD} USD`;
-        }
+        if (headerUsd) {
+            headerUsd.innerText = `${formattedUSD} USD`;
+            headerUsd.style.fontSize = "1.0em"; 
+        }
         if (headerConverted) {
             headerConverted.innerText = convertedDisplay;
         }
@@ -950,11 +950,12 @@ if (homeBtn) {
 
         // --- 4. อัปเดต Sidebar (แสดง 2 บรรทัด: USD และ Converted) ---
         const sidebarUsd = document.getElementById('sidebar-usd-display');
-        const sidebarConverted = document.getElementById('sidebar-converted-display');
+        const sidebarConverted = document.getElementById('sidebar-converted-display');
 
-        if (sidebarUsd) {
-            sidebarUsd.innerText = `${formattedUSD} USD`;
-        }
+        if (sidebarUsd) {
+            sidebarUsd.innerText = `${formattedUSD} USD`;
+            sidebarUsd.style.fontSize = "1.0em"; 
+        }
         if (sidebarConverted) {
             sidebarConverted.innerText = convertedDisplay;
         }
