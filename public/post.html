@@ -8,19 +8,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-		body {
-        background-image: url('https://oi-01.chat/7h44l27g251836334.png');
-        background-size: cover;         /* ขยายภาพให้เต็มพื้นที่ */
-        background-position: center;    /* จัดภาพให้อยู่ตรงกลาง */
-        background-attachment: fixed;   /* ไม่ให้ภาพเลื่อนตาม scroll */
-        background-repeat: no-repeat;   /* ไม่ให้ภาพซ้ำ */
-    }
         /* --- GLOBAL STYLES --- */
         body { 
             font-family: 'Kanit', sans-serif; 
             background-color: #e9ebee; 
             padding: 0; 
             margin: 0;
+			
+			background-image: url('https://oi-01.chat/7h44l27g251836334.png');
+			background-size: cover;
+			background-position: center;
+			background-attachment: fixed;
+			background-repeat: no-repeat;
+			background-color: #f0f2f5; /* เป็นสีสำรองกรณีรูปโหลดไม่ได้ */
+		
             display: none; 
         }
         .container { 
@@ -497,6 +498,7 @@
         // --- GLOBAL SETUP (unchanged logic) ---
         const socket = io();
 		let myCurrentLocation = null;
+		let myAdminLevel = 0;
 		
 		const postTranslations = {
     'th': {
@@ -687,6 +689,20 @@
             
             
         });
+		
+		// ฟังก์ชันดึงเลเวลแอดมิน
+    async function fetchUserLevel() {
+        if (myUsername === 'Guest') return;
+        try {
+            const response = await fetch(`/api/user-info?username=${myUsername}`);
+            const data = await response.json();
+            if (data.adminLevel) {
+                myAdminLevel = data.adminLevel;
+                console.log("Admin Level:", myAdminLevel);
+            }
+        } catch (e) { console.error("Error fetching admin level:", e); }
+    }
+	fetchUserLevel();
 
         socket.on('access-granted', (post) => {
             // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
@@ -1085,7 +1101,7 @@ socket.on('viewer-left-location', (data) => {
             if (oldAlert) oldAlert.remove();
 
             // --- LOGIC การแสดงปุ่มและการล็อค ---
-            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin';
+            const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
 
             // ซ่อนปุ่มทั้งหมดก่อน
             finishBtn.style.display = 'none';
@@ -1107,16 +1123,16 @@ socket.on('viewer-left-location', (data) => {
                     backBtn.style.display = 'block';
                     
                     // ถ้าเป็น Admin ให้โชว์ปุ่มปิดกระทู้ได้
-                    if (myUsername === 'Admin') {
-                        manualCloseBtn.style.display = 'block';
-                    }
+                    if (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1) {
+						manualCloseBtn.style.display = 'block';
+					}
                 }
                 // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
                 return; 
             }
 
             if (post.status === 'finished') {
-                const isParticipant = myUsername === post.author || myUsername === post.acceptedViewer || myUsername === 'Admin';
+                const isParticipant = myUsername === post.author || myUsername === post.acceptedViewer || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
 
                 if (!isParticipant) {
                     contentDiv.style.display = 'none';
