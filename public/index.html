@@ -2206,7 +2206,7 @@ function openAdminPinnedModal() {
     }
 
     async function sendCoinInChat() {
-        if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');
+        if (myAdminLevel < 1) return alert('❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันนี้'); 
         const promptText = translations[currentLang]['prompt_transfer_admin'];
         const amount = prompt(`${promptText} ${currentChatPartner}:`);
         if(!amount || isNaN(amount) || parseInt(amount) <= 0) return;
@@ -2227,7 +2227,7 @@ function openAdminPinnedModal() {
     }
     
     async function deductCoinInChat() {
-        if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');
+        if (myAdminLevel < 1) return alert('❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันนี้'); 
         const promptText = translations[currentLang]['prompt_deduct_admin'];
         const amount = prompt(`🔴 ${promptText} ${currentChatPartner}:`);
         if(!amount || isNaN(amount) || parseInt(amount) <= 0) return;
