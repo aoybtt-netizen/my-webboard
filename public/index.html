@@ -1514,6 +1514,23 @@ async function showMyClosedPosts(page = 1) {
             } else if (currentView === 'closed') {
                 filteredPosts = postsArray.filter(item => item.data.isClosed);
             }
+			
+			if (filterLocation && filterMaxDistance) {
+    filteredPosts = filteredPosts.filter(item => {
+        const post = item.data;
+        // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
+        if (!post.location || !post.location.lat || !post.location.lng) {
+            return false; 
+        }
+        // คำนวณระยะทาง
+        const dist = getDistanceFromLatLonInKm(
+            filterLocation.lat, filterLocation.lng,
+            post.location.lat, post.location.lng
+        );
+        // คืนค่า True ถ้าอยู่ในระยะ
+        return dist <= filterMaxDistance;
+    });
+}
             
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
