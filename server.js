@@ -788,18 +788,29 @@ io.on('connection', (socket) => {
 
     socket.on('join-post-room', async ({ postId, username, lang }) => {
         const post = await postsCollection.findOne({ id: parseInt(postId) });
+        
         if (!post) {
+            // ถ้าไม่เจอกระทู้
             socket.emit('access-denied', translateServerMsg('post_not_found', lang));
             return;
         }
 
+        // ⭐ [NEW] ดึงข้อมูล User จากฐานข้อมูลเพื่อดู Admin Level
+        const user = await usersCollection.findOne({ username: username });
+        const myAdminLevel = user ? (user.adminLevel || 0) : 0;
+
         const isOwner = username === post.author;
-        const isAdmin = username === 'Admin';
+        // ⭐ [EDIT] เป็น Admin ถ้าชื่อ 'Admin' หรือมี Level >= 1
+        const isAdmin = (username === 'Admin') || (myAdminLevel >= 1);
+        
         const isParticipant = isOwner || username === post.acceptedViewer;
 
+        // ถ้าเป็น เจ้าของ หรือ Admin -> เข้าได้เสมอ (ทะลุทุกเงื่อนไข)
         if (isOwner || isAdmin) {
             socket.join(`post-${postId}`);
             socket.emit('access-granted', post);
+            
+            // ส่งข้อมูลพิกัดให้ดู (ถ้ามี)
             if (viewerGeolocation[postId]) {
                 for (const [viewerName, loc] of Object.entries(viewerGeolocation[postId])) {
                     socket.emit('viewer-location-update', { 
@@ -811,6 +822,7 @@ io.on('connection', (socket) => {
             return; 
         }
 
+        // กรณีจบงาน หรือ ปิดกระทู้ -> คนอื่นเข้าไม่ได้ (แต่ Admin ทะลุไปแล้วด้านบน)
         if (post.status === 'finished' || post.isClosed) {
             if (isParticipant) {
                 socket.join(`post-${postId}`);
@@ -821,6 +833,7 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // กรณีห้องปกติ (เช็คว่าห้องเต็มไหม)
         const currentViewer = postViewers[postId];
         if (!currentViewer) {
             postViewers[postId] = username;

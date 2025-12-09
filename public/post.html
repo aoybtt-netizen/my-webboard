@@ -901,7 +901,7 @@ window.closeImageViewer = function() {
 
         mapContainer.style.display = 'block'; 
 
-        const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
+        const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
         if (isOwnerOrAdmin) {
             navButton.style.display = 'none';
         } else {
@@ -940,7 +940,7 @@ window.closeImageViewer = function() {
     let mapUrl = '';
     let viewerText = '';
     
-    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
+    const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
 
     if (viewerLocation && viewerLocation.lat && isOwnerOrAdmin) {
         const v_lat = viewerLocation.lat.toFixed(6);
@@ -1003,7 +1003,7 @@ window.closeImageViewer = function() {
 
 socket.on('viewer-location-update', (data) => {
     // อัปเดตเมื่อเป็นเจ้าของ/Admin และไม่ใช่ตัวเอง
-    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
+    const isOwnerOrAdmin = myUsername === post.author || (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
 
     if (isOwnerOrAdmin && data.viewer !== myUsername) {
          currentViewerLocation = data.location;
