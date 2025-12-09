@@ -317,44 +317,62 @@ app.post('/api/admin/set-cost', async (req, res) => {
 
 
 	// 8. Give Coins 
-app.post('/api/admin/give-coins', async (req, res) => {
+	app.post('/api/admin/give-coins', async (req, res) => {
     const { targetUser, amount, requestBy } = req.body;
     
-    // ดึงข้อมูลผู้โอน
+    // ดึงข้อมูลผู้โอนและเช็คสิทธิ์ (Admin Level 1+)
     const requester = await getUserData(requestBy);
-    
-    // เช็คสิทธิ์: ต้องเป็น Level 3 เท่านั้น
-    if (requester.adminLevel < 3) {
-        return res.status(403).json({ error: 'Level 3 Admin only (Permission Denied)' });
+    if (requester.adminLevel < 1) { 
+        return res.status(403).json({ error: 'Admin Level 1 or higher required' });
     }
 
     const parsedAmount = parseInt(amount);
     if (parsedAmount <= 0) return res.status(400).json({ error: 'Incorrect number' });
 
-    // ถ้าเป็น Level 3 ไม่ต้องเช็คยอดและไม่ต้องหักเงิน
-    // (ข้ามขั้นตอนการตัดเงิน requester ไปเลย)
-
-    // เพิ่มเงินให้เป้าหมาย
     const targetData = await getUserData(targetUser);
+    let transactionType = 'ADMIN_GIVE'; // Default สำหรับ Admin Level 3 (สร้างเหรียญ)
+    let note = `Admin (${requestBy}) Gift/Generate USD to ${targetUser}`;
+
+    // ตรวจสอบระดับ Admin และหักเงิน ---
+    if (requester.adminLevel < 3) {
+        // Admin Level 1 หรือ 2: ต้องหักจากยอดคงเหลือของตัวเอง
+        if (requester.coins < parsedAmount) {
+            return res.status(400).json({ error: 'Insufficient coins in your admin account for this transfer.' });
+        }
+        
+        // 1. หักเงินจาก Admin ผู้โอน
+        await updateUser(requestBy, { coins: requester.coins - parsedAmount });
+        transactionType = 'ADMIN_TRANSFER'; // ตั้งประเภทใหม่สำหรับการโอนจากยอดคงเหลือ
+        note = `Admin (${requestBy}) Transfer USD from balance to ${targetUser}`;
+    }
+    // --- ⭐ [สิ้นสุดส่วนแก้ไข] ---
+
+
+    // 2. เพิ่มเงินให้เป้าหมาย (เหมือนเดิม)
     await updateUser(targetUser, { coins: targetData.coins + parsedAmount });
 
-    // บันทึก Transaction (ระบุว่าเป็น System Generate หรือ Admin Gift)
+    // 3. บันทึก Transaction (ใช้ type และ note ที่กำหนดไว้ด้านบน)
     await transactionsCollection.insertOne({
         id: Date.now(), 
-        type: 'ADMIN_GIVE', 
+        type: transactionType, 
         amount: parsedAmount, 
-        fromUser: requestBy, // แสดงชื่อคนเสกเงิน
+        fromUser: requestBy, // The Admin who initiated
         toUser: targetUser,
-        note: `Admin (${requestBy}) Transfer USD to ${targetUser}`, 
+        note: note, 
         timestamp: Date.now()
     });
 
-    // อัปเดตยอดเงิน Realtime
+    // 4. อัปเดตยอดเงิน Realtime
     const updatedTarget = await getUserData(targetUser);
     io.emit('balance-update', { user: targetUser, coins: updatedTarget.coins });
-    // ไม่ต้อง emit balance-update ของ Admin เพราะเงินไม่ได้ลด
     
-    // แจ้งเตือนผู้รับ
+    // อัปเดตยอดเงิน Admin ผู้โอน (ถ้าเป็น Level 1 หรือ 2 ที่ถูกหักเงิน)
+    if (requester.adminLevel < 3) {
+        const updatedRequester = await getUserData(requestBy);
+        io.emit('balance-update', { user: requestBy, coins: updatedRequester.coins });
+    }
+    
+    // 5. แจ้งเตือนผู้รับ (เหมือนเดิม)
     const notifMsg = { 
         sender: 'System', 
         target: targetUser, 
@@ -366,7 +384,7 @@ app.post('/api/admin/give-coins', async (req, res) => {
     await messagesCollection.insertOne(notifMsg);
     io.to(targetUser).emit('private-message', { ...notifMsg, to: targetUser });
     
-    // แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่
+    // 6. แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่ (เหมือนเดิม)
     io.to('Admin').emit('admin-new-transaction');
 
     res.json({ success: true });
@@ -595,33 +613,64 @@ app.put('/api/posts/:id/close', async (req, res) => {
 // 18. Deduct Coins
 app.post('/api/admin/deduct-coins', async (req, res) => {
     const { targetUser, amount, requestBy } = req.body;
-	const requester = await getUserData(requestBy);
-    if (requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Admin permission required' });
+
+    // ดึงข้อมูลผู้ดึงและเช็คสิทธิ์
+    const requester = await getUserData(requestBy);
+    if (requester.adminLevel < 1) { 
+        return res.status(403).json({ error: 'Admin Level 1 or higher required' });
     }
-    //if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+
     const parsedAmount = parseInt(amount);
-    const user = await getUserData(targetUser);
+    if (parsedAmount <= 0) return res.status(400).json({ error: 'Incorrect number' });
+
+    const targetData = await getUserData(targetUser);
+    if (targetData.coins < parsedAmount) {
+        return res.status(400).json({ error: 'Target user has insufficient coins.' });
+    }
+
+    // 1. ดึงข้อมูล Admin ผู้ดำเนินการ (Requester) เพื่อใช้ในการเพิ่มเงิน
+    const requesterData = await getUserData(requestBy); 
+
+    // 2. เพิ่มเงินเข้าบัญชี Admin ผู้ดำเนินการ
+    await updateUser(requestBy, { coins: requesterData.coins + parsedAmount });
     
-    if (user.coins < parsedAmount) return res.status(400).json({ error: 'Not enough coins to break' });
-    await updateUser(targetUser, { coins: user.coins - parsedAmount });
-    
-    const adminUser = await getUserData('Admin');
-    await updateUser('Admin', { coins: adminUser.coins + parsedAmount });
-    
+    // 3. หักเงินจากเป้าหมาย
+    await updateUser(targetUser, { coins: targetData.coins - parsedAmount });
+
+    // 4. บันทึก Transaction
     await transactionsCollection.insertOne({
-        id: Date.now(), type: 'ADMIN_DEDUCT', amount: parsedAmount, fromUser: targetUser, toUser: 'Admin',
-        note: `Admin Retrieve coins from ${targetUser}`, timestamp: Date.now()
+        id: Date.now(), 
+        type: 'ADMIN_RETURN', // ประเภท: เงินถูกดึงคืน (เข้า Admin)
+        amount: parsedAmount, 
+        fromUser: targetUser,
+        toUser: requestBy, // ⭐ [MODIFIED] เงินเข้าบัญชี Admin
+        note: `Admin (${requestBy}) deduct USD from ${targetUser} and received the amount.`, 
+        timestamp: Date.now()
     });
 
-    const updatedUser = await getUserData(targetUser);
-    const updatedAdmin = await getUserData('Admin');
-    io.emit('balance-update', { user: targetUser, coins: updatedUser.coins });
-    io.emit('balance-update', { user: 'Admin', coins: updatedAdmin.coins });
+    // 5. อัปเดตยอดเงิน Realtime ของผู้ที่เกี่ยวข้อง
+
+    // อัปเดตยอดเงินผู้ใช้เป้าหมาย
+    const updatedTarget = await getUserData(targetUser);
+    io.emit('balance-update', { user: targetUser, coins: updatedTarget.coins });
     
-    const notifMsg = { sender: 'System', target: targetUser, msgKey: 'SYS_DEDUCT', msgData: { amount: parsedAmount }, msg: `💸 ดึงเงินคืน ${parsedAmount} USD`, timestamp: Date.now() };
+    // ⭐ อัปเดตยอดเงิน Admin ผู้ดำเนินการ
+    const updatedRequester = await getUserData(requestBy);
+    io.emit('balance-update', { user: requestBy, coins: updatedRequester.coins }); 
+    
+    // 6. แจ้งเตือนผู้รับ (เหมือนเดิม)
+    const notifMsg = { 
+        sender: 'System', 
+        target: targetUser, 
+        msgKey: 'SYS_DEDUCT', 
+        msgData: { amount: parsedAmount }, 
+        msg: `💰 Admin has deducted the amount from you ${parsedAmount} USD`, 
+        timestamp: Date.now() 
+    };
     await messagesCollection.insertOne(notifMsg);
     io.to(targetUser).emit('private-message', { ...notifMsg, to: targetUser });
+    
+    // 7. แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่ (เหมือนเดิม)
     io.to('Admin').emit('admin-new-transaction');
 
     res.json({ success: true });
