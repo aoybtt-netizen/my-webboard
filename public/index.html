@@ -1345,61 +1345,66 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
         const container = document.getElementById('post-list');
+        // ป้องกัน Error หากตัวแปรภาษาโหลดไม่ทัน
         const t = (typeof translations !== 'undefined' && translations[currentLang]) ? translations[currentLang] : { 
             geo_searching: 'Loading...', 
             msg_no_post_range: 'No posts in range', 
-            btn_show_all: 'Show All',
-            closed_or_finished: 'Closed',
-            post_btn_next: 'Next',
-            post_btn_prev: 'Prev'
+            btn_show_all: 'Show All'
         };
         const kmText = currentLang === 'th' ? 'กม.' : 'km';
         
-        // แสดงสถานะกำลังโหลด
         container.innerHTML = `<p style="text-align:center;">${t.geo_searching}</p>`;
         
         try {
-            const response = await fetch('/api/posts');
+            // โหลดข้อมูลกระทู้
+            const response = await fetch('/api/posts'); // ❌ บรรทัดนี้ไม่ต้องมี { }
             if (!response.ok) throw new Error(`Server Error: ${response.status}`);
 
             const rawData = await response.json();
             let allPosts = [];
 
-            // 1. แปลงข้อมูลให้เป็น Array
             if (Array.isArray(rawData)) {
                 allPosts = rawData;
             } else if (rawData && Array.isArray(rawData.posts)) {
                 allPosts = rawData.posts;
             } else {
-                console.warn("Invalid data format:", rawData);
                 container.innerHTML = `<p style="text-align:center;">ยังไม่มีกระทู้</p>`;
                 return;
             }
             
-            // 2. Logic แยกประเภทและกรอง (แก้ใขให้สมาชิกเห็น Pinned แน่นอน)
-            // เช็ค isPinned แบบครอบคลุม (เผื่อ Database เก็บเป็น string "true")
+            // --- 1. แยกกระทู้ปักหมุด (Admin Pinned) ---
             let pinnedPosts = allPosts.filter(p => p.isPinned === true || p.isPinned === 'true');
             
-            // กระทู้ปกติ: ต้องไม่ปักหมุด AND สถานะต้องเปิด (Open) เท่านั้น
-            let normalPosts = allPosts.filter(p => !p.isPinned && p.isPinned !== 'true' && p.status === 'open');
+            // --- 2. แยกกระทู้ปกติ (Normal) ---
+            // ⭐ แก้ไข: ให้โชว์ถ้า status เป็น 'open' หรือ ไม่มี status หรือ เป็น 'Open' (เผื่อข้อมูลเก่า)
+            let normalPosts = allPosts.filter(p => {
+                const isPin = (p.isPinned === true || p.isPinned === 'true');
+                const isOpen = (!p.status || p.status === 'open' || p.status === 'Open'); 
+                return !isPin && isOpen;
+            });
 
-            // 3. กรองระยะทาง (เฉพาะกระทู้ปกติเท่านั้นที่กรอง, ปักหมุดให้โชว์เสมอ)
+            // --- 3. กรองระยะทาง (เฉพาะกระทู้ปกติ) ---
             if (filterLocation && filterMaxDistance !== null) {
                 normalPosts = normalPosts.filter(post => {
+                    // ถ้าไม่มีพิกัด ให้ข้ามไป (หรือจะให้โชว์ก็ได้แล้วแต่ตกลง)
                     if (!post.location || !post.location.lat || !post.location.lng) return false;
-                    const dist = getDistanceFromLatLonInKm(
-                        filterLocation.lat, filterLocation.lng,
-                        post.location.lat, post.location.lng
-                    );
-                    return dist <= filterMaxDistance;
+                    
+                    // ⭐ แปลงเป็นตัวเลขให้ชัวร์ก่อนคำนวณ
+                    const lat1 = parseFloat(filterLocation.lat);
+                    const lng1 = parseFloat(filterLocation.lng);
+                    const lat2 = parseFloat(post.location.lat);
+                    const lng2 = parseFloat(post.location.lng);
+
+                    const dist = getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2);
+                    return dist <= parseFloat(filterMaxDistance);
                 });
             }
 
-            // 4. เรียงลำดับ (ใหม่ -> เก่า)
+            // --- 4. เรียงลำดับ (ใหม่ -> เก่า) ---
             pinnedPosts.sort((a, b) => b.id - a.id);
             normalPosts.sort((a, b) => b.id - a.id);
 
-            // 5. รวมกระทู้
+            // --- 5. รวมกระทู้ ---
             const postsToDisplay = [...pinnedPosts, ...normalPosts];
 
             if (postsToDisplay.length === 0) {
@@ -1416,59 +1421,52 @@ function getTransactionDetail(t) {
                 return;
             }
 
-            // 6. สร้าง HTML (Clean Layout: หัวข้อซ้าย - ถังขยะขวา - ไม่มีรูป)
+            // --- 6. สร้าง HTML ---
             const htmlContent = postsToDisplay.map(post => {
-                
-                // --- จัดการระยะทาง (Badge) ---
+                // คำนวณระยะทางเพื่อโชว์
                 let distanceBadge = '';
                 if (filterLocation && post.location && post.location.lat) {
                      const dist = getDistanceFromLatLonInKm(
-                        filterLocation.lat, filterLocation.lng,
-                        post.location.lat, post.location.lng
+                        parseFloat(filterLocation.lat), parseFloat(filterLocation.lng),
+                        parseFloat(post.location.lat), parseFloat(post.location.lng)
                     ).toFixed(1);
                     distanceBadge = `<span style="background:#e9f7ef; color:#28a745; padding:2px 6px; border-radius:10px; font-size:0.75em; margin-left:8px; white-space:nowrap; display:inline-block;">
                         📍 ${dist} ${kmText}
                     </span>`;
                 }
 
-                // --- สไตล์การ์ด ---
-                // ปักหมุด: ขอบเหลือง, พื้นเหลืองอ่อน
-                // ปกติ: ขอบฟ้า, พื้นขาว
-                const cardStyle = post.isPinned 
+                // สไตล์การ์ด
+                const cardStyle = (post.isPinned === true || post.isPinned === 'true')
                     ? "background:#fffbf0; border-left: 4px solid #ffc107;" 
                     : "background:white; border-left: 4px solid #007bff;";
 
-                // --- เช็คสิทธิ์ปุ่มลบ ---
+                // ปุ่มลบ
                 const isOwner = myUsername === post.author;
                 const isAdmin = (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
                 
                 let deleteBtn = '';
                 if (isOwner || isAdmin) { 
-                    // margin-left: auto จะดันปุ่มไปขวาสุด
                     deleteBtn = `<button class="sidebar-btn delete-btn" style="background:none; color:#dc3545; border:none; padding:0 5px; margin-left:auto; cursor:pointer;" 
                         onclick="event.stopPropagation(); deletePost('${post.id}')" title="ลบกระทู้">
                         <i class="fas fa-trash"></i>
                     </button>`;
                 } else {
-                    // ถ้าไม่มีปุ่มลบ ใส่ div เปล่าๆ ดันให้เต็มพื้นที่แทน
-                    deleteBtn = `<div style="margin-left:auto;"></div>`;
+                     deleteBtn = `<div style="margin-left:auto;"></div>`;
                 }
 
-                // --- RETURN HTML (ไม่มีตัวแปร imageThumbnail แล้ว) ---
+                // HTML Card
                 return `
                 <div class="post-card" onclick="viewPost('${post.id}')" style="cursor:pointer; padding:12px 15px; margin-bottom:10px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1); ${cardStyle} display:flex; flex-direction:column;">
-                    
                     <div style="display:flex; align-items:center; width:100%;">
                         <h3 style="margin:0; font-size:1.1em; color:#333; font-weight:500;">
-                            ${post.isPinned ? '📌 ' : ''} ${post.title}
+                            ${(post.isPinned===true||post.isPinned==='true') ? '📌 ' : ''} ${post.title}
                         </h3>
                         ${distanceBadge}
-                        ${deleteBtn} </div>
-
+                        ${deleteBtn}
+                    </div>
                     <div style="font-size:0.8em; color:#999; margin-top:5px;">
                         👤 ${post.author} | 🕒 ${new Date(post.id).toLocaleString()}
                     </div>
-                    
                 </div>`;
             }).join(''); 
 
@@ -1478,6 +1476,11 @@ function getTransactionDetail(t) {
             console.error('Error loading posts:', error);
             container.innerHTML = `<p style="text-align:center; color:red;">❌ โหลดข้อมูลล้มเหลว: ${error.message}</p>`;
         }
+    }
+	
+	function viewPost(id) {
+        if (!id) return;
+        window.location.href = `/post.html?id=${id}`;
     }
 		
 		// ดูกระทู้ของฉันที่ยังไม่ปิด
@@ -2040,44 +2043,65 @@ function openAdminPinnedModal() {
     let titleVal = "";
     
     // เช็ค Logic การส่ง Title
-    if (myUsername === 'Admin') {
-        // Admin ต้องเอาค่าจาก Input
-        titleVal = titleInput.value.trim();
-        if (!titleVal) return alert("Admin กรุณาระบุชื่อกระทู้พิเศษ");
-    } else {
-        // User ทั่วไป ส่งค่าว่างไป (Server จะจัดการตั้งชื่อตามหมวดหมู่เอง)
-        titleVal = ""; 
-        if (!content) return alert("กรุณาใส่รายละเอียดกระทู้");
-    }
+    // ฟังก์ชันสร้างกระทู้
+    async function createPost() {
+        const title = document.getElementById('post-title-input').value.trim();
+        const content = document.getElementById('post-content-input').value.trim();
+        const topicId = document.getElementById('post-topic-select').value;
+        const imageFile = document.getElementById('post-image').files[0];
 
-    const formData = new FormData();
-    formData.append('title', titleVal);
-    formData.append('category', category);
-    formData.append('content', content);
-    formData.append('author', myUsername);
+        if (!title || !content) {
+            alert('กรุณากรอกหัวข้อและเนื้อหา');
+            return;
+        }
 
-    if (imageFile) formData.append('image', imageFile); 
-    if (currentLocationData) formData.append('location', JSON.stringify(currentLocationData));
-
-    const res = await fetch('/api/posts', {
-        method: 'POST',
-        body: formData 
-    }); 
-
-    if (res.status !== 200) { 
-        const d = await res.json(); 
-        alert(d.error); 
-    } else { 
-        closeCreateModal(); 
-        titleInput.value = ''; 
-        document.getElementById('content').value = ''; 
-        document.getElementById('post-image').value = '';
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        formData.append('topicId', topicId);
+        formData.append('user', myUsername);
         
-        currentView = 'home';
-        loadPosts(); 
-        showNotification('✅ สร้างกระทู้สำเร็จ!', 'fas fa-check-circle', 3000);
-    } 
-}
+        // ส่งพิกัดไปด้วย (ถ้ามี)
+        if (currentLocation) {
+            formData.append('lat', currentLocation.lat);
+            formData.append('lng', currentLocation.lng);
+        }
+
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        // ปิด Modal และแสดง Loading
+        closeCreateModal();
+        // showLoading('กำลังสร้างกระทู้...'); // ถ้ามีฟังก์ชันนี้
+
+        try {
+            // ⭐ บรรทัดที่เคย Error น่าจะเป็นตรงนี้
+            const res = await fetch('/api/posts', {
+                method: 'POST',
+                body: formData 
+                // ไม่ต้องใส่ Header 'Content-Type' เมื่อใช้ FormData
+            });
+
+            const result = await res.json();
+            
+            if (result.success) {
+                // รีเซ็ตฟอร์ม
+                document.getElementById('post-title-input').value = '';
+                document.getElementById('post-content-input').value = '';
+                document.getElementById('post-image').value = '';
+                document.getElementById('file-name-display').innerText = '';
+                
+                alert('✅ สร้างกระทู้เรียบร้อย!');
+                loadPosts(); // โหลดข้อมูลใหม่
+            } else {
+                alert('❌ เกิดข้อผิดพลาด: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error creating post:', error);
+            alert('❌ เชื่อมต่อ Server ไม่ได้');
+        }
+    }
 
         socket.on('new-post', loadPosts); 
         socket.on('delete-post', (id)=>{ 
