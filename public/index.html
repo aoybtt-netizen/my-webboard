@@ -1757,8 +1757,11 @@ async function showMyClosedPosts(page = 1) {
             currentCost = newCost; 
             const costDisplay = document.getElementById('cost-display');
             if (costDisplay) costDisplay.innerText = newCost;
-            document.getElementById('modal-cost').innerText = newCost; 
-            
+            const modalCostDisplay = document.getElementById('modal-cost-display');
+            if (modalCostDisplay) {
+                 modalCostDisplay.innerText = `${newCost.toFixed(2)} USD`; 
+            } 
+            updateUserInfo();
             if (myUsername === 'Admin') {
                 alert(`🔔 ค่าธรรมเนียมถูกเปลี่ยนเป็น ${newCost} USD`);
             }
