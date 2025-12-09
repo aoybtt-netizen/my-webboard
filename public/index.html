@@ -1345,49 +1345,62 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
         const container = document.getElementById('post-list');
-        const t = translations[currentLang]; // ดึงคำแปลภาษาปัจจุบัน
+        // ป้องกัน Error กรณี translations โหลดไม่ทัน
+        const t = (typeof translations !== 'undefined' && translations[currentLang]) ? translations[currentLang] : { 
+            geo_searching: 'Loading...', 
+            msg_no_post_range: 'No posts in range', 
+            btn_show_all: 'Show All',
+            closed_or_finished: 'Closed',
+            post_btn_next: 'Next',
+            post_btn_prev: 'Prev'
+        };
         const kmText = currentLang === 'th' ? 'กม.' : 'km';
         
-        container.innerHTML = `<p style="text-align:center;">${t.geo_searching || 'กำลังโหลด...'}</p>`;
+        container.innerHTML = `<p style="text-align:center;">${t.geo_searching}</p>`;
         
         try {
             const response = await fetch('/api/posts');
             
-            // 1. ตรวจสอบสถานะ Response
+            // 1. เช็คว่า Server ตอบกลับปกติไหม
             if (!response.ok) {
-                throw new Error(`Server returned ${response.status}`);
+                throw new Error(`Server Error: ${response.status}`);
             }
 
-            let posts = await response.json();
-            
-            // 2. ⭐ ตรวจสอบว่า posts เป็น Array จริงหรือไม่ (ป้องกัน Error .sort)
-            if (!Array.isArray(posts)) {
-                console.warn("API did not return an array:", posts);
-                container.innerHTML = `<p style="text-align:center; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล (Invalid Data)</p>`;
-                return;
+            const rawData = await response.json();
+            let posts = [];
+
+            // 2. ⭐ [แก้ไข] ตรวจสอบและแปลงข้อมูลให้เป็น Array เสมอ
+            if (Array.isArray(rawData)) {
+                // กรณีปกติ: Server ส่ง Array มาเลย
+                posts = rawData;
+            } else if (rawData && Array.isArray(rawData.posts)) {
+                // กรณี Server ส่งมาแบบ { posts: [...] }
+                posts = rawData.posts;
+            } else if (rawData && rawData.error) {
+                // กรณี Server ส่ง Error กลับมา
+                throw new Error(rawData.error);
+            } else {
+                // กรณีข้อมูลมาแบบแปลกๆ
+                console.warn("Invalid Data format:", rawData);
+                throw new Error("รูปแบบข้อมูลจาก Server ไม่ถูกต้อง (ไม่ใช่ List)");
             }
             
-            // -----------------------------------------------------------
-            // Logic กรองกระทู้ตามระยะทาง
-            // -----------------------------------------------------------
+            // 3. Logic กรองกระทู้ตามระยะทาง
             if (filterLocation && filterMaxDistance !== null) {
                 posts = posts.filter(post => {
                     // กฏ: กระทู้ Admin โชว์เสมอ
                     if (post.author === 'Admin') return true;
-
                     // กฏ: ไม่มีพิกัด -> ซ่อน
                     if (!post.location || !post.location.lat || !post.location.lng) return false;
-
                     // กฏ: คำนวณระยะ
                     const dist = getDistanceFromLatLonInKm(
                         filterLocation.lat, filterLocation.lng,
                         post.location.lat, post.location.lng
                     );
-
                     return dist <= filterMaxDistance;
                 });
                 
-                // ถ้าไม่เหลือกกระทู้หลังกรอง
+                // ถ้ากรองแล้วไม่เหลือกระทู้
                 if (posts.length === 0) {
                     container.innerHTML = `<div style="text-align:center; padding:20px; background:white; border-radius:8px;">
                         <p>${t.msg_no_post_range} ${filterMaxDistance} ${kmText}</p>
@@ -1398,12 +1411,11 @@ function getTransactionDetail(t) {
                     return;
                 }
             }
-            // -----------------------------------------------------------
 
-            // 3. เรียงลำดับ (หลังจากมั่นใจว่าเป็น Array แล้ว)
+            // 4. เรียงลำดับ (ใหม่ -> เก่า)
             posts.sort((a, b) => b.id - a.id);
 
-            // 4. Render HTML
+            // 5. Render HTML
             if (posts.length === 0) {
                 container.innerHTML = `<p style="text-align:center;">ยังไม่มีกระทู้</p>`;
                 return;
@@ -1415,13 +1427,11 @@ function getTransactionDetail(t) {
                     `<span style="color:red; font-weight:bold;">[${t.closed_or_finished}]</span>` : 
                     `<span style="color:green; font-weight:bold;">[Open]</span>`;
                 
-                // เช็คว่ามีรูปหรือไม่
                 let imageThumbnail = '';
                 if (post.imageUrl) {
                     imageThumbnail = `<div style="margin-top:10px;"><img src="${post.imageUrl}" style="max-height:150px; border-radius:8px;"></div>`;
                 }
 
-                // ส่วนแสดงผลระยะทาง (ถ้ามีการเช็คอิน)
                 let distanceBadge = '';
                 if (filterLocation && post.location && post.location.lat) {
                      const dist = getDistanceFromLatLonInKm(
@@ -1433,9 +1443,7 @@ function getTransactionDetail(t) {
                     </span>`;
                 }
 
-                // ส่วนปุ่มลบ (Admin หรือ เจ้าของ)
                 const isOwner = myUsername === post.author;
-                // เช็ค Admin Level (ถ้ามี)
                 const isAdmin = (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 1);
                 
                 let deleteBtn = '';
@@ -1463,7 +1471,11 @@ function getTransactionDetail(t) {
 
         } catch (error) {
             console.error('Error loading posts:', error);
-            container.innerHTML = `<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว: ${error.message}</p>`;
+            // แสดง Error บนหน้าจอให้เห็นชัดๆ
+            container.innerHTML = `<p style="text-align:center; color:red; background: white; padding: 20px; border-radius: 8px;">
+                ❌ โหลดข้อมูลล้มเหลว: ${error.message}<br>
+                <small>(กรุณาลองรีเฟรชหน้าเว็บ หรือตรวจสอบ Server)</small>
+            </p>`;
         }
     }
 		
