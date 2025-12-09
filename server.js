@@ -570,34 +570,26 @@ app.delete('/api/posts/:id', async (req, res) => {
 });
 
 // 17. Manual Close
-app.put('/api/posts/:id/close-manual', async (req, res) => { 
-    const id = parseInt(req.params.id);
+app.put('/api/posts/:id/close', async (req, res) => {
+    const postId = req.params.id;
     const { requestBy } = req.body;
-    const post = await postsCollection.findOne({ id: id });
-
-    if (!post) return res.status(404).json({ error: 'No posts found' });
-    if (requestBy !== post.author && requestBy !== 'Admin') return res.status(403).json({ error: 'No Permission' });
-    if (post.isClosed) return res.json({ success: true, message: 'Closed already' });
-
-    await postsCollection.updateOne({ id: id }, { $set: { isClosed: true, status: 'closed_by_user' } });
     
-    // Kick Viewers Logic
-    const viewerToKick = postViewers[id];
-    if (viewerToKick && viewerToKick !== post.author && viewerToKick !== 'Admin') {
-        const roomName = `post-${id}`;
-        const roomRef = io.sockets.adapter.rooms.get(roomName);
-        if (roomRef) {
-             for (const socketId of roomRef) {
-                const s = io.sockets.sockets.get(socketId);
-                if (s && s.username === viewerToKick) {
-                    s.emit('force-leave', '⚠️ The topic is closed. You have been invited to leave.');
-                }
-             }
-        }
+    const post = await postsCollection.findOne({ id: postId });
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+
+    // ตรวจสอบสิทธิ์: ต้องเป็นเจ้าของโพสต์ หรือเป็น Admin Level 1 ขึ้นไป
+    const requester = await getUserData(requestBy);
+    if (requestBy !== post.author && requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied. Only Author or Admin (Level 1+) can close this post.' });
     }
-    delete postViewers[id];
-    io.emit('update-post-status'); 
-    res.json({ success: true, message: 'ปิดกระทู้สำเร็จ' });
+
+    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed' } });
+    
+    const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
+    await messagesCollection.insertOne(notifMsg);
+    io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
+
+    res.json({ success: true });
 });
 
 // 18. Deduct Coins
