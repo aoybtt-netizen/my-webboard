@@ -532,7 +532,9 @@
         'msg_no_post_range': '❌ ไม่พบกระทู้ในระยะ',
         'btn_show_all': 'แสดงทั้งหมด',
         'error_geo_not_supported': 'Browser นี้ไม่รองรับการระบุตำแหน่ง',
-        'error_geo_failed': 'ระบุตำแหน่งล้มเหลว'
+        'error_geo_failed': 'ระบุตำแหน่งล้มเหลว',
+		'admin_success_set_cost': '✅ ตั้งค่าธรรมเนียมสำเร็จ!', 
+        'admin_error_set_cost': '❌ ตั้งค่าไม่สำเร็จ',
     },
     'en': {
         'app_title': 'Webboard',
@@ -648,6 +650,8 @@
         'btn_show_all': 'Show All',
         'error_geo_not_supported': 'Browser does not support Geolocation',
         'error_geo_failed': 'Location failed'
+		'admin_success_set_cost': '✅ Fee set successfully!', 
+        'admin_error_set_cost': '❌ Failed to set fee',
     }
 };
 
@@ -2043,9 +2047,9 @@ function openAdminPinnedModal() {
         
         if (res.status === 200) {
             updateUserInfo(); 
-            alert("✅ ตั้งค่าธรรมเนียมสำเร็จ!");
+            alert(translations[currentLang]['admin_success_set_cost']);
         } else {
-            alert("❌ ตั้งค่าไม่สำเร็จ");
+            alert(translations[currentLang]['admin_error_set_cost']);
         }
     }
 }
