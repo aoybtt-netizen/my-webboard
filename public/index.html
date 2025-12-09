@@ -142,7 +142,7 @@
     </select>
 </div>
     
-    <button class="sidebar-btn" onclick="switchView('home')" data-i18n-key="home">🏠 หน้าหลัก</button>
+    <button class="sidebar-btn" id="home-btn" onclick="switchView('home')" data-i18n-key="home">🏠 หน้าหลัก</button>
     <button class="sidebar-btn create-btn" onclick="openCreateModal()" data-i18n-key="create_post">+ สร้างกระทู้</button>
 	
 	<button class="sidebar-btn my-active-posts-btn" onclick="showMyActivePosts()">
@@ -185,16 +185,11 @@
     
     <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
 	
-		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.8); border-radius: 8px;">
-                <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 8px 20px; background: #17a2b8; color: white; font-size: 1rem;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">
-                    📍 กรองระยะทาง
-                </button>
-                <span id="filter-status" style="margin-left: 10px; font-size: 0.9em; color: #333; font-weight: bold;" data-i18n-key="status_all">
-                    (แสดงทั้งหมด)
-                </span>
-                
-                
-            </div>
+		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 10px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
+    <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
+    <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
+    <button id="clear-filter-btn" style="display:none; margin-left:10px; cursor:pointer; background:none; border:none; color:red; text-decoration:underline; font-size: 0.8em;" onclick="clearDistanceFilter()" data-i18n-key="btn_cancel_filter">❌ ยกเลิก</button>
+</div>
 
             <div id="post-list">
                 </div>
@@ -685,6 +680,13 @@
         
         document.getElementById('post-prev-btn').innerText = translations[currentLang]['post_btn_prev'];
 		document.getElementById('post-next-btn').innerText = translations[currentLang]['post_btn_next'];
+		const homeBtn = document.getElementById('home-btn');
+if (homeBtn) {
+    homeBtn.style.backgroundColor = '#0056b3'; // สีน้ำเงินเข้ม
+    homeBtn.style.color = 'white'; // ตัวอักษรสีขาว
+    homeBtn.style.fontWeight = 'bold'; // ตัวหนา
+    homeBtn.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)'; // เพิ่มเงา
+}
 
         // 3. โหลดข้อมูลพื้นฐานใหม่
         updateUserInfo(); 
