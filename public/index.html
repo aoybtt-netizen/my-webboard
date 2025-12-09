@@ -1442,17 +1442,17 @@ function getTransactionDetail(t) {
                 <div class="post-card" onclick="viewPost('${post.id}')" style="cursor:pointer; padding:12px 15px; margin-bottom:10px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1); ${cardStyle} display:flex; flex-direction:column;">
                     
                     <div style="display:flex; align-items:center; width:100%;">
-                        <h3 style="margin:0; font-size:1.1em; color:#333; font-weight:500;">
+                        <h3 style="margin:0; font-size:1.1em; color:#333; font-weight:500; min-width:0;">
                             ${post.isPinned ? '📌 ' : ''} ${post.title}
                         </h3>
                         ${distanceBadge}
-                        ${deleteBtn}
-                    </div>
+                        ${deleteBtn} </div>
 
-                    <div style="font-size:0.8em; color:#999; margin-top:4px;">
-                        👤 ${post.author} | 🕒 ${new Date(post.id).toLocaleString()}
+                    <div style="font-size:0.8em; color:#999; margin-top:4px; margin-bottom: 8px;">
+                        👤 ${post.author} ${ratingHtml} | 🕒 ${new Date(post.id).toLocaleString()}
                     </div>
-
+                    
+                    ${imageThumbnail}
                 </div>`;
             }).join('');
 
