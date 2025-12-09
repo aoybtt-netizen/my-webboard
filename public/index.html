@@ -381,14 +381,13 @@
                     const kmText = currentLang === 'th' ? 'กม.' : 'km';
                     document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
                     document.getElementById('filter-status').style.color = "#007bff";
-                    document.getElementById('clear-filter-btn').style.display = "inline-block";
                     
                     // โหลดกระทู้ใหม่ตามฟิลเตอร์
                     loadPosts();
                     // alert(`✅ บันทึกตำแหน่งแล้ว! แสดงเฉพาะกระทู้ในระยะ ${dist} กม.`);
                 },
                 (error) => {
-                    onsole.error(error);
+                    console.error(error);
                     alert(`${t.error_geo_failed}: ${error.message}`);
                     document.getElementById('filter-status').innerText = `(${t.error_geo_failed})`;
                 },
