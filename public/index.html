@@ -2099,7 +2099,7 @@ function openAdminPinnedModal() {
             console.error('Error creating post:', error);
             alert('❌ เชื่อมต่อ Server ไม่ได้');
         }
-    }
+    
 
         socket.on('new-post', loadPosts); 
         socket.on('delete-post', (id)=>{ 
@@ -2118,6 +2118,7 @@ function openAdminPinnedModal() {
         // หน้าแรก (Home)
         loadPosts();
     }
+	}
 }); 
         
         async function loadTopics(){ 
