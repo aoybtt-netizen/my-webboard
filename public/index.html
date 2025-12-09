@@ -185,10 +185,10 @@
     
     <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
 	
-		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 10px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
-    <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
-    <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
-    <button id="clear-filter-btn" style="display:none; margin-left:10px; cursor:pointer; background:none; border:none; color:red; text-decoration:underline; font-size: 0.8em;" onclick="clearDistanceFilter()" data-i18n-key="btn_cancel_filter">❌ ยกเลิก</button>
+		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
+    <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
+        <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
+    <button id="clear-filter-btn" style="display:none; margin-left:10px; cursor:pointer; background:none; border:none; color:red; text-decoration:underline; font-size: 0.8em;" onclick="clearDistanceFilter()" data-i18n-key="btn_cancel_filter">❌ ยกเลิก</button>
 </div>
 
             <div id="post-list">
@@ -326,6 +326,34 @@
 		let filterLocation = null;      // เก็บพิกัดคนดู
         let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
 		
+		//  Cooldown state สำหรับ Distance Filter
+		let lastFilterTime = 0; 
+		const FILTER_COOLDOWN_MS = 60000; // 60 วินาที
+		
+		// ควบคุมสถานะปุ่มและแสดงเวลานับถอยหลัง
+		function updateFilterButtonState() {
+			const btn = document.getElementById('geo-filter-btn');
+			if (!btn) return;
+
+			const now = Date.now();
+			const remainingTime = lastFilterTime + FILTER_COOLDOWN_MS - now;
+    
+			// ถ้ายังอยู่ในช่วง Cooldown
+			if (remainingTime > 0) {
+			const seconds = Math.ceil(remainingTime / 1000);
+			btn.disabled = true;
+			btn.innerText = `${seconds}s`; // แสดงเวลานับถอยหลัง
+			// ตรวจสอบสถานะปุ่มใหม่ใน 1 วินาที
+			setTimeout(updateFilterButtonState, 1000); 
+			} else {
+			// เมื่อ Cooldown จบ
+			btn.disabled = false;
+			// คืนข้อความปุ่มกลับตามภาษาที่เลือก
+			const originalText = translations[currentLang]['btn_checkin'];
+			btn.innerText = originalText;
+		}
+	}
+		
 		function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             const R = 6371; // รัศมีโลก (กม.)
             const dLat = deg2rad(lat2 - lat1);
@@ -342,53 +370,65 @@
             return deg * (Math.PI / 180);
         }
 
-        // ✅ [NEW] ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
-        function setDistanceFilter() {
-			const t = translations[currentLang];
-            // 1. ถามระยะทาง
-            const input = prompt(t.prompt_distance, "50");
-            if (input === null) return; 
-            
-            const dist = parseFloat(input);
-            if (isNaN(dist) || dist <= 0) {
-                alert(t.alert_invalid_num);
-                return;
-            }
+        // ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
+    function setDistanceFilter() {
+    const now = Date.now();
+    
+    // [COOLDOWN CHECK] ตรวจสอบว่าคลิกเร็วเกินไปหรือไม่
+    if (now - lastFilterTime < FILTER_COOLDOWN_MS) {
+        const remainingSeconds = Math.ceil((FILTER_COOLDOWN_MS - (now - lastFilterTime)) / 1000);
+        alert(`❌ กรุณารอ ${remainingSeconds} วินาที ก่อนกดซ้ำ`);
+        return;
+    }
 
-            // 2. ขอพิกัด GPS
-            if (!navigator.geolocation) {
-                alert(t.error_geo_not_supported);
-                return;
-            }
+    // [UPDATE TIMESTAMP] บันทึกเวลาที่กด
+    lastFilterTime = now;
+    updateFilterButtonState(); // เริ่มนับถอยหลังทันที
 
-            document.getElementById('filter-status').innerText = t.status_locating;
-            document.getElementById('filter-status').removeAttribute('data-i18n-key');
+    const t = translations[currentLang];
+    // 1. ถามระยะทาง
+    const input = prompt(t.prompt_distance, "50");
+    if (input === null) return;
+    
+    const dist = parseFloat(input);
+    if (isNaN(dist) || dist <= 0) {
+        alert(t.alert_invalid_num);
+        return;
+    }
+
+    // 2. ขอพิกัด GPS
+    if (!navigator.geolocation) {
+        alert(t.error_geo_not_supported);
+        return;
+    }
+
+    document.getElementById('filter-status').innerText = t.status_locating;
+    document.getElementById('filter-status').removeAttribute('data-i18n-key');
+    
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            filterLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            filterMaxDistance = dist;
             
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    filterLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    filterMaxDistance = dist;
-                    
-                    // อัปเดตหน้าจอ
-                    const kmText = currentLang === 'th' ? 'กม.' : 'km';
-                    document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
-                    document.getElementById('filter-status').style.color = "#007bff";
-                    
-                    // โหลดกระทู้ใหม่ตามฟิลเตอร์
-                    loadPosts();
-                    // alert(`✅ บันทึกตำแหน่งแล้ว! แสดงเฉพาะกระทู้ในระยะ ${dist} กม.`);
-                },
-                (error) => {
-                    console.error(error);
-                    alert(`${t.error_geo_failed}: ${error.message}`);
-                    document.getElementById('filter-status').innerText = `(${t.error_geo_failed})`;
-                },
-                { enableHighAccuracy: true }
-            );
-        }
+            // อัปเดตหน้าจอ
+            const kmText = currentLang === 'th' ? 'กม.' : 'km';
+            document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
+            document.getElementById('filter-status').style.color = "#007bff";
+            
+            // โหลดกระทู้ใหม่ตามฟิลเตอร์
+            loadPosts();
+        },
+        (error) => {
+            console.error(error);
+            alert(`${t.error_geo_failed}: ${error.message}`);
+            document.getElementById('filter-status').innerText = `(${t.error_geo_failed})`;
+        },
+        { enableHighAccuracy: true }
+    );
+}
 
         // ฟังก์ชันยกเลิกการกรอง
         function clearDistanceFilter() {
@@ -517,7 +557,7 @@
         'admin_error_topic': 'เกิดข้อผิดพลาด: ',
         'confirm_delete_post': 'คุณแน่ใจหรือไม่ที่จะลบกระทู้นี้?',
 
-        'btn_checkin': '📍 กรองระยะทาง',
+        'btn_checkin': '📍 เช็คระยะทาง',
         'status_all': '(แสดงทั้งหมด)',
         'btn_cancel_filter': '❌ ยกเลิก',
         'prompt_distance': 'ระบุระยะทางรอบตัวคุณที่ต้องการเห็นกระทู้ (กิโลเมตร):',
@@ -634,7 +674,7 @@
         'confirm_delete_post': 'Are you sure you want to delete this post?',
 
         // ส่วนระบบเช็คอิน
-        'btn_checkin': '📍 Distance Filter',
+        'btn_checkin': '📍 Set Distance Filter',
         'status_all': '(Show All)',
         'btn_cancel_filter': '❌ Cancel',
         'prompt_distance': 'Enter distance radius (km):',
@@ -692,7 +732,7 @@ if (homeBtn) {
         updateUserInfo(); 
         loadPosts(); 
 
-        // 4. ⭐ [FIXED] ตรวจสอบว่า Modal ไหนเปิดอยู่ แล้วรีเฟรชหน้านั้นให้ถูกอัน
+        // ตรวจสอบว่า Modal ไหนเปิดอยู่ แล้วรีเฟรชหน้านั้นให้ถูกอัน
         const modal = document.getElementById('user-list-modal');
         if (!modal.classList.contains('hidden')) {
             const listType = document.getElementById('pagination-controls').dataset.type;
@@ -789,6 +829,7 @@ if (homeBtn) {
     loadPosts(); 
     updateUserInfo();
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
+	updateFilterButtonState();
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
