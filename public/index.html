@@ -867,8 +867,14 @@
                 
                 // ซ่อน/แสดงปุ่ม "ให้เหรียญ" ในแชท (เฉพาะ Level 3)
                 const giveCoinBtn = document.querySelector('.give-coin-btn');
+                const deductCoinBtn = document.querySelector('.deduct-coin-btn'); // ดึงปุ่มดึงเหรียญ
+                
                 if (giveCoinBtn) {
-                     giveCoinBtn.style.display = (myAdminLevel >= 3) ? 'inline-block' : 'none';
+                     giveCoinBtn.style.display = (myAdminLevel >= 1) ? 'inline-block' : 'none';
+                }
+                // การควบคุมปุ่มดึงเหรียญด้วยเงื่อนไขเดียวกัน
+                if (deductCoinBtn) { 
+                     deductCoinBtn.style.display = (myAdminLevel >= 1) ? 'inline-block' : 'none'; 
                 }
 
         // 2. จัดรูปแบบตัวเลข USD และสกุลเงินที่แปลงแล้ว
@@ -1767,7 +1773,7 @@ async function showMyClosedPosts(page = 1) {
             } 
             updateUserInfo();
             if (myUsername === 'Admin') {
-                alert(`🔔 ค่าธรรมเนียมถูกเปลี่ยนเป็น ${newCost} USD`);
+                alert(`🔔 Fee changed to ${newCost} USD`);
             }
         });
 		
@@ -2345,7 +2351,7 @@ function openAdminPinnedModal() {
         unreadUsers.delete(targetUser);
         saveUnreadStatus();
 
-        if (myUsername === 'Admin') {
+        if (myAdminLevel >= 1) { 
             document.getElementById('admin-chat-tools').classList.remove('hidden');
         } else {
             document.getElementById('admin-chat-tools').classList.add('hidden');
