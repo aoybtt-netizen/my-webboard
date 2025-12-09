@@ -187,7 +187,7 @@
 	
 		<div style="text-align: center; margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.8); border-radius: 8px;">
                 <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 8px 20px; background: #17a2b8; color: white; font-size: 1rem;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">
-                    📍 เช็คอิน / กรองระยะทาง
+                    📍 กรองระยะทาง
                 </button>
                 <span id="filter-status" style="margin-left: 10px; font-size: 0.9em; color: #333; font-weight: bold;" data-i18n-key="status_all">
                     (แสดงทั้งหมด)
@@ -1634,14 +1634,24 @@ async function showMyClosedPosts(page = 1) {
             if (post.location && post.location.lat && post.location.lng) {
                 const lat = post.location.lat.toFixed(4);
                 const lng = post.location.lng.toFixed(4);
-                const placeName = post.location.name;
                 
-                const mapsLink = `https://maps.google.com/maps?q=${post.location.lat},${post.location.lng}`;
+                let displayText = post.location.name; // ค่าเริ่มต้น: แสดงชื่อสถานที่
+                
+                // ตรวจสอบว่าผู้ใช้เช็คอินหรือยัง (ถ้ามี filterLocation ให้คำนวณระยะ)
+                if (typeof filterLocation !== 'undefined' && filterLocation) {
+                    const dist = getDistanceFromLatLonInKm(
+                        filterLocation.lat, filterLocation.lng,
+                        post.location.lat, post.location.lng
+                    );
+                    displayText = `${dist.toFixed(1)} km`; // เปลี่ยนเป็นแสดงระยะทาง (ทศนิยม 1 ตำแหน่ง)
+                }
+
+                const mapsLink = `https://www.google.com/maps?q=${post.location.lat},${post.location.lng}`;
                 
                 locationHtml = `
                     <a href="${mapsLink}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none; color:#007bff; font-size:0.85em; margin-left:10px;" 
-                        title="พิกัด: Lat ${lat}, Lng ${lng}">
-                        📍 ${placeName} 
+                        title="สถานที่: ${post.location.name}">
+                        📍 ${displayText} 
                     </a>
                 `;
             }
