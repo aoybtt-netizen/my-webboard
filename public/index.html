@@ -185,7 +185,7 @@
     
     <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
 	
-		<div style="text-align: center; margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.8); border-radius: 8px;">
+		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.8); border-radius: 8px;">
                 <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 8px 20px; background: #17a2b8; color: white; font-size: 1rem;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">
                     📍 กรองระยะทาง
                 </button>
@@ -1313,6 +1313,12 @@ function getTransactionDetail(t) {
         function switchView(view) {
     currentView = view;
     currentPostPage = 1; 
+	
+	const filterContainer = document.getElementById('filter-container');
+            if (filterContainer) {
+                // โชว์เฉพาะหน้า 'home' เท่านั้น
+                filterContainer.style.display = (view === 'home') ? 'block' : 'none';
+            }
     
     const title = document.getElementById('page-title');
     if (view === 'home') {
@@ -1637,12 +1643,12 @@ async function showMyClosedPosts(page = 1) {
                 let displayText = post.location.name; // ค่าเริ่มต้น: แสดงชื่อสถานที่
                 
                 // ตรวจสอบว่าผู้ใช้เช็คอินหรือยัง (ถ้ามี filterLocation ให้คำนวณระยะ)
-                if (typeof filterLocation !== 'undefined' && filterLocation) {
+                if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
                     const dist = getDistanceFromLatLonInKm(
                         filterLocation.lat, filterLocation.lng,
                         post.location.lat, post.location.lng
                     );
-                    displayText = `${dist.toFixed(1)} km`; // เปลี่ยนเป็นแสดงระยะทาง (ทศนิยม 1 ตำแหน่ง)
+                    displayText = `${dist.toFixed(1)} km`; 
                 }
 
                 const mapsLink = `https://www.google.com/maps?q=${post.location.lat},${post.location.lng}`;
