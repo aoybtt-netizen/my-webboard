@@ -866,8 +866,6 @@ app.get('/api/admin/admins-list', async (req, res) => {
         isBanned: a.isBanned // Include isBanned check
     })));
 });
-B. Endpoint: POST /api/admin/assign-zone (บันทึก Admin ผู้รับผิดชอบ)
-JavaScript
 
 
 // 28. Assign Admin to Zone
