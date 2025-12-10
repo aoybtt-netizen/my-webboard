@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.2 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.3 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -545,11 +545,18 @@
         'placeholder_new_topic': 'ชื่อหัวข้อใหม่ (เช่น กีฬา, อาหาร)',
         'btn_add_topic': 'เพิ่มหัวข้อ',
         'btn_close': 'ปิด',
-        'admin_zone_title': '🗺️ กำหนดพื้นที่ครอบคลุม',
-        'admin_zone_desc': 'ใส่พิกัด Lat/Lng เพื่อกำหนดจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)',
-        'btn_save_zone': 'บันทึกโซน',
+		
+        'admin_zone_title': '🗺️ จัดการโซนพื้นที่',
+        'admin_zone_desc': 'ใส่พิกัด Lat/Lng เพื่อเพิ่มจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)',
+        'admin_existing_zones': 'โซนที่มีอยู่',
+        'admin_add_new_zone': '+ เพิ่มโซนใหม่',
+        'btn_add_zone': 'เพิ่มโซน',
         'alert_invalid_zone': '❌ กรุณาใส่ Latitude และ Longitude เป็นตัวเลขที่ถูกต้อง',
-        'alert_zone_success': '✅ บันทึกพื้นที่ครอบคลุมสำเร็จ!',
+        'alert_zone_add_success': '✅ เพิ่มโซนพื้นที่สำเร็จ!',
+		'admin_no_zones_found': '⚠️ ยังไม่มีการตั้งค่าโซนพื้นที่',
+        'admin_error_fetch_zones': '❌ ไม่สามารถดึงรายการโซนได้',
+        'admin_error_connection': '❌ ไม่สามารถเชื่อมต่อได้',
+		
         'post_not_found': 'ไม่พบกระทู้',
         'closed_or_finished': '⛔ กระทู้นี้ปิดรับงาน/เสร็จสิ้นแล้ว',
         'room_occupied': '⚠️ มีผู้ใช้งานอื่นกำลังดูกระทู้นี้อยู่ กรุณารอสักครู่...',
@@ -622,11 +629,18 @@
         'admin_user_list': '👥 All Members List',
 		'btn_add_topic': 'Add Topic',
         'btn_close': 'Close',
-        'admin_zone_title': '🗺️ Define Coverage Zone',
-        'admin_zone_desc': 'Enter Lat/Lng coordinates for the zone center (Admin Level 3 only).',
-        'btn_save_zone': 'Save Zone',
-        'alert_invalid_zone': '❌ Please enter valid numerical values for Latitude and Longitude.',
-        'alert_zone_success': '✅ Coverage Zone saved successfully!',
+		
+        'admin_zone_title': '🗺️ Manage Coverage Zones',
+        'admin_zone_desc': 'Enter Lat/Lng coordinates to add a zone center (Admin Level 3 only).',
+        'admin_existing_zones': 'Existing Zones',
+        'admin_add_new_zone': '+ Add New Zone',
+        'btn_add_zone': 'Add Zone',
+        'alert_invalid_zone': '❌ Please enter valid numerical values for Latitude and Longitude.', 
+        'alert_zone_add_success': '✅ Zone added successfully!',
+        'admin_no_zones_found': '⚠️ No coverage zones set yet',
+        'admin_error_fetch_zones': '❌ Failed to fetch zone list',
+        'admin_error_connection': '❌ Connection error',
+		
         'page_title': '📌 Listings',
         'title_create': 'Create New Post',
         'cost_fee': 'Fee:',
@@ -1815,26 +1829,43 @@ async function showMyClosedPosts(page = 1) {
     
     const latInput = document.getElementById('zone-lat-input');
     const lngInput = document.getElementById('zone-lng-input');
-    const displayEl = document.getElementById('zone-current-display');
-    
-    // ดึงข้อมูล Zone จาก Server
+    const nameInput = document.getElementById('zone-name-input');
+    const listContainer = document.getElementById('zone-list-container');
+    const t = translations[currentLang];
+
+    latInput.value = ''; // Clear inputs for adding a new one
+    lngInput.value = '';
+    nameInput.value = '';
+    listContainer.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg']}</p>`;
+
+    // ดึงข้อมูล Zones ทั้งหมดจาก Server
     try {
-        const res = await fetch(`/api/admin/get-zone?requestBy=${myUsername}`);
+        const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`); // เปลี่ยนเป็น Endpoint ใหม่
         if (res.status === 200) {
             const data = await res.json();
-            if (data.zone) {
-                latInput.value = data.zone.lat || '';
-                lngInput.value = data.zone.lng || '';
-                displayEl.innerHTML = `📍 ${currentLang === 'th' ? 'พิกัดปัจจุบัน' : 'Current Coordinates'}: <b>${data.zone.lat}, ${data.zone.lng}</b>`;
+            
+            if (data.zones && data.zones.length > 0) {
+                listContainer.innerHTML = data.zones.map(zone => {
+                    const lat = parseFloat(zone.lat).toFixed(4);
+                    const lng = parseFloat(zone.lng).toFixed(4);
+                    const name = zone.name || `Zone ID: ${zone.id}`; // ใช้ชื่อโซน
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px dashed #eee; font-size: 0.9em;">
+                            <span>🗺️ <b>${name}</b></span>
+                            <span>${lat}, ${lng}</span>
+                            <span style="color:#dc3545; cursor:pointer;">&times;</span>
+                        </div>
+                    `;
+                }).join('');
             } else {
-                latInput.value = '';
-                lngInput.value = '';
-                displayEl.innerHTML = currentLang === 'th' ? '⚠️ ยังไม่มีการตั้งค่าพิกัด' : '⚠️ No coordinates set yet';
+                listContainer.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_zones_found']}</p>`;
             }
+        } else {
+             listContainer.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_fetch_zones']}</p>`;
         }
     } catch (e) {
         console.error('Error fetching zone config:', e);
-        displayEl.innerHTML = currentLang === 'th' ? '❌ ไม่สามารถดึงข้อมูลได้' : '❌ Failed to fetch data';
+        listContainer.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_connection']}</p>`;
     }
 }
 
@@ -1877,6 +1908,54 @@ async function saveZoneConfig() {
         console.error('Error saving zone config:', e);
     }
 }
+
+		async function addZoneConfig() {
+    if (myAdminLevel < 3) return;
+    
+    const latInput = document.getElementById('zone-lat-input').value.trim();
+    const lngInput = document.getElementById('zone-lng-input').value.trim();
+    const nameInput = document.getElementById('zone-name-input').value.trim();
+    const t = translations[currentLang];
+    
+    const lat = parseFloat(latInput);
+    const lng = parseFloat(lngInput);
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        return alert(t['alert_invalid_zone']);
+    }
+
+    try {
+        const res = await fetch('/api/admin/add-zone', { // เปลี่ยนเป็น Endpoint ใหม่
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                lat: lat, 
+                lng: lng, 
+                name: nameInput,
+                requestBy: myUsername 
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alert(t['alert_zone_add_success']);
+            
+            // Clear inputs and refresh list
+            document.getElementById('zone-lat-input').value = '';
+            document.getElementById('zone-lng-input').value = '';
+            document.getElementById('zone-name-input').value = '';
+
+            openAdminZoneModal(); // Refresh the list of zones
+        } else {
+            alert(`❌ Error: ${data.error || 'เพิ่มโซนไม่สำเร็จ'}`);
+        }
+    } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        console.error('Error adding zone config:', e);
+    }
+}
+window.addZoneConfig = addZoneConfig;
 
         
         // --- SOCKET LOGIC ---
@@ -2771,10 +2850,17 @@ function openUserDetail(targetUsername) {
 	
 		<div id="admin-zone-modal" class="modal-overlay hidden">
     <div class="modal-box">
-        <h2 style="text-align: center;" data-i18n-key="admin_zone_title">🗺️ กำหนดพื้นที่ครอบคลุม</h2>
+        <h2 style="text-align: center;" data-i18n-key="admin_zone_title">🗺️ จัดการโซนพื้นที่</h2>
         <p style="color: #6c757d; text-align: center;" data-i18n-key="admin_zone_desc">
-            ใส่พิกัด Lat/Lng เพื่อกำหนดจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)
+            ใส่พิกัด Lat/Lng เพื่อเพิ่มจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)
         </p>
+        
+        <h3 style="margin-top: 20px; border-bottom: 1px solid #eee; padding-bottom: 5px;" data-i18n-key="admin_existing_zones">โซนที่มีอยู่:</h3>
+        <div id="zone-list-container" style="max-height: 150px; overflow-y: auto; margin-bottom: 15px; padding: 5px;">
+            <p style="text-align:center;">กำลังโหลด...</p>
+        </div>
+
+        <h3 style="margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px;" data-i18n-key="admin_add_new_zone">+ เพิ่มโซนใหม่</h3>
 
         <label for="zone-lat-input" style="font-weight: bold;">Latitude:</label>
         <input type="text" id="zone-lat-input" placeholder="เช่น 13.7563" required>
@@ -2782,12 +2868,12 @@ function openUserDetail(targetUsername) {
         <label for="zone-lng-input" style="font-weight: bold;">Longitude:</label>
         <input type="text" id="zone-lng-input" placeholder="เช่น 100.5018" required>
         
-        <div id="zone-current-display" style="font-size: 0.9em; margin-bottom: 15px; color: #007bff; text-align: center;">
-            </div>
+        <label for="zone-name-input" style="font-weight: bold;">ชื่อโซน (Optional):</label>
+        <input type="text" id="zone-name-input" placeholder="เช่น กรุงเทพฯ โซน A">
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="sidebar-btn" onclick="document.getElementById('admin-zone-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
-            <button class="sidebar-btn create-btn" onclick="saveZoneConfig()" style="width:auto;" data-i18n-key="btn_save_zone">บันทึกโซน</button>
+            <button class="sidebar-btn create-btn" onclick="addZoneConfig()" style="width:auto;" data-i18n-key="btn_add_zone">เพิ่มโซน</button>
         </div>
     </div>
 </div>

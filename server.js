@@ -20,6 +20,7 @@ let configCollection;
 let transactionsCollection;
 let topicsCollection;
 let messagesCollection;
+let zonesCollection;
 
 // [NEW] Cloudinary Imports
 const cloudinary = require('cloudinary').v2;
@@ -97,6 +98,7 @@ async function connectDB() {
         transactionsCollection = db.collection('transactions');
         topicsCollection = db.collection('topics');
         messagesCollection = db.collection('messages');
+		zonesCollection = db.collection('zones');
 
         await seedInitialData(); // สร้างข้อมูลเริ่มต้นถ้ายังไม่มี
 
@@ -803,24 +805,21 @@ app.post('/api/admin/set-level', async (req, res) => {
     res.json({ success: true, newLevel: newLevel });
 });
 
-// 25. Get Zone Config
-app.get('/api/admin/get-zone', async (req, res) => {
+// 25. Get Zone Config 
+app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plural
     // ต้องเป็น Admin Level 1 ขึ้นไปในการดูค่า
     const requester = await getUserData(req.query.requestBy);
     if (!requester || requester.adminLevel < 1) {
         return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
     }
 
-    const config = await configCollection.findOne({ id: 'main_config' });
-    if (config && config.coverageZone) {
-        return res.json({ success: true, zone: config.coverageZone });
-    }
-    res.json({ success: true, zone: null });
+    const zones = await zonesCollection.find({}).sort({ createdAt: -1 }).toArray(); // Fetch all zones (เรียงใหม่สุดขึ้นก่อน)
+    return res.json({ success: true, zones: zones }); // Return as an array
 });
 
-// 26. Set Zone Config
-app.post('/api/admin/set-zone', async (req, res) => {
-    const { lat, lng, requestBy } = req.body;
+// 26. Set Zone Config 
+app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
+    const { lat, lng, name, requestBy } = req.body;
     
     // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
     const requester = await getUserData(requestBy);
@@ -835,16 +834,18 @@ app.post('/api/admin/set-zone', async (req, res) => {
         return res.status(400).json({ error: 'Invalid Latitude or Longitude values.' });
     }
     
-    const zoneData = { lat: parsedLat, lng: parsedLng };
+    const newZone = { 
+        id: Date.now(), 
+        lat: parsedLat, 
+        lng: parsedLng, 
+        name: name || null, // Allow null name
+        createdAt: new Date()
+    };
 
-    // 2. บันทึกข้อมูลลงใน configCollection
-    await configCollection.updateOne(
-        { id: 'main_config' }, 
-        { $set: { coverageZone: zoneData } },
-        { upsert: true } // ถ้าไม่มี document 'main_config' ให้สร้างใหม่
-    );
+    // 2. บันทึกข้อมูลลงใน zonesCollection
+    await zonesCollection.insertOne(newZone);
 
-    res.json({ success: true, newZone: zoneData });
+    res.json({ success: true, newZone: newZone });
 });
 
 // --- Socket Helpers ---
