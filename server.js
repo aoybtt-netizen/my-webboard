@@ -848,6 +848,62 @@ app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
     res.json({ success: true, newZone: newZone });
 });
 
+// 27. Get Admin List (Level 1+)
+app.get('/api/admin/admins-list', async (req, res) => {
+    // Requires Admin Level 1+ to request this list
+    const requester = await getUserData(req.query.requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
+    }
+    
+    // Find users with adminLevel >= 1
+    const admins = await usersCollection.find({ adminLevel: { $gte: 1 } }).sort({ adminLevel: -1, username: 1 }).toArray();
+
+    // Return essential data: name, level, isBanned
+    res.json(admins.map(a => ({ 
+        name: a.username, 
+        level: a.adminLevel || 0,
+        isBanned: a.isBanned // Include isBanned check
+    })));
+});
+B. Endpoint: POST /api/admin/assign-zone (บันทึก Admin ผู้รับผิดชอบ)
+JavaScript
+
+
+// 28. Assign Admin to Zone
+app.post('/api/admin/assign-zone', async (req, res) => {
+    const { zoneId, adminUsername, requestBy } = req.body;
+    
+    // 1. Tidy up input
+    const zoneIdInt = parseInt(zoneId);
+    
+    // 2. Check Permissions (Requester must be Admin Level 3)
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 3) { 
+        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+    }
+    
+    // 3. Find target Zone
+    const zone = await zonesCollection.findOne({ id: zoneIdInt });
+    if (!zone) {
+        return res.status(404).json({ error: 'Zone not found.' });
+    }
+    
+    // 4. Validate Admin (check if target admin exists and is not banned)
+    const targetAdmin = await getUserData(adminUsername);
+    if (!targetAdmin || targetAdmin.adminLevel < 1 || targetAdmin.isBanned) {
+         return res.status(400).json({ error: `Invalid or unauthorized Admin: ${adminUsername}` });
+    }
+
+    // 5. Update Zone document
+    await zonesCollection.updateOne(
+        { id: zoneIdInt }, 
+        { $set: { assignedAdmin: adminUsername } }
+    );
+
+    res.json({ success: true, assignedAdmin: adminUsername });
+});
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 

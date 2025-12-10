@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.3 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.4 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -396,6 +396,88 @@
         function deg2rad(deg) {
             return deg * (Math.PI / 180);
         }
+		
+		let currentZoneToAssign = null;
+		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
+	async function openAdminAssignModal(zoneId, zoneName) {
+    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
+    currentZoneToAssign = zoneId;
+    
+    document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName}`;
+    document.getElementById('admin-assign-modal').classList.remove('hidden');
+    
+    const adminListEl = document.getElementById('admin-list-for-assign');
+    const t = translations[currentLang];
+    adminListEl.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg']}</p>`;
+
+    try {
+        // Fetch Admin list from the new API endpoint
+        const res = await fetch(`/api/admin/admins-list?requestBy=${myUsername}`);
+        const data = await res.json();
+        
+        if (data && data.length > 0) {
+            adminListEl.innerHTML = data.map(admin => {
+                // Filter out banned admins
+                if (admin.isBanned) return ''; 
+                
+                const levelDisplay = admin.level > 0 ? `L${admin.level}` : '';
+                return `
+                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+                         onclick="assignAdminToZone('${zoneId}', '${admin.name}', '${zoneName}')">
+                        <span>👨‍💼 <b>${admin.name}</b> <span style="color:#007bff; font-size:0.8em;">${levelDisplay}</span></span>
+                        <button class="sidebar-btn create-btn" style="padding: 5px 10px; font-size: 0.8em; width: auto;" data-i18n-key="btn_select">
+                            ${t['btn_select']}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            adminListEl.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_admins_found']}</p>`;
+        }
+    } catch (e) {
+        adminListEl.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_fetch_admins']}</p>`;
+        console.error('Error fetching admins for assignment:', e);
+    }
+}
+
+// ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
+async function assignAdminToZone(zoneId, adminUsername, zoneName) {
+    if (myAdminLevel < 3) return;
+    
+    const t = translations[currentLang];
+    
+    if (!confirm(`${t['confirm_assign_admin'].replace('[ADMIN]', adminUsername).replace('[ZONE]', zoneName)}`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/assign-zone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                zoneId: zoneId, 
+                adminUsername: adminUsername,
+                requestBy: myUsername 
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alert(t['alert_admin_assign_success'].replace('[ADMIN]', adminUsername).replace('[ZONE]', zoneName));
+            document.getElementById('admin-assign-modal').classList.add('hidden');
+            openAdminZoneModal(); // Refresh the main zone list
+        } else {
+            alert(`❌ Error: ${data.error || 'มอบหมายไม่สำเร็จ'}`);
+        }
+    } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        console.error('Error assigning admin:', e);
+    }
+}
+
+window.openAdminAssignModal = openAdminAssignModal;
+window.assignAdminToZone = assignAdminToZone;
 
         // ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
     function setDistanceFilter() {
@@ -609,6 +691,15 @@
         'error_geo_failed': 'ระบุตำแหน่งล้มเหลว',
 		'admin_success_set_cost': '✅ ตั้งค่าธรรมเนียมสำเร็จ!', 
         'admin_error_set_cost': '❌ ตั้งค่าไม่สำเร็จ',
+		
+		'admin_assigned_to': 'ผู้รับผิดชอบ',
+        'btn_assign_admin': 'มอบหมายผู้ดูแล',
+        'modal_assign_title': '👨‍💼 เลือกผู้ดูแลโซน',
+        'btn_select': 'เลือก',
+        'admin_no_admins_found': '⚠️ ไม่พบ Admin Level 1 ขึ้นไป',
+        'admin_error_fetch_admins': '❌ ดึงรายชื่อ Admin ไม่สำเร็จ',
+        'confirm_assign_admin': 'คุณต้องการมอบหมายให้ [ADMIN] ดูแลโซน [ZONE] ใช่หรือไม่?',
+        'alert_admin_assign_success': '✅ มอบหมาย [ADMIN] ให้ดูแลโซน [ZONE] สำเร็จ!',
     },
     'en': {
         'app_title': 'Webboard',
@@ -741,6 +832,15 @@
         'error_geo_failed': 'Location failed',
 		'admin_success_set_cost': '✅ Fee set successfully!', 
         'admin_error_set_cost': '❌ Failed to set fee',
+		
+		'admin_assigned_to': 'Assigned Admin',
+        'btn_assign_admin': 'Assign Admin',
+        'modal_assign_title': '👨‍💼 Select Zone Admin',
+        'btn_select': 'Select',
+        'admin_no_admins_found': '⚠️ No Admins (Level 1+) found',
+        'admin_error_fetch_admins': '❌ Failed to fetch Admin list',
+        'confirm_assign_admin': 'Are you sure you want to assign [ADMIN] to Zone [ZONE]?',
+        'alert_admin_assign_success': '✅ Assigned [ADMIN] to Zone [ZONE] successfully!',
     }
 };
 
@@ -1840,7 +1940,7 @@ async function showMyClosedPosts(page = 1) {
 
     // ดึงข้อมูล Zones ทั้งหมดจาก Server
     try {
-        const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`); // เปลี่ยนเป็น Endpoint ใหม่
+        const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`); 
         if (res.status === 200) {
             const data = await res.json();
             
@@ -1848,12 +1948,30 @@ async function showMyClosedPosts(page = 1) {
                 listContainer.innerHTML = data.zones.map(zone => {
                     const lat = parseFloat(zone.lat).toFixed(4);
                     const lng = parseFloat(zone.lng).toFixed(4);
-                    const name = zone.name || `Zone ID: ${zone.id}`; // ใช้ชื่อโซน
+                    const name = zone.name || `Zone ID: ${zone.id}`; 
+                    
+                    const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                    
+                    // Assigned Admin Display
+                    const assignedAdmin = zone.assignedAdmin || '-';
+                    
                     return `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px dashed #eee; font-size: 0.9em;">
-                            <span>🗺️ <b>${name}</b></span>
-                            <span>${lat}, ${lng}</span>
-                            <span style="color:#dc3545; cursor:pointer;">&times;</span>
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px dashed #eee; font-size: 0.9em;">
+                            <span style="flex-basis: 100%; margin-bottom: 5px;">🗺️ <b>${name}</b> | ${t['admin_assigned_to']}: <span style="color:#007bff;">${assignedAdmin}</span></span>
+                            
+                            <span style="flex-basis: 50%;">
+                                <a href="${mapLink}" target="_blank" style="color:#007bff; text-decoration:none;" title="Open Google Maps">
+                                    ${lat}, ${lng}
+                                </a>
+                            </span>
+                            
+                            <span style="flex-basis: 50%; text-align: right;">
+                                <button class="sidebar-btn" 
+                                    style="padding: 5px 10px; font-size: 0.8em; width: auto; background:#28a745; color:white; margin-bottom:0;"
+                                    onclick="openAdminAssignModal('${zone.id}', '${name}')" data-i18n-key="btn_assign_admin">
+                                    ${t['btn_assign_admin']}
+                                </button>
+                            </span>
                         </div>
                     `;
                 }).join('');
@@ -2877,6 +2995,22 @@ function openUserDetail(targetUsername) {
         </div>
     </div>
 </div>
+
+		<div id="admin-assign-modal" class="modal-overlay hidden" style="z-index: 2500;">
+    <div class="modal-box">
+        <h2 style="text-align: center;" data-i18n-key="modal_assign_title">👨‍💼 เลือกผู้ดูแลโซน</h2>
+        <p id="assign-zone-name-display" style="color: #6c757d; text-align: center; margin-bottom: 15px;"></p>
+        
+        <div id="admin-list-for-assign" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px;">
+            <p style="text-align:center;">กำลังโหลด...</p>
+        </div>
+
+        <div style="margin-top: 20px; display:flex; justify-content:flex-end; gap:10px;">
+            <button class="sidebar-btn" onclick="document.getElementById('admin-assign-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
+        </div>
+    </div>
+</div>
+
 </div>
 	
 </body>
