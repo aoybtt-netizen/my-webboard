@@ -349,8 +349,8 @@
 		let myAdminLevel = 0;
 		let filterLocation = null;      // เก็บพิกัดคนดู
         let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
-		// Cooldown สำหรับการป้องกัน Rapid Refresh (15 วินาที)
-		const REFRESH_COOLDOWN_MS = 15000;
+		// Cooldown สำหรับการป้องกัน Rapid Refresh (7 วินาที)
+		const REFRESH_COOLDOWN_MS = 7000;
 		
 		//  Cooldown state สำหรับ Distance Filter
 		let lastFilterTime = 0; 
@@ -808,9 +808,7 @@ if (homeBtn) {
         // แสดงข้อความเตือนและหยุดการโหลด App
         document.body.innerHTML = `
             <div style="text-align:center; padding: 50px; color:red; font-family:'Kanit', sans-serif;">
-                <h1>❌ การรีเฟรชเร็วเกินไป</h1>
-                <p>กรุณารออีก <b>${remainingSeconds} วินาที</b> ก่อนลองรีเฟรชอีกครั้ง</p>
-                <p style="color:gray;">เพื่อป้องกันภาระบนเซิร์ฟเวอร์</p>
+                <h1>❌ Refreshing too fast <b>${remainingSeconds}</b></h1>
             </div>
         `;
         
@@ -855,7 +853,7 @@ if (homeBtn) {
             startApp(name);
         }
 
-        function startApp(name) {
+        async function startApp(name) {
     myUsername = name;
     // ใช้ user-display แทน user-display-name เพื่อให้ตรงกับ HTML
     const userDisplay = document.getElementById('user-display');
@@ -864,7 +862,7 @@ if (homeBtn) {
     document.getElementById('login-modal').classList.add('hidden');
     socket.emit('register', myUsername);
     
-    // ⭐ [FIXED] โหลดสกุลเงินที่ผู้ใช้เลือกจาก localStorage ก่อนที่จะเรียก updateUserInfo()
+    //  โหลดสกุลเงินที่ผู้ใช้เลือกจาก localStorage ก่อนที่จะเรียก updateUserInfo()
     const preferred = localStorage.getItem('preferredCurrency');
     if (preferred) {
         currentCurrency = preferred;
@@ -881,11 +879,16 @@ if (homeBtn) {
     // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
     checkNewTransaction();
     loadUnreadStatus(); 
-    loadTopics(); 
+
+    // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
+    await updateUserInfo(); 
+    
+    // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
+    // แล้วค่อยโหลดกระทู้ ปุ่มจะถูกสร้างเงื่อนไขได้ถูกต้อง
     loadPosts(); 
-    updateUserInfo();
+    
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
-	updateFilterButtonState();
+    updateFilterButtonState();
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
@@ -1061,7 +1064,7 @@ if (homeBtn) {
 }
 		
         async function toggleBanUser(targetUser, currentStatus) {
-        if (myUsername !== 'Admin') return; 
+        if (myAdminLevel < 1) return; 
         
         const shouldBan = !currentStatus;
         
@@ -1742,9 +1745,7 @@ async function showMyClosedPosts(page = 1) {
                 icon = '✅'; 
             }
 
-            let action = (post.isClosed && myUsername !== 'Admin') 
-                ? "alert('⛔ กระทู้นี้ถูกปิดแล้ว')" 
-                : `location.href='post.html?id=${post.id}'`; 
+            let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1) ? "alert('⛔ Closed.')" : `location.href='post.html?id=${post.id}'`;
 
             let locationHtml = '';
             if (post.location && post.location.lat && post.location.lng) {
