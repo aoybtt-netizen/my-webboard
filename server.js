@@ -803,6 +803,50 @@ app.post('/api/admin/set-level', async (req, res) => {
     res.json({ success: true, newLevel: newLevel });
 });
 
+// 25. Get Zone Config
+app.get('/api/admin/get-zone', async (req, res) => {
+    // ต้องเป็น Admin Level 1 ขึ้นไปในการดูค่า
+    const requester = await getUserData(req.query.requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
+    }
+
+    const config = await configCollection.findOne({ id: 'main_config' });
+    if (config && config.coverageZone) {
+        return res.json({ success: true, zone: config.coverageZone });
+    }
+    res.json({ success: true, zone: null });
+});
+
+// 26. Set Zone Config
+app.post('/api/admin/set-zone', async (req, res) => {
+    const { lat, lng, requestBy } = req.body;
+    
+    // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 3) { 
+        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+    }
+
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+
+    if (isNaN(parsedLat) || isNaN(parsedLng) || parsedLat < -90 || parsedLat > 90 || parsedLng < -180 || parsedLng > 180) {
+        return res.status(400).json({ error: 'Invalid Latitude or Longitude values.' });
+    }
+    
+    const zoneData = { lat: parsedLat, lng: parsedLng };
+
+    // 2. บันทึกข้อมูลลงใน configCollection
+    await configCollection.updateOne(
+        { id: 'main_config' }, 
+        { $set: { coverageZone: zoneData } },
+        { upsert: true } // ถ้าไม่มี document 'main_config' ให้สร้างใหม่
+    );
+
+    res.json({ success: true, newZone: zoneData });
+});
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 

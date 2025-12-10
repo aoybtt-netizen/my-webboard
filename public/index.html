@@ -154,13 +154,14 @@
 </button>
     
     <div id="admin-panel" class="hidden">
-        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
-        <div style="font-size:0.8em; color:gray; margin-bottom:5px;" data-i18n-key="admin_section">ส่วนของแอดมิน</div>
-        <button class="sidebar-btn admin-btn" onclick="openAdminPinnedModal()" data-i18n-key="admin_create_pinned">📌 สร้างกระทู้พิเศษ</button> <button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
-        <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
-        <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
-        <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
-    </div>
+    <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+    <div style="font-size:0.8em; color:gray; margin-bottom:5px;" data-i18n-key="admin_section">ส่วนของแอดมิน</div>
+    <button class="sidebar-btn admin-btn" onclick="openAdminPinnedModal()" data-i18n-key="admin_create_pinned">📌 สร้างกระทู้พิเศษ</button> <button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
+    <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
+    <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
+    <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
+    <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
+</div>
 
     <button class="sidebar-btn" style="margin-top:auto;" onclick="logout()" data-i18n-key="logout">ออกจากระบบ</button>
 </div>
@@ -340,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.0 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.1 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1793,6 +1794,77 @@ async function showMyClosedPosts(page = 1) {
                 </div>
             `);
         }
+		
+		async function openAdminZoneModal() {
+    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
+    
+    document.getElementById('admin-zone-modal').classList.remove('hidden');
+    
+    const latInput = document.getElementById('zone-lat-input');
+    const lngInput = document.getElementById('zone-lng-input');
+    const displayEl = document.getElementById('zone-current-display');
+    
+    // ดึงข้อมูล Zone จาก Server
+    try {
+        const res = await fetch(`/api/admin/get-zone?requestBy=${myUsername}`);
+        if (res.status === 200) {
+            const data = await res.json();
+            if (data.zone) {
+                latInput.value = data.zone.lat || '';
+                lngInput.value = data.zone.lng || '';
+                displayEl.innerHTML = `📍 ${currentLang === 'th' ? 'พิกัดปัจจุบัน' : 'Current Coordinates'}: <b>${data.zone.lat}, ${data.zone.lng}</b>`;
+            } else {
+                latInput.value = '';
+                lngInput.value = '';
+                displayEl.innerHTML = currentLang === 'th' ? '⚠️ ยังไม่มีการตั้งค่าพิกัด' : '⚠️ No coordinates set yet';
+            }
+        }
+    } catch (e) {
+        console.error('Error fetching zone config:', e);
+        displayEl.innerHTML = currentLang === 'th' ? '❌ ไม่สามารถดึงข้อมูลได้' : '❌ Failed to fetch data';
+    }
+}
+
+// [NEW] ฟังก์ชันสำหรับบันทึกค่าโซน
+async function saveZoneConfig() {
+    if (myAdminLevel < 3) return;
+    
+    const latInput = document.getElementById('zone-lat-input').value.trim();
+    const lngInput = document.getElementById('zone-lng-input').value.trim();
+    const t = translations[currentLang];
+    
+    const lat = parseFloat(latInput);
+    const lng = parseFloat(lngInput);
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        return alert(t['alert_invalid_zone']);
+    }
+
+    try {
+        const res = await fetch('/api/admin/set-zone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                lat: lat, 
+                lng: lng, 
+                requestBy: myUsername 
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alert(t['alert_zone_success']);
+            document.getElementById('admin-zone-modal').classList.add('hidden');
+        } else {
+            alert(`❌ Error: ${data.error || 'บันทึกไม่สำเร็จ'}`);
+        }
+    } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        console.error('Error saving zone config:', e);
+    }
+}
+
         
         // --- SOCKET LOGIC ---
 		socket.on('force-logout', (msg) => {
@@ -2683,7 +2755,30 @@ function openUserDetail(targetUsername) {
                 </div>
         </div>
     </div>
+	
+		<div id="admin-zone-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2 style="text-align: center;" data-i18n-key="admin_zone_title">🗺️ กำหนดพื้นที่ครอบคลุม</h2>
+        <p style="color: #6c757d; text-align: center;" data-i18n-key="admin_zone_desc">
+            ใส่พิกัด Lat/Lng เพื่อกำหนดจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)
+        </p>
+
+        <label for="zone-lat-input" style="font-weight: bold;">Latitude:</label>
+        <input type="text" id="zone-lat-input" placeholder="เช่น 13.7563" required>
+
+        <label for="zone-lng-input" style="font-weight: bold;">Longitude:</label>
+        <input type="text" id="zone-lng-input" placeholder="เช่น 100.5018" required>
+        
+        <div id="zone-current-display" style="font-size: 0.9em; margin-bottom: 15px; color: #007bff; text-align: center;">
+            </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="sidebar-btn" onclick="document.getElementById('admin-zone-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
+            <button class="sidebar-btn create-btn" onclick="saveZoneConfig()" style="width:auto;" data-i18n-key="btn_save_zone">บันทึกโซน</button>
+        </div>
     </div>
+</div>
+</div>
 	
 </body>
 </html>
