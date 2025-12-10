@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-	<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>อ่านกระทู้</title>
@@ -14,8 +14,8 @@
             background-color: #e9ebee; 
             padding: 0; 
             margin: 0;
-			display: none;
-			background-image: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url('https://sv1.img.in.th/7fDpZ8.png');
+            display: none;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url('https://sv1.img.in.th/7fDpZ8.png');
             background-size: cover;         
             background-position: center;    
             background-attachment: fixed;   
@@ -304,7 +304,6 @@
             <span>
                 <i class="fas fa-user-circle"></i> ID: 
                 <strong id="post-author">...</strong>
-                <!-- ✅ FIX: การแสดงคะแนนดาว -->
                 <span style="color:#ffc107; font-weight:bold; font-size:1.1em;" id="post-author-rating"></span>
             </span>
             <span>
@@ -335,7 +334,7 @@
 
         <input type="text" id="comment-input" placeholder="แสดงความคิดเห็น..." autocomplete="off">
         
-		<button id="btn-call-author" 
+        <button id="btn-call-author" 
         onclick="startCall(currentPostAuthor)" 
         style="background: #2ecc71; color: white; border: none; padding: 10px 15px; border-radius: 20px; cursor: pointer; margin-right: 10px; font-weight: 600; display: none; align-items: center; gap: 5px;">
     <i class="fas fa-phone-alt"></i> โทรหาเจ้าของกระทู้
@@ -355,9 +354,9 @@
             <i class="fas fa-lock"></i> กระทู้นี้ปิดรับความคิดเห็นแล้ว หรือหมดเวลา
         </div>
     </div>
-	
-	<div id="image-viewer-modal" class="modal-overlay hidden" onclick="closeImageViewer()" style="background: rgba(0,0,0,0.9);">
-    <span style="position: absolute; top: 20px; right: 30px; color: white; font-size: 40px; cursor: pointer; font-weight: bold;">&times;</span>
+    
+    <div id="image-viewer-modal" class="modal-overlay hidden" onclick="closeImageViewer()" style="background: rgba(0,0,0,0.9);">
+    <span style="position: absolute; top: 20px; right: 30px; color: white; font-size: 40px; cursor: pointer; font-weight: bold;">×</span>
     
     <img id="full-image" style="max-width: 90%; max-height: 90%; border-radius: 5px; box-shadow: 0 0 20px rgba(255,255,255,0.2); transition: transform 0.2s;">
 </div>
@@ -470,7 +469,6 @@
         </div>
     </div>
     
-    <!-- NEW: Status Notification Toast -->
     <div id="status-notif-modal">
         <div id="notif-content">
             <i class="fas fa-info-circle"></i>
@@ -478,162 +476,166 @@
         </div>
     </div>
 
-    <!-- 💥 [FIX] ย้าย Script มาไว้ล่างสุดของ Body เพื่อให้โหลด Socket.IO เสร็จก่อน -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-		//  WebRTC Voice Call Logic P2P ---
-let localStream;
-let peerConnection;
-let currentCallUser = null; // คนที่เรากำลังคุยด้วย
-const rtcConfig = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // ใช้ STUN ฟรีของ Google
-};
-
-// 1. ฟังก์ชันเริ่มโทรหา (ผูกกับปุ่มโทร)
-async function startCall(targetUsername) {
-    if (targetUsername === myUsername) return alert('Why would you call yourself that? 😂');
-    
-    currentCallUser = targetUsername;
-    showCallModal(`📞 Calling. ${targetUsername}...`, false);
-
-    try {
-        // ขออนุญาตใช้ไมค์
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // --- GLOBAL SETUP (MOVED UP FOR SCOPE) ---
+        const socket = io();
+        let myCurrentLocation = null;
+        let currentPostAuthor = null;
         
-        peerConnection = new RTCPeerConnection(rtcConfig);
-        
-        // เอาเสียงเราใส่เข้าไป
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        // เตรียมรับเสียงเขา
-        peerConnection.ontrack = event => {
-            document.getElementById('remote-audio').srcObject = event.streams[0];
+        // WebRTC Voice Call Logic P2P ---
+        let localStream;
+        let peerConnection;
+        let currentCallUser = null; // คนที่เรากำลังคุยด้วย
+        const rtcConfig = {
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // ใช้ STUN ฟรีของ Google
         };
 
-        // ส่งข้อมูล ICE (Network path)
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                socket.emit('ice-candidate', { target: targetUsername, candidate: event.candidate });
+        // 1. ฟังก์ชันเริ่มโทรหา (ผูกกับปุ่มโทร)
+        async function startCall(targetUsername) {
+            if (targetUsername === myUsername) return alert('Why would you call yourself that? 😂');
+            
+            currentCallUser = targetUsername;
+            showCallModal(`📞 Calling. ${targetUsername}...`, false);
+
+            try {
+                // ขออนุญาตใช้ไมค์
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                // เอาเสียงเราใส่เข้าไป
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                // เตรียมรับเสียงเขา
+                peerConnection.ontrack = event => {
+                    document.getElementById('remote-audio').srcObject = event.streams[0];
+                };
+
+                // ส่งข้อมูล ICE (Network path)
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        socket.emit('ice-candidate', { target: targetUsername, candidate: event.candidate });
+                    }
+                };
+
+                // สร้าง Offer ส่งไปหาเขา
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                socket.emit('call-user', { 
+                    userToCall: targetUsername, 
+                    signalData: offer,
+                    fromUser: myUsername 
+                });
+
+            } catch (err) {
+                console.error(err);
+                alert('The microphone is inaccessible.');
+                closeCallModal();
             }
-        };
+        }
 
-        // สร้าง Offer ส่งไปหาเขา
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        
-        socket.emit('call-user', { 
-            userToCall: targetUsername, 
-            signalData: offer,
-            fromUser: myUsername 
+        // 2. เมื่อมีสายเข้า (Socket Listener)
+        socket.on('call-incoming', async ({ signal, from }) => {
+            currentCallUser = from;
+            showCallModal(`📲 Incoming call from ${from}`, true);
+            
+            // เก็บ Offer ไว้ก่อน รอเขากดรับสาย
+            window.pendingOffer = signal;
         });
 
-    } catch (err) {
-        console.error(err);
-        alert('The microphone is inaccessible.');
-        closeCallModal();
-    }
-}
+        // 3. กดรับสาย
+        async function acceptCall() {
+            document.getElementById('incoming-actions').classList.add('hidden');
+            document.getElementById('btn-hangup').classList.remove('hidden');
+            document.getElementById('call-status').innerText = `🔊 Calling ${currentCallUser}`;
 
-// 2. เมื่อมีสายเข้า (Socket Listener)
-socket.on('call-incoming', async ({ signal, from }) => {
-    currentCallUser = from;
-    showCallModal(`📲 Incoming call from ${from}`, true);
-    
-    // เก็บ Offer ไว้ก่อน รอเขากดรับสาย
-    window.pendingOffer = signal;
-});
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                peerConnection = new RTCPeerConnection(rtcConfig);
 
-// 3. กดรับสาย
-async function acceptCall() {
-    document.getElementById('incoming-actions').classList.add('hidden');
-    document.getElementById('btn-hangup').classList.remove('hidden');
-    document.getElementById('call-status').innerText = `🔊 Calling ${currentCallUser}`;
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        peerConnection = new RTCPeerConnection(rtcConfig);
+                peerConnection.ontrack = event => {
+                    document.getElementById('remote-audio').srcObject = event.streams[0];
+                };
 
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        socket.emit('ice-candidate', { target: currentCallUser, candidate: event.candidate });
+                    }
+                };
 
-        peerConnection.ontrack = event => {
-            document.getElementById('remote-audio').srcObject = event.streams[0];
-        };
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
 
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                socket.emit('ice-candidate', { target: currentCallUser, candidate: event.candidate });
+                socket.emit('answer-call', { signal: answer, to: currentCallUser });
+
+            } catch (err) {
+                alert('There was an error answering the call.');
+                endCall();
             }
-        };
+        }
 
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
+        // 4. เมื่อปลายสายรับสายเราแล้ว
+        socket.on('call-accepted', async (signal) => {
+            document.getElementById('call-status').innerText = `🔊 Calling ${currentCallUser}`;
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+        });
 
-        socket.emit('answer-call', { signal: answer, to: currentCallUser });
+        // 5. จัดการ ICE Candidate (เชื่อมต่อ Network)
+        socket.on('ice-candidate-msg', async (candidate) => {
+            if (peerConnection) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (e) { console.error('Error adding ice candidate', e); }
+            }
+        });
 
-    } catch (err) {
-        alert('There was an error answering the call.');
-        endCall();
-    }
-}
+        // 6. วางสาย / จบการสนทนา
+        function endCall() {
+            if (peerConnection) peerConnection.close();
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
+            
+            if (currentCallUser) {
+                socket.emit('end-call', { to: currentCallUser });
+            }
+            
+            closeCallModal();
+        }
 
-// 4. เมื่อปลายสายรับสายเราแล้ว
-socket.on('call-accepted', async (signal) => {
-    document.getElementById('call-status').innerText = `🔊 Calling ${currentCallUser}`;
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
-});
+        socket.on('call-ended', () => {
+            alert('The call ended.');
+            closeCallModal();
+        });
 
-// 5. จัดการ ICE Candidate (เชื่อมต่อ Network)
-socket.on('ice-candidate-msg', async (candidate) => {
-    if (peerConnection) {
-        try {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (e) { console.error('Error adding ice candidate', e); }
-    }
-});
+        socket.on('call-failed', (msg) => {
+            alert(msg);
+            closeCallModal();
+        });
 
-// 6. วางสาย / จบการสนทนา
-function endCall() {
-    if (peerConnection) peerConnection.close();
-    if (localStream) localStream.getTracks().forEach(track => track.stop());
-    
-    if (currentCallUser) {
-        socket.emit('end-call', { to: currentCallUser });
-    }
-    
-    closeCallModal();
-}
+        // --- Helper UI Functions ---
+        function showCallModal(statusText, isIncoming) {
+            const modal = document.getElementById('call-modal');
+            modal.classList.remove('hidden');
+            document.getElementById('call-status').innerText = statusText;
+            
+            if (isIncoming) {
+                document.getElementById('incoming-actions').classList.remove('hidden');
+                document.getElementById('btn-hangup').classList.add('hidden');
+            } else {
+                document.getElementById('incoming-actions').classList.add('hidden');
+                document.getElementById('btn-hangup').classList.remove('hidden');
+            }
+        }
 
-socket.on('call-ended', () => {
-    alert('The call ended.');
-    closeCallModal();
-});
-
-socket.on('call-failed', (msg) => {
-    alert(msg);
-    closeCallModal();
-});
-
-// --- Helper UI Functions ---
-function showCallModal(statusText, isIncoming) {
-    const modal = document.getElementById('call-modal');
-    modal.classList.remove('hidden');
-    document.getElementById('call-status').innerText = statusText;
-    
-    if (isIncoming) {
-        document.getElementById('incoming-actions').classList.remove('hidden');
-        document.getElementById('btn-hangup').classList.add('hidden');
-    } else {
-        document.getElementById('incoming-actions').classList.add('hidden');
-        document.getElementById('btn-hangup').classList.remove('hidden');
-    }
-}
-
-function closeCallModal() {
-    document.getElementById('call-modal').classList.add('hidden');
-    peerConnection = null;
-    currentCallUser = null;
-}
+        function closeCallModal() {
+            document.getElementById('call-modal').classList.add('hidden');
+            peerConnection = null;
+            currentCallUser = null;
+        }
 
         //  Custom Notification Function ---
         let notifTimeout;
@@ -653,12 +655,7 @@ function closeCallModal() {
             }, duration);
         }
 
-        // --- GLOBAL SETUP (unchanged logic) ---
-        const socket = io();
-		let myCurrentLocation = null;
-		let currentPostAuthor = null;
-		
-		const postTranslations = {
+        const postTranslations = {
     'th': {
         'btn_back_tooltip': 'ย้อนกลับ',
         'btn_close_post': 'ปิดกระทู้',
@@ -674,11 +671,11 @@ function closeCallModal() {
         'modal_handover_desc': 'คุณกำลังจะปิดดีลงานนี้ให้กับผู้ดู (Viewer) ที่เลือก โปรดตรวจสอบให้แน่ใจว่าได้ตกลงรายละเอียดและราคาเรียบร้อยแล้ว การกระทำนี้ไม่สามารถย้อนกลับได้',
         'modal_handover_btn': 'ปิดดีลนี้',
         'modal_handover_success': '✅ ส่งมอบงานเรียบร้อยแล้ว โปรดรอการตอบรับจากผู้ที่ได้รับงาน',
-		'confirm_handover_offer': 'ส่งคำขอปิดดีลไปให้ "[VIEWER]" กดยอมรับใช่หรือไม่?',
+        'confirm_handover_offer': 'ส่งคำขอปิดดีลไปให้ "[VIEWER]" กดยอมรับใช่หรือไม่?',
         'notif_offer_sent': '📤 ส่งคำขอปิดดีลให้ [VIEWER] แล้ว',
-		'notif_deal_accepted': '✅ [VIEWER] รับงานแล้ว! กระทู้ถูกปิดเรียบร้อย',
+        'notif_deal_accepted': '✅ [VIEWER] รับงานแล้ว! กระทู้ถูกปิดเรียบร้อย',
         'notif_deal_rejected': '❌ [VIEWER] ปฏิเสธการรับงาน',
-		'generic_viewer_name': 'ผู้รับงาน',
+        'generic_viewer_name': 'ผู้รับงาน',
         'handover_status_loading_title': '⏳ กำลังตรวจสอบสถานะผู้ชม...',
         'handover_status_loading_msg': 'ระบบกำลังติดต่อ Server เพื่อเช็คว่าใครกำลังดูอยู่...',
         'handover_status_found_title': '✅ พร้อมส่งมอบงาน',
@@ -689,11 +686,11 @@ function closeCallModal() {
         'handover_status_error_timeout': 'การเชื่อมต่อล่าช้าเกินไป (Timeout)',
         'handover_status_error_general': 'เกิดข้อผิดพลาด:',
         'btn_close': '❌ ปิด',
-		'offer_modal_title': '🔔 ได้รับข้อเสนอส่งมอบงาน',
+        'offer_modal_title': '🔔 ได้รับข้อเสนอส่งมอบงาน',
         'offer_modal_desc': 'เจ้าของกระทู้ต้องการส่งมอบงาน/ปิดดีลนี้ให้กับคุณ',
         'btn_reject': '❌ ปฏิเสธ',
         'btn_accept': '✅ ยอมรับ',
-		'confirm_finish_request': 'ต้องการขอจบงานและออกจากห้องนี้ใช่หรือไม่?\n(ต้องรอให้อีกฝ่ายกดยืนยัน)',
+        'confirm_finish_request': 'ต้องการขอจบงานและออกจากห้องนี้ใช่หรือไม่?\n(ต้องรอให้อีกฝ่ายกดยืนยัน)',
         'modal_finish_title': '🏁 อีกฝ่ายขอจบงาน',
         'modal_finish_desc_prefix': 'คุณ',
         'modal_finish_desc_suffix': 'ต้องการปิดงานและแยกย้าย',
@@ -702,19 +699,19 @@ function closeCallModal() {
         'btn_confirm_finish': '✅ ยืนยันจบงาน',
         'notif_wait_finish_confirm': '⏳ ส่งคำขอแล้ว กรุณารออีกฝ่ายยืนยัน...',
         'SYS_FINISH_REJECTED': '❌ อีกฝ่ายยังไม่ยืนยันการจบงาน',
-		'rating_title': '⭐ ให้คะแนนความพึงพอใจ',
+        'rating_title': '⭐ ให้คะแนนความพึงพอใจ',
         'rating_desc': 'งานเสร็จสิ้นแล้ว โปรดให้คะแนนอีกฝ่ายเพื่อปิดงาน',
         'rating_selected': 'คะแนนที่เลือก:',
         'btn_submit_rating': 'ยืนยันการให้คะแนน',
         'SYS_RATING_SUCCESS': '🎉 ให้คะแนนสำเร็จ! คุณได้ปิดงานในส่วนของคุณแล้ว',
         'SYS_RATING_ALREADY': '🎉 คุณได้ให้คะแนนไปแล้ว!',
         'SYS_OPPONENT_RATED': '🔔 อีกฝ่ายได้ให้คะแนนคุณแล้ว! ถึงตาคุณให้คะแนนบ้าง',
-		'confirm_kick': 'ต้องการรีสตาร์ทกระทู้ใช่ไหม? (คนที่ดูอยู่จะถูกเตะออกทันที ยกเว้น Admin)',
-		'error_geo_required': '⛔ จำเป็นต้องเปิดตำแหน่ง (GPS) เพื่อเข้าดูกระทู้นี้',
+        'confirm_kick': 'ต้องการรีสตาร์ทกระทู้ใช่ไหม? (คนที่ดูอยู่จะถูกเตะออกทันที ยกเว้น Admin)',
+        'error_geo_required': '⛔ จำเป็นต้องเปิดตำแหน่ง (GPS) เพื่อเข้าดูกระทู้นี้',
         'error_geo_denied': '❌ คุณปฏิเสธการเข้าถึงตำแหน่ง ไม่สามารถดูเนื้อหาได้',
         'error_geo_unsupported': '❌ เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง',
         'checking_location': '⏳ กำลังตรวจสอบตำแหน่งของคุณ...',
-		'btn_show_route': '🗺️ Google Map',
+        'btn_show_route': '🗺️ Google Map',
     },
     'en': {
         'btn_back_tooltip': 'Back',
@@ -731,11 +728,11 @@ function closeCallModal() {
         'modal_handover_desc': 'You are about to close this deal to the selected Viewer. Please ensure all details and pricing are agreed upon. This action is irreversible.',
         'modal_handover_btn': 'Deal',
         'modal_handover_success': '✅ Job Handover completed. Please wait for acceptance from the recipient.',
-		'confirm_handover_offer': 'Send deal close request to "[VIEWER]". Confirm acceptance?',
+        'confirm_handover_offer': 'Send deal close request to "[VIEWER]". Confirm acceptance?',
         'notif_offer_sent': '📤 Handover offer sent to [VIEWER]',
-		'notif_deal_accepted': '✅ [VIEWER] accepted the deal! Post closed successfully.',
+        'notif_deal_accepted': '✅ [VIEWER] accepted the deal! Post closed successfully.',
         'notif_deal_rejected': '❌ [VIEWER] rejected the deal offer.',
-		'generic_viewer_name': 'The Recipient',
+        'generic_viewer_name': 'The Recipient',
         'handover_status_loading_title': '⏳ Checking viewer status...',
         'handover_status_loading_msg': 'System is contacting server to check for viewers...',
         'handover_status_found_title': '✅ Ready for Handover',
@@ -746,11 +743,11 @@ function closeCallModal() {
         'handover_status_error_timeout': 'Connection delayed (Timeout)',
         'handover_status_error_general': 'Error occurred:',
         'btn_close': '❌ Close',
-		'offer_modal_title': '🔔 Job Handover Offer Received',
+        'offer_modal_title': '🔔 Job Handover Offer Received',
         'offer_modal_desc': 'The post owner wants to handover/close this deal with you.',
         'btn_reject': '❌ Reject',
         'btn_accept': '✅ Accept',
-		'confirm_finish_request': 'Do you want to finish this job and leave?\n(Waiting for confirmation from the other party)',
+        'confirm_finish_request': 'Do you want to finish this job and leave?\n(Waiting for confirmation from the other party)',
         'modal_finish_title': '🏁 Finish Job Request',
         'modal_finish_desc_prefix': 'User',
         'modal_finish_desc_suffix': 'wants to finish the job.',
@@ -759,19 +756,19 @@ function closeCallModal() {
         'btn_confirm_finish': '✅ Confirm Finish',
         'notif_wait_finish_confirm': '⏳ Request sent. Waiting for confirmation...',
         'SYS_FINISH_REJECTED': '❌ The other party denied the finish request.',
-		'rating_title': '⭐ Rate Satisfaction',
+        'rating_title': '⭐ Rate Satisfaction',
         'rating_desc': 'The job is finished. Please rate the other party to close the deal.',
         'rating_selected': 'Selected Rating:',
         'btn_submit_rating': 'Submit Rating',
         'SYS_RATING_SUCCESS': '🎉 Rating submitted! You have closed your part.',
         'SYS_RATING_ALREADY': '🎉 You have already submitted a rating!',
         'SYS_OPPONENT_RATED': '🔔 The other party has rated you! Now it\'s your turn.',
-		'confirm_kick': 'Do you want to restart the post room? (All current viewers will be kicked immediately, except Admin)',
-		'error_geo_required': '⛔ Location access (GPS) is required to view this post.',
+        'confirm_kick': 'Do you want to restart the post room? (All current viewers will be kicked immediately, except Admin)',
+        'error_geo_required': '⛔ Location access (GPS) is required to view this post.',
         'error_geo_denied': '❌ Location access denied. Cannot view content.',
         'error_geo_unsupported': '❌ Your browser does not support geolocation.',
         'checking_location': '⏳ Verifying your location...',
-		'btn_show_route': '🗺️ Show Navigation Google Map',
+        'btn_show_route': '🗺️ Show Navigation Google Map',
     }
 };
 
@@ -799,8 +796,8 @@ function closeCallModal() {
                 }
             });
         }
-		
-		// Emoji Logic for Comments
+        
+        // Emoji Logic for Comments
     function toggleEmoji() {
         const picker = document.getElementById('comment-emoji-picker');
         picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
@@ -824,16 +821,16 @@ function closeCallModal() {
         // เรียกฟังก์ชันเดิม
         await originalSendComment(); // เนื่องจากคุณประกาศ window.sendComment = sendComment ไว้ท้ายไฟล์เดิม
     }
-		
+        
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('id'); 
         const myUsername = localStorage.getItem('myUsername');
-		const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-		
+        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+        
         let currentDestination = null;
         let finishRequester = '';
         let currentPost = null; // เก็บข้อมูลกระทู้ปัจจุบัน
-		let currentViewerLocation = null;
+        let currentViewerLocation = null;
 
         if (!myUsername || !postId) {
             showNotification('ไม่พบข้อมูลผู้ใช้หรือกระทู้ กรุณาเข้าสู่ระบบใหม่', 'fas fa-exclamation-triangle', 4000); 
@@ -855,7 +852,7 @@ function closeCallModal() {
             // ดึงภาษาเพื่อใช้แสดงข้อความ
             const lang = localStorage.getItem('preferredLanguage') || 'th';
             const t = postTranslations[lang] || postTranslations['th'];
-			if (myUsername === post.author || myUsername === 'Admin') {
+            if (myUsername === post.author || myUsername === 'Admin') {
                 myCurrentLocation = null; // ไม่เก็บตำแหน่งตัวเอง
                 
                 document.body.style.display = 'block';
@@ -976,8 +973,8 @@ function closeCallModal() {
             
             document.getElementById('rating-modal').classList.add('hidden');
         }
-		
-		// ฟังก์ชันเปิดรูปภาพขยาย
+        
+        // ฟังก์ชันเปิดรูปภาพขยาย
 window.openImageViewer = function(src) {
     const modal = document.getElementById('image-viewer-modal');
     const img = document.getElementById('full-image');
@@ -1068,8 +1065,8 @@ window.closeImageViewer = function() {
         navButton.style.display = 'none';
     }
 }
-		
-		function displayMapWithViewer(postLocation, viewerLocation) {
+        
+        function displayMapWithViewer(postLocation, viewerLocation) {
     const mapContainer = document.getElementById('map-container');
     const mapIframe = document.getElementById('post-map-iframe');
     const navButton = document.getElementById('start-nav-btn'); 
@@ -1121,7 +1118,7 @@ window.closeImageViewer = function() {
     navButton.style.display = 'none';
 }
 
-	window.startEmbeddedNavigation = function() {
+    window.startEmbeddedNavigation = function() {
     if (!currentDestination) {
         showNotification('ไม่พบพิกัดปลายทาง', 'fas fa-exclamation-triangle');
         return;
@@ -1252,8 +1249,8 @@ socket.on('viewer-left-location', (data) => {
             restartBtn.style.display = 'none';
             handoverBtn.style.display = 'none';
             manualCloseBtn.style.display = 'none'; 
-			
-			if (post.isPinned) {
+            
+            if (post.isPinned) {
                 // ถ้ากระทู้ถูกปิดแล้ว
                 if (post.isClosed) {
                     commentForm.style.display = 'none';
@@ -1274,8 +1271,8 @@ socket.on('viewer-left-location', (data) => {
                 // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
                 return; 
             }
-			
-			currentPostAuthor = post.author; // เก็บชื่อเจ้าของกระทู้
+            
+            currentPostAuthor = post.author; // เก็บชื่อเจ้าของกระทู้
     
     const callBtn = document.getElementById('btn-call-author');
     // ถ้ามีปุ่ม และ ไม่ใช่กระทู้ตัวเอง -> ให้แสดงปุ่ม
@@ -1411,10 +1408,10 @@ socket.on('viewer-left-location', (data) => {
 
             if (res.status === 200) {
                 document.getElementById('comment-input').value = '';
-				document.getElementById('comment-image').value = '';
-				const fileNameDisplay = document.getElementById('file-name-display');
-				fileNameDisplay.innerText = '';
-				fileNameDisplay.style.display = 'none';
+                document.getElementById('comment-image').value = '';
+                const fileNameDisplay = document.getElementById('file-name-display');
+                fileNameDisplay.innerText = '';
+                fileNameDisplay.style.display = 'none';
             } else {
                 // ✅ [FIXED] จัดการ Error และป้องกัน SyntaxError
                 try {
@@ -1695,9 +1692,9 @@ function closeDealWithViewer() {
         window.submitRating = submitRating;
         window.goBack = goBack;
         window.manualClosePost = manualClosePost;
-		applyLanguage();
-		
-		document.getElementById('comment-image').addEventListener('change', function() {
+        applyLanguage();
+        
+        document.getElementById('comment-image').addEventListener('change', function() {
     const fileNameDisplay = document.getElementById('file-name-display');
     if (this.files && this.files.length > 0) {
         // ⭐ ปรับรูปแบบการแสดงผลให้สวยงามขึ้น
@@ -1709,7 +1706,7 @@ function closeDealWithViewer() {
     }
 });
 
-	function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     const R = 6371; // รัศมีของโลก (กม.)
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
@@ -1727,8 +1724,8 @@ function deg2rad(deg) {
 }
 
     </script>
-	
-	<div id="call-modal" class="hidden" style="position: fixed; bottom: 20px; right: 20px; width: 300px; background: #2c3e50; color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1000; text-align: center;">
+    
+    <div id="call-modal" class="hidden" style="position: fixed; bottom: 20px; right: 20px; width: 300px; background: #2c3e50; color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1000; text-align: center;">
     <h3 id="call-status" style="margin: 0 0 10px 0;">📞 กำลังโทร...</h3>
     <p id="call-partner" style="font-size: 0.9em; color: #bdc3c7;">...</p>
     

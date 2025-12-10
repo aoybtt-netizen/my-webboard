@@ -1930,7 +1930,7 @@ async function showMyClosedPosts(page = 1) {
     const titleInput = document.getElementById('title-input');
     titleInput.classList.add('hidden'); 
     titleInput.value = '';
-    
+    loadTopics();
     // เรียก setLanguage เพื่อแปลทุกองค์ประกอบใน modal อีกครั้ง 
     setLanguage(currentLang); 
     
