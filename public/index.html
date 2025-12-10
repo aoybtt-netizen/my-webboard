@@ -1745,7 +1745,9 @@ async function showMyClosedPosts(page = 1) {
                 icon = '✅'; 
             }
 
-            let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1) ? "alert('⛔ Closed.')" : `location.href='post.html?id=${post.id}'`;
+            let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) 
+				? "alert('⛔ กระทู้นี้ถูกปิดแล้ว')" 
+				: `location.href='post.html?id=${post.id}'`;
 
             let locationHtml = '';
             if (post.location && post.location.lat && post.location.lng) {
