@@ -1922,7 +1922,8 @@ async function showMyClosedPosts(page = 1) {
             `);
         }
 		
-		async function openAdminZoneModal() {
+		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
+async function openAdminZoneModal() {
     if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
     
     document.getElementById('admin-zone-modal').classList.remove('hidden');
@@ -1933,12 +1934,11 @@ async function showMyClosedPosts(page = 1) {
     const listContainer = document.getElementById('zone-list-container');
     const t = translations[currentLang];
 
-    latInput.value = ''; // Clear inputs for adding a new one
+    latInput.value = ''; 
     lngInput.value = '';
     nameInput.value = '';
-    listContainer.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg']}</p>`;
+    listContainer.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg'] || 'Loading...'}</p>`;
 
-    // ดึงข้อมูล Zones ทั้งหมดจาก Server
     try {
         const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`); 
         if (res.status === 200) {
@@ -1950,28 +1950,37 @@ async function showMyClosedPosts(page = 1) {
                     const lng = parseFloat(zone.lng).toFixed(4);
                     const name = zone.name || `Zone ID: ${zone.id}`; 
                     
-                    const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                    // ป้องกัน Error กรณีชื่อมีเครื่องหมาย '
+                    const safeName = name.replace(/'/g, "\\'"); 
                     
-                    // Assigned Admin Display
+                    const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                     const assignedAdmin = zone.assignedAdmin || '-';
                     
                     return `
-                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px dashed #eee; font-size: 0.9em;">
-                            <span style="flex-basis: 100%; margin-bottom: 5px;">🗺️ <b>${name}</b> | ${t['admin_assigned_to']}: <span style="color:#007bff;">${assignedAdmin}</span></span>
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
+                            <div style="flex-basis: 100%; margin-bottom: 5px;">
+                                🗺️ <b>${name}</b> <br>
+                                <small>${t['admin_assigned_to']}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
+                            </div>
                             
-                            <span style="flex-basis: 50%;">
-                                <a href="${mapLink}" target="_blank" style="color:#007bff; text-decoration:none;" title="Open Google Maps">
-                                    ${lat}, ${lng}
+                            <div style="flex-basis: 40%;">
+                                <a href="${mapLink}" target="_blank" style="color:#28a745; text-decoration:none; font-weight:bold;" title="Open Google Maps">
+                                    📍 ${lat}, ${lng}
                                 </a>
-                            </span>
+                            </div>
                             
-                            <span style="flex-basis: 50%; text-align: right;">
+                            <div style="flex-basis: 60%; text-align: right; display:flex; gap:5px; justify-content: flex-end;">
                                 <button class="sidebar-btn" 
-                                    style="padding: 5px 10px; font-size: 0.8em; width: auto; background:#28a745; color:white; margin-bottom:0;"
-                                    onclick="openAdminAssignModal('${zone.id}', '${name}')" data-i18n-key="btn_assign_admin">
-                                    ${t['btn_assign_admin']}
+                                    style="padding: 2px 8px; font-size: 0.8em; width: auto; background:#007bff; color:white; margin:0;"
+                                    onclick="openAdminAssignModal('${zone.id}', '${safeName}')">
+                                    👨‍💼 ${t['btn_assign_admin'] || 'Assign'}
                                 </button>
-                            </span>
+                                
+                                <button onclick="deleteZone('${zone.id}', '${safeName}')" 
+                                    style="padding: 2px 8px; background:#dc3545; color:white; border:none; border-radius:5px; cursor:pointer;" title="Delete Zone">
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -1987,45 +1996,38 @@ async function showMyClosedPosts(page = 1) {
     }
 }
 
-// [NEW] ฟังก์ชันสำหรับบันทึกค่าโซน
-async function saveZoneConfig() {
+// ฟังก์ชันลบโซน
+async function deleteZone(zoneId, zoneName) {
     if (myAdminLevel < 3) return;
-    
-    const latInput = document.getElementById('zone-lat-input').value.trim();
-    const lngInput = document.getElementById('zone-lng-input').value.trim();
-    const t = translations[currentLang];
-    
-    const lat = parseFloat(latInput);
-    const lng = parseFloat(lngInput);
 
-    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        return alert(t['alert_invalid_zone']);
+    if (!confirm(`⚠️ คุณแน่ใจหรือไม่ที่จะลบโซน "${zoneName}"?\nการลบนี้ไม่สามารถกู้คืนได้`)) {
+        return;
     }
 
     try {
-        const res = await fetch('/api/admin/set-zone', {
-            method: 'POST',
+        const res = await fetch('/api/admin/delete-zone', {
+            method: 'POST', // หรือ DELETE
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                lat: lat, 
-                lng: lng, 
+                zoneId: zoneId, 
                 requestBy: myUsername 
             })
         });
 
         const data = await res.json();
-        
         if (data.success) {
-            alert(t['alert_zone_success']);
-            document.getElementById('admin-zone-modal').classList.add('hidden');
+            alert('✅ ลบโซนสำเร็จ');
+            openAdminZoneModal(); // รีเฟรชรายการ
         } else {
-            alert(`❌ Error: ${data.error || 'บันทึกไม่สำเร็จ'}`);
+            alert(`❌ ลบไม่สำเร็จ: ${data.error}`);
         }
     } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-        console.error('Error saving zone config:', e);
+        alert('❌ Error connecting to server');
     }
 }
+
+// อย่าลืมผูกกับ window
+window.deleteZone = deleteZone;
 
 		async function addZoneConfig() {
     if (myAdminLevel < 3) return;

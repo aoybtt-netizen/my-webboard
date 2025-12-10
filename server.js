@@ -904,6 +904,28 @@ app.post('/api/admin/assign-zone', async (req, res) => {
     res.json({ success: true, assignedAdmin: adminUsername });
 });
 
+// 29. Delete Zone
+app.post('/api/admin/delete-zone', async (req, res) => {
+    const { zoneId, requestBy } = req.body;
+    
+    // Check Permissions
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 3) { 
+        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+    }
+
+    const zoneIdInt = parseInt(zoneId);
+    
+    // Delete Operation
+    const result = await zonesCollection.deleteOne({ id: zoneIdInt });
+
+    if (result.deletedCount > 0) {
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'Zone not found' });
+    }
+});
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 
