@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.1 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.2 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -496,6 +496,7 @@
         'admin_create_pinned': '📌 สร้างกระทู้พิเศษ',
         'admin_closed_posts': '🗄️ กระทู้ที่ปิดแล้ว',
         'admin_manage_topics': '⚙️ จัดการหัวข้อ',
+		'admin_manage_zones': '🗺️ จัดการโซน',
         'admin_set_cost': '🏷️ กำหนดค่าธรรมเนียม',
         'admin_user_list': '👥 รายชื่อสมาชิกทั้งหมด',
         'page_title': '📌 รายการ',
@@ -544,7 +545,11 @@
         'placeholder_new_topic': 'ชื่อหัวข้อใหม่ (เช่น กีฬา, อาหาร)',
         'btn_add_topic': 'เพิ่มหัวข้อ',
         'btn_close': 'ปิด',
-        
+        'admin_zone_title': '🗺️ กำหนดพื้นที่ครอบคลุม',
+        'admin_zone_desc': 'ใส่พิกัด Lat/Lng เพื่อกำหนดจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)',
+        'btn_save_zone': 'บันทึกโซน',
+        'alert_invalid_zone': '❌ กรุณาใส่ Latitude และ Longitude เป็นตัวเลขที่ถูกต้อง',
+        'alert_zone_success': '✅ บันทึกพื้นที่ครอบคลุมสำเร็จ!',
         'post_not_found': 'ไม่พบกระทู้',
         'closed_or_finished': '⛔ กระทู้นี้ปิดรับงาน/เสร็จสิ้นแล้ว',
         'room_occupied': '⚠️ มีผู้ใช้งานอื่นกำลังดูกระทู้นี้อยู่ กรุณารอสักครู่...',
@@ -612,8 +617,16 @@
         'admin_create_pinned': '📌 Create Pinned Post',
         'admin_closed_posts': '🗄️ Closed Posts',
         'admin_manage_topics': '⚙️ Manage Topics',
+		'admin_manage_zones': '🗺️ Manage Zones',
         'admin_set_cost': '🏷️ Set Fee',
         'admin_user_list': '👥 All Members List',
+		'btn_add_topic': 'Add Topic',
+        'btn_close': 'Close',
+        'admin_zone_title': '🗺️ Define Coverage Zone',
+        'admin_zone_desc': 'Enter Lat/Lng coordinates for the zone center (Admin Level 3 only).',
+        'btn_save_zone': 'Save Zone',
+        'alert_invalid_zone': '❌ Please enter valid numerical values for Latitude and Longitude.',
+        'alert_zone_success': '✅ Coverage Zone saved successfully!',
         'page_title': '📌 Listings',
         'title_create': 'Create New Post',
         'cost_fee': 'Fee:',
