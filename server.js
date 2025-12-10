@@ -1064,6 +1064,38 @@ io.on('connection', (socket) => {
             socket.emit('force-leave', msg); 
         }
     });
+	
+	//  WebRTC Signaling (ระบบโทร P2P) ---
+
+// 1. ส่งคำขอโทร (Offer)
+socket.on('call-user', ({ userToCall, signalData, fromUser }) => {
+    // ค้นหา Socket ID ของปลายสาย
+    const targetSocket = [...io.sockets.sockets.values()].find(s => s.username === userToCall);
+    if (targetSocket) {
+        io.to(targetSocket.id).emit('call-incoming', { signal: signalData, from: fromUser });
+    } else {
+        socket.emit('call-failed', '❌ ปลายสายไม่ได้ออนไลน์อยู่ในขณะนี้');
+    }
+});
+
+// 2. รับสาย (Answer)
+socket.on('answer-call', ({ signal, to }) => {
+    const targetSocket = [...io.sockets.sockets.values()].find(s => s.username === to);
+    if (targetSocket) io.to(targetSocket.id).emit('call-accepted', signal);
+});
+
+// 3. ส่งข้อมูลเครือข่าย (ICE Candidate)
+socket.on('ice-candidate', ({ target, candidate }) => {
+    const targetSocket = [...io.sockets.sockets.values()].find(s => s.username === target);
+    if (targetSocket) io.to(targetSocket.id).emit('ice-candidate-msg', candidate);
+});
+
+// 4. วางสาย
+socket.on('end-call', ({ to }) => {
+    const targetSocket = [...io.sockets.sockets.values()].find(s => s.username === to);
+    if (targetSocket) io.to(targetSocket.id).emit('call-ended');
+});
+
 });
 
 // --- Initial Tasks ---

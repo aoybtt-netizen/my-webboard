@@ -335,6 +335,12 @@
 
         <input type="text" id="comment-input" placeholder="แสดงความคิดเห็น..." autocomplete="off">
         
+		<button id="btn-call-author" 
+        onclick="startCall(currentPostAuthor)" 
+        style="background: #2ecc71; color: white; border: none; padding: 10px 15px; border-radius: 20px; cursor: pointer; margin-right: 10px; font-weight: 600; display: none; align-items: center; gap: 5px;">
+    <i class="fas fa-phone-alt"></i> โทรหาเจ้าของกระทู้
+</button>
+
         <button id="send-comment-btn" onclick="sendComment()" title="ส่งข้อความ">
             <i class="fas fa-paper-plane"></i>
         </button>
@@ -475,7 +481,161 @@
     <!-- 💥 [FIX] ย้าย Script มาไว้ล่างสุดของ Body เพื่อให้โหลด Socket.IO เสร็จก่อน -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // --- NEW HELPER: Custom Notification Function ---
+		//  WebRTC Voice Call Logic P2P ---
+let localStream;
+let peerConnection;
+let currentCallUser = null; // คนที่เรากำลังคุยด้วย
+const rtcConfig = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // ใช้ STUN ฟรีของ Google
+};
+
+// 1. ฟังก์ชันเริ่มโทรหา (ผูกกับปุ่มโทร)
+async function startCall(targetUsername) {
+    if (targetUsername === myUsername) return alert('Why would you call yourself that? 😂');
+    
+    currentCallUser = targetUsername;
+    showCallModal(`📞 Calling. ${targetUsername}...`, false);
+
+    try {
+        // ขออนุญาตใช้ไมค์
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        
+        // เอาเสียงเราใส่เข้าไป
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        // เตรียมรับเสียงเขา
+        peerConnection.ontrack = event => {
+            document.getElementById('remote-audio').srcObject = event.streams[0];
+        };
+
+        // ส่งข้อมูล ICE (Network path)
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                socket.emit('ice-candidate', { target: targetUsername, candidate: event.candidate });
+            }
+        };
+
+        // สร้าง Offer ส่งไปหาเขา
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        socket.emit('call-user', { 
+            userToCall: targetUsername, 
+            signalData: offer,
+            fromUser: myUsername 
+        });
+
+    } catch (err) {
+        console.error(err);
+        alert('The microphone is inaccessible.');
+        closeCallModal();
+    }
+}
+
+// 2. เมื่อมีสายเข้า (Socket Listener)
+socket.on('call-incoming', async ({ signal, from }) => {
+    currentCallUser = from;
+    showCallModal(`📲 Incoming call from ${from}`, true);
+    
+    // เก็บ Offer ไว้ก่อน รอเขากดรับสาย
+    window.pendingOffer = signal;
+});
+
+// 3. กดรับสาย
+async function acceptCall() {
+    document.getElementById('incoming-actions').classList.add('hidden');
+    document.getElementById('btn-hangup').classList.remove('hidden');
+    document.getElementById('call-status').innerText = `🔊 Calling ${currentCallUser}`;
+
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        peerConnection = new RTCPeerConnection(rtcConfig);
+
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = event => {
+            document.getElementById('remote-audio').srcObject = event.streams[0];
+        };
+
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                socket.emit('ice-candidate', { target: currentCallUser, candidate: event.candidate });
+            }
+        };
+
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        socket.emit('answer-call', { signal: answer, to: currentCallUser });
+
+    } catch (err) {
+        alert('There was an error answering the call.');
+        endCall();
+    }
+}
+
+// 4. เมื่อปลายสายรับสายเราแล้ว
+socket.on('call-accepted', async (signal) => {
+    document.getElementById('call-status').innerText = `🔊 Calling ${currentCallUser}`;
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+});
+
+// 5. จัดการ ICE Candidate (เชื่อมต่อ Network)
+socket.on('ice-candidate-msg', async (candidate) => {
+    if (peerConnection) {
+        try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) { console.error('Error adding ice candidate', e); }
+    }
+});
+
+// 6. วางสาย / จบการสนทนา
+function endCall() {
+    if (peerConnection) peerConnection.close();
+    if (localStream) localStream.getTracks().forEach(track => track.stop());
+    
+    if (currentCallUser) {
+        socket.emit('end-call', { to: currentCallUser });
+    }
+    
+    closeCallModal();
+}
+
+socket.on('call-ended', () => {
+    alert('The call ended.');
+    closeCallModal();
+});
+
+socket.on('call-failed', (msg) => {
+    alert(msg);
+    closeCallModal();
+});
+
+// --- Helper UI Functions ---
+function showCallModal(statusText, isIncoming) {
+    const modal = document.getElementById('call-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('call-status').innerText = statusText;
+    
+    if (isIncoming) {
+        document.getElementById('incoming-actions').classList.remove('hidden');
+        document.getElementById('btn-hangup').classList.add('hidden');
+    } else {
+        document.getElementById('incoming-actions').classList.add('hidden');
+        document.getElementById('btn-hangup').classList.remove('hidden');
+    }
+}
+
+function closeCallModal() {
+    document.getElementById('call-modal').classList.add('hidden');
+    peerConnection = null;
+    currentCallUser = null;
+}
+
+        //  Custom Notification Function ---
         let notifTimeout;
         function showNotification(message, iconClass = 'fas fa-info-circle', duration = 3000) {
             clearTimeout(notifTimeout);
@@ -496,6 +656,7 @@
         // --- GLOBAL SETUP (unchanged logic) ---
         const socket = io();
 		let myCurrentLocation = null;
+		let currentPostAuthor = null;
 		
 		const postTranslations = {
     'th': {
@@ -1113,6 +1274,14 @@ socket.on('viewer-left-location', (data) => {
                 // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
                 return; 
             }
+			
+			currentPostAuthor = post.author; // เก็บชื่อเจ้าของกระทู้
+    
+    const callBtn = document.getElementById('btn-call-author');
+    // ถ้ามีปุ่ม และ ไม่ใช่กระทู้ตัวเอง -> ให้แสดงปุ่ม
+    if (callBtn && myUsername !== post.author) {
+        callBtn.style.display = 'inline-flex';
+    }
 
             if (post.status === 'finished') {
                 const isParticipant = myUsername === post.author || myUsername === post.acceptedViewer || myUsername === 'Admin';
@@ -1558,5 +1727,26 @@ function deg2rad(deg) {
 }
 
     </script>
+	
+	<div id="call-modal" class="hidden" style="position: fixed; bottom: 20px; right: 20px; width: 300px; background: #2c3e50; color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1000; text-align: center;">
+    <h3 id="call-status" style="margin: 0 0 10px 0;">📞 กำลังโทร...</h3>
+    <p id="call-partner" style="font-size: 0.9em; color: #bdc3c7;">...</p>
+    
+    <div id="incoming-actions" class="hidden">
+        <button onclick="acceptCall()" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; margin-right: 5px;">
+            <i class="fas fa-phone"></i> รับสาย
+        </button>
+        <button onclick="endCall()" style="background: #c0392b; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer;">
+            <i class="fas fa-phone-slash"></i> ปฏิเสธ
+        </button>
+    </div>
+
+    <button id="btn-hangup" onclick="endCall()" style="background: #c0392b; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; margin-top: 10px;">
+        <i class="fas fa-phone-slash"></i> วางสาย
+    </button>
+    
+    <audio id="remote-audio" autoplay></audio>
+</div>
+
 </body>
 </html>
