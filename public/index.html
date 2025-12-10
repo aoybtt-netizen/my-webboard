@@ -270,6 +270,30 @@
     <button class="sidebar-btn" id="list-next-btn" onclick="changeListPage(1)" style="width:auto; padding: 5px 15px; font-size: 0.9em;" data-i18n-key="btn_next">ถัดไป ➡️</button>
 </div>
 
+		<div id="user-detail-modal" class="modal-overlay hidden" style="z-index: 2500;">
+    <div class="modal-box" style="text-align: center;">
+        <div style="display:flex; justify-content:flex-end;">
+            <button onclick="document.getElementById('user-detail-modal').classList.add('hidden')" style="border:none; background:none; font-size:1.5em; cursor:pointer;">×</button>
+        </div>
+        
+        <h2 id="detail-name" style="margin-top:0; color:#007bff;">User Name</h2>
+        <div id="detail-badges" style="margin-bottom: 15px;"></div>
+        
+        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
+            💵 <span id="detail-coins" style="color:#28a745;">0.00</span> USD
+        </div>
+        <div style="color:gray; font-size: 0.9em; margin-bottom: 20px;">
+            ⭐ Rating: <span id="detail-rating">0.00</span> / 5.0
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
+        <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
+            </div>
+    </div>
+	</div>
+
+
             <div id="user-list-container">Loading...</div>
         </div>
     </div>
@@ -325,6 +349,8 @@
 		let myAdminLevel = 0;
 		let filterLocation = null;      // เก็บพิกัดคนดู
         let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
+		// Cooldown สำหรับการป้องกัน Rapid Refresh (15 วินาที)
+		const REFRESH_COOLDOWN_MS = 15000;
 		
 		//  Cooldown state สำหรับ Distance Filter
 		let lastFilterTime = 0; 
@@ -770,6 +796,36 @@ if (homeBtn) {
         const ADMIN_USERNAME = 'Admin'; 
 
         window.onload = () => {
+    
+    // Cooldown Check for Rapid Refresh
+    const lastRefreshTime = parseInt(localStorage.getItem('lastRefreshTime') || '0');
+    const now = Date.now();
+    
+    // หากรีเฟรชเร็วเกินไป (น้อยกว่า REFRESH_COOLDOWN_MS)
+    if (now - lastRefreshTime < REFRESH_COOLDOWN_MS) {
+        const remainingSeconds = Math.ceil((REFRESH_COOLDOWN_MS - (now - lastRefreshTime)) / 1000);
+        
+        // แสดงข้อความเตือนและหยุดการโหลด App
+        document.body.innerHTML = `
+            <div style="text-align:center; padding: 50px; color:red; font-family:'Kanit', sans-serif;">
+                <h1>❌ การรีเฟรชเร็วเกินไป</h1>
+                <p>กรุณารออีก <b>${remainingSeconds} วินาที</b> ก่อนลองรีเฟรชอีกครั้ง</p>
+                <p style="color:gray;">เพื่อป้องกันภาระบนเซิร์ฟเวอร์</p>
+            </div>
+        `;
+        
+        // ตั้งเวลาให้รีโหลดตัวเองอัตโนมัติเมื่อครบ Cooldown
+        setTimeout(() => {
+            window.location.reload();
+        }, remainingSeconds * 1000 + 500); // เผื่อเวลา 0.5 วินาที
+        
+        return; // หยุดการทำงานของโค้ดที่เหลือ
+    }
+    
+    // หากผ่านการตรวจสอบ ให้บันทึกเวลาปัจจุบัน
+    localStorage.setItem('lastRefreshTime', now);
+
+
     const savedName = localStorage.getItem('myUsername');
     // โหลดภาษาที่ถูกเลือก
     const savedLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -2501,82 +2557,105 @@ function openAdminPinnedModal() {
 
     container.innerHTML = list.map(u => {
         const isBanned = u.isBanned;
-		const targetLevel = u.adminLevel || 0;
-        const banBtnText = isBanned ? `✅ ${unbanText}` : `❌ ${banText}`; 
-        const banBtnColor = isBanned ? '#28a745' : '#dc3545';
-        const banStatusText = isBanned ? ' (⛔ แบน)' : '';
-		
-		let promoteButtons = '';
-		
-		// 1. ถ้าฉันเป็น Level 2+ และเป้าหมายยศต่ำกว่า 1 -> แต่งตั้งเป็น Admin 1 ได้
-        if (myAdminLevel >= 2 && targetLevel < 1) {
-             promoteButtons += `
-                <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#17a2b8; color:white; font-size:0.8em;" 
-                    onclick="setAdminLevel('${u.name}', 1)">
-                    👮‍♂️ ตั้งเป็น Admin 1
-                </button>
-             `;
-        }
-
-        // 2. ถ้าฉันเป็น Level 3+ และเป้าหมายยศต่ำกว่า 2 -> แต่งตั้งเป็น Admin 2 ได้
-        if (myAdminLevel >= 3 && targetLevel < 2) {
-             promoteButtons += `
-                <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#6610f2; color:white; font-size:0.8em;" 
-                    onclick="setAdminLevel('${u.name}', 2)">
-                    👨‍💼 ตั้งเป็น Admin 2
-                </button>
-             `;
-        }
+        const targetLevel = u.adminLevel || 0;
         
-        // 3. ⭐ ปุ่มถอนสิทธิ์ (Demote)
-        // แสดงเมื่อ: ฉันยศสูงกว่าเป้าหมาย และ เป้าหมายมียศ (Level > 0)
-        if (myAdminLevel > targetLevel && targetLevel > 0) {
-            promoteButtons += `
-                <button class="sidebar-btn" style="width:auto; padding:5px 8px; background:#ffc107; color:black; font-size:0.8em;" 
-                    onclick="setAdminLevel('${u.name}', 0)">
-                    ⬇️ ถอนสิทธิ์
-                </button>
-             `;
-        }
-        
-        // แสดง Badge บอกยศปัจจุบัน
+        // สถานะแบน (โชว์แค่สีพื้นหลังและขอบแดง)
+        const rowStyle = isBanned 
+            ? 'background: #f8d7da; border-left: 5px solid #dc3545;' 
+            : 'background: white; border-left: 5px solid #28a745;'; // สีเขียวปกติ
+            
+        // Badge ยศ (ถ้ามี)
         let levelBadge = '';
         if (targetLevel > 0) {
-            levelBadge = `<span style="background:#007bff; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>`;
+            levelBadge = `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>`;
         }
+        
+        // Badge Banned
+        const banText = isBanned ? '<span style="color:red; font-size:0.8em; font-weight:bold;">(BANNED)</span>' : '';
 
         return `
-        <div class="user-list-item" style="display:flex; flex-direction:column; align-items:flex-start; background: ${isBanned ? '#f8d7da' : 'none'}; border-left: 5px solid ${isBanned ? '#dc3545' : 'none'};">
-            <span>
-                👤 ${u.name} ${levelBadge} ${banStatusText}
-                <span style="color:black; font-size:0.9em; font-weight:bold; margin-left:5px;">
-                    (⭐ ${u.rating.toFixed(2)} / 5.0)
-                </span>
-            </span>
-            <span style="color:#28a745; font-size:0.9em; font-weight:bold; margin-top:3px;">
-                💵 ${u.coins} USD
-            </span>
-            <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 10px;">
-                <button class="sidebar-btn create-btn" style="width:auto; padding: 5px 10px;" onclick="openPrivateChat('${u.name}')">
-                    ${chatText}
-                </button>
-                <button class="sidebar-btn admin-btn" style="width:auto; padding: 5px 10px; background:#dc3545;" onclick="setMemberRating('${u.name}')">
-                    ${ratingText}
-                </button>
-                
-                <button class="sidebar-btn" 
-                        style="width:auto; padding: 5px 10px; background:${banBtnColor}; color:white;"
-                        onclick="toggleBanUser('${u.name}', ${isBanned})">
-                    ${banBtnText}
-                </button>
-                
-                ${promoteButtons}
+        <div class="user-list-item" 
+             style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);"
+             onclick="openUserDetail('${u.name}')"> <div style="font-weight: bold; font-size: 1.1em;">
+                👤 ${u.name} ${levelBadge} ${banText}
+            </div>
+            
+            <div style="color:#28a745; font-weight: bold;">
+                💵 ${u.coins.toLocaleString()} USD
             </div>
         </div>`;
     }).join('');
-	document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
+    
+    document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
     document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
 }
+
+		// เปิด Modal แสดงรายละเอียดและปุ่มจัดการ
+function openUserDetail(targetUsername) {
+    // ดึงข้อมูล User จาก Cache
+    const u = allUsersCache.find(user => user.name === targetUsername);
+    if (!u) return;
+
+    const modal = document.getElementById('user-detail-modal');
+    const isBanned = u.isBanned;
+    const targetLevel = u.adminLevel || 0;
+
+    // 1. ใส่ข้อมูลพื้นฐาน
+    document.getElementById('detail-name').innerText = u.name;
+    document.getElementById('detail-coins').innerText = u.coins.toLocaleString();
+    document.getElementById('detail-rating').innerText = u.rating.toFixed(2);
+    
+    // สร้าง Badges
+    let badgesHtml = '';
+    if (targetLevel > 0) badgesHtml += `<span style="background:#007bff; color:white; padding:4px 8px; border-radius:4px; margin-right:5px;">Admin Level ${targetLevel}</span>`;
+    if (isBanned) badgesHtml += `<span style="background:#dc3545; color:white; padding:4px 8px; border-radius:4px;">⛔ BANNED</span>`;
+    document.getElementById('detail-badges').innerHTML = badgesHtml;
+
+    // 2. เตรียมปุ่มจัดการ (ย้าย Logic เดิมมาที่นี่)
+    const chatText = currentLang === 'th' ? '💬 แชท / โอนเหรียญ' : '💬 Chat / Transfer';
+    const ratingText = currentLang === 'th' ? '⭐ ตั้งค่าคะแนน' : '⭐ Set Rating';
+    const banText = isBanned ? (currentLang === 'th' ? '✅ ปลดแบน' : '✅ Unban') : (currentLang === 'th' ? '❌ แบนสมาชิก' : '❌ Ban User');
+    const banBtnColor = isBanned ? '#28a745' : '#dc3545';
+
+    let buttonsHtml = '';
+
+    // ปุ่มแชท (ทุกคนมีสิทธิ์)
+    buttonsHtml += `
+        <button class="sidebar-btn create-btn" onclick="openPrivateChat('${u.name}'); document.getElementById('user-detail-modal').classList.add('hidden');">
+            ${chatText}
+        </button>
+    `;
+
+    // ปุ่ม Admin (Rate, Ban)
+    if (myAdminLevel >= 1) { // หรือเงื่อนไขตามที่คุณต้องการ
+        buttonsHtml += `
+            <button class="sidebar-btn admin-btn" style="background:#ffc107; color:black;" onclick="setMemberRating('${u.name}')">
+                ${ratingText}
+            </button>
+            <button class="sidebar-btn" style="background:${banBtnColor}; color:white;" onclick="toggleBanUser('${u.name}', ${isBanned}); document.getElementById('user-detail-modal').classList.add('hidden');">
+                ${banText}
+            </button>
+        `;
+    }
+
+    // ปุ่ม Promote / Demote
+    if (myAdminLevel >= 2 && targetLevel < 1) {
+        buttonsHtml += `<button class="sidebar-btn" style="background:#17a2b8; color:white;" onclick="setAdminLevel('${u.name}', 1)">👮‍♂️ ตั้งเป็น Admin 1</button>`;
+    }
+    if (myAdminLevel >= 3 && targetLevel < 2) {
+        buttonsHtml += `<button class="sidebar-btn" style="background:#6610f2; color:white;" onclick="setAdminLevel('${u.name}', 2)">👨‍💼 ตั้งเป็น Admin 2</button>`;
+    }
+    if (myAdminLevel > targetLevel && targetLevel > 0) {
+        buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
+    }
+
+    // ใส่ปุ่มลงใน Modal
+    document.getElementById('detail-actions').innerHTML = buttonsHtml;
+
+    // แสดง Modal
+    modal.classList.remove('hidden');
+}
+
 </script>
 
 <div id="comment-notif-modal" class="hidden" style="
