@@ -340,7 +340,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.15 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.16 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -482,39 +482,41 @@ window.assignAdminToZone = assignAdminToZone;
     function setDistanceFilter(isManualClick = false) {
     const now = Date.now();
     
-    // [COOLDOWN CHECK] ตรวจสอบว่าคลิกเร็วเกินไปหรือไม่
+    // [COOLDOWN CHECK]
     if (now - lastFilterTime < FILTER_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((FILTER_COOLDOWN_MS - (now - lastFilterTime)) / 1000);
-        // ถ้าเป็นการคลิกเองถึงจะแจ้งเตือน
-        if (isManualClick) alert(`❌ กรุณารอ ${remainingSeconds} วินาที ก่อนกดซ้ำ`); 
+        if (isManualClick) alert(`❌ ${remainingSeconds} sec `); 
         return;
     }
 
-    // บันทึกเวลาที่กด
     lastFilterTime = now;
-    updateFilterButtonState(); // เริ่มนับถอยหลังทันที
+    updateFilterButtonState();
 
     const t = translations[currentLang];
-    let dist = 20; // <--- กำหนดค่าเริ่มต้นเป็น 20 กม. เสมอ (สำหรับเรียกแบบอัตโนมัติ)
+    let dist = 20; // ค่า Default
 
-    // 1. ถามระยะทาง
+    // 1. ถามระยะทาง (เฉพาะกดปุ่มเอง)
     if (isManualClick) {
-        // ถ้าเป็นการคลิกปุ่ม ให้แสดง Prompt ถามระยะทาง โดยมี 20 เป็นค่า Default
-        const input = prompt(t.prompt_distance, "20"); // ✅ ใส่ Prompt และ Default = 20
-        if (input === null) return; // ถ้าผู้ใช้กดยกเลิก
+        const input = prompt(t.prompt_distance, "20"); 
+        if (input === null) return; 
         
         const parsedDist = parseFloat(input);
         if (isNaN(parsedDist) || parsedDist <= 0) {
             alert(t.alert_invalid_num);
             return;
         }
-        dist = parsedDist; // <--- กำหนดค่าใหม่เมื่อผู้ใช้ใส่
+        dist = parsedDist; 
     }
 
     // 2. ขอพิกัด GPS
     if (!navigator.geolocation) {
-        alert(t.error_geo_not_supported);
-        return;
+        if(isManualClick) alert(t.error_geo_not_supported);
+        
+        // ถ้าไม่รองรับ ให้โหลดกระทู้ทั้งหมดเดี๋ยวนี้เลย
+        filterLocation = null;
+        filterMaxDistance = null;
+        loadPosts(); 
+        return; 
     }
 
     document.getElementById('filter-status').innerText = t.status_locating;
@@ -526,20 +528,29 @@ window.assignAdminToZone = assignAdminToZone;
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
             };
-            filterMaxDistance = dist; // dist ถูกกำหนดค่าแล้วไม่ว่าจะเป็น Manual หรือ Automatic
+            filterMaxDistance = dist; 
             
             // อัปเดตหน้าจอ
             const kmText = currentLang === 'th' ? 'กม.' : 'km';
             document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
             document.getElementById('filter-status').style.color = "#007bff";
             
-            // โหลดกระทู้ใหม่ตามฟิลเตอร์
+            // โหลดกระทู้ตามฟิลเตอร์
             loadPosts();
         },
         (error) => {
             console.error(error);
-            alert(`${t.error_geo_failed}: ${error.message}`);
-            document.getElementById('filter-status').innerText = `(${t.error_geo_failed})`;
+            if(isManualClick) alert(`${t.error_geo_failed}: ${error.message}`);
+            
+            // ถ้าขอพิกัดล้มเหลว ให้เคลียร์ค่าและโหลดกระทู้ทั้งหมด
+            filterLocation = null;
+            filterMaxDistance = null;
+            
+            document.getElementById('filter-status').innerText = t.status_all;
+            document.getElementById('filter-status').setAttribute('data-i18n-key', 'status_all');
+            document.getElementById('filter-status').style.color = "#333";
+
+            loadPosts(); // โหลดกระทู้แบบไม่กรอง
         },
         { enableHighAccuracy: true }
     );
@@ -1034,10 +1045,6 @@ if (homeBtn) {
 
     // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
     await updateUserInfo(); 
-    
-    // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
-    // แล้วค่อยโหลดกระทู้ ปุ่มจะถูกสร้างเงื่อนไขได้ถูกต้อง
-    loadPosts(); 
     
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
     updateFilterButtonState();
