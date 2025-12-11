@@ -576,46 +576,48 @@ app.get('/api/posts', async (req, res) => {
         { $set: { isClosed: true } }
     );
 
-    // รับ view, limit, และ username เพื่อใช้ในการกรอง
+    // รับค่า view และ username เพื่อมาตรวจสอบสิทธิ์
     const { view, limit, username } = req.query;
-    let query = {};
-    let fetchLimit = parseInt(limit) || 200;
+    let fetchLimit = parseInt(limit) || 20;
+    
+    let query = {}; // สร้างเงื่อนไขการค้นหา
 
     if (view === 'closed') {
-        const user = await getUserData(username); // ใช้ getUserData เพื่อดึง Admin Level
+        // ⭐ กรณี: Admin ขอดูกระทู้ปิด
+        const user = await getUserData(username);
         
-        // Safety check: Admin Level 1+ เท่านั้นที่ดูได้
+        // ตรวจสอบว่าเป็น Admin จริงไหม (Level 1+)
         if (!user || user.adminLevel < 1) {
-            return res.status(403).json({ error: 'Access denied.' });
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
         }
-        query.isClosed = true; // Admin Closed View: แสดงเฉพาะกระทู้ที่ปิดแล้ว
+        
+        query.isClosed = true; // ค้นหาเฉพาะกระทู้ที่ปิดแล้ว
     } else {
-        // Default ('home') view: แสดงเฉพาะกระทู้ที่ยังไม่ปิด
-        query.isClosed = { $ne: true };
+        // ⭐ กรณี: หน้าแรก (Home) ดูเฉพาะกระทู้ที่ยังเปิดอยู่
+        query.isClosed = { $ne: true }; // (ไม่ใช่ true) คือ false หรือไม่มี field นี้
     }
 
     try {
-        // 3. Fetch เฉพาะกระทู้ที่ตรงตาม query
-        const posts = await postsCollection.find(query)
-            .sort({ isPinned: -1, id: -1 })
+        // ค้นหาจาก Database ตามเงื่อนไข (query) ที่ตั้งไว้ข้างบน
+        const allPosts = await postsCollection.find(query)
+            .sort({ isPinned: -1, id: -1 }) // เรียงปักหมุดก่อน ตามด้วยเวลาล่าสุด
             .limit(fetchLimit)
             .toArray();
 
-        // 4. Get ratings for authors (ใช้ Logic เดิมในการดึงคะแนน)
-        const authorNames = [...new Set(posts.map(p => p.author))];
+        // ส่วนดึง Rating ผู้เขียน (โค้ดเดิม)
+        const authorNames = [...new Set(allPosts.map(p => p.author))];
         const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
         const authorMap = {};
         authors.forEach(u => authorMap[u.username] = u.rating);
-        
-        // 5. ส่งผลลัพธ์กลับไป (โดยไม่สนใจ Pagination เพราะ Client จะจัดการเอง)
-        res.json(posts.map(post => ({ 
-            ...post, 
-            authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' 
+
+        res.json(allPosts.map(post => ({
+            ...post,
+            authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00'
         })));
         
     } catch (e) {
-        console.error('Error fetching posts:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error(e);
+        res.status(500).json({ error: 'Server Error' });
     }
 });
 

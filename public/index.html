@@ -106,7 +106,7 @@
     white-space: nowrap;
     background: #ffc107; /* Yellow/Orange background */
     color: #333;
-    padding: 5px 10px;
+    padding: 2px 10px;
     border-radius: 8px;
     border: 1px solid #e0a800;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -385,7 +385,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.18 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.19 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1864,22 +1864,18 @@ async function showMyClosedPosts(page = 1) {
         return !post.isClosed;
     });
 			
-			if (filterLocation && filterMaxDistance && currentView === 'home') {
-    		filteredPosts = filteredPosts.filter(item => {
-    	    const post = item.data;
-     	   // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
-    	    if (!post.location || !post.location.lat || !post.location.lng) {
-            return false; 
-        }
-        // คำนวณระยะทาง
-        const dist = getDistanceFromLatLonInKm(
-            filterLocation.lat, filterLocation.lng,
-            post.location.lat, post.location.lng
-        );
-        // คืนค่า True ถ้าอยู่ในระยะ
-        return dist <= filterMaxDistance;
-    });
-}
+			if (currentView === 'home') {
+        // หน้าแรก: เอาเฉพาะกระทู้ที่ "ไม่ปิด"
+        filteredPosts = postsArray.filter(item => !item.data.isClosed);
+    } else if (currentView === 'closed') {
+        // หน้า Admin กระทู้ปิด: เอาเฉพาะกระทู้ที่ "ปิดแล้ว"
+        filteredPosts = postsArray.filter(item => item.data.isClosed);
+    } else if (currentView === 'my_active') {
+        // (ส่วนนี้จัดการโดย API แล้ว แต่กรองซ้ำเพื่อความชัวร์)
+        filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
+    } else if (currentView === 'my_closed') {
+        filteredPosts = postsArray.filter(item => item.data.isClosed && item.data.author === myUsername);
+    }
             
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
