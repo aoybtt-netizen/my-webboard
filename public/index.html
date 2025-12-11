@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.7 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.8 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -954,7 +954,7 @@ if (homeBtn) {
         // แสดงข้อความเตือนและหยุดการโหลด App
         document.body.innerHTML = `
             <div style="text-align:center; padding: 50px; color:red; font-family:'Kanit', sans-serif;">
-                <h1>❌ Refreshing too fast <b>${remainingSeconds}</b></h1>
+                <h1>❌ Refreshing too fast <b>${remainingSeconds} sec</b></h1>
             </div>
         `;
         
@@ -1112,6 +1112,10 @@ if (homeBtn) {
                 } else {
                     adminPanelDiv.classList.add('hidden');
                 }
+				const setCostBtn = document.querySelector('button[onclick="setPostCost()"]');
+				if (setCostBtn) {
+				setCostBtn.style.display = (myAdminLevel >= 3) ? 'block' : 'none';
+    }
                 
                 // ซ่อน/แสดงปุ่ม "ให้เหรียญ" ในแชท (เฉพาะ Level 3)
                 const giveCoinBtn = document.querySelector('.give-coin-btn');
@@ -2041,10 +2045,9 @@ async function openAdminZoneModal() {
     const t = translations[currentLang];
 
     infoDisplay.innerText = `${myUsername} (Level ${myAdminLevel})`;
-    listDisplay.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg'] || 'Loading...'}</p>`;
+    listDisplay.innerHTML = `<p style="text-align:center;">Loading...</p>`;
 
     try {
-        // Endpoint for L1/L2
         const res = await fetch(`/api/admin/get-assigned-zones?requestBy=${myUsername}`);
         const data = await res.json();
 
@@ -2054,16 +2057,31 @@ async function openAdminZoneModal() {
                 const lat = parseFloat(zone.lat).toFixed(4);
                 const lng = parseFloat(zone.lng).toFixed(4);
                 const name = zone.name || `Zone ID: ${zone.id}`;
-                
-                // Google Maps Link (ใช้พิกัดจาก zone)
                 const mapLink = `https://www.google.com/maps?q=${zone.lat},${zone.lng}`;
                 
+                // ตรวจสอบค่าธรรมเนียมปัจจุบัน
+                // ถ้า zoneFee เป็น null/undefined ให้แสดงว่า "ใช้ค่ากลาง"
+                const currentFeeVal = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? zone.zoneFee : '';
+                const placeholder = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? '' : 'ค่ากลาง';
+                
                 return `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: bold;">🗺️ ${name}</span>
-                        <a href="${mapLink}" target="_blank" style="color:#007bff; text-decoration:none;" title="Open Google Maps">
-                            📍 ${lat}, ${lng}
-                        </a>
+                    <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: bold;">🗺️ ${name}</span>
+                            <a href="${mapLink}" target="_blank" style="color:#007bff; text-decoration:none;">📍 ${lat}, ${lng}</a>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+                            <label style="font-size: 0.9em; white-space: nowrap;">ค่าธรรมเนียมโซน (USD):</label>
+                            <input type="number" id="fee-input-${zone.id}" value="${currentFeeVal}" placeholder="${placeholder}" 
+                                   style="width: 80px; padding: 5px; margin-bottom: 0;">
+                                   
+                            <button class="sidebar-btn create-btn" onclick="saveZoneFee('${zone.id}')" 
+                                    style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0;">
+                                บันทึก
+                            </button>
+                        </div>
+                        <small style="color: gray; font-size: 0.8em;">* หากเว้นว่าง จะใช้ค่าธรรมเนียมกลางของระบบ</small>
                     </div>
                 `;
             }).join('');
@@ -2072,13 +2090,47 @@ async function openAdminZoneModal() {
             listDisplay.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['assigned_no_zones']}</p>`;
         }
     } catch (e) {
-        listDisplay.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_connection']}</p>`;
-        console.error('Error fetching assigned zones:', e);
+        listDisplay.innerHTML = `<p style="text-align:center; color:#dc3545;">Error</p>`;
+        console.error(e);
     }
 }
 
 // ต้องผูกฟังก์ชันนี้กับ Window object
 window.openAssignedZoneMap = openAssignedZoneMap;
+
+async function saveZoneFee(zoneId) {
+    const input = document.getElementById(`fee-input-${zoneId}`);
+    const feeValue = input.value.trim();
+    
+    // ถ้าค่าว่าง = Reset เป็นค่ากลาง
+    // ถ้ามีค่า = ตั้งค่าใหม่
+    
+    try {
+        const res = await fetch('/api/admin/set-zone-fee', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                zoneId: zoneId, 
+                fee: feeValue === '' ? null : feeValue, 
+                requestBy: myUsername 
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('✅ บันทึกค่าธรรมเนียมโซนเรียบร้อย');
+            // รีเฟรชหน้า list เพื่อแสดงผล placeholder หรือค่าใหม่ให้ถูกต้อง
+            openAssignedZoneMap();
+        } else {
+            alert(`❌ Error: ${data.error}`);
+        }
+    } catch (e) {
+        alert('❌ Connection Error');
+    }
+}
+// อย่าลืม export ให้ html เรียกใช้ได้
+window.saveZoneFee = saveZoneFee;
 
 // ฟังก์ชันลบโซน
 async function deleteZone(zoneId, zoneName) {
