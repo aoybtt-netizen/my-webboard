@@ -111,11 +111,11 @@ async function connectDB() {
 async function seedInitialData() {
     // 1. Config
     if (await configCollection.countDocuments() === 0) {
-        await configCollection.insertOne({ id: 'main_config', systemFee: 5, adminFee: 5 });
-        console.log("Initialized Config");
-    } else {
-        await configCollection.updateOne({ id: 'main_config' }, { $setOnInsert: { systemFee: 5, adminFee: 5 } }, { upsert: false });
-    }
+        await configCollection.insertOne({ id: 'main_config', systemFee: 5, adminFee: 5, announcementText: '' }); // <-- [MODIFIED]
+        console.log("Initialized Config");
+    } else {
+        await configCollection.updateOne({ id: 'main_config' }, { $setOnInsert: { systemFee: 5, adminFee: 5 } }, { upsert: false });
+    }
     // 2. Topics
     if (await topicsCollection.countDocuments() === 0) {
         await topicsCollection.insertMany([
@@ -743,7 +743,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const newPost = { 
         id: Date.now(), title: finalTitle, topicId: category, content, author,
         location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
-        isClosed: false, isPinned: false // [MODIFIED] ยกเลิกการปักหมุด
+        isClosed: false, isPinned: false // ยกเลิกการปักหมุด
     };
     await postsCollection.insertOne(newPost);
     
@@ -1124,6 +1124,33 @@ app.get('/api/admin/get-assigned-zones', async (req, res) => {
     }
 
     return res.json({ success: true, zones: zones });
+});
+
+// 31 Set Announcement Text
+app.post('/api/admin/set-announcement', async (req, res) => {
+    const { announcementText, requestBy } = req.body;
+    
+    const requester = await getUserData(requestBy);
+    // ต้องเป็น Admin Level 1 ขึ้นไปในการตั้งค่าประกาศ
+    if (requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Admin Level 1 or higher required' });
+    }
+    
+    // อัปเดตข้อความใน Config
+    await configCollection.updateOne(
+        { id: 'main_config' }, 
+        { $set: { announcementText: announcementText } },
+        { upsert: true }
+    );
+    
+    res.json({ success: true });
+});
+
+// 32 Get Announcement Text
+app.get('/api/get-announcement', async (req, res) => {
+    const config = await configCollection.findOne({ id: 'main_config' });
+    const announcementText = config ? (config.announcementText || '') : '';
+    res.json({ announcementText });
 });
 
 // --- Socket Helpers ---

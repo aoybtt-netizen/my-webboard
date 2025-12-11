@@ -100,6 +100,28 @@
         .location-btn { background: white; border: 1px solid #28a745; color: #28a745; padding: 8px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.9em; width: 100%; justify-content: center; margin-bottom: 10px; }
         .location-btn:hover { background: #e9f7ef; }
         .location-btn.active { background: #28a745; color: white; }
+		
+		.marquee-box {
+    overflow: hidden;
+    white-space: nowrap;
+    background: #ffc107; /* Yellow/Orange background */
+    color: #333;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #e0a800;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 10px; /* Space above filter button */
+    font-weight: bold;
+}
+.marquee-content {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 15s linear infinite; /* 15s คือความเร็วเริ่มต้น */
+}
+@keyframes marquee {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(-100%, 0); }
+}
     </style>
 </head>
 <body>
@@ -161,6 +183,7 @@
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
+	<button class="sidebar-btn admin-btn" onclick="openAdminAnnouncementModal()" data-i18n-key="admin_set_announcement">📣 ตั้งค่าประกาศ</button>
 </div>
 
     <button class="sidebar-btn" style="margin-top:auto;" onclick="logout()" data-i18n-key="logout">ออกจากระบบ</button>
@@ -185,6 +208,13 @@
     <h2 style="margin-top:0;" id="page-title" data-i18n-key="page_title">📌 รายการ</h2>
     
     <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
+	
+	<div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
+	
+    <div id="announcement-bar" class="marquee-box hidden">
+        <div id="announcement-text" class="marquee-content"></div>
+    </div>
+    <div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
 	
 		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
@@ -338,6 +368,22 @@
             <button class="sidebar-btn" onclick="document.getElementById('admin-topic-modal').classList.add('hidden');" data-i18n-key="btn_close">ปิด</button>
         </div>
     </div>
+	
+	
+	<div id="admin-announcement-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2 data-i18n-key="admin_announcement_title">📣 ตั้งค่าข้อความประกาศ</h2>
+        <p style="color: #6c757d; font-size: 0.9em;" data-i18n-key="admin_announcement_desc">ข้อความนี้จะแสดงเป็นแถบวิ่งสำหรับผู้ใช้ทุกคน</p>
+        
+        <label for="announcement-input" style="font-weight: bold;" data-i18n-key="label_announcement_text">ข้อความประกาศ:</label>
+        <textarea id="announcement-input" rows="3" placeholder="ข้อความที่ต้องการประกาศ..." style="margin-bottom: 15px;"></textarea>
+        
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="sidebar-btn" onclick="document.getElementById('admin-announcement-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
+            <button class="sidebar-btn create-btn" onclick="saveAnnouncementText()" style="width:auto;" data-i18n-key="btn_save">บันทึก</button>
+        </div>
+    </div>
+</div>
     
     <div class="version-display">v: 3.7.17 (GoExDeli)</div>
 
@@ -597,6 +643,10 @@ window.assignAdminToZone = assignAdminToZone;
 		'admin_manage_zones': '🗺️ จัดการโซน',
         'admin_set_cost': '🏷️ กำหนดค่าธรรมเนียม',
         'admin_user_list': '👥 รายชื่อสมาชิกทั้งหมด',
+		'admin_set_announcement': '📣 ตั้งค่าประกาศ',
+		'admin_announcement_title': '📣 ตั้งค่าข้อความประกาศ',
+		'admin_announcement_desc': 'ข้อความนี้จะแสดงเป็นแถบวิ่งสำหรับผู้ใช้ทุกคน',
+		'label_announcement_text': 'ข้อความประกาศ:',
         'page_title': '📌 รายการ',
         'title_create': 'สร้างกระทู้ใหม่',
         'cost_fee': 'ค่าธรรมเนียม:',
@@ -743,6 +793,10 @@ window.assignAdminToZone = assignAdminToZone;
 		'admin_manage_zones': '🗺️ Manage Zones',
         'admin_set_cost': '🏷️ Set Fee',
         'admin_user_list': '👥 All Members List',
+		'admin_set_announcement': '📣 Set Announcement',
+		'admin_announcement_title': '📣 Set Announcement Text',
+		'admin_announcement_desc': 'This message will be displayed as a scrolling bar for all users.',
+		'label_announcement_text': 'Announcement Text:',
 		'btn_add_topic': 'Add Topic',
         'btn_close': 'Close',
 		
@@ -1041,7 +1095,7 @@ if (homeBtn) {
     // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
     checkNewTransaction();
     loadUnreadStatus(); 
-
+	loadAnnouncement();
     // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
     await updateUserInfo(); 
     
@@ -1807,12 +1861,12 @@ async function showMyClosedPosts(page = 1) {
                 filteredPosts = postsArray.filter(item => item.data.isClosed);
             }
 			
-			if (filterLocation && filterMaxDistance) {
-    filteredPosts = filteredPosts.filter(item => {
-        const post = item.data;
-        // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
-        if (!post.location || !post.location.lat || !post.location.lng) {
-            return false; 
+			if (filterLocation && filterMaxDistance && currentView === 'home') {
+    		filteredPosts = filteredPosts.filter(item => {
+    	    const post = item.data;
+     	   // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
+    	    if (!post.location || !post.location.lat || !post.location.lng) {
+            return false; 
         }
         // คำนวณระยะทาง
         const dist = getDistanceFromLatLonInKm(
@@ -2382,6 +2436,78 @@ window.addZoneConfig = addZoneConfig;
 }
 
 // ----------------------------------------------------
+
+// [NEW FUNCTION] โหลดข้อความประกาศจาก Server
+async function loadAnnouncement() {
+    try {
+        const res = await fetch('/api/get-announcement');
+        if (res.status === 200) {
+            const data = await res.json();
+            const text = data.announcementText || '';
+            const bar = document.getElementById('announcement-bar');
+            const content = document.getElementById('announcement-text');
+            
+            if (text.trim() === '') {
+                bar.classList.add('hidden');
+            } else {
+                content.innerText = text;
+                bar.classList.remove('hidden');
+                // ปรับความเร็ว marquee ตามความยาวข้อความ (10 วินาที + 1 วินาที ต่อ 50 ตัวอักษร)
+                const speed = 10 + Math.floor(text.length / 50) * 1;
+                content.style.animationDuration = `${speed}s`;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load announcement:', e);
+    }
+}
+window.loadAnnouncement = loadAnnouncement;
+
+// [NEW FUNCTION] เปิด Modal ตั้งค่าประกาศ
+async function openAdminAnnouncementModal() {
+    if (myAdminLevel < 1) return alert(translations[currentLang]['admin_section']);
+    
+    // 1. ดึงข้อความปัจจุบันมาแสดง
+    const res = await fetch('/api/get-announcement');
+    const data = await res.json();
+    const currentText = data.announcementText || '';
+    
+    document.getElementById('announcement-input').value = currentText;
+    
+    // 2. แสดง Modal
+    document.getElementById('admin-announcement-modal').classList.remove('hidden');
+    // ต้องเรียก setLanguage ซ้ำเพื่อให้ข้อความใน Modal ถูกแปล
+    setLanguage(currentLang);
+}
+window.openAdminAnnouncementModal = openAdminAnnouncementModal;
+
+// [NEW FUNCTION] บันทึกข้อความประกาศ
+async function saveAnnouncementText() {
+    if (myAdminLevel < 1) return;
+    
+    const text = document.getElementById('announcement-input').value.trim();
+    
+    try {
+        const res = await fetch('/api/admin/set-announcement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ announcementText: text, requestBy: myUsername })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('✅ บันทึกข้อความประกาศสำเร็จ!');
+            document.getElementById('admin-announcement-modal').classList.add('hidden');
+            loadAnnouncement(); // อัปเดตแถบประกาศทันที
+        } else {
+            alert(`❌ บันทึกไม่สำเร็จ: ${data.error}`);
+        }
+    } catch (e) {
+        alert('❌ Error connecting to server');
+    }
+}
+window.saveAnnouncementText = saveAnnouncementText;
 
 
 
