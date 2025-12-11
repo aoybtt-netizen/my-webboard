@@ -223,6 +223,31 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     return { username: 'Admin', zoneName: 'System (Default)', zoneData: null };
 }
 
+	// ฟังก์ชันคำนวณค่าธรรมเนียมตาม Location (ใช้ใน API user-info)
+async function getPostCostByLocation(location) {
+    const globalConfig = await configCollection.findOne({ id: 'main_config' });
+    const globalSystemFee = globalConfig ? (globalConfig.systemFee || 5) : 5;
+    const globalDefaultAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
+
+    const responsibleData = await findResponsibleAdmin(location);
+    
+    let finalAdminFee = globalDefaultAdminFee;
+    
+    // เช็คค่าธรรมเนียมของโซน
+    if (responsibleData.zoneData && responsibleData.zoneData.zoneFee !== undefined && responsibleData.zoneData.zoneFee !== null) {
+        finalAdminFee = parseFloat(responsibleData.zoneData.zoneFee);
+    }
+    
+    const totalCost = globalSystemFee + finalAdminFee;
+
+    return {
+        totalCost: totalCost,
+        systemFee: globalSystemFee,
+        adminFee: finalAdminFee, // ค่านี้จะถูกส่งไปแสดงผลเป็น Admin Fee
+        feeReceiver: responsibleData.username
+    };
+}
+
 
 async function isUserBanned(username) {
     if (username === 'Admin') return false;
@@ -275,23 +300,38 @@ app.get('/api/admin/transactions', async (req, res) => {
 
 // 2. User Info
 app.get('/api/user-info', async (req, res) => {
-    const { username, currency } = req.query;
+    // 1. รับค่า location มาจาก Frontend ด้วย
+    const { username, currency, location } = req.query; 
     const targetCurrency = currency || DEFAULT_CURRENCY; 
+
     if (!username) return res.status(400).json({ error: 'No username' });
     
     const user = await getUserData(username);
+    if (!user) return res.status(404).json({ error: 'User not found' }); // เพิ่มกันเหนียว
     if (user.isBanned) return res.status(403).json({ error: '⛔ บัญชีของคุณถูกระงับการใช้งาน' });
     
-    const postCost = await getPostCost();
+    // 2. คำนวณค่าธรรมเนียม (แบบใหม่: รองรับโซน)
+    let postCostData;
+    try {
+        // ถ้ามี location ส่งมา ให้แปลงเป็น Object, ถ้าไม่มีให้เป็น null
+        const locationObj = location ? JSON.parse(location) : null;
+        
+        // เรียกฟังก์ชันใหม่ที่คำนวณตามพิกัด (ต้องมีฟังก์ชันนี้ใน server.js แล้วนะ)
+        postCostData = await getPostCostByLocation(locationObj); 
+    } catch (e) {
+        console.error("Error calculating location cost:", e);
+        postCostData = await getPostCostByLocation(null); // Fallback ไปใช้ค่ากลาง
+    }
+
     const convertedCoins = convertUSD(user.coins, targetCurrency);
                     
     res.json({ 
         coins: user.coins, 
         convertedCoins: convertedCoins.toFixed(2), 
         currencySymbol: targetCurrency.toUpperCase(), 
-        postCost: postCost, 
+        postCost: postCostData, // ส่งไปเป็น Object { totalCost, systemFee, adminFee }
         rating: user.rating,
-        adminLevel: user.adminLevel || 0 // ✅ ส่งระดับแอดมินไปด้วย
+        adminLevel: user.adminLevel || 0 
     });
 });
 

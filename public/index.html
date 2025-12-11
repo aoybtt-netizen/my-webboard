@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.8 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.9 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2356,9 +2356,11 @@ window.addZoneConfig = addZoneConfig;
     
     // รีเซ็ต Location และอัปเดตข้อความปุ่มอีกครั้ง (เพื่อให้ข้อความเป็นภาษาที่ถูกต้องหลัง setLanguage)
     currentLocationData = null;
-    document.getElementById('geo-btn').classList.remove('active');
-    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
-    document.getElementById('location-display').innerHTML = '';
+    document.getElementById('geo-btn').classList.remove('active');
+    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
+    document.getElementById('location-display').innerHTML = '';
+	
+	refreshModalPostCost(null);
     
     // แสดง Modal
     document.getElementById('create-modal').classList.remove('hidden'); 
@@ -2390,13 +2392,15 @@ function openAdminPinnedModal() {
     
     // รีเซ็ต Location และอัปเดตข้อความปุ่มอีกครั้ง
     currentLocationData = null;
-    document.getElementById('geo-btn').classList.remove('active');
-    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
-    document.getElementById('location-display').innerHTML = '';
-    
-    // แสดง Modal
-    document.getElementById('create-modal').classList.remove('hidden'); 
-    toggleSidebar(); 
+    document.getElementById('geo-btn').classList.remove('active');
+    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
+    document.getElementById('location-display').innerHTML = '';
+    
+    refreshModalPostCost(null); // แสดงค่าธรรมเนียมเริ่มต้น (ไม่ใส่ location)
+    
+    // แสดง Modal
+    document.getElementById('create-modal').classList.remove('hidden'); 
+    toggleSidebar();
 }
 
         function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); } 
@@ -2432,12 +2436,14 @@ function openAdminPinnedModal() {
             btn.innerHTML = t['geo_success_name']; // ⭐ แปลสถานะสำเร็จ (มีชื่อสถานที่)
             btn.classList.add('active');
             display.innerHTML = `${t['geo_display_name']} <b>${placeName}</b>`; // ⭐ แปลข้อความแสดงผล
+			refreshModalPostCost(currentLocationData);
             
         } catch (e) {
             currentLocationData = { lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
             btn.innerHTML = t['geo_success_coord']; // ⭐ แปลสถานะสำเร็จ (ไม่มีชื่อสถานที่ ใช้พิกัดแทน)
             btn.classList.add('active');
             display.innerHTML = `${t['geo_display_coord']} ${lat.toFixed(4)}, ${lng.toFixed(4)}`; // ⭐ แปลข้อความแสดงผล
+			refreshModalPostCost(currentLocationData);
         }
 
     }, (error) => {
@@ -2825,6 +2831,62 @@ window.savePostCost = savePostCost;
             } else { alert('⛔ กระทู้นี้ถูกปิดการใช้งานแล้ว'); }
         } else { location.href = `post.html?id=${post.id}`; }
     }
+	
+	async function refreshModalPostCost(locationData) {
+    let locationQuery = '';
+    // ถ้ามีพิกัด ให้แปลงเป็น JSON string เพื่อส่งไปที่ Server
+    if (locationData && locationData.lat && locationData.lng) {
+        locationQuery = `&location=${encodeURIComponent(JSON.stringify(locationData))}`;
+    }
+
+    try {
+        // เรียก API user-info พร้อมส่งพิกัด (ถ้ามี)
+        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}`);
+        const data = await response.json();
+        
+        if (data.error || !data.postCost) {
+            console.error("Error fetching post cost:", data.error || 'No postCost returned');
+            return;
+        }
+
+        const postCostUSD = data.postCost.totalCost;
+        // ⭐ FIX: เช็คว่ามีค่า systemFee และ adminFee ก่อนเรียก toFixed
+        const systemFee = data.postCost.systemFee !== undefined ? data.postCost.systemFee : 0;
+        const adminFee = data.postCost.adminFee !== undefined ? data.postCost.adminFee : 0;
+        
+        const modalCostDisplay = document.getElementById('modal-cost-display');
+
+        // Logic คำนวณอัตราแลกเปลี่ยน (คัดลอกจาก updateUserInfo มา)
+        let impliedRate = 1;
+        const balanceUSD = parseFloat(data.coins);
+        // แปลงค่าเงินที่แปลงแล้วเป็นตัวเลข (ลบลูกน้ำออกเผื่อมี)
+        const balanceConverted = parseFloat(String(data.convertedCoins).replace(/,/g, ''));
+
+        if (balanceUSD > 0) {
+            impliedRate = balanceConverted / balanceUSD;
+        } else {
+            impliedRate = (data.currencySymbol === 'USD') ? 1 : 0;
+        }
+
+        const convertedCostVal = postCostUSD * impliedRate;
+        const formattedConvertedCost = convertedCostVal.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        // อัปเดตการแสดงผลใน Modal
+        if (modalCostDisplay) {
+            modalCostDisplay.innerHTML = 
+                `${postCostUSD.toFixed(2)} USD 
+                <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee.toFixed(2)} System + ${adminFee.toFixed(2)} Admin)</span>
+                <span style="font-size:0.75em; color:#6c757d; font-weight: normal;">(${formattedConvertedCost} ${data.currencySymbol})</span>`;
+        }
+
+    } catch(e) {
+        console.error('Failed to update post cost display:', e);
+    }
+}
+window.refreshModalPostCost = refreshModalPostCost; // Expose globally
 
     socket.on('private-history', (history) => {
         const box = document.getElementById('private-chat-messages');
