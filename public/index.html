@@ -385,7 +385,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.23 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.24 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1691,6 +1691,9 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
             try {
+				if (currentView !== 'home') {
+                    postStatusMap = {}; 
+                }
                 const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}&t=${Date.now()}`); 
                 const responseData = await res.json();
                 
