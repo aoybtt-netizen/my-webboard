@@ -2288,7 +2288,7 @@ window.addZoneConfig = addZoneConfig;
 		
 		// รับค่าธรรมเนียมใหม่จาก Admin
         socket.on('config-update', (newCost) => {
-            currentCost = newCost; 
+            //currentCost = newCost; 
             const costDisplay = document.getElementById('cost-display');
             if (costDisplay) costDisplay.innerText = newCost;
             const modalCostDisplay = document.getElementById('modal-cost-display');
