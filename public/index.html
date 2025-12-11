@@ -495,16 +495,16 @@ window.assignAdminToZone = assignAdminToZone;
     updateFilterButtonState(); // เริ่มนับถอยหลังทันที
 
     const t = translations[currentLang];
-	const dist = 20;
     // 1. ถามระยะทาง
-    const input = prompt(t.prompt_distance, "50");
+    /*const input = prompt(t.prompt_distance, "50");
     if (input === null) return;
     
     const dist = parseFloat(input);
     if (isNaN(dist) || dist <= 0) {
         alert(t.alert_invalid_num);
         return;
-    }
+    }*/
+	const dist = 20;
 
     // 2. ขอพิกัด GPS
     if (!navigator.geolocation) {
