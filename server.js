@@ -570,28 +570,53 @@ app.post('/api/admin/topics/manage', async (req, res) => {
 // 11. Posts (List)
 app.get('/api/posts', async (req, res) => {
     const ONE_HOUR = 3600000;
+    // Auto-close old posts
     await postsCollection.updateMany(
         { isClosed: false, id: { $lt: Date.now() - ONE_HOUR } },
         { $set: { isClosed: true } }
     );
 
-    const page = parseInt(req.query.page) || 1;
-    let limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
+    // รับ view, limit, และ username เพื่อใช้ในการกรอง
+    const { view, limit, username } = req.query;
+    let query = {};
+    let fetchLimit = parseInt(limit) || 200;
 
-    const allPosts = await postsCollection.find({}).toArray();
-    const sortedPosts = allPosts.sort((a, b) => b.id - a.id);
+    if (view === 'closed') {
+        const user = await getUserData(username); // ใช้ getUserData เพื่อดึง Admin Level
+        
+        // Safety check: Admin Level 1+ เท่านั้นที่ดูได้
+        if (!user || user.adminLevel < 1) {
+            return res.status(403).json({ error: 'Access denied.' });
+        }
+        query.isClosed = true; // Admin Closed View: แสดงเฉพาะกระทู้ที่ปิดแล้ว
+    } else {
+        // Default ('home') view: แสดงเฉพาะกระทู้ที่ยังไม่ปิด
+        query.isClosed = { $ne: true };
+    }
 
-    const paginatedPosts = sortedPosts.slice(skip, skip + limit);
-    const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
-    const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
-    const authorMap = {};
-    authors.forEach(u => authorMap[u.username] = u.rating);
+    try {
+        // 3. Fetch เฉพาะกระทู้ที่ตรงตาม query
+        const posts = await postsCollection.find(query)
+            .sort({ isPinned: -1, id: -1 })
+            .limit(fetchLimit)
+            .toArray();
 
-    res.json({
-        posts: paginatedPosts.map(post => ({ ...post, authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' })),
-        totalItems: sortedPosts.length, totalPages: Math.ceil(sortedPosts.length / limit), currentPage: page, limit
-    });
+        // 4. Get ratings for authors (ใช้ Logic เดิมในการดึงคะแนน)
+        const authorNames = [...new Set(posts.map(p => p.author))];
+        const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
+        const authorMap = {};
+        authors.forEach(u => authorMap[u.username] = u.rating);
+        
+        // 5. ส่งผลลัพธ์กลับไป (โดยไม่สนใจ Pagination เพราะ Client จะจัดการเอง)
+        res.json(posts.map(post => ({ 
+            ...post, 
+            authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' 
+        })));
+        
+    } catch (e) {
+        console.error('Error fetching posts:', e);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 // 12. Single Post

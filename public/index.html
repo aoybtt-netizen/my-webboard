@@ -106,7 +106,7 @@
     white-space: nowrap;
     background: #ffc107; /* Yellow/Orange background */
     color: #333;
-    padding: 8px 10px;
+    padding: 5px 10px;
     border-radius: 8px;
     border: 1px solid #e0a800;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -385,7 +385,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.17 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.18 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1692,7 +1692,7 @@ function getTransactionDetail(t) {
         async function loadPosts() {
             try {
                 // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
-                const res = await fetch('/api/posts?limit=1000');
+                const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}`);
                 const responseData = await res.json();
                 
                 // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
@@ -1853,13 +1853,16 @@ async function showMyClosedPosts(page = 1) {
             list.innerHTML = '';
             
             let postsArray = Object.values(postStatusMap).map(item => item);
-            let filteredPosts = postsArray;
-
-            if (currentView === 'home') {
-                filteredPosts = postsArray.filter(item => !item.data.isClosed);
-            } else if (currentView === 'closed') {
-                filteredPosts = postsArray.filter(item => item.data.isClosed);
-            }
+            let filteredPosts = postsArray.filter(item => {
+        const post = item.data;
+        if (currentView === 'closed') {
+            // Admin 'Closed' view: แสดงเฉพาะกระทู้ที่ปิด
+            return post.isClosed;
+        } 
+        
+        // 'home' view: แสดงเฉพาะกระทู้ที่ยังไม่ปิด
+        return !post.isClosed;
+    });
 			
 			if (filterLocation && filterMaxDistance && currentView === 'home') {
     		filteredPosts = filteredPosts.filter(item => {
