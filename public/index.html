@@ -485,15 +485,18 @@ window.assignAdminToZone = assignAdminToZone;
     // [COOLDOWN CHECK] ตรวจสอบว่าคลิกเร็วเกินไปหรือไม่
     if (now - lastFilterTime < FILTER_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((FILTER_COOLDOWN_MS - (now - lastFilterTime)) / 1000);
-        alert(`❌ กรุณารอ ${remainingSeconds} วินาที ก่อนกดซ้ำ`);
+        // ถ้าเป็นการคลิกเองถึงจะแจ้งเตือน
+        if (isManualClick) alert(`❌ กรุณารอ ${remainingSeconds} วินาที ก่อนกดซ้ำ`); 
         return;
     }
 
-    // [UPDATE TIMESTAMP] บันทึกเวลาที่กด
+    // บันทึกเวลาที่กด
     lastFilterTime = now;
     updateFilterButtonState(); // เริ่มนับถอยหลังทันที
 
     const t = translations[currentLang];
+    let dist = 20; // <--- กำหนดค่าเริ่มต้นเป็น 20 กม. เสมอ (สำหรับเรียกแบบอัตโนมัติ)
+
     // 1. ถามระยะทาง
     if (isManualClick) {
         // ถ้าเป็นการคลิกปุ่ม ให้แสดง Prompt ถามระยะทาง โดยมี 20 เป็นค่า Default
@@ -505,7 +508,7 @@ window.assignAdminToZone = assignAdminToZone;
             alert(t.alert_invalid_num);
             return;
         }
-        dist = parsedDist;
+        dist = parsedDist; // <--- กำหนดค่าใหม่เมื่อผู้ใช้ใส่
     }
 
     // 2. ขอพิกัด GPS
@@ -523,7 +526,7 @@ window.assignAdminToZone = assignAdminToZone;
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
             };
-            filterMaxDistance = dist;
+            filterMaxDistance = dist; // dist ถูกกำหนดค่าแล้วไม่ว่าจะเป็น Manual หรือ Automatic
             
             // อัปเดตหน้าจอ
             const kmText = currentLang === 'th' ? 'กม.' : 'km';
