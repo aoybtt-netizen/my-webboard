@@ -340,7 +340,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.14 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.15 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1041,9 +1041,7 @@ if (homeBtn) {
     
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
     updateFilterButtonState();
-	setTimeout(() => {
-        setDistanceFilter(false);
-    }, 1000);
+	setDistanceFilter(false);
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
@@ -1875,95 +1873,94 @@ async function showMyClosedPosts(page = 1) {
 
         // ---addPostToDOM (With Winner Display) ---
         function addPostToDOM(post, isOccupied) {
-            const list = document.getElementById('post-list');
-            
-            let deleteBtn = myUsername === 'Admin' 
-                ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
-                : '';
+    const list = document.getElementById('post-list');
+    
+    let deleteBtn = myUsername === 'Admin' 
+        ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
+        : '';
 
-            let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
-            let occupiedText = isOccupied 
-                ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(กำลังคุย 💬)</span>`
-                : '';
+    let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
+    let occupiedText = isOccupied 
+        ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(💬)</span>`
+        : '';
 
-            let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
-			
-            // ✅ [FIXED] ส่วนแสดงผู้ชนะ
-			let winnerHtml = '';
-			if (post.acceptedViewer) {
-			    winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
-			}
+    let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
+    
+    //  ส่วนแสดงผู้ชนะ
+    let winnerHtml = '';
+    if (post.acceptedViewer) {
+        winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
+    }
 
-            let baseStyle = '';
-            let icon = '';
-			
-			//สำหรับ Pinned Post
-            let pinnedText = '';
-            if (post.isPinned) {
-                baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; // สีม่วง
-                icon = '📌'; 
-                pinnedText = ' (กระทู้ปักหมุด)';
-            }
+    let baseStyle = '';
+    let icon = '';
+    
+    //สำหรับ Pinned Post
+    let pinnedText = '';
+    if (post.isPinned) {
+        baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; // สีม่วง
+        icon = '📌'; 
+        pinnedText = ' (กระทู้ปักหมุด)';
+    }
 
-            if (post.status === 'finished' || post.status === 'closed_permanently') {
-                baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
-                icon = '🔒'; 
-            } else if (post.isClosed) {
-                baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
-                icon = '🔒';
-            } else if (!post.isPinned) {
-                baseStyle = 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
-                icon = '✅'; 
-            }
+    if (post.status === 'finished' || post.status === 'closed_permanently') {
+        baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
+        icon = '🔒'; 
+    } else if (post.isClosed) {
+        baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
+        icon = '🔒';
+    } else if (!post.isPinned) {
+        baseStyle = 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
+        icon = '✅'; 
+    }
 
-            let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) 
-				? "alert('⛔ กระทู้นี้ถูกปิดแล้ว')" 
-				: `location.href='post.html?id=${post.id}'`;
+    let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) 
+        ? "alert('⛔ Closed.')" 
+        : `location.href='post.html?id=${post.id}'`;
 
-            let locationHtml = '';
-            if (post.location && post.location.lat && post.location.lng) {
-                const lat = post.location.lat.toFixed(4);
-                const lng = post.location.lng.toFixed(4);
-                
-                let displayText = post.location.name; // ค่าเริ่มต้น: แสดงชื่อสถานที่
-                
-                // ตรวจสอบว่าผู้ใช้เช็คอินหรือยัง (ถ้ามี filterLocation ให้คำนวณระยะ)
-                if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
-                    const dist = getDistanceFromLatLonInKm(
-                        filterLocation.lat, filterLocation.lng,
-                        post.location.lat, post.location.lng
-                    );
-                    displayText = `${dist.toFixed(1)} km`; 
-                }
-
-                const mapsLink = `https://www.google.com/maps?q=${post.location.lat},${post.location.lng}`;
-                
-                locationHtml = `
-                    <a href="${mapsLink}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none; color:#007bff; font-size:0.85em; margin-left:10px;" 
-                        title="สถานที่: ${post.location.name}">
-                        📍 ${displayText} 
-                    </a>
-                `;
-            }
-
-            // ✅ แทรก winnerHtml ลงใน title
-            list.insertAdjacentHTML('beforeend', `
-                <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
-                    <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
-                        <br>
-                        <small>
-                            ${post.author} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
-                        </small>
-                        ${locationHtml}
-                        ${occupiedText}
-                    </div>
-                    
-                    <div style="display:flex; align-items:center;">
-                        ${deleteBtn}
-                    </div>
-                </div>
-            `);
+    let locationHtml = '';
+    if (post.location && post.location.lat && post.location.lng) {
+        const lat = post.location.lat.toFixed(4);
+        const lng = post.location.lng.toFixed(4);
+        
+        let displayText = post.location.name; // ค่าเริ่มต้น: แสดงชื่อสถานที่
+        
+        // ตรวจสอบว่าผู้ใช้เช็คอินหรือยัง (ถ้ามี filterLocation ให้คำนวณระยะ)
+        if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
+            const dist = getDistanceFromLatLonInKm(
+                filterLocation.lat, filterLocation.lng,
+                post.location.lat, post.location.lng
+            );
+            displayText = `${dist.toFixed(1)} km`; 
         }
+
+        // เปลี่ยนจาก <a> เป็น <span> เพื่อไม่ให้คลิกไปที่แผนที่
+        locationHtml = `
+            <span style="color:#007bff; font-size:0.85em; margin-left:10px;" 
+                title="${currentLang === 'th' ? 'Location' : 'Coordinates'}: ${lat}, ${lng}">
+                📍 ${displayText} 
+            </span>
+        `;
+    }
+
+    // ✅ แทรก winnerHtml ลงใน title
+    list.insertAdjacentHTML('beforeend', `
+        <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
+            <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
+                <br>
+                <small>
+                    ${post.author} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
+                </small>
+                ${locationHtml}
+                ${occupiedText}
+            </div>
+            
+            <div style="display:flex; align-items:center;">
+                ${deleteBtn}
+            </div>
+        </div>
+    `);
+}
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
@@ -1972,7 +1969,7 @@ async function openAdminZoneModal() {
     }
     
     // 2. Original L3 logic:
-    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
+    if (myAdminLevel < 3) return alert('❌ For Admin Level 3');
     
     document.getElementById('admin-zone-modal').classList.remove('hidden');
     
