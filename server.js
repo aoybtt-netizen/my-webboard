@@ -589,13 +589,12 @@ app.get('/api/posts', async (req, res) => {
         // รวมทั้ง isClosed=true และกระทู้ที่มีสถานะเสร็จสิ้น
         query = { 
             $or: [
-                { isClosed: true },             // ปิดด้วยปุ่ม หรือ ปิดงานแล้ว
-                { status: 'closed' },           // ปิดด้วยสถานะ closed
-                { status: 'finished' },         // ปิดด้วยสถานะ finished (ส่งงาน)
-                { status: 'closed_permanently' }// โดนแบน
+                { isClosed: true },              // ปิดด้วยปุ่ม / Auto-close / Handover
+                { status: 'closed' },            // ปิดด้วยสถานะ closed
+                { status: 'finished' },          // ปิดจากการส่งงาน
+                { status: 'closed_permanently' } // โดนแบน
             ]
         };
-        // ดึงเยอะหน่อยสำหรับหน้า Admin
         fetchLimit = 1000;
         
     } else {

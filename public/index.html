@@ -385,7 +385,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.21 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.23 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1674,7 +1674,7 @@ function getTransactionDetail(t) {
         document.getElementById('post-next-btn').onclick = () => changePostPage(1);
 
     } else if (view === 'closed') {
-        // ⭐ [FIXED] ใช้ translation key สำหรับหน้า Admin Closed
+        // ใช้ translation key สำหรับหน้า Admin Closed
         title.innerText = translations[currentLang]['admin_closed_posts'];
         title.style.color = "#6c757d";
         loadPosts(); // โหลดรายการปกติ (กระทู้ปิดทั้งหมด)
@@ -1861,7 +1861,9 @@ async function showMyClosedPosts(page = 1) {
                 // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
                 filteredPosts = postsArray.filter(item => !item.data.isClosed);
             } else if (currentView === 'closed') {
-                filteredPosts = postsArray.filter(item => item.data.isClosed || item.data.status === 'finished' || item.data.status === 'closed');
+                // หน้า Admin Closed: ให้แสดงทุกรายการที่ Server ส่งมาให้ในโหมดนี้
+                // (Server ถูกแก้ให้ส่งเฉพาะรายการที่ปิดแล้วเท่านั้น)
+                filteredPosts = postsArray; // ⭐ [สำคัญ] ไม่ต้องกรองซ้ำ! ใช้ทั้งหมด
                 
             } else if (currentView === 'my_active') {
                 filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
@@ -2602,8 +2604,8 @@ window.saveAnnouncementText = saveAnnouncementText;
     
     // เช็ค Logic การส่ง Title
     if (myUsername === 'Admin') {
-        // Admin ต้องเอาค่าจาก Input
-        titleVal = titleInput.value.trim();
+        const titleInputEl = document.getElementById('admin-post-title-input'); 
+		titleVal = titleInputEl ? titleInputEl.value.trim() : "";
         if (!titleVal) return alert("Admin กรุณาระบุชื่อกระทู้พิเศษ");
     } else {
         // User ทั่วไป ส่งค่าว่างไป (Server จะจัดการตั้งชื่อตามหมวดหมู่เอง)
