@@ -571,7 +571,7 @@ app.post('/api/admin/topics/manage', async (req, res) => {
 app.get('/api/posts', async (req, res) => {
     const ONE_HOUR = 3600000;
     await postsCollection.updateMany(
-        { isClosed: false, isPinned: false, id: { $lt: Date.now() - ONE_HOUR } },
+        { isClosed: false, id: { $lt: Date.now() - ONE_HOUR } },
         { $set: { isClosed: true } }
     );
 
@@ -580,13 +580,7 @@ app.get('/api/posts', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const allPosts = await postsCollection.find({}).toArray();
-    const sortedPosts = allPosts.sort((a, b) => {
-        const aIsPinnedActive = a.isPinned && !a.isClosed;
-        const bIsPinnedActive = b.isPinned && !b.isClosed;
-        if (aIsPinnedActive && !bIsPinnedActive) return -1;
-        if (!aIsPinnedActive && bIsPinnedActive) return 1;
-        return b.id - a.id;
-    });
+    const sortedPosts = allPosts.sort((a, b) => b.id - a.id);
 
     const paginatedPosts = sortedPosts.slice(skip, skip + limit);
     const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
@@ -606,7 +600,7 @@ app.get('/api/posts/:id', async (req, res) => {
     const post = await postsCollection.findOne({ id: id });
     if (!post) return res.status(404).json({ error: 'ไม่พบกระทู้' });
 
-    if(!post.isClosed && Date.now() - post.id > 3600000 && !post.isPinned){ 
+    if(!post.isClosed && Date.now() - post.id > 3600000){ 
         await postsCollection.updateOne({ id: id }, { $set: { isClosed: true } });
         post.isClosed = true; 
     }
@@ -620,7 +614,6 @@ app.get('/api/posts/:id/viewer-status', async (req, res) => {
     const requestBy = req.query.requestBy;
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'Post not found' });
-	if (post.isPinned) return res.json({ isOccupied: false, viewer: null });
 
     if (requestBy !== 'Admin' && requestBy !== post.author) return res.status(403).json({ error: 'Permission denied.' });
 
@@ -676,7 +669,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const user = await getUserData(author);
     const topicObj = await topicsCollection.findOne({ id: category });
     const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป"; 
-    let finalTitle = (author === 'Admin' && title) ? title.trim() : topicName;
+    let finalTitle = topicName;
 
     // ==================================================================
     // ส่วนคำนวณค่าธรรมเนียม (Hybrid: System + Zone)
@@ -750,7 +743,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const newPost = { 
         id: Date.now(), title: finalTitle, topicId: category, content, author,
         location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
-        isClosed: false, isPinned: (author === 'Admin') 
+        isClosed: false, isPinned: false // [MODIFIED] ยกเลิกการปักหมุด
     };
     await postsCollection.insertOne(newPost);
     
