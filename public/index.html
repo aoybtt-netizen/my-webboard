@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.12 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.13 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -495,6 +495,7 @@ window.assignAdminToZone = assignAdminToZone;
     updateFilterButtonState(); // เริ่มนับถอยหลังทันที
 
     const t = translations[currentLang];
+	const dist = 20;
     // 1. ถามระยะทาง
     const input = prompt(t.prompt_distance, "50");
     if (input === null) return;
@@ -1035,6 +1036,9 @@ if (homeBtn) {
     
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
     updateFilterButtonState();
+	setTimeout(() => {
+        setDistanceFilter(); 
+    }, 1000);
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
@@ -1043,7 +1047,7 @@ if (homeBtn) {
         localStorage.setItem('preferredCurrency', currency);
         updateUserInfo(); // รีเฟรชยอดเงินทันที
         
-        // ⭐ [FIXED] ใช้ Translation Key และแทนที่ [CURRENCY]
+        // ใช้ Translation Key และแทนที่ [CURRENCY]
         const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
 
         showNotification(translatedMsg, 'fas fa-money-bill');
@@ -1785,45 +1789,31 @@ async function showMyClosedPosts(page = 1) {
             const paginationDiv = document.getElementById('post-pagination');
             list.innerHTML = '';
             
-            if (!filterMaxDistance || filterMaxDistance <= 0) {
-        // แสดงข้อความแจ้งเตือน
-        list.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #6c757d;">
-                <i class="fas fa-search-location" style="font-size: 3em; margin-bottom: 15px;"></i>
-                <h3>กรุณาระบุระยะทาง (กม.)</h3>
-                <p>ระบบจะแสดงกระทู้ที่อยู่ในระยะที่คุณกำหนด</p>
-            </div>
-        `;
-        // ซ่อนปุ่มเปลี่ยนหน้า (Pagination)
-        if(paginationDiv) paginationDiv.style.display = 'none'; 
-        
-        // ⛔ จบการทำงานฟังก์ชันทันที (ไม่ไปคำนวณหรือโหลดกระทู้ด้านล่างต่อ)
-        return; 
-    }
-    // ============================================================
+            let postsArray = Object.values(postStatusMap).map(item => item);
+            let filteredPosts = postsArray;
 
-    let postsArray = Object.values(postStatusMap).map(item => item);
-    let filteredPosts = postsArray;
-
-    if (currentView === 'home') {
-        filteredPosts = postsArray.filter(item => !item.data.isClosed);
-    } else if (currentView === 'closed') {
-        filteredPosts = postsArray.filter(item => item.data.isClosed);
-    }
-
-    if (filterLocation && filterMaxDistance) {
-        filteredPosts = filteredPosts.filter(item => {
-            const post = item.data;
-            if (!post.location || !post.location.lat || !post.location.lng) {
-                return false; 
+            if (currentView === 'home') {
+                filteredPosts = postsArray.filter(item => !item.data.isClosed);
+            } else if (currentView === 'closed') {
+                filteredPosts = postsArray.filter(item => item.data.isClosed);
             }
-            const dist = getDistanceFromLatLonInKm(
-                filterLocation.lat, filterLocation.lng,
-                post.location.lat, post.location.lng
-            );
-            return dist <= filterMaxDistance;
-        });
-    }
+			
+			if (filterLocation && filterMaxDistance) {
+    filteredPosts = filteredPosts.filter(item => {
+        const post = item.data;
+        // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
+        if (!post.location || !post.location.lat || !post.location.lng) {
+            return false; 
+        }
+        // คำนวณระยะทาง
+        const dist = getDistanceFromLatLonInKm(
+            filterLocation.lat, filterLocation.lng,
+            post.location.lat, post.location.lng
+        );
+        // คืนค่า True ถ้าอยู่ในระยะ
+        return dist <= filterMaxDistance;
+    });
+}
             
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
