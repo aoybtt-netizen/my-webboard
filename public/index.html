@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.6 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.7 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1170,8 +1170,24 @@ if (homeBtn) {
         const modalCostDisplay = document.getElementById('modal-cost-display');
 		const postCostUSD = data.postCost.totalCost; // <---ดึง Total Cost
 		currentCost = postCostUSD; 
-        
-        // ... (ส่วนคำนวณ convertedCost เหมือนเดิม) ...
+        // คำนวณหาอัตราแลกเปลี่ยน (Rate) จากยอดเงินคงเหลือ
+        let impliedRate = 1;
+        const balanceUSD = parseFloat(data.coins);
+        // แปลงค่าเงินที่แปลงแล้วเป็นตัวเลข (ลบลูกน้ำออกเผื่อมี)
+        const balanceConverted = parseFloat(String(data.convertedCoins).replace(/,/g, ''));
+
+        if (balanceUSD > 0) {
+            impliedRate = balanceConverted / balanceUSD;
+        } else {
+            // กรณีเงินเป็น 0: ถ้าเป็น USD rate=1, ถ้าไม่ใช่ให้เป็น 0 ไปก่อน (เพราะคำนวณไม่ได้)
+            impliedRate = (data.currencySymbol === 'USD') ? 1 : 0;
+        }
+
+        const convertedCostVal = postCostUSD * impliedRate;
+        const formattedConvertedCost = convertedCostVal.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
         
         // อัปเดตการแสดงผลใน Modal
         if (modalCostDisplay) {
