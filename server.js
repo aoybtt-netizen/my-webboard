@@ -578,7 +578,6 @@ app.get('/api/posts', async (req, res) => {
     const user = await getUserData(username); // ดึงข้อมูลผู้ใช้เพื่อเช็ค Admin
 
     if (view === 'closed') {
-        // ⭐ [สำคัญ] ตรวจสอบสิทธิ์ Admin (Level 1+)
         if (!user || user.adminLevel < 1) {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
         }
@@ -586,11 +585,11 @@ app.get('/api/posts', async (req, res) => {
         // ⭐ [สำคัญ] เงื่อนไขการค้นหา: ดึงกระทู้ทั้งหมดที่ถูกปิด
         // รวมทั้ง isClosed=true และกระทู้ที่มีสถานะเสร็จสิ้น
         query = { 
-            $or: [
-                { isClosed: true },              // ปิดด้วยปุ่ม / Auto-close / Handover
-                { status: 'closed' },            // ปิดด้วยสถานะ closed
-                { status: 'finished' },          // ปิดจากการส่งงาน
-                { status: 'closed_permanently' } // โดนแบน
+             $or: [
+                { isClosed: true },              
+                { status: 'closed' },            
+                { status: 'finished' },          
+                { status: 'closed_permanently' } 
             ]
         };
         fetchLimit = 1000;

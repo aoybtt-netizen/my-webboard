@@ -1692,7 +1692,7 @@ function getTransactionDetail(t) {
         async function loadPosts() {
             try {
 				if (currentView !== 'home') {
-                    postStatusMap = {}; 
+                    postStatusMap = {};
                 }
                 const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}&t=${Date.now()}`); 
                 const responseData = await res.json();
@@ -1708,14 +1708,13 @@ function getTransactionDetail(t) {
                 // นำข้อมูลลงในตัวแปร postStatusMap เพื่อให้ renderPostList ทำงานได้
                 postsArray.forEach(p => {
                     if (postStatusMap[p.id]) {
-                        postStatusMap[p.id].data = p; // อัปเดตข้อมูลเดิม
+                        postStatusMap[p.id].data = p;
                     } else {
-                        postStatusMap[p.id] = { data: p, isOccupied: false }; // สร้างใหม่
+                        postStatusMap[p.id] = { data: p, isOccupied: false };
                     }
                 });
 
-                // เรียกฟังก์ชันแสดงผลหลัก (ที่มีอยู่แล้วด้านล่าง)
-                renderPostList(); 
+                renderPostList();
                 
             } catch (err) {
                 console.error("Error loading posts:", err);
@@ -1859,11 +1858,11 @@ async function showMyClosedPosts(page = 1) {
             let filteredPosts = [];
 
             // กรองตาม View ที่เลือกไว้
-            if (currentView === 'home') {
+            iif (currentView === 'home') {
                 // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
                 filteredPosts = postsArray.filter(item => !item.data.isClosed);
             } else if (currentView === 'closed') {
-                filteredPosts = postsArray; 
+                filteredPosts = postsArray;
                 
             } else if (currentView === 'my_active') {
                 filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
