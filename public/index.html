@@ -1785,31 +1785,45 @@ async function showMyClosedPosts(page = 1) {
             const paginationDiv = document.getElementById('post-pagination');
             list.innerHTML = '';
             
-            let postsArray = Object.values(postStatusMap).map(item => item);
-            let filteredPosts = postsArray;
+            if (!filterMaxDistance || filterMaxDistance <= 0) {
+        // แสดงข้อความแจ้งเตือน
+        list.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #6c757d;">
+                <i class="fas fa-search-location" style="font-size: 3em; margin-bottom: 15px;"></i>
+                <h3>กรุณาระบุระยะทาง (กม.)</h3>
+                <p>ระบบจะแสดงกระทู้ที่อยู่ในระยะที่คุณกำหนด</p>
+            </div>
+        `;
+        // ซ่อนปุ่มเปลี่ยนหน้า (Pagination)
+        if(paginationDiv) paginationDiv.style.display = 'none'; 
+        
+        // ⛔ จบการทำงานฟังก์ชันทันที (ไม่ไปคำนวณหรือโหลดกระทู้ด้านล่างต่อ)
+        return; 
+    }
+    // ============================================================
 
-            if (currentView === 'home') {
-                filteredPosts = postsArray.filter(item => !item.data.isClosed);
-            } else if (currentView === 'closed') {
-                filteredPosts = postsArray.filter(item => item.data.isClosed);
+    let postsArray = Object.values(postStatusMap).map(item => item);
+    let filteredPosts = postsArray;
+
+    if (currentView === 'home') {
+        filteredPosts = postsArray.filter(item => !item.data.isClosed);
+    } else if (currentView === 'closed') {
+        filteredPosts = postsArray.filter(item => item.data.isClosed);
+    }
+
+    if (filterLocation && filterMaxDistance) {
+        filteredPosts = filteredPosts.filter(item => {
+            const post = item.data;
+            if (!post.location || !post.location.lat || !post.location.lng) {
+                return false; 
             }
-			
-			if (filterLocation && filterMaxDistance) {
-    filteredPosts = filteredPosts.filter(item => {
-        const post = item.data;
-        // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
-        if (!post.location || !post.location.lat || !post.location.lng) {
-            return false; 
-        }
-        // คำนวณระยะทาง
-        const dist = getDistanceFromLatLonInKm(
-            filterLocation.lat, filterLocation.lng,
-            post.location.lat, post.location.lng
-        );
-        // คืนค่า True ถ้าอยู่ในระยะ
-        return dist <= filterMaxDistance;
-    });
-}
+            const dist = getDistanceFromLatLonInKm(
+                filterLocation.lat, filterLocation.lng,
+                post.location.lat, post.location.lng
+            );
+            return dist <= filterMaxDistance;
+        });
+    }
             
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
