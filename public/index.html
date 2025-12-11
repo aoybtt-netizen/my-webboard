@@ -188,9 +188,8 @@
 	
 		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
-        <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
-    <button id="clear-filter-btn" style="display:none; margin-left:10px; cursor:pointer; background:none; border:none; color:red; text-decoration:underline; font-size: 0.8em;" onclick="clearDistanceFilter()" data-i18n-key="btn_cancel_filter">❌ ยกเลิก</button>
-</div>
+        <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" 
+    onclick="setDistanceFilter(true)" data-i18n-key="btn_checkin">📍 Distance</button>
 
             <div id="post-list">
                 </div>
@@ -341,7 +340,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.13 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.14 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -480,7 +479,7 @@ window.openAdminAssignModal = openAdminAssignModal;
 window.assignAdminToZone = assignAdminToZone;
 
         // ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
-    function setDistanceFilter() {
+    function setDistanceFilter(isManualClick = false) {
     const now = Date.now();
     
     // [COOLDOWN CHECK] ตรวจสอบว่าคลิกเร็วเกินไปหรือไม่
@@ -496,15 +495,18 @@ window.assignAdminToZone = assignAdminToZone;
 
     const t = translations[currentLang];
     // 1. ถามระยะทาง
-    /*const input = prompt(t.prompt_distance, "50");
-    if (input === null) return;
-    
-    const dist = parseFloat(input);
-    if (isNaN(dist) || dist <= 0) {
-        alert(t.alert_invalid_num);
-        return;
-    }*/
-	const dist = 20;
+    if (isManualClick) {
+        // ถ้าเป็นการคลิกปุ่ม ให้แสดง Prompt ถามระยะทาง โดยมี 20 เป็นค่า Default
+        const input = prompt(t.prompt_distance, "20"); // ✅ ใส่ Prompt และ Default = 20
+        if (input === null) return; // ถ้าผู้ใช้กดยกเลิก
+        
+        const parsedDist = parseFloat(input);
+        if (isNaN(parsedDist) || parsedDist <= 0) {
+            alert(t.alert_invalid_num);
+            return;
+        }
+        dist = parsedDist;
+    }
 
     // 2. ขอพิกัด GPS
     if (!navigator.geolocation) {
@@ -1037,7 +1039,7 @@ if (homeBtn) {
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
     updateFilterButtonState();
 	setTimeout(() => {
-        setDistanceFilter(); 
+        setDistanceFilter(false);
     }, 1000);
 }
     
