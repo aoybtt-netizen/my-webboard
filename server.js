@@ -81,7 +81,7 @@ function translateServerMsg(key, lang = 'th') {
 }
 
 // ==========================================
-// [NEW] Helper Functions for MongoDB
+// Helper Functions for MongoDB
 // ==========================================
 
 async function connectDB() {
@@ -922,6 +922,26 @@ app.post('/api/admin/delete-zone', async (req, res) => {
     } else {
         res.status(404).json({ error: 'Zone not found' });
     }
+});
+
+// 30. Get Assigned Zones for Admin (L1/L2)
+app.get('/api/admin/get-assigned-zones', async (req, res) => {
+    const { requestBy } = req.query;
+    const requester = await getUserData(requestBy);
+    
+    // Check Permissions: Must be Admin Level 1 or 2
+    if (!requester || requester.adminLevel < 1 || requester.adminLevel >= 3) {
+        return res.status(403).json({ error: 'Permission denied. Admin Level 1 or 2 required.' });
+    }
+
+    // Find zones where the assignedAdmin field matches the requester's username
+    const zones = await zonesCollection.find({ assignedAdmin: requestBy }).sort({ createdAt: -1 }).toArray();
+
+    if (zones.length === 0) {
+        return res.json({ success: true, zones: [], message: 'No zones assigned to you.' });
+    }
+
+    return res.json({ success: true, zones: zones });
 });
 
 // --- Socket Helpers ---
