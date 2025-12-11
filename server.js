@@ -176,26 +176,59 @@ async function getPostCost() {
     };
 }
 
-// Helper function to find the assigned admin for a post based on location
-async function findResponsibleAdmin(location) {
+// Haversine Formula Helper function to find the assigned admin for a post based on location
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // รัศมีของโลก (กม.)
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // คืนค่าระยะทางเป็นกิโลเมตร
+}
+
+	async function findResponsibleAdmin(location) {
+    // 1. ถ้ากระทู้ไม่มีพิกัด -> เงินเข้า Admin ใหญ่ (L3)
     if (!location || !location.lat || !location.lng) {
-        return { username: 'Admin', zoneName: 'No Location' }; // If no location, adminFee goes to Admin L3
+        return { username: 'Admin', zoneName: 'System (No Location)' };
     }
     
+    // 2. ดึงข้อมูลโซนทั้งหมดที่มีคนดูแล (assignedAdmin ไม่ใช่ค่าว่าง)
     const allZones = await zonesCollection.find({ assignedAdmin: { $exists: true, $ne: null } }).toArray();
 
-    // ในการปรับปรุงนี้ เราจะใช้โซนแรกที่พบเป็นหลัก (ยังไม่มีการคำนวณระยะทางซับซ้อน)
-    // สำหรับการใช้งานจริง ควรเพิ่มฟังก์ชันคำนวณระยะทางจากพิกัดกระทู้ไปยังจุดศูนย์กลางโซน (lat/lng)
-    
-    // Logic: ตอนนี้เราจะคืนค่า Admin L3 เสมอ หากไม่มีการคำนวณระยะทาง
-    // **เนื่องจากยังไม่มีการติดตั้ง Geospatial Index และฟังก์ชันคำนวณระยะทางที่ซับซ้อน** // เราจะใช้ Logic แบบง่าย: Admin L3 รับผิดชอบ ถ้าไม่มีการ Implement การตรวจสอบระยะทาง
-    
-    // **************** WARNING ****************
-    // เนื่องจากโค้ดนี้ยังไม่ได้ Implement ระบบตรวจสอบพิกัดกับโซนที่ซับซ้อน (Geospatial)
-    // เราจึงกำหนดให้ Admin L3 เป็นผู้รับผิดชอบค่าธรรมเนียมผู้ดูแล หากไม่พบ Admin ที่ตรงกับโซน
-    // *****************************************
-    
-    return { username: 'Admin', zoneName: 'System (Default)' }; 
+    // ถ้ายังไม่มีโซนไหนมีคนดูแลเลย -> เงินเข้า Admin ใหญ่
+    if (allZones.length === 0) {
+        return { username: 'Admin', zoneName: 'System (No Zones)' };
+    }
+
+    // 3. วนลูปหาโซนที่ระยะทาง "ใกล้" พิกัดกระทู้ที่สุด
+    let closestZone = null;
+    let minDistance = Infinity; // กำหนดค่าเริ่มต้นให้มากที่สุดไว้ก่อน
+
+    for (const zone of allZones) {
+        // คำนวณระยะห่างระหว่าง "จุดตั้งกระทู้" กับ "จุดศูนย์กลางโซน"
+        const dist = getDistanceFromLatLonInKm(location.lat, location.lng, zone.lat, zone.lng);
+        
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestZone = zone;
+        }
+    }
+
+    // 4. คืนค่าแอดมินของโซนที่ใกล้ที่สุด
+    if (closestZone) {
+        // (Optional) คุณอาจจะใส่เงื่อนไขเพิ่มตรงนี้ได้ เช่น ถ้าไกลเกิน 50 กม. ให้เข้ากองกลาง
+        // แต่ตอนนี้ logic คือ "ใกล้ใครที่สุด คนนั้นได้"
+        return { 
+            username: closestZone.assignedAdmin, 
+            zoneName: closestZone.name || `Zone #${closestZone.id} (${minDistance.toFixed(2)} km)` 
+        };
+    }
+
+    // กรณีกันเหนียว (ไม่น่าจะเกิดขึ้นถ้ามี allZones)
+    return { username: 'Admin', zoneName: 'System (Default)' };
 }
 
 
