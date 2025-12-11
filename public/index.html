@@ -1858,65 +1858,76 @@ async function showMyClosedPosts(page = 1) {
             let filteredPosts = [];
 
             // กรองตาม View ที่เลือกไว้
-            iif (currentView === 'home') {
-                // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
-                filteredPosts = postsArray.filter(item => !item.data.isClosed);
-            } else if (currentView === 'closed') {
-                filteredPosts = postsArray;
-                
-            } else if (currentView === 'my_active') {
-                filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
-            } else if (currentView === 'my_closed') {
-                filteredPosts = postsArray.filter(item => item.data.isClosed && item.data.author === myUsername);
-            }
-            
-            // ... (ส่วนการเรียงลำดับ การทำ Pagination และการ Loop แสดงผลต่อจากนี้เหมือนเดิม)
-            
-            filteredPosts.sort((a, b) => {
-                const postA = a.data;
-                const postB = b.data;
+            function renderPostList() {
+    const list = document.getElementById('post-list');
+    const paginationDiv = document.getElementById('post-pagination');
+    list.innerHTML = '';
+    
+    // ใช้ข้อมูลจาก postStatusMap ที่ถูกอัปเดตจาก loadPosts()
+    let postsArray = Object.values(postStatusMap).map(item => item);
+    let filteredPosts = [];
 
-                // 1. Pinned มาก่อน
-                const aIsPinned = postA.isPinned && !postA.isClosed;
-                const bIsPinned = postB.isPinned && !postB.isClosed;
-                if (aIsPinned && !bIsPinned) return -1;
-                if (!aIsPinned && bIsPinned) return 1;
+    // กรองตาม View ที่เลือกไว้
+    if (currentView === 'home') { // ⭐ แก้ไขจาก 'iif' เป็น 'if'
+        // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
+        filteredPosts = postsArray.filter(item => !item.data.isClosed);
+    } else if (currentView === 'closed') {
+        // สำหรับ Admin: ใช้ข้อมูลทั้งหมดที่โหลดมา (ซึ่งถูกกรองเป็นกระทู้ปิดมาจาก Server แล้ว)
+        filteredPosts = postsArray;
+        
+    } else if (currentView === 'my_active') {
+        filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
+    } else if (currentView === 'my_closed') {
+        filteredPosts = postsArray.filter(item => item.data.isClosed && item.data.author === myUsername);
+    }
+    
+    // ... (ส่วนการเรียงลำดับ การทำ Pagination และการ Loop แสดงผลต่อจากนี้เหมือนเดิม) ...
+    
+    filteredPosts.sort((a, b) => {
+        const postA = a.data;
+        const postB = b.data;
 
-                // 2. เรียงตาม ID (เวลา) ล่าสุดขึ้นก่อน
-                return postB.id - postA.id; 
-            });
+        // 1. Pinned มาก่อน
+        const aIsPinned = postA.isPinned && !postA.isClosed;
+        const bIsPinned = postB.isPinned && !postB.isClosed;
+        if (aIsPinned && !bIsPinned) return -1;
+        if (!aIsPinned && bIsPinned) return 1;
 
-            if (filteredPosts.length === 0) {
-                 list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีรายการกระทู้</h3></div>`;
-                 paginationDiv.style.display = 'none'; 
-                 return;
-            }
-            
-            // ... (โค้ดส่วน Pagination ที่เหลือทั้งหมดเหมือนเดิม) ...
-            const totalItems = filteredPosts.length;
-            const totalPages = Math.ceil(totalItems / POST_LIMIT);
-            
-            if (currentPostPage < 1) currentPostPage = 1;
-            if (currentPostPage > totalPages) currentPostPage = totalPages;
+        // 2. เรียงตาม ID (เวลา) ล่าสุดขึ้นก่อน
+        return postB.id - postA.id; 
+    });
 
-            const startIndex = (currentPostPage - 1) * POST_LIMIT;
-            const endIndex = startIndex + POST_LIMIT;
-            const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
+    if (filteredPosts.length === 0) {
+         list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีรายการกระทู้</h3></div>`;
+         paginationDiv.style.display = 'none'; 
+         return;
+    }
+    
+    // ... (โค้ดส่วน Pagination ที่เหลือทั้งหมดเหมือนเดิม) ...
+    const totalItems = filteredPosts.length;
+    const totalPages = Math.ceil(totalItems / POST_LIMIT);
+    
+    if (currentPostPage < 1) currentPostPage = 1;
+    if (currentPostPage > totalPages) currentPostPage = totalPages;
 
-            paginatedPosts.forEach(item => {
-                addPostToDOM(item.data, item.isOccupied);
-            });
+    const startIndex = (currentPostPage - 1) * POST_LIMIT;
+    const endIndex = startIndex + POST_LIMIT;
+    const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
 
-            if (totalItems > POST_LIMIT) {
-                paginationDiv.style.display = 'block';
-                document.getElementById('post-page-info').innerText = `${currentPostPage} / ${totalPages} (${totalItems})`;
-                
-                document.getElementById('post-prev-btn').disabled = (currentPostPage === 1);
-                document.getElementById('post-next-btn').disabled = (currentPostPage === totalPages);
-            } else {
-                paginationDiv.style.display = 'none'; 
-            }
-        }
+    paginatedPosts.forEach(item => {
+        addPostToDOM(item.data, item.isOccupied);
+    });
+
+    if (totalItems > POST_LIMIT) {
+        paginationDiv.style.display = 'block';
+        document.getElementById('post-page-info').innerText = `${currentPostPage} / ${totalPages} (${totalItems})`;
+        
+        document.getElementById('post-prev-btn').disabled = (currentPostPage === 1);
+        document.getElementById('post-next-btn').disabled = (currentPostPage === totalPages);
+    } else {
+        paginationDiv.style.display = 'none'; 
+    }
+}
 
         // ---addPostToDOM (With Winner Display) ---
         function addPostToDOM(post, isOccupied) {
