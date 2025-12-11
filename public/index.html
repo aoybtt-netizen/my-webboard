@@ -385,7 +385,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.20 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.21 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1692,7 +1692,7 @@ function getTransactionDetail(t) {
         async function loadPosts() {
             try {
                 // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
-                const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}`);
+                const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}&t=${Date.now()}`);
                 const responseData = await res.json();
                 
                 // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
@@ -1861,11 +1861,7 @@ async function showMyClosedPosts(page = 1) {
                 // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
                 filteredPosts = postsArray.filter(item => !item.data.isClosed);
             } else if (currentView === 'closed') {
-                // หน้า Admin: เอาเฉพาะกระทู้ที่ "ปิดแล้ว"
-                // เนื่องจาก Server ดึงมาเฉพาะรายการที่ปิดแล้ว เราแค่ต้องกรองในฝั่ง Client
-                // (ถ้า Server ทำงานถูก เราไม่จำเป็นต้องกรองซ้ำตาม isClosed || status ในฝั่ง Client อีก)
-                // เราใช้ข้อมูลทั้งหมดที่ Server ส่งมาใน currentView=closed
-                filteredPosts = postsArray; // ใช้ทั้งหมดที่ Server ส่งมาในโหมด 'closed'
+                filteredPosts = postsArray.filter(item => item.data.isClosed || item.data.status === 'finished' || item.data.status === 'closed');
                 
             } else if (currentView === 'my_active') {
                 filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);

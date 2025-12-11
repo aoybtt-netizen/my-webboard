@@ -588,14 +588,15 @@ app.get('/api/posts', async (req, res) => {
         // ⭐ [สำคัญ] เงื่อนไขการค้นหา: ดึงกระทู้ทั้งหมดที่ถูกปิด
         // รวมทั้ง isClosed=true และกระทู้ที่มีสถานะเสร็จสิ้น
         query = { 
-             $or: [
-                { isClosed: true },
-                { status: 'finished' },
-                { status: 'closed_permanently' }
+            $or: [
+                { isClosed: true },             // ปิดด้วยปุ่ม หรือ ปิดงานแล้ว
+                { status: 'closed' },           // ปิดด้วยสถานะ closed
+                { status: 'finished' },         // ปิดด้วยสถานะ finished (ส่งงาน)
+                { status: 'closed_permanently' }// โดนแบน
             ]
         };
-        // ⭐ [สำคัญ] ถ้าเป็น Admin ดูกระทู้ปิด ให้กำหนด Limit เป็นค่าสูงๆ
-        fetchLimit = parseInt(limit) || 1000; 
+        // ดึงเยอะหน่อยสำหรับหน้า Admin
+        fetchLimit = 1000;
         
     } else {
         // กรณีหน้า Home หรืออื่นๆ: ดูเฉพาะกระทู้ที่ยังไม่ปิด
