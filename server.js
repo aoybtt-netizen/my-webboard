@@ -576,35 +576,41 @@ app.get('/api/posts', async (req, res) => {
         { $set: { isClosed: true } }
     );
 
-    // รับค่า view และ username เพื่อมาตรวจสอบสิทธิ์
     const { view, limit, username } = req.query;
     let fetchLimit = parseInt(limit) || 20;
     
-    let query = {}; // สร้างเงื่อนไขการค้นหา
+    let query = {}; 
 
     if (view === 'closed') {
         // ⭐ กรณี: Admin ขอดูกระทู้ปิด
         const user = await getUserData(username);
         
-        // ตรวจสอบว่าเป็น Admin จริงไหม (Level 1+)
+        // เช็คสิทธิ์ Admin
         if (!user || user.adminLevel < 1) {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
         }
         
-        query.isClosed = true; // ค้นหาเฉพาะกระทู้ที่ปิดแล้ว
+        // ⭐ [แก้ไข] หาครบทุกเงื่อนไข (ทั้ง isClosed หรือ status='closed' หรือ 'finished')
+        query = { 
+            $or: [
+                { isClosed: true },
+                { status: 'closed' },
+                { status: 'finished' },
+                { status: 'closed_permanently' }
+            ]
+        };
     } else {
-        // ⭐ กรณี: หน้าแรก (Home) ดูเฉพาะกระทู้ที่ยังเปิดอยู่
-        query.isClosed = { $ne: true }; // (ไม่ใช่ true) คือ false หรือไม่มี field นี้
+        // กรณีหน้า Home: เอาเฉพาะที่ยังไม่ปิด
+        query.isClosed = { $ne: true }; 
     }
 
     try {
-        // ค้นหาจาก Database ตามเงื่อนไข (query) ที่ตั้งไว้ข้างบน
         const allPosts = await postsCollection.find(query)
-            .sort({ isPinned: -1, id: -1 }) // เรียงปักหมุดก่อน ตามด้วยเวลาล่าสุด
+            .sort({ isPinned: -1, id: -1 })
             .limit(fetchLimit)
             .toArray();
 
-        // ส่วนดึง Rating ผู้เขียน (โค้ดเดิม)
+        // โค้ดส่วนดึง Rating (เหมือนเดิม)
         const authorNames = [...new Set(allPosts.map(p => p.author))];
         const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
         const authorMap = {};
@@ -800,19 +806,20 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // 17. Manual Close
 app.put('/api/posts/:id/close', async (req, res) => {
-    const postId = req.params.id;
+    const postId = parseInt(req.params.id); // แปลงเป็น Int เพื่อความชัวร์
     const { requestBy } = req.body;
     
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'Post not found' });
 
-    // ตรวจสอบสิทธิ์: ต้องเป็นเจ้าของโพสต์ หรือเป็น Admin Level 1 ขึ้นไป
+    // ตรวจสอบสิทธิ์
     const requester = await getUserData(requestBy);
     if (requestBy !== post.author && requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Permission denied. Only Author or Admin (Level 1+) can close this post.' });
+        return res.status(403).json({ error: 'Permission denied.' });
     }
 
-    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed' } });
+    // ⭐ [แก้ไข] เพิ่ม isClosed: true
+    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed', isClosed: true } });
     
     const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
     await messagesCollection.insertOne(notifMsg);

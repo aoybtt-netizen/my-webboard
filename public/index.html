@@ -106,7 +106,7 @@
     white-space: nowrap;
     background: #ffc107; /* Yellow/Orange background */
     color: #333;
-    padding: 2px 10px;
+    padding: 1px 10px;
     border-radius: 8px;
     border: 1px solid #e0a800;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -385,7 +385,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.19 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.20 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1852,59 +1852,45 @@ async function showMyClosedPosts(page = 1) {
             const paginationDiv = document.getElementById('post-pagination');
             list.innerHTML = '';
             
+            // แปลง Map เป็น Array
             let postsArray = Object.values(postStatusMap).map(item => item);
-            let filteredPosts = postsArray.filter(item => {
-        const post = item.data;
-        if (currentView === 'closed') {
-            // Admin 'Closed' view: แสดงเฉพาะกระทู้ที่ปิด
-            return post.isClosed;
-        } 
-        
-        // 'home' view: แสดงเฉพาะกระทู้ที่ยังไม่ปิด
-        return !post.isClosed;
-    });
-			
-			if (currentView === 'home') {
-        // หน้าแรก: เอาเฉพาะกระทู้ที่ "ไม่ปิด"
-        filteredPosts = postsArray.filter(item => !item.data.isClosed);
-    } else if (currentView === 'closed') {
-        // หน้า Admin กระทู้ปิด: เอาเฉพาะกระทู้ที่ "ปิดแล้ว"
-        filteredPosts = postsArray.filter(item => item.data.isClosed);
-    } else if (currentView === 'my_active') {
-        // (ส่วนนี้จัดการโดย API แล้ว แต่กรองซ้ำเพื่อความชัวร์)
-        filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
-    } else if (currentView === 'my_closed') {
-        filteredPosts = postsArray.filter(item => item.data.isClosed && item.data.author === myUsername);
-    }
+            let filteredPosts = [];
+
+            // ⭐ [แก้ไข] Logic การกรองแบบชัดเจน ไม่ซ้ำซ้อน
+            if (currentView === 'home') {
+                // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
+                filteredPosts = postsArray.filter(item => !item.data.isClosed);
+            } else if (currentView === 'closed') {
+                // หน้า Admin: เอาเฉพาะกระทู้ที่ "ปิดแล้ว"
+                filteredPosts = postsArray.filter(item => item.data.isClosed || item.data.status === 'closed' || item.data.status === 'finished');
+            } else if (currentView === 'my_active') {
+                filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
+            } else if (currentView === 'my_closed') {
+                filteredPosts = postsArray.filter(item => item.data.isClosed && item.data.author === myUsername);
+            }
             
+            // การเรียงลำดับ (เหมือนเดิม)
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
                 const postB = b.data;
 
-                // 1. เช็ค Pinned Post ก่อน (ให้ Pinned อยู่บนสุดเสมอ)
+                // 1. Pinned มาก่อน
                 const aIsPinned = postA.isPinned && !postA.isClosed;
-				const bIsPinned = postB.isPinned && !postB.isClosed;
-                
-                if (aIsPinned && !bIsPinned) return -1; // a เป็น Pinned -> เอาขึ้นก่อน
-                if (!aIsPinned && bIsPinned) return 1;  // b เป็น Pinned -> เอาขึ้นก่อน
+                const bIsPinned = postB.isPinned && !postB.isClosed;
+                if (aIsPinned && !bIsPinned) return -1;
+                if (!aIsPinned && bIsPinned) return 1;
 
-                // 2. เช็คสถานะจบงาน/ปิด (ให้งานที่จบแล้วอยู่ล่าง)
-                const aDone = postA.status === 'finished' || postA.isClosed;
-                const bDone = postB.status === 'finished' || postB.isClosed;
-                
-                if (aDone && !bDone) return 1; 
-                if (!aDone && bDone) return -1; 
-
-                // 3. สุดท้ายเรียงตามเวลา (ใหม่สุดขึ้นก่อน)
+                // 2. เรียงตาม ID (เวลา) ล่าสุดขึ้นก่อน
                 return postB.id - postA.id; 
             });
 
             if (filteredPosts.length === 0) {
-                 list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีกระทู้ในหมวดหมู่นี้</h3></div>`;
+                 list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีรายการกระทู้</h3></div>`;
                  paginationDiv.style.display = 'none'; 
                  return;
             }
             
+            // ... (ส่วน Pagination และการ Loop แสดงผล addPostToDOM ให้ใช้โค้ดเดิมต่อจากตรงนี้ได้เลย) ...
             const totalItems = filteredPosts.length;
             const totalPages = Math.ceil(totalItems / POST_LIMIT);
             
