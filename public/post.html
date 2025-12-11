@@ -254,6 +254,7 @@
         <h3 id="map-title" style="margin: 0; border: none; padding: 0;">📍 Location</h3>
         
         <button id="toggle-map-btn" onclick="toggleMap()" 
+            data-i18n-key="btn_hide_map"
             style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
             <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
         </button>
@@ -721,6 +722,8 @@
         'error_geo_unsupported': '❌ เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง',
         'checking_location': '⏳ กำลังตรวจสอบตำแหน่งของคุณ...',
         'btn_show_route': '🗺️ Google Map',
+		'btn_show_map': 'แสดงแผนที่', 
+        'btn_hide_map': 'ซ่อนแผนที่',
     },
     'en': {
         'btn_back_tooltip': 'Back',
@@ -778,6 +781,8 @@
         'error_geo_unsupported': '❌ Your browser does not support geolocation.',
         'checking_location': '⏳ Verifying your location...',
         'btn_show_route': '🗺️ Show Navigation Google Map',
+		'btn_show_map': 'Show Map',
+        'btn_hide_map': 'Hide Map',
     }
 };
 
@@ -1030,7 +1035,7 @@ window.closeImageViewer = function() {
             viewerText = `<br>
                   <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
                       <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                          📏 ห่างจากฉัน: ${distanceKm} กม.
+                          📏 Distance: ${distanceKm} Km.
                       </span>
                   </div>`;
 
@@ -1079,19 +1084,24 @@ window.closeImageViewer = function() {
 	function toggleMap() {
     const content = document.getElementById('map-content-wrapper');
     const btn = document.getElementById('toggle-map-btn');
-    // เงื่อนไขการตรวจสอบ: ถ้าซ่อนอยู่ (none) ให้เปิด, ถ้าไม่ซ่อน (block) ให้ปิด
     const isHidden = content.style.display === 'none';
 
+    // ดึงภาษาและคำแปลปัจจุบัน
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+
     if (isHidden) {
-        // เปิดแผนที่ (เมื่อกดจากสถานะซ่อน)
+        // เปิดแผนที่
         content.style.display = 'block';
-        btn.innerHTML = '<i class="fas fa-chevron-up"></i> ซ่อนแผนที่';
+        // ใช้คำแปล 'ซ่อนแผนที่' และไอคอนขึ้น
+        btn.innerHTML = `<i class="fas fa-chevron-up"></i> ${t['btn_hide_map']}`; 
         btn.style.background = '#dbeafe'; 
         btn.style.color = '#007bff';
     } else {
-        // ปิดแผนที่ (เมื่อกดจากสถานะเปิด)
+        // ปิดแผนที่
         content.style.display = 'none';
-        btn.innerHTML = '<i class="fas fa-chevron-down"></i> แสดงแผนที่';
+        // ใช้คำแปล 'แสดงแผนที่' และไอคอนลง
+        btn.innerHTML = `<i class="fas fa-chevron-down"></i> ${t['btn_show_map']}`;
         btn.style.background = '#e4e6eb'; 
         btn.style.color = '#333';
     }
@@ -1131,11 +1141,8 @@ window.closeImageViewer = function() {
         
         viewerText = `<br>
                       <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
-                          <span style="color:#007bff; font-weight:bold;">
-                              📍 ผู้ชม: ${v_lat}, ${v_lng}
-                          </span><br>
                           <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                              📏 ห่างจากจุดรับงาน: ${distanceKm} กม.
+                              📏 Distance: ${distanceKm} Km.
                           </span>
                       </div>`;
     } else {
