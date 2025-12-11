@@ -1691,8 +1691,7 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
             try {
-                // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
-                const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}&t=${Date.now()}`);
+                const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}&t=${Date.now()}`); 
                 const responseData = await res.json();
                 
                 // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
@@ -1856,14 +1855,12 @@ async function showMyClosedPosts(page = 1) {
             let postsArray = Object.values(postStatusMap).map(item => item);
             let filteredPosts = [];
 
-            // ⭐ [แก้ไข Logic] กรองตาม View ที่เลือกไว้
+            // กรองตาม View ที่เลือกไว้
             if (currentView === 'home') {
                 // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
                 filteredPosts = postsArray.filter(item => !item.data.isClosed);
             } else if (currentView === 'closed') {
-                // หน้า Admin Closed: ให้แสดงทุกรายการที่ Server ส่งมาให้ในโหมดนี้
-                // (Server ถูกแก้ให้ส่งเฉพาะรายการที่ปิดแล้วเท่านั้น)
-                filteredPosts = postsArray; // ⭐ [สำคัญ] ไม่ต้องกรองซ้ำ! ใช้ทั้งหมด
+                filteredPosts = postsArray; 
                 
             } else if (currentView === 'my_active') {
                 filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
@@ -1873,7 +1870,6 @@ async function showMyClosedPosts(page = 1) {
             
             // ... (ส่วนการเรียงลำดับ การทำ Pagination และการ Loop แสดงผลต่อจากนี้เหมือนเดิม)
             
-            // ⭐ (ส่วนเรียงลำดับ)
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
                 const postB = b.data;

@@ -578,9 +578,7 @@ app.get('/api/posts', async (req, res) => {
     const user = await getUserData(username); // ดึงข้อมูลผู้ใช้เพื่อเช็ค Admin
 
     if (view === 'closed') {
-        // ⭐ [แก้ไข Logic] กรณี Admin ขอดูกระทู้ปิด
-        
-        // ตรวจสอบว่าเป็น Admin จริงไหม (Level 1+)
+        // ⭐ [สำคัญ] ตรวจสอบสิทธิ์ Admin (Level 1+)
         if (!user || user.adminLevel < 1) {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
         }
@@ -605,11 +603,10 @@ app.get('/api/posts', async (req, res) => {
     // ... (ส่วนการค้นหาและการจัดรูปแบบ Rating เหมือนเดิม) ...
     try {
         const allPosts = await postsCollection.find(query)
-            .sort({ isPinned: -1, id: -1 }) // เรียงปักหมุดก่อน ตามด้วยเวลาล่าสุด
+            .sort({ isPinned: -1, id: -1 })
             .limit(fetchLimit)
             .toArray();
             
-        // ... (ส่วนดึง Rating ผู้เขียน และ res.json เหมือนเดิม) ...
         const authorNames = [...new Set(allPosts.map(p => p.author))];
         const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
         const authorMap = {};
