@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.9 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.10 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2072,7 +2072,7 @@ async function openAdminZoneModal() {
                         </div>
                         
                         <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
-                            <label style="font-size: 0.9em; white-space: nowrap;">ค่าธรรมเนียมโซน (USD):</label>
+                            <label style="font-size: 0.9em; white-space: nowrap;">Zone fee(USD):</label>
                             <input type="number" id="fee-input-${zone.id}" value="${currentFeeVal}" placeholder="${placeholder}" 
                                    style="width: 80px; padding: 5px; margin-bottom: 0;">
                                    
@@ -2287,19 +2287,24 @@ window.addZoneConfig = addZoneConfig;
         }
 		
 		// รับค่าธรรมเนียมใหม่จาก Admin
-        socket.on('config-update', (newCost) => {
-            //currentCost = newCost; 
-            const costDisplay = document.getElementById('cost-display');
-            if (costDisplay) costDisplay.innerText = newCost;
-            const modalCostDisplay = document.getElementById('modal-cost-display');
-            if (modalCostDisplay) {
-                 modalCostDisplay.innerText = `${newCost.toFixed(2)} USD`; 
-            } 
-            updateUserInfo();
-            if (myUsername === 'Admin') {
-                //alert(`🔔 Fee changed to ${newCost} USD`);
-            }
-        });
+        socket.on('config-update', (data) => {
+    const totalCost = (data.systemFee || 0) + (data.adminFee || 0);
+
+    const costDisplay = document.getElementById('cost-display');
+    if (costDisplay) {
+        costDisplay.innerText = totalCost.toFixed(2); 
+    }
+    
+    const modalCostDisplay = document.getElementById('modal-cost-display');
+    if (modalCostDisplay) {
+        modalCostDisplay.innerHTML = `${totalCost.toFixed(2)} USD <span style="font-size:0.75em; color:#6c757d;">(กำลังอัปเดต...)</span>`; 
+    }
+    updateUserInfo(); 
+    
+    if (myUsername === 'Admin') {
+        //alert(`🔔 Fee changed to ${totalCost.toFixed(2)} USD`);
+    }
+});
 		
 		socket.on('rating-update', (data) => {
             if (data.user === myUsername) {
