@@ -254,12 +254,12 @@
         <h3 id="map-title" style="margin: 0; border: none; padding: 0;">📍 Location</h3>
         
         <button id="toggle-map-btn" onclick="toggleMap()" 
-            style="background: #e4e6eb; color: #333; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
-            <i class="fas fa-chevron-down"></i> แสดงแผนที่
+            style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
+            <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
         </button>
     </div>
 
-    <div id="map-content-wrapper" style="display: none; margin-top: 15px;">
+    <div id="map-content-wrapper" style="display: block; margin-top: 15px;">
         <button id="start-nav-btn" 
            class="send-btn" 
            style="background:#28a745; margin-bottom: 10px; padding: 10px 18px; text-decoration: none; display:none; width: 100%;">
@@ -1079,19 +1079,20 @@ window.closeImageViewer = function() {
 	function toggleMap() {
     const content = document.getElementById('map-content-wrapper');
     const btn = document.getElementById('toggle-map-btn');
+    // เงื่อนไขการตรวจสอบ: ถ้าซ่อนอยู่ (none) ให้เปิด, ถ้าไม่ซ่อน (block) ให้ปิด
     const isHidden = content.style.display === 'none';
 
     if (isHidden) {
-        // เปิดแผนที่
+        // เปิดแผนที่ (เมื่อกดจากสถานะซ่อน)
         content.style.display = 'block';
         btn.innerHTML = '<i class="fas fa-chevron-up"></i> ซ่อนแผนที่';
-        btn.style.background = '#dbeafe'; // เปลี่ยนสีปุ่มให้รู้ว่าเปิดอยู่ (สีฟ้าอ่อน)
+        btn.style.background = '#dbeafe'; 
         btn.style.color = '#007bff';
     } else {
-        // ปิดแผนที่
+        // ปิดแผนที่ (เมื่อกดจากสถานะเปิด)
         content.style.display = 'none';
         btn.innerHTML = '<i class="fas fa-chevron-down"></i> แสดงแผนที่';
-        btn.style.background = '#e4e6eb'; // กลับเป็นสีเทา
+        btn.style.background = '#e4e6eb'; 
         btn.style.color = '#333';
     }
 }
