@@ -341,7 +341,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.4 (THB+I18N)</div>
+    <div class="version-display">v: 3.7.5 (THB+I18N)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -702,6 +702,13 @@ window.assignAdminToZone = assignAdminToZone;
         'admin_error_fetch_admins': '❌ ดึงรายชื่อ Admin ไม่สำเร็จ',
         'confirm_assign_admin': 'คุณต้องการมอบหมายให้ [ADMIN] ดูแลโซน [ZONE] ใช่หรือไม่?',
         'alert_admin_assign_success': '✅ มอบหมาย [ADMIN] ให้ดูแลโซน [ZONE] สำเร็จ!',
+		
+		'admin_set_cost_title': '🏷️ ตั้งค่าธรรมเนียมกระทู้',
+        'label_system_fee': 'ค่าธรรมเนียมระบบ (เข้า Admin L3):',
+        'label_admin_fee': 'ค่าธรรมเนียมผู้ดูแล (เข้า Admin L1/L2):',
+        'total_fee_display': 'รวมค่าธรรมเนียมทั้งหมด:',
+        'btn_save': 'บันทึก',
+        'alert_invalid_fee': '❌ กรุณาใส่ค่าธรรมเนียมเป็นตัวเลขที่ไม่ติดลบ',
     },
     'en': {
         'app_title': 'Webboard',
@@ -845,6 +852,13 @@ window.assignAdminToZone = assignAdminToZone;
         'admin_error_fetch_admins': '❌ Failed to fetch Admin list',
         'confirm_assign_admin': 'Are you sure you want to assign [ADMIN] to Zone [ZONE]?',
         'alert_admin_assign_success': '✅ Assigned [ADMIN] to Zone [ZONE] successfully!',
+		
+		'admin_set_cost_title': '🏷️ Set Post Fees',
+        'label_system_fee': 'System Fee (to Admin L3):',
+        'label_admin_fee': 'Admin Fee (to Admin L1/L2):',
+        'total_fee_display': 'Total Fee:',
+        'btn_save': 'Save',
+        'alert_invalid_fee': '❌ Please enter valid non-negative fee values.',
     }
 };
 
@@ -1056,7 +1070,7 @@ if (homeBtn) {
             
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
 
-        // --- FIXED: updateUserInfo Function ---
+        // updateUserInfo Function ---
         async function updateUserInfo() {
     if (!myUsername) return;
 
@@ -1152,27 +1166,23 @@ if (homeBtn) {
         }
 
 
-        // --- 5. ✅ [FIXED] อัปเดตค่าใช้จ่ายในการโพสต์ (ใน Modal) ---
+        // --- 5. อัปเดตค่าใช้จ่ายในการโพสต์ (ใน Modal) ---
         const modalCostDisplay = document.getElementById('modal-cost-display');
-		const postCostUSD = data.postCost; // ค่าธรรมเนียมต้นฉบับ (USD)
-		currentCost = postCostUSD; // อัปเดตตัวแปร Global
-
-        // คำนวณค่าธรรมเนียมที่แปลงแล้ว (โดยการเทียบอัตราส่วน)
-        let formattedConvertedCost = '0.00';
-        // ป้องกันการหารด้วยศูนย์
-        if (parseFloat(data.coins) > 0) {
-            const conversionRate = parseFloat(data.convertedCoins) / parseFloat(data.coins);
-            const convertedCost = postCostUSD * conversionRate;
-            formattedConvertedCost = convertedCost.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
+		const postCostUSD = data.postCost.totalCost; // <---ดึง Total Cost
+		currentCost = postCostUSD; 
+        
+        // ... (ส่วนคำนวณ convertedCost เหมือนเดิม) ...
         
         // อัปเดตการแสดงผลใน Modal
         if (modalCostDisplay) {
+            // แสดง Breakdown (หรือแค่ Total)
+            const systemFee = data.postCost.systemFee.toFixed(2);
+            const adminFee = data.postCost.adminFee.toFixed(2);
+            
             modalCostDisplay.innerHTML = 
-                `${postCostUSD.toFixed(2)} USD <span style="font-size:0.8em; color:#6c757d; font-weight:normal;">(${formattedConvertedCost} ${data.currencySymbol})</span>`;
+                `${postCostUSD.toFixed(2)} USD 
+                <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee} System + ${adminFee} Admin)</span>
+                <span style="font-size:0.75em; color:#6c757d; font-weight: normal;">(${formattedConvertedCost} ${data.currencySymbol})</span>`;
         }
         
         // --- สิ้นสุดการแก้ไขส่วนที่ 5 ---
@@ -2181,7 +2191,7 @@ window.addZoneConfig = addZoneConfig;
         // --- FIXED: Socket Balance Update ---
         socket.on('balance-update', (data) => {
     if (data.user === myUsername) {
-        // ⭐ [FIXED] เรียก updateUserInfo() เพื่อให้เกิดการ fetch ข้อมูลใหม่
+        // เรียก updateUserInfo() เพื่อให้เกิดการ fetch ข้อมูลใหม่
         // และแสดงผล 2 สกุลเงินอย่างถูกต้อง
         updateUserInfo();
         
@@ -2489,22 +2499,65 @@ function openAdminPinnedModal() {
         }
 
         async function setPostCost(){ 
-    const c=prompt(translations[currentLang]['prompt_fee'],currentCost); 
-    if(c) {
-        const res = await fetch('/api/admin/set-cost', {
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify({cost:c,requestBy:myUsername})
-        });
-        
-        if (res.status === 200) {
-            updateUserInfo(); 
-            alert(translations[currentLang]['admin_success_set_cost']);
-        } else {
-            alert(translations[currentLang]['admin_error_set_cost']);
-        }
+    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
+    
+    // 1. ดึงค่าเดิมมาแสดงใน Modal
+    const res = await fetch('/api/user-info?username=Admin&currency=USD'); // ใช้ Admin เพื่อดึง config ล่าสุด
+    const data = await res.json();
+    const { systemFee, adminFee } = data.postCost;
+    
+    const systemInput = document.getElementById('system-fee-input');
+    const adminInput = document.getElementById('admin-fee-input');
+    const totalDisplay = document.getElementById('total-fee-display');
+    
+    systemInput.value = systemFee;
+    adminInput.value = adminFee;
+    totalDisplay.innerText = (systemFee + adminFee).toFixed(2) + ' USD';
+
+    // 2. Add Event Listeners for real-time total update
+    const updateTotal = () => {
+        const s = parseFloat(systemInput.value) || 0;
+        const a = parseFloat(adminInput.value) || 0;
+        totalDisplay.innerText = (s + a).toFixed(2) + ' USD';
+    };
+
+    systemInput.oninput = updateTotal;
+    adminInput.oninput = updateTotal;
+
+    document.getElementById('set-cost-modal').classList.remove('hidden');
+}
+
+// ฟังก์ชันสำหรับบันทึกค่าธรรมเนียม
+async function savePostCost() {
+    if (myAdminLevel < 3) return;
+    
+    const systemFee = parseFloat(document.getElementById('system-fee-input').value);
+    const adminFee = parseFloat(document.getElementById('admin-fee-input').value);
+    const t = translations[currentLang];
+    
+    if (isNaN(systemFee) || isNaN(adminFee) || systemFee < 0 || adminFee < 0) {
+        alert(t['alert_invalid_fee']);
+        return;
+    }
+    
+    const res = await fetch('/api/admin/set-cost', {
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body:JSON.stringify({ systemFee, adminFee, requestBy: myUsername })
+    });
+    
+    if (res.status === 200) {
+        updateUserInfo(); 
+        alert(t['admin_success_set_cost']);
+        document.getElementById('set-cost-modal').classList.add('hidden');
+    } else {
+        const d = await res.json();
+        alert(`${t['admin_error_set_cost']}: ${d.error}`);
     }
 }
+
+// ผูกฟังก์ชัน savePostCost
+window.savePostCost = savePostCost;
         
         async function openAdminTopicModal() {
             if (myUsername !== ADMIN_USERNAME) {
@@ -3085,6 +3138,28 @@ function openUserDetail(targetUsername) {
         </div>
     </div>
 </div>
+
+		<div id="set-cost-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2 data-i18n-key="admin_set_cost_title">🏷️ ตั้งค่าธรรมเนียมกระทู้</h2>
+        
+        <label for="system-fee-input" style="font-weight: bold;" data-i18n-key="label_system_fee">ค่าธรรมเนียมระบบ (เข้า Admin L3):</label>
+        <input type="number" step="0.01" id="system-fee-input" placeholder="USD" required>
+
+        <label for="admin-fee-input" style="font-weight: bold;" data-i18n-key="label_admin_fee">ค่าธรรมเนียมผู้ดูแล (เข้า Admin L1/L2):</label>
+        <input type="number" step="0.01" id="admin-fee-input" placeholder="USD" required>
+        
+        <div style="font-size:0.9em; margin-bottom: 15px;">
+            <span data-i18n-key="total_fee_display">รวมค่าธรรมเนียมทั้งหมด:</span> <b id="total-fee-display">0.00 USD</b>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="sidebar-btn" onclick="document.getElementById('set-cost-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
+            <button class="sidebar-btn create-btn" onclick="savePostCost()" style="width:auto;" data-i18n-key="btn_save">บันทึก</button>
+        </div>
+    </div>
+</div>
+
 
 </div>
 	

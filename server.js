@@ -111,8 +111,10 @@ async function connectDB() {
 async function seedInitialData() {
     // 1. Config
     if (await configCollection.countDocuments() === 0) {
-        await configCollection.insertOne({ id: 'main_config', postCost: 10 });
+        await configCollection.insertOne({ id: 'main_config', systemFee: 5, adminFee: 5 });
         console.log("Initialized Config");
+    } else {
+        await configCollection.updateOne({ id: 'main_config' }, { $setOnInsert: { systemFee: 5, adminFee: 5 } }, { upsert: false });
     }
     // 2. Topics
     if (await topicsCollection.countDocuments() === 0) {
@@ -167,8 +169,35 @@ async function updateUser(username, updateFields) {
 
 async function getPostCost() {
     const config = await configCollection.findOne({ id: 'main_config' });
-    return config ? config.postCost : 10;
+    return { 
+        systemFee: config ? (config.systemFee || 5) : 5,
+        adminFee: config ? (config.adminFee || 5) : 5,
+        totalCost: (config ? (config.systemFee || 5) : 5) + (config ? (config.adminFee || 5) : 5)
+    };
 }
+
+// Helper function to find the assigned admin for a post based on location
+async function findResponsibleAdmin(location) {
+    if (!location || !location.lat || !location.lng) {
+        return { username: 'Admin', zoneName: 'No Location' }; // If no location, adminFee goes to Admin L3
+    }
+    
+    const allZones = await zonesCollection.find({ assignedAdmin: { $exists: true, $ne: null } }).toArray();
+
+    // ในการปรับปรุงนี้ เราจะใช้โซนแรกที่พบเป็นหลัก (ยังไม่มีการคำนวณระยะทางซับซ้อน)
+    // สำหรับการใช้งานจริง ควรเพิ่มฟังก์ชันคำนวณระยะทางจากพิกัดกระทู้ไปยังจุดศูนย์กลางโซน (lat/lng)
+    
+    // Logic: ตอนนี้เราจะคืนค่า Admin L3 เสมอ หากไม่มีการคำนวณระยะทาง
+    // **เนื่องจากยังไม่มีการติดตั้ง Geospatial Index และฟังก์ชันคำนวณระยะทางที่ซับซ้อน** // เราจะใช้ Logic แบบง่าย: Admin L3 รับผิดชอบ ถ้าไม่มีการ Implement การตรวจสอบระยะทาง
+    
+    // **************** WARNING ****************
+    // เนื่องจากโค้ดนี้ยังไม่ได้ Implement ระบบตรวจสอบพิกัดกับโซนที่ซับซ้อน (Geospatial)
+    // เราจึงกำหนดให้ Admin L3 เป็นผู้รับผิดชอบค่าธรรมเนียมผู้ดูแล หากไม่พบ Admin ที่ตรงกับโซน
+    // *****************************************
+    
+    return { username: 'Admin', zoneName: 'System (Default)' }; 
+}
+
 
 async function isUserBanned(username) {
     if (username === 'Admin') return false;
@@ -310,11 +339,22 @@ app.get('/api/check-active-job', async (req, res) => {
 // 7. Set Cost
 app.post('/api/admin/set-cost', async (req, res) => {
     const requester = await getUserData(req.body.requestBy);
-	if (requester.adminLevel < 1) return res.status(403).json({ error: 'Admin only' });
-    const cost = parseFloat(req.body.cost);
-    await configCollection.updateOne({ id: 'main_config' }, { $set: { postCost: cost } });
-    io.emit('config-update', cost);
-    res.json({ success: true, newCost: cost });
+	// ต้องเป็น Admin Level 3 เท่านั้นในการกำหนดค่าธรรมเนียมหลัก
+	if (requester.adminLevel < 3) return res.status(403).json({ error: 'Admin Level 3 only' });
+    
+    // รับค่า SystemFee และ AdminFee
+    const systemFee = parseFloat(req.body.systemFee);
+    const adminFee = parseFloat(req.body.adminFee);
+    
+    if (isNaN(systemFee) || isNaN(adminFee) || systemFee < 0 || adminFee < 0) {
+        return res.status(400).json({ error: 'Invalid fee values.' });
+    }
+    
+    const newConfig = { systemFee, adminFee };
+    
+    await configCollection.updateOne({ id: 'main_config' }, { $set: newConfig });
+    io.emit('config-update', newConfig);
+    res.json({ success: true, newConfig });
 });
 
 
@@ -537,7 +577,10 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     }
     
     const imageUrl = req.file ? req.file.path : null;
-    const postCost = await getPostCost();
+    
+    // ดึงค่าธรรมเนียมสองส่วน
+    const { systemFee, adminFee, totalCost } = await getPostCost();
+    
     const user = await getUserData(author);
     
     const topicObj = await topicsCollection.findOne({ id: category });
@@ -545,21 +588,46 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     let finalTitle = (author === 'Admin' && title) ? title.trim() : topicName;
 
     if (author !== 'Admin') {
-        if (user.coins < postCost) return res.status(400).json({ error: 'เหรียญไม่พอ' });
-        await updateUser(author, { coins: user.coins - postCost });
-        if (postCost > 0) {
+        if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ (Total Cost: ' + totalCost + ' USD)' });
+        
+        // 1. หักเงินจากผู้สร้างกระทู้ (Total Cost)
+        await updateUser(author, { coins: user.coins - totalCost });
+        
+        // 2. หา Admin ผู้รับผิดชอบ (ตอนนี้ Default คือ Admin L3)
+        const responsibleAdmin = await findResponsibleAdmin(location ? JSON.parse(location) : null);
+        const feeReceiver = responsibleAdmin.username; // Admin L1/L2 หรือ 'Admin' (L3)
+        
+        // 3. จัดการ System Fee (เข้า Admin L3)
+        if (systemFee > 0) {
             const adminUser = await getUserData('Admin');
-            await updateUser('Admin', { coins: adminUser.coins + postCost });
+            await updateUser('Admin', { coins: adminUser.coins + systemFee });
             await transactionsCollection.insertOne({
-                id: Date.now(), type: 'POST_REVENUE', amount: postCost, fromUser: author, toUser: 'Admin',
-                note: `ค่าธรรมเนียมสร้างกระทู้: ${topicName}`, postTitle: topicName, timestamp: Date.now()
+                id: Date.now(), type: 'POST_REVENUE', amount: systemFee, fromUser: author, toUser: 'Admin',
+                note: `ค่าธรรมเนียมระบบ: ${topicName}`, postTitle: topicName, timestamp: Date.now()
             });
-            const newAdmin = await getUserData('Admin');
-            io.emit('balance-update', { user: 'Admin', coins: newAdmin.coins });
-            io.to('Admin').emit('admin-new-transaction');
         }
+        
+        // 4. จัดการ Admin Fee (เข้า Admin ผู้รับผิดชอบ)
+        if (adminFee > 0) {
+            const receiverUser = await getUserData(feeReceiver);
+            await updateUser(feeReceiver, { coins: receiverUser.coins + adminFee });
+            await transactionsCollection.insertOne({
+                id: Date.now() + 1, type: 'ADMIN_FEE', amount: adminFee, fromUser: author, toUser: feeReceiver,
+                note: `ค่าธรรมเนียมผู้ดูแล (${responsibleAdmin.zoneName})`, postTitle: topicName, timestamp: Date.now() + 1
+            });
+        }
+        
+        // 5. แจ้งเตือนอัปเดตยอดเงิน
+        const newAdmin = await getUserData('Admin');
+        io.emit('balance-update', { user: 'Admin', coins: newAdmin.coins });
+        if (feeReceiver !== 'Admin') {
+            const newReceiver = await getUserData(feeReceiver);
+            io.emit('balance-update', { user: feeReceiver, coins: newReceiver.coins });
+        }
+        io.to('Admin').emit('admin-new-transaction');
     }
     
+    // ... (ส่วนการสร้าง Post และ Notif Msg SYS_FEE เหมือนเดิม แต่ใช้ totalCost)
     const newPost = { 
         id: Date.now(), title: finalTitle, topicId: category, content, author,
         location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
@@ -568,7 +636,8 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     await postsCollection.insertOne(newPost);
     
     if (author !== 'Admin') {
-        const notifMsg = { sender: 'System', target: author, msgKey: 'SYS_FEE', msgData: { topicName: topicName, cost: postCost }, msg: `💸 หักค่าธรรมเนียม ${postCost} USD`, timestamp: Date.now() };
+        // ใช้ totalCost ในการแจ้งเตือน
+        const notifMsg = { sender: 'System', target: author, msgKey: 'SYS_FEE', msgData: { topicName: topicName, cost: totalCost }, msg: `💸 หักค่าธรรมเนียม ${totalCost} USD`, timestamp: Date.now() + 2 };
         await messagesCollection.insertOne(notifMsg);
         io.to(author).emit('private-message', { ...notifMsg, to: author });
         const updatedUser = await getUserData(author);
