@@ -1852,24 +1852,30 @@ async function showMyClosedPosts(page = 1) {
             const paginationDiv = document.getElementById('post-pagination');
             list.innerHTML = '';
             
-            // แปลง Map เป็น Array
+            // ใช้ข้อมูลจาก postStatusMap ที่ถูกอัปเดตจาก loadPosts()
             let postsArray = Object.values(postStatusMap).map(item => item);
             let filteredPosts = [];
 
-            // ⭐ [แก้ไข] Logic การกรองแบบชัดเจน ไม่ซ้ำซ้อน
+            // ⭐ [แก้ไข Logic] กรองตาม View ที่เลือกไว้
             if (currentView === 'home') {
                 // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
                 filteredPosts = postsArray.filter(item => !item.data.isClosed);
             } else if (currentView === 'closed') {
                 // หน้า Admin: เอาเฉพาะกระทู้ที่ "ปิดแล้ว"
-                filteredPosts = postsArray.filter(item => item.data.isClosed || item.data.status === 'closed' || item.data.status === 'finished');
+                // เนื่องจาก Server ดึงมาเฉพาะรายการที่ปิดแล้ว เราแค่ต้องกรองในฝั่ง Client
+                // (ถ้า Server ทำงานถูก เราไม่จำเป็นต้องกรองซ้ำตาม isClosed || status ในฝั่ง Client อีก)
+                // เราใช้ข้อมูลทั้งหมดที่ Server ส่งมาใน currentView=closed
+                filteredPosts = postsArray; // ใช้ทั้งหมดที่ Server ส่งมาในโหมด 'closed'
+                
             } else if (currentView === 'my_active') {
                 filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
             } else if (currentView === 'my_closed') {
                 filteredPosts = postsArray.filter(item => item.data.isClosed && item.data.author === myUsername);
             }
             
-            // การเรียงลำดับ (เหมือนเดิม)
+            // ... (ส่วนการเรียงลำดับ การทำ Pagination และการ Loop แสดงผลต่อจากนี้เหมือนเดิม)
+            
+            // ⭐ (ส่วนเรียงลำดับ)
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
                 const postB = b.data;
@@ -1890,7 +1896,7 @@ async function showMyClosedPosts(page = 1) {
                  return;
             }
             
-            // ... (ส่วน Pagination และการ Loop แสดงผล addPostToDOM ให้ใช้โค้ดเดิมต่อจากตรงนี้ได้เลย) ...
+            // ... (โค้ดส่วน Pagination ที่เหลือทั้งหมดเหมือนเดิม) ...
             const totalItems = filteredPosts.length;
             const totalPages = Math.ceil(totalItems / POST_LIMIT);
             

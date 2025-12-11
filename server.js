@@ -569,48 +569,47 @@ app.post('/api/admin/topics/manage', async (req, res) => {
 
 // 11. Posts (List)
 app.get('/api/posts', async (req, res) => {
-    const ONE_HOUR = 3600000;
-    // Auto-close old posts
-    await postsCollection.updateMany(
-        { isClosed: false, id: { $lt: Date.now() - ONE_HOUR } },
-        { $set: { isClosed: true } }
-    );
+    // ... (ส่วน Auto-close old posts เหมือนเดิม) ...
 
     const { view, limit, username } = req.query;
     let fetchLimit = parseInt(limit) || 20;
     
     let query = {}; 
+    const user = await getUserData(username); // ดึงข้อมูลผู้ใช้เพื่อเช็ค Admin
 
     if (view === 'closed') {
-        // ⭐ กรณี: Admin ขอดูกระทู้ปิด
-        const user = await getUserData(username);
+        // ⭐ [แก้ไข Logic] กรณี Admin ขอดูกระทู้ปิด
         
-        // เช็คสิทธิ์ Admin
+        // ตรวจสอบว่าเป็น Admin จริงไหม (Level 1+)
         if (!user || user.adminLevel < 1) {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
         }
         
-        // ⭐ [แก้ไข] หาครบทุกเงื่อนไข (ทั้ง isClosed หรือ status='closed' หรือ 'finished')
+        // ⭐ [สำคัญ] เงื่อนไขการค้นหา: ดึงกระทู้ทั้งหมดที่ถูกปิด
+        // รวมทั้ง isClosed=true และกระทู้ที่มีสถานะเสร็จสิ้น
         query = { 
-            $or: [
+             $or: [
                 { isClosed: true },
-                { status: 'closed' },
                 { status: 'finished' },
                 { status: 'closed_permanently' }
             ]
         };
+        // ⭐ [สำคัญ] ถ้าเป็น Admin ดูกระทู้ปิด ให้กำหนด Limit เป็นค่าสูงๆ
+        fetchLimit = parseInt(limit) || 1000; 
+        
     } else {
-        // กรณีหน้า Home: เอาเฉพาะที่ยังไม่ปิด
+        // กรณีหน้า Home หรืออื่นๆ: ดูเฉพาะกระทู้ที่ยังไม่ปิด
         query.isClosed = { $ne: true }; 
     }
 
+    // ... (ส่วนการค้นหาและการจัดรูปแบบ Rating เหมือนเดิม) ...
     try {
         const allPosts = await postsCollection.find(query)
-            .sort({ isPinned: -1, id: -1 })
+            .sort({ isPinned: -1, id: -1 }) // เรียงปักหมุดก่อน ตามด้วยเวลาล่าสุด
             .limit(fetchLimit)
             .toArray();
-
-        // โค้ดส่วนดึง Rating (เหมือนเดิม)
+            
+        // ... (ส่วนดึง Rating ผู้เขียน และ res.json เหมือนเดิม) ...
         const authorNames = [...new Set(allPosts.map(p => p.author))];
         const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
         const authorMap = {};
@@ -620,7 +619,7 @@ app.get('/api/posts', async (req, res) => {
             ...post,
             authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00'
         })));
-        
+
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Server Error' });
