@@ -703,7 +703,6 @@ window.assignAdminToZone = assignAdminToZone;
 
         'btn_checkin': '📍 เช็คระยะทาง',
         'status_all': '(แสดงทั้งหมด)',
-        'btn_cancel_filter': '❌ ยกเลิก',
         'prompt_distance': 'ระบุระยะทางรอบตัวคุณที่ต้องการเห็นกระทู้ (กิโลเมตร):',
         'alert_invalid_num': 'กรุณาระบุตัวเลขที่ถูกต้อง',
         'status_locating': 'กำลังค้นหาตำแหน่ง...',
@@ -857,7 +856,6 @@ window.assignAdminToZone = assignAdminToZone;
         // ส่วนระบบเช็คอิน
         'btn_checkin': '📍 Set Distance Filter',
         'status_all': '(Show All)',
-        'btn_cancel_filter': '❌ Cancel',
         'prompt_distance': 'Enter distance radius (km):',
         'alert_invalid_num': 'Please enter a valid number.',
         'status_locating': 'Locating...',
@@ -1036,7 +1034,7 @@ if (homeBtn) {
             const t = translations[currentLang];
             document.getElementById('filter-status').innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'}`;
             document.getElementById('filter-status').style.color = "#007bff";
-            document.getElementById('clear-filter-btn').style.display = "none"; // ห้ามยกเลิก
+            //document.getElementById('clear-filter-btn').style.display = "none"; // ห้ามยกเลิก
         }
         
         loadPosts();
