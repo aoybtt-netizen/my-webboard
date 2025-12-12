@@ -2341,7 +2341,13 @@ window.addZoneConfig = addZoneConfig;
         
         // --- SOCKET LOGIC ---
 		socket.on('announcement-update', (data) => {
-			renderAnnouncement(data.announcementText);
+			const locationToSend = currentLocationData || null;
+			fetchAndRenderAnnouncement(locationToSend);
+    
+    // ถ้าคุณต้องการให้ Admin เห็นผลทันทีหลังจากบันทึก
+    if (myUsername === data.admin) {
+        // อาจจะไม่ต้องทำอะไรแล้ว เพราะ fetchAndRenderAnnouncement จะจัดการให้
+    }
 		});
 
 		socket.on('force-logout', (msg) => {
