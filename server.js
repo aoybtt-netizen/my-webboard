@@ -111,11 +111,11 @@ async function connectDB() {
 async function seedInitialData() {
     // 1. Config
     if (await configCollection.countDocuments() === 0) {
-        await configCollection.insertOne({ id: 'main_config', systemFee: 5, adminFee: 5, announcementText: '' }); // <-- [MODIFIED]
-        console.log("Initialized Config");
-    } else {
-        await configCollection.updateOne({ id: 'main_config' }, { $setOnInsert: { systemFee: 5, adminFee: 5 } }, { upsert: false });
-    }
+        await configCollection.insertOne({ id: 'main_config', systemFee: 5, adminFee: 5 });
+        console.log("Initialized Config");
+    } else {
+        await configCollection.updateOne({ id: 'main_config' }, { $setOnInsert: { systemFee: 5, adminFee: 5 } }, { upsert: false });
+    }
     // 2. Topics
     if (await topicsCollection.countDocuments() === 0) {
         await topicsCollection.insertMany([
@@ -569,57 +569,35 @@ app.post('/api/admin/topics/manage', async (req, res) => {
 
 // 11. Posts (List)
 app.get('/api/posts', async (req, res) => {
-    // ... (ส่วน Auto-close old posts เหมือนเดิม) ...
+    const ONE_HOUR = 3600000;
+    await postsCollection.updateMany(
+        { isClosed: false, isPinned: false, id: { $lt: Date.now() - ONE_HOUR } },
+        { $set: { isClosed: true } }
+    );
 
-    const { view, limit, username } = req.query;
-    let fetchLimit = parseInt(limit) || 20;
-    
-    let query = {}; 
-    const user = await getUserData(username); // ดึงข้อมูลผู้ใช้เพื่อเช็ค Admin
+    const page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-    if (view === 'closed') {
-        if (!user || user.adminLevel < 1) {
-            return res.status(403).json({ error: 'Access denied. Admin only.' });
-        }
-        
-        // ⭐ [สำคัญ] เงื่อนไขการค้นหา: ดึงกระทู้ทั้งหมดที่ถูกปิด
-        // รวมทั้ง isClosed=true และกระทู้ที่มีสถานะเสร็จสิ้น
-        query = { 
-             $or: [
-                { isClosed: true },              
-                { status: 'closed' },            
-                { status: 'finished' },          
-                { status: 'closed_permanently' } 
-            ]
-        };
-        fetchLimit = 1000;
-        
-    } else {
-        // กรณีหน้า Home หรืออื่นๆ: ดูเฉพาะกระทู้ที่ยังไม่ปิด
-        query.isClosed = { $ne: true }; 
-    }
+    const allPosts = await postsCollection.find({}).toArray();
+    const sortedPosts = allPosts.sort((a, b) => {
+        const aIsPinnedActive = a.isPinned && !a.isClosed;
+        const bIsPinnedActive = b.isPinned && !b.isClosed;
+        if (aIsPinnedActive && !bIsPinnedActive) return -1;
+        if (!aIsPinnedActive && bIsPinnedActive) return 1;
+        return b.id - a.id;
+    });
 
-    // ... (ส่วนการค้นหาและการจัดรูปแบบ Rating เหมือนเดิม) ...
-    try {
-        const allPosts = await postsCollection.find(query)
-            .sort({ isPinned: -1, id: -1 })
-            .limit(fetchLimit)
-            .toArray();
-            
-        const authorNames = [...new Set(allPosts.map(p => p.author))];
-        const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
-        const authorMap = {};
-        authors.forEach(u => authorMap[u.username] = u.rating);
+    const paginatedPosts = sortedPosts.slice(skip, skip + limit);
+    const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
+    const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
+    const authorMap = {};
+    authors.forEach(u => authorMap[u.username] = u.rating);
 
-        res.json(allPosts.map(post => ({
-            ...post,
-            authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00'
-        })));
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Server Error' });
-    }
+    res.json({
+        posts: paginatedPosts.map(post => ({ ...post, authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' })),
+        totalItems: sortedPosts.length, totalPages: Math.ceil(sortedPosts.length / limit), currentPage: page, limit
+    });
 });
 
 // 12. Single Post
@@ -628,7 +606,7 @@ app.get('/api/posts/:id', async (req, res) => {
     const post = await postsCollection.findOne({ id: id });
     if (!post) return res.status(404).json({ error: 'ไม่พบกระทู้' });
 
-    if(!post.isClosed && Date.now() - post.id > 3600000){ 
+    if(!post.isClosed && Date.now() - post.id > 3600000 && !post.isPinned){ 
         await postsCollection.updateOne({ id: id }, { $set: { isClosed: true } });
         post.isClosed = true; 
     }
@@ -642,6 +620,7 @@ app.get('/api/posts/:id/viewer-status', async (req, res) => {
     const requestBy = req.query.requestBy;
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'Post not found' });
+	if (post.isPinned) return res.json({ isOccupied: false, viewer: null });
 
     if (requestBy !== 'Admin' && requestBy !== post.author) return res.status(403).json({ error: 'Permission denied.' });
 
@@ -697,7 +676,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const user = await getUserData(author);
     const topicObj = await topicsCollection.findOne({ id: category });
     const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป"; 
-    let finalTitle = topicName;
+    let finalTitle = (author === 'Admin' && title) ? title.trim() : topicName;
 
     // ==================================================================
     // ส่วนคำนวณค่าธรรมเนียม (Hybrid: System + Zone)
@@ -771,7 +750,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const newPost = { 
         id: Date.now(), title: finalTitle, topicId: category, content, author,
         location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
-        isClosed: false, isPinned: false // ยกเลิกการปักหมุด
+        isClosed: false, isPinned: (author === 'Admin') 
     };
     await postsCollection.insertOne(newPost);
     
@@ -801,20 +780,19 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // 17. Manual Close
 app.put('/api/posts/:id/close', async (req, res) => {
-    const postId = parseInt(req.params.id); // แปลงเป็น Int เพื่อความชัวร์
+    const postId = req.params.id;
     const { requestBy } = req.body;
     
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'Post not found' });
 
-    // ตรวจสอบสิทธิ์
+    // ตรวจสอบสิทธิ์: ต้องเป็นเจ้าของโพสต์ หรือเป็น Admin Level 1 ขึ้นไป
     const requester = await getUserData(requestBy);
     if (requestBy !== post.author && requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Permission denied.' });
+        return res.status(403).json({ error: 'Permission denied. Only Author or Admin (Level 1+) can close this post.' });
     }
 
-    // ⭐ [แก้ไข] เพิ่ม isClosed: true
-    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed', isClosed: true } });
+    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed' } });
     
     const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
     await messagesCollection.insertOne(notifMsg);
@@ -1153,33 +1131,6 @@ app.get('/api/admin/get-assigned-zones', async (req, res) => {
     }
 
     return res.json({ success: true, zones: zones });
-});
-
-// 31 Set Announcement Text
-app.post('/api/admin/set-announcement', async (req, res) => {
-    const { announcementText, requestBy } = req.body;
-    
-    const requester = await getUserData(requestBy);
-    // ต้องเป็น Admin Level 1 ขึ้นไปในการตั้งค่าประกาศ
-    if (requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Admin Level 1 or higher required' });
-    }
-    
-    // อัปเดตข้อความใน Config
-    await configCollection.updateOne(
-        { id: 'main_config' }, 
-        { $set: { announcementText: announcementText } },
-        { upsert: true }
-    );
-    
-    res.json({ success: true });
-});
-
-// 32 Get Announcement Text
-app.get('/api/get-announcement', async (req, res) => {
-    const config = await configCollection.findOne({ id: 'main_config' });
-    const announcementText = config ? (config.announcementText || '') : '';
-    res.json({ announcementText });
 });
 
 // --- Socket Helpers ---

@@ -100,28 +100,6 @@
         .location-btn { background: white; border: 1px solid #28a745; color: #28a745; padding: 8px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.9em; width: 100%; justify-content: center; margin-bottom: 10px; }
         .location-btn:hover { background: #e9f7ef; }
         .location-btn.active { background: #28a745; color: white; }
-		
-		.marquee-box {
-    overflow: hidden;
-    white-space: nowrap;
-    background: #ffc107; /* Yellow/Orange background */
-    color: #333;
-    padding: 1px 10px;
-    border-radius: 8px;
-    border: 1px solid #e0a800;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    margin-bottom: 10px; /* Space above filter button */
-    font-weight: bold;
-}
-.marquee-content {
-    display: inline-block;
-    padding-left: 100%;
-    animation: marquee 15s linear infinite; /* 15s คือความเร็วเริ่มต้น */
-}
-@keyframes marquee {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(-100%, 0); }
-}
     </style>
 </head>
 <body>
@@ -178,12 +156,11 @@
     <div id="admin-panel" class="hidden">
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
     <div style="font-size:0.8em; color:gray; margin-bottom:5px;" data-i18n-key="admin_section">ส่วนของแอดมิน</div>
-    <button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
+    <button class="sidebar-btn admin-btn" onclick="openAdminPinnedModal()" data-i18n-key="admin_create_pinned">📌 สร้างกระทู้พิเศษ</button> <button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
-	<button class="sidebar-btn admin-btn" onclick="openAdminAnnouncementModal()" data-i18n-key="admin_set_announcement">📣 ตั้งค่าประกาศ</button>
 </div>
 
     <button class="sidebar-btn" style="margin-top:auto;" onclick="logout()" data-i18n-key="logout">ออกจากระบบ</button>
@@ -209,17 +186,11 @@
     
     <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
 	
-	<div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
-	
-    <div id="announcement-bar" class="marquee-box hidden">
-        <div id="announcement-text" class="marquee-content"></div>
-    </div>
-    <div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
-	
 		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
-        <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" 
-    onclick="setDistanceFilter(true)" data-i18n-key="btn_checkin">📍 Distance</button>
+        <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
+    <button id="clear-filter-btn" style="display:none; margin-left:10px; cursor:pointer; background:none; border:none; color:red; text-decoration:underline; font-size: 0.8em;" onclick="clearDistanceFilter()" data-i18n-key="btn_cancel_filter">❌ ยกเลิก</button>
+</div>
 
             <div id="post-list">
                 </div>
@@ -250,6 +221,7 @@
             <span data-i18n-key="cost_fee">ค่าธรรมเนียม:</span> <span id="modal-cost-display">0 USD</span>
         </p>
         
+        <input type="text" id="title-input" class="hidden" placeholder="⭐ ชื่อกระทู้พิเศษ (Admin)" style="margin-bottom: 15px;" data-i18n-key="placeholder_title_admin">
         
         <select id="category-select" required style="margin-bottom: 15px;"></select>
         
@@ -368,24 +340,8 @@
             <button class="sidebar-btn" onclick="document.getElementById('admin-topic-modal').classList.add('hidden');" data-i18n-key="btn_close">ปิด</button>
         </div>
     </div>
-	
-	
-	<div id="admin-announcement-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h2 data-i18n-key="admin_announcement_title">📣 ตั้งค่าข้อความประกาศ</h2>
-        <p style="color: #6c757d; font-size: 0.9em;" data-i18n-key="admin_announcement_desc">ข้อความนี้จะแสดงเป็นแถบวิ่งสำหรับผู้ใช้ทุกคน</p>
-        
-        <label for="announcement-input" style="font-weight: bold;" data-i18n-key="label_announcement_text">ข้อความประกาศ:</label>
-        <textarea id="announcement-input" rows="3" placeholder="ข้อความที่ต้องการประกาศ..." style="margin-bottom: 15px;"></textarea>
-        
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
-            <button class="sidebar-btn" onclick="document.getElementById('admin-announcement-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
-            <button class="sidebar-btn create-btn" onclick="saveAnnouncementText()" style="width:auto;" data-i18n-key="btn_save">บันทึก</button>
-        </div>
-    </div>
-</div>
     
-    <div class="version-display">v: 3.7.24 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.12 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -524,44 +480,35 @@ window.openAdminAssignModal = openAdminAssignModal;
 window.assignAdminToZone = assignAdminToZone;
 
         // ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
-    function setDistanceFilter(isManualClick = false) {
+    function setDistanceFilter() {
     const now = Date.now();
     
-    // [COOLDOWN CHECK]
+    // [COOLDOWN CHECK] ตรวจสอบว่าคลิกเร็วเกินไปหรือไม่
     if (now - lastFilterTime < FILTER_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((FILTER_COOLDOWN_MS - (now - lastFilterTime)) / 1000);
-        if (isManualClick) alert(`❌ ${remainingSeconds} sec `); 
+        alert(`❌ กรุณารอ ${remainingSeconds} วินาที ก่อนกดซ้ำ`);
         return;
     }
 
+    // [UPDATE TIMESTAMP] บันทึกเวลาที่กด
     lastFilterTime = now;
-    updateFilterButtonState();
+    updateFilterButtonState(); // เริ่มนับถอยหลังทันที
 
     const t = translations[currentLang];
-    let dist = 20; // ค่า Default
-
-    // 1. ถามระยะทาง (เฉพาะกดปุ่มเอง)
-    if (isManualClick) {
-        const input = prompt(t.prompt_distance, "20"); 
-        if (input === null) return; 
-        
-        const parsedDist = parseFloat(input);
-        if (isNaN(parsedDist) || parsedDist <= 0) {
-            alert(t.alert_invalid_num);
-            return;
-        }
-        dist = parsedDist; 
+    // 1. ถามระยะทาง
+    const input = prompt(t.prompt_distance, "50");
+    if (input === null) return;
+    
+    const dist = parseFloat(input);
+    if (isNaN(dist) || dist <= 0) {
+        alert(t.alert_invalid_num);
+        return;
     }
 
     // 2. ขอพิกัด GPS
     if (!navigator.geolocation) {
-        if(isManualClick) alert(t.error_geo_not_supported);
-        
-        // ถ้าไม่รองรับ ให้โหลดกระทู้ทั้งหมดเดี๋ยวนี้เลย
-        filterLocation = null;
-        filterMaxDistance = null;
-        loadPosts(); 
-        return; 
+        alert(t.error_geo_not_supported);
+        return;
     }
 
     document.getElementById('filter-status').innerText = t.status_locating;
@@ -573,29 +520,20 @@ window.assignAdminToZone = assignAdminToZone;
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
             };
-            filterMaxDistance = dist; 
+            filterMaxDistance = dist;
             
             // อัปเดตหน้าจอ
             const kmText = currentLang === 'th' ? 'กม.' : 'km';
             document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
             document.getElementById('filter-status').style.color = "#007bff";
             
-            // โหลดกระทู้ตามฟิลเตอร์
+            // โหลดกระทู้ใหม่ตามฟิลเตอร์
             loadPosts();
         },
         (error) => {
             console.error(error);
-            if(isManualClick) alert(`${t.error_geo_failed}: ${error.message}`);
-            
-            // ถ้าขอพิกัดล้มเหลว ให้เคลียร์ค่าและโหลดกระทู้ทั้งหมด
-            filterLocation = null;
-            filterMaxDistance = null;
-            
-            document.getElementById('filter-status').innerText = t.status_all;
-            document.getElementById('filter-status').setAttribute('data-i18n-key', 'status_all');
-            document.getElementById('filter-status').style.color = "#333";
-
-            loadPosts(); // โหลดกระทู้แบบไม่กรอง
+            alert(`${t.error_geo_failed}: ${error.message}`);
+            document.getElementById('filter-status').innerText = `(${t.error_geo_failed})`;
         },
         { enableHighAccuracy: true }
     );
@@ -643,10 +581,6 @@ window.assignAdminToZone = assignAdminToZone;
 		'admin_manage_zones': '🗺️ จัดการโซน',
         'admin_set_cost': '🏷️ กำหนดค่าธรรมเนียม',
         'admin_user_list': '👥 รายชื่อสมาชิกทั้งหมด',
-		'admin_set_announcement': '📣 ตั้งค่าประกาศ',
-		'admin_announcement_title': '📣 ตั้งค่าข้อความประกาศ',
-		'admin_announcement_desc': 'ข้อความนี้จะแสดงเป็นแถบวิ่งสำหรับผู้ใช้ทุกคน',
-		'label_announcement_text': 'ข้อความประกาศ:',
         'page_title': '📌 รายการ',
         'title_create': 'สร้างกระทู้ใหม่',
         'cost_fee': 'ค่าธรรมเนียม:',
@@ -793,10 +727,6 @@ window.assignAdminToZone = assignAdminToZone;
 		'admin_manage_zones': '🗺️ Manage Zones',
         'admin_set_cost': '🏷️ Set Fee',
         'admin_user_list': '👥 All Members List',
-		'admin_set_announcement': '📣 Set Announcement',
-		'admin_announcement_title': '📣 Set Announcement Text',
-		'admin_announcement_desc': 'This message will be displayed as a scrolling bar for all users.',
-		'label_announcement_text': 'Announcement Text:',
 		'btn_add_topic': 'Add Topic',
         'btn_close': 'Close',
 		
@@ -1095,13 +1025,16 @@ if (homeBtn) {
     // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
     checkNewTransaction();
     loadUnreadStatus(); 
-	loadAnnouncement();
+
     // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
     await updateUserInfo(); 
     
+    // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
+    // แล้วค่อยโหลดกระทู้ ปุ่มจะถูกสร้างเงื่อนไขได้ถูกต้อง
+    loadPosts(); 
+    
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
     updateFilterButtonState();
-	setDistanceFilter(false);
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
@@ -1110,7 +1043,7 @@ if (homeBtn) {
         localStorage.setItem('preferredCurrency', currency);
         updateUserInfo(); // รีเฟรชยอดเงินทันที
         
-        // ใช้ Translation Key และแทนที่ [CURRENCY]
+        // ⭐ [FIXED] ใช้ Translation Key และแทนที่ [CURRENCY]
         const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
 
         showNotification(translatedMsg, 'fas fa-money-bill');
@@ -1674,7 +1607,7 @@ function getTransactionDetail(t) {
         document.getElementById('post-next-btn').onclick = () => changePostPage(1);
 
     } else if (view === 'closed') {
-        // ใช้ translation key สำหรับหน้า Admin Closed
+        // ⭐ [FIXED] ใช้ translation key สำหรับหน้า Admin Closed
         title.innerText = translations[currentLang]['admin_closed_posts'];
         title.style.color = "#6c757d";
         loadPosts(); // โหลดรายการปกติ (กระทู้ปิดทั้งหมด)
@@ -1691,10 +1624,8 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
             try {
-				if (currentView !== 'home') {
-                    postStatusMap = {};
-                }
-                const res = await fetch(`/api/posts?view=${currentView}&limit=1000&username=${myUsername}&t=${Date.now()}`); 
+                // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
+                const res = await fetch('/api/posts?limit=1000');
                 const responseData = await res.json();
                 
                 // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
@@ -1708,13 +1639,14 @@ function getTransactionDetail(t) {
                 // นำข้อมูลลงในตัวแปร postStatusMap เพื่อให้ renderPostList ทำงานได้
                 postsArray.forEach(p => {
                     if (postStatusMap[p.id]) {
-                        postStatusMap[p.id].data = p;
+                        postStatusMap[p.id].data = p; // อัปเดตข้อมูลเดิม
                     } else {
-                        postStatusMap[p.id] = { data: p, isOccupied: false };
+                        postStatusMap[p.id] = { data: p, isOccupied: false }; // สร้างใหม่
                     }
                 });
 
-                renderPostList();
+                // เรียกฟังก์ชันแสดงผลหลัก (ที่มีอยู่แล้วด้านล่าง)
+                renderPostList(); 
                 
             } catch (err) {
                 console.error("Error loading posts:", err);
@@ -1853,172 +1785,176 @@ async function showMyClosedPosts(page = 1) {
             const paginationDiv = document.getElementById('post-pagination');
             list.innerHTML = '';
             
-            // ใช้ข้อมูลจาก postStatusMap ที่ถูกอัปเดตจาก loadPosts()
             let postsArray = Object.values(postStatusMap).map(item => item);
-            let filteredPosts = [];
+            let filteredPosts = postsArray;
 
-            // กรองตาม View ที่เลือกไว้
-            function renderPostList() {
-    const list = document.getElementById('post-list');
-    const paginationDiv = document.getElementById('post-pagination');
-    list.innerHTML = '';
-    
-    // ใช้ข้อมูลจาก postStatusMap ที่ถูกอัปเดตจาก loadPosts()
-    let postsArray = Object.values(postStatusMap).map(item => item);
-    let filteredPosts = [];
-
-    // กรองตาม View ที่เลือกไว้
-    if (currentView === 'home') { // ⭐ แก้ไขจาก 'iif' เป็น 'if'
-        // หน้าแรก: เอาเฉพาะกระทู้ที่ยัง "ไม่ปิด"
-        filteredPosts = postsArray.filter(item => !item.data.isClosed);
-    } else if (currentView === 'closed') {
-        // สำหรับ Admin: ใช้ข้อมูลทั้งหมดที่โหลดมา (ซึ่งถูกกรองเป็นกระทู้ปิดมาจาก Server แล้ว)
-        filteredPosts = postsArray;
-        
-    } else if (currentView === 'my_active') {
-        filteredPosts = postsArray.filter(item => !item.data.isClosed && item.data.author === myUsername);
-    } else if (currentView === 'my_closed') {
-        filteredPosts = postsArray.filter(item => item.data.isClosed && item.data.author === myUsername);
-    }
-    
-    // ... (ส่วนการเรียงลำดับ การทำ Pagination และการ Loop แสดงผลต่อจากนี้เหมือนเดิม) ...
-    
-    filteredPosts.sort((a, b) => {
-        const postA = a.data;
-        const postB = b.data;
-
-        // 1. Pinned มาก่อน
-        const aIsPinned = postA.isPinned && !postA.isClosed;
-        const bIsPinned = postB.isPinned && !postB.isClosed;
-        if (aIsPinned && !bIsPinned) return -1;
-        if (!aIsPinned && bIsPinned) return 1;
-
-        // 2. เรียงตาม ID (เวลา) ล่าสุดขึ้นก่อน
-        return postB.id - postA.id; 
+            if (currentView === 'home') {
+                filteredPosts = postsArray.filter(item => !item.data.isClosed);
+            } else if (currentView === 'closed') {
+                filteredPosts = postsArray.filter(item => item.data.isClosed);
+            }
+			
+			if (filterLocation && filterMaxDistance) {
+    filteredPosts = filteredPosts.filter(item => {
+        const post = item.data;
+        // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
+        if (!post.location || !post.location.lat || !post.location.lng) {
+            return false; 
+        }
+        // คำนวณระยะทาง
+        const dist = getDistanceFromLatLonInKm(
+            filterLocation.lat, filterLocation.lng,
+            post.location.lat, post.location.lng
+        );
+        // คืนค่า True ถ้าอยู่ในระยะ
+        return dist <= filterMaxDistance;
     });
-
-    if (filteredPosts.length === 0) {
-         list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีรายการกระทู้</h3></div>`;
-         paginationDiv.style.display = 'none'; 
-         return;
-    }
-    
-    // ... (โค้ดส่วน Pagination ที่เหลือทั้งหมดเหมือนเดิม) ...
-    const totalItems = filteredPosts.length;
-    const totalPages = Math.ceil(totalItems / POST_LIMIT);
-    
-    if (currentPostPage < 1) currentPostPage = 1;
-    if (currentPostPage > totalPages) currentPostPage = totalPages;
-
-    const startIndex = (currentPostPage - 1) * POST_LIMIT;
-    const endIndex = startIndex + POST_LIMIT;
-    const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
-
-    paginatedPosts.forEach(item => {
-        addPostToDOM(item.data, item.isOccupied);
-    });
-
-    if (totalItems > POST_LIMIT) {
-        paginationDiv.style.display = 'block';
-        document.getElementById('post-page-info').innerText = `${currentPostPage} / ${totalPages} (${totalItems})`;
-        
-        document.getElementById('post-prev-btn').disabled = (currentPostPage === 1);
-        document.getElementById('post-next-btn').disabled = (currentPostPage === totalPages);
-    } else {
-        paginationDiv.style.display = 'none'; 
-    }
 }
+            
+            filteredPosts.sort((a, b) => {
+                const postA = a.data;
+                const postB = b.data;
+
+                // 1. เช็ค Pinned Post ก่อน (ให้ Pinned อยู่บนสุดเสมอ)
+                const aIsPinned = postA.isPinned && !postA.isClosed;
+				const bIsPinned = postB.isPinned && !postB.isClosed;
+                
+                if (aIsPinned && !bIsPinned) return -1; // a เป็น Pinned -> เอาขึ้นก่อน
+                if (!aIsPinned && bIsPinned) return 1;  // b เป็น Pinned -> เอาขึ้นก่อน
+
+                // 2. เช็คสถานะจบงาน/ปิด (ให้งานที่จบแล้วอยู่ล่าง)
+                const aDone = postA.status === 'finished' || postA.isClosed;
+                const bDone = postB.status === 'finished' || postB.isClosed;
+                
+                if (aDone && !bDone) return 1; 
+                if (!aDone && bDone) return -1; 
+
+                // 3. สุดท้ายเรียงตามเวลา (ใหม่สุดขึ้นก่อน)
+                return postB.id - postA.id; 
+            });
+
+            if (filteredPosts.length === 0) {
+                 list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีกระทู้ในหมวดหมู่นี้</h3></div>`;
+                 paginationDiv.style.display = 'none'; 
+                 return;
+            }
+            
+            const totalItems = filteredPosts.length;
+            const totalPages = Math.ceil(totalItems / POST_LIMIT);
+            
+            if (currentPostPage < 1) currentPostPage = 1;
+            if (currentPostPage > totalPages) currentPostPage = totalPages;
+
+            const startIndex = (currentPostPage - 1) * POST_LIMIT;
+            const endIndex = startIndex + POST_LIMIT;
+            const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
+
+            paginatedPosts.forEach(item => {
+                addPostToDOM(item.data, item.isOccupied);
+            });
+
+            if (totalItems > POST_LIMIT) {
+                paginationDiv.style.display = 'block';
+                document.getElementById('post-page-info').innerText = `${currentPostPage} / ${totalPages} (${totalItems})`;
+                
+                document.getElementById('post-prev-btn').disabled = (currentPostPage === 1);
+                document.getElementById('post-next-btn').disabled = (currentPostPage === totalPages);
+            } else {
+                paginationDiv.style.display = 'none'; 
+            }
+        }
 
         // ---addPostToDOM (With Winner Display) ---
         function addPostToDOM(post, isOccupied) {
-    const list = document.getElementById('post-list');
-    
-    let deleteBtn = myUsername === 'Admin' 
-        ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
-        : '';
-
-    let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
-    let occupiedText = isOccupied 
-        ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(💬)</span>`
-        : '';
-
-    let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
-    
-    //  ส่วนแสดงผู้ชนะ
-    let winnerHtml = '';
-    if (post.acceptedViewer) {
-        winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
-    }
-
-    let baseStyle = '';
-    let icon = '';
-    
-    //สำหรับ Pinned Post
-    let pinnedText = '';
-    if (post.isPinned) {
-        baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; // สีม่วง
-        icon = '📌'; 
-        pinnedText = ' (กระทู้ปักหมุด)';
-    }
-
-    if (post.status === 'finished' || post.status === 'closed_permanently') {
-        baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
-        icon = '🔒'; 
-    } else if (post.isClosed) {
-        baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
-        icon = '🔒';
-    } else if (!post.isPinned) {
-        baseStyle = 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
-        icon = '✅'; 
-    }
-
-    let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) 
-        ? "alert('⛔ Closed.')" 
-        : `location.href='post.html?id=${post.id}'`;
-
-    let locationHtml = '';
-    if (post.location && post.location.lat && post.location.lng) {
-        const lat = post.location.lat.toFixed(4);
-        const lng = post.location.lng.toFixed(4);
-        
-        let displayText = post.location.name; // ค่าเริ่มต้น: แสดงชื่อสถานที่
-        
-        // ตรวจสอบว่าผู้ใช้เช็คอินหรือยัง (ถ้ามี filterLocation ให้คำนวณระยะ)
-        if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
-            const dist = getDistanceFromLatLonInKm(
-                filterLocation.lat, filterLocation.lng,
-                post.location.lat, post.location.lng
-            );
-            displayText = `${dist.toFixed(1)} km`; 
-        }
-
-        // เปลี่ยนจาก <a> เป็น <span> เพื่อไม่ให้คลิกไปที่แผนที่
-        locationHtml = `
-            <span style="color:#007bff; font-size:0.85em; margin-left:10px;" 
-                title="${currentLang === 'th' ? 'Location' : 'Coordinates'}: ${lat}, ${lng}">
-                📍 ${displayText} 
-            </span>
-        `;
-    }
-
-    // ✅ แทรก winnerHtml ลงใน title
-    list.insertAdjacentHTML('beforeend', `
-        <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
-            <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
-                <br>
-                <small>
-                    ${post.author} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
-                </small>
-                ${locationHtml}
-                ${occupiedText}
-            </div>
+            const list = document.getElementById('post-list');
             
-            <div style="display:flex; align-items:center;">
-                ${deleteBtn}
-            </div>
-        </div>
-    `);
-}
+            let deleteBtn = myUsername === 'Admin' 
+                ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
+                : '';
+
+            let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
+            let occupiedText = isOccupied 
+                ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(กำลังคุย 💬)</span>`
+                : '';
+
+            let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
+			
+            // ✅ [FIXED] ส่วนแสดงผู้ชนะ
+			let winnerHtml = '';
+			if (post.acceptedViewer) {
+			    winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
+			}
+
+            let baseStyle = '';
+            let icon = '';
+			
+			//สำหรับ Pinned Post
+            let pinnedText = '';
+            if (post.isPinned) {
+                baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; // สีม่วง
+                icon = '📌'; 
+                pinnedText = ' (กระทู้ปักหมุด)';
+            }
+
+            if (post.status === 'finished' || post.status === 'closed_permanently') {
+                baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
+                icon = '🔒'; 
+            } else if (post.isClosed) {
+                baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
+                icon = '🔒';
+            } else if (!post.isPinned) {
+                baseStyle = 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
+                icon = '✅'; 
+            }
+
+            let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) 
+				? "alert('⛔ กระทู้นี้ถูกปิดแล้ว')" 
+				: `location.href='post.html?id=${post.id}'`;
+
+            let locationHtml = '';
+            if (post.location && post.location.lat && post.location.lng) {
+                const lat = post.location.lat.toFixed(4);
+                const lng = post.location.lng.toFixed(4);
+                
+                let displayText = post.location.name; // ค่าเริ่มต้น: แสดงชื่อสถานที่
+                
+                // ตรวจสอบว่าผู้ใช้เช็คอินหรือยัง (ถ้ามี filterLocation ให้คำนวณระยะ)
+                if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
+                    const dist = getDistanceFromLatLonInKm(
+                        filterLocation.lat, filterLocation.lng,
+                        post.location.lat, post.location.lng
+                    );
+                    displayText = `${dist.toFixed(1)} km`; 
+                }
+
+                const mapsLink = `https://www.google.com/maps?q=${post.location.lat},${post.location.lng}`;
+                
+                locationHtml = `
+                    <a href="${mapsLink}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none; color:#007bff; font-size:0.85em; margin-left:10px;" 
+                        title="สถานที่: ${post.location.name}">
+                        📍 ${displayText} 
+                    </a>
+                `;
+            }
+
+            // ✅ แทรก winnerHtml ลงใน title
+            list.insertAdjacentHTML('beforeend', `
+                <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
+                    <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
+                        <br>
+                        <small>
+                            ${post.author} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
+                        </small>
+                        ${locationHtml}
+                        ${occupiedText}
+                    </div>
+                    
+                    <div style="display:flex; align-items:center;">
+                        ${deleteBtn}
+                    </div>
+                </div>
+            `);
+        }
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
@@ -2027,7 +1963,7 @@ async function openAdminZoneModal() {
     }
     
     // 2. Original L3 logic:
-    if (myAdminLevel < 3) return alert('❌ For Admin Level 3');
+    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
     
     document.getElementById('admin-zone-modal').classList.remove('hidden');
     
@@ -2416,6 +2352,9 @@ window.addZoneConfig = addZoneConfig;
     document.getElementById('create-modal-title').innerText = translations[currentLang]['title_create'];
     
     // ซ่อนช่องกรอก Title (สำหรับกระทู้ปกติ)
+    const titleInput = document.getElementById('title-input');
+    titleInput.classList.add('hidden'); 
+    titleInput.value = '';
     loadTopics();
     // เรียก setLanguage เพื่อแปลทุกองค์ประกอบใน modal อีกครั้ง 
     setLanguage(currentLang); 
@@ -2435,79 +2374,39 @@ window.addZoneConfig = addZoneConfig;
 
 // ----------------------------------------------------
 
-// [NEW FUNCTION] โหลดข้อความประกาศจาก Server
-async function loadAnnouncement() {
-    try {
-        const res = await fetch('/api/get-announcement');
-        if (res.status === 200) {
-            const data = await res.json();
-            const text = data.announcementText || '';
-            const bar = document.getElementById('announcement-bar');
-            const content = document.getElementById('announcement-text');
-            
-            if (text.trim() === '') {
-                bar.classList.add('hidden');
-            } else {
-                content.innerText = text;
-                bar.classList.remove('hidden');
-                // ปรับความเร็ว marquee ตามความยาวข้อความ (10 วินาที + 1 วินาที ต่อ 50 ตัวอักษร)
-                const speed = 10 + Math.floor(text.length / 50) * 1;
-                content.style.animationDuration = `${speed}s`;
-            }
-        }
-    } catch (e) {
-        console.error('Failed to load announcement:', e);
-    }
+// ฟังก์ชัน openAdminPinnedModal()
+function openAdminPinnedModal() {
+    // ตรวจสอบสิทธิ์ Admin
+    if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');
+    
+    // ซ่อนค่าธรรมเนียม
+    document.getElementById('modal-cost-row').classList.add('hidden');
+
+    // กำหนด Title ของ Modal (ใช้ key: 'admin_create_pinned')
+    document.getElementById('create-modal-title').innerText = translations[currentLang]['admin_create_pinned'];
+
+    // แสดงช่องกรอก Title (สำหรับ Admin Pinned Post)
+    const titleInput = document.getElementById('title-input');
+    titleInput.classList.remove('hidden'); 
+    titleInput.value = ''; 
+    // กำหนด placeholder ให้ถูกต้อง
+    titleInput.placeholder = translations[currentLang]['placeholder_title_admin']; 
+    
+    // เรียก setLanguage เพื่อแปลทุกองค์ประกอบใน modal อีกครั้ง
+    setLanguage(currentLang); 
+    
+    // รีเซ็ต Location และอัปเดตข้อความปุ่มอีกครั้ง
+    currentLocationData = null;
+    document.getElementById('geo-btn').classList.remove('active');
+    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
+    document.getElementById('location-display').innerHTML = '';
+    
+    refreshModalPostCost(null); // แสดงค่าธรรมเนียมเริ่มต้น (ไม่ใส่ location)
+    
+    // แสดง Modal
+    document.getElementById('create-modal').classList.remove('hidden'); 
+    toggleSidebar();
 }
-window.loadAnnouncement = loadAnnouncement;
-
-// [NEW FUNCTION] เปิด Modal ตั้งค่าประกาศ
-async function openAdminAnnouncementModal() {
-    if (myAdminLevel < 1) return alert(translations[currentLang]['admin_section']);
-    
-    // 1. ดึงข้อความปัจจุบันมาแสดง
-    const res = await fetch('/api/get-announcement');
-    const data = await res.json();
-    const currentText = data.announcementText || '';
-    
-    document.getElementById('announcement-input').value = currentText;
-    
-    // 2. แสดง Modal
-    document.getElementById('admin-announcement-modal').classList.remove('hidden');
-    // ต้องเรียก setLanguage ซ้ำเพื่อให้ข้อความใน Modal ถูกแปล
-    setLanguage(currentLang);
-}
-window.openAdminAnnouncementModal = openAdminAnnouncementModal;
-
-// [NEW FUNCTION] บันทึกข้อความประกาศ
-async function saveAnnouncementText() {
-    if (myAdminLevel < 1) return;
-    
-    const text = document.getElementById('announcement-input').value.trim();
-    
-    try {
-        const res = await fetch('/api/admin/set-announcement', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ announcementText: text, requestBy: myUsername })
-        });
-        
-        const data = await res.json();
-        
-        if (data.success) {
-            alert('✅ บันทึกข้อความประกาศสำเร็จ!');
-            document.getElementById('admin-announcement-modal').classList.add('hidden');
-            loadAnnouncement(); // อัปเดตแถบประกาศทันที
-        } else {
-            alert(`❌ บันทึกไม่สำเร็จ: ${data.error}`);
-        }
-    } catch (e) {
-        alert('❌ Error connecting to server');
-    }
-}
-window.saveAnnouncementText = saveAnnouncementText;
-
-
 
         function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); } 
         
@@ -2595,6 +2494,7 @@ window.saveAnnouncementText = saveAnnouncementText;
 	
 
 			async function createPost() {
+    const titleInput = document.getElementById('title-input');
     const content = document.getElementById('content').value.trim();
     const imageFile = document.getElementById('post-image').files[0];
     const category = document.getElementById('category-select').value;
@@ -2613,8 +2513,8 @@ window.saveAnnouncementText = saveAnnouncementText;
     
     // เช็ค Logic การส่ง Title
     if (myUsername === 'Admin') {
-        const titleInputEl = document.getElementById('admin-post-title-input'); 
-		titleVal = titleInputEl ? titleInputEl.value.trim() : "";
+        // Admin ต้องเอาค่าจาก Input
+        titleVal = titleInput.value.trim();
         if (!titleVal) return alert("Admin กรุณาระบุชื่อกระทู้พิเศษ");
     } else {
         // User ทั่วไป ส่งค่าว่างไป (Server จะจัดการตั้งชื่อตามหมวดหมู่เอง)
@@ -2641,6 +2541,7 @@ window.saveAnnouncementText = saveAnnouncementText;
         alert(d.error); 
     } else { 
         closeCreateModal(); 
+        titleInput.value = ''; 
         document.getElementById('content').value = ''; 
         document.getElementById('post-image').value = '';
         
