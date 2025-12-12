@@ -372,7 +372,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.22 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.21 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2440,7 +2440,9 @@ window.addZoneConfig = addZoneConfig;
                 
                 // ถ้ารับ data.post กลับมาด้วยให้อัปเดตเลย (เผื่อมี acceptedViewer)
                 if (data.post) postStatusMap[postId].data = data.post;
-                renderPostList();
+                
+                // หรือถ้าไม่มี ให้โหลดใหม่ทั้งหมดเพื่อความชัวร์ (แนะนำ)
+                loadPosts(); 
             } else {
                  loadPosts(); // กรณีเป็นโพสต์ใหม่ที่ยังไม่เคยโหลด
             }
@@ -2600,6 +2602,9 @@ window.addZoneConfig = addZoneConfig;
     if (modalCostDisplay) {
         modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ กำลังค้นหาเขตพื้นที่และคำนวณค่าธรรมเนียม...</span>';
     }
+
+    // โหลดหัวข้อ (เหมือนเดิม)
+    fetchTopicsForCreate(null, null);
 
     document.getElementById('create-modal').classList.remove('hidden');
     
