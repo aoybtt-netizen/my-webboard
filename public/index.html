@@ -647,7 +647,7 @@ window.assignAdminToZone = assignAdminToZone;
         'geo_searching': '⏳ กำลังค้นหาตำแหน่ง...',
         'geo_success_name': '✅ ระบุตำแหน่งเรียบร้อย',
         'geo_success_coord': '✅ ระบุพิกัดเรียบร้อย',
-        'geo_display_name': '📍 คุณอยู่ที่:',
+        'geo_display_name': '📍',
         'geo_display_coord': '📍 พิกัด:',
         'geo_error_permission': '🚫 ถูกปฏิเสธสิทธิ์: กรุณาไปที่การตั้งค่าเบราว์เซอร์และอนุญาตให้เว็บไซต์นี้เข้าถึงตำแหน่ง',
         'geo_error_general': '🚨 ไม่สามารถระบุตำแหน่งได้',
@@ -813,7 +813,7 @@ window.assignAdminToZone = assignAdminToZone;
         'geo_searching': '⏳ Searching location...',
         'geo_success_name': '✅ Location found',
         'geo_success_coord': '✅ Coordinates retrieved',
-        'geo_display_name': '📍 Your location is:',
+        'geo_display_name': '📍',
         'geo_display_coord': '📍 Coordinates:',
         'geo_error_permission': '🚫 Permission denied: Please allow access to location in browser settings.',
         'geo_error_general': '🚨 Cannot retrieve location',
@@ -1064,7 +1064,7 @@ if (homeBtn) {
             filterLocation = userPrimaryLocation;
             // ตั้งค่าสถานะกรองให้แสดงว่าใช้พิกัดหลักแล้ว
             const t = translations[currentLang];
-            document.getElementById('filter-status').innerText = `📍 ${t['geo_display_name'] || 'ตำแหน่งหลัก'}`;
+            document.getElementById('filter-status').innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'}`;
             document.getElementById('filter-status').style.color = "#007bff";
             document.getElementById('clear-filter-btn').style.display = "none"; // ห้ามยกเลิก
         }
@@ -2440,9 +2440,7 @@ window.addZoneConfig = addZoneConfig;
                 
                 // ถ้ารับ data.post กลับมาด้วยให้อัปเดตเลย (เผื่อมี acceptedViewer)
                 if (data.post) postStatusMap[postId].data = data.post;
-                
-                // หรือถ้าไม่มี ให้โหลดใหม่ทั้งหมดเพื่อความชัวร์ (แนะนำ)
-                loadPosts(); 
+                renderPostList();
             } else {
                  loadPosts(); // กรณีเป็นโพสต์ใหม่ที่ยังไม่เคยโหลด
             }
@@ -2602,9 +2600,6 @@ window.addZoneConfig = addZoneConfig;
     if (modalCostDisplay) {
         modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ กำลังค้นหาเขตพื้นที่และคำนวณค่าธรรมเนียม...</span>';
     }
-
-    // โหลดหัวข้อ (เหมือนเดิม)
-    fetchTopicsForCreate(null, null);
 
     document.getElementById('create-modal').classList.remove('hidden');
     
