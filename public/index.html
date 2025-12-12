@@ -372,7 +372,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.17 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.18 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2794,10 +2794,10 @@ async function savePostCost() {
 window.savePostCost = savePostCost;
         
         async function openAdminTopicModal() {
-            if (myUsername !== ADMIN_USERNAME) {
-                alert('คุณไม่มีสิทธิ์เข้าถึงส่วน Admin');
-                return;
-            }
+            if (myAdminLevel < 1) { 
+				alert('คุณไม่มีสิทธิ์เข้าถึงส่วน Admin (Level 1+)');
+				return;
+			}
             document.getElementById('admin-topic-modal').classList.remove('hidden');
             await fetchAndRenderAdminTopics();
         }
@@ -2853,10 +2853,14 @@ window.savePostCost = savePostCost;
 
     try {
         const response = await fetch('/api/admin/topics/manage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'add', name: name })
-        });
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        action: 'add', 
+        name: name,
+        requestBy: myUsername // ⭐ เพิ่มบรรทัดนี้
+    })
+});
 
         const result = await response.json();
         
@@ -2885,10 +2889,14 @@ window.savePostCost = savePostCost;
 
     try {
         const response = await fetch('/api/admin/topics/manage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete', id: id })
-        });
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        action: 'delete', 
+        id: id,
+        requestBy: myUsername // ⭐ เพิ่มบรรทัดนี้
+    })
+});
 
         const result = await response.json();
         
