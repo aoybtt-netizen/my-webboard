@@ -220,7 +220,6 @@
 		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
         <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
-    <button id="clear-filter-btn" style="display:none; margin-left:10px; cursor:pointer; background:none; border:none; color:red; text-decoration:underline; font-size: 0.8em;" onclick="clearDistanceFilter()" data-i18n-key="btn_cancel_filter">❌ ยกเลิก</button>
 </div>
 
             <div id="post-list">
@@ -563,7 +562,6 @@ window.assignAdminToZone = assignAdminToZone;
             const kmText = currentLang === 'th' ? 'กม.' : 'km';
             document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
             document.getElementById('filter-status').style.color = "#dc3545"; // สีแดง/ส้ม แสดงว่ากรองอยู่
-            document.getElementById('clear-filter-btn').style.display = "inline-block"; // แสดงปุ่มยกเลิก
             
             // โหลดประกาศและกระทู้ใหม่ตามพิกัด/ฟิลเตอร์
             fetchAndRenderAnnouncement(tempLocation);
@@ -577,35 +575,7 @@ window.assignAdminToZone = assignAdminToZone;
         { enableHighAccuracy: true }
     );
 }
-
-        // ฟังก์ชันยกเลิกการกรอง
-        function clearDistanceFilter() {
-    const t = translations[currentLang];
-    
-    // ล้างค่ากรองระยะทาง
-    filterMaxDistance = null; 
-    
-    // โหลด Primary Location มาใช้เป็น filterLocation (ถ้ามี)
-    const savedLocation = localStorage.getItem('userPrimaryLocation');
-    if (savedLocation) {
-        userPrimaryLocation = JSON.parse(savedLocation);
-        filterLocation = userPrimaryLocation;
-        // อัปเดตสถานะให้เป็น Primary Location
-        document.getElementById('filter-status').innerText = `📍 ${t['geo_display_name'] || 'ตำแหน่งหลัก'}`;
-        document.getElementById('filter-status').style.color = "#007bff";
-        document.getElementById('clear-filter-btn').style.display = "none";
-    } else {
-        // ถ้าไม่มี Primary Location เลย
-        filterLocation = null;
-        document.getElementById('filter-status').innerText = t.status_all;
-        document.getElementById('filter-status').style.color = "#333";
-        document.getElementById('clear-filter-btn').style.display = "none";
-    }
-    
-    // โหลดกระทู้ใหม่
-    loadPosts(); 
-}
-		
+	
         
         // --- NEW: Global Configuration ---
 		const DEFAULT_CURRENCY = 'THB'; // สกุลเงินที่ต้องการแสดง
