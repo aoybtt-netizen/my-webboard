@@ -1037,7 +1037,7 @@ if (homeBtn) {
             const statusPrefix = translations[currentLang]['status_dist_prefix'] || '(ระยะ';
             
             // ตั้งค่าสถานะกรองให้แสดงว่าใช้พิกัดหลัก + กรอง 10 กม.
-            document.getElementById('filter-status').innerText = `📍 ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
+            document.getElementById('filter-status').innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
             document.getElementById('filter-status').style.color = "#dc3545"; // สีแดง/ส้ม แสดงว่ามีการกรองอยู่
 
             // (ปุ่ม clear-filter-btn ถูกลบไปในขั้นตอนที่แล้ว จึงไม่ต้องสนใจบรรทัดนี้อีก)
