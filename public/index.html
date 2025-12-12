@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.23 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.24 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1030,11 +1030,23 @@ if (homeBtn) {
         // โหลดกระทู้โดยใช้พิกัดหลักเป็น filterLocation ชั่วคราว
         if (userPrimaryLocation) {
             filterLocation = userPrimaryLocation;
-            // ตั้งค่าสถานะกรองให้แสดงว่าใช้พิกัดหลักแล้ว
-            const t = translations[currentLang];
-            document.getElementById('filter-status').innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'}`;
+            const DEFAULT_DISTANCE_KM = 10;
+            filterMaxDistance = DEFAULT_DISTANCE_KM;
+            
+            const kmText = currentLang === 'th' ? 'กม.)' : 'km)'; // ใช้วงเล็บปิดที่นี่
+            const statusPrefix = translations[currentLang]['status_dist_prefix'] || '(ระยะ';
+            
+            // ตั้งค่าสถานะกรองให้แสดงว่าใช้พิกัดหลัก + กรอง 10 กม.
+            document.getElementById('filter-status').innerText = `📍 ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
+            document.getElementById('filter-status').style.color = "#dc3545"; // สีแดง/ส้ม แสดงว่ามีการกรองอยู่
+
+            // (ปุ่ม clear-filter-btn ถูกลบไปในขั้นตอนที่แล้ว จึงไม่ต้องสนใจบรรทัดนี้อีก)
+            
+        } else {
+            filterLocation = null;
+            filterMaxDistance = null;
+            document.getElementById('filter-status').innerText = t.status_all;
             document.getElementById('filter-status').style.color = "#007bff";
-            //document.getElementById('clear-filter-btn').style.display = "none"; // ห้ามยกเลิก
         }
         
         loadPosts();
