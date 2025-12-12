@@ -1012,6 +1012,82 @@ if (homeBtn) {
             localStorage.setItem('myUsername', name);
             startApp(name);
         }
+		
+		
+		// Announcement Functions ---
+		// ฟังก์ชันแสดงผลบนหน้าจอ
+function renderAnnouncement(text) {
+    const display = document.getElementById('announcement-display');
+    if (text && text.trim() !== '') {
+        display.innerText = text.trim();
+        display.style.display = 'block';
+    } else {
+        display.style.display = 'none';
+    }
+}
+
+async function fetchAndRenderAnnouncement() {
+    try {
+        const res = await fetch('/api/admin/get-announcement');
+        if (res.status === 200) {
+            const data = await res.json();
+            renderAnnouncement(data.announcement);
+        }
+    } catch (e) {
+        console.error('Initial fetch of announcement failed.');
+    }
+}
+
+async function openAdminAnnouncementModal() {
+    if (myAdminLevel < 1) return alert('❌ ต้องเป็น Admin Level 1 ขึ้นไปเท่านั้น');
+    
+    // 1. ดึงข้อความประกาศปัจจุบันมาแสดง
+    let currentText = '';
+    try {
+        const res = await fetch('/api/admin/get-announcement');
+        const data = await res.json();
+        currentText = data.announcement || '';
+    } catch (e) {
+        console.error('Failed to fetch announcement:', e);
+    }
+    
+    // 2. ใส่ค่าลงใน Modal
+    document.getElementById('announcement-input').value = currentText;
+    
+    // 3. แสดง Modal
+    document.getElementById('admin-announcement-modal').classList.remove('hidden');
+    toggleSidebar();
+}
+window.openAdminAnnouncementModal = openAdminAnnouncementModal; // ผูกกับ Window
+
+async function saveAdminAnnouncement() {
+    if (myAdminLevel < 1) return;
+    
+    const announcementText = document.getElementById('announcement-input').value.trim();
+    
+    try {
+        const res = await fetch('/api/admin/set-announcement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ announcementText, requestBy: myUsername })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('✅ ตั้งค่าประกาศเรียบร้อย');
+            document.getElementById('admin-announcement-modal').classList.add('hidden');
+            renderAnnouncement(announcementText); // อัปเดต UI ทันที
+        } else {
+            alert(`❌ ตั้งค่าประกาศไม่สำเร็จ: ${data.error}`);
+        }
+    } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ Server');
+    }
+}
+window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Window
+
+
 
         async function startApp(name) {
     myUsername = name;
@@ -2227,69 +2303,6 @@ window.deleteZone = deleteZone;
     }
 }
 window.addZoneConfig = addZoneConfig;
-
-		// --- NEW: Announcement Functions ---
-async function openAdminAnnouncementModal() {
-    if (myAdminLevel < 1) return alert('❌ ต้องเป็น Admin Level 1 ขึ้นไปเท่านั้น');
-    
-    // 1. ดึงข้อความประกาศปัจจุบันมาแสดง
-    let currentText = '';
-    try {
-        const res = await fetch('/api/admin/get-announcement');
-        const data = await res.json();
-        currentText = data.announcement || '';
-    } catch (e) {
-        console.error('Failed to fetch announcement:', e);
-    }
-    
-    // 2. ใส่ค่าลงใน Modal
-    document.getElementById('announcement-input').value = currentText;
-    
-    // 3. แสดง Modal
-    document.getElementById('admin-announcement-modal').classList.remove('hidden');
-    toggleSidebar();
-}
-window.openAdminAnnouncementModal = openAdminAnnouncementModal; // ผูกกับ Window
-
-async function saveAdminAnnouncement() {
-    if (myAdminLevel < 1) return;
-    
-    const announcementText = document.getElementById('announcement-input').value.trim();
-    
-    try {
-        const res = await fetch('/api/admin/set-announcement', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ announcementText, requestBy: myUsername })
-        });
-
-        const data = await res.json();
-        
-        if (data.success) {
-            alert('✅ ตั้งค่าประกาศเรียบร้อย');
-            document.getElementById('admin-announcement-modal').classList.add('hidden');
-            renderAnnouncement(announcementText); // อัปเดต UI ทันที
-        } else {
-            alert(`❌ ตั้งค่าประกาศไม่สำเร็จ: ${data.error}`);
-        }
-    } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ Server');
-    }
-}
-window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Window
-
-// ฟังก์ชันแสดงผลบนหน้าจอ
-function renderAnnouncement(text) {
-    const display = document.getElementById('announcement-display');
-    if (text && text.trim() !== '') {
-        display.innerText = text.trim();
-        display.style.display = 'block';
-    } else {
-        display.style.display = 'none';
-    }
-}
-
-
         
         // --- SOCKET LOGIC ---
 		socket.on('announcement-update', (data) => {
