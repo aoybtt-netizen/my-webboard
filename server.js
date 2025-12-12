@@ -309,6 +309,20 @@ app.get('/api/user-info', async (req, res) => {
     const user = await getUserData(username);
     if (!user) return res.status(404).json({ error: 'User not found' }); // เพิ่มกันเหนียว
     if (user.isBanned) return res.status(403).json({ error: '⛔ บัญชีของคุณถูกระงับการใช้งาน' });
+	
+	if (location) {
+        try {
+            const parsedLoc = JSON.parse(location);
+            if (parsedLoc.lat && parsedLoc.lng) {
+                await usersCollection.updateOne(
+                    { username: username }, 
+                    { $set: { lastLocation: parsedLoc, lastSeen: new Date() } }
+                );
+            }
+        } catch (e) {
+            console.error("Error parsing location for user update:", e);
+        }
+    }
     
     // 2. คำนวณค่าธรรมเนียม (แบบใหม่: รองรับโซน)
     let postCostData;
@@ -337,21 +351,74 @@ app.get('/api/user-info', async (req, res) => {
 
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
-    // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 1 ขึ้นไป (ไม่ใช่เช็คแค่ชื่อ "Admin")
+    // 1. ตรวจสอบสิทธิ์
     const requester = await getUserData(req.query.requestBy);
     if (!requester || requester.adminLevel < 1) {
         return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
     }
     
-    const users = await usersCollection.find({}).toArray();
+    // ดึง User ทั้งหมดมาก่อน (ในอนาคตถ้า User เยอะควรใช้ geospatial query ของ MongoDB)
+    const allUsers = await usersCollection.find({}).toArray();
+
+    // กรณี Admin Level 3 (Super Admin) -> เห็นทุกคน
+    if (requester.adminLevel >= 3) {
+        return res.json(allUsers.map(u => ({ 
+            name: u.username, 
+            coins: u.coins, 
+            rating: u.rating, 
+            isBanned: u.isBanned,
+            adminLevel: u.adminLevel || 0,
+            // ส่งข้อมูลระยะห่างไปด้วยก็ได้ถ้าต้องการ (Optional)
+        })));
+    }
+
+    // กรณี Admin Level 1-2 -> เห็นเฉพาะคนในโซนที่ตัวเองดูแล
+    // 2.1 ดึงโซนที่ Admin คนนี้ดูแลอยู่
+    const myZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
     
-    // 2. ส่งข้อมูลกลับไป (เพิ่ม field adminLevel)
-    res.json(users.map(u => ({ 
+    // ถ้าไม่มีโซนที่ดูแลเลย -> ไม่เห็นใครเลย (นอกจาก Admin ด้วยกัน หรือตัวเอง)
+    if (myZones.length === 0) {
+        return res.json([]);
+    }
+
+    // 2.2 ดึงโซนทั้งหมดเพื่อมาเทียบว่า User อยู่ใกล้โซนไหนที่สุด
+    const allZones = await zonesCollection.find({}).toArray();
+
+    // 2.3 กรอง User
+    const filteredUsers = allUsers.filter(u => {
+        // แอดมินเห็นแอดมินด้วยกันเสมอ (เพื่อไม่ให้ list ว่างเกินไป หรือจะปิดก็ได้)
+        if (u.adminLevel > 0) return true;
+
+        // ถ้า User ไม่มีพิกัดล่าสุด -> ไม่เห็น (หรือจะให้เห็นเป็น 'Unlocated' ก็ได้ แล้วแต่ Policy)
+        if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
+
+        // หาว่า User คนนี้อยู่ใกล้โซนไหนที่สุด
+        let closestZone = null;
+        let minDistance = Infinity;
+
+        allZones.forEach(zone => {
+            const dist = getDistanceFromLatLonInKm(u.lastLocation.lat, u.lastLocation.lng, zone.lat, zone.lng);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestZone = zone;
+            }
+        });
+
+        // ถ้าโซนที่ใกล้ที่สุด เป็นโซนที่ Admin คนนี้ดูแล -> ให้ผ่าน
+        if (closestZone) {
+            const isMyZone = myZones.some(mz => mz.id === closestZone.id);
+            return isMyZone;
+        }
+
+        return false;
+    });
+
+    res.json(filteredUsers.map(u => ({ 
         name: u.username, 
         coins: u.coins, 
         rating: u.rating, 
         isBanned: u.isBanned,
-        adminLevel: u.adminLevel || 0  // ⭐ สำคัญมาก: ต้องส่งค่านี้ ไม่งั้นปุ่มถอนสิทธิ์ไม่ขึ้น
+        adminLevel: u.adminLevel || 0
     })));
 });
 

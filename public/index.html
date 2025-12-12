@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.24 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.25 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1022,6 +1022,7 @@ if (homeBtn) {
     if (savedLocation) {
         userPrimaryLocation = JSON.parse(savedLocation);
     }
+	const statusElem = document.getElementById('filter-status');
     
     // 2. ถ้ามีพิกัดแล้ว หรือเป็น Admin ให้โหลดเลย
     if (userPrimaryLocation || myUsername === 'Admin') {
@@ -1035,6 +1036,11 @@ if (homeBtn) {
             
             const kmText = currentLang === 'th' ? 'กม.)' : 'km)'; // ใช้วงเล็บปิดที่นี่
             const statusPrefix = translations[currentLang]['status_dist_prefix'] || '(ระยะ';
+			const t = translations[currentLang];
+			if (statusElem) {
+                statusElem.innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
+                statusElem.style.color = "#dc3545";
+            }
             
             // ตั้งค่าสถานะกรองให้แสดงว่าใช้พิกัดหลัก + กรอง 10 กม.
             document.getElementById('filter-status').innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
@@ -1045,13 +1051,28 @@ if (homeBtn) {
         } else {
             filterLocation = null;
             filterMaxDistance = null;
-            document.getElementById('filter-status').innerText = t.status_all;
-            document.getElementById('filter-status').style.color = "#007bff";
+            if (statusElem) {
+                statusElem.innerText = t.status_all;
+                statusElem.style.color = "#007bff";
+            }
         }
         
         loadPosts();
         if (callback) callback();
         return;
+		
+		const t = translations[currentLang];
+    if (confirm(t['prompt_set_primary_location'] || 'คุณเข้าสู่ระบบครั้งแรก กรุณาระบุตำแหน่งปัจจุบันเพื่อดูข้อมูลพื้นที่')) {
+        // ใช้ getLocation (แบบไม่มี callback) เพื่อให้มันบันทึกพิกัดและเรียก loadPosts ให้
+        // **เราจะแก้ไข getLocation ให้บันทึกเป็น Primary Location**
+        getLocation(true); // true = isPrimaryCheckin
+    } else {
+        // ถ้าผู้ใช้ปฏิเสธ ให้โหลดค่ากลาง (ไม่มีพิกัด)
+        alert('คุณเลือกที่จะไม่แชร์ตำแหน่ง ระบบจะแสดงข้อมูลกลาง');
+        fetchAndRenderAnnouncement(null);
+        loadPosts();
+        if (callback) callback();
+    }
     }
 
     // 3. ถ้าไม่มีพิกัด (เข้าครั้งแรก) และไม่ใช่ Admin -> บังคับเช็คอิน
@@ -1247,8 +1268,15 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     if (!myUsername) return;
 
     try {
-        // 1. ดึงข้อมูลจาก Server พร้อมส่งค่าสกุลเงินที่เลือก
-        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}`);
+        let locationQuery = '';
+        const savedLoc = localStorage.getItem('userPrimaryLocation');
+        if (savedLoc) {
+             // ส่งไปแบบ JSON String เหมือนที่ refreshModalPostCost ทำ
+             locationQuery = `&location=${encodeURIComponent(savedLoc)}`;
+        }
+
+        // 1. ดึงข้อมูลจาก Server พร้อมส่งค่าสกุลเงินและพิกัด (ถ้ามี)
+        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}`);
         const data = await response.json();
 
         if (data.error) {
