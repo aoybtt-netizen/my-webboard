@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.26 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.28 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1023,38 +1023,34 @@ if (homeBtn) {
 };
 
 	async function checkPrimaryLocationAndLoad(callback) {
-    // 1. โหลดพิกัดหลัก
+    // 1. โหลดพิกัดหลักจาก LocalStorage
     const savedLocation = localStorage.getItem('userPrimaryLocation');
     if (savedLocation) {
         userPrimaryLocation = JSON.parse(savedLocation);
     }
-	const statusElem = document.getElementById('filter-status');
-    
+    const statusElem = document.getElementById('filter-status');
+    const t = translations[currentLang]; // ประกาศตัวแปร t ไว้ตรงนี้ เพื่อให้ใช้ได้ทั่วทั้งฟังก์ชัน
+
     // 2. ถ้ามีพิกัดแล้ว หรือเป็น Admin ให้โหลดเลย
     if (userPrimaryLocation || myUsername === 'Admin') {
         // โหลดประกาศตามพิกัดหลัก
         fetchAndRenderAnnouncement(userPrimaryLocation);
+        
         // โหลดกระทู้โดยใช้พิกัดหลักเป็น filterLocation ชั่วคราว
         if (userPrimaryLocation) {
             filterLocation = userPrimaryLocation;
             const DEFAULT_DISTANCE_KM = 10;
             filterMaxDistance = DEFAULT_DISTANCE_KM;
             
-            const kmText = currentLang === 'th' ? 'กม.)' : 'km)'; // ใช้วงเล็บปิดที่นี่
-            const statusPrefix = translations[currentLang]['status_dist_prefix'] || '(ระยะ';
-			const t = translations[currentLang];
-			if (statusElem) {
-                statusElem.innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
-                statusElem.style.color = "#dc3545";
-            }
-            
-            // ตั้งค่าสถานะกรองให้แสดงว่าใช้พิกัดหลัก + กรอง 10 กม.
-            document.getElementById('filter-status').innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
-            document.getElementById('filter-status').style.color = "#dc3545"; // สีแดง/ส้ม แสดงว่ามีการกรองอยู่
+            const kmText = currentLang === 'th' ? 'กม.)' : 'km)'; 
+            const statusPrefix = t['status_dist_prefix'] || '(ระยะ';
 
-            // (ปุ่ม clear-filter-btn ถูกลบไปในขั้นตอนที่แล้ว จึงไม่ต้องสนใจบรรทัดนี้อีก)
-            
+            if (statusElem) {
+                statusElem.innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
+                statusElem.style.color = "#dc3545"; // สีแดง/ส้ม แสดงว่ามีการกรองอยู่
+            }
         } else {
+            // กรณีเป็น Admin แต่ไม่มีพิกัด (หรือ userPrimaryLocation หาย)
             filterLocation = null;
             filterMaxDistance = null;
             if (statusElem) {
@@ -1065,40 +1061,28 @@ if (homeBtn) {
         
         loadPosts();
         if (callback) callback();
-        return;
-		
-		const t = translations[currentLang];
-    if (confirm(t['prompt_set_primary_location'] || 'คุณเข้าสู่ระบบครั้งแรก กรุณาระบุตำแหน่งปัจจุบันเพื่อดูข้อมูลพื้นที่')) {
-        // ใช้ getLocation (แบบไม่มี callback) เพื่อให้มันบันทึกพิกัดและเรียก loadPosts ให้
-        // **เราจะแก้ไข getLocation ให้บันทึกเป็น Primary Location**
-        getLocation(true); // true = isPrimaryCheckin
-    } else {
-        // ถ้าผู้ใช้ปฏิเสธ ให้โหลดค่ากลาง (ไม่มีพิกัด)
-        alert('คุณเลือกที่จะไม่แชร์ตำแหน่ง ระบบจะแสดงข้อมูลกลาง');
-        fetchAndRenderAnnouncement(null);
-        loadPosts();
-        if (callback) callback();
-    }
+        return; // จบการทำงานฟังก์ชันตรงนี้ ถ้าเข้าเงื่อนไขข้อ 2
     }
 
     // 3. ถ้าไม่มีพิกัด (เข้าครั้งแรก) และไม่ใช่ Admin -> บังคับเช็คอิน
-    const t = translations[currentLang];
-    if (confirm(t['prompt_set_primary_location'] || 'คุณเข้าสู่ระบบครั้งแรก กรุณาระบุตำแหน่งปัจจุบันเพื่อดูข้อมูลพื้นที่')) {
-        // ใช้ getLocation (แบบไม่มี callback) เพื่อให้มันบันทึกพิกัดและเรียก loadPosts ให้
-        // **เราจะแก้ไข getLocation ให้บันทึกเป็น Primary Location**
-        getLocation(true); // true = isPrimaryCheckin
-    } else {
-        // ถ้าผู้ใช้ปฏิเสธ ให้โหลดค่ากลาง (ไม่มีพิกัด)
-        alert('คุณเลือกที่จะไม่แชร์ตำแหน่ง ระบบจะแสดงข้อมูลกลาง');
-        fetchAndRenderAnnouncement(null);
-        loadPosts();
-        if (callback) callback();
-    }
+    // ใช้ setTimeout เล็กน้อยเพื่อให้มั่นใจว่าหน้าเว็บโหลดพร้อมก่อนแสดง confirm
+    setTimeout(() => {
+        if (confirm(t['prompt_set_primary_location'] || 'คุณเข้าสู่ระบบครั้งแรก กรุณาระบุตำแหน่งปัจจุบันเพื่อดูข้อมูลพื้นที่')) {
+            // ใช้ getLocation (แบบไม่มี callback) เพื่อให้มันบันทึกพิกัดและเรียก loadPosts ให้
+            getLocation(true); // true = isPrimaryCheckin
+        } else {
+            // ถ้าผู้ใช้ปฏิเสธ ให้โหลดค่ากลาง (ไม่มีพิกัด)
+            alert('คุณเลือกที่จะไม่แชร์ตำแหน่ง ระบบจะแสดงข้อมูลกลาง');
+            fetchAndRenderAnnouncement(null);
+            loadPosts();
+            if (callback) callback();
+        }
+    }, 500);
 }
-        
-        document.getElementById('private-chat-input')?.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') sendPrivateMessage();
-        });
+
+document.getElementById('private-chat-input')?.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') sendPrivateMessage();
+});
 
         function login() {
             const name = document.getElementById('username-input').value.trim();
