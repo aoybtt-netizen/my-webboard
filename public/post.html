@@ -859,18 +859,17 @@
             
         });
 
-        socket.on('access-granted', (post) => {
+        socket.on('access-granted', ({ post, isAdmin }) => {
             // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
             currentPost = post; 
             
             // ดึงภาษาเพื่อใช้แสดงข้อความ
             const lang = localStorage.getItem('preferredLanguage') || 'th';
             const t = postTranslations[lang] || postTranslations['th'];
-            if (myUsername === post.author || myUsername === 'Admin') {
-                myCurrentLocation = null; // ไม่เก็บตำแหน่งตัวเอง
-                
-                document.body.style.display = 'block';
-                renderPost(post);
+            if (myUsername === post.author || myUsername === 'Admin' || isAdmin) { 
+			myCurrentLocation = null;
+			document.body.style.display = 'block';
+			renderPost(post, isAdmin);
                 
                 // แสดงแผนที่จุดรับงาน (ไม่ต้องโยงเส้นหาตัวเอง)
                 displayMap(post.location);
@@ -1280,7 +1279,7 @@ socket.on('viewer-left-location', (data) => {
             if (oldAlert) oldAlert.remove();
 
             // --- LOGIC การแสดงปุ่มและการล็อค ---
-            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin';
+            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin' || isAdmin;
 
             // ซ่อนปุ่มทั้งหมดก่อน
             finishBtn.style.display = 'none';

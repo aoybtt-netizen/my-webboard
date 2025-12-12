@@ -1186,8 +1186,8 @@ io.on('connection', (socket) => {
 
         // ถ้าเป็น เจ้าของ หรือ Admin -> เข้าได้เสมอ (ทะลุทุกเงื่อนไข)
         if (isOwner || isAdmin) {
-            socket.join(`post-${postId}`);
-            socket.emit('access-granted', post);
+		socket.join(`post-${postId}`);
+		socket.emit('access-granted', { post, isAdmin });
             
             // ส่งข้อมูลพิกัดให้ดู (ถ้ามี)
             if (viewerGeolocation[postId]) {
