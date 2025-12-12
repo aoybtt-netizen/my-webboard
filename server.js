@@ -542,29 +542,117 @@ app.post('/api/admin/set-rating', async (req, res) => {
 
 // 10. Topics
 app.get('/api/topics', async (req, res) => {
-    const topics = await topicsCollection.find({ id: { $ne: 'general' } }).toArray();
-    res.json(topics);
+    // 1. รับค่า Params
+    let adminUsername = req.query.username; 
+    const { lat, lng } = req.query;
+
+    try {
+        // 2. ถ้ามีการส่งพิกัดมา (จากหน้าสร้างกระทู้) ให้หา Admin ที่ดูแลโซนนั้น
+        if (lat && lng) {
+            const loc = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            // ใช้ Logic เดิมที่มีอยู่แล้วในการหา Responsible Admin
+            const responsible = await findResponsibleAdmin(loc); 
+            if (responsible && responsible.username) {
+                adminUsername = responsible.username; // เปลี่ยนเป้าหมายเป็น Admin คนนี้
+                console.log(`📍 Topic Request from [${lat}, ${lng}] -> Assigned to: ${adminUsername}`);
+            }
+        }
+
+        let topics = [];
+        let fallbackTopics = [];
+
+        // 3. ค้นหาหัวข้อของ Admin คนนั้น (หรือคนที่ระบุมา)
+        if (adminUsername) {
+            topics = await topicsCollection.find({ adminUsername: adminUsername }).toArray();
+        }
+
+        // 4. Fallback: ถ้าไม่เจอหัวข้อ หรือไม่ได้ระบุ Admin ให้ใช้ "ค่ากลาง"
+        if (topics.length === 0) {
+            fallbackTopics = await topicsCollection.find({ 
+                $or: [
+                    { adminUsername: { $exists: false } }, 
+                    { adminUsername: 'Admin' }, // หรือ Level 3 Default
+                    { isDefault: true } 
+                ] 
+            }).toArray();
+
+            // กรองเอาเฉพาะที่ไม่มี adminUsername ซ้ำซ้อน (ถ้า Logic ซับซ้อน)
+            // แต่เบื้องต้นใช้ fallbackTopics ได้เลยถ้า topics หลักว่างเปล่า
+            topics = fallbackTopics;
+        }
+
+        res.json(topics);
+
+    } catch (err) {
+        console.error('Error fetching topics:', err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
+
 app.get('/api/admin/topics', async (req, res) => {
     const topics = await topicsCollection.find({}).toArray();
     res.json(topics);
 });
+
 app.post('/api/admin/topics/manage', async (req, res) => {
-    const { action, id, name } = req.body;
+    const { action, id, name, requestBy } = req.body; // รับ requestBy (username) มาด้วย
+    
+    // 1. ตรวจสอบสิทธิ์
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
+    }
+    
+    const adminUsername = requestBy; // กำหนดให้หัวข้อผูกกับ username ของแอดมินที่ทำรายการ
+    
     if (action === 'add') {
-        await topicsCollection.insertOne({ id: 'topic_' + Date.now(), name: name });
-        const topics = await topicsCollection.find({}).toArray();
-        return res.json({ success: true, message: 'เพิ่มหัวข้อสำเร็จ', topics });
+        if (!name || name.trim() === '') return res.status(400).json({ error: 'Topic name is required.' });
+        
+        const newTopic = {
+            id: Date.now().toString(), // ใช้ timestamp เป็น ID
+            name: name,
+            adminUsername: adminUsername, // ⭐ [NEW] ผูกกับแอดมินที่สร้าง
+            created: new Date()
+        };
+        await topicsCollection.insertOne(newTopic);
+        // ไม่ต้องใช้ io.emit ทั่วไป เพราะตอนนี้เป็นหัวข้อเฉพาะบุคคลแล้ว
+        return res.json({ success: true, topic: newTopic });
     }
-    if (action === 'delete') {
-        const result = await topicsCollection.deleteOne({ id: id });
-        if (result.deletedCount > 0) {
-             const topics = await topicsCollection.find({}).toArray();
-             return res.json({ success: true, message: 'ลบหัวข้อสำเร็จ', topics });
+    
+    if (action === 'edit') {
+        if (!id || !name) return res.status(400).json({ error: 'Missing topic ID or name.' });
+        
+        // ต้องแก้ไขหัวข้อที่ผูกกับ adminUsername ของตนเองเท่านั้น
+        const result = await topicsCollection.updateOne(
+            { id: id, adminUsername: adminUsername }, 
+            { $set: { name: name } }
+        );
+        
+        if (result.matchedCount > 0) {
+            // io.emit('topic-update', { id: id, newName: name }); // ยกเลิกการ emit ทั่วไป
+            return res.json({ success: true, message: 'แก้ไขหัวข้อสำเร็จ' });
+        } else {
+            // อาจจะไม่พบ หรือแอดมินพยายามแก้ไขหัวข้อของคนอื่น
+            return res.status(404).json({ success: false, error: 'ไม่พบหัวข้อหรือคุณไม่มีสิทธิ์แก้ไข' });
         }
-        return res.status(404).json({ success: false, message: 'ไม่พบหัวข้อ' });
     }
-    return res.status(400).json({ success: false, message: 'Invalid Action' });
+    
+    if (action === 'delete') {
+        if (!id) return res.status(400).json({ error: 'Missing topic ID.' });
+
+        // ต้องลบหัวข้อที่ผูกกับ adminUsername ของตนเองเท่านั้น
+        const result = await topicsCollection.deleteOne({ id: id, adminUsername: adminUsername });
+
+        if (result.deletedCount > 0) {
+            // io.emit('topic-delete', { id: id }); // ยกเลิกการ emit ทั่วไป
+            return res.json({ success: true, message: 'ลบหัวข้อสำเร็จ' });
+        } else {
+             // อาจจะไม่พบ หรือแอดมินพยายามลบหัวข้อของคนอื่น
+            return res.status(404).json({ success: false, error: 'ไม่พบหัวข้อหรือคุณไม่มีสิทธิ์ลบ' });
+        }
+    }
+    
+    return res.status(400).json({ success: false, error: 'Invalid action' });
 });
 
 // 10.1  Admin Announcement Endpoint (Save & Update) ---

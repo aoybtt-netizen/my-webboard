@@ -372,7 +372,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.16 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.17 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2466,35 +2466,66 @@ window.addZoneConfig = addZoneConfig;
                 modal.classList.add('hidden');
             }, 5000);
         }
+		
+		async function fetchTopicsForCreate(lat = null, lng = null) {
+        const select = document.getElementById('category-select');
+        // แสดงสถานะกำลังโหลดใน Dropdown
+        select.innerHTML = '<option>⏳ กำลังโหลดหัวข้อ...</option>';
+        select.disabled = true;
+
+        try {
+            let url = '/api/topics';
+            // ถ้ามีพิกัด ให้แนบไปกับ URL
+            if (lat && lng) {
+                url += `?lat=${lat}&lng=${lng}`;
+            }
+
+            const res = await fetch(url);
+            const topics = await res.json();
+
+            select.innerHTML = ''; // ล้างค่าเดิม
+            
+            if (topics.length === 0) {
+                const opt = document.createElement('option');
+                opt.text = "ไม่มีหมวดหมู่";
+                select.add(opt);
+            } else {
+                topics.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id; // ส่ง ID ไปบันทึก
+                    opt.text = t.name;
+                    select.add(opt);
+                });
+            }
+        } catch (err) {
+            console.error('Error loading topics:', err);
+            select.innerHTML = '<option>❌ โหลดล้มเหลว</option>';
+        } finally {
+            select.disabled = false;
+        }
+    }
 
         // --- CRUD and ADMIN FUNCTIONS ---
-    function openCreateModal() { 
-    // แสดงค่าธรรมเนียม
-    document.getElementById('modal-cost-row').classList.remove('hidden');
-    
-    // กำหนด Title ของ Modal
-    document.getElementById('create-modal-title').innerText = translations[currentLang]['title_create'];
-    
-    // ซ่อนช่องกรอก Title (สำหรับกระทู้ปกติ)
-    const titleInput = document.getElementById('title-input');
-    titleInput.classList.add('hidden'); 
-    titleInput.value = '';
-    loadTopics();
-    // เรียก setLanguage เพื่อแปลทุกองค์ประกอบใน modal อีกครั้ง 
-    setLanguage(currentLang); 
-    
-    // รีเซ็ต Location และอัปเดตข้อความปุ่มอีกครั้ง (เพื่อให้ข้อความเป็นภาษาที่ถูกต้องหลัง setLanguage)
-    currentLocationData = null;
-    document.getElementById('geo-btn').classList.remove('active');
-    document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
-    document.getElementById('location-display').innerHTML = '';
-	
-	refreshModalPostCost(null);
-    
-    // แสดง Modal
-    document.getElementById('create-modal').classList.remove('hidden'); 
-    toggleSidebar(); 
-}
+    function openCreateModal() {
+        if (!myUsername) return document.getElementById('login-modal').classList.remove('hidden');
+        
+        // Reset ค่าต่างๆ
+        document.getElementById('title-input').value = '';
+        document.getElementById('content').value = '';
+        document.getElementById('post-image').value = '';
+        document.getElementById('location-display').innerHTML = '';
+        
+        // Reset ปุ่ม Location
+        const btn = document.getElementById('geo-btn');
+        btn.classList.remove('active');
+        btn.innerHTML = translations[currentLang]['geo_btn'];
+        
+        // ⭐ โหลดหัวข้อ "ค่ากลาง" ไปก่อน (เพราะยังไม่รู้ตำแหน่ง)
+        fetchTopicsForCreate(null, null);
+
+        document.getElementById('create-modal').classList.remove('hidden');
+        toggleSidebar();
+    }
 
 // ----------------------------------------------------
 
@@ -2551,7 +2582,7 @@ function openAdminPinnedModal() {
     navigator.geolocation.getCurrentPosition(async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        
+        await fetchTopicsForCreate(lat, lng);
         try {
             // ⭐ [MODIFIED] ใช้ currentLang สำหรับ Nominatim เพื่อผลลัพธ์ที่เป็นภาษาถูกต้อง
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${currentLang}`); 
