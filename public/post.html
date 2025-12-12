@@ -846,21 +846,16 @@
         let currentPost = null; // เก็บข้อมูลกระทู้ปัจจุบัน
         let currentViewerLocation = null;
 		function savePostLocationAsPrimary(location) {
-			if (!location) return;
-
-				try {
-					if (typeof location.lat !== 'undefined' && typeof location.lng !== 'undefined') {
-						const newPrimaryLocation = { 
-						lat: location.lat, 
-						lng: location.lng, 
-						name: location.name || 'Post Location'
-						};
-						localStorage.setItem('userPrimaryLocation', JSON.stringify(newPrimaryLocation));
-					}
-    } catch (e) {
-        console.error("Error saving primary location:", e);
-    }
-}
+            if (location && location.lat && location.lng) {
+                const newPrimaryLocation = { 
+                    lat: location.lat, 
+                    lng: location.lng, 
+                    name: location.name || 'Post Location'
+                };
+                // บันทึกพิกัดกระทู้ลง Local Storage
+                localStorage.setItem('userPrimaryLocation', JSON.stringify(newPrimaryLocation));
+            }
+        }
 
         if (!myUsername || !postId) {
             showNotification('ไม่พบข้อมูลผู้ใช้หรือกระทู้ กรุณาเข้าสู่ระบบใหม่', 'fas fa-exclamation-triangle', 4000); 
@@ -878,9 +873,6 @@
         socket.on('access-granted', ({ post, isAdmin }) => {
             // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
             currentPost = post; 
-			if (post && post.location) {
-				savePostLocationAsPrimary(post.location);
-				}
             savePostLocationAsPrimary(post.location);
             // ดึงภาษาเพื่อใช้แสดงข้อความ
             const lang = localStorage.getItem('preferredLanguage') || 'th';
