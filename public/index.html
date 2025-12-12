@@ -372,7 +372,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.20 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.21 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -381,6 +381,7 @@
 		let myAdminLevel = 0;
 		let filterLocation = null;      // เก็บพิกัดคนดู
         let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
+		let userPrimaryLocation = null;
 		// Cooldown สำหรับการป้องกัน Rapid Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -547,19 +548,26 @@ window.assignAdminToZone = assignAdminToZone;
     
     navigator.geolocation.getCurrentPosition(
         (position) => {
-            filterLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
+            // ⭐ [MODIFIED] เก็บพิกัดที่ได้เป็น Primary Location ใหม่
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const tempLocation = { lat, lng, name: `Filtered Location` }; // ใช้ชื่อชั่วคราว
+            
+            userPrimaryLocation = tempLocation;
+            localStorage.setItem('userPrimaryLocation', JSON.stringify(tempLocation));
+            
+            filterLocation = tempLocation; // ใช้สำหรับการกรอง
             filterMaxDistance = dist;
             
             // อัปเดตหน้าจอ
             const kmText = currentLang === 'th' ? 'กม.' : 'km';
             document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
-            document.getElementById('filter-status').style.color = "#007bff";
+            document.getElementById('filter-status').style.color = "#dc3545"; // สีแดง/ส้ม แสดงว่ากรองอยู่
+            document.getElementById('clear-filter-btn').style.display = "inline-block"; // แสดงปุ่มยกเลิก
             
-            // โหลดกระทู้ใหม่ตามฟิลเตอร์
-            loadPosts();
+            // โหลดประกาศและกระทู้ใหม่ตามพิกัด/ฟิลเตอร์
+            fetchAndRenderAnnouncement(tempLocation);
+            loadPosts(); 
         },
         (error) => {
             console.error(error);
@@ -572,19 +580,31 @@ window.assignAdminToZone = assignAdminToZone;
 
         // ฟังก์ชันยกเลิกการกรอง
         function clearDistanceFilter() {
-            const t = translations[currentLang];
-            
-            filterLocation = null;
-            filterMaxDistance = null;
-            
-            const statusSpan = document.getElementById('filter-status');
-            statusSpan.innerText = t.status_all;
-            statusSpan.setAttribute('data-i18n-key', 'status_all'); // ใส่ key กลับคืน
-            
-            statusSpan.style.color = "#333";
-            document.getElementById('clear-filter-btn').style.display = "none";
-            loadPosts();
-        }
+    const t = translations[currentLang];
+    
+    // ล้างค่ากรองระยะทาง
+    filterMaxDistance = null; 
+    
+    // โหลด Primary Location มาใช้เป็น filterLocation (ถ้ามี)
+    const savedLocation = localStorage.getItem('userPrimaryLocation');
+    if (savedLocation) {
+        userPrimaryLocation = JSON.parse(savedLocation);
+        filterLocation = userPrimaryLocation;
+        // อัปเดตสถานะให้เป็น Primary Location
+        document.getElementById('filter-status').innerText = `📍 ${t['geo_display_name'] || 'ตำแหน่งหลัก'}`;
+        document.getElementById('filter-status').style.color = "#007bff";
+        document.getElementById('clear-filter-btn').style.display = "none";
+    } else {
+        // ถ้าไม่มี Primary Location เลย
+        filterLocation = null;
+        document.getElementById('filter-status').innerText = t.status_all;
+        document.getElementById('filter-status').style.color = "#333";
+        document.getElementById('clear-filter-btn').style.display = "none";
+    }
+    
+    // โหลดกระทู้ใหม่
+    loadPosts(); 
+}
 		
         
         // --- NEW: Global Configuration ---
@@ -1027,6 +1047,47 @@ if (homeBtn) {
     if (savedName) startApp(savedName);
     else document.getElementById('login-modal').classList.remove('hidden');
 };
+
+	async function checkPrimaryLocationAndLoad(callback) {
+    // 1. โหลดพิกัดหลัก
+    const savedLocation = localStorage.getItem('userPrimaryLocation');
+    if (savedLocation) {
+        userPrimaryLocation = JSON.parse(savedLocation);
+    }
+    
+    // 2. ถ้ามีพิกัดแล้ว หรือเป็น Admin ให้โหลดเลย
+    if (userPrimaryLocation || myUsername === 'Admin') {
+        // โหลดประกาศตามพิกัดหลัก
+        fetchAndRenderAnnouncement(userPrimaryLocation);
+        // โหลดกระทู้โดยใช้พิกัดหลักเป็น filterLocation ชั่วคราว
+        if (userPrimaryLocation) {
+            filterLocation = userPrimaryLocation;
+            // ตั้งค่าสถานะกรองให้แสดงว่าใช้พิกัดหลักแล้ว
+            const t = translations[currentLang];
+            document.getElementById('filter-status').innerText = `📍 ${t['geo_display_name'] || 'ตำแหน่งหลัก'}`;
+            document.getElementById('filter-status').style.color = "#007bff";
+            document.getElementById('clear-filter-btn').style.display = "none"; // ห้ามยกเลิก
+        }
+        
+        loadPosts();
+        if (callback) callback();
+        return;
+    }
+
+    // 3. ถ้าไม่มีพิกัด (เข้าครั้งแรก) และไม่ใช่ Admin -> บังคับเช็คอิน
+    const t = translations[currentLang];
+    if (confirm(t['prompt_set_primary_location'] || 'คุณเข้าสู่ระบบครั้งแรก กรุณาระบุตำแหน่งปัจจุบันเพื่อดูข้อมูลพื้นที่')) {
+        // ใช้ getLocation (แบบไม่มี callback) เพื่อให้มันบันทึกพิกัดและเรียก loadPosts ให้
+        // **เราจะแก้ไข getLocation ให้บันทึกเป็น Primary Location**
+        getLocation(true); // true = isPrimaryCheckin
+    } else {
+        // ถ้าผู้ใช้ปฏิเสธ ให้โหลดค่ากลาง (ไม่มีพิกัด)
+        alert('คุณเลือกที่จะไม่แชร์ตำแหน่ง ระบบจะแสดงข้อมูลกลาง');
+        fetchAndRenderAnnouncement(null);
+        loadPosts();
+        if (callback) callback();
+    }
+}
         
         document.getElementById('private-chat-input')?.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') sendPrivateMessage();
@@ -1157,6 +1218,7 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
     // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
     await updateUserInfo(); 
+	checkPrimaryLocationAndLoad();
 	fetchAndRenderAnnouncement();
     
     // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
@@ -2591,7 +2653,7 @@ function openAdminPinnedModal() {
 
         function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); } 
         
-        function getLocation() {
+        function getLocation(isPrimaryCheckin = false) {
     const btn = document.getElementById('geo-btn');
     const display = document.getElementById('location-display');
     const t = translations[currentLang]; // ตัวย่อสำหรับข้อความแปล
@@ -2618,6 +2680,14 @@ function openAdminPinnedModal() {
             if(data.address.road) placeName = `${data.address.road}, ${placeName}`;
 
             currentLocationData = { lat, lng, name: placeName };
+			if (isPrimaryCheckin) {
+            userPrimaryLocation = currentLocationData;
+            localStorage.setItem('userPrimaryLocation', JSON.stringify(currentLocationData));
+            // และใช้พิกัดนี้ในการโหลดกระทู้ใหม่
+            filterLocation = userPrimaryLocation;
+            loadPosts(); 
+        }
+			fetchTopicsForCreate(lat, lng);
 			fetchAndRenderAnnouncement(currentLocationData);
             
             btn.innerHTML = t['geo_success_name']; // ⭐ แปลสถานะสำเร็จ (มีชื่อสถานที่)
