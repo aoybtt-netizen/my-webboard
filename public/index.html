@@ -122,7 +122,7 @@
     display: inline-block;
     padding-left: 100%; /* เริ่มต้นให้ข้อความอยู่ขวาจนสุดขอบ */
     white-space: nowrap;
-    animation: marquee-scroll 15s linear infinite; /* 25s คือความเร็วในการเลื่อน */
+    animation: marquee-scroll 25s linear infinite; /* 25s คือความเร็วในการเลื่อน */
 	padding-right: 20px;
 }
 
@@ -740,7 +740,6 @@ window.assignAdminToZone = assignAdminToZone;
         'total_fee_display': 'รวมค่าธรรมเนียมทั้งหมด:',
         'btn_save': 'บันทึก',
         'alert_invalid_fee': '❌ กรุณาใส่ค่าธรรมเนียมเป็นตัวเลขที่ไม่ติดลบ',
-		'announcement_prefix': '📢 ประกาศ:',
 		'modal_announcement_desc': 'ประกาศนี้จะแสดงเป็นแถบวิ่งเหนือรายการกระทู้',
 		'label_announcement_text': 'ข้อความประกาศ:',
 		'placeholder_announcement_input': 'ข้อความที่ต้องการประกาศ (เว้นว่างเพื่อลบประกาศ)',
@@ -894,7 +893,6 @@ window.assignAdminToZone = assignAdminToZone;
         'total_fee_display': 'Total Fee:',
         'btn_save': 'Save',
         'alert_invalid_fee': '❌ Please enter valid non-negative fee values.',
-		'announcement_prefix': '📢 Announcement',
 		'modal_announcement_desc': 'This announcement will be displayed as a marquee above the post list.',
 		'label_announcement_text': 'Announcement Text:',
 		'placeholder_announcement_input': 'Message to announce (leave blank to delete)',
@@ -1050,7 +1048,7 @@ function renderAnnouncement(text) {
         return;
     }
 	
-    const prefix = translations[currentLang]['announcement_prefix'] || '📢 ประกาศ:';
+    //const prefix = translations[currentLang]['announcement_prefix'] || '📢 ประกาศ:';
     
     textElement.innerHTML = `${prefix} ${text.trim()}`; // ใส่ข้อความลงใน Marquee
     display.style.display = 'block';
