@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.25 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.26 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -542,12 +542,14 @@ window.assignAdminToZone = assignAdminToZone;
         return;
     }
 
-    document.getElementById('filter-status').innerText = t.status_locating;
-    document.getElementById('filter-status').removeAttribute('data-i18n-key');
+    const statusElem = document.getElementById('filter-status');
+    if (statusElem) {
+        statusElem.innerText = t.status_locating;
+        statusElem.removeAttribute('data-i18n-key');
+    }
     
     navigator.geolocation.getCurrentPosition(
         (position) => {
-            // ⭐ [MODIFIED] เก็บพิกัดที่ได้เป็น Primary Location ใหม่
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             const tempLocation = { lat, lng, name: `Filtered Location` }; // ใช้ชื่อชั่วคราว
@@ -560,8 +562,10 @@ window.assignAdminToZone = assignAdminToZone;
             
             // อัปเดตหน้าจอ
             const kmText = currentLang === 'th' ? 'กม.' : 'km';
-            document.getElementById('filter-status').innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
-            document.getElementById('filter-status').style.color = "#dc3545"; // สีแดง/ส้ม แสดงว่ากรองอยู่
+            if (statusElem) {
+                statusElem.innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
+                statusElem.style.color = "#dc3545";
+            }
             
             // โหลดประกาศและกระทู้ใหม่ตามพิกัด/ฟิลเตอร์
             fetchAndRenderAnnouncement(tempLocation);
@@ -570,7 +574,9 @@ window.assignAdminToZone = assignAdminToZone;
         (error) => {
             console.error(error);
             alert(`${t.error_geo_failed}: ${error.message}`);
-            document.getElementById('filter-status').innerText = `(${t.error_geo_failed})`;
+            if (statusElem) {
+                statusElem.innerText = `(${t.error_geo_failed})`;
+            }
         },
         { enableHighAccuracy: true }
     );
