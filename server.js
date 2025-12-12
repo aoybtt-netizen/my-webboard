@@ -567,6 +567,47 @@ app.post('/api/admin/topics/manage', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid Action' });
 });
 
+// 10.1  Admin Announcement Endpoint (Save & Update) ---
+app.post('/api/admin/set-announcement', async (req, res) => {
+    const { announcementText, requestBy } = req.body;
+    
+    // ตรวจสอบสิทธิ์ Admin Level 1 ขึ้นไป
+    const user = await usersCollection.findOne({ name: requestBy });
+    if (!user || user.adminLevel < 1) {
+        return res.status(403).json({ error: 'Forbidden: Requires Admin Level 1 or higher.' });
+    }
+
+    try {
+        // บันทึกข้อความประกาศลงใน configCollection
+        await configCollection.updateOne(
+            { configName: 'globalConfig' },
+            { $set: { siteAnnouncement: announcementText || '' } }, // ใช้ค่าว่างเพื่อล้างประกาศ
+            { upsert: true }
+        );
+
+        // แจ้งเตือนทุก Client ให้รีเฟรชประกาศผ่าน Socket.io
+        io.emit('announcement-update', { announcementText: announcementText || '' });
+
+        res.json({ success: true, message: 'Announcement set successfully.' });
+    } catch (e) {
+        console.error('Error setting announcement:', e);
+        res.status(500).json({ error: 'Server error while saving announcement.' });
+    }
+});
+
+// 10.2 Admin Get Announcement Endpoint (for initial load) ---
+app.get('/api/admin/get-announcement', async (req, res) => {
+    try {
+        const config = await configCollection.findOne({ configName: 'globalConfig' });
+        // ดึงค่า siteAnnouncement ถ้าไม่มี ให้เป็นค่าว่าง
+        const announcement = (config && config.siteAnnouncement) || ''; 
+        res.json({ announcement });
+    } catch (e) {
+        console.error('Error fetching announcement config:', e);
+        res.status(500).json({ error: 'Server error while fetching announcement.' });
+    }
+});
+
 // 11. Posts (List)
 app.get('/api/posts', async (req, res) => {
     const ONE_HOUR = 3600000;
