@@ -1075,11 +1075,10 @@ window.closeImageViewer = function() {
             navButton.style.display = 'block';
             navButton.innerText = t['btn_show_route'];
             
-            navButton.onclick = function() {
-                let googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-                if (myCurrentLocation) {
-                    googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${myCurrentLocation.lat},${myCurrentLocation.lng}&destination=${lat},${lng}`;
-                }
+            let googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+				if (myCurrentLocation) {
+					googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${myCurrentLocation.lat},${myCurrentLocation.lng}&destination=${lat},${lng}`;
+					}
                 window.open(googleMapsUrl, '_blank');
             };
         }
@@ -1147,7 +1146,7 @@ window.closeImageViewer = function() {
         ).toFixed(2);
         
         // ✅ สร้างเส้นทาง: ต้นทาง=จุดตั้งกระทู้ -> ปลายทาง=คนดู
-        mapUrl = `https://maps.google.com/maps?saddr=${p_lat},${p_lng}&daddr=${v_lat},${v_lng}&z=13&output=embed&t=m&hl=en`;
+        initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
         
         viewerText = `<br>
                       <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
@@ -1157,7 +1156,7 @@ window.closeImageViewer = function() {
                       </div>`;
     } else {
         // แสดงแค่จุดกระทู้
-        mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m&hl=en`;
+        initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&t=m&hl=en`;
     }
     
     mapIframe.src = mapUrl;
