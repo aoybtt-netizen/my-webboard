@@ -967,6 +967,7 @@ if (homeBtn) {
         
         let currentLocationData = null;
         let postStatusMap = {}; 
+		let currentAnnouncementText = '';
 
         // Pagination States
         let adminTxPage = 1;
@@ -1044,6 +1045,7 @@ if (homeBtn) {
 function renderAnnouncement(text) {
     const display = document.getElementById('announcement-display');
     const textElement = document.getElementById('announcement-text'); // อ้างอิงถึง Marquee
+	currentAnnouncementText = text || '';
     if (!text || text.trim() === '') {
         textElement.innerHTML = '';
         display.style.display = 'none'; 
@@ -1057,18 +1059,20 @@ function renderAnnouncement(text) {
 }
 
 async function fetchAndRenderAnnouncement(locationData = null) {
-    try {
-        let url = '/api/admin/get-announcement';
-        
-        // ถ้ามีพิกัด ให้ส่งไปด้วย
-        if (locationData && locationData.lat && locationData.lng) {
-            url += `?lat=${locationData.lat}&lng=${locationData.lng}`;
-        }
+    let url = '/api/admin/get-announcement';
+    let timeoutId;
+    if (currentAnnouncementText) {
+        renderAnnouncement(currentAnnouncementText);
+    }
+    if (locationData && locationData.lat && locationData.lng) {
+        url += `?lat=${locationData.lat}&lng=${locationData.lng}`;
+    }
 
+    try {
         const res = await fetch(url);
         if (res.status === 200) {
             const data = await res.json();
-            renderAnnouncement(data.announcement);
+            renderAnnouncement(data.announcement); 
         }
     } catch (e) {
         console.error('Fetch announcement failed:', e);
