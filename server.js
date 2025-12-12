@@ -1378,7 +1378,7 @@ io.on('connection', (socket) => {
         if (post.status === 'finished' || post.isClosed) {
             if (isParticipant) {
                 socket.join(`post-${postId}`);
-                socket.emit('access-granted', post);
+                socket.emit('access-granted', { post, isAdmin: false });
             } else {
                 socket.emit('access-denied', translateServerMsg('closed_or_finished', lang));
             }
@@ -1390,10 +1390,10 @@ io.on('connection', (socket) => {
         if (!currentViewer) {
             postViewers[postId] = username;
             socket.join(`post-${postId}`);
-            socket.emit('access-granted', post);
+            socket.emit('access-granted', { post, isAdmin: false });
         } else if (currentViewer === username) {
             socket.join(`post-${postId}`);
-            socket.emit('access-granted', post);
+            socket.emit('access-granted', { post, isAdmin: false });
         } else {
             socket.emit('access-denied', translateServerMsg('room_occupied', lang));
         }
