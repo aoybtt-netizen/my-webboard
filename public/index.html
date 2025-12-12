@@ -728,6 +728,10 @@ window.assignAdminToZone = assignAdminToZone;
         'total_fee_display': 'รวมค่าธรรมเนียมทั้งหมด:',
         'btn_save': 'บันทึก',
         'alert_invalid_fee': '❌ กรุณาใส่ค่าธรรมเนียมเป็นตัวเลขที่ไม่ติดลบ',
+		'announcement_prefix': '📢 ประกาศ:',
+		'modal_announcement_desc': 'ประกาศนี้จะแสดงเป็นแถบวิ่งเหนือรายการกระทู้',
+		'label_announcement_text': 'ข้อความประกาศ:',
+		'placeholder_announcement_input': 'ข้อความที่ต้องการประกาศ (เว้นว่างเพื่อลบประกาศ)',
     },
     'en': {
         'app_title': 'Webboard',
@@ -878,6 +882,10 @@ window.assignAdminToZone = assignAdminToZone;
         'total_fee_display': 'Total Fee:',
         'btn_save': 'Save',
         'alert_invalid_fee': '❌ Please enter valid non-negative fee values.',
+		'announcement_prefix': '📢 Announcement:',
+		'modal_announcement_desc': 'This announcement will be displayed as a marquee above the post list.',
+		'label_announcement_text': 'Announcement Text:',
+		'placeholder_announcement_input': 'Message to announce (leave blank to delete)',
     }
 };
 
@@ -1023,10 +1031,16 @@ if (homeBtn) {
 		// ฟังก์ชันแสดงผลบนหน้าจอ
 function renderAnnouncement(text) {
     const display = document.getElementById('announcement-display');
+    const textElement = document.getElementById('announcement-text'); // อ้างอิงถึง Marquee
+    
+    // ⭐ ใช้ innerHTML เพื่อให้ใส่ emoji หรือ HTML อื่นๆ ได้
+    const prefix = translations[currentLang]['announcement_prefix'] || '📢 ประกาศ:'; 
+    
     if (text && text.trim() !== '') {
-        display.innerText = text.trim();
+        textElement.innerHTML = `${prefix} ${text.trim()}`; // ใส่ข้อความลงใน Marquee
         display.style.display = 'block';
     } else {
+        textElement.innerHTML = '';
         display.style.display = 'none';
     }
 }
@@ -3394,13 +3408,20 @@ function openUserDetail(targetUsername) {
     </div>
 </div>
 
-		<div id="admin-announcement-modal" class="modal-overlay hidden">
+<div id="admin-announcement-modal" class="modal-overlay hidden">
     <div class="modal-box">
         <h2 data-i18n-key="admin_set_announcement">📢 ตั้งค่าประกาศ</h2>
-        <p style="color:#dc3545; margin-bottom: 15px;">ประกาศนี้จะแสดงเป็นแถบสีแดงเหนือรายการกระทู้</p>
+        <p style="color:#dc3545; margin-bottom: 15px;" data-i18n-key="modal_announcement_desc">
+            ประกาศนี้จะแสดงเป็นแถบสีแดงเหนือรายการกระทู้
+        </p>
 
-        <label for="announcement-input" style="font-weight: bold;">ข้อความประกาศ:</label>
-        <textarea id="announcement-input" rows="3" placeholder="ข้อความที่ต้องการประกาศ (เว้นว่างเพื่อลบประกาศ)" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Kanit';"></textarea>
+        <label for="announcement-input" style="font-weight: bold;" data-i18n-key="label_announcement_text">ข้อความประกาศ:</label>
+        
+        <textarea id="announcement-input" rows="3" 
+            placeholder="ข้อความที่ต้องการประกาศ (เว้นว่างเพื่อลบประกาศ)"
+            data-i18n-key="placeholder_announcement_input"
+            style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Kanit';">
+        </textarea>
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="sidebar-btn" onclick="document.getElementById('admin-announcement-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
