@@ -682,32 +682,60 @@ app.post('/api/admin/set-announcement', async (req, res) => {
     }
 
     try {
-        // บันทึกข้อความประกาศลงใน configCollection
-        await configCollection.updateOne(
-            { configName: 'globalConfig' },
-            { $set: { siteAnnouncement: announcementText || '' } }, // ใช้ค่าว่างเพื่อล้างประกาศ
-            { upsert: true }
+        // บันทึกประกาศลงในข้อมูลของ Admin คนนั้นโดยเฉพาะ
+        await usersCollection.updateOne(
+            { username: requestBy },
+            { $set: { announcement: announcementText || '' } }
         );
 
-        // แจ้งเตือนทุก Client ให้รีเฟรชประกาศผ่าน Socket.io
-        io.emit('announcement-update', { announcementText: announcementText || '' });
+        // แจ้งเตือนว่ามีการอัปเดต (ส่งชื่อ admin ไปด้วย เพื่อให้ Client กรองได้ว่าต้องอัปเดตไหม)
+        io.emit('announcement-update', { admin: requestBy, text: announcementText || '' });
 
-        res.json({ success: true, message: 'Announcement set successfully.' });
+        res.json({ success: true, message: 'Announcement saved to your profile.' });
     } catch (e) {
         console.error('Error setting announcement:', e);
         res.status(500).json({ error: 'Server error while saving announcement.' });
     }
 });
 
-// 10.2 Admin Get Announcement Endpoint (for initial load) ---
+// 10.2 Get Announcement (Location Based)
 app.get('/api/admin/get-announcement', async (req, res) => {
     try {
-        const config = await configCollection.findOne({ configName: 'globalConfig' });
-        // ดึงค่า siteAnnouncement ถ้าไม่มี ให้เป็นค่าว่าง
-        const announcement = (config && config.siteAnnouncement) || ''; 
-        res.json({ announcement });
+        const { requestBy, lat, lng } = req.query;
+
+        // กรณี 1: Admin ขอมา (เพื่อเอาไปแสดงในหน้าแก้ไข) -> ส่งของตัวเองกลับไป
+        if (requestBy) {
+            const adminUser = await usersCollection.findOne({ username: requestBy });
+            return res.json({ announcement: adminUser ? (adminUser.announcement || '') : '' });
+        }
+
+        // กรณี 2: User ทั่วไปขอมา (พร้อมพิกัด) -> คำนวณหาเจ้าถิ่น
+        let targetAdmin = 'Admin'; // Default เป็น Admin ใหญ่
+        
+        if (lat && lng) {
+            const location = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            // ใช้ฟังก์ชันเดิมที่มีอยู่แล้ว หาเจ้าของพื้นที่
+            const responsible = await findResponsibleAdmin(location);
+            if (responsible && responsible.username) {
+                targetAdmin = responsible.username;
+            }
+        }
+
+        // ดึงข้อความจาก Admin ผู้รับผิดชอบ
+        const responsibleUser = await usersCollection.findOne({ username: targetAdmin });
+        
+        // ถ้าเจ้าถิ่นไม่มีประกาศ ให้ไปดึงของ Admin ใหญ่ (Fallback)
+        let finalAnnouncement = responsibleUser ? responsibleUser.announcement : '';
+        
+        if (!finalAnnouncement && targetAdmin !== 'Admin') {
+            const mainAdmin = await usersCollection.findOne({ username: 'Admin' });
+            finalAnnouncement = mainAdmin ? mainAdmin.announcement : '';
+        }
+
+        res.json({ announcement: finalAnnouncement || '' });
+
     } catch (e) {
-        console.error('Error fetching announcement config:', e);
+        console.error('Error fetching announcement:', e);
         res.status(500).json({ error: 'Server error while fetching announcement.' });
     }
 });

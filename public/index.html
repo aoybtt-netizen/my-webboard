@@ -372,7 +372,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.19 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.20 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1056,37 +1056,42 @@ function renderAnnouncement(text) {
     display.style.display = 'block';
 }
 
-async function fetchAndRenderAnnouncement() {
+async function fetchAndRenderAnnouncement(locationData = null) {
     try {
-        const res = await fetch('/api/admin/get-announcement');
+        let url = '/api/admin/get-announcement';
+        
+        // ถ้ามีพิกัด ให้ส่งไปด้วย
+        if (locationData && locationData.lat && locationData.lng) {
+            url += `?lat=${locationData.lat}&lng=${locationData.lng}`;
+        }
+
+        const res = await fetch(url);
         if (res.status === 200) {
             const data = await res.json();
             renderAnnouncement(data.announcement);
         }
     } catch (e) {
-        console.error('Initial fetch of announcement failed.');
+        console.error('Fetch announcement failed:', e);
     }
 }
 
 async function openAdminAnnouncementModal() {
     if (myAdminLevel < 1) return alert('❌ ต้องเป็น Admin Level 1 ขึ้นไปเท่านั้น');
     
-    // 1. ดึงข้อความประกาศปัจจุบันมาแสดง
+    // ส่ง requestBy ไปด้วย เพื่อขอประกาศของตัวเอง
     let currentText = '';
     try {
-        const res = await fetch('/api/admin/get-announcement');
+        const res = await fetch(`/api/admin/get-announcement?requestBy=${myUsername}`);
         const data = await res.json();
         currentText = data.announcement || '';
     } catch (e) {
-        console.error('Failed to fetch announcement:', e);
+        console.error('Failed to fetch my announcement:', e);
     }
     
-    // 2. ใส่ค่าลงใน Modal
     document.getElementById('announcement-input').value = currentText;
-    
-    // 3. แสดง Modal
     document.getElementById('admin-announcement-modal').classList.remove('hidden');
-    toggleSidebar();
+    
+    if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
 }
 window.openAdminAnnouncementModal = openAdminAnnouncementModal; // ผูกกับ Window
 
@@ -2603,6 +2608,7 @@ function openAdminPinnedModal() {
             if(data.address.road) placeName = `${data.address.road}, ${placeName}`;
 
             currentLocationData = { lat, lng, name: placeName };
+			fetchAndRenderAnnouncement(currentLocationData);
             
             btn.innerHTML = t['geo_success_name']; // ⭐ แปลสถานะสำเร็จ (มีชื่อสถานที่)
             btn.classList.add('active');
