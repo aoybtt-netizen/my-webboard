@@ -100,6 +100,20 @@
         .location-btn { background: white; border: 1px solid #28a745; color: #28a745; padding: 8px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.9em; width: 100%; justify-content: center; margin-bottom: 10px; }
         .location-btn:hover { background: #e9f7ef; }
         .location-btn.active { background: #28a745; color: white; }
+		
+		.marquee-box {
+    overflow: hidden;
+    white-space: nowrap;
+    background: #ffc107; /* Yellow/Orange background */
+    color: #333;
+    padding: 1px 10px;
+    border-radius: 8px;
+    border: 1px solid #e0a800;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 10px; /* Space above page title/filter */
+    font-weight: bold;
+}
+
     </style>
 </head>
 <body>
@@ -187,18 +201,9 @@
     
     <div id="post-list-scroll-container" style="max-height: 70vh; overflow-y: auto;">
 	
-	<div id="announcement-display" style="
-    text-align: center; 
-    margin: 15px 0 5px 0; 
-    padding: 10px 15px; 
-    background: #dc3545; /* สีแดงสำหรับประกาศสำคัญ */
-    color: white; 
-    border-radius: 8px; 
-    font-weight: bold; 
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-    display: none; /* เริ่มต้นซ่อนไว้ */
-">
-    </div>
+	<div id="announcement-display" class="marquee-box" style="display: none;">
+            <marquee scrollamount="5" id="announcement-text"></marquee>
+        </div>
 	
 		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
@@ -355,7 +360,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.13 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.14 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
