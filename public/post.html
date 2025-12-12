@@ -850,7 +850,7 @@
                 const newPrimaryLocation = { 
                     lat: location.lat, 
                     lng: location.lng, 
-                    name: location.name || 'Post Location'
+                    name: location.name || 'My Location'
                 };
                 // บันทึกพิกัดกระทู้ลง Local Storage
                 localStorage.setItem('userPrimaryLocation', JSON.stringify(newPrimaryLocation));
@@ -873,16 +873,13 @@
         socket.on('access-granted', ({ post, isAdmin }) => {
             // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
             currentPost = post; 
-            savePostLocationAsPrimary(post.location);
             // ดึงภาษาเพื่อใช้แสดงข้อความ
             const lang = localStorage.getItem('preferredLanguage') || 'th';
             const t = postTranslations[lang] || postTranslations['th'];
             if (myUsername === post.author || myUsername === 'Admin' || isAdmin) { 
-			myCurrentLocation = null;
-			document.body.style.display = 'block';
-			renderPost(post, isAdmin);
-                
-                // แสดงแผนที่จุดรับงาน (ไม่ต้องโยงเส้นหาตัวเอง)
+				myCurrentLocation = null;
+				document.body.style.display = 'block';
+				renderPost(post, isAdmin);
                 displayMap(post.location);
                 return; 
             }
@@ -900,17 +897,16 @@
             // 🚀 ขอพิกัดก่อนแสดงผล (บังคับ)
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    // ✅ กรณีสำเร็จ: ได้รับพิกัด
                     const location = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude
                     };
 
                     myCurrentLocation = location; // จำตำแหน่งตัวเอง
-                    
+                    savePostLocationAsPrimary(myCurrentLocation);
                     // 🎉 แสดงเนื้อหาเว็บ
                     document.body.style.display = 'block';
-                    renderPost(post);
+                    renderPost(post, false);
 
                     // ส่งพิกัดไปให้ Server
                     socket.emit('update-viewer-location', { 
@@ -1231,7 +1227,7 @@ socket.on('viewer-left-location', (data) => {
             </div>`;
         }
 
-        function renderPost(post) {
+        function renderPost(post, isAdmin = false) {
             // 1. แสดงข้อมูลพื้นฐาน
             document.getElementById('post-title').innerText = post.title;
             document.getElementById('post-author').innerText = post.author;
