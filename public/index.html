@@ -372,7 +372,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.18 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.19 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2507,25 +2507,36 @@ window.addZoneConfig = addZoneConfig;
 
         // --- CRUD and ADMIN FUNCTIONS ---
     function openCreateModal() {
-        if (!myUsername) return document.getElementById('login-modal').classList.remove('hidden');
-        
-        // Reset ค่าต่างๆ
-        document.getElementById('title-input').value = '';
-        document.getElementById('content').value = '';
-        document.getElementById('post-image').value = '';
-        document.getElementById('location-display').innerHTML = '';
-        
-        // Reset ปุ่ม Location
-        const btn = document.getElementById('geo-btn');
-        btn.classList.remove('active');
-        btn.innerHTML = translations[currentLang]['geo_btn'];
-        
-        // ⭐ โหลดหัวข้อ "ค่ากลาง" ไปก่อน (เพราะยังไม่รู้ตำแหน่ง)
-        fetchTopicsForCreate(null, null);
-
-        document.getElementById('create-modal').classList.remove('hidden');
-        toggleSidebar();
+    if (!myUsername) return document.getElementById('login-modal').classList.remove('hidden');
+    
+    // Reset ค่าต่างๆ (เหมือนเดิม)
+    document.getElementById('title-input').value = '';
+    document.getElementById('content').value = '';
+    document.getElementById('post-image').value = '';
+    document.getElementById('location-display').innerHTML = '';
+    
+    // Reset ปุ่ม Location (เหมือนเดิม)
+    const btn = document.getElementById('geo-btn');
+    btn.classList.remove('active');
+    btn.innerHTML = translations[currentLang]['geo_btn'];
+    
+    // แสดงสถานะกำลังโหลดค่าธรรมเนียม
+    const modalCostDisplay = document.getElementById('modal-cost-display');
+    if (modalCostDisplay) {
+        modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ กำลังค้นหาเขตพื้นที่และคำนวณค่าธรรมเนียม...</span>';
     }
+
+    // โหลดหัวข้อ (เหมือนเดิม)
+    fetchTopicsForCreate(null, null);
+
+    document.getElementById('create-modal').classList.remove('hidden');
+    
+    // ปิด Sidebar ถ้าเปิดอยู่
+    if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+
+    // สั่งให้ดึงพิกัดและคำนวณค่าธรรมเนียมทันที!
+    getLocation(); 
+}
 
 // ----------------------------------------------------
 
@@ -2806,7 +2817,7 @@ window.savePostCost = savePostCost;
     const tableBody = document.querySelector('#admin-topic-table tbody');
     tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:gray;">กำลังโหลด...</td></tr>';
     try {
-        const response = await fetch('/api/admin/topics');
+        const response = await fetch(`/api/admin/topics?requestBy=${myUsername}`);
         if (response.status !== 200) {
             tableBody.innerHTML = '<tr><td colspan="2" style="color:red; text-align:center;">ไม่สามารถโหลดหัวข้อได้</td></tr>';
             return;

@@ -590,8 +590,24 @@ app.get('/api/topics', async (req, res) => {
 });
 
 app.get('/api/admin/topics', async (req, res) => {
-    const topics = await topicsCollection.find({}).toArray();
-    res.json(topics);
+    const { requestBy } = req.query; // รับชื่อคนขอ
+
+    try {
+        let query = {};
+        
+        // ถ้ามีการระบุชื่อคนขอมา ให้ดึงเฉพาะหัวข้อของคนนั้น
+        if (requestBy) {
+            query = { adminUsername: requestBy };
+        }
+
+        // ดึงข้อมูลตาม Query ที่กรองแล้ว
+        const topics = await topicsCollection.find(query).toArray();
+        res.json(topics);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error fetching topics' });
+    }
 });
 
 app.post('/api/admin/topics/manage', async (req, res) => {
