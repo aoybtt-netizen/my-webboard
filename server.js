@@ -572,7 +572,7 @@ app.post('/api/admin/set-announcement', async (req, res) => {
     const { announcementText, requestBy } = req.body;
     
     // ตรวจสอบสิทธิ์ Admin Level 1 ขึ้นไป
-    const user = await usersCollection.findOne({ name: requestBy });
+    const user = await usersCollection.findOne({ username: requestBy }); 
     if (!user || user.adminLevel < 1) {
         return res.status(403).json({ error: 'Forbidden: Requires Admin Level 1 or higher.' });
     }
