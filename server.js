@@ -362,7 +362,9 @@ app.get('/api/users-list', async (req, res) => {
 
     // กรณี Admin Level 3 (Super Admin) -> เห็นทุกคน
     if (requester.adminLevel >= 3) {
-        return res.json(allUsers.map(u => ({ 
+        return res.json(allUsers
+            .filter(u => u.username !== requester.username) 
+            .map(u => ({ 
             name: u.username, 
             coins: u.coins, 
             rating: u.rating, 
@@ -386,7 +388,7 @@ app.get('/api/users-list', async (req, res) => {
 
     // 2.3 กรอง User
     const filteredUsers = allUsers.filter(u => {
-        // แอดมินเห็นแอดมินด้วยกันเสมอ (เพื่อไม่ให้ list ว่างเกินไป หรือจะปิดก็ได้)
+        if (u.username === requester.username) return false;
         if (u.adminLevel > 0) return true;
 
         // ถ้า User ไม่มีพิกัดล่าสุด -> ไม่เห็น (หรือจะให้เห็นเป็น 'Unlocated' ก็ได้ แล้วแต่ Policy)
