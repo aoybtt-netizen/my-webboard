@@ -2269,6 +2269,17 @@ async function openAdminZoneModal() {
                 const currentFeeVal = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? zone.zoneFee : '';
                 const placeholder = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? '' : 'ค่ากลาง';
                 
+                const currentName = name.includes('Zone ID:') ? '' : name;
+                const nameInputHtml = `
+                    <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                        <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name']}:</label>
+                        <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name']}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
+                        <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
+                            ${t['btn_save']}
+                        </button>
+                    </div>
+                `;
+
                 return `
                     <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2276,13 +2287,15 @@ async function openAdminZoneModal() {
                             <a href="${mapLink}" target="_blank" style="color:#007bff; text-decoration:none;">📍 ${lat}, ${lng}</a>
                         </div>
                         
-                        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+                        ${nameInputHtml}
+                        
+                        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-top: 10px;">
                             <label style="font-size: 0.9em; white-space: nowrap;">Zone fee(USD):</label>
                             <input type="number" id="fee-input-${zone.id}" value="${currentFeeVal}" placeholder="${placeholder}" 
-                                   style="width: 80px; padding: 5px; margin-bottom: 0;">
-                                   
+                                        style="width: 80px; padding: 5px; margin-bottom: 0;">
+                                        
                             <button class="sidebar-btn create-btn" onclick="saveZoneFee('${zone.id}')" 
-                                    style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0;">
+                                        style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0;">
                                 บันทึก
                             </button>
                         </div>
