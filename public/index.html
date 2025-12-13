@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.34 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.35 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -739,6 +739,9 @@ window.assignAdminToZone = assignAdminToZone;
 		'modal_announcement_desc': 'ประกาศนี้จะแสดงเป็นแถบวิ่งเหนือรายการกระทู้',
 		'label_announcement_text': 'ข้อความประกาศ:',
 		'placeholder_announcement_input': 'ข้อความที่ต้องการประกาศ (เว้นว่างเพื่อลบประกาศ)',
+		'label_zone_name': 'ชื่อโซน (สำหรับเจ้าของ):',
+		'placeholder_zone_name': 'ชื่อเรียกโซน เช่น เมือง A',
+		'alert_invalid_zone_name': '❌ กรุณาใส่ชื่อโซน',
     },
     'en': {
         'app_title': 'Webboard',
@@ -892,6 +895,9 @@ window.assignAdminToZone = assignAdminToZone;
 		'modal_announcement_desc': 'This announcement will be displayed as a marquee above the post list.',
 		'label_announcement_text': 'Announcement Text:',
 		'placeholder_announcement_input': 'Message to announce (leave blank to delete)',
+		'label_zone_name': 'Zone Name (for owner):',
+		'placeholder_zone_name': 'Zone name, e.g., City A',
+		'alert_invalid_zone_name': '❌ Please enter a zone name.',
     }
 };
 
@@ -2184,35 +2190,34 @@ async function openAdminZoneModal() {
                     
                     const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                     const assignedAdmin = zone.assignedAdmin || '-';
-                    
-                    return `
-                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
-                            <div style="flex-basis: 100%; margin-bottom: 5px;">
-                                🗺️ <b>${name}</b> <br>
-                                <small>${t['admin_assigned_to']}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
-                            </div>
-                            
-                            <div style="flex-basis: 40%;">
-                                <a href="${mapLink}" target="_blank" style="color:#28a745; text-decoration:none; font-weight:bold;" title="Open Google Maps">
-                                    📍 ${lat}, ${lng}
-                                </a>
-                            </div>
-                            
-                            <div style="flex-basis: 60%; text-align: right; display:flex; gap:5px; justify-content: flex-end;">
-                                <button class="sidebar-btn" 
-                                    style="padding: 2px 8px; font-size: 0.8em; width: auto; background:#007bff; color:white; margin:0;"
-                                    onclick="openAdminAssignModal('${zone.id}', '${safeName}')">
-                                    👨‍💼 ${t['btn_assign_admin'] || 'Assign'}
-                                </button>
-                                
-                                <button onclick="deleteZone('${zone.id}', '${safeName}')" 
-                                    style="padding: 2px 8px; background:#dc3545; color:white; border:none; border-radius:5px; cursor:pointer;" title="Delete Zone">
-                                    🗑️
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+					const canEdit = myAdminLevel >= 3 || zone.assignedAdmin === myUsername;
+
+    let nameInputHtml = '';
+    if (canEdit) {
+        const t = translations[currentLang] || translations['th'];
+        // ถ้าชื่อโซนเป็นค่าดีฟอลต์ (Zone ID:...) ให้เว้นว่างช่องกรอก
+        const currentName = name.includes('Zone ID:') ? '' : name;
+        nameInputHtml = `
+            <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name']}:</label>
+                <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name']}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
+                <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
+                    ${t['btn_save']}
+                </button>
+            </div>
+        `;
+    }
+
+    return `
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
+            <div style="flex-basis: 100%; margin-bottom: 5px;">
+                🗺️ <b>${name}</b> <br>
+                <small>${t['admin_assigned_to']}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
+            </div>
+            ${nameInputHtml}
+            </div>
+    `;
+}).join('');
             } else {
                 listContainer.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_zones_found']}</p>`;
             }
@@ -2287,6 +2292,47 @@ async function openAdminZoneModal() {
 
 // ต้องผูกฟังก์ชันนี้กับ Window object
 window.openAssignedZoneMap = openAssignedZoneMap;
+
+async function setZoneName(e, zoneId) {
+    e.stopPropagation(); // หยุดการส่งผ่านเหตุการณ์
+    const t = translations[currentLang] || translations['th'];
+    const input = document.getElementById(`name-input-${zoneId}`);
+    const newName = input.value.trim();
+
+    if (!newName) {
+        alert(t['alert_invalid_zone_name'] || '❌ กรุณาใส่ชื่อโซน');
+        return;
+    }
+    
+    e.target.disabled = true;
+
+    try {
+        const res = await fetch('/api/admin/set-zone-name', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                zoneId: zoneId, 
+                newZoneName: newName,
+                requestBy: myUsername 
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alert(`✅ เปลี่ยนชื่อโซน ID ${zoneId} เป็น ${newName} สำเร็จ!`);
+            openAdminZoneModal(); // รีเฟรชรายการ
+        } else {
+            alert(`❌ Error: ${data.error || 'เปลี่ยนชื่อโซนไม่สำเร็จ'}`);
+        }
+    } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        console.error('Error setting zone name:', e);
+    } finally {
+        e.target.disabled = false;
+    }
+}
+window.setZoneName = setZoneName;
 
 async function saveZoneFee(zoneId) {
     const input = document.getElementById(`fee-input-${zoneId}`);

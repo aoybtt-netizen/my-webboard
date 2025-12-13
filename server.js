@@ -408,11 +408,11 @@ app.get('/api/users-list', async (req, res) => {
 
         // ถ้าโซนที่ใกล้ที่สุด เป็นโซนที่ Admin คนนี้ดูแล -> ให้ผ่าน
         if (closestZone) {
-            const isMyZone = myZones.some(mz => mz.id === closestZone.id);
-            return isMyZone;
-        }
-
-        return false;
+			// เปรียบเทียบ ID ของโซนที่ Admin ดูแล (myZones) กับ ID ของโซนที่ใกล้ที่สุด (closestZone)
+			const isMyZone = myZones.some(mz => mz.id === closestZone.id);
+			return isMyZone;
+		}
+		return false;
     });
 
     res.json(filteredUsers.map(u => ({ 
@@ -520,6 +520,52 @@ app.post('/api/admin/set-zone-fee', async (req, res) => {
     await zonesCollection.updateOne({ id: zoneIdInt }, { $set: { zoneFee: newFee } });
     
     res.json({ success: true, newFee: newFee });
+});
+
+// 7.2 API สำหรับ Admin Level 1/2 เพื่อตั้งชื่อโซนของตนเอง
+app.post('/api/admin/set-zone-name', async (req, res) => {
+    const { zoneId, newZoneName, requestBy } = req.body;
+    
+    // 1. ตรวจสอบสิทธิ์ (Admin Level 1+)
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied. Admin access required.' });
+    }
+    
+    // 2. ตรวจสอบข้อมูล
+    if (!zoneId || !newZoneName || typeof newZoneName !== 'string' || newZoneName.trim() === '') {
+        return res.status(400).json({ success: false, error: 'Invalid zone ID or zone name.' });
+    }
+    
+    const zoneIdInt = parseInt(zoneId);
+    const trimmedName = newZoneName.trim();
+    
+    const zone = await zonesCollection.findOne({ id: zoneIdInt });
+
+    if (!zone) return res.status(404).json({ error: 'Zone not found.' });
+    
+    // 3. ตรวจสอบสิทธิ์: ต้องเป็น Admin L3 หรือเป็น Assigned Admin ของโซนนี้
+    if (requester.adminLevel < 3 && zone.assignedAdmin !== requestBy) {
+        return res.status(403).json({ error: 'คุณไม่ใช่ผู้ดูแลโซนนี้ หรือไม่มีสิทธิ์แก้ไขชื่อโซนนี้' });
+    }
+
+    try {
+        // 4. อัปเดตชื่อโซนในฐานข้อมูล
+        const updateResult = await zonesCollection.updateOne(
+            { id: zoneIdInt },
+            { $set: { name: trimmedName } }
+        );
+
+        if (updateResult.matchedCount === 0) {
+            return res.status(404).json({ success: false, error: 'Zone not found or no changes made.' });
+        }
+        
+        // 5. ส่งผลลัพธ์กลับไป
+        res.json({ success: true, message: `Zone ID ${zoneId} name updated to ${trimmedName}` });
+    } catch (error) {
+        console.error('Error updating zone name:', error);
+        res.status(500).json({ success: false, error: 'Server error during zone name update.' });
+    }
 });
 
 
