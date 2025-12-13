@@ -300,7 +300,9 @@
             <button id="filter-btn-banned" class="sidebar-btn" style="width:auto; padding: 5px 15px; font-size: 0.9em; color: red;" onclick="setMemberFilter('banned')">Banned</button>
         </div>
 
-            <input type="text" id="user-search-input" placeholder="🔍 ค้นหาสมาชิกด้วยชื่อ..." onkeyup="openAllUserList(this.value)" style="width:100%;" data-i18n-key="search_placeholder">
+            <input type="text" id="user-search-input" placeholder="🔍 ค้นหาสมาชิกด้วยชื่อ..." 
+       onkeyup="filterAndRenderMembers()" 
+       style="width:100%;" data-i18n-key="search_placeholder">
 
             <div id="pagination-controls" style="text-align: center; margin-top: 15px; margin-bottom: 10px; display: none;">
     <button class="sidebar-btn" id="list-prev-btn" onclick="changeListPage(-1)" style="width:auto; padding: 5px 15px; font-size: 0.9em;" data-i18n-key="btn_prev">⬅️ ก่อนหน้า</button>
@@ -3358,20 +3360,50 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     }
 }
 
-	// ฟังก์ชันกรองและแสดงผล (ใช้แทน Logic เดิมในการ Render)
-	function filterAndRenderMembers() {
+
+function setMemberFilter(type) {
+    currentMemberFilter = type;
+    
+    // อัปเดต UI ปุ่ม
+    ['all', 'admin', 'user', 'banned'].forEach(t => {
+        const btn = document.getElementById(`filter-btn-${t}`);
+        if(btn) {
+             if(t === type) {
+                 btn.classList.add('active-menu');
+                 btn.style.borderLeft = "5px solid #007bff";
+             } else {
+                 btn.classList.remove('active-menu');
+                 btn.style.borderLeft = "none";
+             }
+        }
+    });
+
+    // เรียกแสดงผลใหม่
+    filterAndRenderMembers();
+}
+
+// ฟังก์ชันกรองและแสดงผล
+function filterAndRenderMembers() {
     const searchVal = document.getElementById('user-search-input').value.toLowerCase();
     const container = document.getElementById('user-list-container');
     
+    if (!allUsersCache || !Array.isArray(allUsersCache)) {
+        container.innerHTML = "Loading...";
+        return;
+    }
+
     // กรองข้อมูลจาก Cache
     let filtered = allUsersCache.filter(u => {
         // 1. กรองตาม Search Text
         if (searchVal && !u.name.toLowerCase().includes(searchVal)) return false;
 
         // 2. กรองตาม Tab Type
-        if (currentMemberFilter === 'admin') return u.adminLevel > 0;
-        if (currentMemberFilter === 'user') return u.adminLevel === 0 && !u.isBanned;
-        if (currentMemberFilter === 'banned') return u.isBanned;
+        const isAdmin = (u.adminLevel || 0) > 0;
+        const isBanned = u.isBanned === true;
+
+        if (currentMemberFilter === 'admin') return isAdmin;
+        if (currentMemberFilter === 'user') return !isAdmin && !isBanned;
+        if (currentMemberFilter === 'banned') return isBanned;
         
         return true; // case 'all'
     });
@@ -3394,7 +3426,7 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
         // Badge ยศ
         let levelBadge = '';
         if (targetLevel > 0) {
-            let badgeColor = targetLevel === 3 ? '#6610f2' : '#007bff'; // Level 3 สีม่วง, อื่นๆ สีฟ้า
+            let badgeColor = targetLevel === 3 ? '#6610f2' : '#007bff';
             levelBadge = `<span style="background:${badgeColor}; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>`;
         }
         
