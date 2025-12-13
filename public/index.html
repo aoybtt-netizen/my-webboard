@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.35 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.36 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2154,13 +2154,18 @@ async function showMyClosedPosts(page = 1) {
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
+    // 1. ถ้าเป็น Admin Level 1 หรือ 2 ให้เปลี่ยนไปใช้ฟังก์ชันเฉพาะ
     if (myAdminLevel >= 1 && myAdminLevel < 3) {
-        return openAssignedZoneMap(); 
+        // [แก้ไข] ลบการ alert ออก และมั่นใจว่า Admin L1/L2 ถูกพาไปหน้าจัดการโซนของตนเอง
+        return openAssignedZoneMap(); // ไปจัดการแผนที่โซนที่ได้รับมอบหมาย
     }
     
-    // 2. Original L3 logic:
-    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
+    // 2. จำกัดการเข้าถึงส่วนนี้สำหรับ Admin Level 3 (Super Admin) เท่านั้น
+    if (myAdminLevel < 3) {
+        return alert('❌ ต้องเป็น Admin Level 3 เท่านั้นเพื่อจัดการโซนทั้งหมด');
+    }
     
+    // 3. แสดง Modal และตั้งค่าเริ่มต้น (สำหรับ Admin L3)
     document.getElementById('admin-zone-modal').classList.remove('hidden');
     
     const latInput = document.getElementById('zone-lat-input');
@@ -2181,6 +2186,7 @@ async function openAdminZoneModal() {
             
             if (data.zones && data.zones.length > 0) {
                 listContainer.innerHTML = data.zones.map(zone => {
+                    // ... โค้ดเดิม
                     const lat = parseFloat(zone.lat).toFixed(4);
                     const lng = parseFloat(zone.lng).toFixed(4);
                     const name = zone.name || `Zone ID: ${zone.id}`; 
@@ -2190,34 +2196,38 @@ async function openAdminZoneModal() {
                     
                     const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                     const assignedAdmin = zone.assignedAdmin || '-';
-					const canEdit = myAdminLevel >= 3 || zone.assignedAdmin === myUsername;
+                    
+                    // 🔑 เงื่อนไขการแก้ไข: Admin L3 (Super Admin) หรือเป็น Admin ที่ถูกมอบหมายของโซนนี้
+                    // [สำคัญ]: แม้ว่า Admin L1/L2 จะไม่ควรเข้าถึงฟังก์ชันนี้โดยตรง แต่ถ้าพวกเขาถูกมอบหมายให้เป็น Admin ของโซน 
+                    // และมี myAdminLevel >= 1 โค้ดนี้ก็ควรแสดงช่องกรอกชื่อโซนให้
+                    const canEdit = myAdminLevel >= 3 || (myAdminLevel >= 1 && zone.assignedAdmin === myUsername);
 
-    let nameInputHtml = '';
-    if (canEdit) {
-        const t = translations[currentLang] || translations['th'];
-        // ถ้าชื่อโซนเป็นค่าดีฟอลต์ (Zone ID:...) ให้เว้นว่างช่องกรอก
-        const currentName = name.includes('Zone ID:') ? '' : name;
-        nameInputHtml = `
-            <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-                <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name']}:</label>
-                <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name']}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
-                <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
-                    ${t['btn_save']}
-                </button>
-            </div>
-        `;
-    }
+                    let nameInputHtml = '';
+                    if (canEdit) {
+                        const t = translations[currentLang] || translations['th'];
+                        // ถ้าชื่อโซนเป็นค่าดีฟอลต์ (Zone ID:...) ให้เว้นว่างช่องกรอก
+                        const currentName = name.includes('Zone ID:') ? '' : name;
+                        nameInputHtml = `
+                            <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                                <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name']}:</label>
+                                <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name']}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
+                                <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
+                                    ${t['btn_save']}
+                                </button>
+                            </div>
+                        `;
+                    }
 
-    return `
-        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
-            <div style="flex-basis: 100%; margin-bottom: 5px;">
-                🗺️ <b>${name}</b> <br>
-                <small>${t['admin_assigned_to']}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
-            </div>
-            ${nameInputHtml}
-            </div>
-    `;
-}).join('');
+                    return `
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
+                            <div style="flex-basis: 100%; margin-bottom: 5px;">
+                                🗺️ <b>${name}</b> <br>
+                                <small>${t['admin_assigned_to']}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
+                            </div>
+                            ${nameInputHtml}
+                            </div>
+                    `;
+                }).join('');
             } else {
                 listContainer.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_zones_found']}</p>`;
             }
@@ -2293,8 +2303,8 @@ async function openAdminZoneModal() {
 // ต้องผูกฟังก์ชันนี้กับ Window object
 window.openAssignedZoneMap = openAssignedZoneMap;
 
-async function setZoneName(e, zoneId) {
-    e.stopPropagation(); // หยุดการส่งผ่านเหตุการณ์
+	async function setZoneName(e, zoneId) {
+    e.stopPropagation(); 
     const t = translations[currentLang] || translations['th'];
     const input = document.getElementById(`name-input-${zoneId}`);
     const newName = input.value.trim();
@@ -2307,13 +2317,14 @@ async function setZoneName(e, zoneId) {
     e.target.disabled = true;
 
     try {
+        // *** ใช้ myUsername ที่ถูกกำหนดไว้แล้ว ***
         const res = await fetch('/api/admin/set-zone-name', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 zoneId: zoneId, 
                 newZoneName: newName,
-                requestBy: myUsername 
+                requestBy: myUsername // ส่ง Username ของผู้ใช้ปัจจุบัน
             })
         });
 

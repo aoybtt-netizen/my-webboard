@@ -529,7 +529,8 @@ app.post('/api/admin/set-zone-name', async (req, res) => {
     // 1. ตรวจสอบสิทธิ์ (Admin Level 1+)
     const requester = await getUserData(requestBy);
     if (!requester || requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Permission denied. Admin access required.' });
+        // แก้ไข: ส่ง 403 และข้อความที่ชัดเจนขึ้น
+        return res.status(403).json({ success: false, error: 'Permission denied. Admin access required.' });
     }
     
     // 2. ตรวจสอบข้อมูล
@@ -542,11 +543,12 @@ app.post('/api/admin/set-zone-name', async (req, res) => {
     
     const zone = await zonesCollection.findOne({ id: zoneIdInt });
 
-    if (!zone) return res.status(404).json({ error: 'Zone not found.' });
+    if (!zone) return res.status(404).json({ success: false, error: 'Zone not found.' });
     
-    // 3. ตรวจสอบสิทธิ์: ต้องเป็น Admin L3 หรือเป็น Assigned Admin ของโซนนี้
+    // 3. ตรวจสอบสิทธิ์: ต้องเป็น Admin L3 หรือเป็น Assigned Admin (เจ้าของโซน) ของโซนนี้
     if (requester.adminLevel < 3 && zone.assignedAdmin !== requestBy) {
-        return res.status(403).json({ error: 'คุณไม่ใช่ผู้ดูแลโซนนี้ หรือไม่มีสิทธิ์แก้ไขชื่อโซนนี้' });
+        // แก้ไข: ส่ง 403 และข้อความที่ชัดเจนขึ้น
+        return res.status(403).json({ success: false, error: 'คุณไม่ใช่ผู้ดูแลโซนนี้ หรือไม่มีสิทธิ์แก้ไขชื่อโซนนี้' });
     }
 
     try {
