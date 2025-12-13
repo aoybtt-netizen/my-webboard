@@ -306,52 +306,27 @@ app.get('/api/user-info', async (req, res) => {
     if (!username) return res.status(400).json({ error: 'No username' });
     
     const user = await getUserData(username);
-    if (!user) return res.status(404).json({ error: 'User not found' }); // เพิ่มกันเหนียว
+    if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.isBanned) return res.status(403).json({ error: '⛔ บัญชีของคุณถูกระงับการใช้งาน' });
-	
-	let locationObj = null;
-    let userZoneId = null;
-	
-	if (location) {
-        try {
-            const parsedLoc = JSON.parse(location);
-            if (parsedLoc.lat && parsedLoc.lng) {
-                await usersCollection.updateOne(
-                    { username: username }, 
-                    { $set: { lastLocation: parsedLoc, lastSeen: new Date() } }
-                );
-            const responsibleData = await findResponsibleAdmin(locationObj);
-                if (responsibleData.zoneData) {
-                    userZoneId = responsibleData.zoneData.id;
-                }
-            }
-        } catch (e) {
-            console.error("Error parsing location for user update:", e);
-        }
-    }
     
-    // 2. คำนวณค่าธรรมเนียม (แบบใหม่: รองรับโซน)
     let userZoneId = null;
     let postCostData;
+    
     try {
         const locationObj = location ? JSON.parse(location) : null;
 
-        // อัปเดตพิกัดล่าสุด (Logic เดิม)
+        // อัปเดตพิกัดล่าสุดลง Database
         if (locationObj && locationObj.lat && locationObj.lng) {
             await usersCollection.updateOne(
-                { username: username },
+                { username: username }, 
                 { $set: { lastLocation: locationObj, lastSeen: new Date() } }
             );
         }
 
-        // 1. คำนวณค่าธรรมเนียมและหาผู้รับผิดชอบ
-        const responsibleData = await getPostCostByLocation(locationObj);
-        postCostData = responsibleData;
+        // 1. คำนวณค่าธรรมเนียม
+        postCostData = await getPostCostByLocation(locationObj);
 
-        // 2. หา Zone ID หลักของผู้ใช้จาก responsibleData
-        // เราต้องเรียก findResponsibleAdmin อีกรอบหรือดึงจาก getPostCostByLocation ถ้าแก้ให้ return มา
-        // เพื่อความชัวร์ เรียกใหม่ตรงนี้ หรือปรับ getPostCostByLocation ก็ได้
-        // แต่เพื่อให้กระทบโค้ดเดิมน้อยสุด ผมจะเรียก findResponsibleAdmin โดยตรง
+        // 2. หา Zone ID หลักของผู้ใช้
         const zoneInfo = await findResponsibleAdmin(locationObj);
         if (zoneInfo.zoneData) {
             userZoneId = zoneInfo.zoneData.id;
@@ -371,7 +346,7 @@ app.get('/api/user-info', async (req, res) => {
         postCost: postCostData,
         rating: user.rating,
         adminLevel: user.adminLevel || 0,
-        userZoneId: userZoneId //ส่ง Zone ID กลับไป
+        userZoneId: userZoneId 
     });
 });
 
