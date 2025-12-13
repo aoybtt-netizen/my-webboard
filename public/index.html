@@ -3305,30 +3305,7 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
 	let currentMemberFilter = 'all'; // ค่าเริ่มต้น: all, admin, user, banned
 	let allUsersCache = []; // ตัวแปรเก็บข้อมูล User ทั้งหมดที่ดึงมา
 
-	// ฟังก์ชันเปลี่ยน Tab Filter
-	function setMemberFilter(type) {
-    currentMemberFilter = type;
-    
-    // อัปเดต UI ปุ่ม
-    ['all', 'admin', 'user', 'banned'].forEach(t => {
-        const btn = document.getElementById(`filter-btn-${t}`);
-        if(btn) {
-             if(t === type) {
-                 btn.classList.add('active-menu');
-                 btn.style.borderLeft = "5px solid #007bff";
-             } else {
-                 btn.classList.remove('active-menu');
-                 btn.style.borderLeft = "none";
-             }
-        }
-    });
 
-    // เรียกแสดงผลใหม่
-    filterAndRenderMembers();
-}
-
-    
-    let allUsersCache = [];
     
 	// ปรับปรุง openAllUserList ให้ดึงข้อมูลแล้วเก็บใส่ Cache
 	async function openAllUserList(searchTerm = "") {
