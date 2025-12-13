@@ -1389,18 +1389,19 @@ socket.on('viewer-left-location', (data) => {
     
     // ตรวจสอบยืนยันก่อนปิด
     if (confirm(t['confirm_close_post'])) { 
-    try {
-        const res = await fetch(`/api/posts/${postId}/close`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ requestBy: myUsername }) 
-        });
+        try {
+            const res = await fetch(`/api/posts/${postId}/close-manual`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestBy: myUsername }) // ส่งชื่อคนกดไปด้วย
+            });
 
             const data = await res.json();
 
             if (data.success) {
                 document.getElementById('manual-close-btn').disabled = true;
                 alert(t['alert_post_closed']);
+                // อาจจะรีโหลดหน้า หรือกลับหน้าหลัก เพื่ออัปเดตสถานะ
                 location.reload(); 
             } else {
                 alert(`❌ Error: ${data.error || 'ปิดกระทู้ไม่สำเร็จ'}`);

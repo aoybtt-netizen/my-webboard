@@ -52,11 +52,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // --- Live Exchange Rate ---
-const LIVE_API_KEY = '3ce8ed3c3901e2d6ab032b65';
-const LIVE_API_URL = `https://v6.exchangerate-api.com/v6/3ce8ed3c3901e2d6ab032b65/latest/USD`;
-//let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 35.0 };
+const LIVE_API_KEY = '1f39c37f85-b1b3f2287e-t6oki5'; 
+const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE_API_KEY}`; 
+let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 35.0 };
 const DEFAULT_CURRENCY = 'THB';
-
 
 // --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) ---
 let postViewers = {}; 
@@ -269,7 +268,6 @@ async function fetchLiveExchangeRates() {
                 'JPY': data.results.JPY || LIVE_EXCHANGE_RATES.JPY,
             };
             console.log('✅ อัปเดตอัตราแลกเปลี่ยน:', LIVE_EXCHANGE_RATES);
-            io.emit('exchange-rate-update', LIVE_EXCHANGE_RATES); 
         }
     } catch (error) {
         console.error('❌ API Error:', error.message);
@@ -364,18 +362,14 @@ app.get('/api/users-list', async (req, res) => {
 
     // กรณี Admin Level 3 (Super Admin) -> เห็นทุกคน
     if (requester.adminLevel >= 3) {
-        return res.json(allUsers
-            // กรองชื่อ Admin ที่กำลังเรียก API ออกไป
-            .filter(u => u.username !== requester.username)
-            .map(u => ({ 
-                name: u.username, 
-                coins: u.coins, 
-                rating: u.rating, 
-                isBanned: u.isBanned,
-                adminLevel: u.adminLevel || 0,
-                // ส่งข้อมูลระยะห่างไปด้วยก็ได้ถ้าต้องการ (Optional)
-            }))
-        );
+        return res.json(allUsers.map(u => ({ 
+            name: u.username, 
+            coins: u.coins, 
+            rating: u.rating, 
+            isBanned: u.isBanned,
+            adminLevel: u.adminLevel || 0,
+            // ส่งข้อมูลระยะห่างไปด้วยก็ได้ถ้าต้องการ (Optional)
+        })));
     }
 
     // กรณี Admin Level 1-2 -> เห็นเฉพาะคนในโซนที่ตัวเองดูแล
@@ -392,9 +386,6 @@ app.get('/api/users-list', async (req, res) => {
 
     // 2.3 กรอง User
     const filteredUsers = allUsers.filter(u => {
-        // ไม่แสดงชื่อ Admin ที่กำลังเรียก API นี้
-        if (u.username === requester.username) return false; 
-
         // แอดมินเห็นแอดมินด้วยกันเสมอ (เพื่อไม่ให้ list ว่างเกินไป หรือจะปิดก็ได้)
         if (u.adminLevel > 0) return true;
 
@@ -816,11 +807,9 @@ app.get('/api/admin/get-announcement', async (req, res) => {
     }
 });
 
-// 11. Posts (List) - แก้ไขใหม่เพื่อรองรับ Admin Zone Logic
+// 11. Posts (List)
 app.get('/api/posts', async (req, res) => {
     const ONE_HOUR = 3600000;
-    
-    // อัปเดตกระทู้ที่หมดเวลาให้เป็นปิด (Logic เดิม)
     await postsCollection.updateMany(
         { isClosed: false, isPinned: false, id: { $lt: Date.now() - ONE_HOUR } },
         { $set: { isClosed: true } }
@@ -829,21 +818,8 @@ app.get('/api/posts', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
-    
-    // รับชื่อคนขอข้อมูลเพื่อตรวจสอบสิทธิ์
-    const requestBy = req.query.requestBy; 
-    let adminLevel = 0;
-    
-    if (requestBy) {
-        const requester = await usersCollection.findOne({ username: requestBy });
-        if (requester) adminLevel = requester.adminLevel || 0;
-    }
 
-    // 2. ดึงข้อมูลกระทู้และโซนทั้งหมดมาเตรียมไว้
     const allPosts = await postsCollection.find({}).toArray();
-    const allZones = await zonesCollection.find({}).toArray();
-
-    // 3. เรียงลำดับกระทู้ (Logic เดิม)
     const sortedPosts = allPosts.sort((a, b) => {
         const aIsPinnedActive = a.isPinned && !a.isClosed;
         const bIsPinnedActive = b.isPinned && !b.isClosed;
@@ -852,48 +828,7 @@ app.get('/api/posts', async (req, res) => {
         return b.id - a.id;
     });
 
-    // กรองกระทู้ตามเงื่อนไข Admin/Zone
-    const filteredPosts = sortedPosts.filter(post => {
-        // 4.1 กระทู้เปิด -> ทุกคนเห็น
-        if (!post.isClosed) return true;
-
-        // 4.2 กระทู้ปิด -> ต้องเช็คสิทธิ์
-        // - Admin Level 3 -> เห็นทั้งหมด
-        if (adminLevel >= 3) {
-            return true; 
-        }
-
-        // - Admin Level 1-2 -> เห็นเฉพาะในโซนตัวเอง
-        if (adminLevel >= 1 && post.location && post.location.lat && post.location.lng) {
-            // หาโซนที่ใกล้กระทู้นี้ที่สุด
-            let closestZone = null;
-            let minDistance = Infinity;
-
-            allZones.forEach(zone => {
-                const dist = getDistanceFromLatLonInKm(post.location.lat, post.location.lng, zone.lat, zone.lng);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    closestZone = zone;
-                }
-            });
-
-            // ถ้าโซนที่ใกล้ที่สุด มีแอดมินคนนี้ดูแลอยู่ -> ให้เห็นได้
-            if (closestZone && closestZone.assignedAdmin === requestBy) {
-                return true;
-            }
-        }
-        
-        // - กรณีเป็นเจ้าของกระทู้ -> ให้เห็นกระทู้ปิดของตัวเองได้ (Optional)
-        if (post.author === requestBy) return true;
-
-        // กรณีอื่น (User ทั่วไป หรือ Admin ที่ไม่ได้ดูแลโซนนั้น) -> ไม่เห็น
-        return false;
-    });
-
-    // 5. ตัดแบ่งหน้า (Pagination) จากรายการที่กรองแล้ว
-    const paginatedPosts = filteredPosts.slice(skip, skip + limit);
-
-    // เตรียมข้อมูลผู้แต่งเพื่อแสดง Rating (Logic เดิม)
+    const paginatedPosts = sortedPosts.slice(skip, skip + limit);
     const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
     const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
     const authorMap = {};
@@ -901,10 +836,7 @@ app.get('/api/posts', async (req, res) => {
 
     res.json({
         posts: paginatedPosts.map(post => ({ ...post, authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' })),
-        totalItems: filteredPosts.length, // นับจากที่กรองแล้ว
-        totalPages: Math.ceil(filteredPosts.length / limit), 
-        currentPage: page, 
-        limit
+        totalItems: sortedPosts.length, totalPages: Math.ceil(sortedPosts.length / limit), currentPage: page, limit
     });
 });
 
@@ -1088,29 +1020,24 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // 17. Manual Close
 app.put('/api/posts/:id/close', async (req, res) => {
-    const postId = parseInt(req.params.id); 
+    const postId = req.params.id;
     const { requestBy } = req.body;
-	
+    
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'Post not found' });
 
+    // ตรวจสอบสิทธิ์: ต้องเป็นเจ้าของโพสต์ หรือเป็น Admin Level 1 ขึ้นไป
     const requester = await getUserData(requestBy);
     if (requestBy !== post.author && requester.adminLevel < 1) {
         return res.status(403).json({ error: 'Permission denied. Only Author or Admin (Level 1+) can close this post.' });
     }
 
-    await postsCollection.updateOne(
-        { id: postId }, 
-        { $set: { status: 'closed_by_user', isClosed: true } }
-    );
+    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed' } });
     
-    if (requestBy !== post.author) {
-        const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
-        await messagesCollection.insertOne(notifMsg);
-        io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
-    }
+    const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
+    await messagesCollection.insertOne(notifMsg);
+    io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
 
-    io.emit('update-post-status'); 
     res.json({ success: true });
 });
 

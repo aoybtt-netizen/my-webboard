@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.34 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.28 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1815,7 +1815,7 @@ function getTransactionDetail(t) {
         async function loadPosts() {
             try {
                 // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
-                const res = await fetch(`/api/posts?limit=1000&requestBy=${myUsername}`);
+                const res = await fetch('/api/posts?limit=1000');
                 const responseData = await res.json();
                 
                 // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
