@@ -52,16 +52,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // --- Live Exchange Rate ---
-// 1. เปลี่ยน API Key ให้เป็นของ ExchangeRate-API
-// ใช้ 3dce41548ad09d3f2348910b แทนที่ '1f39c37f85-b1b3f2287e-t6oki5'
-const LIVE_API_KEY = '3dce41548ad09d3f2348910b'; 
-
-// 2. เปลี่ยน URL ให้เป็นรูปแบบของ ExchangeRate-API
-// รูปแบบของ ExchangeRate-API คือ https://v6.exchangerate-api.com/v6/[KEY]/latest/[BASE_CURRENCY]
-// ใช้ USD เป็นสกุลเงินหลัก (Base Currency)
-const LIVE_API_URL = `https://v6.exchangerate-api.com/v6/${LIVE_API_KEY}/latest/USD`; 
-
-// ตัวแปรส่วนที่เหลือสามารถคงไว้ได้
+const LIVE_API_KEY = '3ce8ed3c3901e2d6ab032b65';
+const LIVE_API_URL = `https://v6.exchangerate-api.com/v6/3ce8ed3c3901e2d6ab032b65/latest/USD`;
 let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 35.0 };
 const DEFAULT_CURRENCY = 'THB';
 
