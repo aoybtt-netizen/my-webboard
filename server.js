@@ -698,7 +698,7 @@ app.get('/api/zone-check-bg', async (req, res) => {
 
         // หาระยะที่ใกล้ที่สุด (ในรัศมีที่กำหนด เช่น 50 กม.)
         // ปรับรัศมี coverageRadius ได้ตามต้องการ
-        const coverageRadius = 50; 
+        const coverageRadius = 1000; 
 
         zones.forEach(zone => {
             if (zone.bgImage) { // เช็คเฉพาะโซนที่มีรูป
