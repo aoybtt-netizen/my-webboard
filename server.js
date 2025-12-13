@@ -857,7 +857,9 @@ app.get('/api/posts', async (req, res) => {
 
         // 4.2 กระทู้ปิด -> ต้องเช็คสิทธิ์
         // - Admin Level 3 -> เห็นทั้งหมด
-        if (adminLevel >= 3) return true;
+        if (adminLevel >= 3) {
+            return true; 
+        }
 
         // - Admin Level 1-2 -> เห็นเฉพาะในโซนตัวเอง
         if (adminLevel >= 1 && post.location && post.location.lat && post.location.lng) {
