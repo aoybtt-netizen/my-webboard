@@ -54,7 +54,7 @@ app.use(express.json());
 // --- Live Exchange Rate ---
 const LIVE_API_KEY = '3ce8ed3c3901e2d6ab032b65';
 const LIVE_API_URL = `https://v6.exchangerate-api.com/v6/3ce8ed3c3901e2d6ab032b65/latest/USD`;
-let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 35.0 };
+//let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 35.0 };
 const DEFAULT_CURRENCY = 'THB';
 
 
@@ -269,6 +269,7 @@ async function fetchLiveExchangeRates() {
                 'JPY': data.results.JPY || LIVE_EXCHANGE_RATES.JPY,
             };
             console.log('✅ อัปเดตอัตราแลกเปลี่ยน:', LIVE_EXCHANGE_RATES);
+            io.emit('exchange-rate-update', LIVE_EXCHANGE_RATES); 
         }
     } catch (error) {
         console.error('❌ API Error:', error.message);
