@@ -309,6 +309,9 @@ app.get('/api/user-info', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' }); // เพิ่มกันเหนียว
     if (user.isBanned) return res.status(403).json({ error: '⛔ บัญชีของคุณถูกระงับการใช้งาน' });
 	
+	let locationObj = null;
+    let userZoneId = null;
+	
 	if (location) {
         try {
             const parsedLoc = JSON.parse(location);
@@ -317,6 +320,10 @@ app.get('/api/user-info', async (req, res) => {
                     { username: username }, 
                     { $set: { lastLocation: parsedLoc, lastSeen: new Date() } }
                 );
+            const responsibleData = await findResponsibleAdmin(locationObj);
+                if (responsibleData.zoneData) {
+                    userZoneId = responsibleData.zoneData.id;
+                }
             }
         } catch (e) {
             console.error("Error parsing location for user update:", e);
@@ -344,7 +351,8 @@ app.get('/api/user-info', async (req, res) => {
         currencySymbol: targetCurrency.toUpperCase(), 
         postCost: postCostData, // ส่งไปเป็น Object { totalCost, systemFee, adminFee }
         rating: user.rating,
-        adminLevel: user.adminLevel || 0 
+        adminLevel: user.adminLevel || 0,
+		userZoneId: userZoneId // ส่ง Zone ID กลับไปให้ Frontend
     });
 });
 
@@ -1071,6 +1079,8 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
     // D. รวมยอดที่ต้องจ่าย
     const totalCost = globalSystemFee + finalAdminFee;
+	// ดึง Zone ID ของโพสต์
+    const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
     // ==================================================================
     // สิ้นสุดการคำนวณ
@@ -1116,7 +1126,8 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const newPost = { 
         id: Date.now(), title: finalTitle, topicId: category, content, author,
         location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
-        isClosed: false, isPinned: (author === 'Admin') 
+        isClosed: false, isPinned: (author === 'Admin'),
+        zoneId: postZoneId
     };
     await postsCollection.insertOne(newPost);
     

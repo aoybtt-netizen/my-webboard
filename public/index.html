@@ -371,13 +371,14 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.37 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.38 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let myUsername = "";
 		let myAdminLevel = 0;
+		let myZoneId = null;     // Zone ID หลักของผู้ใช้ที่ล็อกอินอยู่
 		let filterLocation = null;      // เก็บพิกัดคนดู
         let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
 		let userPrimaryLocation = null;
@@ -1309,6 +1310,8 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 		
 				// บันทึกเลเวลแอดมิน
                 myAdminLevel = data.adminLevel || 0;
+				// บันทึก Zone ID ของผู้ใช้ (ต้องให้ Server ส่งกลับมา)
+                myZoneId = data.userZoneId || null;  // เช่น 'THA' หรือ 'USA'
 				
 				// Logic แสดงดาว/ยศ บนรูปโปรไฟล์
         const avatarEl = document.getElementById('user-avatar-display');
@@ -2012,21 +2015,37 @@ async function showMyClosedPosts(page = 1) {
                 filteredPosts = postsArray.filter(item => item.data.isClosed);
             }
 			
+			if (myZoneId) {
+        filteredPosts = filteredPosts.filter(item => {
+            const post = item.data;
+            const postZoneId = post.zoneId; // ต้องมาจากการ Fetch Posts ใน loadPosts()
+            
+            // ถ้ากระทู้ไม่มี Zone ID หรือ Zone ID ของกระทู้ไม่ตรงกับ Zone ของผู้ใช้
+            // ให้ซ่อนกระทู้นั้นทันที (แก้ปัญหาการเห็นข้ามประเทศ/โซนหลัก)
+            if (!postZoneId || postZoneId !== myZoneId) {
+                 return false; 
+            }
+            return true; // Zone ตรงกัน ให้อนุญาตผ่านไปเช็คระยะทางต่อไป
+        });
+    }
+			
 			if (filterLocation && filterMaxDistance) {
-    filteredPosts = filteredPosts.filter(item => {
-        const post = item.data;
-        // ถ้ากระทู้ไม่มีพิกัด ให้ซ่อนไปเลย (หรือจะให้โชว์ก็ได้แล้วแต่ Logic คุณ)
-        if (!post.location || !post.location.lat || !post.location.lng) {
-            return false; 
-        }
-        // คำนวณระยะทาง
-        const dist = getDistanceFromLatLonInKm(
-            filterLocation.lat, filterLocation.lng,
-            post.location.lat, post.location.lng
-        );
-        // คืนค่า True ถ้าอยู่ในระยะ
-        return dist <= filterMaxDistance;
-    });
+        filteredPosts = filteredPosts.filter(item => {
+            // ... (โค้ดการคำนวณระยะทางเดิม) ...
+            
+            const post = item.data;
+            // ถ้ากระทู้ไม่มีพิกัด ก็ไม่ต้องแสดง (ยังคง logic เดิม)
+            if (!post.location || !post.location.lat || !post.location.lng) {
+                 return false;  
+            }
+            
+            const dist = getDistanceFromLatLonInKm(
+                filterLocation.lat, filterLocation.lng,
+                post.location.lat, post.location.lng
+            );
+            // คืนค่า True ถ้าอยู่ในระยะ
+            return dist <= filterMaxDistance;
+        });
 }
             
             filteredPosts.sort((a, b) => {
