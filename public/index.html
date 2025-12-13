@@ -56,6 +56,22 @@
         
         .notif-dot { position: absolute; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: flex; justify-content: center; align-items: center; border: 2px solid white; animation: bounce 0.5s infinite alternate; }
         @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+		
+		.post-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%; /* ทำให้เป็นวงกลม */
+    object-fit: cover; /* ครอบคลุมพื้นที่แต่ไม่เสียสัดส่วน */
+    margin-right: 15px;
+    flex-shrink: 0; /* ป้องกันไม่ให้โลโก้ย่อตัว */
+}
+
+.post-info-section {
+    /* ใช้ Flex เพื่อจัดเรียงโลโก้และชื่อกระทู้ */
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
 
         .post-card { background: white; padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
         .post-card:first-child { border-top-left-radius: 10px; border-top-right-radius: 10px; }
@@ -134,7 +150,9 @@
     <div class="overlay" onclick="toggleSidebar()"></div>
 
     <div class="sidebar" id="sidebar">
-    <h2 style="text-align:center; margin-top:0;">Webboard</h2>
+    <div style="text-align:center; margin-bottom: 20px;">
+    <img src="ใส่ลิงก์รูปโลโก้ของคุณตรงนี้.png" style="width: 150px; height: auto;">
+</div>
     
     <div style="text-align:center; margin-bottom:20px;">
         <div style="font-size:40px;" id="user-avatar-display">👤</div>
@@ -371,7 +389,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.37 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.38 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -594,7 +612,6 @@ async function updateZoneBackground(lat, lng) {
             // ถ้ามีรูปประจำโซน ให้เปลี่ยน
             // ใส่ Overlay สีขาวจางๆ เหมือนเดิมเพื่อให้ตัวหนังสืออ่านง่าย
             document.body.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url('${data.bgImage}')`;
-            console.log(`✅ Zone Background Applied: ${data.zoneName}`);
         } else {
             // ถ้าไม่มี ให้กลับไปใช้รูป Default
             document.body.style.backgroundImage = defaultBg;
@@ -2098,7 +2115,7 @@ async function showMyClosedPosts(page = 1) {
 
             let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
 			
-            // ✅ [FIXED] ส่วนแสดงผู้ชนะ
+            // ส่วนแสดงผู้ชนะ
 			let winnerHtml = '';
 			if (post.acceptedViewer) {
 			    winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
@@ -2157,9 +2174,15 @@ async function showMyClosedPosts(page = 1) {
             }
 
             // ✅ แทรก winnerHtml ลงใน title
+            const logoUrl = `https://ui-avatars.com/api/?name=${post.author}&background=random&color=fff&size=128&bold=true`;
+
             list.insertAdjacentHTML('beforeend', `
                 <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
-                    <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
+                    
+                    <img src="${logoUrl}" class="post-logo" alt="${post.author}">
+
+                    <div style="flex-grow: 1;"> 
+                        <b>${icon} ${post.title}${winnerHtml}</b>
                         <br>
                         <small>
                             ${post.author} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
