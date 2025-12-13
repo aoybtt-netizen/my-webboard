@@ -1086,24 +1086,29 @@ app.delete('/api/posts/:id', async (req, res) => {
 
 // 17. Manual Close
 app.put('/api/posts/:id/close', async (req, res) => {
-    const postId = req.params.id;
+    const postId = parseInt(req.params.id); 
     const { requestBy } = req.body;
-    
+	
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'Post not found' });
 
-    // ตรวจสอบสิทธิ์: ต้องเป็นเจ้าของโพสต์ หรือเป็น Admin Level 1 ขึ้นไป
     const requester = await getUserData(requestBy);
     if (requestBy !== post.author && requester.adminLevel < 1) {
         return res.status(403).json({ error: 'Permission denied. Only Author or Admin (Level 1+) can close this post.' });
     }
 
-    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed' } });
+    await postsCollection.updateOne(
+        { id: postId }, 
+        { $set: { status: 'closed_by_user', isClosed: true } }
+    );
     
-    const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
-    await messagesCollection.insertOne(notifMsg);
-    io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
+    if (requestBy !== post.author) {
+        const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
+        await messagesCollection.insertOne(notifMsg);
+        io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
+    }
 
+    io.emit('update-post-status'); 
     res.json({ success: true });
 });
 
