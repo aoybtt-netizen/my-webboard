@@ -292,17 +292,8 @@
                 <button onclick="document.getElementById('user-list-modal').classList.add('hidden')" style="border:none; background:none; font-size:1.5em; cursor:pointer;">×</button>
             </div>
             <p id="user-list-desc" style="font-size:0.9em; color:gray;" data-i18n-key="modal_user_list_desc"></p>
-			
-			<div style="display:flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;">
-            <button id="filter-btn-all" class="sidebar-btn active-menu" style="width:auto; padding: 5px 15px; font-size: 0.9em;" onclick="setMemberFilter('all')">ทั้งหมด</button>
-            <button id="filter-btn-admin" class="sidebar-btn" style="width:auto; padding: 5px 15px; font-size: 0.9em;" onclick="setMemberFilter('admin')">Admin</button>
-            <button id="filter-btn-user" class="sidebar-btn" style="width:auto; padding: 5px 15px; font-size: 0.9em;" onclick="setMemberFilter('user')">User</button>
-            <button id="filter-btn-banned" class="sidebar-btn" style="width:auto; padding: 5px 15px; font-size: 0.9em; color: red;" onclick="setMemberFilter('banned')">Banned</button>
-        </div>
 
-            <input type="text" id="user-search-input" placeholder="🔍 ค้นหาสมาชิกด้วยชื่อ..." 
-       onkeyup="filterAndRenderMembers()" 
-       style="width:100%;" data-i18n-key="search_placeholder">
+            <input type="text" id="user-search-input" placeholder="🔍 ค้นหาสมาชิกด้วยชื่อ..." onkeyup="openAllUserList(this.value)" style="width:100%;" data-i18n-key="search_placeholder">
 
             <div id="pagination-controls" style="text-align: center; margin-top: 15px; margin-bottom: 10px; display: none;">
     <button class="sidebar-btn" id="list-prev-btn" onclick="changeListPage(-1)" style="width:auto; padding: 5px 15px; font-size: 0.9em;" data-i18n-key="btn_prev">⬅️ ก่อนหน้า</button>
@@ -380,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.31 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.33 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3301,125 +3292,93 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
 		document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
         document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
     }
-	
-	let currentMemberFilter = 'all'; // ค่าเริ่มต้น: all, admin, user, banned
-	let allUsersCache = []; // ตัวแปรเก็บข้อมูล User ทั้งหมดที่ดึงมา
-
-
     
-	// ปรับปรุง openAllUserList ให้ดึงข้อมูลแล้วเก็บใส่ Cache
-	async function openAllUserList(searchTerm = "") {
-    // ถ้าไม่ใช่ Admin อาจจะต้องจัดการสิทธิ์ (ตามโค้ดเดิม)
+    let allUsersCache = [];
     
-    document.getElementById('user-list-modal').classList.remove('hidden');
+	async function openAllUserList(searchTerm = '') {
+            
+    if (searchTerm === '' && document.getElementById('user-list-modal').classList.contains('hidden')) {
+        document.getElementById('user-list-modal').classList.remove('hidden');
+        if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+    }
+    
+    document.getElementById('user-list-title').innerText = translations[currentLang]['modal_user_list_title'];
+    document.getElementById('user-list-desc').innerText = translations[currentLang]['modal_user_list_desc'];
+    
+    document.getElementById('pagination-controls').style.display = 'none';
+    document.getElementById('user-search-input').style.display = 'block'; 
+    
     const container = document.getElementById('user-list-container');
     
-    // ถ้าไม่มี Cache หรือเป็นการเปิดครั้งแรก ให้โหลดใหม่
-    // (หรือจะโหลดใหม่ทุกครั้งก็ได้ถ้าต้องการข้อมูลล่าสุดเสมอ)
-    container.innerHTML = "⏳ Loading...";
-    
-    try {
+    let users = [];
+    if (allUsersCache.length === 0) {
+        container.innerHTML = "กำลังโหลด...";
         const res = await fetch(`/api/users-list?requestBy=${myUsername}`);
-        if (res.status !== 200) {
-            container.innerHTML = "<p style='color:red; text-align:center;'>Access Denied</p>";
+        
+        if(res.status !== 200) {
+            const errorData = await res.json();
+            alert(`❌ ไม่สามารถดึงรายชื่อได้: ${errorData.error || res.statusText}`);
+            document.getElementById('user-list-modal').classList.add('hidden');
             return;
         }
-        
-        const users = await res.json();
-        allUsersCache = users; // เก็บเข้า Cache
-
-        // เรียกแสดงผล
-        filterAndRenderMembers();
-        
-    } catch (e) {
-        console.error(e);
-        container.innerHTML = "<p style='color:red; text-align:center;'>Connection Error</p>";
+        users = await res.json();
+        allUsersCache = users; 
+    } else {
+        users = allUsersCache; 
     }
-}
-
-
-function setMemberFilter(type) {
-    currentMemberFilter = type;
     
-    // อัปเดต UI ปุ่ม
-    ['all', 'admin', 'user', 'banned'].forEach(t => {
-        const btn = document.getElementById(`filter-btn-${t}`);
-        if(btn) {
-             if(t === type) {
-                 btn.classList.add('active-menu');
-                 btn.style.borderLeft = "5px solid #007bff";
-             } else {
-                 btn.classList.remove('active-menu');
-                 btn.style.borderLeft = "none";
-             }
-        }
-    });
-
-    // เรียกแสดงผลใหม่
-    filterAndRenderMembers();
-}
-
-// ฟังก์ชันกรองและแสดงผล
-function filterAndRenderMembers() {
-    const searchVal = document.getElementById('user-search-input').value.toLowerCase();
-    const container = document.getElementById('user-list-container');
+    const searchTermLower = searchTerm.trim().toLowerCase();
+    let list = users.filter(u => u.name !== 'Admin');
     
-    if (!allUsersCache || !Array.isArray(allUsersCache)) {
-        container.innerHTML = "Loading...";
-        return;
+    if (searchTermLower) {
+        list = list.filter(u => u.name.toLowerCase().includes(searchTermLower));
     }
 
-    // กรองข้อมูลจาก Cache
-    let filtered = allUsersCache.filter(u => {
-        // 1. กรองตาม Search Text
-        if (searchVal && !u.name.toLowerCase().includes(searchVal)) return false;
-
-        // 2. กรองตาม Tab Type
-        const isAdmin = (u.adminLevel || 0) > 0;
-        const isBanned = u.isBanned === true;
-
-        if (currentMemberFilter === 'admin') return isAdmin;
-        if (currentMemberFilter === 'user') return !isAdmin && !isBanned;
-        if (currentMemberFilter === 'banned') return isBanned;
-        
-        return true; // case 'all'
-    });
-
-    // แสดงผล
-    if (filtered.length === 0) {
-        container.innerHTML = `<p style="text-align:center; color:gray; margin-top:20px;">ไม่พบข้อมูล (${currentMemberFilter})</p>`;
-        return;
+    if(list.length === 0) { 
+        container.innerHTML = searchTermLower 
+            ? `<p style='text-align:center; color:red; margin-top:20px;'>ไม่พบสมาชิกชื่อ "${searchTerm}"</p>`
+            : "ไม่มีสมาชิก"; 
+        return; 
     }
+    
+    const banText = currentLang === 'th' ? 'แบน' : 'Ban';
+    const unbanText = currentLang === 'th' ? 'ปลดแบน' : 'Unban';
+    const chatText = currentLang === 'th' ? 'แชท/โอน' : 'Chat/Transfer';
+    const ratingText = currentLang === 'th' ? 'ตั้งค่าคะแนน' : 'Set Rating';
 
-    container.innerHTML = filtered.map(u => {
+    container.innerHTML = list.map(u => {
         const isBanned = u.isBanned;
         const targetLevel = u.adminLevel || 0;
         
-        // กำหนด Style ตามสถานะ
+        // สถานะแบน (โชว์แค่สีพื้นหลังและขอบแดง)
         const rowStyle = isBanned 
             ? 'background: #f8d7da; border-left: 5px solid #dc3545;' 
-            : 'background: white; border-left: 5px solid #28a745;';
-
-        // Badge ยศ
+            : 'background: white; border-left: 5px solid #28a745;'; // สีเขียวปกติ
+            
+        // Badge ยศ (ถ้ามี)
         let levelBadge = '';
         if (targetLevel > 0) {
-            let badgeColor = targetLevel === 3 ? '#6610f2' : '#007bff';
-            levelBadge = `<span style="background:${badgeColor}; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>`;
+            levelBadge = `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>`;
         }
         
+        // Badge Banned
         const banText = isBanned ? '<span style="color:red; font-size:0.8em; font-weight:bold;">(BANNED)</span>' : '';
 
         return `
-        <div class="user-list-item" style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);" onclick="openUserDetail('${u.name}')">
-            <div style="font-weight: bold; font-size: 1.1em;">
+        <div class="user-list-item" 
+             style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);"
+             onclick="openUserDetail('${u.name}')"> <div style="font-weight: bold; font-size: 1.1em;">
                 👤 ${u.name} ${levelBadge} ${banText}
             </div>
-            <div style="text-align:right;">
-                <div style="color:#28a745; font-weight: bold;">💵 ${u.coins.toLocaleString()} USD</div>
-                <div style="font-size:0.8em; color:gray;">⭐ ${u.rating ? u.rating.toFixed(2) : '0.00'}</div>
+            
+            <div style="color:#28a745; font-weight: bold;">
+                💵 ${u.coins.toLocaleString()} USD
             </div>
         </div>`;
     }).join('');
+    
+    document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
+    document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
 }
 
 		// เปิด Modal แสดงรายละเอียดและปุ่มจัดการ
