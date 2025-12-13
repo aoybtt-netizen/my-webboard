@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.38 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.39 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1436,7 +1436,13 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         // 7. อัปเดตชื่อ (แก้ปัญหาชื่อไม่โชว์)
         const userDisplay = document.getElementById('user-display');
         if (userDisplay) userDisplay.innerText = myUsername;
-
+		
+		if (locationQuery) {
+                const locData = JSON.parse(decodeURIComponent(locationQuery.split('=')[1]));
+                // เรียก 2 ฟังก์ชันนี้เพื่อให้หน้าจอเปลี่ยนตามโซน
+                updateZoneBackground(locData.lat, locData.lng);
+                fetchAndRenderAnnouncement(locData);
+            }
 
         // 8. โหลดกระทู้
         loadPosts();
@@ -2010,22 +2016,23 @@ async function showMyClosedPosts(page = 1) {
             let filteredPosts = postsArray;
 
             if (currentView === 'home') {
-                filteredPosts = postsArray.filter(item => !item.data.isClosed);
-            } else if (currentView === 'closed') {
-                filteredPosts = postsArray.filter(item => item.data.isClosed);
-            }
-			
-			if (myZoneId) {
+        filteredPosts = postsArray.filter(item => !item.data.isClosed);
+    } else if (currentView === 'closed') {
+        filteredPosts = postsArray.filter(item => item.data.isClosed);
+    }
+
+    // -----------------------------------------------------------
+    // Zone Lock Filter
+    // -----------------------------------------------------------
+    // กรองกระทู้: แสดงเฉพาะกระทู้ที่อยู่ใน Zone เดียวกับ User หรือกระทู้ที่ไม่มี Zone (เช่นของระบบ)
+    if (myZoneId) {
         filteredPosts = filteredPosts.filter(item => {
-            const post = item.data;
-            const postZoneId = post.zoneId; // ต้องมาจากการ Fetch Posts ใน loadPosts()
-            
-            // ถ้ากระทู้ไม่มี Zone ID หรือ Zone ID ของกระทู้ไม่ตรงกับ Zone ของผู้ใช้
-            // ให้ซ่อนกระทู้นั้นทันที (แก้ปัญหาการเห็นข้ามประเทศ/โซนหลัก)
-            if (!postZoneId || postZoneId !== myZoneId) {
-                 return false; 
+            const p = item.data;
+            // ถ้ากระทู้มี Zone ID และไม่ตรงกับของเรา -> ซ่อน
+            if (p.zoneId && p.zoneId !== myZoneId) {
+                return false;
             }
-            return true; // Zone ตรงกัน ให้อนุญาตผ่านไปเช็คระยะทางต่อไป
+            return true;
         });
     }
 			
@@ -2832,21 +2839,26 @@ function openAdminPinnedModal() {
     const t = translations[currentLang]; // ตัวย่อสำหรับข้อความแปล
 
     if (!navigator.geolocation) {
-        alert(t['geo_not_supported']); // ⭐ แปลข้อความแจ้งเตือน
+        alert(t['geo_not_supported']); 
         return;
     }
 
     btn.classList.remove('active');
-    btn.innerHTML = t['geo_searching']; // ⭐ แปลสถานะกำลังค้นหา
+    btn.innerHTML = t['geo_searching']; // กำลังค้นหา...
     display.innerHTML = '';
     
     navigator.geolocation.getCurrentPosition(async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-		updateZoneBackground(lat, lng);
+
+        // 1. อัปเดตพื้นหลังทันทีที่ได้พิกัด (เพื่อความรวดเร็ว)
+        updateZoneBackground(lat, lng);
+        
+        // 2. ดึงหัวข้อตามพื้นที่
         await fetchTopicsForCreate(lat, lng);
+
         try {
-            // ⭐ [MODIFIED] ใช้ currentLang สำหรับ Nominatim เพื่อผลลัพธ์ที่เป็นภาษาถูกต้อง
+            // 3. หาชื่อสถานที่ (Reverse Geocoding)
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${currentLang}`); 
             const data = await res.json();
             
@@ -2854,37 +2866,65 @@ function openAdminPinnedModal() {
             if(data.address.road) placeName = `${data.address.road}, ${placeName}`;
 
             currentLocationData = { lat, lng, name: placeName };
-			if (isPrimaryCheckin) {
-            userPrimaryLocation = currentLocationData;
-            localStorage.setItem('userPrimaryLocation', JSON.stringify(currentLocationData));
-            // และใช้พิกัดนี้ในการโหลดกระทู้ใหม่
-            filterLocation = userPrimaryLocation;
-            loadPosts(); 
-        }
-			fetchTopicsForCreate(lat, lng);
-			fetchAndRenderAnnouncement(currentLocationData);
+
+            // -----------------------------------------------------
+            // Logic สำหรับ Primary Check-in (เช็คอินหลัก)
+            // -----------------------------------------------------
+            if (isPrimaryCheckin) {
+                userPrimaryLocation = currentLocationData;
+                localStorage.setItem('userPrimaryLocation', JSON.stringify(currentLocationData));
+                filterLocation = userPrimaryLocation;
+                
+                // ✅ เปลี่ยนจาก loadPosts() เป็น updateUserInfo() 
+                // เพื่อส่งพิกัดไปให้ Server -> Server จะคืนค่า userZoneId กลับมา -> แล้วค่อยโหลดกระทู้
+                updateUserInfo(); 
+            } else {
+                // ถ้าแค่เปลี่ยนจุดกรองชั่วคราว (ไม่ใช่จุดหลัก) ให้โหลดกระทู้ใหม่เลย
+                loadPosts(); 
+            }
+            // -----------------------------------------------------
+
+            // อัปเดตประกาศและค่าธรรมเนียม
+            fetchAndRenderAnnouncement(currentLocationData);
+            refreshModalPostCost(currentLocationData);
             
-            btn.innerHTML = t['geo_success_name']; // ⭐ แปลสถานะสำเร็จ (มีชื่อสถานที่)
+            // อัปเดต UI ปุ่มและข้อความ
+            btn.innerHTML = t['geo_success_name']; 
             btn.classList.add('active');
-            display.innerHTML = `${t['geo_display_name']} <b>${placeName}</b>`; // ⭐ แปลข้อความแสดงผล
-			refreshModalPostCost(currentLocationData);
+            display.innerHTML = `${t['geo_display_name']} <b>${placeName}</b>`; 
             
         } catch (e) {
+            // กรณีหาชื่อสถานที่ไม่ได้ (Error จาก Nominatim)
+            console.error("Geocoding error:", e);
             currentLocationData = { lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
-            btn.innerHTML = t['geo_success_coord']; // ⭐ แปลสถานะสำเร็จ (ไม่มีชื่อสถานที่ ใช้พิกัดแทน)
+
+            // ยังคงต้องทำ Logic Check-in แม้จะหาชื่อไม่เจอ
+            if (isPrimaryCheckin) {
+                userPrimaryLocation = currentLocationData;
+                localStorage.setItem('userPrimaryLocation', JSON.stringify(currentLocationData));
+                filterLocation = userPrimaryLocation;
+                updateUserInfo(); // ✅ เรียก updateUserInfo เช่นกัน
+            } else {
+                loadPosts();
+            }
+
+            // เรียกฟังก์ชันที่เหลือโดยใช้ข้อมูลที่มี (lat, lng)
+            fetchAndRenderAnnouncement(currentLocationData);
+            refreshModalPostCost(currentLocationData);
+
+            btn.innerHTML = t['geo_success_coord']; 
             btn.classList.add('active');
-            display.innerHTML = `${t['geo_display_coord']} ${lat.toFixed(4)}, ${lng.toFixed(4)}`; // ⭐ แปลข้อความแสดงผล
-			refreshModalPostCost(currentLocationData);
+            display.innerHTML = `${t['geo_display_coord']} ${lat.toFixed(4)}, ${lng.toFixed(4)}`; 
         }
 
     }, (error) => {
         let errorMessage = t['geo_error_general']; 
         if (error.code === 1) {
-            errorMessage = t['geo_error_permission']; // ⭐ แปลข้อความถูกปฏิเสธสิทธิ์
+            errorMessage = t['geo_error_permission']; 
         }
         
         alert(errorMessage);
-        // รีเซ็ตปุ่มกลับสู่ข้อความตั้งต้น (ใช้ geo_btn)
+        // รีเซ็ตปุ่มกลับสู่ข้อความตั้งต้น
         btn.innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`; 
     });
 }

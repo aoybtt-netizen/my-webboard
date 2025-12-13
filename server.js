@@ -331,28 +331,47 @@ app.get('/api/user-info', async (req, res) => {
     }
     
     // 2. คำนวณค่าธรรมเนียม (แบบใหม่: รองรับโซน)
+    let userZoneId = null;
     let postCostData;
     try {
-        // ถ้ามี location ส่งมา ให้แปลงเป็น Object, ถ้าไม่มีให้เป็น null
         const locationObj = location ? JSON.parse(location) : null;
-        
-        // เรียกฟังก์ชันใหม่ที่คำนวณตามพิกัด (ต้องมีฟังก์ชันนี้ใน server.js แล้วนะ)
-        postCostData = await getPostCostByLocation(locationObj); 
+
+        // อัปเดตพิกัดล่าสุด (Logic เดิม)
+        if (locationObj && locationObj.lat && locationObj.lng) {
+            await usersCollection.updateOne(
+                { username: username },
+                { $set: { lastLocation: locationObj, lastSeen: new Date() } }
+            );
+        }
+
+        // 1. คำนวณค่าธรรมเนียมและหาผู้รับผิดชอบ
+        const responsibleData = await getPostCostByLocation(locationObj);
+        postCostData = responsibleData;
+
+        // 2. หา Zone ID หลักของผู้ใช้จาก responsibleData
+        // เราต้องเรียก findResponsibleAdmin อีกรอบหรือดึงจาก getPostCostByLocation ถ้าแก้ให้ return มา
+        // เพื่อความชัวร์ เรียกใหม่ตรงนี้ หรือปรับ getPostCostByLocation ก็ได้
+        // แต่เพื่อให้กระทบโค้ดเดิมน้อยสุด ผมจะเรียก findResponsibleAdmin โดยตรง
+        const zoneInfo = await findResponsibleAdmin(locationObj);
+        if (zoneInfo.zoneData) {
+            userZoneId = zoneInfo.zoneData.id;
+        }
+
     } catch (e) {
-        console.error("Error calculating location cost:", e);
-        postCostData = await getPostCostByLocation(null); // Fallback ไปใช้ค่ากลาง
+        console.error("Error calculating location cost/zone:", e);
+        postCostData = await getPostCostByLocation(null);
     }
 
     const convertedCoins = convertUSD(user.coins, targetCurrency);
-                    
-    res.json({ 
-        coins: user.coins, 
-        convertedCoins: convertedCoins.toFixed(2), 
-        currencySymbol: targetCurrency.toUpperCase(), 
-        postCost: postCostData, // ส่งไปเป็น Object { totalCost, systemFee, adminFee }
+
+    res.json({
+        coins: user.coins,
+        convertedCoins: convertedCoins.toFixed(2),
+        currencySymbol: targetCurrency.toUpperCase(),
+        postCost: postCostData,
         rating: user.rating,
         adminLevel: user.adminLevel || 0,
-		userZoneId: userZoneId // ส่ง Zone ID กลับไปให้ Frontend
+        userZoneId: userZoneId //ส่ง Zone ID กลับไป
     });
 });
 
@@ -694,34 +713,23 @@ app.post('/api/admin/upload-zone-bg', upload.single('image'), async (req, res) =
 // 8.2 API สำหรับสมาชิกเช็คพื้นหลังตามพิกัด (Public)
 app.get('/api/zone-check-bg', async (req, res) => {
     const { lat, lng } = req.query;
-    if (!lat || !lng) return res.json({ bgImage: null }); // ไม่เปลี่ยนถ้าไม่มีพิกัด
-
-    const userLat = parseFloat(lat);
-    const userLng = parseFloat(lng);
+    if (!lat || !lng) return res.json({ bgImage: null });
 
     try {
-        const zones = await zonesCollection.find().toArray();
-        let matchedZone = null;
-        let minDistance = Infinity;
+        const location = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        
+        // [NEW] ใช้ logic เดียวกับตอนหา Admin รับผิดชอบ
+        const responsible = await findResponsibleAdmin(location);
 
-        // หาระยะที่ใกล้ที่สุด (ในรัศมีที่กำหนด เช่น 50 กม.)
-        // ปรับรัศมี coverageRadius ได้ตามต้องการ
-        const coverageRadius = 1000; 
-
-        zones.forEach(zone => {
-            if (zone.bgImage) { // เช็คเฉพาะโซนที่มีรูป
-                const dist = getDistanceFromLatLonInKm(userLat, userLng, zone.lat, zone.lng);
-                if (dist <= coverageRadius && dist < minDistance) {
-                    minDistance = dist;
-                    matchedZone = zone;
-                }
-            }
-        });
-
-        if (matchedZone) {
-            res.json({ bgImage: matchedZone.bgImage, zoneName: matchedZone.name });
+        // ถ้าเจอกระทั่งโซน และโซนนั้นมีภาพพื้นหลัง
+        if (responsible.zoneData && responsible.zoneData.bgImage) {
+            res.json({ 
+                bgImage: responsible.zoneData.bgImage, 
+                zoneName: responsible.zoneName 
+            });
         } else {
-            res.json({ bgImage: null }); // ไม่พบโซนใกล้เคียง หรือโซนนั้นไม่มีรูป
+            // ถ้าไม่เจอ หรือโซนนั้นไม่มีรูป
+            res.json({ bgImage: null });
         }
     } catch (e) {
         console.error(e);
@@ -1079,7 +1087,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
     // D. รวมยอดที่ต้องจ่าย
     const totalCost = globalSystemFee + finalAdminFee;
-	// ดึง Zone ID ของโพสต์
+    //ดึง Zone ID จาก responsibleData เพื่อบันทึกลงกระทู้
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
     // ==================================================================
