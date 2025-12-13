@@ -178,15 +178,14 @@ async function getPostCost() {
 
 // Haversine Formula Helper function to find the assigned admin for a post based on location
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // รัศมีของโลก (กม.)
+    const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
         Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // คืนค่าระยะทางเป็นกิโลเมตร
+    return R * c;
 }
 
 	async function findResponsibleAdmin(location) {
@@ -643,6 +642,83 @@ app.post('/api/admin/set-zone-name', async (req, res) => {
     io.to('Admin').emit('admin-new-transaction');
 
     res.json({ success: true });
+});
+
+	// 8.1 API สำหรับ Admin อัปโหลดรูปพื้นหลังโซน
+app.post('/api/admin/upload-zone-bg', upload.single('image'), async (req, res) => {
+    const { zoneId, requestBy } = req.body;
+    
+    // ตรวจสอบสิทธิ์
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied.' });
+    }
+
+    if (!req.file) {
+        return res.status(400).json({ error: 'No image file uploaded.' });
+    }
+
+    const zoneIdInt = parseInt(zoneId);
+    const zone = await zonesCollection.findOne({ id: zoneIdInt });
+
+    if (!zone) return res.status(404).json({ error: 'Zone not found.' });
+
+    // ตรวจสอบว่าเป็นเจ้าของโซนหรือไม่
+    if (requester.adminLevel < 3 && zone.assignedAdmin !== requestBy) {
+        return res.status(403).json({ error: 'Not authorized for this zone.' });
+    }
+
+    try {
+        // อัปเดต URL รูปภาพลงในฐานข้อมูลโซน
+        const imageUrl = req.file.path; // Cloudinary URL
+        await zonesCollection.updateOne(
+            { id: zoneIdInt },
+            { $set: { bgImage: imageUrl } }
+        );
+
+        res.json({ success: true, imageUrl: imageUrl, message: 'Zone background updated.' });
+    } catch (error) {
+        console.error('Error uploading zone bg:', error);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// 8.2 API สำหรับสมาชิกเช็คพื้นหลังตามพิกัด (Public)
+app.get('/api/zone-check-bg', async (req, res) => {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) return res.json({ bgImage: null }); // ไม่เปลี่ยนถ้าไม่มีพิกัด
+
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+
+    try {
+        const zones = await zonesCollection.find().toArray();
+        let matchedZone = null;
+        let minDistance = Infinity;
+
+        // หาระยะที่ใกล้ที่สุด (ในรัศมีที่กำหนด เช่น 50 กม.)
+        // ปรับรัศมี coverageRadius ได้ตามต้องการ
+        const coverageRadius = 50; 
+
+        zones.forEach(zone => {
+            if (zone.bgImage) { // เช็คเฉพาะโซนที่มีรูป
+                const dist = getDistanceFromLatLonInKm(userLat, userLng, zone.lat, zone.lng);
+                if (dist <= coverageRadius && dist < minDistance) {
+                    minDistance = dist;
+                    matchedZone = zone;
+                }
+            }
+        });
+
+        if (matchedZone) {
+            res.json({ bgImage: matchedZone.bgImage, zoneName: matchedZone.name });
+        } else {
+            res.json({ bgImage: null }); // ไม่พบโซนใกล้เคียง หรือโซนนั้นไม่มีรูป
+        }
+    } catch (e) {
+        console.error(e);
+        res.json({ bgImage: null });
+    }
 });
 
 // 9. Set Rating

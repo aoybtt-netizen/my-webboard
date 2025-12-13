@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.36 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.37 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -580,6 +580,28 @@ window.assignAdminToZone = assignAdminToZone;
         },
         { enableHighAccuracy: true }
     );
+}
+
+// ฟังก์ชันเช็คพื้นหลัง
+async function updateZoneBackground(lat, lng) {
+    try {
+        const res = await fetch(`/api/zone-check-bg?lat=${lat}&lng=${lng}`);
+        const data = await res.json();
+        
+        const defaultBg = "linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url('https://sv1.img.in.th/7fB1Jg.png')";
+        
+        if (data.bgImage) {
+            // ถ้ามีรูปประจำโซน ให้เปลี่ยน
+            // ใส่ Overlay สีขาวจางๆ เหมือนเดิมเพื่อให้ตัวหนังสืออ่านง่าย
+            document.body.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url('${data.bgImage}')`;
+            console.log(`✅ Zone Background Applied: ${data.zoneName}`);
+        } else {
+            // ถ้าไม่มี ให้กลับไปใช้รูป Default
+            document.body.style.backgroundImage = defaultBg;
+        }
+    } catch (e) {
+        console.error("Error updating background:", e);
+    }
 }
 	
         
@@ -1044,6 +1066,7 @@ if (homeBtn) {
         
         // โหลดกระทู้โดยใช้พิกัดหลักเป็น filterLocation ชั่วคราว
         if (userPrimaryLocation) {
+			updateZoneBackground(userPrimaryLocation.lat, userPrimaryLocation.lng);
             filterLocation = userPrimaryLocation;
             const DEFAULT_DISTANCE_KM = 10;
             filterMaxDistance = DEFAULT_DISTANCE_KM;
@@ -2269,6 +2292,12 @@ async function openAdminZoneModal() {
                 const currentFeeVal = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? zone.zoneFee : '';
                 const placeholder = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? '' : 'ค่ากลาง';
                 
+                // ตรวจสอบว่ามีรูปพื้นหลังหรือไม่
+                const bgPreview = zone.bgImage 
+                    ? `<div style="margin-top:5px;"><img src="${zone.bgImage}" style="max-height:100px; border-radius:5px; border:1px solid #ddd;"></div>` 
+                    : '<div style="margin-top:5px; color:gray; font-size:0.8em;">(ยังไม่มีรูปพื้นหลัง)</div>';
+
+                // --- ส่วน UI ตั้งชื่อโซน ---
                 const currentName = name.includes('Zone ID:') ? '' : name;
                 const nameInputHtml = `
                     <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
@@ -2280,6 +2309,20 @@ async function openAdminZoneModal() {
                     </div>
                 `;
 
+                // --- [NEW] ส่วน UI อัปโหลดรูปพื้นหลัง ---
+                const bgUploadHtml = `
+                    <div style="margin-top: 10px; background: #fff3cd; padding: 10px; border-radius: 5px; border: 1px solid #ffc107;">
+                        <label style="font-size: 0.9em; font-weight: bold; display:block;">🖼️ รูปพื้นหลังโซน:</label>
+                        ${bgPreview}
+                        <div style="display:flex; gap:5px; margin-top:5px;">
+                            <input type="file" id="bg-file-${zone.id}" accept="image/*" style="font-size:0.8em; width:100%;">
+                            <button class="sidebar-btn create-btn" onclick="uploadZoneBg('${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom:0;">
+                                อัปโหลด
+                            </button>
+                        </div>
+                    </div>
+                `;
+
                 return `
                     <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2288,18 +2331,17 @@ async function openAdminZoneModal() {
                         </div>
                         
                         ${nameInputHtml}
+                        ${bgUploadHtml}
                         
                         <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-top: 10px;">
                             <label style="font-size: 0.9em; white-space: nowrap;">Zone fee(USD):</label>
                             <input type="number" id="fee-input-${zone.id}" value="${currentFeeVal}" placeholder="${placeholder}" 
-                                        style="width: 80px; padding: 5px; margin-bottom: 0;">
-                                        
+                                        style="width: 80px; padding: 5px; margin-bottom: 0;">     
                             <button class="sidebar-btn create-btn" onclick="saveZoneFee('${zone.id}')" 
                                         style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0;">
                                 บันทึก
                             </button>
                         </div>
-                        <small style="color: gray; font-size: 0.8em;">* หากเว้นว่าง จะใช้ค่าธรรมเนียมกลางของระบบ</small>
                     </div>
                 `;
             }).join('');
@@ -2391,6 +2433,51 @@ async function saveZoneFee(zoneId) {
 }
 // อย่าลืม export ให้ html เรียกใช้ได้
 window.saveZoneFee = saveZoneFee;
+
+async function uploadZoneBg(zoneId) {
+    const fileInput = document.getElementById(`bg-file-${zoneId}`);
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('❌ กรุณาเลือกไฟล์รูปภาพก่อน');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('zoneId', zoneId);
+    formData.append('requestBy', myUsername);
+    formData.append('image', file);
+
+    try {
+        // เปลี่ยนข้อความปุ่มให้รู้ว่ากำลังโหลด
+        const btn = event.target; // ปุ่มที่กด
+        const originalText = btn.innerText;
+        btn.innerText = '⏳...';
+        btn.disabled = true;
+
+        const res = await fetch('/api/admin/upload-zone-bg', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            alert('✅ อัปโหลดรูปพื้นหลังสำเร็จ!');
+            openAssignedZoneMap(); // รีเฟรชหน้าเพื่อแสดงรูปใหม่
+        } else {
+            alert(`❌ Error: ${data.error}`);
+        }
+        
+        btn.innerText = originalText;
+        btn.disabled = false;
+
+    } catch (e) {
+        console.error(e);
+        alert('❌ เกิดข้อผิดพลาดในการอัปโหลด');
+    }
+}
+window.uploadZoneBg = uploadZoneBg;
 
 // ฟังก์ชันลบโซน
 async function deleteZone(zoneId, zoneName) {
@@ -2738,6 +2825,7 @@ function openAdminPinnedModal() {
     navigator.geolocation.getCurrentPosition(async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
+		updateZoneBackground(lat, lng);
         await fetchTopicsForCreate(lat, lng);
         try {
             // ⭐ [MODIFIED] ใช้ currentLang สำหรับ Nominatim เพื่อผลลัพธ์ที่เป็นภาษาถูกต้อง
