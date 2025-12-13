@@ -62,8 +62,8 @@ const LIVE_API_KEY = '3dce41548ad09d3f2348910b';
 const LIVE_API_URL = `https://v6.exchangerate-api.com/v6/${LIVE_API_KEY}/latest/USD`; 
 
 // ตัวแปรส่วนที่เหลือสามารถคงไว้ได้
-let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'USD': 1.0 };
-const DEFAULT_CURRENCY = 'USD';
+let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 35.0 };
+const DEFAULT_CURRENCY = 'THB';
 
 
 // --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) ---
