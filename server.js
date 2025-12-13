@@ -362,14 +362,18 @@ app.get('/api/users-list', async (req, res) => {
 
     // กรณี Admin Level 3 (Super Admin) -> เห็นทุกคน
     if (requester.adminLevel >= 3) {
-        return res.json(allUsers.map(u => ({ 
-            name: u.username, 
-            coins: u.coins, 
-            rating: u.rating, 
-            isBanned: u.isBanned,
-            adminLevel: u.adminLevel || 0,
-            // ส่งข้อมูลระยะห่างไปด้วยก็ได้ถ้าต้องการ (Optional)
-        })));
+        return res.json(allUsers
+            // กรองชื่อ Admin ที่กำลังเรียก API ออกไป
+            .filter(u => u.username !== requester.username)
+            .map(u => ({ 
+                name: u.username, 
+                coins: u.coins, 
+                rating: u.rating, 
+                isBanned: u.isBanned,
+                adminLevel: u.adminLevel || 0,
+                // ส่งข้อมูลระยะห่างไปด้วยก็ได้ถ้าต้องการ (Optional)
+            }))
+        );
     }
 
     // กรณี Admin Level 1-2 -> เห็นเฉพาะคนในโซนที่ตัวเองดูแล
@@ -386,6 +390,9 @@ app.get('/api/users-list', async (req, res) => {
 
     // 2.3 กรอง User
     const filteredUsers = allUsers.filter(u => {
+        // ไม่แสดงชื่อ Admin ที่กำลังเรียก API นี้
+        if (u.username === requester.username) return false; 
+
         // แอดมินเห็นแอดมินด้วยกันเสมอ (เพื่อไม่ให้ list ว่างเกินไป หรือจะปิดก็ได้)
         if (u.adminLevel > 0) return true;
 
@@ -807,9 +814,11 @@ app.get('/api/admin/get-announcement', async (req, res) => {
     }
 });
 
-// 11. Posts (List)
+// 11. Posts (List) - แก้ไขใหม่เพื่อรองรับ Admin Zone Logic
 app.get('/api/posts', async (req, res) => {
     const ONE_HOUR = 3600000;
+    
+    // อัปเดตกระทู้ที่หมดเวลาให้เป็นปิด (Logic เดิม)
     await postsCollection.updateMany(
         { isClosed: false, isPinned: false, id: { $lt: Date.now() - ONE_HOUR } },
         { $set: { isClosed: true } }
@@ -818,8 +827,21 @@ app.get('/api/posts', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
+    
+    // รับชื่อคนขอข้อมูลเพื่อตรวจสอบสิทธิ์
+    const requestBy = req.query.requestBy; 
+    let adminLevel = 0;
+    
+    if (requestBy) {
+        const requester = await usersCollection.findOne({ username: requestBy });
+        if (requester) adminLevel = requester.adminLevel || 0;
+    }
 
+    // 2. ดึงข้อมูลกระทู้และโซนทั้งหมดมาเตรียมไว้
     const allPosts = await postsCollection.find({}).toArray();
+    const allZones = await zonesCollection.find({}).toArray();
+
+    // 3. เรียงลำดับกระทู้ (Logic เดิม)
     const sortedPosts = allPosts.sort((a, b) => {
         const aIsPinnedActive = a.isPinned && !a.isClosed;
         const bIsPinnedActive = b.isPinned && !b.isClosed;
@@ -828,7 +850,46 @@ app.get('/api/posts', async (req, res) => {
         return b.id - a.id;
     });
 
-    const paginatedPosts = sortedPosts.slice(skip, skip + limit);
+    // กรองกระทู้ตามเงื่อนไข Admin/Zone
+    const filteredPosts = sortedPosts.filter(post => {
+        // 4.1 กระทู้เปิด -> ทุกคนเห็น
+        if (!post.isClosed) return true;
+
+        // 4.2 กระทู้ปิด -> ต้องเช็คสิทธิ์
+        // - Admin Level 3 -> เห็นทั้งหมด
+        if (adminLevel >= 3) return true;
+
+        // - Admin Level 1-2 -> เห็นเฉพาะในโซนตัวเอง
+        if (adminLevel >= 1 && post.location && post.location.lat && post.location.lng) {
+            // หาโซนที่ใกล้กระทู้นี้ที่สุด
+            let closestZone = null;
+            let minDistance = Infinity;
+
+            allZones.forEach(zone => {
+                const dist = getDistanceFromLatLonInKm(post.location.lat, post.location.lng, zone.lat, zone.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestZone = zone;
+                }
+            });
+
+            // ถ้าโซนที่ใกล้ที่สุด มีแอดมินคนนี้ดูแลอยู่ -> ให้เห็นได้
+            if (closestZone && closestZone.assignedAdmin === requestBy) {
+                return true;
+            }
+        }
+        
+        // - กรณีเป็นเจ้าของกระทู้ -> ให้เห็นกระทู้ปิดของตัวเองได้ (Optional)
+        if (post.author === requestBy) return true;
+
+        // กรณีอื่น (User ทั่วไป หรือ Admin ที่ไม่ได้ดูแลโซนนั้น) -> ไม่เห็น
+        return false;
+    });
+
+    // 5. ตัดแบ่งหน้า (Pagination) จากรายการที่กรองแล้ว
+    const paginatedPosts = filteredPosts.slice(skip, skip + limit);
+
+    // เตรียมข้อมูลผู้แต่งเพื่อแสดง Rating (Logic เดิม)
     const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
     const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
     const authorMap = {};
@@ -836,7 +897,10 @@ app.get('/api/posts', async (req, res) => {
 
     res.json({
         posts: paginatedPosts.map(post => ({ ...post, authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' })),
-        totalItems: sortedPosts.length, totalPages: Math.ceil(sortedPosts.length / limit), currentPage: page, limit
+        totalItems: filteredPosts.length, // นับจากที่กรองแล้ว
+        totalPages: Math.ceil(filteredPosts.length / limit), 
+        currentPage: page, 
+        limit
     });
 });
 
