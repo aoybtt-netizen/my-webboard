@@ -239,7 +239,7 @@
 </div>
 </div>
 
-    <div id="login-modal" class="modal-overlay hidden">
+    <div id="login-modal" class="modal-overlay">
         <div class="modal-box" style="text-align:center;">
             <h2 data-i18n-key="login_title">ยินดีต้อนรับ</h2>
             <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus data-i18n-key="login_placeholder">
@@ -2365,7 +2365,7 @@ async function openAdminZoneModal() {
         // เช็คว่ามี Modal เมนูหรือยัง ถ้ายังให้สร้างใหม่
         if (!document.getElementById('l2-zone-menu-modal')) {
             const menuHtml = `
-            <div id="l2-zone-menu-modal" class="modal-overlay" style="z-index:3000; display:flex;">
+				<div id="l2-zone-menu-modal" class="modal-overlay hidden" style="z-index:3000;">
                 <div class="modal-box" style="max-width:350px; text-align:center;">
                     <h2 style="color:#007bff;">👮‍♂️ เมนูจัดการโซน</h2>
                     <p style="color:gray; font-size:0.9em; margin-bottom:20px;">เลือกรายการที่ต้องการทำ</p>
