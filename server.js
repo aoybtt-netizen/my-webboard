@@ -52,9 +52,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // --- Live Exchange Rate ---
-const LIVE_API_KEY = '1f39c37f85-b1b3f2287e-t6oki5'; 
-const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE_API_KEY}`; 
-let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 35.0 };
+const LIVE_API_KEY = '3ce8ed3c3901e2d6ab032b65'; 
+const LIVE_API_URL = `https://v6.exchangerate-api.com/v6/{LIVE_API_KEY}/latest/USD`; 
+//const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE_API_KEY}`; 
+let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 32.0 };
 const DEFAULT_CURRENCY = 'THB';
 
 // --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) ---
