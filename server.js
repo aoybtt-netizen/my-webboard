@@ -1041,8 +1041,52 @@ app.get('/api/posts', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
+    
+    // รับค่า filterScope จาก Frontend (เช่น 'my_zone' หรือ 'all_country')
+    const { requestBy, filterScope } = req.query; 
 
-    const allPosts = await postsCollection.find({}).toArray();
+    // ดึงข้อมูลทั้งหมดก่อน (หรือจะแก้ query ให้ efficient กว่านี้ในอนาคตก็ได้)
+    let allPosts = await postsCollection.find({}).toArray();
+
+    // กรองสำหรับ Admin Level 2 ---
+    if (requestBy) {
+        const requester = await usersCollection.findOne({ username: requestBy });
+        
+        if (requester && requester.adminLevel === 2) {
+            const myCountry = requester.country || 'TH';
+
+            // 1. ดึงข้อมูล Author ของทุก Post มาเพื่อเช็ค Country (อาจจะช้าถ้าข้อมูลเยอะ แนะนำให้ทำ Index หรือเก็บ Country ใน Post)
+            const authorNames = [...new Set(allPosts.map(p => p.author))];
+            const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
+            const authorCountryMap = {};
+            authors.forEach(u => authorCountryMap[u.username] = u.country || 'TH');
+
+            // Filter 1: เอาเฉพาะประเทศเดียวกัน (และกระทู้ Admin หรือกระทู้ตัวเอง)
+            allPosts = allPosts.filter(p => {
+                const isAuthorAdmin = (p.author === 'Admin');
+                const isMe = (p.author === requestBy);
+                const postCountry = authorCountryMap[p.author];
+                
+                return isAuthorAdmin || isMe || (postCountry === myCountry);
+            });
+
+            // Filter 2: แยกโซน vs ทั้งประเทศ
+            if (filterScope === 'my_zone') {
+                // หาโซนที่แอดมินคนนี้ดูแล
+                const myZones = await zonesCollection.find({ assignedAdmin: requestBy }).toArray();
+                const myZoneIds = myZones.map(z => z.id);
+
+                // กรองเฉพาะกระทู้ที่มี zoneId ตรงกับที่ดูแล
+                allPosts = allPosts.filter(p => {
+                    // ถ้าโพสต์ไม่มี zoneId (โพสต์เก่านอกระบบ) หรือตรงกับโซนเรา
+                    return p.zoneId && myZoneIds.includes(p.zoneId);
+                });
+            }
+            // ถ้า filterScope === 'all_country' (หรือค่าอื่น) ก็จะแสดงทั้งหมดที่ผ่าน Filter 1 (คือทั้งประเทศ)
+        }
+    }
+    // ------------------------------------------
+
     const sortedPosts = allPosts.sort((a, b) => {
         const aIsPinnedActive = a.isPinned && !a.isClosed;
         const bIsPinnedActive = b.isPinned && !b.isClosed;
@@ -1052,6 +1096,8 @@ app.get('/api/posts', async (req, res) => {
     });
 
     const paginatedPosts = sortedPosts.slice(skip, skip + limit);
+    
+    // ... (ส่วนดึง authorRating และ return res.json ใช้โค้ดเดิม) ...
     const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
     const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
     const authorMap = {};
@@ -1066,8 +1112,25 @@ app.get('/api/posts', async (req, res) => {
 // 12. Single Post
 app.get('/api/posts/:id', async (req, res) => {
     const id = parseInt(req.params.id);
+    const { requestBy } = req.query; // รับ parameter requestBy เพิ่ม
+
     const post = await postsCollection.findOne({ id: id });
     if (!post) return res.status(404).json({ error: 'ไม่พบกระทู้' });
+
+    // Check Country for Admin Level 2 ---
+    if (requestBy) {
+        const requester = await usersCollection.findOne({ username: requestBy });
+        if (requester && requester.adminLevel === 2 && post.author !== 'Admin') {
+             const authorUser = await usersCollection.findOne({ username: post.author });
+             const myCountry = requester.country || 'TH';
+             const authorCountry = authorUser ? (authorUser.country || 'TH') : 'TH';
+             
+             if (myCountry !== authorCountry) {
+                 return res.status(403).json({ error: 'Access Denied: Different Country' });
+             }
+        }
+    }
+    // ---------------------------------------------
 
     if(!post.isClosed && Date.now() - post.id > 3600000 && !post.isPinned){ 
         await postsCollection.updateOne({ id: id }, { $set: { isClosed: true } });
@@ -1719,9 +1782,26 @@ io.on('connection', (socket) => {
         // ⭐ [NEW] ดึงข้อมูล User จากฐานข้อมูลเพื่อดู Admin Level
         const user = await usersCollection.findOne({ username: username });
         const myAdminLevel = user ? (user.adminLevel || 0) : 0;
+		
+		if (myAdminLevel === 2) {
+            // 1. ดึงข้อมูลผู้แต่งกระทู้เพื่อดูประเทศ
+            const authorUser = await usersCollection.findOne({ username: post.author });
+            
+            // ถ้าหาผู้แต่งไม่เจอ หรือ ผู้แต่งเป็น Admin ใหญ่ ให้ผ่านไปก่อน
+            if (authorUser && post.author !== 'Admin') {
+                const myCountry = user.country || 'TH';
+                const authorCountry = authorUser.country || 'TH';
+
+                // เงื่อนไข: ถ้าคนละประเทศ -> ห้ามเข้า
+                if (myCountry !== authorCountry) {
+                    socket.emit('access-denied', '⛔ Access Denied: This post is outside your country jurisdiction.');
+                    return; 
+                }
+            }
+        }
 
         const isOwner = username === post.author;
-        // ⭐ [EDIT] เป็น Admin ถ้าชื่อ 'Admin' หรือมี Level >= 1
+        // เป็น Admin ถ้าชื่อ 'Admin' หรือมี Level >= 1
         const isAdmin = (username === 'Admin') || (myAdminLevel >= 1);
         
         const isParticipant = isOwner || username === post.acceptedViewer;

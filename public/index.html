@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.46 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.47 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -774,6 +774,9 @@ async function updateZoneBackground(lat, lng) {
         'admin_searching': "⏳ กำลังค้นหาผู้ดูแลโซนของคุณ...",
         'admin_recommended_label': "แนะนำผู้ดูแลโซนใกล้คุณ",
         'admin_start_chat': "เริ่มแชทเลย!",
+		'msg_user_not_found': '❌ ไม่พบสมาชิกชื่อ "[NAME]"',
+        'msg_no_members': 'ไม่มีรายชื่อสมาชิก',
+        'label_banned': '(ถูกระงับ)',
     },
     'en': {
         'app_title': 'Webboard',
@@ -938,6 +941,9 @@ async function updateZoneBackground(lat, lng) {
         'admin_searching': "⏳ Searching for your zone administrator...",
         'admin_recommended_label': "Recommended administrator near you",
         'admin_start_chat': "Start Chat Now!",
+		'msg_user_not_found': '❌ User "[NAME]" not found',
+        'msg_no_members': 'No members found',
+        'label_banned': '(BANNED)',
     }
 };
 
@@ -3639,66 +3645,76 @@ async function fetchNearestAdminForInbox(elementId) {
 	async function openAllUserList(searchTerm = '') {
     // 1. จัดการการเปิด Modal
     const modal = document.getElementById('user-list-modal');
-    // ถ้าเป็นการเปิด Modal ครั้งแรก (ไม่ใช่การพิมพ์ค้นหา)
     if (searchTerm === '' && modal.classList.contains('hidden')) {
         modal.classList.remove('hidden');
         if (document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
-        // ล้างค่าช่องค้นหาเมื่อเปิดใหม่
         const input = document.getElementById('user-search-input');
         if (input) input.value = '';
     }
 
-    // 2. ตั้งค่า UI หัวข้อ
-    document.getElementById('user-list-title').innerText = translations[currentLang]['modal_user_list_title'];
-    document.getElementById('user-list-desc').innerText = translations[currentLang]['modal_user_list_desc'];
+    // 2. ดึงชุดคำแปลปัจจุบัน
+    const t = translations[currentLang] || translations['th'];
+
+    // ตั้งค่า UI หัวข้อ
+    document.getElementById('user-list-title').innerText = t['modal_user_list_title'];
+    document.getElementById('user-list-desc').innerText = t['modal_user_list_desc'];
     document.getElementById('pagination-controls').style.display = 'none';
-    document.getElementById('user-search-input').style.display = 'block';
+    
+    const searchInput = document.getElementById('user-search-input');
+    searchInput.style.display = 'block';
+    searchInput.placeholder = t['search_placeholder']; // อัปเดต Placeholder ตามภาษา
 
     const container = document.getElementById('user-list-container');
 
-    // 3. ฟังก์ชันสำหรับดึงข้อมูลและแสดงผล (Internal Function)
+    // 3. ฟังก์ชันดึงข้อมูล (Internal)
     const fetchData = async (query) => {
-        container.innerHTML = `<p style="text-align:center;">⏳ กำลังค้นหา...</p>`;
+        // แสดงสถานะ Loading (ใช้คำแปลถ้ามี หรือใช้ Hardcode ชั่วคราว)
+        const loadingText = currentLang === 'th' ? '⏳ กำลังค้นหา...' : '⏳ Searching...';
+        container.innerHTML = `<p style="text-align:center;">${loadingText}</p>`;
         
         try {
-            // ⭐ ส่งค่า search ไปที่ Server เพื่อให้ Server ช่วยหาข้ามโซน
             let url = `/api/users-list?requestBy=${myUsername}`;
             if (query) url += `&search=${encodeURIComponent(query)}`;
 
             const res = await fetch(url);
             if (res.status !== 200) {
-                container.innerHTML = `<p style='color:red;'>Error Loading List</p>`;
+                container.innerHTML = `<p style='color:red; text-align:center;'>Error Loading List</p>`;
                 return;
             }
             
             const users = await res.json();
             
-            // กรณีไม่พบข้อมูล
+            // --- แก้ไขจุดที่แสดงข้อความเมื่อไม่พบข้อมูล ---
             if (users.length === 0) {
+                // ดึงข้อความจาก translations และแทนที่ [NAME] ด้วยคำค้นหา
+                const notFoundMsg = t['msg_user_not_found'].replace('[NAME]', query);
+                const noMembersMsg = t['msg_no_members'];
+
                 container.innerHTML = query 
-                    ? `<p style='text-align:center; color:red; margin-top:20px;'>ไม่พบสมาชิกชื่อ "${query}" ในประเทศของคุณ</p>`
-                    : `<p style='text-align:center; color:gray;'>ไม่มีสมาชิก</p>`;
+                    ? `<p style='text-align:center; color:#dc3545; margin-top:20px;'>${notFoundMsg}</p>`
+                    : `<p style='text-align:center; color:gray;'>${noMembersMsg}</p>`;
                 return;
             }
+            // ------------------------------------------
 
-            // แสดงผลรายการ
             container.innerHTML = users.map(u => {
                  const isBanned = u.isBanned;
                  const targetLevel = u.adminLevel || 0;
-                 // Style แถวตามสถานะ
+                 
                  const rowStyle = isBanned 
                     ? 'background: #f8d7da; border-left: 5px solid #dc3545;' 
                     : 'background: white; border-left: 5px solid #28a745;';
                  
-                 // Badge ยศ
                  let levelBadge = targetLevel > 0 
                     ? `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>` 
                     : '';
                  
-                 // Badge แบน
-                 const banBadge = isBanned ? '<span style="color:red; font-size:0.8em; font-weight:bold;">(BANNED)</span>' : '';
+                 // --- แก้ไขจุดแสดงคำว่า BANNED ให้เปลี่ยนตามภาษา ---
+                 const banBadge = isBanned 
+                    ? `<span style="color:red; font-size:0.8em; font-weight:bold; margin-left:5px;">${t['label_banned']}</span>` 
+                    : '';
+                 // ---------------------------------------------
                  
-                 // Badge ประเทศ (ถ้ามี)
                  const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
 
                  return `
@@ -3712,7 +3728,6 @@ async function fetchNearestAdminForInbox(elementId) {
                     </div>`;
              }).join('');
              
-             // เก็บ Cache ไว้ใช้สำหรับเปิด Modal รายละเอียด (openUserDetail)
              allUsersCache = users; 
 
         } catch (e) {
@@ -3721,15 +3736,12 @@ async function fetchNearestAdminForInbox(elementId) {
         }
     };
 
-    // 4. Debounce Logic (หน่วงเวลาพิมพ์)
     if (searchTerm) {
         clearTimeout(userSearchTimeout);
-        // รอ 0.5 วินาทีหลังจากหยุดพิมพ์ ค่อยส่ง Request
         userSearchTimeout = setTimeout(() => {
             fetchData(searchTerm);
         }, 500); 
     } else {
-        // กรณีไม่มี Search (เปิดครั้งแรก หรือลบคำค้นจนหมด) ให้โหลดเลย
         fetchData(''); 
     }
 }
