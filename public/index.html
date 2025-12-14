@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.49 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.50 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1271,10 +1271,14 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     
     // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
     // แล้วค่อยโหลดกระทู้ ปุ่มจะถูกสร้างเงื่อนไขได้ถูกต้อง
-    loadPosts(); 
+    loadPosts();
+	await updateUserInfo(); 
+    checkPrimaryLocationAndLoad();
+    fetchAndRenderAnnouncement();
     
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
     updateFilterButtonState();
+	switchView('home');
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
@@ -1845,49 +1849,63 @@ function getTransactionDetail(t) {
     currentView = view;
     currentPostPage = 1;
 
+    // ดึง Element ที่เกี่ยวข้อง
     const filterContainer = document.getElementById('filter-container');
-    const adminScopeFilter = document.getElementById('admin-scope-filter'); // Dropdown เลือกโซน/ประเทศ
+    const adminScopeFilter = document.getElementById('admin-scope-filter'); // Dropdown โซน
     const geoFilterBtn = document.getElementById('geo-filter-btn');       // ปุ่มเช็คอิน
+    const title = document.getElementById('page-title');
 
+    // 1. จัดการการแสดงผลปุ่ม (Filter Bar)
     if (filterContainer) {
         if (view === 'home') {
-            // หน้า Home: โชว์แถบรวม, ซ่อน Dropdown Admin, โชว์ปุ่มเช็คอิน
-            filterContainer.style.display = 'block';
-            if (adminScopeFilter) adminScopeFilter.style.display = 'none';
+            // [หน้า Home]
+            // - ต้องโชว์แถบ Container
+            // - ต้องโชว์ปุ่มเช็คอิน (geo)
+            // - ต้องซ่อน Dropdown Admin
+            filterContainer.style.display = 'block'; 
             if (geoFilterBtn) geoFilterBtn.style.display = 'inline-block';
+            if (adminScopeFilter) adminScopeFilter.style.display = 'none';
 
         } else if (view === 'closed') {
-            // หน้า Closed: โชว์แถบรวม, โชว์ Dropdown Admin (ถ้ามีสิทธิ์), ซ่อนปุ่มเช็คอิน
+            // [หน้า Closed]
+            // - ต้องโชว์แถบ Container
+            // - ต้องซ่อนปุ่มเช็คอิน (geo) -> เพื่อไม่ให้เข้าใจผิดว่ากรองระยะทาง
+            // - ต้องโชว์ Dropdown Admin (ถ้าเป็น Level 2)
             filterContainer.style.display = 'block';
+            if (geoFilterBtn) geoFilterBtn.style.display = 'none';
             
-            // เช็คว่าเป็น Admin Level 2 ไหมถึงจะโชว์ Dropdown
             if (myAdminLevel === 2 && adminScopeFilter) {
                 adminScopeFilter.style.display = 'inline-block';
             } else if (adminScopeFilter) {
                 adminScopeFilter.style.display = 'none';
             }
 
-            if (geoFilterBtn) geoFilterBtn.style.display = 'none'; // ❌ ซ่อนปุ่มเช็คอินในหน้านี้
-
         } else {
-            // หน้าอื่นๆ: ซ่อนแถบทั้งหมด
+            // [หน้าอื่นๆ เช่น กระทู้ฉัน] ซ่อนแถบทั้งหมด
             filterContainer.style.display = 'none';
         }
     }
 
-    // ... (ส่วนโค้ดจัดการ title และ loadPosts ด้านล่างคงเดิม) ...
-    const title = document.getElementById('page-title');
+    // 2. จัดการหัวข้อและการโหลดข้อมูล
     if (view === 'home') {
         title.innerText = translations[currentLang]['page_title'];
         title.style.color = "#333";
         loadPosts();
-        // ...
+        
+        // ตั้งค่าปุ่ม Pagination ให้กลับมาทำงานกับ loadPosts
+        document.getElementById('post-prev-btn').onclick = () => changePostPage(-1);
+        document.getElementById('post-next-btn').onclick = () => changePostPage(1);
+
     } else if (view === 'closed') {
         title.innerText = translations[currentLang]['admin_closed_posts'];
         title.style.color = "#6c757d";
-        loadPosts();
+        loadPosts(); // โหลดข้อมูล (Dropdown จะถูกส่งไปกับ request โดยอัตโนมัติ)
+
+    } else if (view === 'my_active') {
+        showMyActivePosts(1);
+    } else if (view === 'my_closed') {
+        showMyClosedPosts(1);
     }
-    // ...
     
     toggleSidebar();
 }
@@ -2108,25 +2126,6 @@ async function showMyClosedPosts(page = 1) {
         });
     }
 			
-			if (filterLocation && filterMaxDistance) {
-        filteredPosts = filteredPosts.filter(item => {
-            // ... (โค้ดการคำนวณระยะทางเดิม) ...
-            
-            const post = item.data;
-            // ถ้ากระทู้ไม่มีพิกัด ก็ไม่ต้องแสดง (ยังคง logic เดิม)
-            if (!post.location || !post.location.lat || !post.location.lng) {
-                 return false;  
-            }
-            
-            const dist = getDistanceFromLatLonInKm(
-                filterLocation.lat, filterLocation.lng,
-                post.location.lat, post.location.lng
-            );
-            // คืนค่า True ถ้าอยู่ในระยะ
-            return dist <= filterMaxDistance;
-        });
-}
-            
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
                 const postB = b.data;
