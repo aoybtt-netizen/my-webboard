@@ -428,22 +428,56 @@ app.get('/api/users-list', async (req, res) => {
 
 // 4. Contacts (Messages)
 app.get('/api/contacts', async (req, res) => {
-    const { username, page, limit } = req.query;
-    const p = parseInt(page) || 1;
-    const l = parseInt(limit) || 20;
+    // ดึง username ของผู้ที่เรียกใช้ (ในกรณีนี้คือ แอดมิน)
+    const { username } = req.query; 
+    if (!username) return res.status(400).json({ error: 'No username' });
 
-    const messages = await messagesCollection.find({ $or: [{ sender: username }, { target: username }] }).toArray();
-    const contactsMap = {};
-    messages.forEach(m => {
-        const isFinancialSystemMsg = m.sender === 'System' && m.msg.startsWith('💸');
-        if (m.sender === username && m.target !== 'System') contactsMap[m.target] = Math.max(contactsMap[m.target] || 0, m.timestamp);
-        else if (m.target === username && m.sender !== 'System' && !isFinancialSystemMsg) contactsMap[m.sender] = Math.max(contactsMap[m.sender] || 0, m.timestamp);
-        else if (m.sender === 'System' && m.target === username && !isFinancialSystemMsg) contactsMap[m.sender] = Math.max(contactsMap[m.sender] || 0, m.timestamp);
-    });
+    try {
+        // ใช้ Aggregation Pipeline เพื่อดึงรายชื่อคู่สนทนาและนับ Unread Count
+        const contacts = await messagesCollection.aggregate([
+            {
+                $match: {
+                    $or: [{ sender: username }, { target: username }]
+                }
+            },
+            { $sort: { timestamp: -1 } }, // เรียงข้อความล่าสุดก่อน
+            {
+                $group: {
+                    _id: {
+                        // Group ตามคู่สนทนา
+                        $cond: [{ $eq: ["$sender", username] }, "$target", "$sender"]
+                    },
+                    lastMessage: { $first: "$msg" },
+                    timestamp: { $first: "$timestamp" },
+                    // ⭐️ Logic การนับข้อความที่ "ยังไม่อ่าน" และ "ส่งมาหาเรา"
+                    unreadCount: {
+                        $sum: {
+                            $cond: [
+                                { $and: [{ $eq: ["$target", username] }, { $eq: ["$isRead", false] }] },
+                                1, // ถ้าใช่เงื่อนไขนี้ ให้นับเพิ่ม 1
+                                0  // ถ้าไม่ใช่ ให้นับ 0
+                            ]
+                        }
+                    }
+                }
+            },
+            { $sort: { timestamp: -1 } } // เรียงลำดับคนคุยล่าสุดไว้บนสุด
+        ]).toArray();
 
-    const sortedContacts = Object.keys(contactsMap).sort((a, b) => contactsMap[b] - contactsMap[a]);
-    const start = (p - 1) * l;
-    res.json({ contacts: sortedContacts.slice(start, start + l), totalItems: sortedContacts.length, totalPages: Math.ceil(sortedContacts.length / l), currentPage: p, limit: l });
+        // จัดรูปแบบข้อมูลส่งกลับให้ Frontend
+        const formattedContacts = contacts.map(c => ({
+            partner: c._id,
+            lastMessage: c.lastMessage,
+            timestamp: c.timestamp,
+            unreadCount: c.unreadCount // ✅ ข้อมูลนี้สำคัญที่สุด
+        }));
+
+        res.json(formattedContacts);
+
+    } catch (e) {
+        console.error("Error fetching contacts:", e);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 // 5. Member Transactions
@@ -1583,6 +1617,11 @@ io.on('connection', (socket) => {
         };
 
         const history = await messagesCollection.find(query).sort({ timestamp: 1 }).toArray();
+		
+		await messagesCollection.updateMany(
+        { sender: partner, target: me, isRead: false },
+        { $set: { isRead: true } }
+    );
         
         socket.emit('private-history', history);
     });

@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.40 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.41 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3470,44 +3470,63 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     }
 
     async function openInbox(page = 1) {
-        if (myUsername !== 'Admin') {
-            openPrivateChat('Admin'); 
-            return;
-        }
-        
-        document.getElementById('user-list-modal').classList.remove('hidden');
-        //document.getElementById('user-list-title').innerText = "📩 แชทล่าสุด";
-        //document.getElementById('user-list-desc').innerText = "รายชื่อสมาชิกที่คุณสนทนาด้วยล่าสุด";
-        const container = document.getElementById('user-list-container');
-        container.innerHTML = "Loading...";
-        
-        document.getElementById('user-search-input').style.display = 'none';
-        document.getElementById('pagination-controls').style.display = 'none';
-
-        const res = await fetch(`/api/contacts?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
-        const data = await res.json();
-        const recentContacts = data.contacts;
-
-        if (recentContacts.length === 0 && data.currentPage > 1) {
-             return openInbox(1);
-        } else if (recentContacts.length === 0) {
-            container.innerHTML = "<div style='text-align:center;color:gray;margin-top:20px;'>ไม่มีการสนทนาล่าสุด</div>";
-            updatePaginationUI(data, 'inbox');
-            return;
-        }
-
-        container.innerHTML = recentContacts.map(u => {
-            const isUnread = unreadUsers.has(u);
-            const dot = isUnread ? `<span class="unread-indicator" style="animation: none;">${unreadUsers.size}</span>` : '';
-            const style = isUnread ? 'font-weight:bold; background:#fff8e1;' : '';
-            return `<div class="user-list-item" style="${style}" onclick="openPrivateChat('${u}')"><span>👤 ${u} ${dot}</span><span style="color:#007bff; font-size:0.8em;">open chat ></span></div>`;
-        }).join('');
-        
-        updatePaginationUI(data, 'inbox');
-        inboxPage = data.currentPage;
-		document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
-        document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
+    // 1. ตรวจสอบสิทธิ์ (โค้ดเดิมของคุณ)
+    if (myUsername !== 'Admin') {
+        openPrivateChat('Admin'); 
+        return;
     }
+    
+    // 2. เตรียมหน้าจอ
+    document.getElementById('user-list-modal').classList.remove('hidden');
+    const container = document.getElementById('user-list-container');
+    container.innerHTML = "Loading...";
+    
+    document.getElementById('user-search-input').style.display = 'none';
+    document.getElementById('pagination-controls').style.display = 'none';
+
+    // 3. ดึงข้อมูลจาก API (ที่แก้ใน server.js แล้ว)
+    const res = await fetch(`/api/contacts?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
+    const data = await res.json();
+    const recentContacts = data.contacts || data; // รองรับเผื่อโครงสร้างข้อมูลต่างกันเล็กน้อย
+
+    // 4. ตรวจสอบว่ามีข้อมูลไหม
+    if (!recentContacts || recentContacts.length === 0) {
+        if (data.currentPage > 1) return openInbox(1); // ถ้าย้อนหน้าแล้วไม่มี ให้กลับหน้า 1
+        container.innerHTML = "<div style='text-align:center;color:gray;margin-top:20px;'>ไม่มีการสนทนาล่าสุด</div>";
+        // updatePaginationUI(data, 'inbox'); // ถ้ามีฟังก์ชันนี้ให้เปิดใช้
+        return;
+    }
+
+    // 5. [จุดสำคัญ] แสดงผลโดยใช้ค่า unreadCount จาก Server โดยตรง
+    container.innerHTML = recentContacts.map(c => {
+        // c ตอนนี้คือ Object: { partner: "ชื่อ", unreadCount: 5, lastMessage: "..." }
+        
+        // ถ้า unreadCount > 0 ให้แสดงจุดสีแดงและใส่จำนวน
+        const dot = c.unreadCount > 0 
+            ? `<span class="unread-indicator" style="animation: none;">${c.unreadCount}</span>` 
+            : '';
+        
+        // ถ้ายังไม่ได้อ่าน ให้ทำตัวหนาและพื้นหลังเหลืองอ่อน
+        const style = c.unreadCount > 0 ? 'font-weight:bold; background:#fff8e1;' : '';
+        
+        return `
+            <div class="user-list-item" style="${style}" onclick="openPrivateChat('${c.partner}')">
+                <span>👤 ${c.partner} ${dot}</span>
+                <span style="color:#007bff; font-size:0.8em;">
+                    ${c.lastMessage ? c.lastMessage.substring(0, 15) + '...' : 'open chat >'}
+                </span>
+            </div>
+        `;
+    }).join('');
+    
+    // 6. อัปเดต Pagination (โค้ดเดิมของคุณ)
+    updatePaginationUI(data, 'inbox');
+    inboxPage = data.currentPage || 1;
+    const prevBtn = document.getElementById('list-prev-btn');
+    const nextBtn = document.getElementById('list-next-btn');
+    if(prevBtn) prevBtn.innerText = translations[currentLang]['btn_prev'];
+    if(nextBtn) nextBtn.innerText = translations[currentLang]['btn_next'];
+}
     
     let allUsersCache = [];
     
