@@ -68,11 +68,25 @@ const serverTranslations = {
         'post_not_found': 'ไม่พบกระทู้',
         'closed_or_finished': '⛔ กระทู้นี้ปิดรับงาน/เสร็จสิ้นแล้ว',
         'room_occupied': '⚠️ มีผู้ใช้งานอื่นกำลังดูกระทู้นี้อยู่ กรุณารอสักครู่...',
+		'deduct_perm_denied': '⛔ ปฏิเสธการเข้าถึง: ต้องการ Admin Level 1 ขึ้นไป',
+        'deduct_invalid_amt': '⛔ จำนวนเหรียญไม่ถูกต้อง',
+        'deduct_user_not_found': '⛔ ไม่พบผู้ใช้งาน',
+        'deduct_insufficient': '⛔ เป้าหมายมีเหรียญไม่เพียงพอ',
+        'deduct_hierarchy_err': '⛔ ไม่สามารถดึงเหรียญจากผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
+        'deduct_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
+        'deduct_zone_mismatch': '⛔ ไม่อนุญาตให้ดึงเหรียญข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})'
     },
     'en': {
         'post_not_found': 'Post not found',
         'closed_or_finished': '⛔ This post is closed/finished.',
         'room_occupied': '⚠️ This post is currently occupied. Please wait...',
+		'deduct_perm_denied': '⛔ Permission denied: Admin Level 1+ required',
+        'deduct_invalid_amt': '⛔ Invalid coin amount',
+        'deduct_user_not_found': '⛔ User not found',
+        'deduct_insufficient': '⛔ Target user has insufficient coins',
+        'deduct_hierarchy_err': '⛔ Cannot deduct coins from user with equal or higher level (Level {level})',
+        'deduct_zone_missing': '⛔ Cannot verify zone (Missing location data)',
+        'deduct_zone_mismatch': '⛔ Cross-zone deduction is not allowed (You: {zoneA} / Target: {zoneB})'
     }
 };
 
@@ -1212,53 +1226,84 @@ app.put('/api/posts/:id/close', async (req, res) => {
 
 // 18. Deduct Coins
 app.post('/api/admin/deduct-coins', async (req, res) => {
-    const { targetUser, amount, requestBy } = req.body;
+    const { targetUser, amount, requestBy, lang } = req.body;
+    const currentLang = lang || 'th'; 
 
-    // ดึงข้อมูลผู้ดึงและเช็คสิทธิ์
+    // 1. ดึงข้อมูลและตรวจสอบสิทธิ์เบื้องต้น
     const requester = await getUserData(requestBy);
-    if (requester.adminLevel < 1) { 
-        return res.status(403).json({ error: 'Admin Level 1 or higher required' });
+    if (!requester || requester.adminLevel < 1) { 
+        return res.status(403).json({ error: translateServerMsg('deduct_perm_denied', currentLang) });
     }
 
     const parsedAmount = parseInt(amount);
-    if (parsedAmount <= 0) return res.status(400).json({ error: 'Incorrect number' });
+    if (parsedAmount <= 0) return res.status(400).json({ error: translateServerMsg('deduct_invalid_amt', currentLang) });
 
     const targetData = await getUserData(targetUser);
+    if (!targetData) return res.status(404).json({ error: translateServerMsg('deduct_user_not_found', currentLang) });
+    
     if (targetData.coins < parsedAmount) {
-        return res.status(400).json({ error: 'Target user has insufficient coins.' });
+        return res.status(400).json({ error: translateServerMsg('deduct_insufficient', currentLang) });
     }
 
-    // 1. ดึงข้อมูล Admin ผู้ดำเนินการ (Requester) เพื่อใช้ในการเพิ่มเงิน
-    const requesterData = await getUserData(requestBy); 
+    // =========================================================
+    // ตรวจสอบความปลอดภัย (Security Checks)
+    // =========================================================
 
-    // 2. เพิ่มเงินเข้าบัญชี Admin ผู้ดำเนินการ
-    await updateUser(requestBy, { coins: requesterData.coins + parsedAmount });
-    
-    // 3. หักเงินจากเป้าหมาย
+    // A. Hierarchy Check
+    const requesterLevel = requester.adminLevel || 0;
+    const targetLevel = targetData.adminLevel || 0;
+
+    if (targetLevel >= requesterLevel) {
+        let msg = translateServerMsg('deduct_hierarchy_err', currentLang);
+        msg = msg.replace('{level}', targetLevel); // แทนค่าตัวแปรลงในข้อความ
+        return res.status(403).json({ error: msg });
+    }
+
+    // B. Zone Check
+    if (requesterLevel < 3) {
+        if (!requester.lastLocation || !targetData.lastLocation) {
+            return res.status(400).json({ 
+                error: translateServerMsg('deduct_zone_missing', currentLang) 
+            });
+        }
+
+        const requesterZoneInfo = await findResponsibleAdmin(requester.lastLocation);
+        const targetZoneInfo = await findResponsibleAdmin(targetData.lastLocation);
+
+        const rZoneId = requesterZoneInfo.zoneData ? requesterZoneInfo.zoneData.id : 'no-zone';
+        const tZoneId = targetZoneInfo.zoneData ? targetZoneInfo.zoneData.id : 'no-zone';
+
+        if (rZoneId !== tZoneId) {
+            let msg = translateServerMsg('deduct_zone_mismatch', currentLang);
+            // แทนค่าชื่อโซนลงในข้อความ
+            msg = msg.replace('{zoneA}', requesterZoneInfo.zoneName).replace('{zoneB}', targetZoneInfo.zoneName);
+            return res.status(403).json({ error: msg });
+        }
+    }
+
+    // =========================================================
+    // ดำเนินการธุรกรรม
+    // =========================================================
+
+    await updateUser(requestBy, { coins: requester.coins + parsedAmount });
     await updateUser(targetUser, { coins: targetData.coins - parsedAmount });
 
-    // 4. บันทึก Transaction
     await transactionsCollection.insertOne({
         id: Date.now(), 
-        type: 'ADMIN_RETURN', // ประเภท: เงินถูกดึงคืน (เข้า Admin)
+        type: 'ADMIN_RETURN', 
         amount: parsedAmount, 
         fromUser: targetUser,
-        toUser: requestBy, // ⭐ [MODIFIED] เงินเข้าบัญชี Admin
-        note: `Admin (${requestBy}) deduct USD from ${targetUser} and received the amount.`, 
+        toUser: requestBy, 
+        note: `Admin (${requestBy}) deduct USD from ${targetUser}`, 
         timestamp: Date.now()
     });
 
-    // 5. อัปเดตยอดเงิน Realtime ของผู้ที่เกี่ยวข้อง
-
-    // อัปเดตยอดเงินผู้ใช้เป้าหมาย
     const updatedTarget = await getUserData(targetUser);
     io.emit('balance-update', { user: targetUser, coins: updatedTarget.coins });
     
-    // ⭐ อัปเดตยอดเงิน Admin ผู้ดำเนินการ
     const updatedRequester = await getUserData(requestBy);
     io.emit('balance-update', { user: requestBy, coins: updatedRequester.coins }); 
-       
-    // 6. แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่ (เหมือนเดิม)
+        
     io.to('Admin').emit('admin-new-transaction');
 
     res.json({ success: true });

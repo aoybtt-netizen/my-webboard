@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.43 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.44 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3298,7 +3298,7 @@ window.savePostCost = savePostCost;
         const res = await fetch('/api/admin/deduct-coins', { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername }) 
+            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername, lang: currentLang }) 
         });
         
         if (res.status === 200) {
