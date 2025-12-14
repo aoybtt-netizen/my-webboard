@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.41 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.42 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2702,12 +2702,6 @@ window.addZoneConfig = addZoneConfig;
             }
         });
 
-		socket.on('private-message', (data) => {
-            if (data.target === myUsername && data.sender === 'System' && data.msg.includes('ความคิดเห็นใหม่')) {
-                showCommentNotification(data.msg, data.postId);
-            }
-        });
-
         function showCommentNotification(message, postId) {
             const modal = document.getElementById('comment-notif-modal');
             const content = document.getElementById('notif-content');
@@ -3376,35 +3370,76 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     });
 
     socket.on('private-message', (data) => {
-        const isChatOpen = !document.getElementById('private-chat-modal').classList.contains('hidden');
-        let isRelevant = false;
-        if (data.sender === currentChatPartner) isRelevant = true;
-        if (data.sender === myUsername && data.target === currentChatPartner) isRelevant = true;
-        if (data.sender === 'System' && currentChatPartner === 'Admin') isRelevant = true;
+    // 1. [ส่วนที่เพิ่มมา] ดักจับการแจ้งเตือน "ความคิดเห็นใหม่" ก่อน
+    if (data.target === myUsername && data.sender === 'System' && data.msg.includes('ความคิดเห็นใหม่')) {
+        showCommentNotification(data.msg, data.postId);
+        return; // ถ้าเป็นแจ้งเตือน Comment ให้จบการทำงานเลย ไม่ต้องไปยุ่งกับระบบแชท
+    }
+
+    // 2. Logic ระบบแชทและการเงิน (ปรับปรุงให้รองรับการเด้งข้อความทันที)
+    const modal = document.getElementById('private-chat-modal');
+    const isChatOpen = !modal.classList.contains('hidden');
+    
+    // แปลงค่าให้ชัวร์ว่าเป็น String
+    const sender = String(data.sender || '');
+    const target = String(data.target || '');
+    const currentPartner = String(currentChatPartner || '');
+    const me = String(myUsername || '');
+
+    // ตรวจสอบความเกี่ยวข้อง (Is Relevant?)
+    let isRelevant = false;
+    if (sender === currentPartner) isRelevant = true;
+    if (sender === me && target === currentPartner) isRelevant = true;
+    if (sender === 'System' && currentPartner === 'Admin') isRelevant = true;
+
+    // 3. การแสดงผล
+    if (isChatOpen && isRelevant) {
+        // ถ้าเปิดหน้าแชทค้างไว้ -> แปะข้อความลงกล่อง
+        appendMessage(data);
         
-        if (isChatOpen && isRelevant) {
-            appendMessage(data);
-            const box = document.getElementById('private-chat-messages');
-            box.scrollTop = box.scrollHeight;
-            if (data.sender !== myUsername) notificationSound.play().catch(()=>{});
-        } else {
-            if (data.target === myUsername) {
-                const isFinancialSystemMsg = data.sender === 'System' && (data.msg.startsWith('💸') || data.msg.startsWith('USD'));
+        const box = document.getElementById('private-chat-messages');
+        if(box) box.scrollTop = box.scrollHeight;
 
-                if (isFinancialSystemMsg) { 
-                    localStorage.setItem(`hasNewTransaction_${myUsername}`, 'true');
-                    document.getElementById('coin-notif-dot').classList.remove('hidden');
-                    notificationSound.play().catch(()=>{});
+        if (sender !== me) {
+            notificationSound.play().catch(()=>{});
+        }
+        
+        // เคลียร์ Unread ทันทีที่เห็น
+        if (unreadUsers.has(sender)) {
+            unreadUsers.delete(sender);
+            saveUnreadStatus();
+        }
 
-                } else {
-                    if (data.sender !== 'System') unreadUsers.add(data.sender);
-                    else unreadUsers.add('System'); 
-                    notify(data);
-                    saveUnreadStatus(); 
+    } else {
+        // ถ้าไม่ได้เปิดแชท หรือเป็นข้อความจากคนอื่น -> แจ้งเตือน (Notification)
+        if (target === me) {
+            const isFinancial = sender === 'System' && (data.msg.includes('USD') || data.msg.includes('💸'));
+            
+            if (isFinancial) {
+                // ถ้าเป็นเรื่องเงิน
+                localStorage.setItem(`hasNewTransaction_${me}`, 'true');
+                document.getElementById('coin-notif-dot').classList.remove('hidden');
+                notificationSound.play().catch(()=>{});
+            } else {
+                // ถ้าเป็นแชทปกติ
+                if (sender !== 'System') unreadUsers.add(sender);
+                else unreadUsers.add('System');
+                
+                notify(data); // แจ้งเตือน Badge
+                saveUnreadStatus();
+                
+                // ถ้ารายชื่อ Inbox เปิดอยู่ ให้รีเฟรชจุดแดง
+                const inboxModal = document.getElementById('user-list-modal');
+                if (!inboxModal.classList.contains('hidden')) {
+                     const title = document.getElementById('user-list-title').innerText;
+                     if (!title.includes('สมาชิกทั้งหมด')) { 
+                        openInbox(inboxPage); 
+                     }
                 }
             }
         }
-    });
+    }
+});
 
     function appendMessage(data) {
     const box = document.getElementById('private-chat-messages');
