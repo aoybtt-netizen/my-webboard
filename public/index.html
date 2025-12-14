@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.45 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.46 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -388,6 +388,8 @@
 		//  Cooldown state สำหรับ Distance Filter
 		let lastFilterTime = 0; 
 		const FILTER_COOLDOWN_MS = 60000; // 60 วินาที
+		
+		let userSearchTimeout = null; // ตัวแปรสำหรับหน่วงเวลาค้นหา
 		
 		// ควบคุมสถานะปุ่มและแสดงเวลานับถอยหลัง
 		function updateFilterButtonState() {
@@ -1306,16 +1308,25 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         let locationQuery = '';
         const savedLoc = localStorage.getItem('userPrimaryLocation');
         if (savedLoc) {
-             // ส่งไปแบบ JSON String เหมือนที่ refreshModalPostCost ทำ
+             // ส่งไปแบบ JSON String
              locationQuery = `&location=${encodeURIComponent(savedLoc)}`;
         }
+        
+        // ---Logic การเดาประเทศ ---
+        const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let myCountry = 'TH'; // ค่า Default เป็นไทย
 
-        // 1. ดึงข้อมูลจาก Server พร้อมส่งค่าสกุลเงินและพิกัด (ถ้ามี)
-        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}`);
+        // ถ้า Timezone ไม่ใช่โซนไทย/อินโดจีน ให้กำหนดเป็น 'OTHER' (หรือค่าอื่นตามต้องการ)
+        if (!userTimeZone.includes('Bangkok') && !userTimeZone.includes('Asia/Phnom_Penh')) {
+             myCountry = 'OTHER'; 
+        }
+
+        // --- [แก้ไขจุดที่ 2] เพิ่ม &country=${myCountry} เข้าไปใน URL ---
+        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}`);
+        
         const data = await response.json();
 
         if (data.error) {
-            // จัดการ Error การแบน
             if (data.error.includes('ระงับ')) {
                 alert(data.error);
                 localStorage.removeItem('myUsername');
@@ -1323,50 +1334,43 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             }
             return;
         }
-		
-				// บันทึกเลเวลแอดมิน
-                myAdminLevel = data.adminLevel || 0;
-				// บันทึก Zone ID ของผู้ใช้ (ต้องให้ Server ส่งกลับมา)
-                myZoneId = data.userZoneId || null;  // เช่น 'THA' หรือ 'USA'
-				
-				// Logic แสดงดาว/ยศ บนรูปโปรไฟล์
+        
+        // ... (ส่วนที่เหลือถูกต้องแล้วครับ ใช้โค้ดเดิมต่อได้เลย) ...
+        myAdminLevel = data.adminLevel || 0;
+        myZoneId = data.userZoneId || null;
+                
         const avatarEl = document.getElementById('user-avatar-display');
         if (avatarEl) {
             let stars = '';
-            // กำหนดจำนวนดาวตาม Level
             if (myAdminLevel === 1) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐</div>';
             if (myAdminLevel === 2) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐⭐</div>';
             if (myAdminLevel === 3) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐⭐⭐</div>';
             
-            // แสดงผล: รูปคน + ดาวข้างล่าง
             avatarEl.innerHTML = `👤${stars}`;
         }
-                
-                // ควบคุมการแสดงผล Admin Panel ตามเลเวล
-                const adminPanelDiv = document.getElementById('admin-panel');
-                if (myAdminLevel >= 1) {
-                    adminPanelDiv.classList.remove('hidden');
-                } else {
-                    adminPanelDiv.classList.add('hidden');
-                }
-				const setCostBtn = document.querySelector('button[onclick="setPostCost()"]');
-				if (setCostBtn) {
-				setCostBtn.style.display = (myAdminLevel >= 3) ? 'block' : 'none';
-    }
-                
-                // ซ่อน/แสดงปุ่ม "ให้เหรียญ" ในแชท (เฉพาะ Level 3)
-                const giveCoinBtn = document.querySelector('.give-coin-btn');
-                const deductCoinBtn = document.querySelector('.deduct-coin-btn'); // ดึงปุ่มดึงเหรียญ
-                
-                if (giveCoinBtn) {
-                     giveCoinBtn.style.display = (myAdminLevel >= 1) ? 'inline-block' : 'none';
-                }
-                // การควบคุมปุ่มดึงเหรียญด้วยเงื่อนไขเดียวกัน
-                if (deductCoinBtn) { 
-                     deductCoinBtn.style.display = (myAdminLevel >= 1) ? 'inline-block' : 'none'; 
-                }
+                        
+        const adminPanelDiv = document.getElementById('admin-panel');
+        if (myAdminLevel >= 1) {
+            adminPanelDiv.classList.remove('hidden');
+        } else {
+            adminPanelDiv.classList.add('hidden');
+        }
+        
+        const setCostBtn = document.querySelector('button[onclick="setPostCost()"]');
+        if (setCostBtn) {
+            setCostBtn.style.display = (myAdminLevel >= 3) ? 'block' : 'none';
+        }
+                        
+        const giveCoinBtn = document.querySelector('.give-coin-btn');
+        const deductCoinBtn = document.querySelector('.deduct-coin-btn');
+        
+        if (giveCoinBtn) {
+              giveCoinBtn.style.display = (myAdminLevel >= 1) ? 'inline-block' : 'none';
+        }
+        if (deductCoinBtn) { 
+              deductCoinBtn.style.display = (myAdminLevel >= 1) ? 'inline-block' : 'none'; 
+        }
 
-        // 2. จัดรูปแบบตัวเลข USD และสกุลเงินที่แปลงแล้ว
         const formattedConvertedCoins = parseFloat(data.convertedCoins).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -1377,50 +1381,41 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             maximumFractionDigits: 2
         });
 
-        // ⭐ สร้าง String สำหรับแสดงผลบรรทัดที่ 2 (แบบวงเล็บ)
         const convertedDisplay = `(${formattedConvertedCoins} ${data.currencySymbol})`;
 
-
-        // --- 3. อัปเดต Header (แสดง 2 บรรทัด: USD และ Converted) ---
         const headerUsd = document.getElementById('header-usd-display');
-        const headerConverted = document.getElementById('header-converted-display');
+        const headerConverted = document.getElementById('header-converted-display');
 
-        if (headerUsd) {
-            headerUsd.innerText = `${formattedUSD} USD`;
-            headerUsd.style.fontSize = "1.0em"; 
-        }
+        if (headerUsd) {
+            headerUsd.innerText = `${formattedUSD} USD`;
+            headerUsd.style.fontSize = "1.0em"; 
+        }
         if (headerConverted) {
             headerConverted.innerText = convertedDisplay;
         }
 
-
-        // --- 4. อัปเดต Sidebar (แสดง 2 บรรทัด: USD และ Converted) ---
         const sidebarUsd = document.getElementById('sidebar-usd-display');
-        const sidebarConverted = document.getElementById('sidebar-converted-display');
+        const sidebarConverted = document.getElementById('sidebar-converted-display');
 
-        if (sidebarUsd) {
-            sidebarUsd.innerText = `${formattedUSD} USD`;
-            sidebarUsd.style.fontSize = "1.0em"; 
-        }
+        if (sidebarUsd) {
+            sidebarUsd.innerText = `${formattedUSD} USD`;
+            sidebarUsd.style.fontSize = "1.0em"; 
+        }
         if (sidebarConverted) {
             sidebarConverted.innerText = convertedDisplay;
         }
 
-
-        // --- 5. อัปเดตค่าใช้จ่ายในการโพสต์ (ใน Modal) ---
         const modalCostDisplay = document.getElementById('modal-cost-display');
-		const postCostUSD = data.postCost.totalCost; // <---ดึง Total Cost
-		currentCost = postCostUSD; 
-        // คำนวณหาอัตราแลกเปลี่ยน (Rate) จากยอดเงินคงเหลือ
+        const postCostUSD = data.postCost.totalCost;
+        currentCost = postCostUSD; 
+       
         let impliedRate = 1;
         const balanceUSD = parseFloat(data.coins);
-        // แปลงค่าเงินที่แปลงแล้วเป็นตัวเลข (ลบลูกน้ำออกเผื่อมี)
         const balanceConverted = parseFloat(String(data.convertedCoins).replace(/,/g, ''));
 
         if (balanceUSD > 0) {
             impliedRate = balanceConverted / balanceUSD;
         } else {
-            // กรณีเงินเป็น 0: ถ้าเป็น USD rate=1, ถ้าไม่ใช่ให้เป็น 0 ไปก่อน (เพราะคำนวณไม่ได้)
             impliedRate = (data.currencySymbol === 'USD') ? 1 : 0;
         }
 
@@ -1430,9 +1425,7 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             maximumFractionDigits: 2
         });
         
-        // อัปเดตการแสดงผลใน Modal
         if (modalCostDisplay) {
-            // แสดง Breakdown (หรือแค่ Total)
             const systemFee = data.postCost.systemFee.toFixed(2);
             const adminFee = data.postCost.adminFee.toFixed(2);
             
@@ -1442,25 +1435,18 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
                 <span style="font-size:0.75em; color:#6c757d; font-weight: normal;">(${formattedConvertedCost} ${data.currencySymbol})</span>`;
         }
         
-        // --- สิ้นสุดการแก้ไขส่วนที่ 5 ---
-        
-
-        // 6. อัปเดตคะแนน
         const sidebarRating = document.getElementById('sidebar-rating');
         if (sidebarRating) sidebarRating.innerText = data.rating.toFixed(2);
         
-        // 7. อัปเดตชื่อ (แก้ปัญหาชื่อไม่โชว์)
         const userDisplay = document.getElementById('user-display');
         if (userDisplay) userDisplay.innerText = myUsername;
-		
-		if (locationQuery) {
+        
+        if (locationQuery) {
                 const locData = JSON.parse(decodeURIComponent(locationQuery.split('=')[1]));
-                // เรียก 2 ฟังก์ชันนี้เพื่อให้หน้าจอเปลี่ยนตามโซน
                 updateZoneBackground(locData.lat, locData.lng);
                 fetchAndRenderAnnouncement(locData);
             }
 
-        // 8. โหลดกระทู้
         loadPosts();
 
     } catch (e) {
@@ -3651,89 +3637,101 @@ async function fetchNearestAdminForInbox(elementId) {
     let allUsersCache = [];
     
 	async function openAllUserList(searchTerm = '') {
-            
-    if (searchTerm === '' && document.getElementById('user-list-modal').classList.contains('hidden')) {
-        document.getElementById('user-list-modal').classList.remove('hidden');
-        if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+    // 1. จัดการการเปิด Modal
+    const modal = document.getElementById('user-list-modal');
+    // ถ้าเป็นการเปิด Modal ครั้งแรก (ไม่ใช่การพิมพ์ค้นหา)
+    if (searchTerm === '' && modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        if (document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+        // ล้างค่าช่องค้นหาเมื่อเปิดใหม่
+        const input = document.getElementById('user-search-input');
+        if (input) input.value = '';
     }
-    
+
+    // 2. ตั้งค่า UI หัวข้อ
     document.getElementById('user-list-title').innerText = translations[currentLang]['modal_user_list_title'];
     document.getElementById('user-list-desc').innerText = translations[currentLang]['modal_user_list_desc'];
-    
     document.getElementById('pagination-controls').style.display = 'none';
-    document.getElementById('user-search-input').style.display = 'block'; 
-    
+    document.getElementById('user-search-input').style.display = 'block';
+
     const container = document.getElementById('user-list-container');
-    
-    let users = [];
-    if (allUsersCache.length === 0) {
-        container.innerHTML = "กำลังโหลด...";
-        const res = await fetch(`/api/users-list?requestBy=${myUsername}`);
+
+    // 3. ฟังก์ชันสำหรับดึงข้อมูลและแสดงผล (Internal Function)
+    const fetchData = async (query) => {
+        container.innerHTML = `<p style="text-align:center;">⏳ กำลังค้นหา...</p>`;
         
-        if(res.status !== 200) {
-            const errorData = await res.json();
-            alert(`❌ ไม่สามารถดึงรายชื่อได้: ${errorData.error || res.statusText}`);
-            document.getElementById('user-list-modal').classList.add('hidden');
-            return;
+        try {
+            // ⭐ ส่งค่า search ไปที่ Server เพื่อให้ Server ช่วยหาข้ามโซน
+            let url = `/api/users-list?requestBy=${myUsername}`;
+            if (query) url += `&search=${encodeURIComponent(query)}`;
+
+            const res = await fetch(url);
+            if (res.status !== 200) {
+                container.innerHTML = `<p style='color:red;'>Error Loading List</p>`;
+                return;
+            }
+            
+            const users = await res.json();
+            
+            // กรณีไม่พบข้อมูล
+            if (users.length === 0) {
+                container.innerHTML = query 
+                    ? `<p style='text-align:center; color:red; margin-top:20px;'>ไม่พบสมาชิกชื่อ "${query}" ในประเทศของคุณ</p>`
+                    : `<p style='text-align:center; color:gray;'>ไม่มีสมาชิก</p>`;
+                return;
+            }
+
+            // แสดงผลรายการ
+            container.innerHTML = users.map(u => {
+                 const isBanned = u.isBanned;
+                 const targetLevel = u.adminLevel || 0;
+                 // Style แถวตามสถานะ
+                 const rowStyle = isBanned 
+                    ? 'background: #f8d7da; border-left: 5px solid #dc3545;' 
+                    : 'background: white; border-left: 5px solid #28a745;';
+                 
+                 // Badge ยศ
+                 let levelBadge = targetLevel > 0 
+                    ? `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>` 
+                    : '';
+                 
+                 // Badge แบน
+                 const banBadge = isBanned ? '<span style="color:red; font-size:0.8em; font-weight:bold;">(BANNED)</span>' : '';
+                 
+                 // Badge ประเทศ (ถ้ามี)
+                 const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
+
+                 return `
+                    <div class="user-list-item" style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);" onclick="openUserDetail('${u.name}')">
+                        <div style="font-weight: bold; font-size: 1.1em;">
+                             👤 ${u.name} ${levelBadge} ${banBadge} ${countryBadge}
+                        </div>
+                        <div style="color:#28a745; font-weight: bold;">
+                             💵 ${u.coins.toLocaleString()} USD
+                        </div>
+                    </div>`;
+             }).join('');
+             
+             // เก็บ Cache ไว้ใช้สำหรับเปิด Modal รายละเอียด (openUserDetail)
+             allUsersCache = users; 
+
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = `<p style='color:red; text-align:center;'>Connection Error</p>`;
         }
-        users = await res.json();
-        allUsersCache = users; 
+    };
+
+    // 4. Debounce Logic (หน่วงเวลาพิมพ์)
+    if (searchTerm) {
+        clearTimeout(userSearchTimeout);
+        // รอ 0.5 วินาทีหลังจากหยุดพิมพ์ ค่อยส่ง Request
+        userSearchTimeout = setTimeout(() => {
+            fetchData(searchTerm);
+        }, 500); 
     } else {
-        users = allUsersCache; 
+        // กรณีไม่มี Search (เปิดครั้งแรก หรือลบคำค้นจนหมด) ให้โหลดเลย
+        fetchData(''); 
     }
-    
-    const searchTermLower = searchTerm.trim().toLowerCase();
-    let list = users.filter(u => u.name !== 'Admin');
-    
-    if (searchTermLower) {
-        list = list.filter(u => u.name.toLowerCase().includes(searchTermLower));
-    }
-
-    if(list.length === 0) { 
-        container.innerHTML = searchTermLower 
-            ? `<p style='text-align:center; color:red; margin-top:20px;'>ไม่พบสมาชิกชื่อ "${searchTerm}"</p>`
-            : "ไม่มีสมาชิก"; 
-        return; 
-    }
-    
-    const banText = currentLang === 'th' ? 'แบน' : 'Ban';
-    const unbanText = currentLang === 'th' ? 'ปลดแบน' : 'Unban';
-    const chatText = currentLang === 'th' ? 'แชท/โอน' : 'Chat/Transfer';
-    const ratingText = currentLang === 'th' ? 'ตั้งค่าคะแนน' : 'Set Rating';
-
-    container.innerHTML = list.map(u => {
-        const isBanned = u.isBanned;
-        const targetLevel = u.adminLevel || 0;
-        
-        // สถานะแบน (โชว์แค่สีพื้นหลังและขอบแดง)
-        const rowStyle = isBanned 
-            ? 'background: #f8d7da; border-left: 5px solid #dc3545;' 
-            : 'background: white; border-left: 5px solid #28a745;'; // สีเขียวปกติ
-            
-        // Badge ยศ (ถ้ามี)
-        let levelBadge = '';
-        if (targetLevel > 0) {
-            levelBadge = `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>`;
-        }
-        
-        // Badge Banned
-        const banText = isBanned ? '<span style="color:red; font-size:0.8em; font-weight:bold;">(BANNED)</span>' : '';
-
-        return `
-        <div class="user-list-item" 
-             style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);"
-             onclick="openUserDetail('${u.name}')"> <div style="font-weight: bold; font-size: 1.1em;">
-                👤 ${u.name} ${levelBadge} ${banText}
-            </div>
-            
-            <div style="color:#28a745; font-weight: bold;">
-                💵 ${u.coins.toLocaleString()} USD
-            </div>
-        </div>`;
-    }).join('');
-    
-    document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
-    document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
 }
 
 		// เปิด Modal แสดงรายละเอียดและปุ่มจัดการ

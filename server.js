@@ -326,8 +326,8 @@ app.get('/api/admin/transactions', async (req, res) => {
 
 // 2. User Info
 app.get('/api/user-info', async (req, res) => {
-    // 1. รับค่า location มาจาก Frontend ด้วย
-    const { username, currency, location } = req.query; 
+    // 1. รับค่า country เพิ่มเข้ามา (ส่งมาจาก Frontend)
+    const { username, currency, location, country } = req.query; 
     const targetCurrency = currency || DEFAULT_CURRENCY; 
 
     if (!username) return res.status(400).json({ error: 'No username' });
@@ -342,18 +342,26 @@ app.get('/api/user-info', async (req, res) => {
     try {
         const locationObj = location ? JSON.parse(location) : null;
 
-        // อัปเดตพิกัดล่าสุดลง Database
+        // อัปเดตพิกัดล่าสุด และ [NEW] ประเทศ ลง Database
         if (locationObj && locationObj.lat && locationObj.lng) {
+            const updateFields = { 
+                lastLocation: locationObj, 
+                lastSeen: new Date() 
+            };
+            
+            // ถ้ามีการส่งค่า country มา ให้บันทึกด้วย
+            if (country) {
+                updateFields.country = country; 
+            }
+
             await usersCollection.updateOne(
                 { username: username }, 
-                { $set: { lastLocation: locationObj, lastSeen: new Date() } }
+                { $set: updateFields }
             );
         }
 
-        // 1. คำนวณค่าธรรมเนียม
+        // ... (ส่วนคำนวณค่าธรรมเนียมเดิม) ...
         postCostData = await getPostCostByLocation(locationObj);
-
-        // 2. หา Zone ID หลักของผู้ใช้
         const zoneInfo = await findResponsibleAdmin(locationObj);
         if (zoneInfo.zoneData) {
             userZoneId = zoneInfo.zoneData.id;
@@ -363,9 +371,9 @@ app.get('/api/user-info', async (req, res) => {
         console.error("Error calculating location cost/zone:", e);
         postCostData = await getPostCostByLocation(null);
     }
-
+    
+    // ... (ส่วน return response เดิม) ...
     const convertedCoins = convertUSD(user.coins, targetCurrency);
-
     res.json({
         coins: user.coins,
         convertedCoins: convertedCoins.toFixed(2),
@@ -373,56 +381,80 @@ app.get('/api/user-info', async (req, res) => {
         postCost: postCostData,
         rating: user.rating,
         adminLevel: user.adminLevel || 0,
-        userZoneId: userZoneId 
+        userZoneId: userZoneId,
+        country: user.country || 'TH' // ส่งค่าประเทศกลับไปด้วย (Default TH)
     });
 });
 
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
+    const { requestBy, search } = req.query; 
+
     // 1. ตรวจสอบสิทธิ์
-    const requester = await getUserData(req.query.requestBy);
+    const requester = await getUserData(requestBy);
     if (!requester || requester.adminLevel < 1) {
         return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
     }
     
-    // ดึง User ทั้งหมดมาก่อน (ในอนาคตถ้า User เยอะควรใช้ geospatial query ของ MongoDB)
     const allUsers = await usersCollection.find({}).toArray();
 
-    // กรณี Admin Level 3 (Super Admin) -> เห็นทุกคน
+    const mapUserResponse = (u) => ({ 
+        name: u.username, 
+        coins: u.coins, 
+        rating: u.rating, 
+        isBanned: u.isBanned,
+        adminLevel: u.adminLevel || 0,
+        country: u.country || 'N/A' // ส่งข้อมูลประเทศกลับไปแสดงผลด้วยก็ได้
+    });
+
+    // CASE A: Admin Level 3 (Super Admin) -> เห็นทุกคน ทุกประเทศ
     if (requester.adminLevel >= 3) {
-        return res.json(allUsers
-            .filter(u => u.username !== requester.username) 
-            .map(u => ({ 
-            name: u.username, 
-            coins: u.coins, 
-            rating: u.rating, 
-            isBanned: u.isBanned,
-            adminLevel: u.adminLevel || 0,
-            // ส่งข้อมูลระยะห่างไปด้วยก็ได้ถ้าต้องการ (Optional)
-        })));
+        let results = allUsers.filter(u => u.username !== requester.username);
+        if (search && search.trim() !== "") {
+            const lowerSearch = search.toLowerCase();
+            results = results.filter(u => u.username.toLowerCase().includes(lowerSearch));
+        }
+        return res.json(results.map(mapUserResponse));
     }
 
-    // กรณี Admin Level 1-2 -> เห็นเฉพาะคนในโซนที่ตัวเองดูแล
-    // 2.1 ดึงโซนที่ Admin คนนี้ดูแลอยู่
+    // CASE B: Admin Level 2 (Manager) -> ค้นหาข้ามโซน (แต่ต้องประเทศเดียวกัน)
+    if (requester.adminLevel === 2) {
+        if (search && search.trim() !== "") {
+            const lowerSearch = search.toLowerCase();
+            
+            // ดึงประเทศของ Admin (ถ้าไม่มีให้ Default เป็น TH หรือค่ากลาง)
+            const myCountry = requester.country; 
+
+            const globalMatches = allUsers.filter(u => {
+                // 1. กรองตัวเองออก
+                if (u.username === requester.username) return false;
+                
+                // 2. เช็คชื่อ (Search Keyword)
+                const nameMatch = u.username.toLowerCase().includes(lowerSearch);
+                
+                // 3. [สำคัญ] เช็คประเทศ: ต้องมีประเทศระบุไว้ และต้องตรงกัน
+                // (ถ้าฝ่ายใดฝ่ายหนึ่งไม่มีข้อมูลประเทศ จะค้นหาไม่เจอเพื่อความปลอดภัย หรือคุณจะแก้ให้เจอถ้า myCountry เป็น null ก็ได้)
+                const countryMatch = (myCountry && u.country && u.country === myCountry);
+
+                return nameMatch && countryMatch;
+            });
+
+            return res.json(globalMatches.map(mapUserResponse));
+        }
+    }
+
+    // CASE C: ดูรายการปกติ (Level 1,2 แบบไม่ Search) -> เห็นแค่ในโซนตัวเอง (Logic เดิม)
     const myZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
-    
-    // ถ้าไม่มีโซนที่ดูแลเลย -> ไม่เห็นใครเลย (นอกจาก Admin ด้วยกัน หรือตัวเอง)
-    if (myZones.length === 0) {
-        return res.json([]);
-    }
+    if (myZones.length === 0) return res.json([]);
 
-    // 2.2 ดึงโซนทั้งหมดเพื่อมาเทียบว่า User อยู่ใกล้โซนไหนที่สุด
     const allZones = await zonesCollection.find({}).toArray();
 
-    // 2.3 กรอง User
     const filteredUsers = allUsers.filter(u => {
         if (u.username === requester.username) return false;
-        if (u.adminLevel > 0) return true;
+        if (u.adminLevel > 0) return true; 
 
-        // ถ้า User ไม่มีพิกัดล่าสุด -> ไม่เห็น (หรือจะให้เห็นเป็น 'Unlocated' ก็ได้ แล้วแต่ Policy)
         if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
 
-        // หาว่า User คนนี้อยู่ใกล้โซนไหนที่สุด
         let closestZone = null;
         let minDistance = Infinity;
 
@@ -434,22 +466,21 @@ app.get('/api/users-list', async (req, res) => {
             }
         });
 
-        // ถ้าโซนที่ใกล้ที่สุด เป็นโซนที่ Admin คนนี้ดูแล -> ให้ผ่าน
         if (closestZone) {
-			// เปรียบเทียบ ID ของโซนที่ Admin ดูแล (myZones) กับ ID ของโซนที่ใกล้ที่สุด (closestZone)
-			const isMyZone = myZones.some(mz => mz.id === closestZone.id);
-			return isMyZone;
-		}
-		return false;
+            const isMyZone = myZones.some(mz => mz.id === closestZone.id);
+            return isMyZone;
+        }
+        return false;
     });
 
-    res.json(filteredUsers.map(u => ({ 
-        name: u.username, 
-        coins: u.coins, 
-        rating: u.rating, 
-        isBanned: u.isBanned,
-        adminLevel: u.adminLevel || 0
-    })));
+    // กรองชื่ออีกครั้ง (กรณีค้นหาในโซน)
+    let finalResults = filteredUsers;
+    if (search && search.trim() !== "") {
+        const lowerSearch = search.toLowerCase();
+        finalResults = filteredUsers.filter(u => u.username.toLowerCase().includes(lowerSearch));
+    }
+
+    res.json(finalResults.map(mapUserResponse));
 });
 
 // 4. Contacts (Messages)
