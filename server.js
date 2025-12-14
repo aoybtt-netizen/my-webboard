@@ -1644,21 +1644,39 @@ app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
 
 // 27. Get Admin List (Level 1+)
 app.get('/api/admin/admins-list', async (req, res) => {
-    // Requires Admin Level 1+ to request this list
-    const requester = await getUserData(req.query.requestBy);
-    if (!requester || requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
-    }
-    
-    // Find users with adminLevel >= 1
-    const admins = await usersCollection.find({ adminLevel: { $gte: 1 } }).sort({ adminLevel: -1, username: 1 }).toArray();
+    const { requestBy } = req.query;
+    if (!requestBy) return res.status(400).json({ error: 'Missing requestBy' });
 
-    // Return essential data: name, level, isBanned
-    res.json(admins.map(a => ({ 
-        name: a.username, 
-        level: a.adminLevel || 0,
-        isBanned: a.isBanned // Include isBanned check
-    })));
+    try {
+        // 1. ดึงข้อมูลของผู้ร้องขอ (Admin ที่กดเข้ามาดู)
+        const requester = await usersCollection.findOne({ username: requestBy });
+        if (!requester || requester.adminLevel < 1) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        // 2. สร้างเงื่อนไขการค้นหา (Filter)
+        // พื้นฐาน: ต้องเป็น Admin (Level > 0)
+        let query = { adminLevel: { $gt: 0 } };
+
+        // 🔥 เงื่อนไขพิเศษ: ถ้าเป็น Admin Level 2
+        // ต้องเห็นเฉพาะ Admin ที่อยู่ในประเทศเดียวกัน (Country) เท่านั้น
+        if (requester.adminLevel === 2) {
+            query.country = requester.country; 
+        }
+
+        // 3. ดึงรายชื่อ
+        const admins = await usersCollection.find(query).project({ 
+            password: 0, 
+            socketId: 0,
+            email: 0 
+        }).toArray();
+
+        res.json(admins);
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 
