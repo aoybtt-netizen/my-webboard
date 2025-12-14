@@ -602,7 +602,6 @@ app.post('/api/admin/set-zone-name', async (req, res) => {
         transactionType = 'ADMIN_TRANSFER'; // ตั้งประเภทใหม่สำหรับการโอนจากยอดคงเหลือ
         note = `Admin (${requestBy}) Transfer USD from balance to ${targetUser}`;
     }
-    // --- ⭐ [สิ้นสุดส่วนแก้ไข] ---
 
 
     // 2. เพิ่มเงินให้เป้าหมาย (เหมือนเดิม)
@@ -629,19 +628,7 @@ app.post('/api/admin/set-zone-name', async (req, res) => {
         io.emit('balance-update', { user: requestBy, coins: updatedRequester.coins });
     }
     
-    // 5. แจ้งเตือนผู้รับ (เหมือนเดิม)
-    const notifMsg = { 
-        sender: 'System', 
-        target: targetUser, 
-        msgKey: 'SYS_TRANSFER', 
-        msgData: { amount: parsedAmount }, 
-        msg: `💰 Admin has transferred the amount to you ${parsedAmount} USD`, 
-        timestamp: Date.now() 
-    };
-    await messagesCollection.insertOne(notifMsg);
-    io.to(targetUser).emit('private-message', { ...notifMsg, to: targetUser });
-    
-    // 6. แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่ (เหมือนเดิม)
+    // 5. แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่ (เหมือนเดิม)
     io.to('Admin').emit('admin-new-transaction');
 
     res.json({ success: true });
@@ -1209,20 +1196,8 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
     // ⭐ อัปเดตยอดเงิน Admin ผู้ดำเนินการ
     const updatedRequester = await getUserData(requestBy);
     io.emit('balance-update', { user: requestBy, coins: updatedRequester.coins }); 
-    
-    // 6. แจ้งเตือนผู้รับ (เหมือนเดิม)
-    const notifMsg = { 
-        sender: 'System', 
-        target: targetUser, 
-        msgKey: 'SYS_DEDUCT', 
-        msgData: { amount: parsedAmount }, 
-        msg: `💰 Admin has deducted the amount from you ${parsedAmount} USD`, 
-        timestamp: Date.now() 
-    };
-    await messagesCollection.insertOne(notifMsg);
-    io.to(targetUser).emit('private-message', { ...notifMsg, to: targetUser });
-    
-    // 7. แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่ (เหมือนเดิม)
+       
+    // 6. แจ้งเตือน Admin ให้รู้ว่ามี Transaction ใหม่ (เหมือนเดิม)
     io.to('Admin').emit('admin-new-transaction');
 
     res.json({ success: true });
@@ -1316,10 +1291,6 @@ app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => 
     
     io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
     
-    if (post.author !== author) {
-        const notifMsg = { sender: 'System', target: post.author, msgKey: 'SYS_NEW_COMMENT', msgData: { postTitle: post.title }, msg: `💬 New comment: ${post.title}`, timestamp: Date.now(), postId: postId };
-        await messagesCollection.insertOne(notifMsg);
-        io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
     }
     res.json({ success: true, comment: newComment });
 });
@@ -1590,21 +1561,72 @@ io.on('connection', (socket) => {
     // --- Private Messaging ---
     socket.on('get-private-history', async (data) => {
         const { me, partner } = data;
-        const history = await messagesCollection.find({
+        
+        let targetPartners = [partner];
+        
+        // ถ้าเป็นการขอประวัติการสนทนากับ 'Admin'
+        if (partner === 'Admin') {
+            // ค้นหา Admin Level 1 ขึ้นไปทั้งหมด (เพื่อรวม Admin ที่ถูก Route)
+            const allAdmins = await usersCollection.find({ adminLevel: { $gte: 1 } }).toArray();
+            const adminUsernames = allAdmins.map(a => a.username);
+            targetPartners = adminUsernames; // กำหนดให้ค้นหาข้อความที่คุยกับ Admin เหล่านี้
+        }
+
+        const query = {
             $or: [
-                { sender: me, target: partner },
-                { sender: partner, target: me },
+                // ข้อความที่ 'me' ส่งไปหา Admin (รวมข้อความที่ถูก Route ไปหา Admin L1/L2)
+                { sender: me, target: { $in: targetPartners } },
+                // ข้อความที่ Admin ส่งมาหา 'me' (รวม Admin L1/L2 ที่ตอบกลับมา)
+                { sender: { $in: targetPartners }, target: me },
+                // ข้อความจาก System ถึง 'me' (คงไว้)
                 { sender: 'System', target: me }
             ]
-        }).toArray();
+        };
+
+        const history = await messagesCollection.find(query).sort({ timestamp: 1 }).toArray();
+        
         socket.emit('private-history', history);
     });
 
     socket.on('private-message', async (data) => {
         const newMsg = { sender: data.sender, target: data.target, msg: data.msg, timestamp: Date.now() };
+        
+        let finalTarget = data.target; // ผู้รับจริงที่บันทึกลง DB และส่ง Socket
+        let displayTarget = data.target; // ชื่อที่แสดงให้ผู้ส่งเห็นใน UI (เพื่อให้เธรดคุยไม่เปลี่ยน)
+
+        // 1. ตรวจสอบว่าสมาชิก (Level 0) กำลังส่งหา 'Admin' หรือไม่
+        if (data.target === 'Admin') {
+            const senderUser = await usersCollection.findOne({ username: data.sender });
+            
+            // ถ้าเป็นสมาชิกทั่วไป (Level 0)
+            if (senderUser && (senderUser.adminLevel || 0) === 0) {
+                
+                // --- Start Routing Logic ---
+                
+                // 1. ค้นหา Admin เจ้าของโซนจากตำแหน่งล่าสุดของผู้ส่ง
+                const responsibleAdminData = await findResponsibleAdmin(senderUser.lastLocation);
+                
+                // ถ้าเจอ Admin ที่รับผิดชอบโซนนั้นและไม่ใช่ 'Admin' (Level 3)
+                if (responsibleAdminData && responsibleAdminData.username !== 'Admin') {
+                    finalTarget = responsibleAdminData.username; // กำหนด Admin L1/L2 เป็นผู้รับจริง
+                } 
+                // ถ้าไม่เจอ Admin โซน finalTarget จะยังคงเป็น 'Admin' (Level 3 Fallback)
+                
+                // --- End Routing Logic ---
+            }
+        }
+        
+        // อัปเดตผู้รับจริงใน Message Object ก่อนบันทึก
+        newMsg.target = finalTarget; 
+
+        // 1. บันทึกข้อความลง DB โดยใช้ finalTarget (ผู้รับจริง)
         await messagesCollection.insertOne(newMsg);
-        io.to(data.target).emit('private-message', { ...newMsg, to: data.target });
-        io.to(data.sender).emit('private-message', { ...newMsg, to: data.target });
+        
+        // 2. ส่งข้อความไปยังผู้รับจริง (finalTarget)
+        io.to(finalTarget).emit('private-message', { ...newMsg, to: finalTarget });
+        
+        // 3. ส่งข้อความสะท้อนกลับไปหาผู้ส่ง โดยใช้ displayTarget ('Admin') เพื่อให้เธรดสนทนาถูกต้อง
+        io.to(data.sender).emit('private-message', { ...newMsg, to: displayTarget });
     });
 
     // --- Handover / Deals ---
