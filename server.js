@@ -1291,7 +1291,6 @@ app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => 
     
     io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
     
-    }
     res.json({ success: true, comment: newComment });
 });
 
