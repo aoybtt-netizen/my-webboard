@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.42 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.43 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -764,6 +764,14 @@ async function updateZoneBackground(lat, lng) {
 		'label_zone_name': 'ชื่อโซน (สำหรับเจ้าของ):',
 		'placeholder_zone_name': 'ชื่อเรียกโซน เช่น เมือง A',
 		'alert_invalid_zone_name': '❌ กรุณาใส่ชื่อโซน',
+		
+		'inbox_title': "💬 กล่องข้อความส่วนตัว",
+        'inbox_desc_recent': "รายชื่อคู่สนทนาล่าสุด",
+        'inbox_no_history': "ยังไม่มีประวัติการสนทนา",
+        'admin_label': "(ผู้ดูแล)",
+        'admin_searching': "⏳ กำลังค้นหาผู้ดูแลโซนของคุณ...",
+        'admin_recommended_label': "แนะนำผู้ดูแลโซนใกล้คุณ",
+        'admin_start_chat': "เริ่มแชทเลย!",
     },
     'en': {
         'app_title': 'Webboard',
@@ -920,6 +928,14 @@ async function updateZoneBackground(lat, lng) {
 		'label_zone_name': 'Zone Name (for owner):',
 		'placeholder_zone_name': 'Zone name, e.g., City A',
 		'alert_invalid_zone_name': '❌ Please enter a zone name.',
+		
+		'inbox_title': "💬 Private Chat Inbox",
+        'inbox_desc_recent': "Recent contacts list",
+        'inbox_no_history': "No conversation history yet",
+        'admin_label': "(Admin)",
+        'admin_searching': "⏳ Searching for your zone administrator...",
+        'admin_recommended_label': "Recommended administrator near you",
+        'admin_start_chat': "Start Chat Now!",
     }
 };
 
@@ -3511,62 +3527,120 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     }
 
     async function openInbox(page = 1) {
-    // 1. ตรวจสอบสิทธิ์ (โค้ดเดิมของคุณ)
-    if (myUsername !== 'Admin') {
-        openPrivateChat('Admin'); 
-        return;
-    }
-    
-    // 2. เตรียมหน้าจอ
+    if (!myUsername) return document.getElementById('login-modal').classList.remove('hidden');
+
     document.getElementById('user-list-modal').classList.remove('hidden');
-    const container = document.getElementById('user-list-container');
-    container.innerHTML = "Loading...";
+    // ปิด Sidebar ถ้าเปิดอยู่
+    if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
     
-    document.getElementById('user-search-input').style.display = 'none';
+    // ดึงคีย์ภาษา
+    const t = translations[currentLang];
+    
+    // ตั้งชื่อหัวข้อโดยใช้คีย์ภาษา
+    document.getElementById('user-list-title').innerText = t['inbox_title'] || "💬 กล่องข้อความส่วนตัว";
+    document.getElementById('user-list-desc').innerText = t['inbox_desc_recent'] || "รายชื่อคู่สนทนาล่าสุด";
+    
+    const container = document.getElementById('user-list-container');
+    container.innerHTML = `<p style="text-align:center;">⏳ ${t['loading'] || 'กำลังโหลด...'}</p>`;
+    
+    // ซ่อน Search Box ชั่วคราว (ใน Inbox ไม่ต้องใช้ Search สมาชิกทั้งหมด)
+    document.getElementById('user-search-input').style.display = 'none'; 
     document.getElementById('pagination-controls').style.display = 'none';
 
-    // 3. ดึงข้อมูลจาก API (ที่แก้ใน server.js แล้ว)
-    const res = await fetch(`/api/contacts?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
-    const data = await res.json();
-    const recentContacts = data.contacts || data; // รองรับเผื่อโครงสร้างข้อมูลต่างกันเล็กน้อย
+    try {
+        const res = await fetch(`/api/contacts?username=${myUsername}`);
+        const contacts = await res.json();
+        
+        let html = '';
+        let hasAdminContact = false; // ตัวแปรเช็คว่าเคยคุยกับ Admin ไหม
 
-    // 4. ตรวจสอบว่ามีข้อมูลไหม
-    if (!recentContacts || recentContacts.length === 0) {
-        if (data.currentPage > 1) return openInbox(1); // ถ้าย้อนหน้าแล้วไม่มี ให้กลับหน้า 1
-        container.innerHTML = "<div style='text-align:center;color:gray;margin-top:20px;'>ไม่มีการสนทนาล่าสุด</div>";
-        // updatePaginationUI(data, 'inbox'); // ถ้ามีฟังก์ชันนี้ให้เปิดใช้
-        return;
+        if (contacts.length === 0) {
+            html += `<div style="text-align:center; color:gray; margin-top:20px;">${t['inbox_no_history'] || 'ยังไม่มีประวัติการสนทนา'}</div>`;
+        } else {
+            html = contacts.map(c => {
+                const dot = c.unreadCount > 0 ? `<span class="unread-indicator" style="animation: none;">${c.unreadCount}</span>` : '';
+                const style = c.unreadCount > 0 ? 'font-weight:bold; background:#fff8e1;' : '';
+                
+                // เช็คว่าเป็น Admin หรือไม่
+                let nameDisplay = `👤 ${c.partner}`;
+                if (c.isAdmin) {
+                    hasAdminContact = true; // เจอแล้ว! เคยคุยกับ Admin
+                    nameDisplay = `🛡️ <b>${c.partner}</b> ${t['admin_label'] || '(Admin)'}`;
+                }
+
+                return `
+                    <div class="user-list-item" style="${style}" onclick="openPrivateChat('${c.partner}')">
+                        <span>${nameDisplay} ${dot}</span>
+                        <span style="color:#007bff; font-size:0.8em;">
+                            ${c.lastMessage ? c.lastMessage.substring(0, 15) + '...' : (t['open_chat'] || 'open chat >')}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ถ้ายังไม่เคยคุยกับ Admin เลย ให้หา Admin ใกล้ตัวมาแนะนำ
+        if (!hasAdminContact) {
+            // สร้าง Element สำหรับแสดงผลแนะนำ
+            const suggestionId = 'admin-suggestion-box';
+            // แทรกล่องรอไว้ด้านบนสุด
+            html = `<div id="${suggestionId}" style="margin-bottom:10px;"></div>` + html;
+            
+            // สั่งทำงานแบบ Async เพื่อไปหา Nearest Admin (ไม่ Block UI หลัก)
+            fetchNearestAdminForInbox(suggestionId);
+        }
+
+        container.innerHTML = html;
+
+    } catch (e) {
+        console.error("Error loading inbox:", e);
+        container.innerHTML = `<p style="text-align:center; color:red;">${t['load_failed'] || 'โหลดข้อมูลล้มเหลว'}</p>`;
+    }
+}
+
+// ฟังก์ชันหา Admin ใกล้ตัวเพื่อแสดงใน Inbox (รองรับ i18n)
+async function fetchNearestAdminForInbox(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    
+    const t = translations[currentLang]; // ดึงคีย์ภาษา
+    
+    // ข้อความกำลังค้นหา
+    el.innerHTML = `<div style="padding:10px; background:#f0f9ff; border:1px dashed #007bff; border-radius:8px; text-align:center; font-size:0.9em; color:#007bff;">
+        ${t['admin_searching'] || '⏳ กำลังค้นหาผู้ดูแลโซนของคุณ...'}
+    </div>`;
+
+    // 1. หาพิกัด (ใช้พิกัดล่าสุดที่เก็บไว้ หรือพิกัด Default)
+    let lat = null, lng = null;
+    if (userPrimaryLocation) {
+        lat = userPrimaryLocation.lat;
+        lng = userPrimaryLocation.lng;
+    } else if (currentLocationData) {
+        lat = currentLocationData.lat;
+        lng = currentLocationData.at;
     }
 
-    // 5. [จุดสำคัญ] แสดงผลโดยใช้ค่า unreadCount จาก Server โดยตรง
-    container.innerHTML = recentContacts.map(c => {
-        // c ตอนนี้คือ Object: { partner: "ชื่อ", unreadCount: 5, lastMessage: "..." }
-        
-        // ถ้า unreadCount > 0 ให้แสดงจุดสีแดงและใส่จำนวน
-        const dot = c.unreadCount > 0 
-            ? `<span class="unread-indicator" style="animation: none;">${c.unreadCount}</span>` 
-            : '';
-        
-        // ถ้ายังไม่ได้อ่าน ให้ทำตัวหนาและพื้นหลังเหลืองอ่อน
-        const style = c.unreadCount > 0 ? 'font-weight:bold; background:#fff8e1;' : '';
-        
-        return `
-            <div class="user-list-item" style="${style}" onclick="openPrivateChat('${c.partner}')">
-                <span>👤 ${c.partner} ${dot}</span>
-                <span style="color:#007bff; font-size:0.8em;">
-                    ${c.lastMessage ? c.lastMessage.substring(0, 15) + '...' : 'open chat >'}
-                </span>
-            </div>
-        `;
-    }).join('');
-    
-    // 6. อัปเดต Pagination (โค้ดเดิมของคุณ)
-    updatePaginationUI(data, 'inbox');
-    inboxPage = data.currentPage || 1;
-    const prevBtn = document.getElementById('list-prev-btn');
-    const nextBtn = document.getElementById('list-next-btn');
-    if(prevBtn) prevBtn.innerText = translations[currentLang]['btn_prev'];
-    if(nextBtn) nextBtn.innerText = translations[currentLang]['btn_next'];
+    // 2. เรียก API
+    try {
+        const query = (lat && lng) ? `?lat=${lat}&lng=${lng}` : '';
+        const res = await fetch(`/api/nearest-admin${query}`);
+        const data = await res.json();
+
+        if (data.found && data.admin) {
+            el.innerHTML = `
+                <div class="user-list-item" style="background:#e3f2fd; border:1px solid #90caf9; border-radius:8px;" onclick="openPrivateChat('${data.admin}')">
+                    <span>🛡️ <b>${data.admin}</b> <small style="color:gray;">(${data.zoneName || (t['admin_label'] ? t['admin_label'].replace(/[()]/g, '') : 'Administrator')})</small></span>
+                    <span style="color:#007bff; font-weight:bold; font-size:0.8em;">${t['admin_start_chat'] || 'เริ่มแชทเลย!'}</span>
+                </div>
+                <div style="font-size:0.75em; color:gray; text-align:center; margin-top:2px;">${t['admin_recommended_label'] || 'แนะนำผู้ดูแลโซนใกล้คุณ'}</div>
+            `;
+        } else {
+            el.remove(); // ถ้าหาไม่เจอจริงๆ ก็ลบกล่องทิ้ง
+        }
+    } catch (e) {
+        console.error(e);
+        el.remove();
+    }
 }
     
     let allUsersCache = [];

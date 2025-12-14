@@ -428,55 +428,82 @@ app.get('/api/users-list', async (req, res) => {
 
 // 4. Contacts (Messages)
 app.get('/api/contacts', async (req, res) => {
-    // ดึง username ของผู้ที่เรียกใช้ (ในกรณีนี้คือ แอดมิน)
     const { username } = req.query; 
     if (!username) return res.status(400).json({ error: 'No username' });
 
     try {
-        // ใช้ Aggregation Pipeline เพื่อดึงรายชื่อคู่สนทนาและนับ Unread Count
         const contacts = await messagesCollection.aggregate([
             {
                 $match: {
                     $or: [{ sender: username }, { target: username }]
                 }
             },
-            { $sort: { timestamp: -1 } }, // เรียงข้อความล่าสุดก่อน
+            { $sort: { timestamp: -1 } },
             {
                 $group: {
                     _id: {
-                        // Group ตามคู่สนทนา
                         $cond: [{ $eq: ["$sender", username] }, "$target", "$sender"]
                     },
                     lastMessage: { $first: "$msg" },
                     timestamp: { $first: "$timestamp" },
-                    // ⭐️ Logic การนับข้อความที่ "ยังไม่อ่าน" และ "ส่งมาหาเรา"
                     unreadCount: {
                         $sum: {
                             $cond: [
                                 { $and: [{ $eq: ["$target", username] }, { $eq: ["$isRead", false] }] },
-                                1, // ถ้าใช่เงื่อนไขนี้ ให้นับเพิ่ม 1
-                                0  // ถ้าไม่ใช่ ให้นับ 0
+                                1, 
+                                0 
                             ]
                         }
                     }
                 }
             },
-            { $sort: { timestamp: -1 } } // เรียงลำดับคนคุยล่าสุดไว้บนสุด
+            { $sort: { timestamp: -1 } }
         ]).toArray();
 
-        // จัดรูปแบบข้อมูลส่งกลับให้ Frontend
-        const formattedContacts = contacts.map(c => ({
-            partner: c._id,
-            lastMessage: c.lastMessage,
-            timestamp: c.timestamp,
-            unreadCount: c.unreadCount // ✅ ข้อมูลนี้สำคัญที่สุด
-        }));
+        // ดึงข้อมูล User เพิ่มเติมเพื่อเช็คว่าเป็น Admin หรือไม่
+        const formattedContacts = [];
+        for (const c of contacts) {
+            const partnerUser = await usersCollection.findOne({ username: c._id });
+            formattedContacts.push({
+                partner: c._id,
+                lastMessage: c.lastMessage,
+                timestamp: c.timestamp,
+                unreadCount: c.unreadCount,
+                // เพิ่ม Flag บอกว่าเป็น Admin หรือไม่ (Level > 0)
+                isAdmin: partnerUser ? (partnerUser.adminLevel > 0) : false
+            });
+        }
 
         res.json(formattedContacts);
 
     } catch (e) {
         console.error("Error fetching contacts:", e);
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4.1 API หา Admin ที่ใกล้ที่สุด (สำหรับแนะนำใน Inbox)
+app.get('/api/nearest-admin', async (req, res) => {
+    const { lat, lng } = req.query;
+    
+    // ถ้าไม่มีพิกัดมา ให้คืนค่า Admin กลาง
+    if (!lat || !lng) {
+        return res.json({ found: true, admin: 'Admin', zoneName: 'System Default' });
+    }
+
+    try {
+        const location = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        // ใช้ฟังก์ชันที่มีอยู่แล้วใน server.js
+        const responsibleData = await findResponsibleAdmin(location);
+        
+        res.json({
+            found: true,
+            admin: responsibleData.username,
+            zoneName: responsibleData.zoneName
+        });
+    } catch (e) {
+        console.error(e);
+        res.json({ found: false, admin: 'Admin' });
     }
 });
 
