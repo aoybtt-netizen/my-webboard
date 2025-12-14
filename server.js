@@ -74,7 +74,13 @@ const serverTranslations = {
         'deduct_insufficient': '⛔ เป้าหมายมีเหรียญไม่เพียงพอ',
         'deduct_hierarchy_err': '⛔ ไม่สามารถดึงเหรียญจากผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
         'deduct_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
-        'deduct_zone_mismatch': '⛔ ไม่อนุญาตให้ดึงเหรียญข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})'
+        'deduct_zone_mismatch': '⛔ ไม่อนุญาตให้ดึงเหรียญข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})',
+		'ban_perm_denied': '⛔ ปฏิเสธการเข้าถึง: ต้องการ Admin Level 1 ขึ้นไป',
+        'ban_cannot_admin': '⛔ ไม่สามารถแบนบัญชี Admin หลักได้',
+        'ban_user_not_found': '⛔ ไม่พบผู้ใช้งาน',
+        'ban_hierarchy_err': '⛔ ไม่สามารถแบน/ปลดแบน ผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
+        'ban_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
+        'ban_zone_mismatch': '⛔ ไม่อนุญาตให้แบนข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -86,7 +92,13 @@ const serverTranslations = {
         'deduct_insufficient': '⛔ Target user has insufficient coins',
         'deduct_hierarchy_err': '⛔ Cannot deduct coins from user with equal or higher level (Level {level})',
         'deduct_zone_missing': '⛔ Cannot verify zone (Missing location data)',
-        'deduct_zone_mismatch': '⛔ Cross-zone deduction is not allowed (You: {zoneA} / Target: {zoneB})'
+        'deduct_zone_mismatch': '⛔ Cross-zone deduction is not allowed (You: {zoneA} / Target: {zoneB})',
+		'ban_perm_denied': '⛔ Permission denied: Admin Level 1+ required',
+        'ban_cannot_admin': '⛔ Cannot ban main Admin account',
+        'ban_user_not_found': '⛔ User not found',
+        'ban_hierarchy_err': '⛔ Cannot ban/unban user with equal or higher level (Level {level})',
+        'ban_zone_missing': '⛔ Cannot verify zone (Missing location data)',
+        'ban_zone_mismatch': '⛔ Cross-zone ban is not allowed (You: {zoneA} / Target: {zoneB})',
     }
 };
 
@@ -1311,32 +1323,94 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
 
 // 19. Toggle Ban
 app.post('/api/admin/toggle-ban', async (req, res) => {
-    const { targetUser, shouldBan, requestBy } = req.body;
+    // รับค่า lang มาด้วย
+    const { targetUser, shouldBan, requestBy, lang } = req.body;
+    const currentLang = lang || 'th';
+
+    // 1. ตรวจสอบผู้สั่งการ (Requester)
     const requester = await getUserData(requestBy);
-	if (requester.adminLevel < 1) return res.status(403).json({ error: 'Admin only' });
-    if (targetUser === 'Admin') return res.status(400).json({ error: 'Cannot ban Admin' });
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: translateServerMsg('ban_perm_denied', currentLang) });
+    }
+
+    if (targetUser === 'Admin') {
+        return res.status(400).json({ error: translateServerMsg('ban_cannot_admin', currentLang) });
+    }
+
+    const targetData = await getUserData(targetUser);
+    if (!targetData) {
+        return res.status(404).json({ error: translateServerMsg('ban_user_not_found', currentLang) });
+    }
+
+    // =========================================================
+    // ตรวจสอบความปลอดภัย (Security Checks) - Logic เดียวกับ Deduct
+    // =========================================================
+
+    // A. Hierarchy Check: ห้ามแบนคนระดับเดียวกันหรือสูงกว่า
+    const requesterLevel = requester.adminLevel || 0;
+    const targetLevel = targetData.adminLevel || 0;
+
+    if (targetLevel >= requesterLevel) {
+        let msg = translateServerMsg('ban_hierarchy_err', currentLang);
+        msg = msg.replace('{level}', targetLevel);
+        return res.status(403).json({ error: msg });
+    }
+
+    // B. Zone Check: ห้ามแบนข้ามโซน (Admin Level 3 ยกเว้น)
+    if (requesterLevel < 3) {
+        if (!requester.lastLocation || !targetData.lastLocation) {
+            return res.status(400).json({ 
+                error: translateServerMsg('ban_zone_missing', currentLang) 
+            });
+        }
+
+        const requesterZoneInfo = await findResponsibleAdmin(requester.lastLocation);
+        const targetZoneInfo = await findResponsibleAdmin(targetData.lastLocation);
+
+        const rZoneId = requesterZoneInfo.zoneData ? requesterZoneInfo.zoneData.id : 'no-zone';
+        const tZoneId = targetZoneInfo.zoneData ? targetZoneInfo.zoneData.id : 'no-zone';
+
+        if (rZoneId !== tZoneId) {
+            let msg = translateServerMsg('ban_zone_mismatch', currentLang);
+            msg = msg.replace('{zoneA}', requesterZoneInfo.zoneName).replace('{zoneB}', targetZoneInfo.zoneName);
+            return res.status(403).json({ error: msg });
+        }
+    }
+
+    // =========================================================
+    // ดำเนินการ (Action)
+    // =========================================================
 
     await updateUser(targetUser, { isBanned: shouldBan });
-    io.to(targetUser).emit('force-logout', shouldBan ? '❌ Your account has been suspended.' : '✅ Your account has been unbanned.');
+    
+    // แจ้งเตือนเป้าหมายให้หลุดออกจากระบบ
+    const kickMsg = shouldBan 
+        ? (currentLang === 'th' ? '❌ บัญชีของคุณถูกระงับการใช้งาน' : '❌ Your account has been suspended.') 
+        : (currentLang === 'th' ? '✅ บัญชีของคุณได้รับการปลดแบนแล้ว' : '✅ Your account has been unbanned.');
+
+    io.to(targetUser).emit('force-logout', kickMsg);
 
     if (shouldBan) {
         const allSockets = io.sockets.sockets;
         allSockets.forEach(socket => {
             if (socket.username === targetUser) {
                 if (socket.viewingPostId) {
-                    socket.emit('force-leave', '⛔ You are banned');
+                    socket.emit('force-leave', kickMsg);
                     delete postViewers[socket.viewingPostId];
                     broadcastPostStatus(socket.viewingPostId, false);
                 }
-                socket.emit('force-logout', '⛔ You are banned'); 
+                socket.emit('force-logout', kickMsg); 
             }
         });
+        
+        // ปิดกระทู้ทั้งหมดของคนที่โดนแบน
         await postsCollection.updateMany(
             { author: targetUser, isClosed: false },
             { $set: { isClosed: true, status: 'closed_permanently' } }
         );
         io.emit('update-post-status');
     }
+
     res.json({ success: true, isBanned: shouldBan });
 });
 

@@ -371,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.44 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.45 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1498,10 +1498,15 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
         try {
             const res = await fetch('/api/admin/toggle-ban', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUser, shouldBan, requestBy: myUsername })
-            });
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        targetUser: userToBan, 
+        shouldBan: true,
+        requestBy: myUsername,
+        lang: currentLang 
+    })
+})
 
             const data = await res.json();
             
