@@ -1843,41 +1843,51 @@ function getTransactionDetail(t) {
         
         function switchView(view) {
     currentView = view;
-    currentPostPage = 1; 
-	
-	const filterContainer = document.getElementById('filter-container');
-            if (filterContainer) {
-				// ให้แสดงเฉพาะหน้า 'closed' เท่านั้น ---
-				if (view === 'closed') {
-					filterContainer.style.display = 'block';
-				// ซ่อนปุ่มเช็คอินออกไป (เพราะหน้านี้ไม่ควรมีผลกับระยะทาง แต่ควรมีผลกับโซน/ประเทศ)
-					document.getElementById('geo-filter-btn').style.display = 'none'; 
-				} else {
+    currentPostPage = 1;
+
+    const filterContainer = document.getElementById('filter-container');
+    const adminScopeFilter = document.getElementById('admin-scope-filter'); // Dropdown เลือกโซน/ประเทศ
+    const geoFilterBtn = document.getElementById('geo-filter-btn');       // ปุ่มเช็คอิน
+
+    if (filterContainer) {
+        if (view === 'home') {
+            // หน้า Home: โชว์แถบรวม, ซ่อน Dropdown Admin, โชว์ปุ่มเช็คอิน
+            filterContainer.style.display = 'block';
+            if (adminScopeFilter) adminScopeFilter.style.display = 'none';
+            if (geoFilterBtn) geoFilterBtn.style.display = 'inline-block';
+
+        } else if (view === 'closed') {
+            // หน้า Closed: โชว์แถบรวม, โชว์ Dropdown Admin (ถ้ามีสิทธิ์), ซ่อนปุ่มเช็คอิน
+            filterContainer.style.display = 'block';
+            
+            // เช็คว่าเป็น Admin Level 2 ไหมถึงจะโชว์ Dropdown
+            if (myAdminLevel === 2 && adminScopeFilter) {
+                adminScopeFilter.style.display = 'inline-block';
+            } else if (adminScopeFilter) {
+                adminScopeFilter.style.display = 'none';
+            }
+
+            if (geoFilterBtn) geoFilterBtn.style.display = 'none'; // ❌ ซ่อนปุ่มเช็คอินในหน้านี้
+
+        } else {
+            // หน้าอื่นๆ: ซ่อนแถบทั้งหมด
             filterContainer.style.display = 'none';
         }
     }
-    
+
+    // ... (ส่วนโค้ดจัดการ title และ loadPosts ด้านล่างคงเดิม) ...
     const title = document.getElementById('page-title');
     if (view === 'home') {
-        title.innerText = translations[currentLang]['page_title']; // ใช้ translation key
+        title.innerText = translations[currentLang]['page_title'];
         title.style.color = "#333";
-        loadPosts(); 
-        
-        // 💡 ตั้งค่าปุ่ม Pagination ให้กลับไปเรียก loadPosts
-        document.getElementById('post-prev-btn').onclick = () => changePostPage(-1);
-        document.getElementById('post-next-btn').onclick = () => changePostPage(1);
-
+        loadPosts();
+        // ...
     } else if (view === 'closed') {
         title.innerText = translations[currentLang]['admin_closed_posts'];
         title.style.color = "#6c757d";
-        loadPosts(); // โหลดรายการปกติ (กระทู้ปิดทั้งหมด)
-
-    } else if (view === 'my_active') { 
-        showMyActivePosts(1); 
-        
-    } else if (view === 'my_closed') { 
-        showMyClosedPosts(1); 
+        loadPosts();
     }
+    // ...
     
     toggleSidebar();
 }
@@ -2080,6 +2090,21 @@ async function showMyClosedPosts(page = 1) {
                 return false;
             }
             return true;
+        });
+    }
+	
+	if (currentView !== 'closed' && filterLocation && filterMaxDistance) {
+        filteredPosts = filteredPosts.filter(item => {
+            const post = item.data;
+            if (!post.location || !post.location.lat || !post.location.lng) {
+                 return false;  
+            }
+            
+            const dist = getDistanceFromLatLonInKm(
+                filterLocation.lat, filterLocation.lng,
+                post.location.lat, post.location.lng
+            );
+            return dist <= filterMaxDistance;
         });
     }
 			
