@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.52 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.1 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -505,6 +505,61 @@ async function assignAdminToZone(zoneId, adminUsername, zoneName) {
         alert('❌ Error connecting to server');
     }
 }
+
+async function addZoneManual() {
+    const name = document.getElementById('manual-zone-name').value;
+    const lat = document.getElementById('manual-zone-lat').value;
+    const lng = document.getElementById('manual-zone-lng').value;
+    const fee = document.getElementById('manual-zone-fee').value;
+
+    if (!name || !lat || !lng) {
+        alert('กรุณากรอกชื่อและพิกัดให้ครบถ้วน');
+        return;
+    }
+
+    // แสดงสถานะกำลังทำงาน
+    const btn = document.querySelector('button[onclick="addZoneManual()"]');
+    const originalText = btn.innerText;
+    btn.innerText = '⏳ กำลังตรวจสอบ...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/admin/add-zone-manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                requestBy: myUsername,
+                name: name,
+                lat: lat,
+                lng: lng,
+                zoneFee: fee
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            alert(data.message);
+            // ล้างค่าในฟอร์ม
+            document.getElementById('manual-zone-name').value = '';
+            document.getElementById('manual-zone-lat').value = '';
+            document.getElementById('manual-zone-lng').value = '';
+            
+            // รีเฟรชรายการโซน
+            openAdminZoneModal(); 
+        } else {
+            alert(data.error);
+        }
+    } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        console.error(e);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+window.addZoneManual = addZoneManual;
 
 // ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
 async function assignAdminToZone(zoneId, adminUsername, zoneName) {
@@ -4021,6 +4076,26 @@ function openUserDetail(targetUsername) {
 	
 		<div id="admin-zone-modal" class="modal-overlay hidden">
     <div class="modal-box">
+		<div style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+    <h4 style="margin-top:0; color:#333;">➕ เพิ่มโซนด้วยพิกัด (Level 2+)</h4>
+    
+    <input type="text" id="manual-zone-name" placeholder="ชื่อโซน (เช่น สยาม, ชิบูย่า)" style="margin-bottom: 10px;">
+    
+    <div style="display:flex; gap:10px;">
+        <input type="number" id="manual-zone-lat" placeholder="Latitude (เช่น 13.746)" step="any">
+        <input type="number" id="manual-zone-lng" placeholder="Longitude (เช่น 100.534)" step="any">
+    </div>
+
+    <input type="number" id="manual-zone-fee" placeholder="ค่าธรรมเนียม (เช่น 5)" value="5" style="margin-bottom: 10px;">
+
+    <button class="sidebar-btn create-btn" onclick="addZoneManual()">บันทึกพิกัด</button>
+    
+    <p style="font-size:0.8em; color:gray; margin-top:5px;">
+        * สำหรับ Admin Level 2 จะเพิ่มได้เฉพาะในประเทศที่สังกัดเท่านั้น
+    </p>
+</div>
+<hr>
+
         <h2 style="text-align: center;" data-i18n-key="admin_zone_title">🗺️ จัดการโซนพื้นที่</h2>
         <p style="color: #6c757d; text-align: center;" data-i18n-key="admin_zone_desc">
             ใส่พิกัด Lat/Lng เพื่อเพิ่มจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)
