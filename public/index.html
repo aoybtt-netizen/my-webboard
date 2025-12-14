@@ -133,7 +133,7 @@
     <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
-    <div class="sidebar" id="sidebar">
+    <div class="sidebar" id="sidebar" style="left: -280px;">
     <h2 style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.1 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1346,11 +1346,6 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
     checkNewTransaction();
     loadUnreadStatus(); 
-
-    // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
-    await updateUserInfo(); 
-	checkPrimaryLocationAndLoad();
-	fetchAndRenderAnnouncement();
     
     // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
     // แล้วค่อยโหลดกระทู้ ปุ่มจะถูกสร้างเงื่อนไขได้ถูกต้อง
@@ -3764,20 +3759,14 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     if (!myUsername) return document.getElementById('login-modal').classList.remove('hidden');
 
     document.getElementById('user-list-modal').classList.remove('hidden');
-    // ปิด Sidebar ถ้าเปิดอยู่
     if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
-    
-    // ดึงคีย์ภาษา
     const t = translations[currentLang];
-    
-    // ตั้งชื่อหัวข้อโดยใช้คีย์ภาษา
     document.getElementById('user-list-title').innerText = t['inbox_title'] || "💬 กล่องข้อความส่วนตัว";
     document.getElementById('user-list-desc').innerText = t['inbox_desc_recent'] || "รายชื่อคู่สนทนาล่าสุด";
     
     const container = document.getElementById('user-list-container');
     container.innerHTML = `<p style="text-align:center;">⏳ ${t['loading'] || 'กำลังโหลด...'}</p>`;
-    
-    // ซ่อน Search Box ชั่วคราว (ใน Inbox ไม่ต้องใช้ Search สมาชิกทั้งหมด)
+
     document.getElementById('user-search-input').style.display = 'none'; 
     document.getElementById('pagination-controls').style.display = 'none';
 
@@ -3786,7 +3775,7 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
         const contacts = await res.json();
         
         let html = '';
-        let hasAdminContact = false; // ตัวแปรเช็คว่าเคยคุยกับ Admin ไหม
+        let hasAdminContact = false;
 
         if (contacts.length === 0) {
             html += `<div style="text-align:center; color:gray; margin-top:20px;">${t['inbox_no_history'] || 'ยังไม่มีประวัติการสนทนา'}</div>`;
@@ -3794,11 +3783,9 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
             html = contacts.map(c => {
                 const dot = c.unreadCount > 0 ? `<span class="unread-indicator" style="animation: none;">${c.unreadCount}</span>` : '';
                 const style = c.unreadCount > 0 ? 'font-weight:bold; background:#fff8e1;' : '';
-                
-                // เช็คว่าเป็น Admin หรือไม่
                 let nameDisplay = `👤 ${c.partner}`;
                 if (c.isAdmin) {
-                    hasAdminContact = true; // เจอแล้ว! เคยคุยกับ Admin
+                    hasAdminContact = true;
                     nameDisplay = `🛡️ <b>${c.partner}</b> ${t['admin_label'] || '(Admin)'}`;
                 }
 
@@ -3813,14 +3800,9 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
             }).join('');
         }
 
-        // ถ้ายังไม่เคยคุยกับ Admin เลย ให้หา Admin ใกล้ตัวมาแนะนำ
         if (!hasAdminContact) {
-            // สร้าง Element สำหรับแสดงผลแนะนำ
             const suggestionId = 'admin-suggestion-box';
-            // แทรกล่องรอไว้ด้านบนสุด
             html = `<div id="${suggestionId}" style="margin-bottom:10px;"></div>` + html;
-            
-            // สั่งทำงานแบบ Async เพื่อไปหา Nearest Admin (ไม่ Block UI หลัก)
             fetchNearestAdminForInbox(suggestionId);
         }
 
@@ -3832,19 +3814,16 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     }
 }
 
-// ฟังก์ชันหา Admin ใกล้ตัวเพื่อแสดงใน Inbox (รองรับ i18n)
 async function fetchNearestAdminForInbox(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
     
-    const t = translations[currentLang]; // ดึงคีย์ภาษา
+    const t = translations[currentLang];
     
-    // ข้อความกำลังค้นหา
     el.innerHTML = `<div style="padding:10px; background:#f0f9ff; border:1px dashed #007bff; border-radius:8px; text-align:center; font-size:0.9em; color:#007bff;">
         ${t['admin_searching'] || '⏳ กำลังค้นหาผู้ดูแลโซนของคุณ...'}
     </div>`;
 
-    // 1. หาพิกัด (ใช้พิกัดล่าสุดที่เก็บไว้ หรือพิกัด Default)
     let lat = null, lng = null;
     if (userPrimaryLocation) {
         lat = userPrimaryLocation.lat;
@@ -3854,7 +3833,6 @@ async function fetchNearestAdminForInbox(elementId) {
         lng = currentLocationData.at;
     }
 
-    // 2. เรียก API
     try {
         const query = (lat && lng) ? `?lat=${lat}&lng=${lng}` : '';
         const res = await fetch(`/api/nearest-admin${query}`);
@@ -3869,7 +3847,7 @@ async function fetchNearestAdminForInbox(elementId) {
                 <div style="font-size:0.75em; color:gray; text-align:center; margin-top:2px;">${t['admin_recommended_label'] || 'แนะนำผู้ดูแลโซนใกล้คุณ'}</div>
             `;
         } else {
-            el.remove(); // ถ้าหาไม่เจอจริงๆ ก็ลบกล่องทิ้ง
+            el.remove();
         }
     } catch (e) {
         console.error(e);
@@ -3880,7 +3858,6 @@ async function fetchNearestAdminForInbox(elementId) {
     let allUsersCache = [];
     
 	async function openAllUserList(searchTerm = '') {
-    // 1. จัดการการเปิด Modal
     const modal = document.getElementById('user-list-modal');
     if (searchTerm === '' && modal.classList.contains('hidden')) {
         modal.classList.remove('hidden');
@@ -3889,23 +3866,18 @@ async function fetchNearestAdminForInbox(elementId) {
         if (input) input.value = '';
     }
 
-    // 2. ดึงชุดคำแปลปัจจุบัน
     const t = translations[currentLang] || translations['th'];
-
-    // ตั้งค่า UI หัวข้อ
     document.getElementById('user-list-title').innerText = t['modal_user_list_title'];
     document.getElementById('user-list-desc').innerText = t['modal_user_list_desc'];
     document.getElementById('pagination-controls').style.display = 'none';
     
     const searchInput = document.getElementById('user-search-input');
     searchInput.style.display = 'block';
-    searchInput.placeholder = t['search_placeholder']; // อัปเดต Placeholder ตามภาษา
+    searchInput.placeholder = t['search_placeholder'];
 
     const container = document.getElementById('user-list-container');
 
-    // 3. ฟังก์ชันดึงข้อมูล (Internal)
     const fetchData = async (query) => {
-        // แสดงสถานะ Loading (ใช้คำแปลถ้ามี หรือใช้ Hardcode ชั่วคราว)
         const loadingText = currentLang === 'th' ? '⏳ กำลังค้นหา...' : '⏳ Searching...';
         container.innerHTML = `<p style="text-align:center;">${loadingText}</p>`;
         
@@ -3920,10 +3892,7 @@ async function fetchNearestAdminForInbox(elementId) {
             }
             
             const users = await res.json();
-            
-            // --- แก้ไขจุดที่แสดงข้อความเมื่อไม่พบข้อมูล ---
             if (users.length === 0) {
-                // ดึงข้อความจาก translations และแทนที่ [NAME] ด้วยคำค้นหา
                 const notFoundMsg = t['msg_user_not_found'].replace('[NAME]', query);
                 const noMembersMsg = t['msg_no_members'];
 
@@ -3932,7 +3901,6 @@ async function fetchNearestAdminForInbox(elementId) {
                     : `<p style='text-align:center; color:gray;'>${noMembersMsg}</p>`;
                 return;
             }
-            // ------------------------------------------
 
             container.innerHTML = users.map(u => {
                  const isBanned = u.isBanned;
@@ -3946,11 +3914,9 @@ async function fetchNearestAdminForInbox(elementId) {
                     ? `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>` 
                     : '';
                  
-                 // --- แก้ไขจุดแสดงคำว่า BANNED ให้เปลี่ยนตามภาษา ---
                  const banBadge = isBanned 
                     ? `<span style="color:red; font-size:0.8em; font-weight:bold; margin-left:5px;">${t['label_banned']}</span>` 
                     : '';
-                 // ---------------------------------------------
                  
                  const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
 
@@ -3983,9 +3949,7 @@ async function fetchNearestAdminForInbox(elementId) {
     }
 }
 
-		// เปิด Modal แสดงรายละเอียดและปุ่มจัดการ
 function openUserDetail(targetUsername) {
-    // ดึงข้อมูล User จาก Cache
     const u = allUsersCache.find(user => user.name === targetUsername);
     if (!u) return;
 
@@ -3993,18 +3957,15 @@ function openUserDetail(targetUsername) {
     const isBanned = u.isBanned;
     const targetLevel = u.adminLevel || 0;
 
-    // 1. ใส่ข้อมูลพื้นฐาน
     document.getElementById('detail-name').innerText = u.name;
     document.getElementById('detail-coins').innerText = u.coins.toLocaleString();
     document.getElementById('detail-rating').innerText = u.rating.toFixed(2);
     
-    // สร้าง Badges
     let badgesHtml = '';
     if (targetLevel > 0) badgesHtml += `<span style="background:#007bff; color:white; padding:4px 8px; border-radius:4px; margin-right:5px;">Admin Level ${targetLevel}</span>`;
     if (isBanned) badgesHtml += `<span style="background:#dc3545; color:white; padding:4px 8px; border-radius:4px;">⛔ BANNED</span>`;
     document.getElementById('detail-badges').innerHTML = badgesHtml;
 
-    // 2. เตรียมปุ่มจัดการ (ย้าย Logic เดิมมาที่นี่)
     const chatText = currentLang === 'th' ? '💬 แชท / โอนเหรียญ' : '💬 Chat / Transfer';
     const ratingText = currentLang === 'th' ? '⭐ ตั้งค่าคะแนน' : '⭐ Set Rating';
     const banText = isBanned ? (currentLang === 'th' ? '✅ ปลดแบน' : '✅ Unban') : (currentLang === 'th' ? '❌ แบนสมาชิก' : '❌ Ban User');
@@ -4012,15 +3973,13 @@ function openUserDetail(targetUsername) {
 
     let buttonsHtml = '';
 
-    // ปุ่มแชท (ทุกคนมีสิทธิ์)
     buttonsHtml += `
         <button class="sidebar-btn create-btn" onclick="openPrivateChat('${u.name}'); document.getElementById('user-detail-modal').classList.add('hidden');">
             ${chatText}
         </button>
     `;
 
-    // ปุ่ม Admin (Rate, Ban)
-    if (myAdminLevel >= 1) { // หรือเงื่อนไขตามที่คุณต้องการ
+    if (myAdminLevel >= 1) { 
         buttonsHtml += `
             <button class="sidebar-btn admin-btn" style="background:#ffc107; color:black;" onclick="setMemberRating('${u.name}')">
                 ${ratingText}
@@ -4031,7 +3990,6 @@ function openUserDetail(targetUsername) {
         `;
     }
 
-    // ปุ่ม Promote / Demote
     if (myAdminLevel >= 2 && targetLevel < 1) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#17a2b8; color:white;" onclick="setAdminLevel('${u.name}', 1)">👮‍♂️ ตั้งเป็น Admin 1</button>`;
     }
@@ -4041,11 +3999,7 @@ function openUserDetail(targetUsername) {
     if (myAdminLevel > targetLevel && targetLevel > 0) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
-
-    // ใส่ปุ่มลงใน Modal
     document.getElementById('detail-actions').innerHTML = buttonsHtml;
-
-    // แสดง Modal
     modal.classList.remove('hidden');
 }
 
