@@ -219,6 +219,10 @@
 	
 		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
+		<select id="admin-scope-filter" onchange="loadPosts()" style="display:none; width: auto; padding: 5px; margin-right: 5px; font-size: 0.8em; border-radius: 5px; border: 1px solid #007bff; background: white;">
+        <option value="my_zone">🌐 เฉพาะโซนของฉัน</option>
+        <option value="all_country">🏳️ ทั้งประเทศ</option>
+    </select>
         <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
 </div>
 
@@ -371,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.7.47 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.48 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1343,6 +1347,17 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         
         // ... (ส่วนที่เหลือถูกต้องแล้วครับ ใช้โค้ดเดิมต่อได้เลย) ...
         myAdminLevel = data.adminLevel || 0;
+		const scopeFilter = document.getElementById('admin-scope-filter');
+        if (scopeFilter) {
+            // โชว์เฉพาะถ้าเป็น Level 2
+            if (myAdminLevel === 2) {
+                scopeFilter.style.display = 'inline-block';
+            } else {
+                scopeFilter.style.display = 'none';
+                scopeFilter.value = 'my_zone'; // Reset ค่า
+            }
+        }
+		
         myZoneId = data.userZoneId || null;
                 
         const avatarEl = document.getElementById('user-avatar-display');
@@ -1864,8 +1879,22 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
             try {
-                // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
-                const res = await fetch('/api/posts?limit=1000');
+        // สร้าง URL พื้นฐาน
+        let url = '/api/posts?limit=1000';
+
+        // 1. แนบชื่อผู้ขอข้อมูล (เพื่อให้ Server รู้ level และ country ของเรา)
+        if (myUsername) {
+            url += `&requestBy=${myUsername}`;
+        }
+
+        // 2. แนบค่าตัวเลือก Filter (เฉพาะกรณีที่ปุ่มโชว์อยู่)
+        const scopeFilter = document.getElementById('admin-scope-filter');
+        if (scopeFilter && scopeFilter.style.display !== 'none') {
+            url += `&filterScope=${scopeFilter.value}`;
+        }
+
+        // เรียกดึงข้อมูลด้วย URL ใหม่ที่สร้างขึ้น
+        const res = await fetch(url);
                 const responseData = await res.json();
                 
                 // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
