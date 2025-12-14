@@ -1460,7 +1460,10 @@ socket.on('viewer-left-location', (data) => {
                 try {
                     const d = await res.json();
                     showNotification(d.error, 'fas fa-times-circle', 4000); 
-                    if(d.error.includes('ปิด') || d.error.includes('หมดเวลา')) location.reload();
+                    if (d.error.includes('ปิด') || d.error.includes('หมดเวลา') || 
+						d.error.includes('closed') || d.error.includes('finished')) {
+							location.reload();
+						}
                 } catch (e) {
                      // ถ้าไม่ใช่ JSON (เช่น Server ตอบ 404 HTML)
                      showNotification(`❌ เกิดข้อผิดพลาดในการส่งข้อมูล: ${res.status}`, 'fas fa-times-circle', 5000); 
