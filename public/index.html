@@ -1655,18 +1655,33 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             .catch(err => alert('❌ Error: Unable to connect to server to set score.'));
         }
 		
+		// ฟังก์ชันเปิด Modal ตั้งค่า
+function openAdminLevelModal(username, currentLevel) {
+    document.getElementById('user-admin-modal').classList.remove('hidden');
+    document.getElementById('admin-target-user').value = username;
+    document.getElementById('admin-target-user-display').innerText = username;
+    document.getElementById('admin-level-select').value = currentLevel;
+    document.getElementById('admin-country-code').value = ''; // ล้างค่าเดิม
+}
+		
 		
 		
 		// setAdminLevel
-async function setAdminLevel(targetUser, newLevel) {
+async function saveAdminLevel() {
     const targetUsername = document.getElementById('admin-target-user').value;
     const newLevel = parseInt(document.getElementById('admin-level-select').value);
-    const countryCode = document.getElementById('admin-country-code').value.toUpperCase(); // ดึงค่าจากช่องใหม่
+    const countryCode = document.getElementById('admin-country-code').value.toUpperCase();
 
     if (!targetUsername || isNaN(newLevel)) {
-        showCustomAlert('Error', 'ข้อมูลไม่สมบูรณ์');
+        alert('❌ ข้อมูลไม่สมบูรณ์');
         return;
     }
+
+    // แสดงสถานะกำลังบันทึก
+    const btn = event.target;
+    const oldText = btn.innerText;
+    btn.innerText = '⏳...';
+    btn.disabled = true;
 
     try {
         const res = await fetch('/api/admin/set-level', {
@@ -1676,21 +1691,27 @@ async function setAdminLevel(targetUser, newLevel) {
                 requestBy: myUsername, 
                 targetUsername: targetUsername, 
                 newLevel: newLevel,
-                countryCode: countryCode // ✅ ส่งค่าประเทศไปกับ request
+                countryCode: countryCode 
             })
         });
 
         const data = await res.json();
         if (data.success) {
-            alert(`✅ Successfully completed: ${targetUser} Promote ${levelName} `);
-            allUsersCache = []; // ล้าง Cache รายชื่อ
-            openAllUserList();  // รีเฟรชหน้ารายชื่อ
+            alert(data.message);
+            document.getElementById('user-admin-modal').classList.add('hidden');
+            
+            // รีเฟรชหน้า User List ถ้าเปิดอยู่
+            allUsersCache = []; 
+            openAllUserList(); 
         } else {
-            alert(`❌ Failed: ${data.error}`);
+            alert(`❌ เกิดข้อผิดพลาด: ${data.error}`);
         }
-    } catch (error) {
-        console.error(error);
-        alert('❌ Error connecting to server');
+    } catch (e) {
+        console.error(e);
+        alert('❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+    } finally {
+        btn.innerText = oldText;
+        btn.disabled = false;
     }
 }
 
@@ -4161,12 +4182,35 @@ function openUserDetail(targetUsername) {
     </div>
 </div>
 
-	<label for="admin-country-code" style="font-weight: bold;">รหัสประเทศ (2 ตัวอักษร, สำหรับ L2+):</label>
-<input type="text" id="admin-country-code" 
-    placeholder="เช่น TH, MY, LA" 
-    maxlength="2"
-    style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; text-transform: uppercase;">
+	<div id="user-admin-modal" class="modal-overlay hidden" style="z-index: 2600;">
+    <div class="modal-box" style="max-width: 400px;">
+        <h2 style="text-align:center; margin-top:0;">👮‍♂️ ตั้งค่าระดับแอดมิน</h2>
+        
+        <p style="text-align:center;">
+            สมาชิก: <span id="admin-target-user-display" style="font-weight:bold; color:#007bff;"></span>
+        </p>
+        <input type="hidden" id="admin-target-user">
 
+        <label for="admin-level-select" style="font-weight: bold;">เลือกระดับ:</label>
+        <select id="admin-level-select" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+            <option value="0">User (ทั่วไป)</option>
+            <option value="1">Admin Level 1 (ดูแลแชท/แบน)</option>
+            <option value="2">Admin Level 2 (จัดการโซน)</option>
+            <option value="3">Admin Level 3 (Super Admin)</option>
+        </select>
+        
+        <label for="admin-country-code" style="font-weight: bold;">รหัสประเทศ (2 ตัวอักษร, สำหรับ L2+):</label>
+        <input type="text" id="admin-country-code" 
+            placeholder="เช่น TH, MY, LA (เว้นว่าง = ใช้ค่าเดิม)" 
+            maxlength="2"
+            style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; text-transform: uppercase;">
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="sidebar-btn" onclick="document.getElementById('user-admin-modal').classList.add('hidden')" style="width:auto; background:#6c757d; color:white;">ยกเลิก</button>
+            <button class="sidebar-btn create-btn" onclick="saveAdminLevel()" style="width:auto;">บันทึก</button>
+        </div>
+    </div>
+</div>
 
 </div>
 	
