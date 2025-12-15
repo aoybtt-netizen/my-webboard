@@ -370,6 +370,25 @@
             <button class="sidebar-btn" onclick="document.getElementById('admin-topic-modal').classList.add('hidden');" data-i18n-key="btn_close">ปิด</button>
         </div>
     </div>
+	
+	<div id="deduct-confirm-modal" class="modal-overlay hidden" style="z-index: 4000;">
+    <div class="modal-box" style="text-align: center; border: 2px solid #dc3545;">
+        <h2 style="color: #dc3545;">⚠️ คำขอดึงเงินคืน</h2>
+        <p style="font-size: 1.1em; margin-bottom: 20px;">
+            Admin <strong><span id="deduct-requester-name">...</span></strong><br>
+            ต้องการดึงเหรียญของคุณคืนจำนวน:
+        </p>
+        <div style="font-size: 2em; font-weight: bold; color: #dc3545; margin-bottom: 20px;">
+            <span id="deduct-amount-display">0</span> USD
+        </div>
+        <p style="color: gray; font-size: 0.9em;">กรุณากดยืนยันเพื่อยอมรับการทำรายการ</p>
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+            <button class="sidebar-btn" onclick="replyDeduct(false)" style="background: #6c757d; color: white; width: auto;">ปฏิเสธ</button>
+            <button class="sidebar-btn" onclick="replyDeduct(true)" style="background: #dc3545; color: white; width: auto; font-weight: bold;">ยอมรับ / คืนเงิน</button>
+        </div>
+    </div>
+</div>
     
     <div class="version-display">v: 3.7.47 (GoExDeli)</div>
 
@@ -382,6 +401,7 @@
 		let filterLocation = null;      // เก็บพิกัดคนดู
         let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
 		let userPrimaryLocation = null;
+		let currentDeductRequest = null;
 		// Cooldown สำหรับการป้องกัน Rapid Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -2597,6 +2617,53 @@ window.deleteZone = deleteZone;
     }
 }
 window.addZoneConfig = addZoneConfig;
+
+	function replyDeduct(accepted) {
+    if (!currentDeductRequest) return;
+    
+    socket.emit('reply-deduct-confirm', {
+        requester: currentDeductRequest.requester,
+        amount: currentDeductRequest.amount,
+        accepted: accepted,
+        fromUser: myUsername
+    });
+
+    document.getElementById('deduct-confirm-modal').classList.add('hidden');
+    currentDeductRequest = null;
+}
+
+	async function deductCoinInChat() {
+    if (myAdminLevel < 1) return alert('❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันนี้');
+    const promptText = translations[currentLang]['prompt_deduct_admin'] || 'ระบุจำนวนเงินที่ต้องการดึงคืน (USD):';
+    const amount = prompt(`🔴 ${promptText} ${currentChatPartner}:`);
+    
+    if(!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+    const parsedAmount = parseFloat(amount);
+
+    try {
+        const res = await fetch('/api/admin/deduct-coins', { // ตรวจสอบ URL ให้ตรงกับ Server
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            if (data.waitConfirm) {
+                alert(`⏳ ${data.message}`);
+            } else {
+                alert(`✅ ${data.message}`);
+            }
+        } else {
+            alert(`❌ Error: ${data.error}`);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+}
+window.deductCoinInChat = deductCoinInChat;
         
         // --- SOCKET LOGIC ---
 		socket.on('announcement-update', (data) => {
@@ -2649,8 +2716,25 @@ window.addZoneConfig = addZoneConfig;
                 document.getElementById('coin-notif-dot').classList.remove('hidden');
              }
         });
+		
+	socket.on('request-deduct-confirm', (data) => {
+    currentDeductRequest = data;
+    document.getElementById('deduct-requester-name').innerText = data.requester;
+    document.getElementById('deduct-amount-display').innerText = data.amount;
+    document.getElementById('deduct-confirm-modal').classList.remove('hidden');
+    notificationSound.play().catch(()=>{});
+});
+
+	socket.on('deduct-result', (data) => {
+    if (data.success) {
+        alert(data.message);
+        // อาจจะรีเฟรชหน้าเพื่อดูยอดเงินใหม่
+    } else {
+        alert(data.message);
+    }
+});
         
-        // --- FIXED: Socket Balance Update ---
+        // Socket Balance Update ---
         socket.on('balance-update', (data) => {
     if (data.user === myUsername) {
         // เรียก updateUserInfo() เพื่อให้เกิดการ fetch ข้อมูลใหม่
