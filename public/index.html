@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.3 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2725,32 +2725,29 @@ async function uploadZoneBg(zoneId) {
 window.uploadZoneBg = uploadZoneBg;
 
 // ฟังก์ชันลบโซน
-async function deleteZone(zoneId, zoneName) {
-    if (myAdminLevel < 3) return;
-
-    if (!confirm(`⚠️ คุณแน่ใจหรือไม่ที่จะลบโซน "${zoneName}"?\nการลบนี้ไม่สามารถกู้คืนได้`)) {
-        return;
-    }
+async function deleteZone(zoneId) {
+    if (!confirm("คุณต้องการลบโซนนี้ใช่หรือไม่?")) return;
 
     try {
         const res = await fetch('/api/admin/delete-zone', {
-            method: 'POST', // หรือ DELETE
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 zoneId: zoneId, 
-                requestBy: myUsername 
+                requestBy: myUsername // สำคัญ: ต้องส่งตัวนี้ไปด้วย
             })
         });
 
         const data = await res.json();
         if (data.success) {
-            alert('✅ ลบโซนสำเร็จ');
-            openAdminZoneModal(); // รีเฟรชรายการ
+            alert('ลบโซนเรียบร้อยแล้ว');
+            location.reload(); // รีโหลดหน้าเพื่ออัปเดต
         } else {
-            alert(`❌ ลบไม่สำเร็จ: ${data.error}`);
+            alert(data.error || 'เกิดข้อผิดพลาดในการลบ');
         }
-    } catch (e) {
-        alert('❌ Error connecting to server');
+    } catch (err) {
+        console.error(err);
+        alert('เชื่อมต่อ Server ไม่ได้');
     }
 }
 
