@@ -1600,15 +1600,24 @@ app.post('/api/admin/set-level', async (req, res) => {
 });
 
 // 25. Get Zone Config 
-app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plural
+app.get('/api/admin/get-zones', async (req, res) => { 
     // ต้องเป็น Admin Level 1 ขึ้นไปในการดูค่า
     const requester = await getUserData(req.query.requestBy);
     if (!requester || requester.adminLevel < 1) {
         return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
     }
 
-    const zones = await zonesCollection.find({}).sort({ createdAt: -1 }).toArray(); // Fetch all zones (เรียงใหม่สุดขึ้นก่อน)
-    return res.json({ success: true, zones: zones }); // Return as an array
+    let query = {}; // เริ่มต้นด้วยการค้นหาทั้งหมด
+
+    // (ต้องแน่ใจว่า Zones ถูกสร้างโดยมี field 'country' บันทึกอยู่)
+    if (requester.adminLevel === 2) {
+        const myCountry = requester.country || 'TH'; // ใช้ประเทศของแอดมินที่เรียก (Default TH)
+        query.country = myCountry;
+    }
+
+    // ใช้ query ในการค้นหา (ถ้า L3 query จะว่าง, ถ้า L2 query จะมี country)
+    const zones = await zonesCollection.find(query).sort({ createdAt: -1 }).toArray(); 
+    return res.json({ success: true, zones: zones }); 
 });
 
 // 25.1 API สำหรับแอดมินเพิ่มโซนด้วยพิกัด (รองรับ Level 2 + ตรวจสอบประเทศ)
@@ -1631,11 +1640,10 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
         const newLat = parseFloat(lat);
         const newLng = parseFloat(lng);
 
-        // 3. ตรวจสอบประเทศ (สำหรับ Level 2)
-        // ถ้าเป็น Level 3 (Super Admin) ให้ข้ามการตรวจประเทศได้
+        let zoneCountry = 'TH'; // Default
+
+        // 3. ตรวจสอบประเทศ (Logic เดิมของคุณ)
         if (requester.adminLevel === 2) {
-            // ดึงข้อมูลประเทศของพิกัดที่ส่งมา (ใช้ Nominatim API เหมือนฝั่ง Client)
-            // ต้องใส่ User-Agent ตามข้อกำหนดของ OSM
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat}&lon=${newLng}&accept-language=en`, {
                 headers: { 'User-Agent': 'WebboardApp/1.0' }
             });
@@ -1644,12 +1652,16 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
             const targetCountryCode = geoData.address ? (geoData.address.country_code || '').toUpperCase() : '';
             const adminCountry = (requester.country || 'TH').toUpperCase();
 
-            // เปรียบเทียบประเทศ
             if (targetCountryCode !== adminCountry) {
                 return res.status(400).json({ 
                     error: `⛔ คุณสามารถเพิ่มโซนได้เฉพาะในประเทศของคุณ (${adminCountry}) เท่านั้น (พิกัดนี้อยู่ใน: ${targetCountryCode})` 
                 });
             }
+            
+            zoneCountry = targetCountryCode; // ✅ เก็บค่าประเทศที่ได้จากการเช็คพิกัด
+        } else {
+            // กรณี Level 3 อาจจะไม่ได้เช็คพิกัด ก็ให้ใช้ประเทศของผู้สร้าง หรือค่า Default ไปก่อน
+            zoneCountry = requester.country || 'TH';
         }
 
         // 4. บันทึกโซนลง Database
@@ -1661,9 +1673,10 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
             name: name.trim(),
             lat: newLat,
             lng: newLng,
-            zoneFee: parseFloat(zoneFee) || 5, // ค่าธรรมเนียมเริ่มต้น
-            assignedAdmin: requester.adminLevel === 2 ? requestBy : null, // ถ้า Level 2 สร้าง ให้เป็นเจ้าของเลย
-            bgImage: null
+            zoneFee: parseFloat(zoneFee) || 5,
+            assignedAdmin: requester.adminLevel === 2 ? requestBy : null,
+            bgImage: null,
+            country: zoneCountry // ✅ [สำคัญมาก] ต้องเพิ่มบรรทัดนี้ เพื่อให้ get-zones กรองเจอ
         };
 
         await zonesCollection.insertOne(newZone);
@@ -1800,8 +1813,6 @@ app.post('/api/admin/delete-zone', async (req, res) => {
         res.status(404).json({ error: 'Zone not found' });
     }
 });
-
-
 
 // 30. Get Assigned Zones for Admin (L1/L2)
 app.get('/api/admin/get-assigned-zones', async (req, res) => {

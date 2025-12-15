@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.3 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.4 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1657,16 +1657,25 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 		
 		// setAdminLevel
 async function setAdminLevel(targetUser, newLevel) {
-    const levelName = newLevel === 0 ? 'User ทั่วไป' : `Admin Level ${newLevel}`;
-    const action = newLevel === 0 ? 'ถอนสิทธิ์ (Demote)' : 'แต่งตั้ง (Promote)';
-    
-    if (!confirm(`Are you sure you want to? ${action} ${targetUser} Let it be ${levelName} Or not?`)) return;
+    const targetUsername = document.getElementById('admin-target-user').value;
+    const newLevel = parseInt(document.getElementById('admin-level-select').value);
+    const countryCode = document.getElementById('admin-country-code').value.toUpperCase(); // ดึงค่าจากช่องใหม่
+
+    if (!targetUsername || isNaN(newLevel)) {
+        showCustomAlert('Error', 'ข้อมูลไม่สมบูรณ์');
+        return;
+    }
 
     try {
         const res = await fetch('/api/admin/set-level', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ targetUser, newLevel, requestBy: myUsername })
+            body: JSON.stringify({ 
+                requestBy: myUsername, 
+                targetUsername: targetUsername, 
+                newLevel: newLevel,
+                countryCode: countryCode // ✅ ส่งค่าประเทศไปกับ request
+            })
         });
 
         const data = await res.json();
@@ -4148,6 +4157,7 @@ function openUserDetail(targetUsername) {
             <button class="sidebar-btn create-btn" onclick="saveAdminAnnouncement()" style="width:auto;" data-i18n-key="btn_save">บันทึก/ประกาศ</button>
         </div>
     </div>
+
 </div>
 
 
