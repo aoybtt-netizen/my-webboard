@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.5 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.3 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1655,63 +1655,31 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             .catch(err => alert('❌ Error: Unable to connect to server to set score.'));
         }
 		
-		// ฟังก์ชันเปิด Modal ตั้งค่า
-function openAdminLevelModal(username, currentLevel) {
-    document.getElementById('user-admin-modal').classList.remove('hidden');
-    document.getElementById('admin-target-user').value = username;
-    document.getElementById('admin-target-user-display').innerText = username;
-    document.getElementById('admin-level-select').value = currentLevel;
-    document.getElementById('admin-country-code').value = ''; // ล้างค่าเดิม
-}
-		
-		
-		
 		// setAdminLevel
-async function saveAdminLevel() {
-    const targetUsername = document.getElementById('admin-target-user').value;
-    const newLevel = parseInt(document.getElementById('admin-level-select').value);
-    const countryCode = document.getElementById('admin-country-code').value.toUpperCase();
-
-    if (!targetUsername || isNaN(newLevel)) {
-        alert('❌ ข้อมูลไม่สมบูรณ์');
-        return;
-    }
-
-    // แสดงสถานะกำลังบันทึก
-    const btn = event.target;
-    const oldText = btn.innerText;
-    btn.innerText = '⏳...';
-    btn.disabled = true;
+async function setAdminLevel(targetUser, newLevel) {
+    const levelName = newLevel === 0 ? 'User ทั่วไป' : `Admin Level ${newLevel}`;
+    const action = newLevel === 0 ? 'ถอนสิทธิ์ (Demote)' : 'แต่งตั้ง (Promote)';
+    
+    if (!confirm(`Are you sure you want to? ${action} ${targetUser} Let it be ${levelName} Or not?`)) return;
 
     try {
         const res = await fetch('/api/admin/set-level', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                requestBy: myUsername, 
-                targetUsername: targetUsername, 
-                newLevel: newLevel,
-                countryCode: countryCode 
-            })
+            body: JSON.stringify({ targetUser, newLevel, requestBy: myUsername })
         });
 
         const data = await res.json();
         if (data.success) {
-            alert(data.message);
-            document.getElementById('user-admin-modal').classList.add('hidden');
-            
-            // รีเฟรชหน้า User List ถ้าเปิดอยู่
-            allUsersCache = []; 
-            openAllUserList(); 
+            alert(`✅ Successfully completed: ${targetUser} Promote ${levelName} `);
+            allUsersCache = []; // ล้าง Cache รายชื่อ
+            openAllUserList();  // รีเฟรชหน้ารายชื่อ
         } else {
-            alert(`❌ เกิดข้อผิดพลาด: ${data.error}`);
+            alert(`❌ Failed: ${data.error}`);
         }
-    } catch (e) {
-        console.error(e);
-        alert('❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
-    } finally {
-        btn.innerText = oldText;
-        btn.disabled = false;
+    } catch (error) {
+        console.error(error);
+        alert('❌ Error connecting to server');
     }
 }
 
@@ -4021,13 +3989,14 @@ function openUserDetail(targetUsername) {
         `;
     }
 
-    if (myAdminLevel >= 2) {
-         buttonsHtml += `
-            <button class="sidebar-btn" style="background:#17a2b8; color:white; margin-top:5px;" 
-                onclick="openAdminLevelModal('${u.name}', ${targetLevel}); document.getElementById('user-detail-modal').classList.add('hidden');">
-                👮‍♂️ จัดการระดับ Admin & ประเทศ
-            </button>
-         `;
+    if (myAdminLevel >= 2 && targetLevel < 1) {
+        buttonsHtml += `<button class="sidebar-btn" style="background:#17a2b8; color:white;" onclick="setAdminLevel('${u.name}', 1)">👮‍♂️ ตั้งเป็น Admin 1</button>`;
+    }
+    if (myAdminLevel >= 3 && targetLevel < 2) {
+        buttonsHtml += `<button class="sidebar-btn" style="background:#6610f2; color:white;" onclick="setAdminLevel('${u.name}', 2)">👨‍💼 ตั้งเป็น Admin 2</button>`;
+    }
+    if (myAdminLevel > targetLevel && targetLevel > 0) {
+        buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
     document.getElementById('detail-actions').innerHTML = buttonsHtml;
     modal.classList.remove('hidden');
@@ -4181,35 +4150,6 @@ function openUserDetail(targetUsername) {
     </div>
 </div>
 
-	<div id="user-admin-modal" class="modal-overlay hidden" style="z-index: 2600;">
-    <div class="modal-box" style="max-width: 400px;">
-        <h2 style="text-align:center; margin-top:0;">👮‍♂️ ตั้งค่าระดับแอดมิน</h2>
-        
-        <p style="text-align:center;">
-            สมาชิก: <span id="admin-target-user-display" style="font-weight:bold; color:#007bff;"></span>
-        </p>
-        <input type="hidden" id="admin-target-user">
-
-        <label for="admin-level-select" style="font-weight: bold;">เลือกระดับ:</label>
-        <select id="admin-level-select" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-            <option value="0">User (ทั่วไป)</option>
-            <option value="1">Admin Level 1 (ดูแลแชท/แบน)</option>
-            <option value="2">Admin Level 2 (จัดการโซน)</option>
-            <option value="3">Admin Level 3 (Super Admin)</option>
-        </select>
-        
-        <label for="admin-country-code" style="font-weight: bold;">รหัสประเทศ (2 ตัวอักษร, สำหรับ L2+):</label>
-        <input type="text" id="admin-country-code" 
-            placeholder="เช่น TH, MY, LA (เว้นว่าง = ใช้ค่าเดิม)" 
-            maxlength="2"
-            style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; text-transform: uppercase;">
-
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
-            <button class="sidebar-btn" onclick="document.getElementById('user-admin-modal').classList.add('hidden')" style="width:auto; background:#6c757d; color:white;">ยกเลิก</button>
-            <button class="sidebar-btn create-btn" onclick="saveAdminLevel()" style="width:auto;">บันทึก</button>
-        </div>
-    </div>
-</div>
 
 </div>
 	
