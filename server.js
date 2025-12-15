@@ -1600,15 +1600,24 @@ app.post('/api/admin/set-level', async (req, res) => {
 });
 
 // 25. Get Zone Config 
-app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plural
+app.get('/api/admin/get-zones', async (req, res) => { 
     // ต้องเป็น Admin Level 1 ขึ้นไปในการดูค่า
     const requester = await getUserData(req.query.requestBy);
     if (!requester || requester.adminLevel < 1) {
         return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
     }
 
-    const zones = await zonesCollection.find({}).sort({ createdAt: -1 }).toArray(); // Fetch all zones (เรียงใหม่สุดขึ้นก่อน)
-    return res.json({ success: true, zones: zones }); // Return as an array
+    let query = {}; // เริ่มต้นด้วยการค้นหาทั้งหมด
+
+    // (ต้องแน่ใจว่า Zones ถูกสร้างโดยมี field 'country' บันทึกอยู่)
+    if (requester.adminLevel === 2) {
+        const myCountry = requester.country || 'TH'; // ใช้ประเทศของแอดมินที่เรียก (Default TH)
+        query.country = myCountry;
+    }
+
+    // ใช้ query ในการค้นหา (ถ้า L3 query จะว่าง, ถ้า L2 query จะมี country)
+    const zones = await zonesCollection.find(query).sort({ createdAt: -1 }).toArray(); 
+    return res.json({ success: true, zones: zones }); 
 });
 
 // 25.1 API สำหรับแอดมินเพิ่มโซนด้วยพิกัด (รองรับ Level 2 + ตรวจสอบประเทศ)
