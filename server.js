@@ -1799,30 +1799,26 @@ app.post('/api/admin/assign-zone', async (req, res) => {
 app.post('/api/admin/delete-zone', async (req, res) => {
     const { zoneId, requestBy } = req.body;
 
-    // Check Permissions
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 2) {
-        return res.status(403).json({ error: 'Permission denied. Admin Level 2+ required' });
+    // ✅ เปลี่ยนเลขตรงนี้: อนุญาตให้ Level 2 ขึ้นไป (>= 2)
+    if (!requester || requester.adminLevel < 2) { 
+        return res.status(403).json({ error: 'Permission denied' });
     }
 
     const zoneIdInt = parseInt(zoneId);
     const zone = await zonesCollection.findOne({ id: zoneIdInt });
-    if (!zone) {
-        return res.status(404).json({ error: 'Zone not found.' });
-    }
 
-    // ถ้าเป็น Level 2 ต้องลบได้เฉพาะโซนในประเทศตัวเอง
+    if (!zone) return res.status(404).json({ error: 'Zone not found' });
+
+    // ✅ เพิ่มความปลอดภัย: Level 2 ห้ามลบโซนประเทศอื่น
     if (requester.adminLevel === 2) {
-        const myCountry = requester.country || 'TH';
-        // เช็คว่าโซนมี country ระบุไว้หรือไม่ ถ้ามีต้องตรงกัน
-        if (zone.country && zone.country !== myCountry) {
-             return res.status(403).json({ error: 'คุณไม่สามารถลบโซนของประเทศอื่นได้' });
+        if (zone.country && zone.country !== requester.country) {
+            return res.status(403).json({ error: 'ข้ามเขต: คุณลบโซนต่างประเทศไม่ได้' });
         }
     }
 
-    // Perform Delete
     await zonesCollection.deleteOne({ id: zoneIdInt });
-    res.json({ success: true, message: 'Deleted zone successfully' });
+    res.json({ success: true });
 });
 
 
