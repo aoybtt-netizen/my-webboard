@@ -507,55 +507,62 @@ async function assignAdminToZone(zoneId, adminUsername, zoneName) {
 }
 
 async function addZoneManual() {
-    const name = document.getElementById('manual-zone-name').value;
-    const lat = document.getElementById('manual-zone-lat').value;
-    const lng = document.getElementById('manual-zone-lng').value;
-    const fee = document.getElementById('manual-zone-fee').value;
+    // 1. ดึงค่าจากช่องกรอกข้อมูล
+    const nameInput = document.getElementById('manual-zone-name');
+    const latInput = document.getElementById('manual-zone-lat');
+    const lngInput = document.getElementById('manual-zone-lng');
 
+    const name = nameInput.value;
+    const lat = latInput.value;
+    const lng = lngInput.value;
+
+    // 2. ตรวจสอบความถูกต้องของข้อมูล
     if (!name || !lat || !lng) {
-        alert('กรุณากรอกชื่อและพิกัดให้ครบถ้วน');
+        alert('กรุณากรอกชื่อโซน และพิกัด (Lat, Lng) ให้ครบถ้วน');
         return;
     }
 
-    // แสดงสถานะกำลังทำงาน
+    // แสดงสถานะกำลังโหลด (ถ้ามีปุ่มให้เปลี่ยนข้อความ)
     const btn = document.querySelector('button[onclick="addZoneManual()"]');
-    const originalText = btn.innerText;
-    btn.innerText = '⏳ กำลังตรวจสอบ...';
-    btn.disabled = true;
+    const originalText = btn ? btn.innerText : 'บันทึก';
+    if (btn) btn.innerText = 'กำลังบันทึก...';
 
     try {
+        // 3. ส่งข้อมูลไปที่ Server (ใช้ Endpoint หลัก add-zone)
         const res = await fetch('/api/admin/add-zone', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                requestBy: myUsername,
+                requestBy: myUsername, // ⭐ ใครเป็นคนขอเพิ่ม
                 name: name,
                 lat: lat,
                 lng: lng,
-                country: myCountry // ส่งค่าประเทศไปด้วย (myCountry เป็นตัวแปร global)
+                country: myCountry // ⭐ ส่งประเทศไปด้วย (Server จะเช็คอีกที)
             })
         });
 
         const data = await res.json();
 
+        // 4. จัดการผลลัพธ์
         if (data.success) {
-            alert(data.message);
-            // ล้างค่าในฟอร์ม
-            document.getElementById('manual-zone-name').value = '';
-            document.getElementById('manual-zone-lat').value = '';
-            document.getElementById('manual-zone-lng').value = '';
+            alert('✅ เพิ่มโซนสำเร็จ: ' + data.zone.name);
             
-            // รีเฟรชรายการโซน
-            openAdminZoneModal(); 
+            // เคลียร์ค่าในฟอร์ม
+            nameInput.value = '';
+            latInput.value = '';
+            lngInput.value = '';
+            
+            // ปิด Modal (ถ้ามีฟังก์ชันปิด) หรือรีโหลดหน้า
+            location.reload(); 
         } else {
-            alert(data.error);
+            alert(data.error || '❌ ไม่สามารถเพิ่มโซนได้');
         }
-    } catch (e) {
+    } catch (err) {
+        console.error(err);
         alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
-        console.error(e);
     } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
+        // คืนค่าปุ่มให้เหมือนเดิม
+        if (btn) btn.innerText = originalText;
     }
 }
 
@@ -2726,32 +2733,39 @@ window.uploadZoneBg = uploadZoneBg;
 
 // ฟังก์ชันลบโซน
 async function deleteZone(zoneId) {
-    if (!confirm("คุณต้องการลบโซนนี้ใช่หรือไม่?")) return;
+    // 1. ถามยืนยันก่อนลบ
+    if (!confirm("⚠️ คุณต้องการลบโซนนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้")) {
+        return;
+    }
 
     try {
+        // 2. ส่งคำขอลบไปที่ Server
         const res = await fetch('/api/admin/delete-zone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 zoneId: zoneId, 
-                requestBy: myUsername // สำคัญ: ต้องส่งตัวนี้ไปด้วย
+                requestBy: myUsername // ⭐ จำเป็นมาก: ต้องส่ง username ไปตรวจสอบสิทธิ์
             })
         });
 
         const data = await res.json();
+
+        // 3. ตรวจสอบผลลัพธ์
         if (data.success) {
-            alert('ลบโซนเรียบร้อยแล้ว');
-            location.reload(); // รีโหลดหน้าเพื่ออัปเดต
+            alert('✅ ลบโซนเรียบร้อยแล้ว');
+            location.reload(); // รีโหลดหน้าเพื่อลบโซนออกจากแผนที่
         } else {
-            alert(data.error || 'เกิดข้อผิดพลาดในการลบ');
+            // แสดง Error ที่ Server ส่งกลับมา (เช่น "ลบข้ามประเทศไม่ได้")
+            alert(data.error || '❌ เกิดข้อผิดพลาดในการลบโซน');
         }
     } catch (err) {
         console.error(err);
-        alert('เชื่อมต่อ Server ไม่ได้');
+        alert('❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
     }
 }
 
-// อย่าลืมผูกกับ window
+// ⭐ สำคัญ: บรรทัดนี้ทำให้ปุ่ม onclick="deleteZone(...)" มองเห็นฟังก์ชันนี้
 window.deleteZone = deleteZone;
 
 		async function addZoneConfig() {

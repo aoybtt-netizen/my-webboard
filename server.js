@@ -1695,29 +1695,24 @@ app.post('/api/admin/add-zone', async (req, res) => {
     const { lat, lng, name, requestBy, country } = req.body;
 
     try {
-        // 1. ตรวจสอบสิทธิ์คนขอ
         const requester = await getUserData(requestBy);
         if (!requester || requester.adminLevel < 2) {
-            return res.status(403).json({ error: 'Permission denied. Level 2+ required' });
+            return res.status(403).json({ error: 'Permission denied.' });
         }
 
         const parsedLat = parseFloat(lat);
         const parsedLng = parseFloat(lng);
 
-        if (isNaN(parsedLat) || isNaN(parsedLng) || !name || name.trim() === '') {
-            return res.status(400).json({ error: 'Invalid data provided.' });
+        if (isNaN(parsedLat) || isNaN(parsedLng) || !name) {
+            return res.status(400).json({ error: 'Invalid data.' });
         }
 
-        // 2. กำหนดประเทศของโซน (Logic ใหม่)
-        let zoneCountry = 'TH'; // ค่าเริ่มต้น
-
+        // Logic บังคับประเทศสำหรับ Level 2
+        let zoneCountry = 'TH'; 
         if (requester.adminLevel === 2) {
-            // [บังคับ] ถ้าเป็น Level 2 ให้ใช้ประเทศของ Admin คนนั้นทันที
-            // ไม่สนว่า req.body.country ส่งอะไรมา
-            zoneCountry = requester.country || 'TH'; 
+            zoneCountry = requester.country || 'TH'; // บังคับใช้ประเทศของแอดมิน
         } else {
-            // ถ้าเป็น Level 3 (Super Admin) ให้ใช้ค่าที่ส่งมา หรือ Default
-            zoneCountry = country || 'TH';
+            zoneCountry = country || 'TH'; // Level 3 เลือกได้
         }
 
         const newZone = {
@@ -1726,15 +1721,15 @@ app.post('/api/admin/add-zone', async (req, res) => {
             lng: parsedLng,
             name: name,
             assignedAdmin: null,
-            country: zoneCountry // บันทึกค่าที่ถูกบังคับแล้วลงไป
+            country: zoneCountry 
         };
 
         await zonesCollection.insertOne(newZone);
         res.json({ success: true, message: '✅ เพิ่มโซนสำเร็จ', zone: newZone });
 
     } catch (e) {
-        console.error("Add Zone Error:", e);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error(e);
+        res.status(500).json({ error: 'Server Error' });
     }
 });
 
@@ -1817,45 +1812,32 @@ app.post('/api/admin/delete-zone', async (req, res) => {
     const { zoneId, requestBy } = req.body;
 
     try {
-        // 1. ตรวจสอบสิทธิ์คนขอ
         const requester = await getUserData(requestBy);
         if (!requester || requester.adminLevel < 2) {
             return res.status(403).json({ error: 'Permission denied.' });
         }
 
-        // แปลง zoneId เป็นตัวเลขให้ชัวร์ (บางทีส่งมาเป็น string)
-        const zoneIdInt = parseInt(zoneId); 
-
-        // 2. หาโซนที่จะลบ
+        const zoneIdInt = parseInt(zoneId);
         const zone = await zonesCollection.findOne({ id: zoneIdInt });
         
-        if (!zone) {
-            return res.status(404).json({ error: 'Zone not found.' });
-        }
+        if (!zone) return res.status(404).json({ error: 'Zone not found.' });
 
-        // 3. ตรวจสอบความเป็นเจ้าของประเทศ (เฉพาะ Level 2)
+        // Logic ตรวจสอบประเทศก่อนลบ
         if (requester.adminLevel === 2) {
             const adminCountry = requester.country || 'TH';
-            // ถ้าโซนไม่มี field country ให้ถือว่าเป็น TH
-            const targetZoneCountry = zone.country || 'TH'; 
+            const zoneCountry = zone.country || 'TH'; 
 
-            if (adminCountry !== targetZoneCountry) {
-                console.log(`Block delete: Admin(${adminCountry}) try to delete Zone(${targetZoneCountry})`);
-                return res.status(403).json({ error: '⛔ คุณไม่สามารถลบโซนนอกประเทศของคุณได้' });
+            if (adminCountry !== zoneCountry) {
+                return res.status(403).json({ error: '⛔ ลบโซนข้ามประเทศไม่ได้' });
             }
         }
 
-        // 4. ลบโซน
-        const result = await zonesCollection.deleteOne({ id: zoneIdInt });
-        
-        if (result.deletedCount > 0) {
-            res.json({ success: true, message: 'ลบโซนสำเร็จ' });
-        } else {
-            res.status(500).json({ error: 'Failed to delete zone database record.' });
-        }
+        await zonesCollection.deleteOne({ id: zoneIdInt });
+        res.json({ success: true });
+
     } catch (e) {
-        console.error("Delete Zone Error:", e);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error(e);
+        res.status(500).json({ error: 'Server Error' });
     }
 });
 
