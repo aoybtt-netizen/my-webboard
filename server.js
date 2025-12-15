@@ -1785,7 +1785,7 @@ app.post('/api/admin/delete-zone', async (req, res) => {
     
     // Check Permissions
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 3) { 
+    if (!requester || requester.adminLevel < 2) { 
         return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
     }
 
@@ -1799,6 +1799,29 @@ app.post('/api/admin/delete-zone', async (req, res) => {
     } else {
         res.status(404).json({ error: 'Zone not found' });
     }
+});
+
+// 29.1 ดึงรายชื่อแอดมินสำหรับเลือกมอบหมายงาน (แก้ปัญหา undefined)
+app.get('/api/admin/admins-list', async (req, res) => {
+    const { requestBy } = req.query;
+    
+    // ตรวจสอบสิทธิ์คนเรียกดู
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Admin only' });
+    }
+
+    // ดึงเฉพาะ User ที่เป็น Admin (Level > 0)
+    const admins = await usersCollection.find({ adminLevel: { $gt: 0 } }).toArray();
+
+    // แปลงข้อมูลให้ตรงกับที่ index.html เรียกใช้ (name, level)
+    const result = admins.map(u => ({
+        name: u.username,      // Frontend ใช้ .name เราจึงต้องส่ง .name (เอาค่าจาก username)
+        level: u.adminLevel,
+        isBanned: u.isBanned
+    }));
+
+    res.json(result);
 });
 
 // 30. Get Assigned Zones for Admin (L1/L2)
