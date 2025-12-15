@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.0 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.1 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2793,14 +2793,19 @@ window.deleteZone = deleteZone;
     }
 
     try {
-        const res = await fetch('/api/admin/add-zone', { // เปลี่ยนเป็น Endpoint ใหม่
+        const countryToSend = (currentLocationData && currentLocationData.countryCode) 
+                              ? currentLocationData.countryCode 
+                              : myCountry;
+
+        const res = await fetch('/api/admin/add-zone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 lat: lat, 
                 lng: lng, 
-                name: nameInput,
-                requestBy: myUsername 
+                name: nameInput, 
+                requestBy: myUsername,
+                country: countryToSend // ✅ ส่งค่าประเทศไปด้วย
             })
         });
 

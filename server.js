@@ -1691,34 +1691,52 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
 });
 
 // 26. Set Zone Config 
-app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
-    const { lat, lng, name, requestBy } = req.body;
-    
-    // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
+app.post('/api/admin/add-zone', async (req, res) => {
+    // 1. รับค่า country เพิ่มเข้ามาจาก Client
+    const { lat, lng, name, requestBy, country } = req.body;
+
+    // 2. ตรวจสอบสิทธิ์: แก้ไขจาก < 3 เป็น < 2 เพื่อให้ Level 2 เข้าถึงได้
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 3) { 
-        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+    if (!requester || requester.adminLevel < 2) {
+        return res.status(403).json({ error: 'Permission denied. Admin Level 2+ required' });
     }
 
     const parsedLat = parseFloat(lat);
     const parsedLng = parseFloat(lng);
 
-    if (isNaN(parsedLat) || isNaN(parsedLng) || parsedLat < -90 || parsedLat > 90 || parsedLng < -180 || parsedLng > 180) {
-        return res.status(400).json({ error: 'Invalid Latitude or Longitude values.' });
+    if (isNaN(parsedLat) || isNaN(parsedLng) || !name || name.trim() === '') {
+        return res.status(400).json({ error: 'Invalid data provided.' });
     }
+
+    // 3. [NEW] ตรวจสอบประเทศสำหรับ Admin Level 2
+    let zoneCountry = country || 'TH'; // ค่า Default
     
-    const newZone = { 
-        id: Date.now(), 
-        lat: parsedLat, 
-        lng: parsedLng, 
-        name: name || null, // Allow null name
-        createdAt: new Date()
-    };
+    if (requester.adminLevel === 2) {
+        // ต้องระบุประเทศ และต้องตรงกับประเทศของ Admin เท่านั้น
+        const adminCountry = requester.country || 'TH';
+        if (zoneCountry !== adminCountry) {
+            return res.status(403).json({ error: `⛔ คุณสามารถเพิ่มโซนได้เฉพาะในประเทศของคุณ (${adminCountry}) เท่านั้น` });
+        }
+        zoneCountry = adminCountry; // บังคับใช้ประเทศของ Admin
+    }
 
-    // 2. บันทึกข้อมูลลงใน zonesCollection
-    await zonesCollection.insertOne(newZone);
+    try {
+        const newZone = {
+            id: Date.now(),
+            lat: parsedLat,
+            lng: parsedLng,
+            name: name,
+            assignedAdmin: null,
+            country: zoneCountry // ✅ บันทึกประเทศลงในโซน เพื่อใช้กรองภายหลัง
+        };
 
-    res.json({ success: true, newZone: newZone });
+        await zonesCollection.insertOne(newZone);
+        res.json({ success: true, message: '✅ เพิ่มโซนสำเร็จ', zone: newZone });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'เกิดข้อผิดพลาดทางเทคนิค' });
+    }
 });
 
 // 27. Get Admin List (Level 1+)
@@ -1798,25 +1816,39 @@ app.post('/api/admin/assign-zone', async (req, res) => {
 // 29. Delete Zone
 app.post('/api/admin/delete-zone', async (req, res) => {
     const { zoneId, requestBy } = req.body;
-    // Check Permissions
+
+    // 1. ตรวจสอบสิทธิ์เบื้องต้น
     const requester = await getUserData(requestBy);
-    
-    // แก้จาก requester.adminLevel < 3 เป็น < 2
-    if (!requester || requester.adminLevel < 2) { 
+    if (!requester || requester.adminLevel < 2) {
         return res.status(403).json({ error: 'Permission denied. Admin Level 2+ required' });
     }
 
     const zoneIdInt = parseInt(zoneId);
-    // Delete Operation
-    const result = await zonesCollection.deleteOne({ id: zoneIdInt });
+    
+    // 2. ดึงข้อมูลโซนเพื่อตรวจสอบ
+    const zone = await zonesCollection.findOne({ id: zoneIdInt });
+    if (!zone) {
+        return res.status(404).json({ error: 'Zone not found.' });
+    }
 
+    // 3. [NEW] ตรวจสอบสิทธิ์ความเป็นเจ้าของประเทศ (สำหรับ Level 2)
+    if (requester.adminLevel === 2) {
+        const adminCountry = requester.country || 'TH';
+        const zoneCountry = zone.country || 'TH'; // ถ้าโซนเก่าไม่มีประเทศ ให้ถือว่าเป็น TH
+
+        if (zoneCountry !== adminCountry) {
+            return res.status(403).json({ error: '⛔ คุณไม่สามารถลบโซนของประเทศอื่นได้' });
+        }
+    }
+
+    // 4. ทำการลบ
+    const result = await zonesCollection.deleteOne({ id: zoneIdInt });
     if (result.deletedCount > 0) {
         res.json({ success: true });
     } else {
-        res.status(404).json({ error: 'Zone not found' });
+        res.status(500).json({ error: 'Failed to delete zone.' });
     }
 });
-
 
 // 30. Get Assigned Zones for Admin (L1/L2)
 app.get('/api/admin/get-assigned-zones', async (req, res) => {
