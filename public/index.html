@@ -4021,14 +4021,13 @@ function openUserDetail(targetUsername) {
         `;
     }
 
-    if (myAdminLevel >= 2 && targetLevel < 1) {
-        buttonsHtml += `<button class="sidebar-btn" style="background:#17a2b8; color:white;" onclick="setAdminLevel('${u.name}', 1)">👮‍♂️ ตั้งเป็น Admin 1</button>`;
-    }
-    if (myAdminLevel >= 3 && targetLevel < 2) {
-        buttonsHtml += `<button class="sidebar-btn" style="background:#6610f2; color:white;" onclick="setAdminLevel('${u.name}', 2)">👨‍💼 ตั้งเป็น Admin 2</button>`;
-    }
-    if (myAdminLevel > targetLevel && targetLevel > 0) {
-        buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
+    if (myAdminLevel >= 2) {
+         buttonsHtml += `
+            <button class="sidebar-btn" style="background:#17a2b8; color:white; margin-top:5px;" 
+                onclick="openAdminLevelModal('${u.name}', ${targetLevel}); document.getElementById('user-detail-modal').classList.add('hidden');">
+                👮‍♂️ จัดการระดับ Admin & ประเทศ
+            </button>
+         `;
     }
     document.getElementById('detail-actions').innerHTML = buttonsHtml;
     modal.classList.remove('hidden');
