@@ -133,7 +133,7 @@
     <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
-    <div class="sidebar" id="sidebar">
+    <div class="sidebar" id="sidebar" style="left: -280px;">
     <h2 style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.4 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.0 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1657,25 +1657,16 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 		
 		// setAdminLevel
 async function setAdminLevel(targetUser, newLevel) {
-    const targetUsername = document.getElementById('admin-target-user').value;
-    const newLevel = parseInt(document.getElementById('admin-level-select').value);
-    const countryCode = document.getElementById('admin-country-code').value.toUpperCase(); // ดึงค่าจากช่องใหม่
-
-    if (!targetUsername || isNaN(newLevel)) {
-        showCustomAlert('Error', 'ข้อมูลไม่สมบูรณ์');
-        return;
-    }
+    const levelName = newLevel === 0 ? 'User ทั่วไป' : `Admin Level ${newLevel}`;
+    const action = newLevel === 0 ? 'ถอนสิทธิ์ (Demote)' : 'แต่งตั้ง (Promote)';
+    
+    if (!confirm(`Are you sure you want to? ${action} ${targetUser} Let it be ${levelName} Or not?`)) return;
 
     try {
         const res = await fetch('/api/admin/set-level', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                requestBy: myUsername, 
-                targetUsername: targetUsername, 
-                newLevel: newLevel,
-                countryCode: countryCode // ✅ ส่งค่าประเทศไปกับ request
-            })
+            body: JSON.stringify({ targetUser, newLevel, requestBy: myUsername })
         });
 
         const data = await res.json();
@@ -2399,11 +2390,13 @@ async function openAdminZoneModal() {
             </div>`;
             document.body.insertAdjacentHTML('beforeend', menuHtml);
         } else {
+            // ถ้ามีแล้วให้เปิดขึ้นมา
             document.getElementById('l2-zone-menu-modal').style.display = 'flex';
         }
-        return;
+        return; // จบการทำงานของ Level 2 แค่นี้ (รอผู้ใช้กดเลือก)
     }
 
+    // กรณี Admin Level 3 (หรือมากกว่า): เปิดหน้ารายการโซนทั้งหมดแบบ Full Mode
     if (myAdminLevel >= 3) {
         openZoneListFullMode();
     }
@@ -4157,7 +4150,6 @@ function openUserDetail(targetUsername) {
             <button class="sidebar-btn create-btn" onclick="saveAdminAnnouncement()" style="width:auto;" data-i18n-key="btn_save">บันทึก/ประกาศ</button>
         </div>
     </div>
-
 </div>
 
 
