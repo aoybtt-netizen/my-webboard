@@ -404,12 +404,14 @@
         const socket = io();
         let myUsername = "";
 		let myAdminLevel = 0;
-		let myZoneId = null;     // Zone ID หลักของผู้ใช้ที่ล็อกอินอยู่
-		let filterLocation = null;      // เก็บพิกัดคนดู
-        let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
+		let myZoneId = null;
+		let filterLocation = null;
+        let filterMaxDistance = null;
 		let userPrimaryLocation = null;
 		let currentDeductRequest = null;
 		let targetUserForLocation = null;
+		let assignedMap = null;
+		let assignedMarker = null;
 		// Cooldown สำหรับการป้องกัน Rapid Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
