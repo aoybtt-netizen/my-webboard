@@ -3902,6 +3902,24 @@ function openUserDetail(targetUsername) {
     if (myAdminLevel >= 3 && targetLevel < 2) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6610f2; color:white;" onclick="setAdminLevel('${u.name}', 2)">👨‍💼 ตั้งเป็น Admin 2</button>`;
     }
+	
+	if (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 3 && targetLevel === 2) {
+         const lat = u.assignedLocation ? u.assignedLocation.lat : '';
+         const lng = u.assignedLocation ? u.assignedLocation.lng : '';
+         const hasLoc = u.assignedLocation && u.assignedLocation.lat;
+         
+         const btnColor = hasLoc ? '#28a745' : '#17a2b8'; // เขียวถ้ามีแล้ว / ฟ้าถ้ายังไม่มี
+         const btnText = hasLoc ? '📍 แก้ไขพิกัดอ้างอิง' : '📍 กำหนดพิกัดอ้างอิง';
+
+         buttonsHtml += `
+            <button class="sidebar-btn" 
+                onclick="document.getElementById('user-detail-modal').classList.add('hidden'); openSetLocationModal('${u.name}', '${lat}', '${lng}')" 
+                style="background: ${btnColor}; color: white; margin-bottom:5px;">
+                ${btnText}
+            </button>
+         `;
+    }
+	
     if (myAdminLevel > targetLevel && targetLevel > 0) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
