@@ -404,7 +404,8 @@ app.get('/api/users-list', async (req, res) => {
         rating: u.rating, 
         isBanned: u.isBanned,
         adminLevel: u.adminLevel || 0,
-        country: u.country || 'N/A' // ส่งข้อมูลประเทศกลับไปแสดงผลด้วยก็ได้
+        country: u.country || 'N/A',
+		assignedLocation: u.assignedLocation || null
     });
 
     // CASE A: Admin Level 3 (Super Admin) -> เห็นทุกคน ทุกประเทศ
@@ -1703,6 +1704,49 @@ async function calculateNewRating(username, newScore) {
     await updateUser(username, { rating: parseFloat(nextRating.toFixed(2)), ratingCount: nextCount });
     io.emit('rating-update', { user: username, rating: nextRating.toFixed(2) });
 }
+
+// API กำหนดพิกัดอ้างอิงให้ Admin Level 2 (เฉพาะ Level 3 ทำได้)
+app.post('/api/admin/set-assigned-location', async (req, res) => {
+    const { targetUser, lat, lng, requestBy } = req.body;
+
+    // 1. ตรวจสอบสิทธิ์ผู้สั่งการ (ต้องเป็น Level 3)
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 3) {
+        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+    }
+
+    // 2. ตรวจสอบเป้าหมาย
+    const target = await getUserData(targetUser);
+    if (!target) return res.status(404).json({ error: 'User not found' });
+
+    // (Option) ตรวจสอบว่าเป็น Admin Level 2 จริงหรือไม่ (ตามโจทย์)
+    if (target.adminLevel !== 2) {
+        // อนุญาตให้ตั้งให้ใครก็ได้ หรือจะบังคับแค่ Level 2 ก็ได้
+        // ถ้าจะบังคับ uncomment บรรทัดล่าง
+        // return res.status(400).json({ error: 'Target must be Admin Level 2' });
+    }
+
+    // 3. ตรวจสอบค่าพิกัด
+    // ถ้าส่งค่าว่างมา แปลว่าต้องการลบพิกัดอ้างอิงออก
+    if (lat === '' || lng === '' || lat === null || lng === null) {
+        await updateUser(targetUser, { assignedLocation: null });
+        return res.json({ success: true, message: `ลบพิกัดอ้างอิงของ ${targetUser} เรียบร้อยแล้ว` });
+    }
+
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+
+    if (isNaN(parsedLat) || isNaN(parsedLng)) {
+        return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+
+    // 4. บันทึก
+    await updateUser(targetUser, { 
+        assignedLocation: { lat: parsedLat, lng: parsedLng } 
+    });
+
+    res.json({ success: true, message: `กำหนดพิกัดให้ ${targetUser} เป็น [${parsedLat}, ${parsedLng}] เรียบร้อย` });
+});
 
 // ==========================================
 // Socket.io Logic
