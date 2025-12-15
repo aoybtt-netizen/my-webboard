@@ -133,7 +133,7 @@
     <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
-    <div class="sidebar" id="sidebar">
+    <div class="sidebar" id="sidebar" style="left: -280px;">
     <h2 style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.1 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.0 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3606,46 +3606,6 @@ window.savePostCost = savePostCost;
     }
 }
 window.refreshModalPostCost = refreshModalPostCost; // Expose globally
-
-async function deleteZone(zoneId, zoneName) {
-    // 1. ถามยืนยันก่อนลบ
-    if (!confirm(`⚠️ ยืนยันการลบโซน "${zoneName}" หรือไม่?\n(ลบแล้วกู้คืนไม่ได้)`)) {
-        return;
-    }
-
-    try {
-        // 2. ส่งคำสั่งไปที่ Server
-        const res = await fetch('/api/admin/delete-zone', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                zoneId: zoneId, 
-                requestBy: myUsername // ตัวแปรนี้ต้องมีอยู่ในระบบเดิมของคุณ
-            })
-        });
-
-        const data = await res.json();
-
-        // 3. ตรวจสอบผลลัพธ์
-        if (data.success) {
-            alert('✅ ลบโซนเรียบร้อยแล้ว');
-            // รีโหลดรายการโซนใหม่
-            if (typeof fetchAndRenderZonesList === 'function') {
-                fetchAndRenderZonesList(); 
-            } else {
-                location.reload(); // ถ้าไม่มีฟังก์ชันรีโหลด ให้รีเฟรชหน้าจอ
-            }
-        } else {
-            alert(`❌ ลบไม่ได้: ${data.error}`);
-        }
-    } catch (e) {
-        console.error(e);
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
-    }
-}
-
-// ทำให้เรียกใช้จากปุ่ม HTML ได้
-window.deleteZone = deleteZone;
 
     socket.on('private-history', (history) => {
         const box = document.getElementById('private-chat-messages');
