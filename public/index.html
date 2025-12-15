@@ -410,10 +410,10 @@
 		let userPrimaryLocation = null;
 		let currentDeductRequest = null;
 		let targetUserForLocation = null;
-		let assignedMap = null;
+		let assignedMap = null; 
 		let assignedMarker = null;
-		// Cooldown สำหรับการป้องกัน Rapid Refresh (7 วินาที)
-		const REFRESH_COOLDOWN_MS = 7000;
+		// Cooldown Rapid Refresh (5s)
+		const REFRESH_COOLDOWN_MS = 5000;
 		
 		//  Cooldown state สำหรับ Distance Filter
 		let lastFilterTime = 0; 
@@ -3924,79 +3924,98 @@ function openUserDetail(targetUsername) {
 }
 
 	// 1. ฟังก์ชันเปิด Modal (เรียกใช้จากปุ่มในรายชื่อ User)
-function openSetLocationModal(username, currentLat, currentLng) {
+// 1. ฟังก์ชันเปิด Modal พร้อมสร้าง/อัปเดตแผนที่
+    function openSetLocationModal(username, currentLat, currentLng) {
+        // [1] เตรียมข้อมูล
         targetUserForLocation = username;
         document.getElementById('loc-target-user').innerText = username;
         document.getElementById('set-location-modal').classList.remove('hidden');
 
         // จัดการค่าพิกัดเริ่มต้น
-        const safeLat = (currentLat && currentLat !== 'undefined' && currentLat !== 'null') ? parseFloat(currentLat) : 13.7563; // กรุงเทพฯ Default
-        const safeLng = (currentLng && currentLng !== 'undefined' && currentLng !== 'null') ? parseFloat(currentLng) : 100.5018; 
+        // การแปลงค่าที่ปลอดภัย (ป้องกัน NaN)
+        const safeLat = (currentLat && currentLat !== 'undefined' && currentLat !== 'null' && !isNaN(parseFloat(currentLat))) ? parseFloat(currentLat) : 13.7563; // Default
+        const safeLng = (currentLng && currentLng !== 'undefined' && currentLng !== 'null' && !isNaN(parseFloat(currentLng))) ? parseFloat(currentLng) : 100.5018; 
         const isDefault = (currentLat === '' || currentLat === 'undefined' || currentLat === 'null');
 
         // ฟังก์ชัน Set พิกัด (ใช้ใน Marker และ Click Event)
         const setLocation = (lat, lng) => {
             document.getElementById('input-assign-lat').value = lat;
             document.getElementById('input-assign-lng').value = lng;
-            document.getElementById('display-assign-loc').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            if (lat && lng) {
+                document.getElementById('display-assign-loc').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            } else {
+                document.getElementById('display-assign-loc').innerText = 'ยังไม่ได้เลือก (คลิกบนแผนที่เพื่อปักหมุด)';
+            }
         };
         
-        // ถ้าเป็นค่าว่าง ให้ล้าง Input และ Display
         if(isDefault) setLocation('', '');
         else setLocation(safeLat, safeLng);
 
-        // --- 2. จัดการแผนที่ ---
-        
-        // ถ้ายังไม่มีแผนที่ ให้สร้างใหม่
-        if (assignedMap === null) {
-            assignedMap = L.map('assigned-map').setView([safeLat, safeLng], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(assignedMap);
+        // [2] จัดการแผนที่: ใช้ setTimeout เพื่อให้แน่ใจว่า Modal ถูกแสดงผล/มีขนาดที่แน่นอน
+        setTimeout(() => {
+            if (assignedMap === null) {
+                // A. สร้างแผนที่ใหม่ (ครั้งแรก)
+                try {
+                    assignedMap = L.map('assigned-map', {
+                        // ป้องกัน Error หากไม่มีพิกัดตั้งต้นที่ถูกต้อง
+                        center: [safeLat, safeLng],
+                        zoom: 13 
+                    });
+                    
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(assignedMap);
+    
+                    // เพิ่ม Event Listener สำหรับการคลิก/ปักหมุด
+                    assignedMap.on('click', (e) => {
+                        const lat = e.latlng.lat;
+                        const lng = e.latlng.lng;
+                        
+                        setLocation(lat, lng);
+                        
+                        // ย้าย Marker หรือสร้างใหม่
+                        if (assignedMarker) {
+                            assignedMarker.setLatLng([lat, lng]);
+                        } else {
+                            assignedMarker = L.marker([lat, lng]).addTo(assignedMap);
+                        }
+                    });
 
-            // เพิ่ม Event Listener สำหรับการคลิก/ปักหมุด
-            assignedMap.on('click', (e) => {
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
+                    // ใส่ Marker ถ้าไม่ใช่ค่า Default
+                    if (!isDefault) {
+                        assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
+                    }
+
+                } catch (e) {
+                    console.error("Leaflet Map Creation Error:", e);
+                    alert("❌ ไม่สามารถโหลดแผนที่ได้: " + e.message);
+                }
+
+            } 
+            // B. อัปเดตแผนที่ที่มีอยู่แล้ว
+            else {
+                // 1. แก้ไขปัญหา Map Tile ไม่โหลด/ขาว
+                assignedMap.invalidateSize(); 
+
+                // 2. ย้ายศูนย์กลางแผนที่
+                assignedMap.setView([safeLat, safeLng], 13);
                 
-                setLocation(lat, lng);
-                
-                // ย้าย Marker หรือสร้างใหม่
+                // 3. จัดการ Marker
                 if (assignedMarker) {
-                    assignedMarker.setLatLng([lat, lng]);
-                } else {
-                    assignedMarker = L.marker([lat, lng]).addTo(assignedMap);
+                    if (isDefault) {
+                        assignedMap.removeLayer(assignedMarker);
+                        assignedMarker = null;
+                    } else {
+                        assignedMarker.setLatLng([safeLat, safeLng]);
+                    }
+                } else if (!isDefault) {
+                    assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
                 }
-            });
-        } 
-        // ถ้ามีแผนที่อยู่แล้ว ให้แค่ย้ายศูนย์กลางและ Marker
-        else {
-            assignedMap.setView([safeLat, safeLng], 13);
-            if (assignedMarker) {
-                assignedMarker.setLatLng([safeLat, safeLng]);
-                // ถ้าเป็นค่า Default ให้ลบ Marker ออก
-                if (isDefault) {
-                    assignedMap.removeLayer(assignedMarker);
-                    assignedMarker = null;
-                }
-            } else if (!isDefault) {
-                assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
             }
-            
-            // สำคัญ: ต้องสั่ง Invalidate Size เพื่อให้แผนที่แสดงผลถูกเมื่อ Modal ถูกเปิด
-            // ใช้ setTimeout เพื่อให้แน่ใจว่า Modal ถูกแสดงผลก่อน
-            setTimeout(() => {
-                 assignedMap.invalidateSize();
-            }, 50);
-        }
-        
-        // ถ้ามีพิกัดเดิม ให้สร้าง Marker
-        if (!isDefault && !assignedMarker) {
-             assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
-        }
-        
+        }, 50); // ดีเลย์ 50ms 
     }
 
+    // 2. ฟังก์ชันบันทึก
     async function saveAssignedLocation(isDelete = false) {
         if (!targetUserForLocation) return;
         
@@ -4013,7 +4032,6 @@ function openSetLocationModal(username, currentLat, currentLng) {
             if (!lat || !lng) return alert('กรุณาปักหมุดบนแผนที่ก่อนบันทึก');
         }
 
-        // ... (โค้ด AJAX สำหรับ fetch POST ไปยัง Server เดิม) ...
         try {
             const res = await fetch('/api/admin/set-assigned-location', {
                 method: 'POST',
@@ -4030,7 +4048,8 @@ function openSetLocationModal(username, currentLat, currentLng) {
             if (data.success) {
                 alert(data.message);
                 document.getElementById('set-location-modal').classList.add('hidden');
-                // รีโหลดรายชื่อ User เพื่ออัปเดตสถานะปุ่ม
+                
+                // รีโหลด UI
                 if(typeof openAllUserList === 'function') {
                     document.getElementById('user-detail-modal').classList.add('hidden'); 
                     openAllUserList(document.getElementById('user-search-input').value); 
