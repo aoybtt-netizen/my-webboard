@@ -12,12 +12,13 @@
             font-family: 'Kanit', sans-serif; 
             margin: 0;
             
+            /* ใส่ Overlay สีขาวจางๆ (rgba(255, 255, 255, 0.7)) ทับรูป */
             background-image: linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url('https://sv1.img.in.th/7fB1Jg.png');
             background-size: cover;         
             background-position: center;    
             background-attachment: fixed;   
             background-repeat: no-repeat;   
-            background-color: #f0f2f5;
+            background-color: #f0f2f5; /* สีสำรอง */
         }
         
         .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background: white; z-index: 1000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto;}
@@ -119,9 +120,9 @@
 
 	.marquee-content-css {
     display: inline-block;
-    padding-left: 100%;
+    padding-left: 100%; /* เริ่มต้นให้ข้อความอยู่ขวาจนสุดขอบ */
     white-space: nowrap;
-    animation: marquee-scroll 10s linear infinite;
+    animation: marquee-scroll 10s linear infinite; /* 25s คือความเร็วในการเลื่อน */
 	padding-right: 20px;
 }
 
@@ -132,7 +133,7 @@
     <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
-    
+    <div class="sidebar" id="sidebar">
     <h2 style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
@@ -2354,44 +2355,47 @@ async function showMyClosedPosts(page = 1) {
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
+    // กรณี Admin Level 1: เด้งไปหน้าโซนตัวเองทันที (เหมือนเดิม)
     if (myAdminLevel === 1) {
         return openAssignedZoneMap();
     }
 
+    // กรณี Admin Level 2: แสดงเมนูตัวเลือก (โซนตัวเอง vs ตั้งค่าคนอื่น)
     if (myAdminLevel === 2) {
         if (!document.getElementById('l2-zone-menu-modal')) {
             const menuHtml = `
-            <div id="l2-zone-menu-modal" class="modal-overlay" style="z-index:3000;">
+            <div id="l2-zone-menu-modal" class="modal-overlay" style="z-index:3000; display:flex;">
                 <div class="modal-box" style="max-width:350px; text-align:center;">
                     <h2 style="color:#007bff;">👮‍♂️ เมนูจัดการโซน</h2>
                     <p style="color:gray; font-size:0.9em; margin-bottom:20px;">เลือกรายการที่ต้องการทำ</p>
                     
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <button class="sidebar-btn" onclick="openAssignedZoneMap(); closeL2Menu();" 
+                        <button class="sidebar-btn" onclick="openAssignedZoneMap(); document.getElementById('l2-zone-menu-modal').style.display='none';" 
                             style="background:#17a2b8; color:white; padding:12px; font-size:1.1em;">
                             🗺️ จัดการโซนตัวเอง
                         </button>
                         
-                        <button class="sidebar-btn" onclick="openZoneListForL2(); closeL2Menu();" 
+                        <button class="sidebar-btn" onclick="openZoneListForL2()" 
                             style="background:#ffc107; color:black; padding:12px; font-size:1.1em;">
                             👥 ตั้งแอดมินให้โซนอื่น
                         </button>
                     </div>
 
-                     <button class="sidebar-btn" onclick="closeL2Menu();" 
+                     <button class="sidebar-btn" onclick="document.getElementById('l2-zone-menu-modal').style.display='none';" 
                         style="margin-top:20px; background:#6c757d; color:white; width:auto; align-self:center;">
                         ปิด
                      </button>
                 </div>
             </div>`;
             document.body.insertAdjacentHTML('beforeend', menuHtml);
+        } else {
+            document.getElementById('l2-zone-menu-modal').style.display = 'flex';
         }
-        document.getElementById('l2-zone-menu-modal').style.display = 'flex';
         return;
     }
 
     if (myAdminLevel >= 3) {
-        openZoneListFullMode();
+        openZoneListFullMode(); // เรียกฟังก์ชันโหลดข้อมูล (ดูด้านล่าง)
     }
 }
 
