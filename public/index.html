@@ -3923,22 +3923,23 @@ function openUserDetail(targetUsername) {
     modal.classList.remove('hidden');
 }
 
-	// 1. ฟังก์ชันเปิด Modal (เรียกใช้จากปุ่มในรายชื่อ User)
-// 1. ฟังก์ชันเปิด Modal พร้อมสร้าง/อัปเดตแผนที่
+    // 1. ฟังก์ชันเปิด Modal พร้อมสร้าง/อัปเดตแผนที่
     function openSetLocationModal(username, currentLat, currentLng) {
         // [1] เตรียมข้อมูล
         targetUserForLocation = username;
         document.getElementById('loc-target-user').innerText = username;
-        document.getElementById('set-location-modal').classList.remove('hidden');
+        
+        // ลบ class hidden เพื่อให้ Modal แสดงผลก่อน (สำคัญมากสำหรับการคำนวณขนาด Map)
+        const modal = document.getElementById('set-location-modal');
+        modal.classList.remove('hidden');
 
         // จัดการค่าพิกัดเริ่มต้น
-        // การแปลงค่าที่ปลอดภัย (ป้องกัน NaN)
-        const safeLat = (currentLat && currentLat !== 'undefined' && currentLat !== 'null' && !isNaN(parseFloat(currentLat))) ? parseFloat(currentLat) : 13.7563; // Default
+        const safeLat = (currentLat && currentLat !== 'undefined' && currentLat !== 'null' && !isNaN(parseFloat(currentLat))) ? parseFloat(currentLat) : 13.7563; 
         const safeLng = (currentLng && currentLng !== 'undefined' && currentLng !== 'null' && !isNaN(parseFloat(currentLng))) ? parseFloat(currentLng) : 100.5018; 
         const isDefault = (currentLat === '' || currentLat === 'undefined' || currentLat === 'null');
 
-        // ฟังก์ชัน Set พิกัด (ใช้ใน Marker และ Click Event)
-        const setLocation = (lat, lng) => {
+        // ฟังก์ชัน Set พิกัด UI
+        const setLocationUI = (lat, lng) => {
             document.getElementById('input-assign-lat').value = lat;
             document.getElementById('input-assign-lng').value = lng;
             if (lat && lng) {
@@ -3948,71 +3949,62 @@ function openUserDetail(targetUsername) {
             }
         };
         
-        if(isDefault) setLocation('', '');
-        else setLocation(safeLat, safeLng);
+        if(isDefault) setLocationUI('', '');
+        else setLocationUI(safeLat, safeLng);
 
-        // [2] จัดการแผนที่: ใช้ setTimeout เพื่อให้แน่ใจว่า Modal ถูกแสดงผล/มีขนาดที่แน่นอน
+        // [2] จัดการแผนที่: เพิ่ม Delay เล็กน้อยเพื่อให้แน่ใจว่า Browser Render Modal เสร็จแล้ว
         setTimeout(() => {
-            if (assignedMap === null) {
-                // A. สร้างแผนที่ใหม่ (ครั้งแรก)
-                try {
-                    assignedMap = L.map('assigned-map', {
-                        // ป้องกัน Error หากไม่มีพิกัดตั้งต้นที่ถูกต้อง
-                        center: [safeLat, safeLng],
-                        zoom: 13 
-                    });
+            try {
+                // เช็คว่า Element แผนที่พร้อมหรือไม่
+                const mapContainer = document.getElementById('assigned-map');
+                if (!mapContainer) {
+                    console.error("❌ Map Container (#assigned-map) not found!");
+                    return;
+                }
+
+                // กรณี A: สร้างแผนที่ใหม่ถ้ายังไม่มี
+                if (assignedMap === null) {
+                    assignedMap = L.map('assigned-map').setView([safeLat, safeLng], 13);
                     
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        attribution: '&copy; OpenStreetMap contributors'
                     }).addTo(assignedMap);
     
-                    // เพิ่ม Event Listener สำหรับการคลิก/ปักหมุด
+                    // Event Listener คลิกปักหมุด
                     assignedMap.on('click', (e) => {
                         const lat = e.latlng.lat;
                         const lng = e.latlng.lng;
+                        setLocationUI(lat, lng);
                         
-                        setLocation(lat, lng);
-                        
-                        // ย้าย Marker หรือสร้างใหม่
                         if (assignedMarker) {
                             assignedMarker.setLatLng([lat, lng]);
                         } else {
                             assignedMarker = L.marker([lat, lng]).addTo(assignedMap);
                         }
                     });
-
-                    // ใส่ Marker ถ้าไม่ใช่ค่า Default
-                    if (!isDefault) {
-                        assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
-                    }
-
-                } catch (e) {
-                    console.error("Leaflet Map Creation Error:", e);
-                    alert("❌ ไม่สามารถโหลดแผนที่ได้: " + e.message);
+                } 
+                // กรณี B: มีแผนที่แล้ว ให้อัปเดต
+                else {
+                    // *** สำคัญมาก: สั่งให้ Map คำนวณขนาดใหม่ ***
+                    assignedMap.invalidateSize(); 
+                    assignedMap.setView([safeLat, safeLng], 13);
                 }
 
-            } 
-            // B. อัปเดตแผนที่ที่มีอยู่แล้ว
-            else {
-                // 1. แก้ไขปัญหา Map Tile ไม่โหลด/ขาว
-                assignedMap.invalidateSize(); 
-
-                // 2. ย้ายศูนย์กลางแผนที่
-                assignedMap.setView([safeLat, safeLng], 13);
-                
-                // 3. จัดการ Marker
+                // จัดการ Marker เริ่มต้น
                 if (assignedMarker) {
-                    if (isDefault) {
-                        assignedMap.removeLayer(assignedMarker);
-                        assignedMarker = null;
-                    } else {
-                        assignedMarker.setLatLng([safeLat, safeLng]);
-                    }
-                } else if (!isDefault) {
+                    assignedMarker.remove(); // ลบอันเก่าออกก่อนเสมอเพื่อความชัวร์
+                    assignedMarker = null;
+                }
+                
+                if (!isDefault) {
                     assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
                 }
+
+            } catch (e) {
+                console.error("Leaflet Error Detail:", e);
+                // ไม่ต้อง alert user เพราะอาจเป็นแค่ glitch เล็กน้อย
             }
-        }, 50); // ดีเลย์ 50ms 
+        }, 300); // เพิ่ม Delay เป็น 300ms เพื่อความปลอดภัยสูงสุด
     }
 
     // 2. ฟังก์ชันบันทึก
@@ -4022,13 +4014,11 @@ function openUserDetail(targetUsername) {
         let lat = document.getElementById('input-assign-lat').value;
         let lng = document.getElementById('input-assign-lng').value;
         
-        // ถ้าลบ หรือไม่ได้ปักหมุด
         if (isDelete || (lat === '' && lng === '')) {
             if(!confirm('ต้องการลบพิกัดอ้างอิงของ ' + targetUserForLocation + ' ใช่หรือไม่?')) return;
             lat = null;
             lng = null;
         } else {
-            // เช็คว่ามีค่าครบถ้วน
             if (!lat || !lng) return alert('กรุณาปักหมุดบนแผนที่ก่อนบันทึก');
         }
 
@@ -4049,10 +4039,14 @@ function openUserDetail(targetUsername) {
                 alert(data.message);
                 document.getElementById('set-location-modal').classList.add('hidden');
                 
-                // รีโหลด UI
+                // รีโหลด UI รายชื่อ User
                 if(typeof openAllUserList === 'function') {
-                    document.getElementById('user-detail-modal').classList.add('hidden'); 
-                    openAllUserList(document.getElementById('user-search-input').value); 
+                    // ปิด Modal Detail ถ้าเปิดอยู่
+                    const detailModal = document.getElementById('user-detail-modal');
+                    if(detailModal) detailModal.classList.add('hidden');
+                    
+                    const searchInput = document.getElementById('user-search-input');
+                    openAllUserList(searchInput ? searchInput.value : ''); 
                 }
             } else {
                 alert('Error: ' + data.error);
