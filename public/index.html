@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.0 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2355,49 +2355,44 @@ async function showMyClosedPosts(page = 1) {
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
-    // กรณี Admin Level 1: เด้งไปหน้าโซนตัวเองทันที (เหมือนเดิม)
     if (myAdminLevel === 1) {
         return openAssignedZoneMap();
     }
 
-    // กรณี Admin Level 2: แสดงเมนูตัวเลือก (โซนตัวเอง vs ตั้งค่าคนอื่น)
     if (myAdminLevel === 2) {
-        // เช็คว่ามี Modal เมนูหรือยัง ถ้ายังให้สร้างใหม่
         if (!document.getElementById('l2-zone-menu-modal')) {
             const menuHtml = `
-            <div id="l2-zone-menu-modal" class="modal-overlay" style="z-index:3000; display:flex;">
+            <div id="l2-zone-menu-modal" class="modal-overlay" style="z-index:3000;">
                 <div class="modal-box" style="max-width:350px; text-align:center;">
                     <h2 style="color:#007bff;">👮‍♂️ เมนูจัดการโซน</h2>
                     <p style="color:gray; font-size:0.9em; margin-bottom:20px;">เลือกรายการที่ต้องการทำ</p>
                     
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <button class="sidebar-btn" onclick="openAssignedZoneMap(); document.getElementById('l2-zone-menu-modal').style.display='none';" 
+                        <button class="sidebar-btn" onclick="openAssignedZoneMap(); closeL2Menu();" 
                             style="background:#17a2b8; color:white; padding:12px; font-size:1.1em;">
                             🗺️ จัดการโซนตัวเอง
                         </button>
                         
-                        <button class="sidebar-btn" onclick="openZoneListForL2()" 
+                        <button class="sidebar-btn" onclick="openZoneListForL2(); closeL2Menu();" 
                             style="background:#ffc107; color:black; padding:12px; font-size:1.1em;">
                             👥 ตั้งแอดมินให้โซนอื่น
                         </button>
                     </div>
 
-                     <button class="sidebar-btn" onclick="document.getElementById('l2-zone-menu-modal').style.display='none';" 
+                     <button class="sidebar-btn" onclick="closeL2Menu();" 
                         style="margin-top:20px; background:#6c757d; color:white; width:auto; align-self:center;">
                         ปิด
                      </button>
                 </div>
             </div>`;
             document.body.insertAdjacentHTML('beforeend', menuHtml);
-        } else {
-            document.getElementById('l2-zone-menu-modal').style.display = 'flex';
         }
+        document.getElementById('l2-zone-menu-modal').style.display = 'flex';
         return;
     }
 
-    // กรณี Admin Level 3: โหลดหน้าจัดการเต็มรูปแบบ (รวมเพิ่ม/ลบโซน)
     if (myAdminLevel >= 3) {
-        openZoneListFullMode(); // เรียกฟังก์ชันโหลดข้อมูล (ดูด้านล่าง)
+        openZoneListFullMode();
     }
 }
 
