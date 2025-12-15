@@ -1041,52 +1041,8 @@ app.get('/api/posts', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
-    
-    // รับค่า filterScope จาก Frontend (เช่น 'my_zone' หรือ 'all_country')
-    const { requestBy, filterScope } = req.query; 
 
-    // ดึงข้อมูลทั้งหมดก่อน (หรือจะแก้ query ให้ efficient กว่านี้ในอนาคตก็ได้)
-    let allPosts = await postsCollection.find({}).toArray();
-
-    // กรองสำหรับ Admin Level 2 ---
-    if (requestBy) {
-        const requester = await usersCollection.findOne({ username: requestBy });
-        
-        if (requester && requester.adminLevel === 2) {
-            const myCountry = requester.country || 'TH';
-
-            // 1. ดึงข้อมูล Author ของทุก Post มาเพื่อเช็ค Country (อาจจะช้าถ้าข้อมูลเยอะ แนะนำให้ทำ Index หรือเก็บ Country ใน Post)
-            const authorNames = [...new Set(allPosts.map(p => p.author))];
-            const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
-            const authorCountryMap = {};
-            authors.forEach(u => authorCountryMap[u.username] = u.country || 'TH');
-
-            // Filter 1: เอาเฉพาะประเทศเดียวกัน (และกระทู้ Admin หรือกระทู้ตัวเอง)
-            allPosts = allPosts.filter(p => {
-                const isAuthorAdmin = (p.author === 'Admin');
-                const isMe = (p.author === requestBy);
-                const postCountry = authorCountryMap[p.author];
-                
-                return isAuthorAdmin || isMe || (postCountry === myCountry);
-            });
-
-            // Filter 2: แยกโซน vs ทั้งประเทศ
-            if (filterScope === 'my_zone') {
-                // หาโซนที่แอดมินคนนี้ดูแล
-                const myZones = await zonesCollection.find({ assignedAdmin: requestBy }).toArray();
-                const myZoneIds = myZones.map(z => z.id);
-
-                // กรองเฉพาะกระทู้ที่มี zoneId ตรงกับที่ดูแล
-                allPosts = allPosts.filter(p => {
-                    // ถ้าโพสต์ไม่มี zoneId (โพสต์เก่านอกระบบ) หรือตรงกับโซนเรา
-                    return p.zoneId && myZoneIds.includes(p.zoneId);
-                });
-            }
-            // ถ้า filterScope === 'all_country' (หรือค่าอื่น) ก็จะแสดงทั้งหมดที่ผ่าน Filter 1 (คือทั้งประเทศ)
-        }
-    }
-    // ------------------------------------------
-
+    const allPosts = await postsCollection.find({}).toArray();
     const sortedPosts = allPosts.sort((a, b) => {
         const aIsPinnedActive = a.isPinned && !a.isClosed;
         const bIsPinnedActive = b.isPinned && !b.isClosed;
@@ -1096,8 +1052,6 @@ app.get('/api/posts', async (req, res) => {
     });
 
     const paginatedPosts = sortedPosts.slice(skip, skip + limit);
-    
-    // ... (ส่วนดึง authorRating และ return res.json ใช้โค้ดเดิม) ...
     const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
     const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
     const authorMap = {};
@@ -1112,25 +1066,8 @@ app.get('/api/posts', async (req, res) => {
 // 12. Single Post
 app.get('/api/posts/:id', async (req, res) => {
     const id = parseInt(req.params.id);
-    const { requestBy } = req.query; // รับ parameter requestBy เพิ่ม
-
     const post = await postsCollection.findOne({ id: id });
     if (!post) return res.status(404).json({ error: 'ไม่พบกระทู้' });
-
-    // Check Country for Admin Level 2 ---
-    if (requestBy) {
-        const requester = await usersCollection.findOne({ username: requestBy });
-        if (requester && requester.adminLevel === 2 && post.author !== 'Admin') {
-             const authorUser = await usersCollection.findOne({ username: post.author });
-             const myCountry = requester.country || 'TH';
-             const authorCountry = authorUser ? (authorUser.country || 'TH') : 'TH';
-             
-             if (myCountry !== authorCountry) {
-                 return res.status(403).json({ error: 'Access Denied: Different Country' });
-             }
-        }
-    }
-    // ---------------------------------------------
 
     if(!post.isClosed && Date.now() - post.id > 3600000 && !post.isPinned){ 
         await postsCollection.updateOne({ id: id }, { $set: { isClosed: true } });
@@ -1611,71 +1548,6 @@ app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plu
     return res.json({ success: true, zones: zones }); // Return as an array
 });
 
-// 25.1 API สำหรับแอดมินเพิ่มโซนด้วยพิกัด (รองรับ Level 2 + ตรวจสอบประเทศ)
-app.post('/api/admin/add-zone-manual', async (req, res) => {
-    const { requestBy, name, lat, lng, zoneFee } = req.body;
-
-    // 1. ตรวจสอบข้อมูลเบื้องต้น
-    if (!requestBy || !name || !lat || !lng) {
-        return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อ, พิกัด)' });
-    }
-
-    try {
-        const requester = await getUserData(requestBy);
-        
-        // 2. ตรวจสอบระดับแอดมิน (ต้องเป็น Level 2 ขึ้นไป)
-        if (!requester || requester.adminLevel < 2) {
-            return res.status(403).json({ error: '⛔ สิทธิ์ไม่เพียงพอ (ต้องการ Admin Level 2 ขึ้นไป)' });
-        }
-
-        const newLat = parseFloat(lat);
-        const newLng = parseFloat(lng);
-
-        // 3. ตรวจสอบประเทศ (สำหรับ Level 2)
-        // ถ้าเป็น Level 3 (Super Admin) ให้ข้ามการตรวจประเทศได้
-        if (requester.adminLevel === 2) {
-            // ดึงข้อมูลประเทศของพิกัดที่ส่งมา (ใช้ Nominatim API เหมือนฝั่ง Client)
-            // ต้องใส่ User-Agent ตามข้อกำหนดของ OSM
-            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat}&lon=${newLng}&accept-language=en`, {
-                headers: { 'User-Agent': 'WebboardApp/1.0' }
-            });
-            const geoData = await geoRes.json();
-
-            const targetCountryCode = geoData.address ? (geoData.address.country_code || '').toUpperCase() : '';
-            const adminCountry = (requester.country || 'TH').toUpperCase();
-
-            // เปรียบเทียบประเทศ
-            if (targetCountryCode !== adminCountry) {
-                return res.status(400).json({ 
-                    error: `⛔ คุณสามารถเพิ่มโซนได้เฉพาะในประเทศของคุณ (${adminCountry}) เท่านั้น (พิกัดนี้อยู่ใน: ${targetCountryCode})` 
-                });
-            }
-        }
-
-        // 4. บันทึกโซนลง Database
-        const lastZone = await zonesCollection.find().sort({ id: -1 }).limit(1).toArray();
-        const nextId = (lastZone.length > 0 ? lastZone[0].id : 0) + 1;
-
-        const newZone = {
-            id: nextId,
-            name: name.trim(),
-            lat: newLat,
-            lng: newLng,
-            zoneFee: parseFloat(zoneFee) || 5, // ค่าธรรมเนียมเริ่มต้น
-            assignedAdmin: requester.adminLevel === 2 ? requestBy : null, // ถ้า Level 2 สร้าง ให้เป็นเจ้าของเลย
-            bgImage: null
-        };
-
-        await zonesCollection.insertOne(newZone);
-
-        res.json({ success: true, message: '✅ เพิ่มโซนสำเร็จ', zone: newZone });
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'เกิดข้อผิดพลาดทางเทคนิค' });
-    }
-});
-
 // 26. Set Zone Config 
 app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
     const { lat, lng, name, requestBy } = req.body;
@@ -1709,39 +1581,21 @@ app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
 
 // 27. Get Admin List (Level 1+)
 app.get('/api/admin/admins-list', async (req, res) => {
-    const { requestBy } = req.query;
-    if (!requestBy) return res.status(400).json({ error: 'Missing requestBy' });
-
-    try {
-        // 1. ดึงข้อมูลของผู้ร้องขอ (Admin ที่กดเข้ามาดู)
-        const requester = await usersCollection.findOne({ username: requestBy });
-        if (!requester || requester.adminLevel < 1) {
-            return res.status(403).json({ error: 'Unauthorized' });
-        }
-
-        // 2. สร้างเงื่อนไขการค้นหา (Filter)
-        // พื้นฐาน: ต้องเป็น Admin (Level > 0)
-        let query = { adminLevel: { $gt: 0 } };
-
-        // 🔥 เงื่อนไขพิเศษ: ถ้าเป็น Admin Level 2
-        // ต้องเห็นเฉพาะ Admin ที่อยู่ในประเทศเดียวกัน (Country) เท่านั้น
-        if (requester.adminLevel === 2) {
-            query.country = requester.country; 
-        }
-
-        // 3. ดึงรายชื่อ
-        const admins = await usersCollection.find(query).project({ 
-            password: 0, 
-            socketId: 0,
-            email: 0 
-        }).toArray();
-
-        res.json(admins);
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: e.message });
+    // Requires Admin Level 1+ to request this list
+    const requester = await getUserData(req.query.requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
     }
+    
+    // Find users with adminLevel >= 1
+    const admins = await usersCollection.find({ adminLevel: { $gte: 1 } }).sort({ adminLevel: -1, username: 1 }).toArray();
+
+    // Return essential data: name, level, isBanned
+    res.json(admins.map(a => ({ 
+        name: a.username, 
+        level: a.adminLevel || 0,
+        isBanned: a.isBanned // Include isBanned check
+    })));
 });
 
 
@@ -1865,26 +1719,9 @@ io.on('connection', (socket) => {
         // ⭐ [NEW] ดึงข้อมูล User จากฐานข้อมูลเพื่อดู Admin Level
         const user = await usersCollection.findOne({ username: username });
         const myAdminLevel = user ? (user.adminLevel || 0) : 0;
-		
-		if (myAdminLevel === 2) {
-            // 1. ดึงข้อมูลผู้แต่งกระทู้เพื่อดูประเทศ
-            const authorUser = await usersCollection.findOne({ username: post.author });
-            
-            // ถ้าหาผู้แต่งไม่เจอ หรือ ผู้แต่งเป็น Admin ใหญ่ ให้ผ่านไปก่อน
-            if (authorUser && post.author !== 'Admin') {
-                const myCountry = user.country || 'TH';
-                const authorCountry = authorUser.country || 'TH';
-
-                // เงื่อนไข: ถ้าคนละประเทศ -> ห้ามเข้า
-                if (myCountry !== authorCountry) {
-                    socket.emit('access-denied', '⛔ Access Denied: This post is outside your country jurisdiction.');
-                    return; 
-                }
-            }
-        }
 
         const isOwner = username === post.author;
-        // เป็น Admin ถ้าชื่อ 'Admin' หรือมี Level >= 1
+        // ⭐ [EDIT] เป็น Admin ถ้าชื่อ 'Admin' หรือมี Level >= 1
         const isAdmin = (username === 'Admin') || (myAdminLevel >= 1);
         
         const isParticipant = isOwner || username === post.acceptedViewer;

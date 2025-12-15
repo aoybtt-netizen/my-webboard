@@ -133,7 +133,7 @@
     <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
-    <div class="sidebar" id="sidebar" style="left: -280px;">
+    <div class="sidebar" id="sidebar">
     <h2 style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
@@ -219,10 +219,6 @@
 	
 		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
     <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
-		<select id="admin-scope-filter" onchange="loadPosts()" style="display:none; width: auto; padding: 5px; margin-right: 5px; font-size: 0.8em; border-radius: 5px; border: 1px solid #007bff; background: white;">
-        <option value="my_zone">🌐 เฉพาะโซนของฉัน</option>
-        <option value="all_country">🏳️ ทั้งประเทศ</option>
-    </select>
         <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
 </div>
 
@@ -239,7 +235,7 @@
 </div>
 </div>
 
-    <div id="login-modal" class="modal-overlay hidden">
+    <div id="login-modal" class="modal-overlay">
         <div class="modal-box" style="text-align:center;">
             <h2 data-i18n-key="login_title">ยินดีต้อนรับ</h2>
             <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus data-i18n-key="login_placeholder">
@@ -375,7 +371,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.46 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -386,7 +382,6 @@
 		let filterLocation = null;      // เก็บพิกัดคนดู
         let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
 		let userPrimaryLocation = null;
-		let myCountry = 'TH';
 		// Cooldown สำหรับการป้องกัน Rapid Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -439,127 +434,45 @@
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
 	async function openAdminAssignModal(zoneId, zoneName) {
-    if (myAdminLevel < 2) return alert('❌ ต้องเป็น Admin Level 2 ขึ้นไป');
-    
+    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
     currentZoneToAssign = zoneId;
+    
     document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName}`;
     document.getElementById('admin-assign-modal').classList.remove('hidden');
     
-    // ... (ส่วนการ fetch รายชื่อแอดมินคงเดิม ไม่ต้องแก้) ...
     const adminListEl = document.getElementById('admin-list-for-assign');
     const t = translations[currentLang];
-    adminListEl.innerHTML = `<p style="text-align:center;">Loading...</p>`;
+    adminListEl.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg']}</p>`;
 
     try {
+        // Fetch Admin list from the new API endpoint
         const res = await fetch(`/api/admin/admins-list?requestBy=${myUsername}`);
         const data = await res.json();
         
         if (data && data.length > 0) {
             adminListEl.innerHTML = data.map(admin => {
-                if (admin.isBanned) return '';
+                // Filter out banned admins
+                if (admin.isBanned) return ''; 
+                
                 const levelDisplay = admin.level > 0 ? `L${admin.level}` : '';
                 return `
                     <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
                          onclick="assignAdminToZone('${zoneId}', '${admin.name}', '${zoneName}')">
                         <span>👨‍💼 <b>${admin.name}</b> <span style="color:#007bff; font-size:0.8em;">${levelDisplay}</span></span>
-                        <button class="sidebar-btn create-btn" style="padding: 5px 10px; font-size: 0.8em; width: auto;">เลือก</button>
+                        <button class="sidebar-btn create-btn" style="padding: 5px 10px; font-size: 0.8em; width: auto;" data-i18n-key="btn_select">
+                            ${t['btn_select']}
+                        </button>
                     </div>
                 `;
             }).join('');
         } else {
-            adminListEl.innerHTML = `<p style="text-align:center;">ไม่พบแอดมิน</p>`;
+            adminListEl.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_admins_found']}</p>`;
         }
     } catch (e) {
-        adminListEl.innerHTML = `<p style="text-align:center; color:red;">Error</p>`;
+        adminListEl.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_fetch_admins']}</p>`;
+        console.error('Error fetching admins for assignment:', e);
     }
 }
-
-// ฟังก์ชันบันทึกการมอบหมาย
-async function assignAdminToZone(zoneId, adminUsername, zoneName) {
-    if (myAdminLevel < 2) return;
-    
-    const t = translations[currentLang];
-    if (!confirm(`ยืนยันการมอบหมายให้ ${adminUsername} ดูแลโซน ${zoneName}?`)) return;
-
-    try {
-        const res = await fetch('/api/admin/assign-zone', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                zoneId: zoneId, 
-                adminUsername: adminUsername,
-                requestBy: myUsername 
-            })
-        });
-
-        const data = await res.json();
-        if (data.success) {
-            alert(`✅ มอบหมายสำเร็จ!`);
-            document.getElementById('admin-assign-modal').classList.add('hidden');
-            // รีเฟรชรายชื่อโซน (ถ้าเปิดอยู่)
-            fetchAndRenderZonesList(); 
-        } else {
-            alert(`❌ Error: ${data.error}`);
-        }
-    } catch (e) {
-        alert('❌ Error connecting to server');
-    }
-}
-
-async function addZoneManual() {
-    const name = document.getElementById('manual-zone-name').value;
-    const lat = document.getElementById('manual-zone-lat').value;
-    const lng = document.getElementById('manual-zone-lng').value;
-    const fee = document.getElementById('manual-zone-fee').value;
-
-    if (!name || !lat || !lng) {
-        alert('กรุณากรอกชื่อและพิกัดให้ครบถ้วน');
-        return;
-    }
-
-    // แสดงสถานะกำลังทำงาน
-    const btn = document.querySelector('button[onclick="addZoneManual()"]');
-    const originalText = btn.innerText;
-    btn.innerText = '⏳ กำลังตรวจสอบ...';
-    btn.disabled = true;
-
-    try {
-        const res = await fetch('/api/admin/add-zone-manual', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                requestBy: myUsername,
-                name: name,
-                lat: lat,
-                lng: lng,
-                zoneFee: fee
-            })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            alert(data.message);
-            // ล้างค่าในฟอร์ม
-            document.getElementById('manual-zone-name').value = '';
-            document.getElementById('manual-zone-lat').value = '';
-            document.getElementById('manual-zone-lng').value = '';
-            
-            // รีเฟรชรายการโซน
-            openAdminZoneModal(); 
-        } else {
-            alert(data.error);
-        }
-    } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
-        console.error(e);
-    } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-}
-
-window.addZoneManual = addZoneManual;
 
 // ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
 async function assignAdminToZone(zoneId, adminUsername, zoneName) {
@@ -1346,17 +1259,18 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
     checkNewTransaction();
     loadUnreadStatus(); 
+
+    // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
+    await updateUserInfo(); 
+	checkPrimaryLocationAndLoad();
+	fetchAndRenderAnnouncement();
     
     // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
     // แล้วค่อยโหลดกระทู้ ปุ่มจะถูกสร้างเงื่อนไขได้ถูกต้อง
-    loadPosts();
-	await updateUserInfo(); 
-    checkPrimaryLocationAndLoad();
-    fetchAndRenderAnnouncement();
+    loadPosts(); 
     
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
     updateFilterButtonState();
-	switchView('home');
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
@@ -1417,10 +1331,6 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}`);
         
         const data = await response.json();
-		
-		if (data.country) {
-        myCountry = data.country;
-    }
 
         if (data.error) {
             if (data.error.includes('ระงับ')) {
@@ -1433,17 +1343,6 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         
         // ... (ส่วนที่เหลือถูกต้องแล้วครับ ใช้โค้ดเดิมต่อได้เลย) ...
         myAdminLevel = data.adminLevel || 0;
-		const scopeFilter = document.getElementById('admin-scope-filter');
-        if (scopeFilter) {
-            // โชว์เฉพาะถ้าเป็น Level 2
-            if (myAdminLevel === 2) {
-                scopeFilter.style.display = 'inline-block';
-            } else {
-                scopeFilter.style.display = 'none';
-                scopeFilter.value = 'my_zone'; // Reset ค่า
-            }
-        }
-		
         myZoneId = data.userZoneId || null;
                 
         const avatarEl = document.getElementById('user-avatar-display');
@@ -1929,64 +1828,35 @@ function getTransactionDetail(t) {
         
         function switchView(view) {
     currentView = view;
-    currentPostPage = 1;
-
-    // ดึง Element ที่เกี่ยวข้อง
-    const filterContainer = document.getElementById('filter-container');
-    const adminScopeFilter = document.getElementById('admin-scope-filter'); // Dropdown โซน
-    const geoFilterBtn = document.getElementById('geo-filter-btn');       // ปุ่มเช็คอิน
-    const title = document.getElementById('page-title');
-
-    // 1. จัดการการแสดงผลปุ่ม (Filter Bar)
-    if (filterContainer) {
-        if (view === 'home') {
-            // [หน้า Home]
-            // - ต้องโชว์แถบ Container
-            // - ต้องโชว์ปุ่มเช็คอิน (geo)
-            // - ต้องซ่อน Dropdown Admin
-            filterContainer.style.display = 'block'; 
-            if (geoFilterBtn) geoFilterBtn.style.display = 'inline-block';
-            if (adminScopeFilter) adminScopeFilter.style.display = 'none';
-
-        } else if (view === 'closed') {
-            // [หน้า Closed]
-            // - ต้องโชว์แถบ Container
-            // - ต้องซ่อนปุ่มเช็คอิน (geo) -> เพื่อไม่ให้เข้าใจผิดว่ากรองระยะทาง
-            // - ต้องโชว์ Dropdown Admin (ถ้าเป็น Level 2)
-            filterContainer.style.display = 'block';
-            if (geoFilterBtn) geoFilterBtn.style.display = 'none';
-            
-            if (myAdminLevel === 2 && adminScopeFilter) {
-                adminScopeFilter.style.display = 'inline-block';
-            } else if (adminScopeFilter) {
-                adminScopeFilter.style.display = 'none';
+    currentPostPage = 1; 
+	
+	const filterContainer = document.getElementById('filter-container');
+            if (filterContainer) {
+                // โชว์เฉพาะหน้า 'home' เท่านั้น
+                filterContainer.style.display = (view === 'home') ? 'block' : 'none';
             }
-
-        } else {
-            // [หน้าอื่นๆ เช่น กระทู้ฉัน] ซ่อนแถบทั้งหมด
-            filterContainer.style.display = 'none';
-        }
-    }
-
-    // 2. จัดการหัวข้อและการโหลดข้อมูล
+    
+    const title = document.getElementById('page-title');
     if (view === 'home') {
-        title.innerText = translations[currentLang]['page_title'];
+        title.innerText = translations[currentLang]['page_title']; // ใช้ translation key
         title.style.color = "#333";
-        loadPosts();
+        loadPosts(); 
         
-        // ตั้งค่าปุ่ม Pagination ให้กลับมาทำงานกับ loadPosts
+        // 💡 ตั้งค่าปุ่ม Pagination ให้กลับไปเรียก loadPosts
         document.getElementById('post-prev-btn').onclick = () => changePostPage(-1);
         document.getElementById('post-next-btn').onclick = () => changePostPage(1);
 
     } else if (view === 'closed') {
+        // ⭐ [FIXED] ใช้ translation key สำหรับหน้า Admin Closed
         title.innerText = translations[currentLang]['admin_closed_posts'];
         title.style.color = "#6c757d";
-        loadPosts(); // โหลดข้อมูล (Dropdown จะถูกส่งไปกับ request โดยอัตโนมัติ)
+        loadPosts(); // โหลดรายการปกติ (กระทู้ปิดทั้งหมด)
 
-    } else if (view === 'my_active') {
-        showMyActivePosts(1);
-    } else if (view === 'my_closed') {
-        showMyClosedPosts(1);
+    } else if (view === 'my_active') { 
+        showMyActivePosts(1); 
+        
+    } else if (view === 'my_closed') { 
+        showMyClosedPosts(1); 
     }
     
     toggleSidebar();
@@ -1994,22 +1864,8 @@ function getTransactionDetail(t) {
 
         async function loadPosts() {
             try {
-        // สร้าง URL พื้นฐาน
-        let url = '/api/posts?limit=1000';
-
-        // 1. แนบชื่อผู้ขอข้อมูล (เพื่อให้ Server รู้ level และ country ของเรา)
-        if (myUsername) {
-            url += `&requestBy=${myUsername}`;
-        }
-
-        // 2. แนบค่าตัวเลือก Filter (เฉพาะกรณีที่ปุ่มโชว์อยู่)
-        const scopeFilter = document.getElementById('admin-scope-filter');
-        if (scopeFilter && scopeFilter.style.display !== 'none') {
-            url += `&filterScope=${scopeFilter.value}`;
-        }
-
-        // เรียกดึงข้อมูลด้วย URL ใหม่ที่สร้างขึ้น
-        const res = await fetch(url);
+                // ดึงข้อมูลกระทู้ (Limit 1000 เพื่อให้ได้ข้อมูลครบถ้วนสำหรับหน้า Admin)
+                const res = await fetch('/api/posts?limit=1000');
                 const responseData = await res.json();
                 
                 // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ Array และ Object)
@@ -2192,22 +2048,26 @@ async function showMyClosedPosts(page = 1) {
             return true;
         });
     }
-	
-	if (currentView !== 'closed' && filterLocation && filterMaxDistance) {
+			
+			if (filterLocation && filterMaxDistance) {
         filteredPosts = filteredPosts.filter(item => {
+            // ... (โค้ดการคำนวณระยะทางเดิม) ...
+            
             const post = item.data;
+            // ถ้ากระทู้ไม่มีพิกัด ก็ไม่ต้องแสดง (ยังคง logic เดิม)
             if (!post.location || !post.location.lat || !post.location.lng) {
-                 return false;  
+                 return false;  
             }
             
             const dist = getDistanceFromLatLonInKm(
                 filterLocation.lat, filterLocation.lng,
                 post.location.lat, post.location.lng
             );
+            // คืนค่า True ถ้าอยู่ในระยะ
             return dist <= filterMaxDistance;
         });
-    }
-			
+}
+            
             filteredPosts.sort((a, b) => {
                 const postA = a.data;
                 const postB = b.data;
@@ -2355,155 +2215,89 @@ async function showMyClosedPosts(page = 1) {
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
-    // กรณี Admin Level 1: เด้งไปหน้าโซนตัวเองทันที (เหมือนเดิม)
-    if (myAdminLevel === 1) {
-        return openAssignedZoneMap();
+    // 1. ถ้าเป็น Admin Level 1 หรือ 2 ให้เปลี่ยนไปใช้ฟังก์ชันเฉพาะ
+    if (myAdminLevel >= 1 && myAdminLevel < 3) {
+        // [แก้ไข] ลบการ alert ออก และมั่นใจว่า Admin L1/L2 ถูกพาไปหน้าจัดการโซนของตนเอง
+        return openAssignedZoneMap(); // ไปจัดการแผนที่โซนที่ได้รับมอบหมาย
     }
-
-    // กรณี Admin Level 2: แสดงเมนูตัวเลือก (โซนตัวเอง vs ตั้งค่าคนอื่น)
-    if (myAdminLevel === 2) {
-        // เช็คว่ามี Modal เมนูหรือยัง ถ้ายังให้สร้างใหม่
-        if (!document.getElementById('l2-zone-menu-modal')) {
-            const menuHtml = `
-            <div id="l2-zone-menu-modal" class="modal-overlay" style="z-index:3000; display:flex;">
-                <div class="modal-box" style="max-width:350px; text-align:center;">
-                    <h2 style="color:#007bff;">👮‍♂️ เมนูจัดการโซน</h2>
-                    <p style="color:gray; font-size:0.9em; margin-bottom:20px;">เลือกรายการที่ต้องการทำ</p>
-                    
-                    <div style="display:flex; flex-direction:column; gap:10px;">
-                        <button class="sidebar-btn" onclick="openAssignedZoneMap(); document.getElementById('l2-zone-menu-modal').style.display='none';" 
-                            style="background:#17a2b8; color:white; padding:12px; font-size:1.1em;">
-                            🗺️ จัดการโซนตัวเอง
-                        </button>
-                        
-                        <button class="sidebar-btn" onclick="openZoneListForL2()" 
-                            style="background:#ffc107; color:black; padding:12px; font-size:1.1em;">
-                            👥 ตั้งแอดมินให้โซนอื่น
-                        </button>
-                    </div>
-
-                     <button class="sidebar-btn" onclick="document.getElementById('l2-zone-menu-modal').style.display='none';" 
-                        style="margin-top:20px; background:#6c757d; color:white; width:auto; align-self:center;">
-                        ปิด
-                     </button>
-                </div>
-            </div>`;
-            document.body.insertAdjacentHTML('beforeend', menuHtml);
-        } else {
-            document.getElementById('l2-zone-menu-modal').style.display = 'flex';
-        }
-        return;
+    
+    // 2. จำกัดการเข้าถึงส่วนนี้สำหรับ Admin Level 3 (Super Admin) เท่านั้น
+    if (myAdminLevel < 3) {
+        return alert('❌ ต้องเป็น Admin Level 3 เท่านั้นเพื่อจัดการโซนทั้งหมด');
     }
-
-    // กรณี Admin Level 3: โหลดหน้าจัดการเต็มรูปแบบ (รวมเพิ่ม/ลบโซน)
-    if (myAdminLevel >= 3) {
-        openZoneListFullMode(); // เรียกฟังก์ชันโหลดข้อมูล (ดูด้านล่าง)
-    }
-}
-
-		function openZoneListForL2() {
-    document.getElementById('l2-zone-menu-modal').style.display = 'none';
+    
+    // 3. แสดง Modal และตั้งค่าเริ่มต้น (สำหรับ Admin L3)
     document.getElementById('admin-zone-modal').classList.remove('hidden');
     
-    // ซ่อนส่วน "เพิ่มโซนใหม่" (Input และปุ่มเพิ่ม)
-    const addHeader = document.querySelector('h3[data-i18n-key="admin_add_new_zone"]');
     const latInput = document.getElementById('zone-lat-input');
     const lngInput = document.getElementById('zone-lng-input');
     const nameInput = document.getElementById('zone-name-input');
-    // ซ่อนปุ่ม "เพิ่มโซน" (ปุ่มสุดท้ายใน modal-box)
-    const addBtn = document.querySelector('#admin-zone-modal .create-btn[onclick="addZoneConfig()"]');
-
-    if(addHeader) addHeader.style.display = 'none';
-    if(latInput) { latInput.style.display = 'none'; document.querySelector('label[for="zone-lat-input"]').style.display='none'; }
-    if(lngInput) { lngInput.style.display = 'none'; document.querySelector('label[for="zone-lng-input"]').style.display='none'; }
-    if(nameInput) { nameInput.style.display = 'none'; document.querySelector('label[for="zone-name-input"]').style.display='none'; }
-    if(addBtn) addBtn.style.display = 'none';
-
-    // โหลดรายชื่อโซน
-    fetchAndRenderZonesList();
-}
-
-// ฟังก์ชันสำหรับ L3: เปิดหน้ารายชื่อโซน (แสดงครบทุกอย่าง)
-function openZoneListFullMode() {
-    document.getElementById('admin-zone-modal').classList.remove('hidden');
-    
-    // แสดงส่วน "เพิ่มโซนใหม่" กลับคืนมา
-    const addHeader = document.querySelector('h3[data-i18n-key="admin_add_new_zone"]');
-    const latInput = document.getElementById('zone-lat-input');
-    const addBtn = document.querySelector('#admin-zone-modal .create-btn[onclick="addZoneConfig()"]');
-    
-    if(addHeader) addHeader.style.display = 'block';
-    if(latInput) { 
-        latInput.style.display = 'block'; 
-        document.querySelector('label[for="zone-lat-input"]').style.display='block';
-        document.getElementById('zone-lng-input').style.display = 'block';
-        document.querySelector('label[for="zone-lng-input"]').style.display='block';
-        document.getElementById('zone-name-input').style.display = 'block';
-        document.querySelector('label[for="zone-name-input"]').style.display='block';
-    }
-    if(addBtn) addBtn.style.display = 'inline-block';
-
-    // โหลดรายชื่อโซน
-    fetchAndRenderZonesList();
-}
-
-// ฟังก์ชันกลางสำหรับดึงข้อมูลโซน (แยกออกมาจากโค้ดเดิมเพื่อให้เรียกใช้ซ้ำได้)
-async function fetchAndRenderZonesList() {
     const listContainer = document.getElementById('zone-list-container');
     const t = translations[currentLang];
+
+    latInput.value = ''; 
+    lngInput.value = '';
+    nameInput.value = '';
     listContainer.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg'] || 'Loading...'}</p>`;
 
     try {
-        const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`);
+        const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`); 
         if (res.status === 200) {
             const data = await res.json();
+            
             if (data.zones && data.zones.length > 0) {
                 listContainer.innerHTML = data.zones.map(zone => {
+                    // ... โค้ดเดิม
                     const lat = parseFloat(zone.lat).toFixed(4);
                     const lng = parseFloat(zone.lng).toFixed(4);
-                    const name = zone.name || `Zone ID: ${zone.id}`;
-                    const safeName = name.replace(/'/g, "\\'");
-                    const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                    const name = zone.name || `Zone ID: ${zone.id}`; 
+                    
+                    // ป้องกัน Error กรณีชื่อมีเครื่องหมาย '
+                    const safeName = name.replace(/'/g, "\\'"); 
+                    
+                    const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                     const assignedAdmin = zone.assignedAdmin || '-';
                     
-                    // ปุ่มเลือก Admin (L2 ก็ต้องเห็นปุ่มนี้)
-                    const assignBtn = `
-                        <button class="sidebar-btn" onclick="openAdminAssignModal('${zone.id}', '${safeName}')" 
-                        style="padding: 5px 10px; font-size: 0.8em; width: auto; background: #ffc107; color: black;">
-                            👥 เลือกแอดมิน
-                        </button>
-                    `;
+                    // 🔑 เงื่อนไขการแก้ไข: Admin L3 (Super Admin) หรือเป็น Admin ที่ถูกมอบหมายของโซนนี้
+                    // [สำคัญ]: แม้ว่า Admin L1/L2 จะไม่ควรเข้าถึงฟังก์ชันนี้โดยตรง แต่ถ้าพวกเขาถูกมอบหมายให้เป็น Admin ของโซน 
+                    // และมี myAdminLevel >= 1 โค้ดนี้ก็ควรแสดงช่องกรอกชื่อโซนให้
+                    const canEdit = myAdminLevel >= 3 || (myAdminLevel >= 1 && zone.assignedAdmin === myUsername);
 
-                    // ปุ่มลบโซน (เฉพาะ L3)
-                    const deleteBtn = (myAdminLevel >= 3) ? `
-                         <button class="sidebar-btn" onclick="deleteZone('${zone.id}', '${safeName}')" 
-                         style="padding: 5px 10px; font-size: 0.8em; width: auto; background: #dc3545; color: white; margin-left:5px;">
-                            🗑️
-                        </button>
-                    ` : '';
+                    let nameInputHtml = '';
+                    if (canEdit) {
+                        const t = translations[currentLang] || translations['th'];
+                        // ถ้าชื่อโซนเป็นค่าดีฟอลต์ (Zone ID:...) ให้เว้นว่างช่องกรอก
+                        const currentName = name.includes('Zone ID:') ? '' : name;
+                        nameInputHtml = `
+                            <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                                <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name']}:</label>
+                                <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name']}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
+                                <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
+                                    ${t['btn_save']}
+                                </button>
+                            </div>
+                        `;
+                    }
 
                     return `
-                        <div style="padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    🗺️ <b>${name}</b> <a href="${mapLink}" target="_blank" style="text-decoration:none;">(📍Map)</a><br>
-                                    <small>ผู้ดูแล: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
-                                </div>
-                                <div style="display:flex;">
-                                    ${assignBtn}
-                                    ${deleteBtn}
-                                </div>
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
+                            <div style="flex-basis: 100%; margin-bottom: 5px;">
+                                🗺️ <b>${name}</b> <br>
+                                <small>${t['admin_assigned_to']}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
                             </div>
-                        </div>
+                            ${nameInputHtml}
+                            </div>
                     `;
                 }).join('');
             } else {
-                listContainer.innerHTML = `<p style="text-align:center;">ไม่พบโซน</p>`;
+                listContainer.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_zones_found']}</p>`;
             }
+        } else {
+             listContainer.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_fetch_zones']}</p>`;
         }
     } catch (e) {
-        console.error(e);
-        listContainer.innerHTML = `<p style="text-align:center; color:red;">Connection Error</p>`;
+        console.error('Error fetching zone config:', e);
+        listContainer.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_connection']}</p>`;
     }
 }
 
@@ -2757,7 +2551,7 @@ async function deleteZone(zoneId, zoneName) {
 window.deleteZone = deleteZone;
 
 		async function addZoneConfig() {
-    if (myAdminLevel < 2) return; 
+    if (myAdminLevel < 3) return;
     
     const latInput = document.getElementById('zone-lat-input').value.trim();
     const lngInput = document.getElementById('zone-lng-input').value.trim();
@@ -2769,26 +2563,6 @@ window.deleteZone = deleteZone;
 
     if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         return alert(t['alert_invalid_zone']);
-    }
-	
-		if (myAdminLevel === 2) {
-        // ต้องพึ่งพาข้อมูลจาก currentLocationData ที่ได้จากการกดปุ่ม "ระบุตำแหน่ง" (geo-btn)
-        // หรือถ้า user กรอกมือ เราอาจจะต้องแจ้งเตือนให้เขากดปุ่มระบุตำแหน่งเพื่อยืนยันประเทศ
-        
-        if (!currentLocationData || 
-            parseFloat(currentLocationData.lat).toFixed(4) !== parseFloat(latInput).toFixed(4) ||
-            parseFloat(currentLocationData.lng).toFixed(4) !== parseFloat(lngInput).toFixed(4)) {
-            
-            // ถ้ายูสเซอร์กรอกมือเอง เราจะไม่รู้ประเทศ -> บังคับให้ใช้ปุ่ม Pin
-            alert('🔒 Admin Level 2 กรุณาใช้ปุ่ม "📍 ระบุตำแหน่งปัจจุบัน" เพื่อยืนยันพิกัดประเทศก่อนเพิ่มโซน');
-            return;
-        }
-
-        // ตรวจสอบว่าประเทศตรงกันไหม
-        if (currentLocationData.countryCode !== myCountry) {
-            alert(`⛔ ไม่อนุญาต: คุณ (${myCountry}) ไม่สามารถสร้างโซนในต่างประเทศ (${currentLocationData.countryCode}) ได้`);
-            return;
-        }
     }
 
     try {
@@ -3099,12 +2873,6 @@ function openAdminPinnedModal() {
             if(data.address.road) placeName = `${data.address.road}, ${placeName}`;
 
             currentLocationData = { lat, lng, name: placeName };
-			currentLocationData = { 
-								lat, 
-								lng, 
-								name: placeName,
-								countryCode: data.address.country_code ? data.address.country_code.toUpperCase() : 'TH' // เก็บเป็นตัวพิมพ์ใหญ่ (TH, US, etc.)
-    };
 
             // -----------------------------------------------------
             // Logic สำหรับ Primary Check-in (เช็คอินหลัก)
@@ -3759,14 +3527,20 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     if (!myUsername) return document.getElementById('login-modal').classList.remove('hidden');
 
     document.getElementById('user-list-modal').classList.remove('hidden');
+    // ปิด Sidebar ถ้าเปิดอยู่
     if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+    
+    // ดึงคีย์ภาษา
     const t = translations[currentLang];
+    
+    // ตั้งชื่อหัวข้อโดยใช้คีย์ภาษา
     document.getElementById('user-list-title').innerText = t['inbox_title'] || "💬 กล่องข้อความส่วนตัว";
     document.getElementById('user-list-desc').innerText = t['inbox_desc_recent'] || "รายชื่อคู่สนทนาล่าสุด";
     
     const container = document.getElementById('user-list-container');
     container.innerHTML = `<p style="text-align:center;">⏳ ${t['loading'] || 'กำลังโหลด...'}</p>`;
-
+    
+    // ซ่อน Search Box ชั่วคราว (ใน Inbox ไม่ต้องใช้ Search สมาชิกทั้งหมด)
     document.getElementById('user-search-input').style.display = 'none'; 
     document.getElementById('pagination-controls').style.display = 'none';
 
@@ -3775,7 +3549,7 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
         const contacts = await res.json();
         
         let html = '';
-        let hasAdminContact = false;
+        let hasAdminContact = false; // ตัวแปรเช็คว่าเคยคุยกับ Admin ไหม
 
         if (contacts.length === 0) {
             html += `<div style="text-align:center; color:gray; margin-top:20px;">${t['inbox_no_history'] || 'ยังไม่มีประวัติการสนทนา'}</div>`;
@@ -3783,9 +3557,11 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
             html = contacts.map(c => {
                 const dot = c.unreadCount > 0 ? `<span class="unread-indicator" style="animation: none;">${c.unreadCount}</span>` : '';
                 const style = c.unreadCount > 0 ? 'font-weight:bold; background:#fff8e1;' : '';
+                
+                // เช็คว่าเป็น Admin หรือไม่
                 let nameDisplay = `👤 ${c.partner}`;
                 if (c.isAdmin) {
-                    hasAdminContact = true;
+                    hasAdminContact = true; // เจอแล้ว! เคยคุยกับ Admin
                     nameDisplay = `🛡️ <b>${c.partner}</b> ${t['admin_label'] || '(Admin)'}`;
                 }
 
@@ -3800,9 +3576,14 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
             }).join('');
         }
 
+        // ถ้ายังไม่เคยคุยกับ Admin เลย ให้หา Admin ใกล้ตัวมาแนะนำ
         if (!hasAdminContact) {
+            // สร้าง Element สำหรับแสดงผลแนะนำ
             const suggestionId = 'admin-suggestion-box';
+            // แทรกล่องรอไว้ด้านบนสุด
             html = `<div id="${suggestionId}" style="margin-bottom:10px;"></div>` + html;
+            
+            // สั่งทำงานแบบ Async เพื่อไปหา Nearest Admin (ไม่ Block UI หลัก)
             fetchNearestAdminForInbox(suggestionId);
         }
 
@@ -3814,16 +3595,19 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     }
 }
 
+// ฟังก์ชันหา Admin ใกล้ตัวเพื่อแสดงใน Inbox (รองรับ i18n)
 async function fetchNearestAdminForInbox(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
     
-    const t = translations[currentLang];
+    const t = translations[currentLang]; // ดึงคีย์ภาษา
     
+    // ข้อความกำลังค้นหา
     el.innerHTML = `<div style="padding:10px; background:#f0f9ff; border:1px dashed #007bff; border-radius:8px; text-align:center; font-size:0.9em; color:#007bff;">
         ${t['admin_searching'] || '⏳ กำลังค้นหาผู้ดูแลโซนของคุณ...'}
     </div>`;
 
+    // 1. หาพิกัด (ใช้พิกัดล่าสุดที่เก็บไว้ หรือพิกัด Default)
     let lat = null, lng = null;
     if (userPrimaryLocation) {
         lat = userPrimaryLocation.lat;
@@ -3833,6 +3617,7 @@ async function fetchNearestAdminForInbox(elementId) {
         lng = currentLocationData.at;
     }
 
+    // 2. เรียก API
     try {
         const query = (lat && lng) ? `?lat=${lat}&lng=${lng}` : '';
         const res = await fetch(`/api/nearest-admin${query}`);
@@ -3847,7 +3632,7 @@ async function fetchNearestAdminForInbox(elementId) {
                 <div style="font-size:0.75em; color:gray; text-align:center; margin-top:2px;">${t['admin_recommended_label'] || 'แนะนำผู้ดูแลโซนใกล้คุณ'}</div>
             `;
         } else {
-            el.remove();
+            el.remove(); // ถ้าหาไม่เจอจริงๆ ก็ลบกล่องทิ้ง
         }
     } catch (e) {
         console.error(e);
@@ -3858,6 +3643,7 @@ async function fetchNearestAdminForInbox(elementId) {
     let allUsersCache = [];
     
 	async function openAllUserList(searchTerm = '') {
+    // 1. จัดการการเปิด Modal
     const modal = document.getElementById('user-list-modal');
     if (searchTerm === '' && modal.classList.contains('hidden')) {
         modal.classList.remove('hidden');
@@ -3866,18 +3652,23 @@ async function fetchNearestAdminForInbox(elementId) {
         if (input) input.value = '';
     }
 
+    // 2. ดึงชุดคำแปลปัจจุบัน
     const t = translations[currentLang] || translations['th'];
+
+    // ตั้งค่า UI หัวข้อ
     document.getElementById('user-list-title').innerText = t['modal_user_list_title'];
     document.getElementById('user-list-desc').innerText = t['modal_user_list_desc'];
     document.getElementById('pagination-controls').style.display = 'none';
     
     const searchInput = document.getElementById('user-search-input');
     searchInput.style.display = 'block';
-    searchInput.placeholder = t['search_placeholder'];
+    searchInput.placeholder = t['search_placeholder']; // อัปเดต Placeholder ตามภาษา
 
     const container = document.getElementById('user-list-container');
 
+    // 3. ฟังก์ชันดึงข้อมูล (Internal)
     const fetchData = async (query) => {
+        // แสดงสถานะ Loading (ใช้คำแปลถ้ามี หรือใช้ Hardcode ชั่วคราว)
         const loadingText = currentLang === 'th' ? '⏳ กำลังค้นหา...' : '⏳ Searching...';
         container.innerHTML = `<p style="text-align:center;">${loadingText}</p>`;
         
@@ -3892,7 +3683,10 @@ async function fetchNearestAdminForInbox(elementId) {
             }
             
             const users = await res.json();
+            
+            // --- แก้ไขจุดที่แสดงข้อความเมื่อไม่พบข้อมูล ---
             if (users.length === 0) {
+                // ดึงข้อความจาก translations และแทนที่ [NAME] ด้วยคำค้นหา
                 const notFoundMsg = t['msg_user_not_found'].replace('[NAME]', query);
                 const noMembersMsg = t['msg_no_members'];
 
@@ -3901,6 +3695,7 @@ async function fetchNearestAdminForInbox(elementId) {
                     : `<p style='text-align:center; color:gray;'>${noMembersMsg}</p>`;
                 return;
             }
+            // ------------------------------------------
 
             container.innerHTML = users.map(u => {
                  const isBanned = u.isBanned;
@@ -3914,9 +3709,11 @@ async function fetchNearestAdminForInbox(elementId) {
                     ? `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>` 
                     : '';
                  
+                 // --- แก้ไขจุดแสดงคำว่า BANNED ให้เปลี่ยนตามภาษา ---
                  const banBadge = isBanned 
                     ? `<span style="color:red; font-size:0.8em; font-weight:bold; margin-left:5px;">${t['label_banned']}</span>` 
                     : '';
+                 // ---------------------------------------------
                  
                  const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
 
@@ -3949,7 +3746,9 @@ async function fetchNearestAdminForInbox(elementId) {
     }
 }
 
+		// เปิด Modal แสดงรายละเอียดและปุ่มจัดการ
 function openUserDetail(targetUsername) {
+    // ดึงข้อมูล User จาก Cache
     const u = allUsersCache.find(user => user.name === targetUsername);
     if (!u) return;
 
@@ -3957,15 +3756,18 @@ function openUserDetail(targetUsername) {
     const isBanned = u.isBanned;
     const targetLevel = u.adminLevel || 0;
 
+    // 1. ใส่ข้อมูลพื้นฐาน
     document.getElementById('detail-name').innerText = u.name;
     document.getElementById('detail-coins').innerText = u.coins.toLocaleString();
     document.getElementById('detail-rating').innerText = u.rating.toFixed(2);
     
+    // สร้าง Badges
     let badgesHtml = '';
     if (targetLevel > 0) badgesHtml += `<span style="background:#007bff; color:white; padding:4px 8px; border-radius:4px; margin-right:5px;">Admin Level ${targetLevel}</span>`;
     if (isBanned) badgesHtml += `<span style="background:#dc3545; color:white; padding:4px 8px; border-radius:4px;">⛔ BANNED</span>`;
     document.getElementById('detail-badges').innerHTML = badgesHtml;
 
+    // 2. เตรียมปุ่มจัดการ (ย้าย Logic เดิมมาที่นี่)
     const chatText = currentLang === 'th' ? '💬 แชท / โอนเหรียญ' : '💬 Chat / Transfer';
     const ratingText = currentLang === 'th' ? '⭐ ตั้งค่าคะแนน' : '⭐ Set Rating';
     const banText = isBanned ? (currentLang === 'th' ? '✅ ปลดแบน' : '✅ Unban') : (currentLang === 'th' ? '❌ แบนสมาชิก' : '❌ Ban User');
@@ -3973,13 +3775,15 @@ function openUserDetail(targetUsername) {
 
     let buttonsHtml = '';
 
+    // ปุ่มแชท (ทุกคนมีสิทธิ์)
     buttonsHtml += `
         <button class="sidebar-btn create-btn" onclick="openPrivateChat('${u.name}'); document.getElementById('user-detail-modal').classList.add('hidden');">
             ${chatText}
         </button>
     `;
 
-    if (myAdminLevel >= 1) { 
+    // ปุ่ม Admin (Rate, Ban)
+    if (myAdminLevel >= 1) { // หรือเงื่อนไขตามที่คุณต้องการ
         buttonsHtml += `
             <button class="sidebar-btn admin-btn" style="background:#ffc107; color:black;" onclick="setMemberRating('${u.name}')">
                 ${ratingText}
@@ -3990,6 +3794,7 @@ function openUserDetail(targetUsername) {
         `;
     }
 
+    // ปุ่ม Promote / Demote
     if (myAdminLevel >= 2 && targetLevel < 1) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#17a2b8; color:white;" onclick="setAdminLevel('${u.name}', 1)">👮‍♂️ ตั้งเป็น Admin 1</button>`;
     }
@@ -3999,7 +3804,11 @@ function openUserDetail(targetUsername) {
     if (myAdminLevel > targetLevel && targetLevel > 0) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
+
+    // ใส่ปุ่มลงใน Modal
     document.getElementById('detail-actions').innerHTML = buttonsHtml;
+
+    // แสดง Modal
     modal.classList.remove('hidden');
 }
 
@@ -4030,26 +3839,6 @@ function openUserDetail(targetUsername) {
 	
 		<div id="admin-zone-modal" class="modal-overlay hidden">
     <div class="modal-box">
-		<div style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-    <h4 style="margin-top:0; color:#333;">➕ เพิ่มโซนด้วยพิกัด (Level 2+)</h4>
-    
-    <input type="text" id="manual-zone-name" placeholder="ชื่อโซน (เช่น สยาม, ชิบูย่า)" style="margin-bottom: 10px;">
-    
-    <div style="display:flex; gap:10px;">
-        <input type="number" id="manual-zone-lat" placeholder="Latitude (เช่น 13.746)" step="any">
-        <input type="number" id="manual-zone-lng" placeholder="Longitude (เช่น 100.534)" step="any">
-    </div>
-
-    <input type="number" id="manual-zone-fee" placeholder="ค่าธรรมเนียม (เช่น 5)" value="5" style="margin-bottom: 10px;">
-
-    <button class="sidebar-btn create-btn" onclick="addZoneManual()">บันทึกพิกัด</button>
-    
-    <p style="font-size:0.8em; color:gray; margin-top:5px;">
-        * สำหรับ Admin Level 2 จะเพิ่มได้เฉพาะในประเทศที่สังกัดเท่านั้น
-    </p>
-</div>
-<hr>
-
         <h2 style="text-align: center;" data-i18n-key="admin_zone_title">🗺️ จัดการโซนพื้นที่</h2>
         <p style="color: #6c757d; text-align: center;" data-i18n-key="admin_zone_desc">
             ใส่พิกัด Lat/Lng เพื่อเพิ่มจุดศูนย์กลางของโซน (ใช้ Admin Level 3 เท่านั้น)
