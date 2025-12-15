@@ -1640,10 +1640,11 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
         const newLat = parseFloat(lat);
         const newLng = parseFloat(lng);
 
-        let zoneCountry = 'TH'; // Default
-
-        // 3. ตรวจสอบประเทศ (Logic เดิมของคุณ)
+        // 3. ตรวจสอบประเทศ (สำหรับ Level 2)
+        // ถ้าเป็น Level 3 (Super Admin) ให้ข้ามการตรวจประเทศได้
         if (requester.adminLevel === 2) {
+            // ดึงข้อมูลประเทศของพิกัดที่ส่งมา (ใช้ Nominatim API เหมือนฝั่ง Client)
+            // ต้องใส่ User-Agent ตามข้อกำหนดของ OSM
             const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat}&lon=${newLng}&accept-language=en`, {
                 headers: { 'User-Agent': 'WebboardApp/1.0' }
             });
@@ -1652,16 +1653,12 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
             const targetCountryCode = geoData.address ? (geoData.address.country_code || '').toUpperCase() : '';
             const adminCountry = (requester.country || 'TH').toUpperCase();
 
+            // เปรียบเทียบประเทศ
             if (targetCountryCode !== adminCountry) {
                 return res.status(400).json({ 
                     error: `⛔ คุณสามารถเพิ่มโซนได้เฉพาะในประเทศของคุณ (${adminCountry}) เท่านั้น (พิกัดนี้อยู่ใน: ${targetCountryCode})` 
                 });
             }
-            
-            zoneCountry = targetCountryCode; // ✅ เก็บค่าประเทศที่ได้จากการเช็คพิกัด
-        } else {
-            // กรณี Level 3 อาจจะไม่ได้เช็คพิกัด ก็ให้ใช้ประเทศของผู้สร้าง หรือค่า Default ไปก่อน
-            zoneCountry = requester.country || 'TH';
         }
 
         // 4. บันทึกโซนลง Database
@@ -1673,10 +1670,9 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
             name: name.trim(),
             lat: newLat,
             lng: newLng,
-            zoneFee: parseFloat(zoneFee) || 5,
-            assignedAdmin: requester.adminLevel === 2 ? requestBy : null,
-            bgImage: null,
-            country: zoneCountry // ✅ [สำคัญมาก] ต้องเพิ่มบรรทัดนี้ เพื่อให้ get-zones กรองเจอ
+            zoneFee: parseFloat(zoneFee) || 5, // ค่าธรรมเนียมเริ่มต้น
+            assignedAdmin: requester.adminLevel === 2 ? requestBy : null, // ถ้า Level 2 สร้าง ให้เป็นเจ้าของเลย
+            bgImage: null
         };
 
         await zonesCollection.insertOne(newZone);
