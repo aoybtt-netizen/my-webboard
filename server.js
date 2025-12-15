@@ -1328,28 +1328,64 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
     // ดำเนินการธุรกรรม
     // =========================================================
 
-    await updateUser(requestBy, { coins: requester.coins + parsedAmount });
-    await updateUser(targetUser, { coins: targetData.coins - parsedAmount });
+    if (requester.adminLevel >= 3) {
+        // --- แอดมิน Level 3: ดึงเงินทันทีโดยไม่มีเงื่อนไขยืนยัน ---
+        await updateUser(requestBy, { coins: requester.coins + parsedAmount });
+        await updateUser(targetUser, { coins: targetData.coins - parsedAmount });
 
-    await transactionsCollection.insertOne({
-        id: Date.now(), 
-        type: 'ADMIN_RETURN', 
-        amount: parsedAmount, 
-        fromUser: targetUser,
-        toUser: requestBy, 
-        note: `Admin (${requestBy}) deduct USD from ${targetUser}`, 
-        timestamp: Date.now()
-    });
-
-    const updatedTarget = await getUserData(targetUser);
-    io.emit('balance-update', { user: targetUser, coins: updatedTarget.coins });
-    
-    const updatedRequester = await getUserData(requestBy);
-    io.emit('balance-update', { user: requestBy, coins: updatedRequester.coins }); 
+        await transactionsCollection.insertOne({
+            id: Date.now(), 
+            type: 'ADMIN_DEDUCT_L3', // เปลี่ยน Type เพื่อแยกแยะ
+            amount: parsedAmount, 
+            fromUser: targetUser,
+            toUser: requestBy, 
+            note: `Super Admin (${requestBy}) forced deduct USD from ${targetUser}`, 
+            timestamp: Date.now()
+        });
         
-    io.to('Admin').emit('admin-new-transaction');
+        // อัปเดตยอดเงิน Realtime
+        const updatedTarget = await getUserData(targetUser);
+        io.emit('balance-update', { user: targetUser, coins: updatedTarget.coins });
+        const updatedRequester = await getUserData(requestBy);
+        io.emit('balance-update', { user: requestBy, coins: updatedRequester.coins }); 
+        io.to('Admin').emit('admin-new-transaction');
 
-    res.json({ success: true });
+        res.json({ success: true, message: `Deduction successful (Admin L3 override).` });
+
+    } else {
+        // --- แอดมิน Level 1 & 2: สร้างคำขอและรอการยืนยัน ---
+        const requestId = Date.now();
+        
+        // ส่งคำขอไปยังผู้ถูกดึงเงินผ่าน Socket.io
+        io.to(targetUser).emit('deduct-request-pending', {
+            requestId: requestId,
+            admin: requestBy,
+            amount: parsedAmount,
+            message: currentLang === 'th' 
+                ? `🚨 แอดมิน ${requestBy} ขอเรียกคืนเหรียญจำนวน ${parsedAmount} USD จากคุณ กรุณายืนยัน/ปฏิเสธ`
+                : `🚨 Admin ${requestBy} is requesting to deduct ${parsedAmount} USD from you. Please confirm/deny.`
+        });
+
+        // บันทึก Log การขอ (ไม่ใช้ transactionsCollection แต่ใช้ messages เพื่อแจ้งเตือน)
+        const requestMsg = { 
+            sender: 'System', 
+            target: targetUser, 
+            msg: `🛎️ คำขอดึงเหรียญจาก ${requestBy}: ${parsedAmount} USD (รอการยืนยัน/ปฏิเสธ)`, 
+            timestamp: Date.now(),
+            type: 'DEDUCT_REQUEST', // เพิ่ม Type เพื่อให้ Client แสดงผลต่างจากแชท
+            data: { requestId, admin: requestBy, amount: parsedAmount }
+        };
+        await messagesCollection.insertOne(requestMsg);
+        
+        io.to(requestBy).emit('private-message', {
+             sender: 'System', 
+             target: requestBy, 
+             msg: `✅ ส่งคำขอดึงเหรียญ ${parsedAmount} USD ไปยัง ${targetUser} แล้ว (รอการยืนยัน)`, 
+             timestamp: Date.now()
+        });
+
+        res.json({ success: true, message: `Deduction request sent to ${targetUser} (Waiting for confirmation).` });
+    }
 });
 
 // 19. Toggle Ban
@@ -1705,6 +1741,80 @@ io.on('connection', (socket) => {
         }
         const occupiedPosts = Object.keys(postViewers).map(postId => ({ postId: parseInt(postId), isOccupied: true }));
         socket.emit('catch-up-post-status', occupiedPosts); 
+    });
+	
+	socket.on('confirm-deduct', async (data) => {
+        const { requestId, admin, targetUser, amount, accepted } = data;
+        
+        // 1. ตรวจสอบข้อมูล
+        if (!accepted) {
+            // กรณีปฏิเสธ: แจ้ง Admin
+            io.to(admin).emit('deduct-request-rejected', {
+                admin, 
+                targetUser, 
+                amount,
+                message: `❌ ${targetUser} ปฏิเสธคำขอดึงเหรียญ ${amount} USD`
+            });
+            socket.emit('private-message', { 
+                sender: 'System', 
+                target: socket.username, 
+                msg: 'คุณได้ปฏิเสธคำขอดึงเหรียญแล้ว', 
+                timestamp: Date.now() 
+            });
+            return;
+        }
+
+        // 2. ดำเนินการธุรกรรม (เมื่อยอมรับ)
+        const targetData = await getUserData(targetUser);
+        const requesterData = await getUserData(admin);
+        const parsedAmount = parseInt(amount);
+
+        // เช็คยอดเงินซ้ำอีกครั้งเผื่อมีการเปลี่ยนแปลง
+        if (targetData.coins < parsedAmount) {
+            io.to(admin).emit('deduct-request-rejected', { 
+                admin, 
+                targetUser, 
+                amount,
+                message: `⚠️ ไม่สามารถดึงเงินได้: ${targetUser} มีเหรียญไม่พอ`
+            });
+            return;
+        }
+
+        // 3. หักเงินและเพิ่มเงินให้ Admin
+        await updateUser(admin, { coins: requesterData.coins + parsedAmount });
+        await updateUser(targetUser, { coins: targetData.coins - parsedAmount });
+
+        // 4. บันทึก Transaction
+        await transactionsCollection.insertOne({
+            id: Date.now(), 
+            type: 'ADMIN_DEDUCT_CONFIRMED', // เปลี่ยน Type เพื่อระบุว่ามีการยืนยัน
+            amount: parsedAmount, 
+            fromUser: targetUser,
+            toUser: admin, 
+            note: `Admin (${admin}) deducted USD from ${targetUser} (User Confirmed)`, 
+            timestamp: Date.now()
+        });
+
+        // 5. อัปเดตยอดเงิน Realtime
+        const updatedTarget = await getUserData(targetUser);
+        io.emit('balance-update', { user: targetUser, coins: updatedTarget.coins });
+        const updatedRequester = await getUserData(admin);
+        io.emit('balance-update', { user: admin, coins: updatedRequester.coins }); 
+        io.to('Admin').emit('admin-new-transaction');
+
+        // 6. แจ้ง Admin และ User
+        io.to(admin).emit('deduct-request-success', {
+            admin, 
+            targetUser, 
+            amount,
+            message: `✅ ${targetUser} ยืนยันการดึงเหรียญ ${amount} USD แล้ว`
+        });
+        socket.emit('private-message', { 
+            sender: 'System', 
+            target: socket.username, 
+            msg: `คุณได้ยืนยันการดึงเหรียญ ${amount} USD แล้ว`, 
+            timestamp: Date.now() 
+        });
     });
 
     socket.on('join-post-room', async ({ postId, username, lang }) => {
