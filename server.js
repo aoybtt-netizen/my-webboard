@@ -1713,37 +1713,37 @@ app.get('/api/admin/admins-list', async (req, res) => {
     if (!requestBy) return res.status(400).json({ error: 'Missing requestBy' });
 
     try {
-        // 1. ดึงข้อมูลของผู้ร้องขอ (Admin ที่กดเข้ามาดู)
         const requester = await usersCollection.findOne({ username: requestBy });
         if (!requester || requester.adminLevel < 1) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
-        // 2. สร้างเงื่อนไขการค้นหา (Filter)
-        // พื้นฐาน: ต้องเป็น Admin (Level > 0)
         let query = { adminLevel: { $gt: 0 } };
 
-        // 🔥 เงื่อนไขพิเศษ: ถ้าเป็น Admin Level 2
-        // ต้องเห็นเฉพาะ Admin ที่อยู่ในประเทศเดียวกัน (Country) เท่านั้น
+        // ถ้าเป็น Admin Level 2 ต้องเห็นเฉพาะ Admin ที่อยู่ในประเทศเดียวกัน
         if (requester.adminLevel === 2) {
             query.country = requester.country; 
         }
 
-        // 3. ดึงรายชื่อ
         const admins = await usersCollection.find(query).project({ 
             password: 0, 
             socketId: 0,
             email: 0 
         }).toArray();
 
-        res.json(admins);
+        const result = admins.map(u => ({
+            name: u.username,     
+            level: u.adminLevel,
+            isBanned: u.isBanned
+        }));
+
+        res.json(result); // ใช้ result ที่แปลงแล้ว
 
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
-
 
 // 28. Assign Admin to Zone
 app.post('/api/admin/assign-zone', async (req, res) => {
@@ -1799,29 +1799,6 @@ app.post('/api/admin/delete-zone', async (req, res) => {
     } else {
         res.status(404).json({ error: 'Zone not found' });
     }
-});
-
-// 29.1 ดึงรายชื่อแอดมินสำหรับเลือกมอบหมายงาน (แก้ปัญหา undefined)
-app.get('/api/admin/admins-list', async (req, res) => {
-    const { requestBy } = req.query;
-    
-    // ตรวจสอบสิทธิ์คนเรียกดู
-    const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Admin only' });
-    }
-
-    // ดึงเฉพาะ User ที่เป็น Admin (Level > 0)
-    const admins = await usersCollection.find({ adminLevel: { $gt: 0 } }).toArray();
-
-    // แปลงข้อมูลให้ตรงกับที่ index.html เรียกใช้ (name, level)
-    const result = admins.map(u => ({
-        name: u.username,      // Frontend ใช้ .name เราจึงต้องส่ง .name (เอาค่าจาก username)
-        level: u.adminLevel,
-        isBanned: u.isBanned
-    }));
-
-    res.json(result);
 });
 
 // 30. Get Assigned Zones for Admin (L1/L2)

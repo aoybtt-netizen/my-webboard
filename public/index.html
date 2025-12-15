@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.3 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2474,7 +2474,7 @@ async function fetchAndRenderZonesList() {
                     `;
 
                     // ปุ่มลบโซน (เฉพาะ L3)
-                    const deleteBtn = (myAdminLevel >= 3) ? `
+                    const deleteBtn = (myAdminLevel >= 2) ? `
                          <button class="sidebar-btn" onclick="deleteZone('${zone.id}', '${safeName}')" 
                          style="padding: 5px 10px; font-size: 0.8em; width: auto; background: #dc3545; color: white; margin-left:5px;">
                             🗑️
