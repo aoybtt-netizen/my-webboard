@@ -1568,35 +1568,70 @@ app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => 
     res.json({ success: true, comment: newComment });
 });
 
-// 24. Set Admin Level (Promote / Demote)
+// 24. Set Admin Level (Promote / Demote) - [แก้ไข]
 app.post('/api/admin/set-level', async (req, res) => {
-    const { targetUser, newLevel, requestBy } = req.body;
+    // 1. รับค่า targetUser, newLevel, requestBy, และเพิ่ม countryCode
+    const { targetUser, newLevel, requestBy, countryCode } = req.body; 
     
-    const requester = await getUserData(requestBy);
-    const target = await getUserData(targetUser);
+    const requester = await getUserData(requestBy); // ผู้สั่งการ
+    const target = await getUserData(targetUser); // ผู้ถูกกระทำ
 
-    // 1. ผู้สั่งการต้องเป็น Level 2 ขึ้นไป
-    if (requester.adminLevel < 2) {
+    // [Check 1] ผู้สั่งการต้องเป็น Level 2 ขึ้นไป
+    if (!requester || requester.adminLevel < 2) {
         return res.status(403).json({ error: 'Permission denied. Must be Admin Level 2+' });
     }
     
-    // 2. ห้ามจัดการคนที่ยศสูงกว่าหรือเท่ากับตัวเอง (เช่น 2 จะปลด 3 ไม่ได้, 2 จะปลด 2 ไม่ได้)
+    if (!target) {
+        return res.status(404).json({ error: 'Target user not found.' });
+    }
+
+    // [Check 2] ห้ามจัดการคนที่ยศสูงกว่าหรือเท่ากับตัวเอง
     if (requester.adminLevel <= target.adminLevel) {
         return res.status(403).json({ error: `Unable to manage Admins at higher or equal levels. (Target Level: ${target.adminLevel})` });
     }
     
-    // 3. ห้ามแต่งตั้งให้ยศสูงกว่าหรือเท่ากับตัวเอง
+    // [Check 3] ห้ามแต่งตั้งให้ยศสูงกว่าหรือเท่ากับตัวเอง
     if (newLevel >= requester.adminLevel) {
         return res.status(403).json({ error: 'Cannot be appointed to a higher or equal level to oneself.' });
     }
-
-    // อัปเดต Level
-    await updateUser(targetUser, { adminLevel: newLevel });
     
-    // บังคับ Logout เพื่อรีเฟรชสิทธิ์ (Optional)
-    io.to(targetUser).emit('force-logout', `🔔 Your license has changed (Level ${newLevel}) please log in again.`);
+    // 2. เตรียม Field ที่จะ Update
+    const updateFields = { adminLevel: newLevel };
+    let countryMessage = '';
 
-    res.json({ success: true, newLevel: newLevel });
+    // อนุญาตให้เฉพาะ Admin Level 3 ขึ้นไปเท่านั้นที่กำหนด/เปลี่ยนประเทศได้
+    if (requester.adminLevel >= 3) {
+        // หากมีการระบุ countryCode มาและเป็นรหัส 2 ตัวอักษร
+        if (countryCode && countryCode.length === 2) {
+            updateFields.country = countryCode.toUpperCase();
+            countryMessage = ` และกำหนดประเทศเป็น ${updateFields.country}`;
+        }
+    } 
+    // หากเป็น Admin Level 2 สั่งการ (requester.adminLevel < 3) จะไม่สามารถกำหนด field country ได้เลย (ใช้ค่าเดิม)
+
+    // 3. อัปเดต Level และ Country (ถ้ามี)
+    const updateResult = await usersCollection.updateOne(
+        { username: targetUser }, 
+        { $set: updateFields }
+    );
+    
+    // 4. บังคับ Logout เพื่อรีเฟรชสิทธิ์
+    io.to(targetUser).emit('force-logout', `🔔 Your license has changed (Level ${newLevel})${countryMessage} please log in again.`);
+
+    // 5. ตอบกลับ
+    if (updateResult.modifiedCount > 0) {
+        res.json({ 
+            success: true, 
+            newLevel: newLevel, 
+            message: `✅ ตั้งค่า Admin Level ของ ${targetUser} เป็น ${newLevel} สำเร็จ${countryMessage}` 
+        });
+    } else {
+        res.json({ 
+            success: true, 
+            newLevel: target.adminLevel, 
+            message: `⚠️ ไม่มีการเปลี่ยนแปลงระดับ Admin หรือข้อมูลประเทศสำหรับ ${targetUser}` 
+        });
+    }
 });
 
 // 25. Get Zone Config 
