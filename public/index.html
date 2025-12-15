@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20n6aR4S+0zWwW3fF/nS/qX9+4+kS4E8M/rL4d9wG8="
+    crossorigin=""></script>
+	
 	<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -390,7 +397,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.48 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.49 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3801,23 +3808,6 @@ async function fetchNearestAdminForInbox(elementId) {
                  // ---------------------------------------------
                  
                  const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
-				 
-				 let locationBtn = '';
-                 // เช็คว่าเราเป็น Admin L3 และเป้าหมายเป็น Admin L2
-                 if (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 3 && targetLevel === 2) {
-                     const lat = u.assignedLocation ? u.assignedLocation.lat : '';
-                     const lng = u.assignedLocation ? u.assignedLocation.lng : '';
-                     const btnColor = u.assignedLocation ? '#28a745' : '#6c757d'; 
-
-                     // ใส่ปุ่ม และใช้ event.stopPropagation() เพื่อไม่ให้กดแล้วเด้งเข้าหน้า Detail
-                     locationBtn = `
-                        <button onclick="event.stopPropagation(); openSetLocationModal('${u.name}', '${lat}', '${lng}')" 
-                            style="background: ${btnColor}; color: white; padding: 2px 6px; border: none; border-radius: 4px; cursor: pointer; margin-left: 8px; font-size: 0.75em; vertical-align: middle;">
-                            📍 พิกัด
-                        </button>
-                     `;
-}
-
                  return `
                     <div class="user-list-item" style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);" onclick="openUserDetail('${u.name}')">
                         <div style="font-weight: bold; font-size: 1.1em;">
@@ -3935,12 +3925,74 @@ function openUserDetail(targetUsername) {
 function openSetLocationModal(username, currentLat, currentLng) {
         targetUserForLocation = username;
         document.getElementById('loc-target-user').innerText = username;
-        
-        // ถ้าเป็นค่า 'undefined' หรือ 'null' ให้เคลียร์เป็นค่าว่าง
-        document.getElementById('input-assign-lat').value = (currentLat && currentLat !== 'undefined') ? currentLat : '';
-        document.getElementById('input-assign-lng').value = (currentLng && currentLng !== 'undefined') ? currentLng : '';
-        
         document.getElementById('set-location-modal').classList.remove('hidden');
+
+        // จัดการค่าพิกัดเริ่มต้น
+        const safeLat = (currentLat && currentLat !== 'undefined' && currentLat !== 'null') ? parseFloat(currentLat) : 13.7563; // กรุงเทพฯ Default
+        const safeLng = (currentLng && currentLng !== 'undefined' && currentLng !== 'null') ? parseFloat(currentLng) : 100.5018; 
+        const isDefault = (currentLat === '' || currentLat === 'undefined' || currentLat === 'null');
+
+        // ฟังก์ชัน Set พิกัด (ใช้ใน Marker และ Click Event)
+        const setLocation = (lat, lng) => {
+            document.getElementById('input-assign-lat').value = lat;
+            document.getElementById('input-assign-lng').value = lng;
+            document.getElementById('display-assign-loc').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        };
+        
+        // ถ้าเป็นค่าว่าง ให้ล้าง Input และ Display
+        if(isDefault) setLocation('', '');
+        else setLocation(safeLat, safeLng);
+
+        // --- 2. จัดการแผนที่ ---
+        
+        // ถ้ายังไม่มีแผนที่ ให้สร้างใหม่
+        if (assignedMap === null) {
+            assignedMap = L.map('assigned-map').setView([safeLat, safeLng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(assignedMap);
+
+            // เพิ่ม Event Listener สำหรับการคลิก/ปักหมุด
+            assignedMap.on('click', (e) => {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                
+                setLocation(lat, lng);
+                
+                // ย้าย Marker หรือสร้างใหม่
+                if (assignedMarker) {
+                    assignedMarker.setLatLng([lat, lng]);
+                } else {
+                    assignedMarker = L.marker([lat, lng]).addTo(assignedMap);
+                }
+            });
+        } 
+        // ถ้ามีแผนที่อยู่แล้ว ให้แค่ย้ายศูนย์กลางและ Marker
+        else {
+            assignedMap.setView([safeLat, safeLng], 13);
+            if (assignedMarker) {
+                assignedMarker.setLatLng([safeLat, safeLng]);
+                // ถ้าเป็นค่า Default ให้ลบ Marker ออก
+                if (isDefault) {
+                    assignedMap.removeLayer(assignedMarker);
+                    assignedMarker = null;
+                }
+            } else if (!isDefault) {
+                assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
+            }
+            
+            // สำคัญ: ต้องสั่ง Invalidate Size เพื่อให้แผนที่แสดงผลถูกเมื่อ Modal ถูกเปิด
+            // ใช้ setTimeout เพื่อให้แน่ใจว่า Modal ถูกแสดงผลก่อน
+            setTimeout(() => {
+                 assignedMap.invalidateSize();
+            }, 50);
+        }
+        
+        // ถ้ามีพิกัดเดิม ให้สร้าง Marker
+        if (!isDefault && !assignedMarker) {
+             assignedMarker = L.marker([safeLat, safeLng]).addTo(assignedMap);
+        }
+        
     }
 
     async function saveAssignedLocation(isDelete = false) {
@@ -3949,14 +4001,17 @@ function openSetLocationModal(username, currentLat, currentLng) {
         let lat = document.getElementById('input-assign-lat').value;
         let lng = document.getElementById('input-assign-lng').value;
         
-        if (isDelete) {
+        // ถ้าลบ หรือไม่ได้ปักหมุด
+        if (isDelete || (lat === '' && lng === '')) {
             if(!confirm('ต้องการลบพิกัดอ้างอิงของ ' + targetUserForLocation + ' ใช่หรือไม่?')) return;
             lat = null;
             lng = null;
         } else {
-            if (!lat || !lng) return alert('กรุณาระบุพิกัดให้ครบถ้วน');
+            // เช็คว่ามีค่าครบถ้วน
+            if (!lat || !lng) return alert('กรุณาปักหมุดบนแผนที่ก่อนบันทึก');
         }
 
+        // ... (โค้ด AJAX สำหรับ fetch POST ไปยัง Server เดิม) ...
         try {
             const res = await fetch('/api/admin/set-assigned-location', {
                 method: 'POST',
@@ -3973,8 +4028,11 @@ function openSetLocationModal(username, currentLat, currentLng) {
             if (data.success) {
                 alert(data.message);
                 document.getElementById('set-location-modal').classList.add('hidden');
-                // รีโหลดรายชื่อ User เพื่ออัปเดตปุ่มเป็นสีเขียว
-                if(typeof openAllUserList === 'function') openAllUserList(document.getElementById('user-search-input').value); 
+                // รีโหลดรายชื่อ User เพื่ออัปเดตสถานะปุ่ม
+                if(typeof openAllUserList === 'function') {
+                    document.getElementById('user-detail-modal').classList.add('hidden'); 
+                    openAllUserList(document.getElementById('user-search-input').value); 
+                }
             } else {
                 alert('Error: ' + data.error);
             }
@@ -4117,19 +4175,19 @@ function openSetLocationModal(username, currentLat, currentLng) {
     <div class="modal-box">
         <h3>📍 กำหนดพิกัดอ้างอิง (Reference Location)</h3>
         <p>สำหรับ: <strong id="loc-target-user" style="color: #007bff;">...</strong></p>
-        
-        <div style="margin-bottom: 15px;">
-            <label>Latitude:</label>
-            <input type="number" id="input-assign-lat" step="any" placeholder="เช่น 13.7563" style="width: 100%; padding: 8px; margin-top: 5px;">
-        </div>
-        <div style="margin-bottom: 15px;">
-            <label>Longitude:</label>
-            <input type="number" id="input-assign-lng" step="any" placeholder="เช่น 100.5018" style="width: 100%; padding: 8px; margin-top: 5px;">
-        </div>
 
+        <div id="assigned-map" style="height: 300px; width: 100%; border-radius: 8px; margin-bottom: 10px;"></div>
+        
+        <p style="font-size: 1.0em; font-weight: bold; margin-bottom: 15px;">
+            พิกัดที่เลือก: <span id="display-assign-loc" style="color:#007bff;">ยังไม่ได้เลือก</span>
+        </p>
+
+        <input type="hidden" id="input-assign-lat">
+        <input type="hidden" id="input-assign-lng">
+        
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
             <button class="sidebar-btn" onclick="document.getElementById('set-location-modal').classList.add('hidden')" style="background: #6c757d; width: auto;">ยกเลิก</button>
-            <button class="sidebar-btn" onclick="saveAssignedLocation()" style="background: #007bff; color: white; width: auto;">บันทึกพิกัด</button>
+            <button class="sidebar-btn" onclick="saveAssignedLocation()" style="background: #007bff; color: white; width: auto;" id="btn-save-assign-loc">บันทึกพิกัด</button>
         </div>
         
         <hr>
