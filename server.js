@@ -1623,70 +1623,42 @@ app.get('/api/admin/get-zones', async (req, res) => {
 
 // 25.1 API สำหรับแอดมินเพิ่มโซนด้วยพิกัด (รองรับ Level 2 + ตรวจสอบประเทศ)
 app.post('/api/admin/add-zone-manual', async (req, res) => {
-    const { requestBy, name, lat, lng, zoneFee } = req.body;
+    const { name, lat, lng, zoneFee, requestBy } = req.body;
 
-    // 1. ตรวจสอบข้อมูลเบื้องต้น
-    if (!requestBy || !name || !lat || !lng) {
-        return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อ, พิกัด)' });
+    // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 2 ขึ้นไป
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 2) {
+        return res.status(403).json({ error: 'Permission denied. Admin Level 2+ required' });
+    }
+
+    // 2. ตรวจสอบค่าที่ส่งมา
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+    if (isNaN(parsedLat) || isNaN(parsedLng) || !name) {
+        return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง กรุณากรอกชื่อและพิกัดให้ครบ' });
     }
 
     try {
-        const requester = await getUserData(requestBy);
-        
-        // 2. ตรวจสอบระดับแอดมิน (ต้องเป็น Level 2 ขึ้นไป)
-        if (!requester || requester.adminLevel < 2) {
-            return res.status(403).json({ error: '⛔ สิทธิ์ไม่เพียงพอ (ต้องการ Admin Level 2 ขึ้นไป)' });
-        }
-
-        const newLat = parseFloat(lat);
-        const newLng = parseFloat(lng);
-
-        let zoneCountry = 'TH'; // Default
-
-        // 3. ตรวจสอบประเทศ (Logic เดิมของคุณ)
-        if (requester.adminLevel === 2) {
-            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat}&lon=${newLng}&accept-language=en`, {
-                headers: { 'User-Agent': 'WebboardApp/1.0' }
-            });
-            const geoData = await geoRes.json();
-
-            const targetCountryCode = geoData.address ? (geoData.address.country_code || '').toUpperCase() : '';
-            const adminCountry = (requester.country || 'TH').toUpperCase();
-
-            if (targetCountryCode !== adminCountry) {
-                return res.status(400).json({ 
-                    error: `⛔ คุณสามารถเพิ่มโซนได้เฉพาะในประเทศของคุณ (${adminCountry}) เท่านั้น (พิกัดนี้อยู่ใน: ${targetCountryCode})` 
-                });
-            }
-            
-            zoneCountry = targetCountryCode; // ✅ เก็บค่าประเทศที่ได้จากการเช็คพิกัด
-        } else {
-            // กรณี Level 3 อาจจะไม่ได้เช็คพิกัด ก็ให้ใช้ประเทศของผู้สร้าง หรือค่า Default ไปก่อน
-            zoneCountry = requester.country || 'TH';
-        }
-
-        // 4. บันทึกโซนลง Database
-        const lastZone = await zonesCollection.find().sort({ id: -1 }).limit(1).toArray();
-        const nextId = (lastZone.length > 0 ? lastZone[0].id : 0) + 1;
-
+        // 3. สร้างข้อมูลโซนใหม่
         const newZone = {
-            id: nextId,
-            name: name.trim(),
-            lat: newLat,
-            lng: newLng,
-            zoneFee: parseFloat(zoneFee) || 5,
-            assignedAdmin: requester.adminLevel === 2 ? requestBy : null,
-            bgImage: null,
-            country: zoneCountry // ✅ [สำคัญมาก] ต้องเพิ่มบรรทัดนี้ เพื่อให้ get-zones กรองเจอ
+            id: Date.now(),
+            name: name,
+            lat: parsedLat,
+            lng: parsedLng,
+            // ถ้าเป็น Level 2 สร้าง ให้กำหนดตัวเองเป็นคนดูแลเลย, ถ้า Level 3 ให้เป็น Admin กลาง
+            assignedAdmin: requester.adminLevel === 2 ? requester.username : 'Admin',
+            zoneFee: zoneFee ? parseFloat(zoneFee) : null,
+            country: requester.country || 'TH' // บันทึกประเทศตามคนสร้าง
         };
 
         await zonesCollection.insertOne(newZone);
-
-        res.json({ success: true, message: '✅ เพิ่มโซนสำเร็จ', zone: newZone });
+        console.log(`✅ New Zone Created by ${requester.username}: ${name}`);
+        
+        res.json({ success: true, message: '✅ เพิ่มโซนสำเร็จ' });
 
     } catch (e) {
         console.error(e);
-        res.status(500).json({ error: 'เกิดข้อผิดพลาดทางเทคนิค' });
+        res.status(500).json({ error: 'Server error creating zone' });
     }
 });
 
@@ -1696,9 +1668,9 @@ app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
     
     // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 3) { 
-        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
-    }
+    if (!requester || requester.adminLevel < 2) {
+    return res.status(403).json({ error: 'Permission denied. Admin Level 2+ required' });
+}
 
     const parsedLat = parseFloat(lat);
     const parsedLng = parseFloat(lng);
