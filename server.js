@@ -1692,10 +1692,10 @@ app.post('/api/admin/add-zone-manual', async (req, res) => {
 
 // 26. Set Zone Config 
 app.post('/api/admin/add-zone', async (req, res) => {
-    // 1. รับค่า country เพิ่มเข้ามาจาก Client
+    // รับค่า country เพิ่มเข้ามา (ถ้า Client ส่งมา)
     const { lat, lng, name, requestBy, country } = req.body;
 
-    // 2. ตรวจสอบสิทธิ์: แก้ไขจาก < 3 เป็น < 2 เพื่อให้ Level 2 เข้าถึงได้
+    // 1. ตรวจสอบสิทธิ์: แก้ไขจาก < 3 เป็น < 2 เพื่อให้ Level 2 เข้าถึงได้
     const requester = await getUserData(requestBy);
     if (!requester || requester.adminLevel < 2) {
         return res.status(403).json({ error: 'Permission denied. Admin Level 2+ required' });
@@ -1708,16 +1708,15 @@ app.post('/api/admin/add-zone', async (req, res) => {
         return res.status(400).json({ error: 'Invalid data provided.' });
     }
 
-    // 3. [NEW] ตรวจสอบประเทศสำหรับ Admin Level 2
+    // 2.ตรวจสอบประเทศสำหรับ Admin Level 2
     let zoneCountry = country || 'TH'; // ค่า Default
     
     if (requester.adminLevel === 2) {
         // ต้องระบุประเทศ และต้องตรงกับประเทศของ Admin เท่านั้น
         const adminCountry = requester.country || 'TH';
-        if (zoneCountry !== adminCountry) {
-            return res.status(403).json({ error: `⛔ คุณสามารถเพิ่มโซนได้เฉพาะในประเทศของคุณ (${adminCountry}) เท่านั้น` });
-        }
-        zoneCountry = adminCountry; // บังคับใช้ประเทศของ Admin
+        // ตรวจสอบว่าประเทศที่ส่งมา (หรือค่า Default) ตรงกับ Admin ไหม
+        // (ในกรณีนี้เราจะบังคับใช้ประเทศของ Admin เลยเพื่อความปลอดภัย)
+        zoneCountry = adminCountry; 
     }
 
     try {
@@ -1727,7 +1726,7 @@ app.post('/api/admin/add-zone', async (req, res) => {
             lng: parsedLng,
             name: name,
             assignedAdmin: null,
-            country: zoneCountry // ✅ บันทึกประเทศลงในโซน เพื่อใช้กรองภายหลัง
+            country: zoneCountry // ✅ บันทึกประเทศลงในโซน เพื่อใช้กรองตอนลบ
         };
 
         await zonesCollection.insertOne(newZone);

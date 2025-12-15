@@ -375,7 +375,7 @@
         </div>
     </div>
     
-    <div class="version-display">v: 3.8.1 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -524,7 +524,7 @@ async function addZoneManual() {
     btn.disabled = true;
 
     try {
-        const res = await fetch('/api/admin/add-zone-manual', {
+        const res = await fetch('/api/admin/add-zone', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -532,7 +532,7 @@ async function addZoneManual() {
                 name: name,
                 lat: lat,
                 lng: lng,
-                zoneFee: fee
+                country: myCountry // ส่งค่าประเทศไปด้วย (myCountry เป็นตัวแปร global)
             })
         });
 
