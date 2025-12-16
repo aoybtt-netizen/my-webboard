@@ -1551,55 +1551,15 @@ app.post('/api/admin/set-level', async (req, res) => {
 });
 
 // 25. Get Zone Config 
-app.get('/api/admin/get-zones', async (req, res) => {
-    const { requestBy } = req.query;
-    try {
-        const user = await usersCollection.findOne({ username: requestBy });
-        let query = {};
-
-        // ถ้าไม่ใช่ L3 ให้เห็นแค่โซนที่ตัวเองดูแล หรือ โซนที่ใช้พิกัดของตัวเองอ้างอิง
-        if (user.adminLevel < 3) {
-            query = {
-                $or: [
-                    { assignedAdmin: requestBy },          // เป็นคนดูแล
-                    { "refLocation.sourceUser": requestBy } // เป็นเจ้าของจุดอ้างอิง (สำหรับ L2)
-                ]
-            };
-        }
-
-        const zones = await zonesCollection.find(query).toArray();
-        res.json({ success: true, zones });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
+app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plural
+    // ต้องเป็น Admin Level 1 ขึ้นไปในการดูค่า
+    const requester = await getUserData(req.query.requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
     }
-});
 
-// 25.1. เปิด/ปิด โซน (สำหรับ L2 และ L3)
-app.post('/api/admin/toggle-zone-status', async (req, res) => {
-    const { zoneId, isOpen, requestBy } = req.body; // isOpen = true/false
-
-    try {
-        const zone = await zonesCollection.findOne({ id: parseInt(zoneId) });
-        if (!zone) return res.status(404).json({ error: 'ไม่พบโซน' });
-
-        const requester = await usersCollection.findOne({ username: requestBy });
-        
-        // เช็คสิทธิ์: ต้องเป็น L3 หรือ เป็นเจ้าของจุดอ้างอิง (L2)
-        const isRefOwner = zone.refLocation && zone.refLocation.sourceUser === requestBy;
-        
-        if (requester.adminLevel < 3 && !isRefOwner) {
-            return res.status(403).json({ error: 'ไม่มีสิทธิ์จัดการสถานะโซนนี้' });
-        }
-
-        await zonesCollection.updateOne(
-            { id: parseInt(zoneId) },
-            { $set: { isOpen: isOpen } }
-        );
-
-        res.json({ success: true, message: `เปลี่ยนสถานะโซนเป็น ${isOpen ? 'เปิด' : 'ปิด'} แล้ว` });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    const zones = await zonesCollection.find({}).sort({ createdAt: -1 }).toArray(); // Fetch all zones (เรียงใหม่สุดขึ้นก่อน)
+    return res.json({ success: true, zones: zones }); // Return as an array
 });
 
 // 26. Set Zone Config 
@@ -1662,41 +1622,39 @@ app.get('/api/admin/admins-list', async (req, res) => {
 // 28. Assign Admin to Zone
 app.post('/api/admin/assign-zone', async (req, res) => {
     const { zoneId, adminUsername, requestBy } = req.body;
-    
-    // 1. Tidy up input
-    const zoneIdInt = parseInt(zoneId);
-    
-    // [MOVED UP] 2. Find target Zone FIRST (ย้ายขึ้นมาเช็คก่อน เพื่อดูเจ้าของจุดอ้างอิง)
-    const zone = await zonesCollection.findOne({ id: zoneIdInt });
-    if (!zone) {
-        return res.status(404).json({ error: 'Zone not found.' });
-    }
-    
-    // 3. Check Permissions
-    const requester = await getUserData(requestBy);
-    if (!requester) return res.status(403).json({ error: 'User not found' });
+    const user = await usersCollection.findOne({ username: requestBy });
 
-    // เงื่อนไขสิทธิ์: เป็น Admin L3 ขึ้นไป หรือ เป็นเจ้าของจุดอ้างอิงของโซนนี้ (L2)
-    const isLevel3 = requester.adminLevel >= 3;
-    const isRefOwner = zone.refLocation && zone.refLocation.sourceUser === requestBy;
-
-    if (!isLevel3 && !isRefOwner) { 
-        return res.status(403).json({ error: 'Permission denied. Admin Level 3 or Zone Reference Owner required' });
-    }
-    
-    // 4. Validate Admin (check if target admin exists and is not banned)
-    const targetAdmin = await getUserData(adminUsername);
-    if (!targetAdmin || targetAdmin.adminLevel < 1 || targetAdmin.isBanned) {
-         return res.status(400).json({ error: `Invalid or unauthorized Admin: ${adminUsername}` });
+    if (!user || user.adminLevel < 1) {
+        return res.json({ success: false, error: 'Unauthorized' });
     }
 
-    // 5. Update Zone document
-    await zonesCollection.updateOne(
-        { id: zoneIdInt }, 
-        { $set: { assignedAdmin: adminUsername } }
-    );
+    const zone = await zonesCollection.findOne({ id: parseInt(zoneId) });
+    if (!zone) return res.json({ success: false, error: 'Zone not found' });
 
-    res.json({ success: true, assignedAdmin: adminUsername });
+    // --- LOGIC การตรวจสอบสิทธิ์ ---
+    let canAssign = false;
+
+    // Level 3: ทำได้ทุกโซน
+    if (user.adminLevel >= 3) {
+        canAssign = true;
+    } 
+    // Level 2: ทำได้เฉพาะโซนที่ใช้ตำแหน่งตัวเองเป็นจุดอ้างอิง (refLocation.sourceUser)
+    else if (user.adminLevel === 2) {
+        if (zone.refLocation && zone.refLocation.sourceUser === user.username) {
+            canAssign = true;
+        }
+    }
+
+    if (!canAssign) {
+        return res.json({ success: false, error: 'คุณไม่มีสิทธิ์มอบหมายผู้ดูแลในโซนนี้' });
+    }
+
+    // ทำการอัปเดต
+    await zonesCollection.updateOne({ id: parseInt(zoneId) }, { 
+        $set: { assignedAdmin: adminUsername } 
+    });
+
+    res.json({ success: true });
 });
 
 // 29. Delete Zone
