@@ -460,7 +460,7 @@
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
 	async function openAdminAssignModal(zoneId, zoneName) {
-    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
+    if (myAdminLevel < 2) return alert('❌ เฉพาะ Admin Level 2 ขึ้นไป');
     currentZoneToAssign = zoneId;
     
     document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName}`;
@@ -502,7 +502,7 @@
 
 // ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
 async function assignAdminToZone(zoneId, adminUsername, zoneName) {
-    if (myAdminLevel < 3) return;
+    if (myAdminLevel < 2) return;
     
     const t = translations[currentLang];
     
@@ -526,7 +526,11 @@ async function assignAdminToZone(zoneId, adminUsername, zoneName) {
         if (data.success) {
             alert(t['alert_admin_assign_success'].replace('[ADMIN]', adminUsername).replace('[ZONE]', zoneName));
             document.getElementById('admin-assign-modal').classList.add('hidden');
-            openAdminZoneModal(); // Refresh the main zone list
+            if (myAdminLevel < 3) {
+                openAssignedZoneMap();
+            } else {
+                openAdminZoneModal(); // Level 3 ใช้หน้าใหญ่
+            }
         } else {
             alert(`❌ Error: ${data.error || 'มอบหมายไม่สำเร็จ'}`);
         }
