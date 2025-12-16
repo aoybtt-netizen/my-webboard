@@ -1551,31 +1551,15 @@ app.post('/api/admin/set-level', async (req, res) => {
 });
 
 // 25. Get Zone Config 
-app.get('/api/admin/get-zones', async (req, res) => {
-    const { requestBy, mode } = req.query;
-
-    const requester = await getUserData(requestBy);
-    
+app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plural
+    // ต้องเป็น Admin Level 1 ขึ้นไปในการดูค่า
+    const requester = await getUserData(req.query.requestBy);
     if (!requester || requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Permission denied.' });
+        return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
     }
 
-    let query = {};
-
-    if (mode === 'MANAGE_REF') {
-        query = { refAdmin: requestBy }; 
-    } else {
-        query = { assignedAdmin: requestBy };
-    }
-
-    try {
-        const zones = await zonesCollection.find(query).sort({ createdAt: -1 }).toArray();
-        
-        return res.json({ success: true, zones: zones });
-    } catch (e) {
-        console.error("Error getting zones:", e);
-        return res.status(500).json({ success: false, error: "Server Error" });
-    }
+    const zones = await zonesCollection.find({}).sort({ createdAt: -1 }).toArray(); // Fetch all zones (เรียงใหม่สุดขึ้นก่อน)
+    return res.json({ success: true, zones: zones }); // Return as an array
 });
 
 // 26. Set Zone Config 
@@ -2206,15 +2190,6 @@ socket.on('reply-deduct-confirm', async (data) => {
             requesterSocket.emit('deduct-result', { success: true, message: `✅ ${fromUser} ยืนยันการคืนเงินเรียบร้อยแล้ว` });
         }
     });
-	
-	socket.on('req-zone-data', async () => {
-    try {
-        const allZones = await zonesCollection.find({}).toArray(); // ดึงทุกโซนมาให้ Client กรอง
-        socket.emit('resp-zone-data', allZones);
-    } catch (e) {
-        console.error("Error fetching zones:", e);
-    }
-});
 
 });
 
