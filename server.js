@@ -1689,10 +1689,16 @@ app.get('/api/admin/get-assigned-zones', async (req, res) => {
 // 31 ดึงรายชื่อ Admin ที่มีการระบุพิกัด Assigned Location แล้ว
 app.get('/api/admin/admins-with-location', async (req, res) => {
     try {
+        // ดึง Admin ทุกคนที่มีการตั้งค่า Assigned Location แล้ว
         const admins = await usersCollection.find({
-            adminLevel: { $gt: 0 }, // ต้องเป็น Admin
-            "assignedLocation.lat": { $exists: true, $ne: null } // ต้องมีพิกัด
-        }).project({ name: 1, adminLevel: 1, assignedLocation: 1 }).toArray();
+            adminLevel: { $gt: 0 }, // Level มากกว่า 0
+            "assignedLocation.lat": { $exists: true, $ne: null }
+        }).project({ 
+            name: 1,      // ตรวจสอบว่าใน DB ใช้ name หรือ username
+            username: 1,  // เพื่อความชัวร์ให้ดึงมาทั้งคู่
+            adminLevel: 1, 
+            assignedLocation: 1 
+        }).toArray();
 
         res.json({ success: true, admins });
     } catch (e) {
