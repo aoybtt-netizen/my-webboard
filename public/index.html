@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.56 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.55 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -460,7 +460,7 @@
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
 	async function openAdminAssignModal(zoneId, zoneName) {
-    if (myAdminLevel < 2) return alert('❌ เฉพาะ Admin Level 2 ขึ้นไป');
+    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
     currentZoneToAssign = zoneId;
     
     document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName}`;
@@ -502,7 +502,7 @@
 
 // ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
 async function assignAdminToZone(zoneId, adminUsername, zoneName) {
-    if (myAdminLevel < 2) return;
+    if (myAdminLevel < 3) return;
     
     const t = translations[currentLang];
     
@@ -524,16 +524,11 @@ async function assignAdminToZone(zoneId, adminUsername, zoneName) {
         const data = await res.json();
         
         if (data.success) {
-            alert('✅ มอบหมายสำเร็จ!');
+            alert(t['alert_admin_assign_success'].replace('[ADMIN]', adminUsername).replace('[ZONE]', zoneName));
             document.getElementById('admin-assign-modal').classList.add('hidden');
-            
-            if (myAdminLevel < 3) {
-                openAssignedZoneMap(); 
-            } else {
-                if (typeof openAdminZoneModal === 'function') openAdminZoneModal();
-            }
+            openAdminZoneModal(); // Refresh the main zone list
         } else {
-            alert(`❌ ไม่สำเร็จ: ${data.error || 'เกิดข้อผิดพลาดบางอย่าง'}`);
+            alert(`❌ Error: ${data.error || 'มอบหมายไม่สำเร็จ'}`);
         }
     } catch (e) {
         alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
@@ -615,6 +610,83 @@ async function saveZoneRefFromAdmin(targetAdmin) {
         alert('❌ Connection Error');
     }
 }
+
+// ฟังก์ชันจัดการการคลิกเมนูโซน ---
+function handleZoneMenuClick() {
+    if (currentUser.level === 'ADMIN_LV2') {
+        document.getElementById('admin-lv2-zone-choice-modal').classList.remove('hidden');
+    } else {
+        openZoneSetupModal();
+    }
+}
+
+// ฟังก์ชันเลือกโหมด ---
+function selectZoneMode(mode) {
+    document.getElementById('admin-lv2-zone-choice-modal').classList.add('hidden');
+
+    if (mode === 'SELF') {
+        openZoneSetupModal();
+    } else if (mode === 'MANAGE_REF') {
+        openRefZoneManager();
+    }
+}
+
+function openRefZoneManager() {
+    const listContainer = document.getElementById('ref-zone-list-container');
+    document.getElementById('ref-zone-list-modal').classList.remove('hidden');
+    listContainer.innerHTML = '<div style="text-align: center; color: gray;">🔄 กำลังดึงข้อมูล...</div>';
+
+    socket.emit('req-zone-data'); 
+}
+
+socket.on('resp-zone-data', (allZones) => {
+    if (document.getElementById('ref-zone-list-modal').classList.contains('hidden')) return;
+
+    const listContainer = document.getElementById('ref-zone-list-container');
+    listContainer.innerHTML = '';
+
+    const myRefZones = allZones.filter(zone => zone.refAdmin === currentUser.username);
+
+    if (myRefZones.length === 0) {
+        listContainer.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #dc3545;">
+                <i class="fas fa-exclamation-circle" style="font-size: 2em; margin-bottom: 10px;"></i><br>
+                ไม่พบโซนที่ใช้ตำแหน่งอ้างอิงของคุณ
+            </div>`;
+        return;
+    }
+
+    myRefZones.forEach(zone => {
+        const div = document.createElement('div');
+        div.className = 'user-list-item';
+        div.style.display = 'block';
+        
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="font-size: 1.1em;">${zone.name}</strong>
+                    <div style="font-size: 0.85em; color: gray;">
+                        ID: ${zone.id} | รัศมี: ${zone.radius}m
+                    </div>
+                </div>
+                <button onclick="editRefZone('${zone.id}')" style="background: #ffc107; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">
+                    <i class="fas fa-edit"></i> แก้ไข
+                </button>
+            </div>
+            <div style="margin-top: 5px; font-size: 0.8em; color: #28a745;">
+                <i class="fas fa-link"></i> ผูกกับ: ${zone.refAdmin} (คุณ)
+            </div>
+        `;
+        listContainer.appendChild(div);
+    });
+});
+
+// ฟังก์ชันเสริม: แก้ไขโซน (เรียกใช้หน้าต่างเดิมแต่โหลดข้อมูลโซนนั้น)
+function editRefZone(zoneId) {
+    document.getElementById('ref-zone-list-modal').classList.add('hidden');
+    alert("ระบบกำลังเปิดหน้าแก้ไขสำหรับโซน ID: " + zoneId); 
+}
+
 
         // ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
     function setDistanceFilter() {
@@ -2530,104 +2602,93 @@ async function fetchAndRenderAllZones() {
 
 		// ฟังก์ชันสำหรับเปิดหน้าต่างแสดงโซนที่ Admin L1/L2 รับผิดชอบ
 	async function openAssignedZoneMap() {
-    if (myAdminLevel < 1 || myAdminLevel >= 3) return;
+    if (myAdminLevel < 1 || myAdminLevel >= 3) return; 
 
     document.getElementById('assigned-zone-map-modal').classList.remove('hidden');
     const listDisplay = document.getElementById('assigned-zone-list-display');
     const infoDisplay = document.getElementById('assigned-user-display');
-    
+    const t = translations[currentLang];
+
     infoDisplay.innerText = `${myUsername} (Level ${myAdminLevel})`;
-    listDisplay.innerHTML = `<div style="text-align:center; padding:20px;">⏳ กำลังโหลดข้อมูล...</div>`;
+    listDisplay.innerHTML = `<p style="text-align:center;">Loading...</p>`;
 
     try {
         const res = await fetch(`/api/admin/get-assigned-zones?requestBy=${myUsername}`);
         const data = await res.json();
-        listDisplay.innerHTML = ''; // เคลียร์หน้าจอ
 
         if (data.zones && data.zones.length > 0) {
             
-            // --- 1. แยกข้อมูลเป็น 2 กอง ---
-            // กอง A: โซนของฉัน (ฉันเป็นคนดูแล / assignedAdmin ตรงกับชื่อฉัน)
-            const myZones = data.zones.filter(z => z.assignedAdmin === myUsername);
-            
-            // กอง B: โซนที่ใช้พิกัดฉัน (refLocation.sourceUser ตรงกับชื่อฉัน)
-            // แต่ฉันไม่ได้เป็นคนดูแลโดยตรง (เพื่อให้เราเลือกคนอื่นมาดูแลแทนได้)
-            const refZones = data.zones.filter(z => 
-                z.refLocation && 
-                z.refLocation.sourceUser === myUsername && 
-                z.assignedAdmin !== myUsername
-            );
-
-            // --- 2. แสดงผลส่วนที่ 1 (โซนของฉัน) ---
-            if (myZones.length > 0) {
-                let html = `<div style="margin-bottom: 30px;">`;
-                html += `<h3 style="color:#007bff; border-bottom:2px solid #007bff; padding-bottom:5px;">🏠 โซนที่คุณดูแล (${myZones.length})</h3>`;
+            listDisplay.innerHTML = data.zones.map(zone => {
+                const lat = parseFloat(zone.lat).toFixed(4);
+                const lng = parseFloat(zone.lng).toFixed(4);
+                const name = zone.name || `Zone ID: ${zone.id}`;
+                const mapLink = `https://www.google.com/maps?q=${zone.lat},${zone.lng}`;
                 
-                html += myZones.map(zone => {
-                    const bgPreview = zone.bgImage 
-                        ? `<img src="${zone.bgImage}" style="height:50px; border-radius:4px; margin-left:10px;">` : '';
-                    
-                    return `
-                        <div style="background:#f8f9fa; border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px;">
-                            <div style="font-weight:bold; margin-bottom:5px;">${zone.name || 'Zone ID: ' + zone.id}</div>
-                            
-                            <div style="display:flex; gap:5px; align-items:center; background:white; padding:10px; border-radius:5px;">
-                                <input type="text" id="name-input-${zone.id}" value="${zone.name || ''}" placeholder="ตั้งชื่อโซน..." style="flex:1; padding:5px; border:1px solid #ccc; border-radius:4px;">
-                                <button onclick="setZoneName(event, '${zone.id}')" style="background:#28a745; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">บันทึก</button>
-                            </div>
-                            
-                            <div style="display:flex; gap:5px; align-items:center; margin-top:5px; background:white; padding:10px; border-radius:5px;">
-                                <span style="font-size:0.8em;">รูปพื้นหลัง:</span>
-                                <input type="file" id="bg-file-${zone.id}" accept="image/*" style="font-size:0.8em;">
-                                <button onclick="uploadZoneBg('${zone.id}')" style="background:#17a2b8; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">อัปโหลด</button>
-                                ${bgPreview}
-                            </div>
-                        </div>`;
-                }).join('');
-                html += `</div>`; // ปิด div wrapper
-                listDisplay.innerHTML += html;
-            }
+                // ตรวจสอบค่าธรรมเนียมปัจจุบัน
+                // ถ้า zoneFee เป็น null/undefined ให้แสดงว่า "ใช้ค่ากลาง"
+                const currentFeeVal = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? zone.zoneFee : '';
+                const placeholder = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? '' : 'ค่ากลาง';
+                
+                // ตรวจสอบว่ามีรูปพื้นหลังหรือไม่
+                const bgPreview = zone.bgImage 
+                    ? `<div style="margin-top:5px;"><img src="${zone.bgImage}" style="max-height:100px; border-radius:5px; border:1px solid #ddd;"></div>` 
+                    : '<div style="margin-top:5px; color:gray; font-size:0.8em;">(ยังไม่มีรูปพื้นหลัง)</div>';
 
-            // --- 3. แสดงผลส่วนที่ 2 (โซนที่ใช้พิกัดฉัน) ---
-            if (refZones.length > 0) {
-                let html = `<div style="margin-bottom: 30px;">`;
-                html += `<h3 style="color:#ffc107; border-bottom:2px solid #ffc107; padding-bottom:5px;">📍 โซนที่ใช้พิกัดอ้างอิงของคุณ (${refZones.length})</h3>`;
-                html += `<p style="color:gray; font-size:0.9em;">(โซนเหล่านี้อ้างอิงตำแหน่งของคุณ คุณสามารถมอบหมายให้ Admin ท่านอื่นดูแลได้)</p>`;
+                // --- ส่วน UI ตั้งชื่อโซน ---
+                const currentName = name.includes('Zone ID:') ? '' : name;
+                const nameInputHtml = `
+                    <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                        <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name']}:</label>
+                        <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name']}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
+                        <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
+                            ${t['btn_save']}
+                        </button>
+                    </div>
+                `;
 
-                html += refZones.map(zone => {
-                    const safeName = (zone.name || `Zone ID: ${zone.id}`).replace(/'/g, "\\'");
-                    const currentAdmin = zone.assignedAdmin || '- ว่าง -';
-                    const statusColor = zone.assignedAdmin ? 'green' : 'red';
-
-                    return `
-                        <div style="background:#fff3cd; border:1px solid #ffeeba; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div style="font-weight:bold; font-size:1.1em;">${zone.name || 'Zone ' + zone.id}</div>
-                                <div style="font-size:0.9em; margin-top:5px;">
-                                    ผู้ดูแลปัจจุบัน: <span style="color:${statusColor}; font-weight:bold;">${currentAdmin}</span>
-                                </div>
-                            </div>
-                            <button onclick="openAdminAssignModal('${zone.id}', '${safeName}')" 
-                                    style="background:#6610f2; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                                <i class="fas fa-user-edit"></i> เลือกแอดมิน
+                // --- [NEW] ส่วน UI อัปโหลดรูปพื้นหลัง ---
+                const bgUploadHtml = `
+                    <div style="margin-top: 10px; background: #fff3cd; padding: 10px; border-radius: 5px; border: 1px solid #ffc107;">
+                        <label style="font-size: 0.9em; font-weight: bold; display:block;">🖼️ รูปพื้นหลังโซน:</label>
+                        ${bgPreview}
+                        <div style="display:flex; gap:5px; margin-top:5px;">
+                            <input type="file" id="bg-file-${zone.id}" accept="image/*" style="font-size:0.8em; width:100%;">
+                            <button class="sidebar-btn create-btn" onclick="uploadZoneBg('${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom:0;">
+                                อัปโหลด
                             </button>
-                        </div>`;
-                }).join('');
-                html += `</div>`; // ปิด div wrapper
-                listDisplay.innerHTML += html;
-            }
+                        </div>
+                    </div>
+                `;
 
-            // กรณีไม่พบข้อมูลทั้ง 2 ส่วน
-            if (myZones.length === 0 && refZones.length === 0) {
-                listDisplay.innerHTML = `<div style="text-align:center; color:gray; padding:20px;">ไม่พบโซนที่เกี่ยวข้องกับคุณ</div>`;
-            }
+                return `
+                    <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: bold;">🗺️ ${name}</span>
+                            <a href="${mapLink}" target="_blank" style="color:#007bff; text-decoration:none;">📍 ${lat}, ${lng}</a>
+                        </div>
+                        
+                        ${nameInputHtml}
+                        ${bgUploadHtml}
+                        
+                        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-top: 10px;">
+                            <label style="font-size: 0.9em; white-space: nowrap;">Zone fee(USD):</label>
+                            <input type="number" id="fee-input-${zone.id}" value="${currentFeeVal}" placeholder="${placeholder}" 
+                                        style="width: 80px; padding: 5px; margin-bottom: 0;">     
+                            <button class="sidebar-btn create-btn" onclick="saveZoneFee('${zone.id}')" 
+                                        style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0;">
+                                บันทึก
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
         } else {
-            listDisplay.innerHTML = `<div style="text-align:center; color:gray; padding:20px;">ไม่พบข้อมูลโซน</div>`;
+            listDisplay.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['assigned_no_zones']}</p>`;
         }
     } catch (e) {
+        listDisplay.innerHTML = `<p style="text-align:center; color:#dc3545;">Error</p>`;
         console.error(e);
-        listDisplay.innerHTML = `<div style="text-align:center; color:red; padding:20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>`;
     }
 }
 
@@ -4497,6 +4558,46 @@ function openUserDetail(targetUsername) {
         <div style="margin-top: 15px; text-align: right;">
             <button class="sidebar-btn" onclick="document.getElementById('zone-ref-select-modal').classList.add('hidden')" style="width: auto; background: #6c757d;">ปิด</button>
         </div>
+    </div>
+</div>
+
+	<div id="admin-lv2-zone-choice-modal" class="modal-overlay hidden" style="z-index: 3100;">
+    <div class="modal-box" style="text-align: center; max-width: 400px;">
+        <h3>🛠️ จัดการโซน (Admin Lv2)</h3>
+        <p style="color: gray;">กรุณาเลือกโหมดการทำงาน</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+            <button onclick="selectZoneMode('SELF')" 
+                style="padding: 15px; border: 1px solid #007bff; background: white; color: #007bff; border-radius: 10px; cursor: pointer; font-size: 1.1em; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <i class="fas fa-map-marker-alt"></i> โซนของฉัน (ตั้งค่าพิกัด)
+            </button>
+
+            <button onclick="selectZoneMode('MANAGE_REF')" 
+                style="padding: 15px; background: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1.1em; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <i class="fas fa-network-wired"></i> จัดการโซนลูกข่าย (Reference)
+            </button>
+        </div>
+
+        <button onclick="document.getElementById('admin-lv2-zone-choice-modal').classList.add('hidden')" 
+            style="margin-top: 20px; background: none; border: none; color: gray; cursor: pointer; text-decoration: underline;">
+            ปิดหน้าต่าง
+        </button>
+    </div>
+</div>
+
+<div id="ref-zone-list-modal" class="modal-overlay hidden" style="z-index: 3100;">
+    <div class="modal-box">
+        <h3>📍 โซนที่ใช้ตำแหน่งอ้างอิงของคุณ</h3>
+        <p style="color: gray; font-size: 0.9em;">รายการโซนที่ผูกกับพิกัดของคุณ (Admin Lv2)</p>
+        
+        <div id="ref-zone-list-container" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+            <div style="text-align: center; color: gray;">กำลังโหลดข้อมูล...</div>
+        </div>
+
+        <button onclick="document.getElementById('ref-zone-list-modal').classList.add('hidden')" 
+            style="margin-top: 20px; width: 100%; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            ปิด
+        </button>
     </div>
 </div>
 

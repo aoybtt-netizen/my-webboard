@@ -1622,39 +1622,35 @@ app.get('/api/admin/admins-list', async (req, res) => {
 // 28. Assign Admin to Zone
 app.post('/api/admin/assign-zone', async (req, res) => {
     const { zoneId, adminUsername, requestBy } = req.body;
-    const user = await usersCollection.findOne({ username: requestBy });
-
-    if (!user || user.adminLevel < 1) {
-        return res.json({ success: false, error: 'Unauthorized' });
+    
+    // 1. Tidy up input
+    const zoneIdInt = parseInt(zoneId);
+    
+    // 2. Check Permissions (Requester must be Admin Level 3)
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 3) { 
+        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+    }
+    
+    // 3. Find target Zone
+    const zone = await zonesCollection.findOne({ id: zoneIdInt });
+    if (!zone) {
+        return res.status(404).json({ error: 'Zone not found.' });
+    }
+    
+    // 4. Validate Admin (check if target admin exists and is not banned)
+    const targetAdmin = await getUserData(adminUsername);
+    if (!targetAdmin || targetAdmin.adminLevel < 1 || targetAdmin.isBanned) {
+         return res.status(400).json({ error: `Invalid or unauthorized Admin: ${adminUsername}` });
     }
 
-    const zone = await zonesCollection.findOne({ id: parseInt(zoneId) });
-    if (!zone) return res.json({ success: false, error: 'Zone not found' });
+    // 5. Update Zone document
+    await zonesCollection.updateOne(
+        { id: zoneIdInt }, 
+        { $set: { assignedAdmin: adminUsername } }
+    );
 
-    // --- LOGIC การตรวจสอบสิทธิ์ ---
-    let canAssign = false;
-
-    // Level 3: ทำได้ทุกโซน
-    if (user.adminLevel >= 3) {
-        canAssign = true;
-    } 
-    // Level 2: ทำได้เฉพาะโซนที่ใช้ตำแหน่งตัวเองเป็นจุดอ้างอิง (refLocation.sourceUser)
-    else if (user.adminLevel === 2) {
-        if (zone.refLocation && zone.refLocation.sourceUser === user.username) {
-            canAssign = true;
-        }
-    }
-
-    if (!canAssign) {
-        return res.json({ success: false, error: 'คุณไม่มีสิทธิ์มอบหมายผู้ดูแลในโซนนี้' });
-    }
-
-    // ทำการอัปเดต
-    await zonesCollection.updateOne({ id: parseInt(zoneId) }, { 
-        $set: { assignedAdmin: adminUsername } 
-    });
-
-    res.json({ success: true });
+    res.json({ success: true, assignedAdmin: adminUsername });
 });
 
 // 29. Delete Zone
@@ -1672,28 +1668,22 @@ app.post('/api/admin/delete-zone', async (req, res) => {
 
 // 30. Get Assigned Zones for Admin (L1/L2)
 app.get('/api/admin/get-assigned-zones', async (req, res) => {
-    const requestBy = req.query.requestBy;
+    const { requestBy } = req.query;
+    const requester = await getUserData(requestBy);
     
-    // ตรวจสอบสิทธิ์ (Level 1-2)
-    const requester = await usersCollection.findOne({ username: requestBy });
+    // Check Permissions: Must be Admin Level 1 or 2
     if (!requester || requester.adminLevel < 1 || requester.adminLevel >= 3) {
-        return res.status(403).json({ error: 'Permission denied.' });
+        return res.status(403).json({ error: 'Permission denied. Admin Level 1 or 2 required.' });
     }
 
-    try {
-        // ใช้ $or เพื่อดึงทั้ง "โซนของฉัน" และ "โซนที่ใช้พิกัดอ้างอิงของฉัน"
-        const zones = await zonesCollection.find({
-            $or: [
-                { assignedAdmin: requestBy },           // 1. โซนที่ฉันดูแล
-                { "refLocation.sourceUser": requestBy } // 2. โซนที่ใช้ตำแหน่งฉันอ้างอิง
-            ]
-        }).toArray();
+    // Find zones where the assignedAdmin field matches the requester's username
+    const zones = await zonesCollection.find({ assignedAdmin: requestBy }).sort({ createdAt: -1 }).toArray();
 
-        res.json({ zones });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Database error' });
+    if (zones.length === 0) {
+        return res.json({ success: true, zones: [], message: 'No zones assigned to you.' });
     }
+
+    return res.json({ success: true, zones: zones });
 });
 
 // 31 ดึงรายชื่อ Admin ที่มีการระบุพิกัด Assigned Location แล้ว
