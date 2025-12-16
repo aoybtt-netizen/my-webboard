@@ -1564,7 +1564,7 @@ app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plu
 
 // 26. Set Zone Config 
 app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
-    const { lat, lng, requestBy, name, linkedAdmin } = req.body;
+    const { lat, lng, name, requestBy } = req.body;
     
     // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
     const requester = await getUserData(requestBy);
@@ -1583,8 +1583,7 @@ app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
         id: Date.now(), 
         lat: parsedLat, 
         lng: parsedLng, 
-        name: name || null,
-		linkedAdmin: linkedAdmin || null,
+        name: name || null, // Allow null name
         createdAt: new Date()
     };
 
@@ -1592,6 +1591,12 @@ app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
     await zonesCollection.insertOne(newZone);
 
     res.json({ success: true, newZone: newZone });
+});
+
+// 26.1. ดึงรายการโซนทั้งหมด (เพื่อไปแสดงในหน้าจัดการ)
+app.get('/api/admin/all-zones', async (req, res) => {
+    const zones = await zonesCollection.find({}).sort({ id: -1 }).toArray();
+    res.json(zones);
 });
 
 // 27. Get Admin List (Level 1+)
@@ -1609,8 +1614,7 @@ app.get('/api/admin/admins-list', async (req, res) => {
     res.json(admins.map(a => ({ 
         name: a.username, 
         level: a.adminLevel || 0,
-        isBanned: a.isBanned,
-        assignedLocation: a.assignedLocation || null
+        isBanned: a.isBanned // Include isBanned check
     })));
 });
 
@@ -1652,23 +1656,14 @@ app.post('/api/admin/assign-zone', async (req, res) => {
 // 29. Delete Zone
 app.post('/api/admin/delete-zone', async (req, res) => {
     const { zoneId, requestBy } = req.body;
-    
-    // Check Permissions
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 3) { 
-        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
-    }
-
-    const zoneIdInt = parseInt(zoneId);
     
-    // Delete Operation
-    const result = await zonesCollection.deleteOne({ id: zoneIdInt });
-
-    if (result.deletedCount > 0) {
-        res.json({ success: true });
-    } else {
-        res.status(404).json({ error: 'Zone not found' });
+    if (!requester || requester.adminLevel < 3) {
+        return res.status(403).json({ error: 'เฉพาะ Admin Level 3 เท่านั้น' });
     }
+
+    await zonesCollection.deleteOne({ id: parseInt(zoneId) });
+    res.json({ success: true });
 });
 
 // 30. Get Assigned Zones for Admin (L1/L2)
