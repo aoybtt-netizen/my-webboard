@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.57 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.58 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -408,6 +408,7 @@
 		let currentLat = null;       // เก็บ Lat ล่าสุด
 		let currentLng = null;
 		let currentZoneIdForRef = null;
+		let currentZoneMode = 'OWN';
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -613,25 +614,47 @@ async function saveZoneRefFromAdmin(targetAdmin) {
 
 // ฟังก์ชันจัดการการคลิกเมนูโซน ---
 function handleZoneMenuClick() {
-    console.log("My Admin Level:", myAdminLevel); 
-    console.log("My Username:", myUsername);
-    if (myAdminLevel === 2) {
-        document.getElementById('admin-lv2-zone-choice-modal').classList.remove('hidden');
-    } else if (myAdminLevel === 1 || myAdminLevel === 3) {
-        openAdminZoneModal(); 
-    } else {
-        alert("คุณไม่มีสิทธิ์เข้าถึงส่วนนี้");
-    }
+    document.getElementById('admin-zone-modal').classList.remove('hidden'); // ตัวอย่าง
+    selectZoneMode('OWN'); // เริ่มต้นที่โหมด Own
 }
 
 // ฟังก์ชันเลือกโหมด ---
 function selectZoneMode(mode) {
+    currentZoneMode = mode;
+    
     document.getElementById('admin-lv2-zone-choice-modal').classList.add('hidden');
 
     if (mode === 'SELF') {
-        openZoneSetupModal();
+        openZoneSetupModal(); 
     } else if (mode === 'MANAGE_REF') {
-        openRefZoneManager();
+        openRefZoneManager(); 
+        fetchAndRenderZones(); 
+    }
+}
+
+async function fetchAndRenderZones() {
+    const listContainer = document.getElementById(currentZoneMode === 'MANAGE_REF' ? 'ref-zone-list-container' : 'zone-list-container');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '<p style="text-align:center;">⏳ กำลังโหลด...</p>';
+
+    try {
+        const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}&mode=${currentZoneMode}`);
+        const data = await res.json();
+
+        if (data.zones && data.zones.length > 0) {
+            listContainer.innerHTML = data.zones.map(zone => {
+                return `<div class="zone-card">
+                            <b>${zone.name}</b><br>
+                            <small>ID: ${zone.id}</small>
+                        </div>`;
+            }).join('');
+        } else {
+            listContainer.innerHTML = `<p style="text-align:center; color:gray;">ไม่พบโซน${currentZoneMode === 'MANAGE_REF' ? 'ที่อ้างอิงตำแหน่งของคุณ' : 'ที่คุณดูแล'}</p>`;
+        }
+    } catch (e) {
+        console.error('Error fetching zones:', e);
+        listContainer.innerHTML = '<p style="text-align:center; color:red;">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
     }
 }
 
