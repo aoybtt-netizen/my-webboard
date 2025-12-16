@@ -2530,14 +2530,12 @@ async function fetchAndRenderAllZones() {
 
 		// ฟังก์ชันสำหรับเปิดหน้าต่างแสดงโซนที่ Admin L1/L2 รับผิดชอบ
 	async function openAssignedZoneMap() {
-    // ตรวจสอบสิทธิ์ (Level 1-2 เท่านั้น)
     if (myAdminLevel < 1 || myAdminLevel >= 3) return;
 
     document.getElementById('assigned-zone-map-modal').classList.remove('hidden');
     const listDisplay = document.getElementById('assigned-zone-list-display');
     const infoDisplay = document.getElementById('assigned-user-display');
-    const t = translations[currentLang];
-
+    
     infoDisplay.innerText = `${myUsername} (Level ${myAdminLevel})`;
     listDisplay.innerHTML = `<p style="text-align:center;">Loading...</p>`;
 
@@ -2547,12 +2545,8 @@ async function fetchAndRenderAllZones() {
 
         if (data.zones && data.zones.length > 0) {
             
-            // --- 1. แยกกลุ่มโซน ---
-            // กลุ่ม A: โซนของฉัน (ฉันเป็น Assigned Admin)
+            // 1. แยกกลุ่มโซน
             const myZones = data.zones.filter(z => z.assignedAdmin === myUsername);
-            
-            // กลุ่ม B: โซนลูกข่าย (ใช้ตำแหน่งฉันอ้างอิง แต่ฉันไม่ได้ดูแลเอง)
-            // เช็คว่ามี refLocation และ sourceUser คือเรา และ assignedAdmin ไม่ใช่เรา
             const refZones = data.zones.filter(z => 
                 z.refLocation && 
                 z.refLocation.sourceUser === myUsername && 
@@ -2561,90 +2555,68 @@ async function fetchAndRenderAllZones() {
 
             let html = '';
 
-            // --- 2. แสดงส่วน "จัดการโซนของฉัน" ---
+            // 2. ส่วน A: โซนของฉัน (ที่ฉันดูแล)
             if (myZones.length > 0) {
-                html += `<h3 style="color:#007bff; margin-top:0; border-bottom:2px solid #007bff; padding-bottom:5px;">🏠 จัดการโซนของคุณ</h3>`;
-                
+                html += `<h3 style="color:#007bff; border-bottom:2px solid #007bff; padding-bottom:5px;">🏠 โซนที่คุณดูแล</h3>`;
                 html += myZones.map(zone => {
-                    // Logic การแสดงผลแบบเดิม (แก้ไขชื่อ/รูป/ค่าธรรมเนียม)
-                    const lat = parseFloat(zone.lat).toFixed(4);
-                    const lng = parseFloat(zone.lng).toFixed(4);
-                    const name = zone.name || `Zone ID: ${zone.id}`;
-                    const mapLink = `https://www.google.com/maps?q=$${zone.lat},${zone.lng}`;
-                    const currentName = name.includes('Zone ID:') ? '' : name;
-                    
                     const bgPreview = zone.bgImage 
-                        ? `<div style="margin-top:5px;"><img src="${zone.bgImage}" style="max-height:100px; border-radius:5px; border:1px solid #ddd;"></div>` 
-                        : '<div style="margin-top:5px; color:gray; font-size:0.8em;">(ยังไม่มีรูปพื้นหลัง)</div>';
-
+                        ? `<img src="${zone.bgImage}" style="height:50px; border-radius:4px; border:1px solid #ddd;">` 
+                        : '';
+                    
                     return `
-                        <div style="padding: 15px; background: #f0f9ff; margin-bottom: 20px; border-radius: 8px; border: 1px solid #cce5ff;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <strong>🗺️ ${name}</strong>
-                                <a href="${mapLink}" target="_blank" style="color:#007bff;">📍 ${lat}, ${lng}</a>
+                        <div style="padding:15px; background:#f0f9ff; margin-bottom:15px; border-radius:8px; border:1px solid #cce5ff;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong>${zone.name || 'Zone ID: ' + zone.id}</strong>
+                                <span style="font-size:0.8em; color:gray;">(คุณเป็นผู้ดูแล)</span>
                             </div>
-                            
-                            <div style="background:white; padding:10px; border-radius:5px; border:1px solid #eee; margin-bottom:5px;">
-                                <div style="display:flex; gap:5px; align-items:center;">
-                                    <label style="font-size:0.8em;">ชื่อ:</label>
-                                    <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="ตั้งชื่อโซน..." style="flex:1; padding:5px;">
-                                    <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="width:auto; padding:5px 10px; margin:0;">บันทึก</button>
+                            <div style="margin-top:10px; padding:10px; background:white; border-radius:5px;">
+                                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                                    <input type="text" id="name-input-${zone.id}" value="${zone.name || ''}" placeholder="ชื่อโซน" style="padding:5px; flex:1;">
+                                    <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="width:auto; padding:5px 10px;">บันทึกชื่อ</button>
+                                </div>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <div style="flex:1;">
+                                        <input type="file" id="bg-file-${zone.id}" accept="image/*" style="font-size:0.8em;">
+                                    </div>
+                                    ${bgPreview}
+                                    <button class="sidebar-btn create-btn" onclick="uploadZoneBg('${zone.id}')" style="width:auto; padding:5px 10px;">อัปรูป</button>
                                 </div>
                             </div>
-
-                            <div style="background:white; padding:10px; border-radius:5px; border:1px solid #eee; margin-bottom:5px;">
-                                <label style="font-size:0.8em; font-weight:bold;">🖼️ รูปพื้นหลัง:</label>
-                                ${bgPreview}
-                                <div style="display:flex; gap:5px; margin-top:5px;">
-                                    <input type="file" id="bg-file-${zone.id}" accept="image/*" style="font-size:0.8em; width:100%;">
-                                    <button class="sidebar-btn create-btn" onclick="uploadZoneBg('${zone.id}')" style="width:auto; padding:5px 10px; margin:0;">อัปโหลด</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                        </div>`;
                 }).join('');
             } else {
-                html += `<p style="text-align:center; color:gray; padding:10px;">(คุณยังไม่ได้ดูแลโซนใดๆ เป็นพิเศษ)</p>`;
+                html += `<p style="text-align:center; color:gray;">(คุณไม่ได้ดูแลโซนใดๆ เป็นพิเศษ)</p>`;
             }
 
-            // --- 3. แสดงส่วน "รายชื่อโซนลูกข่าย (เลือกแอดมิน)" ---
+            // 3. ส่วน B: โซนลูกข่าย (ที่ใช้พิกัดฉัน)
             if (refZones.length > 0) {
-                html += `<h3 style="color:#ffc107; margin-top:20px; border-bottom:2px solid #ffc107; padding-bottom:5px;">📍 โซนที่ใช้ตำแหน่งอ้างอิงของคุณ</h3>`;
-                html += `<p style="font-size:0.8em; color:gray; margin-bottom:10px;">โซนเหล่านี้ใช้พิกัดของคุณเป็นจุดศูนย์กลาง คุณสามารถเลือกผู้ดูแลให้โซนเหล่านี้ได้</p>`;
-                
+                html += `<h3 style="color:#ffc107; margin-top:20px; border-bottom:2px solid #ffc107; padding-bottom:5px;">📍 โซนที่ใช้พิกัดอ้างอิงของคุณ</h3>`;
                 html += refZones.map(zone => {
-                    const name = zone.name || `Zone ID: ${zone.id}`;
+                    const safeName = (zone.name || `Zone ID: ${zone.id}`).replace(/'/g, "\\'");
                     const currentAdmin = zone.assignedAdmin || '-';
-                    // Escape ชื่อสำหรับส่งเข้าฟังก์ชัน
-                    const safeName = name.replace(/'/g, "\\'"); 
-
+                    
                     return `
-                        <div style="padding: 15px; background: #fff3cd; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ffeeba; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="padding:15px; background:#fff3cd; margin-bottom:10px; border-radius:8px; border:1px solid #ffeeba; display:flex; justify-content:space-between; align-items:center;">
                             <div>
-                                <div style="font-weight:bold; font-size:1.1em;">${name}</div>
-                                <div style="font-size:0.9em;">
-                                    ผู้ดูแลปัจจุบัน: <span style="color:${currentAdmin === '-' ? 'red' : 'green'}; font-weight:bold;">${currentAdmin}</span>
-                                </div>
+                                <div><strong>${zone.name || 'Zone ' + zone.id}</strong></div>
+                                <div style="font-size:0.8em;">ผู้ดูแลปัจจุบัน: <strong>${currentAdmin}</strong></div>
                             </div>
-                            <div>
-                                <button onclick="openAdminAssignModal('${zone.id}', '${safeName}')" 
-                                        style="background:#17a2b8; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                                    <i class="fas fa-user-cog"></i> เลือกแอดมิน
-                                </button>
-                            </div>
-                        </div>
-                    `;
+                            <button onclick="openAdminAssignModal('${zone.id}', '${safeName}')" 
+                                    style="background:#17a2b8; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">
+                                <i class="fas fa-user-cog"></i> เลือกแอดมิน
+                            </button>
+                        </div>`;
                 }).join('');
             }
 
             listDisplay.innerHTML = html;
 
         } else {
-            listDisplay.innerHTML = `<p style="text-align:center; color:#e0a800;">ไม่พบข้อมูลโซนที่เกี่ยวข้องกับคุณ</p>`;
+            listDisplay.innerHTML = `<p style="text-align:center; color:#e0a800;">ไม่พบข้อมูลโซนที่เกี่ยวข้อง</p>`;
         }
     } catch (e) {
-        listDisplay.innerHTML = `<p style="text-align:center; color:#dc3545;">Error fetching zones</p>`;
         console.error(e);
+        listDisplay.innerHTML = `<p style="text-align:center; color:red;">เกิดข้อผิดพลาด</p>`;
     }
 }
 
