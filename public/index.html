@@ -613,11 +613,14 @@ async function saveZoneRefFromAdmin(targetAdmin) {
 
 // ฟังก์ชันจัดการการคลิกเมนูโซน ---
 function handleZoneMenuClick() {
-    console.log("Current User Role:", currentUser.level);
-    if (currentUser.level === 'ADMIN_LV2') {
+    console.log("My Admin Level:", myAdminLevel); 
+    console.log("My Username:", myUsername);
+    if (myAdminLevel === 2) {
         document.getElementById('admin-lv2-zone-choice-modal').classList.remove('hidden');
+    } else if (myAdminLevel === 1 || myAdminLevel === 3) {
+        openAdminZoneModal(); 
     } else {
-        openSetLocationModal(); 
+        alert("คุณไม่มีสิทธิ์เข้าถึงส่วนนี้");
     }
 }
 
@@ -646,7 +649,7 @@ socket.on('resp-zone-data', (allZones) => {
     const listContainer = document.getElementById('ref-zone-list-container');
     listContainer.innerHTML = '';
 
-    const myRefZones = allZones.filter(zone => zone.refAdmin === currentUser.username);
+    const myRefZones = allZones.filter(zone => zone.refAdmin === myUsername);
 
     if (myRefZones.length === 0) {
         listContainer.innerHTML = `
