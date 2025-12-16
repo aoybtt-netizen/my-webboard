@@ -1563,32 +1563,35 @@ app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plu
 });
 
 // 26. Set Zone Config 
-app.post('/api/admin/add-zone', async (req, res) => {
-    // รับค่า address และ assignedAdmin เพิ่มเข้ามา
-    const { lat, lng, name, address, assignedAdmin, requestBy } = req.body; 
-
+app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
+    const { lat, lng, requestBy, name, linkedAdmin } = req.body;
+    
+    // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
     const requester = await getUserData(requestBy);
-    // เช็คสิทธิ์ Admin L3
-    if (!requester || requester.adminLevel < 3) {
-        return res.status(403).json({ error: 'Permission denied' });
+    if (!requester || requester.adminLevel < 3) { 
+        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
     }
 
-    // สร้าง ID ใหม่
-    const zones = await zonesCollection.find({}).toArray();
-    const newId = zones.length > 0 ? Math.max(...zones.map(z => z.id)) + 1 : 1;
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
 
-    const newZone = {
-        id: newId,
-        name: name || `Zone ${newId}`,
-        lat: parseFloat(lat),
-        lng: parseFloat(lng),
-        address: address || '', // บันทึกชื่อสถานที่ (ถ้ามี)
-        assignedAdmin: assignedAdmin || null, // บันทึก Admin ผู้ดูแล (ถ้ามี)
-        createdAt: Date.now()
+    if (isNaN(parsedLat) || isNaN(parsedLng) || parsedLat < -90 || parsedLat > 90 || parsedLng < -180 || parsedLng > 180) {
+        return res.status(400).json({ error: 'Invalid Latitude or Longitude values.' });
+    }
+    
+    const newZone = { 
+        id: Date.now(), 
+        lat: parsedLat, 
+        lng: parsedLng, 
+        name: name || null,
+		linkedAdmin: linkedAdmin || null,
+        createdAt: new Date()
     };
 
+    // 2. บันทึกข้อมูลลงใน zonesCollection
     await zonesCollection.insertOne(newZone);
-    res.json({ success: true, message: 'สร้างโซนเรียบร้อยแล้ว', zone: newZone });
+
+    res.json({ success: true, newZone: newZone });
 });
 
 // 27. Get Admin List (Level 1+)
@@ -1606,7 +1609,8 @@ app.get('/api/admin/admins-list', async (req, res) => {
     res.json(admins.map(a => ({ 
         name: a.username, 
         level: a.adminLevel || 0,
-        isBanned: a.isBanned // Include isBanned check
+        isBanned: a.isBanned,
+        assignedLocation: a.assignedLocation || null
     })));
 });
 
