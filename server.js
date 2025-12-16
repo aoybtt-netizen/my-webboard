@@ -1712,36 +1712,43 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
     const { zoneId, targetAdmin, requestBy } = req.body;
 
     try {
-        const requester = await usersCollection.findOne({ name: requestBy });
+        // 1. ตรวจสอบสิทธิ์ผู้ขอ (ต้องเป็น Admin Level 3)
+        const requester = await usersCollection.findOne({ username: requestBy });
         if (!requester || requester.adminLevel < 3) {
-            return res.status(403).json({ error: 'Unauthorized' });
+            return res.status(403).json({ error: 'คุณไม่มีสิทธิ์ดำเนินการ (ต้องเป็น Admin Level 3)' });
         }
 
-        // 1. ดึงข้อมูลพิกัดของ Admin เป้าหมาย
-        const adminUser = await usersCollection.findOne({ name: targetAdmin });
+        // 2. ดึงข้อมูลพิกัดจาก Admin ที่ถูกเลือก
+        const adminUser = await usersCollection.findOne({ username: targetAdmin });
         if (!adminUser || !adminUser.assignedLocation || !adminUser.assignedLocation.lat) {
-            return res.status(400).json({ error: 'Admin คนนี้ไม่มีพิกัดอ้างอิง' });
+            return res.status(400).json({ error: 'แอดมินคนนี้ยังไม่มีการตั้งค่าพิกัดอ้างอิง' });
         }
 
-        // 2. อัปเดต Zone ให้มี field refLocation
-        await zonesCollection.updateOne(
+        // 3. บันทึกพิกัดของแอดมินลงไปในโซนเป้าหมาย (ใช้ Field ใหม่ชื่อ refLocation)
+        const result = await zonesCollection.updateOne(
             { id: parseInt(zoneId) },
             { 
                 $set: { 
                     refLocation: {
                         lat: adminUser.assignedLocation.lat,
                         lng: adminUser.assignedLocation.lng,
-                        addressName: adminUser.assignedLocation.addressName || 'Unknown',
-                        sourceUser: targetAdmin // บันทึกไว้ว่าเอามาจากใคร
+                        addressName: adminUser.assignedLocation.addressName || 'Unknown Location',
+                        sourceUser: targetAdmin,
+                        updatedAt: Date.now()
                     }
                 } 
             }
         );
 
-        res.json({ success: true, message: `ตั้งค่าจุดอ้างอิงโซนตามคุณ ${targetAdmin} สำเร็จ` });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'ไม่พบโซนที่ระบุ' });
+        }
+
+        res.json({ success: true, message: `ตั้งค่าจุดอ้างอิงโซนจากพิกัดของ ${targetAdmin} สำเร็จ` });
+
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: e.message });
+        console.error('Error setting zone ref:', e);
+        res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
     }
 });
 
