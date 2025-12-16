@@ -185,7 +185,7 @@
     <button class="sidebar-btn admin-btn" onclick="openAdminAnnouncementModal()" id="admin-announcement-btn" data-i18n-key="admin_set_announcement">📢 ตั้งค่าประกาศ</button>
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
-    <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
+    <button class="sidebar-btn admin-btn" onclick="handleZoneMenuClick()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.55 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.56 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -613,10 +613,11 @@ async function saveZoneRefFromAdmin(targetAdmin) {
 
 // ฟังก์ชันจัดการการคลิกเมนูโซน ---
 function handleZoneMenuClick() {
+    console.log("Current User Role:", currentUser.level);
     if (currentUser.level === 'ADMIN_LV2') {
         document.getElementById('admin-lv2-zone-choice-modal').classList.remove('hidden');
     } else {
-        openZoneSetupModal();
+        openSetLocationModal(); 
     }
 }
 
