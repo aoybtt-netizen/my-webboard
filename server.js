@@ -1673,9 +1673,10 @@ app.post('/api/admin/delete-zone', async (req, res) => {
 // 30. Get Assigned Zones for Admin (L1/L2)
 app.get('/api/admin/get-assigned-zones', async (req, res) => {
     const requestBy = req.query.requestBy;
+    
     const requester = await usersCollection.findOne({ username: requestBy });
     if (!requester || requester.adminLevel < 1 || requester.adminLevel >= 3) {
-        return res.status(403).json({ error: 'Permission denied. Admin Level 1 or 2 required.' });
+        return res.status(403).json({ error: 'Permission denied.' });
     }
 
     try {
