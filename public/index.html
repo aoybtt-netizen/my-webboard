@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.56 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.57 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -649,13 +649,17 @@ socket.on('resp-zone-data', (allZones) => {
     const listContainer = document.getElementById('ref-zone-list-container');
     listContainer.innerHTML = '';
 
-    const myRefZones = allZones.filter(zone => zone.refAdmin === myUsername);
+    // แก้ไขเงื่อนไข Filter: ให้หาโซนที่ชื่อเราเป็นผู้ดูแล (assignedAdmin) 
+    // หรือ เป็นคนให้พิกัดอ้างอิง (refAdmin)
+    const myRefZones = allZones.filter(zone => 
+        zone.refAdmin === myUsername || zone.assignedAdmin === myUsername
+    );
 
     if (myRefZones.length === 0) {
         listContainer.innerHTML = `
             <div style="text-align: center; padding: 20px; color: #dc3545;">
                 <i class="fas fa-exclamation-circle" style="font-size: 2em; margin-bottom: 10px;"></i><br>
-                ไม่พบโซนที่ใช้ตำแหน่งอ้างอิงของคุณ
+                ไม่พบโซนที่เกี่ยวข้องกับบัญชีของคุณ
             </div>`;
         return;
     }
@@ -664,21 +668,22 @@ socket.on('resp-zone-data', (allZones) => {
         const div = document.createElement('div');
         div.className = 'user-list-item';
         div.style.display = 'block';
+        div.style.borderLeft = "5px solid #007bff";
         
         div.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong style="font-size: 1.1em;">${zone.name}</strong>
+                    <strong style="font-size: 1.1em;">${zone.name || 'โซนไม่มีชื่อ'}</strong>
                     <div style="font-size: 0.85em; color: gray;">
-                        ID: ${zone.id} | รัศมี: ${zone.radius}m
+                        ID: ${zone.id} | รัศมี: ${zone.radius || 1000}m
                     </div>
                 </div>
-                <button onclick="editRefZone('${zone.id}')" style="background: #ffc107; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">
-                    <i class="fas fa-edit"></i> แก้ไข
+                <button onclick="openAssignedZoneMap()" style="background: #28a745; color:white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">
+                    <i class="fas fa-search-location"></i> ดูแผนที่
                 </button>
             </div>
-            <div style="margin-top: 5px; font-size: 0.8em; color: #28a745;">
-                <i class="fas fa-link"></i> ผูกกับ: ${zone.refAdmin} (คุณ)
+            <div style="margin-top: 5px; font-size: 0.8em; color: #007bff;">
+                <i class="fas fa-user-shield"></i> สถานะ: คุณเป็นผู้ดูแลโซนนี้
             </div>
         `;
         listContainer.appendChild(div);

@@ -2193,13 +2193,10 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	socket.on('req-zone-data', async () => {
     try {
-        // ดึงข้อมูลโซนทั้งหมดจาก zonesCollection ใน MongoDB
-        const allZones = await zonesCollection.find({}).toArray();
-        
-        // ส่งข้อมูลกลับไปให้เฉพาะ Client ที่ขอมา
+        const allZones = await zonesCollection.find({}).toArray(); // ดึงทุกโซนมาให้ Client กรอง
         socket.emit('resp-zone-data', allZones);
-    } catch (err) {
-        console.error("Error fetching zones for socket:", err);
+    } catch (e) {
+        console.error("Error fetching zones:", e);
     }
 });
 
