@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.51 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.52 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -407,6 +407,7 @@
 		let currentAddressName = ''; // เก็บชื่อสถานที่ล่าสุดที่หาเจอ
 		let currentLat = null;       // เก็บ Lat ล่าสุด
 		let currentLng = null;
+		let currentZoneIdForRef = null;
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -537,6 +538,68 @@ async function assignAdminToZone(zoneId, adminUsername, zoneName) {
 
 window.openAdminAssignModal = openAdminAssignModal;
 window.assignAdminToZone = assignAdminToZone;
+
+// 1. ฟังก์ชันเปิด Modal และโหลดรายชื่อ
+async function openZoneRefSelectModal(zoneId) {
+    currentZoneIdForRef = zoneId;
+    document.getElementById('zone-ref-select-modal').classList.remove('hidden');
+    
+    const listDiv = document.getElementById('zone-ref-admin-list');
+    listDiv.innerHTML = '<p style="text-align:center;">⏳ กำลังโหลดรายชื่อ...</p>';
+
+    try {
+        const res = await fetch('/api/admin/admins-with-location');
+        const data = await res.json();
+
+        if (data.success && data.admins.length > 0) {
+            listDiv.innerHTML = data.admins.map(admin => {
+                const locName = admin.assignedLocation.addressName || `${admin.assignedLocation.lat}, ${admin.assignedLocation.lng}`;
+                return `
+                    <div class="user-list-item" onclick="saveZoneRefFromAdmin('${admin.name}')" style="border-bottom:1px solid #eee; padding:10px;">
+                        <div style="font-weight:bold;">👤 ${admin.name} <span style="font-size:0.8em; background:#007bff; color:white; padding:2px 5px; border-radius:4px;">L${admin.adminLevel}</span></div>
+                        <div style="font-size:0.85em; color:gray;">📍 ${locName}</div>
+                        <div style="font-size:0.8em; color:#28a745; margin-top:2px;">คลิกเพื่อเลือก</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            listDiv.innerHTML = '<p style="text-align:center; color:red;">ไม่พบ Admin ที่มีการตั้งค่าตำแหน่งไว้</p>';
+        }
+    } catch (e) {
+        console.error(e);
+        listDiv.innerHTML = '<p style="text-align:center; color:red;">เกิดข้อผิดพลาดในการเชื่อมต่อ</p>';
+    }
+}
+
+// 2. ฟังก์ชันบันทึกเมื่อเลือก Admin
+async function saveZoneRefFromAdmin(targetAdmin) {
+    if (!currentZoneIdForRef) return;
+    
+    if(!confirm(`ยืนยันใช้ตำแหน่งของ "${targetAdmin}" เป็นจุดอ้างอิงของโซนนี้?`)) return;
+
+    try {
+        const res = await fetch('/api/admin/set-zone-ref-from-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                zoneId: currentZoneIdForRef,
+                targetAdmin: targetAdmin,
+                requestBy: myUsername
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message);
+            document.getElementById('zone-ref-select-modal').classList.add('hidden');
+            fetchAndRenderAllZones(); // รีเฟรชหน้าโซน
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (e) {
+        alert('❌ Connection Error');
+    }
+}
 
         // ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
     function setDistanceFilter() {
@@ -2392,13 +2455,32 @@ async function fetchAndRenderAllZones() {
         const data = await res.json();
         
         if (data.zones && data.zones.length > 0) {
-            // ใช้ Logic การแสดงผลเดิม แต่เปลี่ยน ID ปุ่ม Input เพื่อไม่ให้ซ้ำกัน
             listContainer.innerHTML = data.zones.map(zone => {
                 const name = zone.name || `Zone ID: ${zone.id}`;
                 const safeName = name.replace(/'/g, "\\'");
                 const assignedAdmin = zone.assignedAdmin || '-';
                 
-                // Logic แสดงปุ่มแก้ไขชื่อ (เหมือนเดิม)
+                // --- ส่วนแสดงผล Reference Location ---
+                let refLocHtml = '';
+                if (zone.refLocation && zone.refLocation.lat) {
+                    refLocHtml = `
+                        <div style="margin-top:5px; font-size:0.85em; background:#e8f5e9; padding:5px; border-radius:4px; border:1px solid #c3e6cb;">
+                            <strong style="color:#155724;">📍 จุดอ้างอิง:</strong> 
+                            <span title="${zone.refLocation.lat}, ${zone.refLocation.lng}">
+                                ${zone.refLocation.addressName || 'มีพิกัดแล้ว'}
+                            </span>
+                            <div style="font-size:0.8em; color:gray;">(จาก: ${zone.refLocation.sourceUser || 'Unknown'})</div>
+                        </div>
+                    `;
+                } else {
+                    refLocHtml = `
+                        <div style="margin-top:5px; font-size:0.85em; color:#856404; background:#fff3cd; padding:5px; border-radius:4px; border:1px solid #ffeeba;">
+                            ⚠️ ยังไม่มีจุดอ้างอิง
+                        </div>
+                    `;
+                }
+
+                // Input แก้ไขชื่อโซน (โค้ดเดิม)
                 let nameInputHtml = `
                     <div style="margin-top:5px; display:flex; gap:5px;">
                         <input type="text" id="name-input-${zone.id}" value="${name.includes('Zone ID:')?'':name}" placeholder="แก้ไขชื่อโซน" style="width:100px; padding:2px;">
@@ -2409,15 +2491,19 @@ async function fetchAndRenderAllZones() {
                 return `
                 <div style="background:#f9f9f9; border-bottom:1px solid #ddd; padding:10px; margin-bottom:5px; border-radius:5px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <div>
+                        <div style="flex: 1;">
                             <b>${name}</b><br>
-                            <small>📍 ${parseFloat(zone.lat).toFixed(4)}, ${parseFloat(zone.lng).toFixed(4)}</small><br>
+                            <small>🎯 ศูนย์กลาง: ${parseFloat(zone.lat).toFixed(4)}, ${parseFloat(zone.lng).toFixed(4)}</small><br>
                             <small style="color:#007bff;">ผู้ดูแล: ${assignedAdmin}</small>
                             ${nameInputHtml}
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:5px;">
-                            <button onclick="deleteZone(${zone.id}, '${safeName}')" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">ลบ</button>
-                            <button onclick="openAdminAssignModal('${zone.id}', '${safeName}')" style="background:#ffc107; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">ผู้ดูแล</button>
+                            ${refLocHtml} </div>
+                        <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px;">
+                            <button onclick="deleteZone(${zone.id}, '${safeName}')" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">ลบโซน</button>
+                            <button onclick="openAdminAssignModal('${zone.id}', '${safeName}')" style="background:#ffc107; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">ผู้ดูแล</button>
+                            
+                            <button onclick="openZoneRefSelectModal('${zone.id}')" style="background:#6f42c1; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">
+                                📍 จุดอ้างอิง
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -4372,6 +4458,23 @@ function openUserDetail(targetUsername) {
         
         <hr>
         <button class="sidebar-btn" onclick="saveAssignedLocation(true)" style="background: #dc3545; color: white; width: 100%; margin-top: 10px;">🗑️ ลบพิกัดอ้างอิง (Reset)</button>
+    </div>
+</div>
+
+	<div id="zone-ref-select-modal" class="modal-overlay hidden" style="z-index: 3000;">
+    <div class="modal-box">
+        <h3 style="text-align: center;">📍 เลือกพิกัดอ้างอิงจาก Admin</h3>
+        <p style="text-align:center; color:gray; font-size:0.9em;">
+            เลือก Admin เพื่อนำตำแหน่งของเขามาใช้เป็น<br>จุดอ้างอิง (Reference) ของโซนนี้
+        </p>
+
+        <div id="zone-ref-admin-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-top:10px;">
+            Loading...
+        </div>
+
+        <div style="margin-top: 15px; text-align: right;">
+            <button class="sidebar-btn" onclick="document.getElementById('zone-ref-select-modal').classList.add('hidden')" style="width: auto; background: #6c757d;">ปิด</button>
+        </div>
     </div>
 </div>
 

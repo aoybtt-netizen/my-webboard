@@ -1686,6 +1686,59 @@ app.get('/api/admin/get-assigned-zones', async (req, res) => {
     return res.json({ success: true, zones: zones });
 });
 
+// 31 ดึงรายชื่อ Admin ที่มีการระบุพิกัด Assigned Location แล้ว
+app.get('/api/admin/admins-with-location', async (req, res) => {
+    try {
+        const admins = await usersCollection.find({
+            adminLevel: { $gt: 0 }, // ต้องเป็น Admin
+            "assignedLocation.lat": { $exists: true, $ne: null } // ต้องมีพิกัด
+        }).project({ name: 1, adminLevel: 1, assignedLocation: 1 }).toArray();
+
+        res.json({ success: true, admins });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 32 ตั้งค่า Reference Location ของโซน โดยคัดลอกมาจาก Admin
+app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
+    const { zoneId, targetAdmin, requestBy } = req.body;
+
+    try {
+        const requester = await usersCollection.findOne({ name: requestBy });
+        if (!requester || requester.adminLevel < 3) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        // 1. ดึงข้อมูลพิกัดของ Admin เป้าหมาย
+        const adminUser = await usersCollection.findOne({ name: targetAdmin });
+        if (!adminUser || !adminUser.assignedLocation || !adminUser.assignedLocation.lat) {
+            return res.status(400).json({ error: 'Admin คนนี้ไม่มีพิกัดอ้างอิง' });
+        }
+
+        // 2. อัปเดต Zone ให้มี field refLocation
+        await zonesCollection.updateOne(
+            { id: parseInt(zoneId) },
+            { 
+                $set: { 
+                    refLocation: {
+                        lat: adminUser.assignedLocation.lat,
+                        lng: adminUser.assignedLocation.lng,
+                        addressName: adminUser.assignedLocation.addressName || 'Unknown',
+                        sourceUser: targetAdmin // บันทึกไว้ว่าเอามาจากใคร
+                    }
+                } 
+            }
+        );
+
+        res.json({ success: true, message: `ตั้งค่าจุดอ้างอิงโซนตามคุณ ${targetAdmin} สำเร็จ` });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 
