@@ -390,29 +390,31 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.48 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.49 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let myUsername = "";
 		let myAdminLevel = 0;
-		let myZoneId = null;     // Zone ID หลักของผู้ใช้ที่ล็อกอินอยู่
-		let filterLocation = null;      // เก็บพิกัดคนดู
-        let filterMaxDistance = null;   // เก็บระยะทางที่ต้องการกรอง (กม.)
+		let myZoneId = null;
+		let filterLocation = null;
+        let filterMaxDistance = null; 
 		let userPrimaryLocation = null;
 		let currentDeductRequest = null;
 		let targetUserForLocation = null;
-		let geoLookupTimeout = null; // ตัวแปรสำหรับหน่วงเวลาการค้นหา
+		let geoLookupTimeout = null;
 		let currentAddressName = ''; // เก็บชื่อสถานที่ล่าสุดที่หาเจอ
-		// Cooldown สำหรับการป้องกัน Rapid Refresh (7 วินาที)
+		let currentLat = null;       // เก็บ Lat ล่าสุด
+		let currentLng = null;
+		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
-		//  Cooldown state สำหรับ Distance Filter
+		//  Cooldown state Distance Filter
 		let lastFilterTime = 0; 
-		const FILTER_COOLDOWN_MS = 60000; // 60 วินาที
+		const FILTER_COOLDOWN_MS = 20000; // 20 วินาที
 		
-		let userSearchTimeout = null; // ตัวแปรสำหรับหน่วงเวลาค้นหา
+		let userSearchTimeout = null;
 		
 		// ควบคุมสถานะปุ่มและแสดงเวลานับถอยหลัง
 		function updateFilterButtonState() {
@@ -3909,62 +3911,82 @@ function openUserDetail(targetUsername) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
 
-    // ใส่ปุ่มลงใน Modal
     document.getElementById('detail-actions').innerHTML = buttonsHtml;
 
-    // แสดง Modal
     modal.classList.remove('hidden');
 }
 
-	// 1. ฟังก์ชันเปิด Modal (เรียกใช้จากปุ่มในรายชื่อ User)
-function openSetLocationModal(username, currentLat, currentLng) {
+	// Google Maps NEW Tab
+    function openGoogleMaps(lat, lng) {
+        if (!lat || !lng) {
+            alert('ไม่สามารถเปิดแผนที่ได้: ไม่มีข้อมูลพิกัด');
+            return;
+        }
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        window.open(mapsUrl, '_blank');
+    }
+
+    function openSetLocationModal(username, targetLat, targetLng) {
         targetUserForLocation = username;
         document.getElementById('loc-target-user').innerText = username;
         
-        // เคลียร์ค่าเก่า
-        document.getElementById('geo-lookup-result').innerText = '- กรุณากรอกพิกัด -';
-        document.getElementById('geo-lookup-result').style.color = 'gray';
+        const resultDiv = document.getElementById('geo-lookup-result');
+        resultDiv.innerHTML = '- กรุณากรอกพิกัด -';
+        resultDiv.style.color = 'gray';
+        resultDiv.onclick = null;
         currentAddressName = '';
+        currentLat = null;
+        currentLng = null;
 
         const latInput = document.getElementById('input-assign-lat');
         const lngInput = document.getElementById('input-assign-lng');
 
-        // ใส่ค่าเดิมลงไป (ถ้ามี)
-        const safeLat = (currentLat && currentLat !== 'undefined' && currentLat !== 'null') ? currentLat : '';
-        const safeLng = (currentLng && currentLng !== 'undefined' && currentLng !== 'null') ? currentLng : '';
+        const safeLat = (targetLat && targetLat !== 'undefined' && targetLat !== 'null') ? targetLat : '';
+        const safeLng = (targetLng && targetLng !== 'undefined' && targetLng !== 'null') ? targetLng : '';
         
         latInput.value = safeLat;
         lngInput.value = safeLng;
 
         document.getElementById('set-location-modal').classList.remove('hidden');
 
-        // ถ้ามีพิกัดเดิม ให้ลองค้นหาชื่อสถานที่ขึ้นมาโชว์เลย
         if (safeLat && safeLng) {
             triggerGeoLookup();
         }
     }
-	
-	// 2. ฟังก์ชันเรียก API ค้นหาชื่อสถานที่ (Geo-reverse)
+
+    // 2. Geo-reverse
     function triggerGeoLookup() {
         const lat = document.getElementById('input-assign-lat').value;
         const lng = document.getElementById('input-assign-lng').value;
         const resultDiv = document.getElementById('geo-lookup-result');
 
         if (!lat || !lng) {
-            resultDiv.innerText = '- กรุณากรอกพิกัดให้ครบ -';
+            resultDiv.innerHTML = '- กรุณากรอกพิกัดให้ครบ -';
             resultDiv.style.color = 'gray';
+            resultDiv.onclick = null;
             return;
         }
 
-        resultDiv.innerText = '⏳ กำลังค้นหาข้อมูลสถานที่...';
-        resultDiv.style.color = '#e0a800'; // สีเหลือง
+        resultDiv.innerHTML = '⏳ กำลังค้นหาข้อมูลสถานที่...';
+        resultDiv.style.color = '#e0a800';
+        resultDiv.onclick = null;
 
         clearTimeout(geoLookupTimeout);
 
-        // รอ 1 วินาทีหลังจากหยุดพิมพ์ ค่อยยิง API (Debounce)
         geoLookupTimeout = setTimeout(async () => {
+            const parsedLat = parseFloat(lat);
+            const parsedLng = parseFloat(lng);
+
+            if (isNaN(parsedLat) || isNaN(parsedLng)) {
+                resultDiv.innerHTML = '❌ รูปแบบพิกัดไม่ถูกต้อง';
+                resultDiv.style.color = '#dc3545';
+                return;
+            }
+            
+            currentLat = parsedLat;
+            currentLng = parsedLng;
+
             try {
-                // OpenStreetMap Nominatim API
                 const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
                 
                 const res = await fetch(url, { headers: { 'User-Agent': 'WebboardApp/1.0' } });
@@ -3972,33 +3994,54 @@ function openSetLocationModal(username, currentLat, currentLng) {
 
                 if (data && data.display_name) {
                     currentAddressName = data.display_name;
-                    resultDiv.innerText = '✅ ' + data.display_name;
-                    resultDiv.style.color = '#28a745'; // สีเขียว
+                    resultDiv.innerHTML = `
+                        <span style="color: #28a745; text-decoration: underline;">
+                            ✅ ${data.display_name}
+                        </span>
+                        <br>
+                        <span style="color: #6c757d; font-size: 0.8em; text-decoration: underline;">
+                            (${lat}, ${lng})
+                        </span>
+                    `;
+                    resultDiv.style.color = 'inherit';
                 } else {
-                    currentAddressName = '';
-                    resultDiv.innerText = '❌ ไม่พบข้อมูลสถานที่ในพิกัดนี้';
-                    resultDiv.style.color = '#dc3545';
+                    currentAddressName = 'ไม่พบชื่อสถานที่';
+                    resultDiv.innerHTML = `
+                        <span style="color: #dc3545; text-decoration: underline;">
+                            ❌ ไม่พบชื่อสถานที่ในพิกัดนี้
+                        </span>
+                        <br>
+                        <span style="color: #6c757d; font-size: 0.8em; text-decoration: underline;">
+                            (${lat}, ${lng})
+                        </span>
+                    `;
+                    resultDiv.style.color = 'inherit';
                 }
+                
+                resultDiv.onclick = () => openGoogleMaps(currentLat, currentLng);
+                
             } catch (e) {
                 console.error(e);
-                resultDiv.innerText = '⚠️ เชื่อมต่อเซิร์ฟเวอร์แผนที่ไม่ได้';
+                resultDiv.innerHTML = '⚠️ เชื่อมต่อเซิร์ฟเวอร์แผนที่ไม่ได้';
                 resultDiv.style.color = '#dc3545';
+                resultDiv.onclick = null;
             }
-        }, 1000); // 1000ms = 1s
+        }, 1000); // 1000ms
     }
 
-    // 3. ฟังก์ชันบันทึกข้อมูลส่งกลับ Server
+    // 3. ฟังก์ชันบันทึกข้อมูลส่งกลับ Server (ใช้ currentLat/Lng/AddressName)
     async function saveAssignedLocation(isDelete = false) {
         if (!targetUserForLocation) return;
         
-        let lat = document.getElementById('input-assign-lat').value;
-        let lng = document.getElementById('input-assign-lng').value;
-        
+        let latToSend = document.getElementById('input-assign-lat').value;
+        let lngToSend = document.getElementById('input-assign-lng').value;
+        let addressNameToSend = currentAddressName; // ใช้ชื่อสถานที่ที่หาเจอ
+
         if (isDelete) {
             if(!confirm('ต้องการลบพิกัดอ้างอิงของ ' + targetUserForLocation + ' ใช่หรือไม่?')) return;
-            lat = null; lng = null; currentAddressName = '';
+            latToSend = null; lngToSend = null; addressNameToSend = null;
         } else {
-            if (!lat || !lng) return alert('กรุณาระบุ Latitude และ Longitude');
+            if (!latToSend || !lngToSend) return alert('กรุณาระบุ Latitude และ Longitude');
         }
 
         try {
@@ -4007,9 +4050,9 @@ function openSetLocationModal(username, currentLat, currentLng) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     targetUser: targetUserForLocation, 
-                    lat: lat, 
-                    lng: lng,
-                    addressName: currentAddressName, // ส่งชื่อสถานที่ไปด้วย
+                    lat: latToSend, 
+                    lng: lngToSend,
+                    addressName: addressNameToSend,
                     requestBy: myUsername 
                 })
             });
@@ -4169,8 +4212,8 @@ function openSetLocationModal(username, currentLat, currentLng) {
         <p>สำหรับ: <strong id="loc-target-user" style="color: #007bff;">...</strong></p>
         
         <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ddd;">
-            <small style="color: gray;">ตำแหน่งที่ค้นพบ:</small>
-            <div id="geo-lookup-result" style="color: #28a745; font-weight: bold; min-height: 20px;">
+            <small style="color: gray;">ตำแหน่งที่ค้นพบ (คลิกเพื่อเปิด Google Maps):</small>
+            <div id="geo-lookup-result" style="color: gray; font-weight: bold; min-height: 20px; cursor: pointer;">
                 - กรุณากรอกพิกัด -
             </div>
         </div>
