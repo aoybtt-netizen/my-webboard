@@ -553,15 +553,17 @@ async function openZoneRefSelectModal(zoneId) {
 
         if (data.success && data.admins.length > 0) {
             listDiv.innerHTML = data.admins.map(admin => {
-                const locName = admin.assignedLocation.addressName || `${admin.assignedLocation.lat}, ${admin.assignedLocation.lng}`;
-                return `
-                    <div class="user-list-item" onclick="saveZoneRefFromAdmin('${admin.name}')" style="border-bottom:1px solid #eee; padding:10px;">
-                        <div style="font-weight:bold;">👤 ${admin.name} <span style="font-size:0.8em; background:#007bff; color:white; padding:2px 5px; border-radius:4px;">L${admin.adminLevel}</span></div>
-                        <div style="font-size:0.85em; color:gray;">📍 ${locName}</div>
-                        <div style="font-size:0.8em; color:#28a745; margin-top:2px;">คลิกเพื่อเลือก</div>
-                    </div>
-                `;
-            }).join('');
+                const adminName = admin.name || admin.username || "ไม่ระบุชื่อ"; 
+            
+            const locName = admin.assignedLocation.addressName || `${admin.assignedLocation.lat}, ${admin.assignedLocation.lng}`;
+            
+            return `
+                <div class="user-list-item" onclick="saveZoneRefFromAdmin('${adminName}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
+                    <div style="font-weight:bold;">👤 ${adminName} <span style="font-size:0.8em; background:#007bff; color:white; padding:2px 5px; border-radius:4px;">L${admin.adminLevel}</span></div>
+                    <div style="font-size:0.85em; color:gray;">📍 ${locName}</div>
+                </div>
+            `;
+        }).join('');
         } else {
             listDiv.innerHTML = '<p style="text-align:center; color:red;">ไม่พบ Admin ที่มีการตั้งค่าตำแหน่งไว้</p>';
         }
