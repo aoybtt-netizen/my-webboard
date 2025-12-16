@@ -1724,15 +1724,18 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
             return res.status(400).json({ error: 'แอดมินคนนี้ยังไม่มีการตั้งค่าพิกัดอ้างอิง' });
         }
 
-        // 3. บันทึกพิกัดของแอดมินลงไปในโซนเป้าหมาย (ใช้ Field ใหม่ชื่อ refLocation)
-        const result = await zonesCollection.updateOne(
+        const correctAddressName = adminUser.assignedLocation.address || 
+                                   adminUser.assignedLocation.addressName || 
+                                   'Unknown Location';
+
+        await zonesCollection.updateOne(
             { id: parseInt(zoneId) },
             { 
                 $set: { 
                     refLocation: {
                         lat: adminUser.assignedLocation.lat,
                         lng: adminUser.assignedLocation.lng,
-                        addressName: adminUser.assignedLocation.addressName || 'Unknown Location',
+                        addressName: correctAddressName, // บันทึกชื่อที่ถูกต้อง
                         sourceUser: targetAdmin,
                         updatedAt: Date.now()
                     }
@@ -1740,15 +1743,10 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
             }
         );
 
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ error: 'ไม่พบโซนที่ระบุ' });
-        }
-
-        res.json({ success: true, message: `ตั้งค่าจุดอ้างอิงโซนจากพิกัดของ ${targetAdmin} สำเร็จ` });
-
+        res.json({ success: true, message: `ตั้งค่าจุดอ้างอิงสำเร็จ: ${correctAddressName}` });
     } catch (e) {
-        console.error('Error setting zone ref:', e);
-        res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
+        console.error(e);
+        res.status(500).json({ error: e.message });
     }
 });
 
