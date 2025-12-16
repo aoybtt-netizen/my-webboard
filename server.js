@@ -1674,16 +1674,18 @@ app.post('/api/admin/delete-zone', async (req, res) => {
 app.get('/api/admin/get-assigned-zones', async (req, res) => {
     const requestBy = req.query.requestBy;
     
+    // ตรวจสอบสิทธิ์ (Level 1-2)
     const requester = await usersCollection.findOne({ username: requestBy });
     if (!requester || requester.adminLevel < 1 || requester.adminLevel >= 3) {
         return res.status(403).json({ error: 'Permission denied.' });
     }
 
     try {
+        // ใช้ $or เพื่อดึงทั้ง "โซนของฉัน" และ "โซนที่ใช้พิกัดอ้างอิงของฉัน"
         const zones = await zonesCollection.find({
             $or: [
-                { assignedAdmin: requestBy },
-                { "refLocation.sourceUser": requestBy }
+                { assignedAdmin: requestBy },           // 1. โซนที่ฉันดูแล
+                { "refLocation.sourceUser": requestBy } // 2. โซนที่ใช้ตำแหน่งฉันอ้างอิง
             ]
         }).toArray();
 
