@@ -1796,10 +1796,10 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 
     // บันทึกทั้งพิกัด และชื่อสถานที่ (ถ้ามี)
     await updateUser(targetUser, { 
-        assignedLocation: { 
-            lat: parsedLat, 
-            lng: parsedLng,
-            address: addressName || 'Unknown Location' // เก็บชื่อไว้ดูเล่น
+    assignedLocation: { 
+        lat: parsedLat, 
+        lng: parsedLng,
+        addressName: addressName || 'Unknown Location'
         } 
     });
 

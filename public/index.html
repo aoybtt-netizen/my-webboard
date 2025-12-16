@@ -2324,15 +2324,6 @@ async function openAdminZoneModal() {
     document.getElementById('admin-zone-modal').classList.remove('hidden');
 	backToZoneMenu();
     
-    const latInput = document.getElementById('zone-lat-input');
-    const lngInput = document.getElementById('zone-lng-input');
-    const nameInput = document.getElementById('zone-name-input');
-    const listContainer = document.getElementById('zone-list-container');
-    const t = translations[currentLang];
-
-    latInput.value = ''; 
-    lngInput.value = '';
-    nameInput.value = '';
     listContainer.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg'] || 'Loading...'}</p>`;
 
     try {
