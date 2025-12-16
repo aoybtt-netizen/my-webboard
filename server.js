@@ -1707,30 +1707,21 @@ async function calculateNewRating(username, newScore) {
 
 // API กำหนดพิกัดอ้างอิงให้ Admin Level 2 (เฉพาะ Level 3 ทำได้)
 app.post('/api/admin/set-assigned-location', async (req, res) => {
-    const { targetUser, lat, lng, requestBy } = req.body;
+    // รับค่า addressName เพิ่มเข้ามาด้วย
+    const { targetUser, lat, lng, addressName, requestBy } = req.body;
 
-    // 1. ตรวจสอบสิทธิ์ผู้สั่งการ (ต้องเป็น Level 3)
     const requester = await getUserData(requestBy);
     if (!requester || requester.adminLevel < 3) {
         return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
     }
 
-    // 2. ตรวจสอบเป้าหมาย
     const target = await getUserData(targetUser);
     if (!target) return res.status(404).json({ error: 'User not found' });
 
-    // (Option) ตรวจสอบว่าเป็น Admin Level 2 จริงหรือไม่ (ตามโจทย์)
-    if (target.adminLevel !== 2) {
-        // อนุญาตให้ตั้งให้ใครก็ได้ หรือจะบังคับแค่ Level 2 ก็ได้
-        // ถ้าจะบังคับ uncomment บรรทัดล่าง
-        // return res.status(400).json({ error: 'Target must be Admin Level 2' });
-    }
-
-    // 3. ตรวจสอบค่าพิกัด
-    // ถ้าส่งค่าว่างมา แปลว่าต้องการลบพิกัดอ้างอิงออก
+    // ถ้าค่าว่างมา คือการลบ
     if (lat === '' || lng === '' || lat === null || lng === null) {
         await updateUser(targetUser, { assignedLocation: null });
-        return res.json({ success: true, message: `ลบพิกัดอ้างอิงของ ${targetUser} เรียบร้อยแล้ว` });
+        return res.json({ success: true, message: `🗑️ ลบพิกัดอ้างอิงของ ${targetUser} แล้ว` });
     }
 
     const parsedLat = parseFloat(lat);
@@ -1740,12 +1731,16 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
         return res.status(400).json({ error: 'Invalid coordinates' });
     }
 
-    // 4. บันทึก
+    // บันทึกทั้งพิกัด และชื่อสถานที่ (ถ้ามี)
     await updateUser(targetUser, { 
-        assignedLocation: { lat: parsedLat, lng: parsedLng } 
+        assignedLocation: { 
+            lat: parsedLat, 
+            lng: parsedLng,
+            address: addressName || 'Unknown Location' // เก็บชื่อไว้ดูเล่น
+        } 
     });
 
-    res.json({ success: true, message: `กำหนดพิกัดให้ ${targetUser} เป็น [${parsedLat}, ${parsedLng}] เรียบร้อย` });
+    res.json({ success: true, message: `✅ กำหนดพิกัดให้ ${targetUser} เรียบร้อย\n📍 ${addressName || ''}` });
 });
 
 // ==========================================
