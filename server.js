@@ -1563,34 +1563,32 @@ app.get('/api/admin/get-zones', async (req, res) => { // Endpoint changed to plu
 });
 
 // 26. Set Zone Config 
-app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
-    const { lat, lng, name, requestBy } = req.body;
-    
-    // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
+app.post('/api/admin/add-zone', async (req, res) => {
+    // รับค่า address และ assignedAdmin เพิ่มเข้ามา
+    const { lat, lng, name, address, assignedAdmin, requestBy } = req.body; 
+
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 3) { 
-        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+    // เช็คสิทธิ์ Admin L3
+    if (!requester || requester.adminLevel < 3) {
+        return res.status(403).json({ error: 'Permission denied' });
     }
 
-    const parsedLat = parseFloat(lat);
-    const parsedLng = parseFloat(lng);
+    // สร้าง ID ใหม่
+    const zones = await zonesCollection.find({}).toArray();
+    const newId = zones.length > 0 ? Math.max(...zones.map(z => z.id)) + 1 : 1;
 
-    if (isNaN(parsedLat) || isNaN(parsedLng) || parsedLat < -90 || parsedLat > 90 || parsedLng < -180 || parsedLng > 180) {
-        return res.status(400).json({ error: 'Invalid Latitude or Longitude values.' });
-    }
-    
-    const newZone = { 
-        id: Date.now(), 
-        lat: parsedLat, 
-        lng: parsedLng, 
-        name: name || null, // Allow null name
-        createdAt: new Date()
+    const newZone = {
+        id: newId,
+        name: name || `Zone ${newId}`,
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        address: address || '', // บันทึกชื่อสถานที่ (ถ้ามี)
+        assignedAdmin: assignedAdmin || null, // บันทึก Admin ผู้ดูแล (ถ้ามี)
+        createdAt: Date.now()
     };
 
-    // 2. บันทึกข้อมูลลงใน zonesCollection
     await zonesCollection.insertOne(newZone);
-
-    res.json({ success: true, newZone: newZone });
+    res.json({ success: true, message: 'สร้างโซนเรียบร้อยแล้ว', zone: newZone });
 });
 
 // 27. Get Admin List (Level 1+)

@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.49 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.50 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -407,6 +407,9 @@
 		let currentAddressName = ''; // เก็บชื่อสถานที่ล่าสุดที่หาเจอ
 		let currentLat = null;       // เก็บ Lat ล่าสุด
 		let currentLng = null;
+		
+		let zoneLookupTimeout = null;
+		let currentZoneAddressName = '';
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -455,6 +458,75 @@
         function deg2rad(deg) {
             return deg * (Math.PI / 180);
         }
+		
+		// 1. ฟังก์ชันค้นหาชื่อสถานที่เมื่อพิมพ์พิกัด (เหมือน Geo-lookup)
+    function lookupZoneAddress() {
+        const lat = document.getElementById('new-zone-lat').value;
+        const lng = document.getElementById('new-zone-lng').value;
+        const displayDiv = document.getElementById('new-zone-address-display');
+
+        if (!lat || !lng) {
+            displayDiv.innerText = '- กรุณากรอกพิกัดด้านล่าง -';
+            displayDiv.style.color = 'gray';
+            return;
+        }
+
+        displayDiv.innerText = '⏳ กำลังค้นหา...';
+        displayDiv.style.color = '#e0a800';
+
+        clearTimeout(zoneLookupTimeout);
+        zoneLookupTimeout = setTimeout(async () => {
+            try {
+                // ใช้ OpenStreetMap Nominatim (ฟรี)
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+                const res = await fetch(url, { headers: { 'User-Agent': 'WebboardApp/1.0' } });
+                const data = await res.json();
+
+                if (data && data.display_name) {
+                    currentZoneAddressName = data.display_name;
+                    displayDiv.innerText = '✅ ' + data.display_name;
+                    displayDiv.style.color = '#28a745'; // สีเขียว
+                    
+                    // (Option) คลิกเพื่อเปิด Google Maps
+                    displayDiv.style.cursor = 'pointer';
+                    displayDiv.onclick = () => window.open(`http://maps.google.com/?q=${lat},${lng}`, '_blank');
+                } else {
+                    currentZoneAddressName = '';
+                    displayDiv.innerText = '❌ ไม่พบชื่อสถานที่';
+                    displayDiv.style.color = '#dc3545';
+                }
+            } catch (e) {
+                displayDiv.innerText = '⚠️ Error เชื่อมต่อแผนที่';
+            }
+        }, 1000);
+    }
+	
+	// 2. ฟังก์ชันโหลดรายชื่อ Admin Level 2 มาใส่ Dropdown
+    // (ควรเรียกฟังก์ชันนี้ตอนเปิด Modal เพิ่มโซน)
+    async function loadAdminListForZone() {
+        const select = document.getElementById('new-zone-admin-select');
+        select.innerHTML = '<option value="">⏳ กำลังโหลด...</option>';
+
+        try {
+            // ใช้ API users-list ที่มีอยู่แล้ว หรือ API admins-list
+            const res = await fetch(`/api/users-list?requestBy=${myUsername}`);
+            const users = await res.json();
+            
+            // กรองเอาเฉพาะ Admin Level 2
+            const admins = users.filter(u => u.adminLevel === 2);
+
+            select.innerHTML = '<option value="">-- ไม่ระบุ --</option>';
+            admins.forEach(admin => {
+                const option = document.createElement('option');
+                option.value = admin.name; // หรือ admin.username แล้วแต่โครงสร้างข้อมูล
+                option.innerText = `${admin.name} (Level 2)`;
+                select.appendChild(option);
+            });
+        } catch (e) {
+            console.error(e);
+            select.innerHTML = '<option value="">❌ โหลดรายชื่อไม่สำเร็จ</option>';
+        }
+    }
 		
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
@@ -2574,55 +2646,46 @@ async function deleteZone(zoneId, zoneName) {
 
 // อย่าลืมผูกกับ window
 window.deleteZone = deleteZone;
+	
+	async function createZone() {
+        const name = document.getElementById('new-zone-name').value; // สมมติคุณมีช่องชื่อโซน
+        const lat = document.getElementById('new-zone-lat').value;
+        const lng = document.getElementById('new-zone-lng').value;
+        const assignedAdmin = document.getElementById('new-zone-admin-select').value;
 
-		async function addZoneConfig() {
-    if (myAdminLevel < 3) return;
-    
-    const latInput = document.getElementById('zone-lat-input').value.trim();
-    const lngInput = document.getElementById('zone-lng-input').value.trim();
-    const nameInput = document.getElementById('zone-name-input').value.trim();
-    const t = translations[currentLang];
-    
-    const lat = parseFloat(latInput);
-    const lng = parseFloat(lngInput);
+        if (!lat || !lng) return alert('กรุณาระบุพิกัด');
 
-    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        return alert(t['alert_invalid_zone']);
-    }
-
-    try {
-        const res = await fetch('/api/admin/add-zone', { // เปลี่ยนเป็น Endpoint ใหม่
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                lat: lat, 
-                lng: lng, 
-                name: nameInput,
-                requestBy: myUsername 
-            })
-        });
-
-        const data = await res.json();
-        
-        if (data.success) {
-            alert(t['alert_zone_add_success']);
+        try {
+            const res = await fetch('/api/admin/add-zone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    lat: lat,
+                    lng: lng,
+                    address: currentZoneAddressName, // ส่งชื่อสถานที่ไปด้วย
+                    assignedAdmin: assignedAdmin,    // ส่ง Admin ที่เลือกไปด้วย
+                    requestBy: myUsername
+                })
+            });
             
-            // Clear inputs and refresh list
-            document.getElementById('zone-lat-input').value = '';
-            document.getElementById('zone-lng-input').value = '';
-            document.getElementById('zone-name-input').value = '';
-
-            openAdminZoneModal(); // Refresh the list of zones
-        } else {
-            alert(`❌ Error: ${data.error || 'เพิ่มโซนไม่สำเร็จ'}`);
+            const data = await res.json();
+            if (data.success) {
+                alert('✅ สร้างโซนสำเร็จ!');
+                // ปิด Modal และรีโหลดหน้าตาม logic เดิมของคุณ
+                if(document.getElementById('zone-manage-modal')) {
+                    document.getElementById('zone-manage-modal').classList.add('hidden');
+                }
+                // fetchZones(); // ถ้ามีฟังก์ชันรีโหลดโซน
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Connection Error');
         }
-    } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-        console.error('Error adding zone config:', e);
     }
-}
-window.addZoneConfig = addZoneConfig;
-
+	
 	function replyDeduct(accepted) {
     if (!currentDeductRequest) return;
     
@@ -4127,7 +4190,7 @@ function openUserDetail(targetUsername) {
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="sidebar-btn" onclick="document.getElementById('admin-zone-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
-            <button class="sidebar-btn create-btn" onclick="addZoneConfig()" style="width:auto;" data-i18n-key="btn_add_zone">เพิ่มโซน</button>
+            <button class="sidebar-btn create-btn" onclick="createZone()" style="width:auto;" data-i18n-key="btn_add_zone">เพิ่มโซน</button>
         </div>
     </div>
 </div>
@@ -4211,12 +4274,36 @@ function openUserDetail(targetUsername) {
         <h3>📍 กำหนดพิกัดอ้างอิง (Geo-Lookup)</h3>
         <p>สำหรับ: <strong id="loc-target-user" style="color: #007bff;">...</strong></p>
         
-        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ddd;">
-            <small style="color: gray;">ตำแหน่งที่ค้นพบ (คลิกเพื่อเปิด Google Maps):</small>
-            <div id="geo-lookup-result" style="color: gray; font-weight: bold; min-height: 20px; cursor: pointer;">
-                - กรุณากรอกพิกัด -
-            </div>
-        </div>
+		
+        <div style="background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">
+    <small style="color: gray;">ตำแหน่ง:</small>
+    <div id="new-zone-address-display" style="color: gray; font-style: italic;">
+        - กรุณากรอกพิกัดด้านล่าง -
+    </div>
+</div>
+
+<div style="display: flex; gap: 10px; margin-bottom: 10px;">
+    <div style="flex: 1;">
+        <label>Latitude:</label>
+        <input type="number" id="new-zone-lat" step="any" placeholder="Latitude" 
+               style="width: 100%; padding: 8px;" 
+               onkeyup="lookupZoneAddress()">
+    </div>
+    <div style="flex: 1;">
+        <label>Longitude:</label>
+        <input type="number" id="new-zone-lng" step="any" placeholder="Longitude" 
+               style="width: 100%; padding: 8px;" 
+               onkeyup="lookupZoneAddress()">
+    </div>
+</div>
+
+<div style="margin-bottom: 15px;">
+    <label>ผู้ดูแลโซน (Admin Level 2):</label>
+    <select id="new-zone-admin-select" style="width: 100%; padding: 8px;">
+        <option value="">-- ไม่ระบุ --</option>
+        </select>
+</div>
+		
 
         <div style="margin-bottom: 15px;">
             <label>Latitude (ละติจูด):</label>
