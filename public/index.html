@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.55 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.54 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2404,23 +2404,87 @@ async function showMyClosedPosts(page = 1) {
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
-    if (myAdminLevel === 1) {
+    if (myAdminLevel === 1 ) {
         return openAssignedZoneMap();
     }
-    
+    // Level 2: เข้าหน้าจัดการโซนของตัวเอง
     if (myAdminLevel === 2) {
         return openLevel2Management();
     }
-
+    
+    // Level 3: เข้าหน้าจัดการใหญ่ (Admin Panel)
     if (myAdminLevel >= 3) {
         document.getElementById('admin-zone-modal').classList.remove('hidden');
-        backToZoneMenu();
-        
-        fetchAndRenderAllZones(); 
+        backToZoneMenu(); // ฟังก์ชันเดิมของคุณสำหรับเมนู L3
         return;
     }
 
-    alert('❌ คุณไม่มีสิทธิ์เข้าถึงส่วนนี้');
+    const listContainer = document.getElementById('zone-list-container');
+    const t = translations[currentLang] || translations['th'];
+
+    document.getElementById('admin-zone-modal').classList.remove('hidden');
+    backToZoneMenu(); 
+    
+    if (!listContainer) return;
+
+    listContainer.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg'] || 'Loading...'}</p>`;
+
+    try {
+        const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`);
+        if (res.status === 200) {
+            const data = await res.json();
+            
+            if (data.zones && data.zones.length > 0) {
+                listContainer.innerHTML = data.zones.map(zone => {
+                    const lat = parseFloat(zone.lat).toFixed(4);
+                    const lng = parseFloat(zone.lng).toFixed(4);
+                    const name = zone.name || `Zone ID: ${zone.id}`;
+                    const safeName = name.replace(/'/g, "\\'");
+                    const assignedAdmin = zone.assignedAdmin || '-';
+                    
+                    const canEdit = myAdminLevel >= 3 || (myAdminLevel >= 1 && zone.assignedAdmin === myUsername);
+
+                    let nameInputHtml = '';
+                    if (canEdit) {
+                        const currentName = name.includes('Zone ID:') ? '' : name;
+                        nameInputHtml = `
+                            <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                                <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name'] || 'ชื่อโซน'}:</label>
+                                <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name'] || ''}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
+                                <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
+                                    ${t['btn_save'] || 'Save'}
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    const refBtnHtml = (myAdminLevel >= 3) ? `
+                        <button onclick="openZoneRefSelectModal('${zone.id}')" style="background:#6f42c1; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em; margin-top:5px;">
+                            📍 จุดอ้างอิง
+                        </button>
+                    ` : '';
+
+                    return `
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
+                            <div style="flex-basis: 100%; margin-bottom: 5px;">
+                                🗺️ <b>${name}</b> <br>
+                                <small>${t['admin_assigned_to'] || 'ผู้ดูแล'}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
+                                <br>${refBtnHtml}
+                            </div>
+                            ${nameInputHtml}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                listContainer.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_zones_found'] || 'No Zones'}</p>`;
+            }
+        } else {
+            listContainer.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_fetch_zones'] || 'Error'}</p>`;
+        }
+    } catch (e) {
+        console.error('Error fetching zone config:', e);
+        listContainer.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_connection'] || 'Connection Error'}</p>`;
+    }
 }
 
 // 2. ปิด Modal
@@ -2488,60 +2552,72 @@ async function addZoneConfigNew() {
 // 5. ฟังก์ชันดึงรายการโซน (Logic เดิมแต่ย้ายมาเรียกตอนกดปุ่ม Manage)
 async function fetchAndRenderAllZones() {
     const listContainer = document.getElementById('zone-list-container');
-    const t = translations[currentLang] || translations['th'];
-    if (!listContainer) return;
-
-    listContainer.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg'] || 'Loading...'}</p>`;
+    listContainer.innerHTML = '<p style="text-align:center;">⏳ กำลังโหลด...</p>';
 
     try {
         const res = await fetch(`/api/admin/get-zones?requestBy=${myUsername}`);
-        if (res.status === 200) {
-            const data = await res.json();
-            if (data.zones && data.zones.length > 0) {
-                listContainer.innerHTML = data.zones.map(zone => {
-                    const name = zone.name || `Zone ID: ${zone.id}`;
-                    const safeName = name.replace(/'/g, "\\'");
-                    const assignedAdmin = zone.assignedAdmin || '-';
-                    const canEdit = myAdminLevel >= 3 || (myAdminLevel >= 1 && zone.assignedAdmin === myUsername);
-
-                    let nameInputHtml = '';
-                    if (canEdit) {
-                        const currentName = name.includes('Zone ID:') ? '' : name;
-                        nameInputHtml = `
-                            <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-                                <label style="font-size: 0.9em; white-space: nowrap; font-weight: bold;">${t['label_zone_name'] || 'ชื่อโซน'}:</label>
-                                <input type="text" id="name-input-${zone.id}" value="${currentName}" placeholder="${t['placeholder_zone_name'] || ''}" style="flex-grow: 1; padding: 5px; margin-bottom: 0;">
-                                <button class="sidebar-btn create-btn" onclick="setZoneName(event, '${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom: 0; background: #28a745;">
-                                    ${t['btn_save'] || 'Save'}
-                                </button>
-                            </div>
-                        `;
-                    }
-
-                    const refBtnHtml = (myAdminLevel >= 3) ? `
-                        <button onclick="openZoneRefSelectModal('${zone.id}')" style="background:#6f42c1; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em; margin-top:5px;">
-                            📍 จุดอ้างอิง
-                        </button>
-                    ` : '';
-
-                    return `
-                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dashed #eee; font-size: 0.9em; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px;">
-                            <div style="flex-basis: 100%; margin-bottom: 5px;">
-                                🗺️ <b>${name}</b> <br>
-                                <small>${t['admin_assigned_to'] || 'ผู้ดูแล'}: <span style="color:#007bff; font-weight:bold;">${assignedAdmin}</span></small>
-                                <br>${refBtnHtml}
-                            </div>
-                            ${nameInputHtml}
+        const data = await res.json();
+        
+        if (data.zones && data.zones.length > 0) {
+            listContainer.innerHTML = data.zones.map(zone => {
+                const name = zone.name || `Zone ID: ${zone.id}`;
+                const safeName = name.replace(/'/g, "\\'");
+                const assignedAdmin = zone.assignedAdmin || '-';
+                
+                // --- ส่วนแสดงผล Reference Location ---
+                let refLocHtml = '';
+                if (zone.refLocation && zone.refLocation.lat) {
+                    refLocHtml = `
+                        <div style="margin-top:5px; font-size:0.85em; background:#e8f5e9; padding:5px; border-radius:4px; border:1px solid #c3e6cb;">
+                            <strong style="color:#155724;">📍 จุดอ้างอิง:</strong> 
+                            <span title="${zone.refLocation.lat}, ${zone.refLocation.lng}">
+                                ${zone.refLocation.addressName || 'มีพิกัดแล้ว'}
+                            </span>
+                            <div style="font-size:0.8em; color:gray;">(จาก: ${zone.refLocation.sourceUser || 'Unknown'})</div>
                         </div>
                     `;
-                }).join('');
-            } else {
-                listContainer.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_zones_found'] || 'No Zones'}</p>`;
-            }
+                } else {
+                    refLocHtml = `
+                        <div style="margin-top:5px; font-size:0.85em; color:#856404; background:#fff3cd; padding:5px; border-radius:4px; border:1px solid #ffeeba;">
+                            ⚠️ ยังไม่มีจุดอ้างอิง
+                        </div>
+                    `;
+                }
+
+                // Input แก้ไขชื่อโซน (โค้ดเดิม)
+                let nameInputHtml = `
+                    <div style="margin-top:5px; display:flex; gap:5px;">
+                        <input type="text" id="name-input-${zone.id}" value="${name.includes('Zone ID:')?'':name}" placeholder="แก้ไขชื่อโซน" style="width:100px; padding:2px;">
+                        <button onclick="setZoneName(event, '${zone.id}')" class="sidebar-btn" style="padding:2px 5px; width:auto; font-size:0.8em; background:#17a2b8; color:white;">Save Name</button>
+                    </div>
+                `;
+
+                return `
+                <div style="background:#f9f9f9; border-bottom:1px solid #ddd; padding:10px; margin-bottom:5px; border-radius:5px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div style="flex: 1;">
+                            <b>${name}</b><br>
+                            <small>🎯 ศูนย์กลาง: ${parseFloat(zone.lat).toFixed(4)}, ${parseFloat(zone.lng).toFixed(4)}</small><br>
+                            <small style="color:#007bff;">ผู้ดูแล: ${assignedAdmin}</small>
+                            ${nameInputHtml}
+                            ${refLocHtml} </div>
+                        <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px;">
+                            <button onclick="deleteZone(${zone.id}, '${safeName}')" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">ลบโซน</button>
+                            <button onclick="openAdminAssignModal('${zone.id}', '${safeName}')" style="background:#ffc107; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">ผู้ดูแล</button>
+                            
+                            <button onclick="openZoneRefSelectModal('${zone.id}')" style="background:#6f42c1; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">
+                                📍 จุดอ้างอิง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        } else {
+            listContainer.innerHTML = '<p style="text-align:center; color:gray;">- ไม่มีข้อมูลโซน -</p>';
         }
     } catch (e) {
-        console.error('Error:', e);
-        listContainer.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_connection'] || 'Error'}</p>`;
+        listContainer.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
     }
 }
 
