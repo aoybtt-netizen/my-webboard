@@ -2190,6 +2190,18 @@ socket.on('reply-deduct-confirm', async (data) => {
             requesterSocket.emit('deduct-result', { success: true, message: `✅ ${fromUser} ยืนยันการคืนเงินเรียบร้อยแล้ว` });
         }
     });
+	
+	socket.on('req-zone-data', async () => {
+    try {
+        // ดึงข้อมูลโซนทั้งหมดจาก zonesCollection ใน MongoDB
+        const allZones = await zonesCollection.find({}).toArray();
+        
+        // ส่งข้อมูลกลับไปให้เฉพาะ Client ที่ขอมา
+        socket.emit('resp-zone-data', allZones);
+    } catch (err) {
+        console.error("Error fetching zones for socket:", err);
+    }
+});
 
 });
 
