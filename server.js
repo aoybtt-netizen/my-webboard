@@ -1632,22 +1632,32 @@ app.get('/api/admin/admins-list', async (req, res) => {
     // 2. หาโซนทั้งหมดที่อยู่ใกล้พิกัดอ้างอิงของเรา (รัศมี 100 เมตร)
     // เปลี่ยนจาก find เป๊ะๆ มาเป็นดึงทั้งหมดแล้วคำนวณระยะ
     console.log(`🔎 [STEP 2] Searching zones NEAR Lat: ${loc.lat}, Lng: ${loc.lng}`);
-    
-    // ดึงโซนทั้งหมดขึ้นมา
     const allZones = await zonesCollection.find({}).toArray();
-    
-    // กรองเอาเฉพาะโซนที่ห่างจากเราไม่เกิน 0.1 กม. (100 เมตร)
+    console.log(`📊 [DEBUG DB] Total zones in DB: ${allZones.length}`); // เช็คว่าใน DB มีโซนไหม
+
+    let minDist = Infinity; // ตัวแปรเก็บระยะที่ใกล้ที่สุด
+
     const myZones = allZones.filter(z => {
         const dist = getDistanceFromLatLonInKm(loc.lat, loc.lng, z.lat, z.lng);
-        // แสดงระยะห่างเพื่อการดีบั๊ก (ถ้าใกล้มากๆ จะโชว์)
-        if (dist < 1.0) console.log(`   -> Check Zone ${z.id}: Dist = ${dist.toFixed(4)} km`);
-        return dist < 0.1; 
+        
+        // เก็บสถิติระยะที่ใกล้ที่สุดไว้ดู
+        if (dist < minDist) minDist = dist;
+
+        // ถ้าห่างไม่เกิน 500 กม. ให้ลองปริ้นดูหน่อย (เผื่ออยู่คนละจังหวัด)
+        if (dist < 500) {
+             console.log(`   -> Found Zone ${z.id} at distance: ${dist.toFixed(4)} km`);
+        }
+
+        return dist < 0.1; // รัศมี 100 เมตร
     });
 
-    console.log(`📦 [STEP 2 RESULT] Found ${myZones.length} zones NEAR your location`);
+    console.log(`📏 [DEBUG INFO] The CLOSEST zone is ${minDist.toFixed(4)} km away.`); 
+    // ^ บรรทัดนี้จะบอกคำตอบว่าทำไมถึงหาไม่เจอ
+
+    console.log(`📦 [STEP 2 RESULT] Found ${myZones.length} zones matching your location`);
 
     if (myZones.length === 0) {
-        console.log("⚠️ [STEP 2 ERROR] Still no zones found even with 100m radius.");
+        console.log("⚠️ [STEP 2 ERROR] No zones found. Your location (USA?) might be too far from Zones.");
         return res.json([]);
     }
 
