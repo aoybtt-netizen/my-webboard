@@ -2433,7 +2433,7 @@ function openAllZoneManagement() {
     const displayLat = zone.lat || (zone.refLocation ? zone.refLocation.lat : null);
     const displayLng = zone.lng || (zone.refLocation ? zone.refLocation.lng : null);
 	
-	const ownerName = zone.requestBy || (zone.refLocation ? zone.refLocation.sourceUser : '-');
+	const ownerName = zone.assignedAdmin || (zone.refLocation ? zone.refLocation.sourceUser : '-');
     
     const latText = (displayLat !== null) ? displayLat.toFixed(6) : 'N/A';
     const lngText = (displayLng !== null) ? displayLng.toFixed(6) : 'N/A';
@@ -2456,7 +2456,7 @@ function openAllZoneManagement() {
         <td style="padding:12px; text-align: right; vertical-align: middle;">
             <button onclick="zoomToZone(${displayLat}, ${displayLng})" 
                     style="padding:8px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;">
-                <i class="fas fa-location-arrow"></i> ไปที่โซน
+                <i class="fas fa-location-arrow"></i> Map
             </button>
         </td>
     `;
