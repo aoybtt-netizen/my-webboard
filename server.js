@@ -1617,89 +1617,40 @@ app.get('/api/admin/admins-list', async (req, res) => {
         // กรณี: Admin Level 2 (ต้องกรองเฉพาะคนที่อยู่โซนเดียวกับเรา)
         // =========================================================
         if (requester.adminLevel === 2) {
-    console.log("------------------------------------------");
-    console.log(`🚀 [DEBUG START] RequestBy: ${requestBy} (Radius Check Mode)`);
+            console.log(`🚀 [DEBUG] Finding members for Admin L2: ${requestBy}`);
 
-    // 1. ดึงพิกัดอ้างอิงของเรา (Admin L2)
-    const loc = requester.assignedLocation || requester.refLocation;
-    console.log("📍 [STEP 1] Admin L2 Location:", JSON.stringify(loc));
+            // 1. ค้นหาโซนที่ตัวเรา (requestBy) เป็นผู้ดูแล 
+            // อ้างอิงจาก Logic ที่คุณใช้ใน Socket: เช็คที่ refLocation.sourceUser หรือ assignedAdmin
+            const myZones = await zonesCollection.find({
+                $or: [
+                    { assignedAdmin: requestBy },
+                    { "refLocation.sourceUser": requestBy }
+                ]
+            }).toArray();
 
-    if (!loc || !loc.lat || !loc.lng) {
-        console.log("⚠️ [STEP 1 ERROR] No Location data for this Admin L2");
-        return res.json([]);
-    }
+            const myZoneIds = myZones.map(z => z.id);
+            console.log(`📦 Found ${myZoneIds.length} zones under your care:`, myZoneIds);
 
-    // 2. หาโซนทั้งหมดที่อยู่ใกล้พิกัดอ้างอิงของเรา (รัศมี 100 เมตร)
-    // เปลี่ยนจาก find เป๊ะๆ มาเป็นดึงทั้งหมดแล้วคำนวณระยะ
-    console.log(`🔎 [STEP 2] Searching zones NEAR Lat: ${loc.lat}, Lng: ${loc.lng}`);
-    const allZones = await zonesCollection.find({}).toArray();
-    console.log(`📊 [DEBUG DB] Total zones in DB: ${allZones.length}`); // เช็คว่าใน DB มีโซนไหม
+            if (myZoneIds.length === 0) return res.json([]);
 
-    let minDist = Infinity; // ตัวแปรเก็บระยะที่ใกล้ที่สุด
+            // 2. ดึงแอดมินระดับ 1 ทั้งหมดที่ออนไลน์หรือมีพิกัดล่าสุด
+            const allL1 = await usersCollection.find({ adminLevel: 1 }).toArray();
 
-    const myZones = allZones.filter(z => {
-        const dist = getDistanceFromLatLonInKm(loc.lat, loc.lng, z.lat, z.lng);
-        
-        // เก็บสถิติระยะที่ใกล้ที่สุดไว้ดู
-        if (dist < minDist) minDist = dist;
+            // 3. กรองสมาชิก: ใครที่พิกัดล่าสุด ตกอยู่ในโซนที่เราดูแล
+            for (const admin of allL1) {
+                if (!admin.lastLocation) continue;
 
-        // ถ้าห่างไม่เกิน 500 กม. ให้ลองปริ้นดูหน่อย (เผื่ออยู่คนละจังหวัด)
-        if (dist < 500) {
-             console.log(`   -> Found Zone ${z.id} at distance: ${dist.toFixed(4)} km`);
+                // ใช้ฟังก์ชันคำนวณโซนจากพิกัดที่มีอยู่ในระบบ
+                const responsible = await findResponsibleAdmin(admin.lastLocation);
+                
+                // ถ้าผลการคำนวณบอกว่าเขาอยู่หนึ่งในโซนที่เราดูแล
+                if (responsible.zoneData && myZoneIds.includes(responsible.zoneData.id)) {
+                    console.log(`✅ MATCH: Admin ${admin.username} is in your Zone ${responsible.zoneData.id}`);
+                    finalAdminsList.push(admin);
+                }
+            }
         }
-
-        return dist < 0.1; // รัศมี 100 เมตร
-    });
-
-    console.log(`📏 [DEBUG INFO] The CLOSEST zone is ${minDist.toFixed(4)} km away.`); 
-    // ^ บรรทัดนี้จะบอกคำตอบว่าทำไมถึงหาไม่เจอ
-
-    console.log(`📦 [STEP 2 RESULT] Found ${myZones.length} zones matching your location`);
-
-    if (myZones.length === 0) {
-        console.log("⚠️ [STEP 2 ERROR] No zones found. Your location (USA?) might be too far from Zones.");
-        return res.json([]);
-    }
-
-    const myZoneIds = myZones.map(z => z.id);
-    console.log("🔑 [STEP 2 RESULT] My Zone IDs:", myZoneIds);
-
-    // 3. ดึง Admin Level 1 ทั้งหมดมาก่อน
-    console.log("👥 [STEP 3] Fetching all Admin Level 1 from DB...");
-    const allLevel1Admins = await usersCollection.find({ adminLevel: 1 }).toArray();
-    console.log(`👥 [STEP 3 RESULT] Total Admin L1 found in system: ${allLevel1Admins.length}`);
-
-    // 4. วนลูปเช็คพิกัดล่าสุด (lastLocation) ของ Admin L1 ทีละคน
-    const filteredAdmins = [];
-    console.log("🔄 [STEP 4] Starting coordinate filtering...");
-
-    for (const admin of allLevel1Admins) {
-        // เช็คพิกัดล่าสุดของ Admin L1
-        if (!admin.lastLocation) {
-            // console.log(`  - ❌ Admin: ${admin.username} has NO lastLocation (Skip)`);
-            continue;
-        }
-
-        // คำนวณว่าเขาอยู่โซนไหน
-        const responsible = await findResponsibleAdmin(admin.lastLocation);
-        const adminCurrentZoneId = responsible.zoneData ? responsible.zoneData.id : "NONE";
-
-        // ตรวจสอบว่า Zone ID ของเขา ตรงกับ Zone ID ของเราหรือไม่
-        if (responsible.zoneData && myZoneIds.includes(responsible.zoneData.id)) {
-            console.log(`    ✅ MATCH! Admin ${admin.username} is in your zone (${adminCurrentZoneId}).`);
-            filteredAdmins.push(admin);
-        }
-    }
-
-    console.log(`🏁 [DEBUG END] Sending ${filteredAdmins.length} admins to client.`);
-    console.log("------------------------------------------");
-
-    return res.json(filteredAdmins.map(a => ({ 
-        name: a.username, 
-        level: a.adminLevel || 0,
-        isBanned: a.isBanned 
-    })));
-}
+    
         // =========================================================
         // กรณี: Admin Level 3 (เห็นทั้งหมด)
         // =========================================================
