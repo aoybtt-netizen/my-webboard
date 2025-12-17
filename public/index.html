@@ -460,7 +460,7 @@
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
 	async function openAdminAssignModal(zoneId, zoneName) {
-    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
+    if (myAdminLevel < 2) return alert('❌ คุณไม่มีสิทธิ์ใช้งานส่วนนี้');
     currentZoneToAssign = zoneId;
     
     document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName}`;
