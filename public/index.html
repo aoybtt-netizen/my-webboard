@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.1 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -4085,26 +4085,29 @@ async function fetchNearestAdminForInbox(elementId) {
             }
             // ------------------------------------------
 
-            container.innerHTML = users.map(u => {
-                 const isBanned = u.isBanned;
-                 const targetLevel = u.adminLevel || 0;
-                 
-                 const rowStyle = isBanned 
+            const ownedUsers = users.filter(u => u.relationType === 'OWNED');
+            const refUsers = users.filter(u => u.relationType === 'REF');
+            const otherUsers = users.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF');
+
+            // 2. ฟังก์ชันช่วยสร้าง HTML แถว User (ยกมาจากโค้ดเดิมของคุณ)
+            const createRowHTML = (u) => {
+                const isBanned = u.isBanned;
+                const targetLevel = u.adminLevel || 0;
+                const rowStyle = isBanned 
                     ? 'background: #f8d7da; border-left: 5px solid #dc3545;' 
                     : 'background: white; border-left: 5px solid #28a745;';
-                 
-                 let levelBadge = targetLevel > 0 
+                
+                let levelBadge = targetLevel > 0 
                     ? `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>` 
                     : '';
-                 
-                 // --- แก้ไขจุดแสดงคำว่า BANNED ให้เปลี่ยนตามภาษา ---
-                 const banBadge = isBanned 
+                
+                const banBadge = isBanned 
                     ? `<span style="color:red; font-size:0.8em; font-weight:bold; margin-left:5px;">${t['label_banned']}</span>` 
                     : '';
-                 // ---------------------------------------------
-                 
-                 const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
-                 return `
+                
+                const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
+                
+                return `
                     <div class="user-list-item" style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);" onclick="openUserDetail('${u.name}')">
                         <div style="font-weight: bold; font-size: 1.1em;">
                              👤 ${u.name} ${levelBadge} ${banBadge} ${countryBadge}
@@ -4113,9 +4116,33 @@ async function fetchNearestAdminForInbox(elementId) {
                              💵 ${u.coins.toLocaleString()} USD
                         </div>
                     </div>`;
-             }).join('');
-             
-             allUsersCache = users; 
+            };
+
+            // 3. ประกอบร่าง HTML
+            let finalHTML = '';
+
+            // --- กลุ่ม 1: เจ้าของโซน ---
+            if (ownedUsers.length > 0) {
+                finalHTML += `<div style="background:#007bff; color:white; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold;"><i class="fas fa-user-shield"></i> สมาชิกในความดูแล (Direct)</div>`;
+                finalHTML += ownedUsers.map(createRowHTML).join('');
+            }
+
+            // --- กลุ่ม 2: อ้างอิงพิกัด ---
+            if (refUsers.length > 0) {
+                finalHTML += `<div style="background:#ffc107; color:#333; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold;"><i class="fas fa-map-marker-alt"></i> สมาชิกโซนพิกัด (Ref Location)</div>`;
+                finalHTML += refUsers.map(createRowHTML).join('');
+            }
+
+            // --- กลุ่มอื่นๆ (เช่น แอดมินคนอื่นๆ) ---
+            if (otherUsers.length > 0) {
+                if (ownedUsers.length > 0 || refUsers.length > 0) {
+                    finalHTML += `<div style="color:gray; padding:5px; font-size:0.9em; margin-top:10px;">อื่นๆ</div>`;
+                }
+                finalHTML += otherUsers.map(createRowHTML).join('');
+            }
+
+            container.innerHTML = finalHTML;
+            allUsersCache = users; 
 
         } catch (e) {
             console.error(e);
