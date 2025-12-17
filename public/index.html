@@ -2392,6 +2392,17 @@ async function openAdminZoneModal() {
     }
 }
 
+function openAllZoneManagement() {
+    console.log("เลือก: จัดการโซน");
+    closeZoneChoiceModal();
+    // เรียกใช้ฟังก์ชันเปิดหน้าจัดการโซนเดิมที่มีอยู่แล้ว
+    if (typeof openZoneModal === "function") {
+        openZoneModal();
+    } else {
+        document.getElementById('zone-modal').classList.remove('hidden');
+    }
+}
+
 // 2. ปิด Modal
 function closeAdminZoneModal() {
     document.getElementById('admin-zone-modal').classList.add('hidden');
@@ -4489,15 +4500,15 @@ function openUserDetail(targetUsername) {
 
 	<div id="zone-management-choice-modal" class="modal-overlay hidden" style="z-index: 2500;">
     <div class="modal-box" style="max-width: 350px; text-align: center;">
-        <h3 style="margin-bottom: 20px;"><i class="fas fa-tasks"></i> เลือกการจัดการโซน</h3>
+        <h3 style="margin-bottom: 20px;"><i class="fas fa-tasks"></i> Manage Zones</h3>
         
         <div style="display: flex; flex-direction: column; gap: 15px;">
-            <button class="sidebar-btn" onclick="openMyZone()" style="background: #28a745; color: white; padding: 15px; font-size: 1.1em;">
-                <i class="fas fa-user-shield"></i> 1. โซนตัวเอง
+            <button class="sidebar-btn" onclick="openAssignedZoneMap()" style="background: #28a745; color: white; padding: 15px; font-size: 1.1em;">
+                <i class="fas fa-user-shield"></i> 1. My Zone
             </button>
             
             <button class="sidebar-btn" onclick="openAllZoneManagement()" style="background: #007bff; color: white; padding: 15px; font-size: 1.1em;">
-                <i class="fas fa-map-marked-alt"></i> 2. จัดการโซน
+                <i class="fas fa-map-marked-alt"></i> 2. Manage Zones
             </button>
         </div>
 
