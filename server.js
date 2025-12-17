@@ -445,17 +445,34 @@ app.get('/api/users-list', async (req, res) => {
     }
 
     // CASE C: ดูรายการปกติ (Level 1,2 แบบไม่ Search) -> เห็นแค่ในโซนตัวเอง (Logic เดิม)
-    const myZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
+    let myZones = [];
+
+    // เช็คระดับ Admin เพื่อเลือกวิธีการดึง Zone
+    if (requester.adminLevel === 2) {
+        // ✅ Level 2: ดึงโซนที่ "อ้างอิงตำแหน่งพิกัด" (refLocation) กับแอดมินคนนั้น
+        myZones = await zonesCollection.find({ 
+            "refLocation.sourceUser": requester.username 
+        }).toArray();
+    } else {
+        // ✅ Level 1: ดึงโซนที่ assignedAdmin ตรงกับชื่อ (Logic เดิม)
+        myZones = await zonesCollection.find({ 
+            assignedAdmin: requester.username 
+        }).toArray();
+    }
+
+    // ถ้าไม่มีโซนที่ดูแลเลย ให้คืนค่าว่าง
     if (myZones.length === 0) return res.json([]);
 
     const allZones = await zonesCollection.find({}).toArray();
 
     const filteredUsers = allUsers.filter(u => {
         if (u.username === requester.username) return false;
-        if (u.adminLevel > 0) return true; 
-
+        if (u.adminLevel > 0) return true; // เห็น Admin ด้วยกันได้
+        
+        // กรองเฉพาะ User ที่มีพิกัด (Last Location)
         if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
 
+        // คำนวณหาโซนที่ใกล้ User ที่สุด
         let closestZone = null;
         let minDistance = Infinity;
 
@@ -467,10 +484,12 @@ app.get('/api/users-list', async (req, res) => {
             }
         });
 
+        // เช็คว่าโซนที่ใกล้ที่สุด เป็นหนึ่งในโซนที่ Admin คนนี้ดูแลหรือไม่
         if (closestZone) {
             const isMyZone = myZones.some(mz => mz.id === closestZone.id);
             return isMyZone;
         }
+
         return false;
     });
 
