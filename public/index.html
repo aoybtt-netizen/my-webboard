@@ -462,6 +462,7 @@
 	async function openAdminAssignModal(zoneId, zoneName) {
     if (myAdminLevel < 2) return alert('❌ คุณไม่มีสิทธิ์ใช้งานส่วนนี้');
 	if (myAdminLevel === 2) {
+		console.log("พิกัดที่ส่งมาคือ:", lat, lng);
 		const res = await fetch(`/api/admin/admins-list?requestBy=${myUsername}`);
 		const data = await res.json();
 		}
@@ -2458,10 +2459,7 @@ function openAllZoneManagement() {
             ${latText}, ${lngText}
         </td>
         <td style="padding:12px; text-align: right; vertical-align: middle;">
-			<button onclick="document.getElementById('assigned-zone-modal').classList.add('hidden'); openAdminAssignModal('${zone._id}', '${zoneName}')" 
-				style="padding:6px 10px; background: #ffc107; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em;">
-					<i class="fas fa-user-plus"></i> Appoint Admin
-						</button>
+			<button onclick="document.getElementById('assigned-zone-modal').classList.add('hidden'); openAdminAssignModal('${zone._id}', '${zoneName}', ${displayLat}, ${displayLng})">
 			
             <button onclick="zoomToZone(${displayLat}, ${displayLng})" 
                     style="padding:8px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;">
