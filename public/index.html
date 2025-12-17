@@ -2432,11 +2432,9 @@ function openAllZoneManagement() {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #eee';
             
-            // --- ใช้ตัวแปรตามที่คุณค้นเจอ ---
-            // ชื่อโซน: zone.name 
-            // พิกัด: zone.refLocation.lat และ zone.refLocation.lng
-            const lat = zone.refLocation ? zone.refLocation.lat : '-';
-            const lng = zone.refLocation ? zone.refLocation.lng : '-';
+            const lat = (zone.refLocation && zone.refLocation.lat) ? zone.refLocation.lat.toFixed(6) : 'N/A';
+			const lng = (zone.refLocation && zone.refLocation.lng) ? zone.refLocation.lng.toFixed(6) : 'N/A';
+			const zoneName = zone.name || 'โซนไม่มีชื่อ';
 
             tr.innerHTML = `
                 <td style="padding:10px; font-weight:bold;">${zone.name || 'Unnamed'}</td>
@@ -2453,6 +2451,18 @@ function openAllZoneManagement() {
             listContainer.appendChild(tr);
         });
     });
+	
+	function zoomToZone(lat, lng) {
+    if (lat === 'N/A' || lng === 'N/A') return alert('ไม่พบข้อมูลพิกัด');
+    
+    if (typeof map !== 'undefined') {
+        map.setView([lat, lng], 15);
+        document.getElementById('assigned-zone-modal').classList.add('hidden');
+        toggleSidebar();
+    } else {
+        window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+    }
+}
 
 function closeZoneChoiceModal() {
     document.getElementById('zone-management-choice-modal').classList.add('hidden');
