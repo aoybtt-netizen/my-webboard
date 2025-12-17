@@ -2313,8 +2313,11 @@ async function showMyClosedPosts(page = 1) {
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
-    if (myAdminLevel >= 1 && myAdminLevel < 3) {
+    if (myAdminLevel === 1) {
         return openAssignedZoneMap();
+    }
+	if (myAdminLevel === 2) {
+        return document.getElementById('zone-management-choice-modal').classList.remove('hidden');
     }
     if (myAdminLevel < 3) {
         const msg = currentLang === 'th' ? '❌ ต้องเป็น Admin Level 3 เท่านั้น' : '❌ Admin Level 3 Required';
@@ -4481,6 +4484,26 @@ function openUserDetail(targetUsername) {
         <div style="margin-top: 15px; text-align: right;">
             <button class="sidebar-btn" onclick="document.getElementById('zone-ref-select-modal').classList.add('hidden')" style="width: auto; background: #6c757d;">ปิด</button>
         </div>
+    </div>
+</div>
+
+	<div id="zone-management-choice-modal" class="modal-overlay hidden" style="z-index: 2500;">
+    <div class="modal-box" style="max-width: 350px; text-align: center;">
+        <h3 style="margin-bottom: 20px;"><i class="fas fa-tasks"></i> เลือกการจัดการโซน</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <button class="sidebar-btn" onclick="openMyZone()" style="background: #28a745; color: white; padding: 15px; font-size: 1.1em;">
+                <i class="fas fa-user-shield"></i> 1. โซนตัวเอง
+            </button>
+            
+            <button class="sidebar-btn" onclick="openAllZoneManagement()" style="background: #007bff; color: white; padding: 15px; font-size: 1.1em;">
+                <i class="fas fa-map-marked-alt"></i> 2. จัดการโซน
+            </button>
+        </div>
+
+        <button class="sidebar-btn" onclick="closeZoneChoiceModal()" style="margin-top: 20px; background: #6c757d; color: white; width: 100%;">
+            ยกเลิก
+        </button>
     </div>
 </div>
 
