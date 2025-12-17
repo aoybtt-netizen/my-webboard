@@ -506,7 +506,7 @@
 
 // ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
 async function assignAdminToZone(zoneId, adminUsername, zoneName) {
-    if (myAdminLevel < 3) return;
+    if (myAdminLevel < 2) return;
     
     const t = translations[currentLang];
     
