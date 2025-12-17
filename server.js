@@ -1605,7 +1605,6 @@ app.get('/api/admin/admins-list', async (req, res) => {
         const { requestBy } = req.query;
         if (!requestBy) return res.status(400).json({ error: 'Username required' });
 
-        // 1. ตรวจสอบผู้เรียก (Requester)
         const requester = await usersCollection.findOne({ username: requestBy });
         if (!requester || requester.adminLevel < 1) {
             return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
@@ -1613,14 +1612,8 @@ app.get('/api/admin/admins-list', async (req, res) => {
 
         let finalAdminsList = [];
 
-        // =========================================================
-        // กรณี: Admin Level 2 (ต้องกรองเฉพาะคนที่อยู่โซนเดียวกับเรา)
-        // =========================================================
+        //  Admin Level 2 
         if (requester.adminLevel === 2) {
-            console.log(`🚀 [DEBUG] Finding members for Admin L2: ${requestBy}`);
-
-            // 1. ค้นหาโซนที่ตัวเรา (requestBy) เป็นผู้ดูแล 
-            // อ้างอิงจาก Logic ที่คุณใช้ใน Socket: เช็คที่ refLocation.sourceUser หรือ assignedAdmin
             const myZones = await zonesCollection.find({
                 $or: [
                     { assignedAdmin: requestBy },
@@ -1629,48 +1622,33 @@ app.get('/api/admin/admins-list', async (req, res) => {
             }).toArray();
 
             const myZoneIds = myZones.map(z => z.id);
-            console.log(`📦 Found ${myZoneIds.length} zones under your care:`, myZoneIds);
 
             if (myZoneIds.length === 0) return res.json([]);
 
-            // 2. ดึงแอดมินระดับ 1 ทั้งหมดที่ออนไลน์หรือมีพิกัดล่าสุด
             const allL1 = await usersCollection.find({ adminLevel: 1 }).toArray();
-
-            // 3. กรองสมาชิก: ใครที่พิกัดล่าสุด ตกอยู่ในโซนที่เราดูแล
             for (const admin of allL1) {
                 if (!admin.lastLocation) continue;
-
-                // ใช้ฟังก์ชันคำนวณโซนจากพิกัดที่มีอยู่ในระบบ
                 const responsible = await findResponsibleAdmin(admin.lastLocation);
-                
-                // ถ้าผลการคำนวณบอกว่าเขาอยู่หนึ่งในโซนที่เราดูแล
                 if (responsible.zoneData && myZoneIds.includes(responsible.zoneData.id)) {
-                    console.log(`✅ MATCH: Admin ${admin.username} is in your Zone ${responsible.zoneData.id}`);
                     finalAdminsList.push(admin);
                 }
             }
         }
     
-        // =========================================================
-        // กรณี: Admin Level 3 (เห็นทั้งหมด)
-        // =========================================================
+        // Admin Level 3
         else if (requester.adminLevel >= 3) {
             finalAdminsList = await usersCollection.find({ adminLevel: { $gte: 1 } })
                 .sort({ adminLevel: -1, username: 1 })
                 .toArray();
         } 
         
-        // =========================================================
-        // กรณี: Admin Level 1 (เห็นเฉพาะ Level 1 ด้วยกัน - หรือตาม Logic เดิม)
-        // =========================================================
+        //Admin Level 1 
         else {
             finalAdminsList = await usersCollection.find({ adminLevel: 1 })
                 .sort({ username: 1 })
                 .toArray();
         }
 
-        // 3. จัดรูปแบบข้อมูลส่งกลับ (Map Response)
-        // กรองชื่อตัวเองออกด้วย (ไม่ให้เลือกตัวเอง)
         const responseData = finalAdminsList
             .filter(a => a.username !== requestBy) 
             .map(a => ({ 
