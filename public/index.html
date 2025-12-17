@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.57 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.58 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2432,22 +2432,31 @@ function openAllZoneManagement() {
     
     const displayLat = zone.lat || (zone.refLocation ? zone.refLocation.lat : null);
     const displayLng = zone.lng || (zone.refLocation ? zone.refLocation.lng : null);
+	
+	const ownerName = zone.requestBy || (zone.refLocation ? zone.refLocation.sourceUser : '-');
     
     const latText = (displayLat !== null) ? displayLat.toFixed(6) : 'N/A';
     const lngText = (displayLng !== null) ? displayLng.toFixed(6) : 'N/A';
-    const zoneName = zone.name || 'โซนไม่มีชื่อ';
+    const zoneName = zone.name || '-';
 
     tr.innerHTML = `
-        <td style="padding:12px; font-weight:bold; color:#333;">
-            <i class="fas fa-map-marker-alt" style="color:#e74c3c;"></i> ${zoneName}
+        <td style="padding:12px; vertical-align: middle;">
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 0.8em; color: #6c757d; margin-bottom: 2px;">
+                    <i class="fas fa-user-circle"></i> ${ownerName}
+                </span>
+                <span style="font-weight: bold; color: #333; font-size: 1.05em;">
+                    <i class="fas fa-map-marker-alt" style="color: #e74c3c; width: 15px;"></i> ${zoneName}
+                </span>
+            </div>
         </td>
-        <td style="padding:12px; color:#555; font-family: monospace; font-size:0.9em;">
+        <td style="padding:12px; font-family: monospace; font-size: 0.85em; color: #555; vertical-align: middle;">
             ${latText}, ${lngText}
         </td>
-        <td style="padding:12px; text-align:right;">
+        <td style="padding:12px; text-align: right; vertical-align: middle;">
             <button onclick="zoomToZone(${displayLat}, ${displayLng})" 
-                    style="padding:6px 12px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.85em;">
-                <i class="fas fa-search-location"></i> ดูแผนที่
+                    style="padding:8px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;">
+                <i class="fas fa-location-arrow"></i> ไปที่โซน
             </button>
         </td>
     `;
