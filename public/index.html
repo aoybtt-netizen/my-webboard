@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.56 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.57 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2410,45 +2410,48 @@ function openAllZoneManagement() {
 
     socket.on('receive-assigned-zones', (data) => {
         const listContainer = document.getElementById('assigned-zone-list');
-        const loadingElem = document.getElementById('assigned-zone-loading');
-        if (loadingElem) loadingElem.style.display = 'none';
+		const loadingElem = document.getElementById('assigned-zone-loading');
+		if (loadingElem) loadingElem.style.display = 'none';
 
-        if (!data.success) {
-            alert(data.message);
-            return;
-        }
+		if (!data.success) {
+        alert(data.message);
+        return;
+		}
 
-        // แสดงชื่อ Admin ในหัวข้อ (ถ้าต้องการ)
-        document.getElementById('display-ref-location').innerText = `Admin: ${data.adminName}`;
+		document.getElementById('display-ref-location').innerText = `ผู้ดูแล: ${data.adminName}`;
+		listContainer.innerHTML = '';
 
-        listContainer.innerHTML = '';
+		if (data.zones.length === 0) {
+        listContainer.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">ไม่พบโซนที่ผูกกับตำแหน่งของคุณ</td></tr>';
+        return;
+		}
 
-        if (data.zones.length === 0) {
-            listContainer.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">ไม่พบโซนที่คุณดูแลอยู่</td></tr>';
-            return;
-        }
+		data.zones.forEach(zone => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #eee';
+    
+    const displayLat = zone.lat || (zone.refLocation ? zone.refLocation.lat : null);
+    const displayLng = zone.lng || (zone.refLocation ? zone.refLocation.lng : null);
+    
+    const latText = (displayLat !== null) ? displayLat.toFixed(6) : 'N/A';
+    const lngText = (displayLng !== null) ? displayLng.toFixed(6) : 'N/A';
+    const zoneName = zone.name || 'โซนไม่มีชื่อ';
 
-        data.zones.forEach(zone => {
-            const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid #eee';
-            
-            const lat = (zone.refLocation && zone.refLocation.lat) ? zone.refLocation.lat.toFixed(6) : 'N/A';
-			const lng = (zone.refLocation && zone.refLocation.lng) ? zone.refLocation.lng.toFixed(6) : 'N/A';
-			const zoneName = zone.name || 'โซนไม่มีชื่อ';
-
-            tr.innerHTML = `
-                <td style="padding:10px; font-weight:bold;">${zone.name || 'Unnamed'}</td>
-                <td style="padding:10px; color:#666; font-size:0.9em;">
-                    📍 ${lat}, ${lng}
-                </td>
-                <td style="padding:10px; text-align:right;">
-                    <button onclick="viewZoneDetails('${zone._id}')" 
-                            style="padding:5px 10px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer;">
-                        ดูข้อมูล
-                    </button>
-                </td>
-            `;
-            listContainer.appendChild(tr);
+    tr.innerHTML = `
+        <td style="padding:12px; font-weight:bold; color:#333;">
+            <i class="fas fa-map-marker-alt" style="color:#e74c3c;"></i> ${zoneName}
+        </td>
+        <td style="padding:12px; color:#555; font-family: monospace; font-size:0.9em;">
+            ${latText}, ${lngText}
+        </td>
+        <td style="padding:12px; text-align:right;">
+            <button onclick="zoomToZone(${displayLat}, ${displayLng})" 
+                    style="padding:6px 12px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.85em;">
+                <i class="fas fa-search-location"></i> ดูแผนที่
+            </button>
+        </td>
+    `;
+    listContainer.appendChild(tr);
         });
     });
 	
