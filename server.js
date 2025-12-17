@@ -467,7 +467,7 @@ app.get('/api/users-list', async (req, res) => {
 
     const filteredUsers = allUsers.filter(u => {
         if (u.username === requester.username) return false;
-        if (u.adminLevel > 0) return true; // เห็น Admin ด้วยกัน
+        //if (u.adminLevel > 0) return true; // เห็น Admin ด้วยกัน
         
         if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
 
