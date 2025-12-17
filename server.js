@@ -1617,37 +1617,47 @@ app.get('/api/admin/admins-list', async (req, res) => {
         // กรณี: Admin Level 2 (ต้องกรองเฉพาะคนที่อยู่โซนเดียวกับเรา)
         // =========================================================
         if (requester.adminLevel === 2) {
+    // 1. ดึงจุดพิกัดอ้างอิงของ Admin L2 (ตัวเรา)
     const loc = requester.assignedLocation || requester.refLocation;
-    if (!loc) return res.json([]);
+    if (!loc || !loc.lat || !loc.lng) return res.json([]);
 
-    // 1. หาโซนทั้งหมดที่พิกัดตรงกับพิกัดอ้างอิงของเรา
-    const myZones = await zonesCollection.find({ lat: loc.lat, lng: loc.lng }).toArray();
-    const myZoneIds = myZones.map(z => z.id);
+    console.log(`📌 DEBUG: Admin L2 ${requestBy} is at [${loc.lat}, ${loc.lng}]`);
 
-    // 2. ดึงแอดมิน Level 1 ทั้งหมดมากรองด้วย Manual Loop
-    const allL1 = await usersCollection.find({ adminLevel: 1 }).toArray();
-    
-    // 3. เช็คว่าใคร "อยู่" ในโซนของเราบ้าง
-    const filtered = [];
-    for (const admin of allL1) {
+    // 2. ค้นหา "โซน" ทั้งหมดที่มีพิกัดตรงกับจุดอ้างอิงของเรา
+    const myZones = await zonesCollection.find({ 
+        lat: loc.lat, 
+        lng: loc.lng 
+    }).toArray();
+
+    if (myZones.length === 0) {
+        console.log("📌 DEBUG: No zones found at this location");
+        return res.json([]);
+    }
+
+    const myZoneIds = myZones.map(z => z.id); // เก็บ ID ของโซนไว้เป็นรายการ [17001, 17002]
+
+    // 3. ไปหาแอดมินระดับ 1 ทั้งหมด
+    const adminsLevel1 = await usersCollection.find({ adminLevel: 1 }).toArray();
+
+    // 4. กรองคน: ใช้ฟังก์ชัน findResponsibleAdmin เพื่อดูว่าพิกัดล่าสุดของ Admin 1 
+    // ตกอยู่ในหนึ่งใน Zone ID ของเราหรือไม่
+    const finalAdminsList = [];
+    for (const admin of adminsLevel1) {
         if (!admin.lastLocation) continue;
-        
-        // ใช้ฟังก์ชันที่คุณมีอยู่แล้วหาว่า Admin คนนี้อยู่โซนไหน
+
         const responsible = await findResponsibleAdmin(admin.lastLocation);
         
-        // ถ้าโซนที่เค้าอยู่ ตรงกับโซนอ้างอิงของเรา ให้เก็บรายชื่อไว้
+        // ตรวจสอบว่า ID โซนที่ Admin 1 อยู่ ตรงกับ ID โซนที่เราอ้างอิงพิกัดไว้ไหม
         if (responsible.zoneData && myZoneIds.includes(responsible.zoneData.id)) {
-            filtered.push(admin);
+            finalAdminsList.push(admin);
         }
     }
-    
-    // ส่งรายชื่อที่กรองเสร็จแล้วกลับไป
-    return res.json(filtered.map(a => ({ 
+
+    return res.json(finalAdminsList.map(a => ({ 
         name: a.username, 
         level: a.adminLevel, 
         isBanned: a.isBanned 
     })));
-	
 }
         // =========================================================
         // กรณี: Admin Level 3 (เห็นทั้งหมด)
