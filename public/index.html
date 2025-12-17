@@ -126,6 +126,12 @@
 	padding-right: 20px;
 }
 
+	.tab-btn {
+    flex: 1; padding: 10px; border: none; background: #eee; cursor: pointer;
+    font-family: 'Kanit', sans-serif; border-radius: 5px; transition: 0.3s;
+}
+.tab-btn.active { background: #007bff; color: white; font-weight: bold; }
+
     </style>
 </head>
 <body>
@@ -292,6 +298,11 @@
                 <button onclick="document.getElementById('user-list-modal').classList.add('hidden')" style="border:none; background:none; font-size:1.5em; cursor:pointer;">×</button>
             </div>
             <p id="user-list-desc" style="font-size:0.9em; color:gray;" data-i18n-key="modal_user_list_desc"></p>
+			
+			<div class="member-tabs" style="display: flex; gap: 5px; margin-bottom: 15px;">
+            <button id="tab-owned" class="tab-btn active" onclick="switchMemberTab('OWNED')">📍 ในความดูแล</button>
+            <button id="tab-ref" class="tab-btn" onclick="switchMemberTab('REF')">🔗 อ้างอิงพิกัด</button>
+        </div>
 
             <input type="text" id="user-search-input" placeholder="🔍 ค้นหาสมาชิกด้วยชื่อ..." onkeyup="openAllUserList(this.value)" style="width:100%;" data-i18n-key="search_placeholder">
 
@@ -390,7 +401,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.2 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.3 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -408,6 +419,8 @@
 		let currentLat = null;       // เก็บ Lat ล่าสุด
 		let currentLng = null;
 		let currentZoneIdForRef = null;
+		
+		let currentMemberTab = 'OWNED';
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -416,6 +429,17 @@
 		const FILTER_COOLDOWN_MS = 20000; // 20 วินาที
 		
 		let userSearchTimeout = null;
+		
+		function switchMemberTab(tabName) {
+    currentMemberTab = tabName;
+    
+    // อัปเดตสีปุ่ม
+    document.getElementById('tab-owned').classList.toggle('active', tabName === 'OWNED');
+    document.getElementById('tab-ref').classList.toggle('active', tabName === 'REF');
+    
+    // โหลดข้อมูลใหม่ (หรือกรองจาก Cache เดิม)
+    openAllUserList(document.getElementById('user-search-input').value);
+}
 		
 		// ควบคุมสถานะปุ่มและแสดงเวลานับถอยหลัง
 		function updateFilterButtonState() {
@@ -4061,87 +4085,28 @@ async function fetchNearestAdminForInbox(elementId) {
         container.innerHTML = `<p style="text-align:center;">${loadingText}</p>`;
         
         try {
-            let url = `/api/users-list?requestBy=${myUsername}`;
-            if (query) url += `&search=${encodeURIComponent(query)}`;
-
             const res = await fetch(url);
-            if (res.status !== 200) {
-                container.innerHTML = `<p style='color:red; text-align:center;'>Error Loading List</p>`;
-                return;
-            }
-            
             const users = await res.json();
             
-            // --- แก้ไขจุดที่แสดงข้อความเมื่อไม่พบข้อมูล ---
-            if (users.length === 0) {
-                // ดึงข้อความจาก translations และแทนที่ [NAME] ด้วยคำค้นหา
-                const notFoundMsg = t['msg_user_not_found'].replace('[NAME]', query);
-                const noMembersMsg = t['msg_no_members'];
+            // --- 🎯 จุดที่ต้องแก้ไขเสริม เพื่อแบ่งหน้าต่างแบบกดดู ---
+            
+            // 1. กรองเฉพาะ User ที่ตรงกับ Tab ที่เลือกอยู่
+            // (เรายังยอมให้เห็น Admin คนอื่นได้ในทุก Tab เพื่อความสะดวก)
+            const filteredByTab = users.filter(u => {
+                if (u.adminLevel > 0) return true; // แอดมินเห็นแอดมินเสมอ
+                return u.relationType === currentUserTab; 
+            });
 
-                container.innerHTML = query 
-                    ? `<p style='text-align:center; color:#dc3545; margin-top:20px;'>${notFoundMsg}</p>`
-                    : `<p style='text-align:center; color:gray;'>${noMembersMsg}</p>`;
+            if (filteredByTab.length === 0) {
+                const noDataText = currentLang === 'th' ? '❌ ไม่พบข้อมูลในกลุ่มนี้' : '❌ No data in this group';
+                container.innerHTML = `<p style='text-align:center; color:gray; margin-top:20px;'>${noDataText}</p>`;
                 return;
             }
-            // ------------------------------------------
 
-            const ownedUsers = users.filter(u => u.relationType === 'OWNED');
-            const refUsers = users.filter(u => u.relationType === 'REF');
-            const otherUsers = users.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF');
-
-            // 2. ฟังก์ชันช่วยสร้าง HTML แถว User (ยกมาจากโค้ดเดิมของคุณ)
-            const createRowHTML = (u) => {
-                const isBanned = u.isBanned;
-                const targetLevel = u.adminLevel || 0;
-                const rowStyle = isBanned 
-                    ? 'background: #f8d7da; border-left: 5px solid #dc3545;' 
-                    : 'background: white; border-left: 5px solid #28a745;';
-                
-                let levelBadge = targetLevel > 0 
-                    ? `<span style="background:#007bff; color:white; padding:1px 5px; border-radius:4px; font-size:0.7em; margin-left:5px;">L${targetLevel}</span>` 
-                    : '';
-                
-                const banBadge = isBanned 
-                    ? `<span style="color:red; font-size:0.8em; font-weight:bold; margin-left:5px;">${t['label_banned']}</span>` 
-                    : '';
-                
-                const countryBadge = u.country ? `<small style="color:gray; margin-left:5px;">[${u.country}]</small>` : '';
-                
-                return `
-                    <div class="user-list-item" style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);" onclick="openUserDetail('${u.name}')">
-                        <div style="font-weight: bold; font-size: 1.1em;">
-                             👤 ${u.name} ${levelBadge} ${banBadge} ${countryBadge}
-                        </div>
-                        <div style="color:#28a745; font-weight: bold;">
-                             💵 ${u.coins.toLocaleString()} USD
-                        </div>
-                    </div>`;
-            };
-
-            // 3. ประกอบร่าง HTML
-            let finalHTML = '';
-
-            // --- กลุ่ม 1: เจ้าของโซน ---
-            if (ownedUsers.length > 0) {
-                finalHTML += `<div style="background:#007bff; color:white; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold;"><i class="fas fa-user-shield"></i> สมาชิกในความดูแล (Direct)</div>`;
-                finalHTML += ownedUsers.map(createRowHTML).join('');
-            }
-
-            // --- กลุ่ม 2: อ้างอิงพิกัด ---
-            if (refUsers.length > 0) {
-                finalHTML += `<div style="background:#ffc107; color:#333; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold;"><i class="fas fa-map-marker-alt"></i> สมาชิกโซนพิกัด (Ref Location)</div>`;
-                finalHTML += refUsers.map(createRowHTML).join('');
-            }
-
-            // --- กลุ่มอื่นๆ (เช่น แอดมินคนอื่นๆ) ---
-            if (otherUsers.length > 0) {
-                if (ownedUsers.length > 0 || refUsers.length > 0) {
-                    finalHTML += `<div style="color:gray; padding:5px; font-size:0.9em; margin-top:10px;">อื่นๆ</div>`;
-                }
-                finalHTML += otherUsers.map(createRowHTML).join('');
-            }
-
-            container.innerHTML = finalHTML;
+            // 2. แสดงผลเฉพาะรายการที่กรองมาแล้ว
+            // โดยใช้ฟังก์ชัน createRowHTML เดิมของคุณ
+            container.innerHTML = filteredByTab.map(u => createRowHTML(u)).join('');
+            
             allUsersCache = users; 
 
         } catch (e) {
