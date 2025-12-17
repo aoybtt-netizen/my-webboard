@@ -1698,19 +1698,27 @@ app.post('/api/admin/assign-zone', async (req, res) => {
         return res.status(404).json({ error: 'Zone not found.' });
     }
     
-    // 3. Validate Admin ปลายทาง
-    const targetAdmin = await getUserData(adminUsername);
-    if (!targetAdmin || targetAdmin.adminLevel < 1 || targetAdmin.isBanned) {
-         return res.status(400).json({ error: `Invalid or unauthorized Admin: ${adminUsername}` });
+    let finalAdminValue = null;
+
+    // ถ้ามีการส่งชื่อแอดมินมา (ไม่ใช่ค่าว่าง) ให้ตรวจสอบตัวตน
+    if (adminUsername && adminUsername !== "" && adminUsername !== "none") {
+        const targetAdmin = await getUserData(adminUsername);
+        if (!targetAdmin || targetAdmin.adminLevel < 1 || targetAdmin.isBanned) {
+             return res.status(400).json({ error: `Invalid or unauthorized Admin: ${adminUsername}` });
+        }
+        finalAdminValue = adminUsername; // ถ้าผ่านการเช็ค ให้ใช้ชื่อนี้
+    } else {
+        // ถ้าส่งค่าว่างมา finalAdminValue จะเป็น null เพื่อไปล้างข้อมูลใน DB
+        finalAdminValue = null; 
     }
 
-    // 4. Update Zone document (ใช้ _id ที่หาเจอจริงจากฐานข้อมูล)
+    // 4. Update Zone document
     await zonesCollection.updateOne(
         { _id: zone._id }, 
-        { $set: { assignedAdmin: adminUsername } }
+        { $set: { assignedAdmin: finalAdminValue } } // ใช้ค่าที่เตรียมไว้ (ชื่อ หรือ null)
     );
 
-    res.json({ success: true, assignedAdmin: adminUsername });
+    res.json({ success: true, assignedAdmin: finalAdminValue });
 });
 
 // 29. Delete Zone

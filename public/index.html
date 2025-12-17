@@ -476,32 +476,50 @@
     adminListEl.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg']}</p>`;
 
     try {
-        // Fetch Admin list from the new API endpoint
+        // 3. ดึงรายชื่อ Admin
         const res = await fetch(`/api/admin/admins-list?requestBy=${myUsername}`);
         const data = await res.json();
         
+        let listHtml = '';
+
+        // --- [ส่วนที่เพิ่ม] ปุ่มสำหรับถอนการแต่งตั้ง (Unassign) ---
+        listHtml += `
+            <div style="padding: 12px; border-bottom: 2px solid #ffcccc; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #fff5f5;"
+                 onclick="assignAdminToZone('${zoneId}', '', '${zoneName}')">
+                <span>
+                    <i class="fas fa-user-slash" style="color: #d9534f;"></i> 
+                    <b style="color: #d9534f; margin-left: 5px;">ไม่มีผู้ดูแล (Unassign)</b>
+                </span>
+                <button class="sidebar-btn" style="padding: 5px 12px; background: #d9534f; color: white; border: none; border-radius: 4px; font-size: 0.8em;">
+                    ${t['btn_select'] || 'เลือก'}
+                </button>
+            </div>
+        `;
+
         if (data && data.length > 0) {
-            adminListEl.innerHTML = data.map(admin => {
-                // Filter out banned admins
+            // 4. วนลูปแสดงรายชื่อ Admin (กรองตัวที่โดนแบนออก)
+            const adminRows = data.map(admin => {
                 if (admin.isBanned) return ''; 
                 
                 const levelDisplay = admin.level > 0 ? `L${admin.level}` : '';
                 return `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+                    <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
                          onclick="assignAdminToZone('${zoneId}', '${admin.name}', '${zoneName}')">
-                        <span>👨‍💼 <b>${admin.name}</b> <span style="color:#007bff; font-size:0.8em;">${levelDisplay}</span></span>
-                        <button class="sidebar-btn create-btn" style="padding: 5px 10px; font-size: 0.8em; width: auto;" data-i18n-key="btn_select">
+                        <span><i class="fas fa-user-circle"></i> <b>${admin.name}</b> <span style="color:#007bff; font-size:0.8em;">${levelDisplay}</span></span>
+                        <button class="sidebar-btn create-btn" style="padding: 5px 10px; font-size: 0.8em; width: auto;">
                             ${t['btn_select']}
                         </button>
                     </div>
                 `;
             }).join('');
+            
+            adminListEl.innerHTML = listHtml + adminRows;
         } else {
-            adminListEl.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['admin_no_admins_found']}</p>`;
+            adminListEl.innerHTML = listHtml + `<p style="text-align:center; color:#e0a800; padding: 10px;">${t['admin_no_admins_found']}</p>`;
         }
     } catch (e) {
-        adminListEl.innerHTML = `<p style="text-align:center; color:#dc3545;">${t['admin_error_fetch_admins']}</p>`;
-        console.error('Error fetching admins for assignment:', e);
+        adminListEl.innerHTML = `<p style="text-align:center; color:#dc3545; padding: 10px;">${t['admin_error_fetch_admins']}</p>`;
+        console.error('Error fetching admins:', e);
     }
 }
 
@@ -4639,7 +4657,7 @@ function openUserDetail(targetUsername) {
 
         <div style="margin-top: 20px; text-align: right;">
             <button class="sidebar-btn" onclick="document.getElementById('assigned-zone-modal').classList.add('hidden')" 
-                    style="width: auto; background: #6c757d; color: white;">ปิด</button>
+                    style="width: auto; background: #6c757d; color: white;">Close</button>
         </div>
     </div>
 </div>
