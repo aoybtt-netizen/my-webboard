@@ -1605,54 +1605,89 @@ app.get('/api/admin/admins-list', async (req, res) => {
         const { requestBy } = req.query;
         if (!requestBy) return res.status(400).json({ error: 'Username required' });
 
+        // 1. ตรวจสอบผู้เรียก (Requester)
         const requester = await usersCollection.findOne({ username: requestBy });
         if (!requester || requester.adminLevel < 1) {
             return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
         }
 
-        let query = {};
+        let finalAdminsList = [];
 
+        // =========================================================
+        // กรณี: Admin Level 2 (ต้องกรองเฉพาะคนที่อยู่โซนเดียวกับเรา)
+        // =========================================================
         if (requester.adminLevel === 2) {
-            // ใช้ assignedLocation ตามที่มีใน server.js (บรรทัด 1160) หรือ refLocation
+            // A. หาพิกัดอ้างอิงของ Admin Level 2
             const loc = requester.assignedLocation || requester.refLocation;
-            const myLat = loc ? loc.lat : null;
-            const myLng = loc ? loc.lng : null;
+            if (!loc || !loc.lat || !loc.lng) {
+                return res.json([]); // ถ้าตัวเองไม่มีพิกัด ก็จะไม่เห็นใครเลย
+            }
 
-            if (myLat === null || myLng === null) return res.json([]);
-
-            // หาโซนที่พิกัดตรงกัน
-            const zonesAtCoords = await zonesCollection.find({ 
-                lat: myLat,
-                lng: myLng 
+            // B. หา Zone ID ที่ตรงกับพิกัดของ Admin Level 2
+            // (ใช้ logic เดียวกับ findResponsibleAdmin หรือหาตรงๆ)
+            const myZones = await zonesCollection.find({ 
+                lat: loc.lat, 
+                lng: loc.lng 
             }).toArray();
+            
+            const myZoneIds = myZones.map(z => z.id); // รายการ ID โซนที่ฉันดูแล
 
-            // ใช้ .id (ที่เป็น Number) เพราะระบบคุณใช้ id แบบ timestamp
-            const zoneIds = zonesAtCoords.map(z => z.id);
+            // C. ดึง Admin Level 1 ทั้งหมดออกมาก่อน (เพราะใน User ไม่มี userZoneId ให้ Query)
+            const allLevel1Admins = await usersCollection.find({ adminLevel: 1 }).toArray();
 
-            query = {
-                adminLevel: 1,
-                userZoneId: { $in: zoneIds } 
-            };
+            // D. [สำคัญ] วนลูปเช็คทีละคนว่า พิกัดล่าสุดของเขา อยู่ในโซนของฉันไหม
+            // เราใช้ Promise.all เพื่อรอให้ findResponsibleAdmin ทำงานเสร็จในแต่ละลูป
+            const filteredAdmins = await Promise.all(allLevel1Admins.map(async (admin) => {
+                // ถ้าไม่มีพิกัดล่าสุด ข้ามไปเลย
+                if (!admin.lastLocation) return null;
+
+                // คำนวณว่าพิกัดล่าสุดของ Admin คนนี้ ตกอยู่ที่โซนไหน
+                // (เรียกใช้ฟังก์ชัน findResponsibleAdmin ที่มีอยู่แล้วใน server.js)
+                const checkZone = await findResponsibleAdmin(admin.lastLocation);
+                
+                // ถ้าโซนที่เขาอยู่ (checkZone.zoneData.id) ตรงกับโซนของฉัน (myZoneIds)
+                if (checkZone.zoneData && myZoneIds.includes(checkZone.zoneData.id)) {
+                    return admin; // คนนี้ผ่านเงื่อนไข เก็บไว้
+                }
+                return null; // คนนี้อยู่โซนอื่น ตัดออก
+            }));
+
+            // กรองเอาค่า null ออก
+            finalAdminsList = filteredAdmins.filter(a => a !== null);
         } 
+        
+        // =========================================================
+        // กรณี: Admin Level 3 (เห็นทั้งหมด)
+        // =========================================================
         else if (requester.adminLevel >= 3) {
-            query = { adminLevel: { $gte: 1 } };
+            finalAdminsList = await usersCollection.find({ adminLevel: { $gte: 1 } })
+                .sort({ adminLevel: -1, username: 1 })
+                .toArray();
         } 
+        
+        // =========================================================
+        // กรณี: Admin Level 1 (เห็นเฉพาะ Level 1 ด้วยกัน - หรือตาม Logic เดิม)
+        // =========================================================
         else {
-            query = { adminLevel: 1 };
+            finalAdminsList = await usersCollection.find({ adminLevel: 1 })
+                .sort({ username: 1 })
+                .toArray();
         }
 
-        const admins = await usersCollection.find(query)
-            .sort({ adminLevel: -1, username: 1 })
-            .toArray();
+        // 3. จัดรูปแบบข้อมูลส่งกลับ (Map Response)
+        // กรองชื่อตัวเองออกด้วย (ไม่ให้เลือกตัวเอง)
+        const responseData = finalAdminsList
+            .filter(a => a.username !== requestBy) 
+            .map(a => ({ 
+                name: a.username, 
+                level: a.adminLevel || 0,
+                isBanned: a.isBanned 
+            }));
 
-        res.json(admins.map(a => ({ 
-            name: a.username, 
-            level: a.adminLevel || 0,
-            isBanned: a.isBanned 
-        })));
+        res.json(responseData);
 
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Error fetching admin list:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
