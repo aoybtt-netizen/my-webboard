@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const { MongoClient } = require('mongodb'); // [NEW] MongoDB Driver
 const fs = require('fs'); // ใช้สำหรับ Multer check folder เท่านั้น
-
+const { ObjectId } = require('mongodb');
 const multer = require('multer');
 
 // --- [CONFIG] MongoDB Connection ---
@@ -1670,30 +1670,43 @@ app.get('/api/admin/admins-list', async (req, res) => {
 app.post('/api/admin/assign-zone', async (req, res) => {
     const { zoneId, adminUsername, requestBy } = req.body;
     
-    // 1. Tidy up input
-    const zoneIdInt = parseInt(zoneId);
-    
-    // 2. Check Permissions (Requester must be Admin Level 3)
+    // 1. Check Permissions (ปรับเป็นระดับ 2 ตามที่ต้องการ)
     const requester = await getUserData(requestBy);
     if (!requester || requester.adminLevel < 2) { 
-        return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
+        return res.status(403).json({ error: 'Permission denied. Admin Level 2+ required' });
     }
     
-    // 3. Find target Zone
-    const zone = await zonesCollection.findOne({ id: zoneIdInt });
+    // 2. Find target Zone (ปรับปรุงการค้นหาให้รองรับ _id ของ MongoDB)
+    let zone;
+    try {
+        const { ObjectId } = require('mongodb'); // เรียกใช้ ObjectId
+        
+        // ลองหาด้วย _id ก่อน (เพราะหน้าบ้านส่ง zone._id มาเป็น String)
+        if (ObjectId.isValid(zoneId)) {
+            zone = await zonesCollection.findOne({ _id: new ObjectId(zoneId) });
+        }
+        
+        // ถ้าไม่เจอ และ zoneId เป็นตัวเลข ให้ลองหาด้วยฟิลด์ id (เผื่อระบบเก่า)
+        if (!zone && !isNaN(parseInt(zoneId))) {
+            zone = await zonesCollection.findOne({ id: parseInt(zoneId) });
+        }
+    } catch (err) {
+        return res.status(400).json({ error: 'รูปแบบ ID ไม่ถูกต้อง' });
+    }
+
     if (!zone) {
         return res.status(404).json({ error: 'Zone not found.' });
     }
     
-    // 4. Validate Admin (check if target admin exists and is not banned)
+    // 3. Validate Admin ปลายทาง
     const targetAdmin = await getUserData(adminUsername);
     if (!targetAdmin || targetAdmin.adminLevel < 1 || targetAdmin.isBanned) {
          return res.status(400).json({ error: `Invalid or unauthorized Admin: ${adminUsername}` });
     }
 
-    // 5. Update Zone document
+    // 4. Update Zone document (ใช้ _id ที่หาเจอจริงจากฐานข้อมูล)
     await zonesCollection.updateOne(
-        { id: zoneIdInt }, 
+        { _id: zone._id }, 
         { $set: { assignedAdmin: adminUsername } }
     );
 
