@@ -2393,13 +2393,11 @@ async function openAdminZoneModal() {
 }
 
 function openAllZoneManagement() {
-    console.log("เลือก: จัดการโซน");
     closeZoneChoiceModal();
-    // เรียกใช้ฟังก์ชันเปิดหน้าจัดการโซนเดิมที่มีอยู่แล้ว
-    if (typeof openZoneModal === "function") {
-        openZoneModal();
-    } else {
-        document.getElementById('zone-modal').classList.remove('hidden');
+    // เรียกใช้ฟังก์ชันเดิมที่มีอยู่ (openAdminZoneModal) 
+    // ซึ่งปกติจะแสดงรายการโซนทั้งหมด แต่ระบบจะกรองตามสิทธิ์ Admin ที่ล็อคอินอยู่
+    if (typeof openAdminZoneModal === 'function') {
+        openAdminZoneModal();
     }
 }
 
@@ -4522,6 +4520,8 @@ function openUserDetail(targetUsername) {
         </button>
     </div>
 </div>
+
+	
 
 
 </div>
