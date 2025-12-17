@@ -459,10 +459,10 @@
 		
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
-	async function openAdminAssignModal(zoneId, zoneName) {
+	async function openAdminAssignModal(zoneId, zoneName, lat, lng) {
     if (myAdminLevel < 2) return alert('❌ คุณไม่มีสิทธิ์ใช้งานส่วนนี้');
 	if (myAdminLevel === 2) {
-		console.log("พิกัดที่ส่งมาคือ:", lat, lng);
+		document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName} (${lat.toFixed(6)}, ${lng.toFixed(6)})`;
 		const res = await fetch(`/api/admin/admins-list?requestBy=${myUsername}`);
 		const data = await res.json();
 		}
