@@ -461,6 +461,7 @@
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
 	async function openAdminAssignModal(zoneId, zoneName) {
     if (myAdminLevel < 2) return alert('❌ คุณไม่มีสิทธิ์ใช้งานส่วนนี้');
+	if (myAdminLevel === 2) document.getElementById('zone-management-choice-modal').classList.add('hidden');
     currentZoneToAssign = zoneId;
     
     document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName}`;

@@ -1603,48 +1603,66 @@ app.get('/api/admin/all-zones', async (req, res) => {
 app.get('/api/admin/admins-list', async (req, res) => {
     try {
         const { requestBy } = req.query;
-        if (!requestBy) return res.json([]);
+        if (!requestBy) return res.status(400).json({ error: 'Username required' });
 
-        // 1. ดึงข้อมูลคนเรียก (Requester)
+        // 1. ดึงข้อมูลของแอดมินคนที่กดเรียก (Requester)
         const requester = await usersCollection.findOne({ username: requestBy });
-        if (!requester) return res.json([]);
+        
+        if (!requester || requester.adminLevel < 1) {
+            return res.status(403).json({ error: 'Permission denied. Admin 1+ required' });
+        }
 
-        let query = { adminLevel: { $gt: 0 } }; // ค่าเริ่มต้น: ดึงแอดมินทั้งหมด
+        let query = {};
 
-        // 2. เงื่อนไขสำหรับ Admin Level 2
+        // กรณีเป็นแอดมินระดับ 2 (เงื่อนไขพิเศษ)
         if (requester.adminLevel === 2) {
-            // 1. ดึงพิกัดอ้างอิงของตัวแอดมิน (Requester)
+            // A. ดึงพิกัดอ้างอิงของแอดมินระดับ 2
             const myLat = requester.refLocation ? requester.refLocation.lat : null;
             const myLng = requester.refLocation ? requester.refLocation.lng : null;
 
             if (myLat === null || myLng === null) {
-                return res.json([]); // ถ้าแอดมินไม่มีพิกัดอ้างอิง จะไม่เห็นใครเลย
+                return res.json([]); // ถ้าตัวเองไม่มีพิกัดอ้างอิง จะไม่เห็นใครเลย
             }
 
-            // 2. หาโซน "ทั้งหมด" ที่มีพิกัด Lat และ Lng ตรงกับแอดมินคนนี้
-            // (เป็นการหาโซนตามตำแหน่งพิกัด ไม่ได้หาตามชื่อเจ้าของ)
+            // B. หาโซนทั้งหมดที่มีพิกัด Lat/Lng ตรงกับแอดมินคนนี้
             const zonesAtCoords = await zonesCollection.find({ 
                 lat: myLat,
                 lng: myLng 
             }).toArray();
 
-            // ดึง ID ของโซนเหล่านั้นออกมา
+            // ดึง ID ของโซนเหล่านั้นออกมาเป็น String Array
             const zoneIds = zonesAtCoords.map(z => z._id.toString());
 
-            // 3. กรองหาแอดมินคนอื่นที่เช็คอิน (checkInZoneId) อยู่ในรายการโซนเหล่านี้
+            // C. ตั้ง Query: หาเฉพาะแอดมินระดับ 1 ที่เช็คอินอยู่ในโซนเหล่านั้น
             query = {
-                adminLevel: { $gt: 0 },
-                username: { $ne: requester.username }, // ไม่แสดงชื่อตัวเอง
-                checkInZoneId: { $in: zoneIds } // เช็คอินอยู่ในโซนที่พิกัดตรงกัน
+                adminLevel: 1, // กรองให้เหลือแต่แอดมินระดับ 1 ตามที่ต้องการ
+                checkInZoneId: { $in: zoneIds } // เช็คอินอยู่ในโซนพิกัดเดียวกัน
             };
+        } 
+        // กรณีเป็นแอดมินระดับ 3 (เห็นทั้งหมด)
+        else if (requester.adminLevel >= 3) {
+            query = { adminLevel: { $gte: 1 } };
+        } 
+        // กรณีระดับ 1 (ถ้ามีสิทธิ์ดู)
+        else {
+            query = { adminLevel: 1 };
         }
 
-        const admins = await usersCollection.find(query).toArray();
-        res.json(admins);
+        // 2. ดึงข้อมูลจาก Database พร้อมเรียงลำดับ
+        const admins = await usersCollection.find(query)
+            .sort({ adminLevel: -1, username: 1 })
+            .toArray();
+
+        // 3. ส่งข้อมูลกลับ (Mapping ข้อมูลที่จำเป็น)
+        res.json(admins.map(a => ({ 
+            name: a.username, 
+            level: a.adminLevel || 0,
+            isBanned: a.isBanned 
+        })));
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Error');
+        console.error('Error fetching admin list:', err);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
