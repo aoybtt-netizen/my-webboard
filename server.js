@@ -1616,9 +1616,9 @@ app.get('/api/admin/admins-list', async (req, res) => {
         // =========================================================
         // กรณี: Admin Level 2 (ต้องกรองเฉพาะคนที่อยู่โซนเดียวกับเรา)
         // =========================================================
-        if (requester.adminLevel === 2) {
+        iif (requester.adminLevel === 2) {
     console.log("------------------------------------------");
-    console.log(`🚀 [DEBUG START] RequestBy: ${requestBy}`);
+    console.log(`🚀 [DEBUG START] RequestBy: ${requestBy} (Radius Check Mode)`);
 
     // 1. ดึงพิกัดอ้างอิงของเรา (Admin L2)
     const loc = requester.assignedLocation || requester.refLocation;
@@ -1629,20 +1629,25 @@ app.get('/api/admin/admins-list', async (req, res) => {
         return res.json([]);
     }
 
-    // 2. หาโซนทั้งหมดที่มีพิกัดตรงกับเรา
-    console.log(`🔎 [STEP 2] Searching zones with Lat: ${loc.lat}, Lng: ${loc.lng}`);
+    // 2. หาโซนทั้งหมดที่อยู่ใกล้พิกัดอ้างอิงของเรา (รัศมี 100 เมตร)
+    // เปลี่ยนจาก find เป๊ะๆ มาเป็นดึงทั้งหมดแล้วคำนวณระยะ
+    console.log(`🔎 [STEP 2] Searching zones NEAR Lat: ${loc.lat}, Lng: ${loc.lng}`);
+    
+    // ดึงโซนทั้งหมดขึ้นมา
     const allZones = await zonesCollection.find({}).toArray();
+    
+    // กรองเอาเฉพาะโซนที่ห่างจากเราไม่เกิน 0.1 กม. (100 เมตร)
+    const myZones = allZones.filter(z => {
+        const dist = getDistanceFromLatLonInKm(loc.lat, loc.lng, z.lat, z.lng);
+        // แสดงระยะห่างเพื่อการดีบั๊ก (ถ้าใกล้มากๆ จะโชว์)
+        if (dist < 1.0) console.log(`   -> Check Zone ${z.id}: Dist = ${dist.toFixed(4)} km`);
+        return dist < 0.1; 
+    });
 
-const myZones = allZones.filter(z => {
-    // คำนวณระยะทางระหว่าง พิกัดอ้างอิงของเรา กับ พิกัดของโซน
-    const dist = getDistanceFromLatLonInKm(loc.lat, loc.lng, z.lat, z.lng);
-    return dist < 0.1; // 0.1 กม. คือ 100 เมตร (ยืดหยุ่นให้ความละเอียดพิกัด)
-});
-
-    console.log(`📦 [STEP 2 RESULT] Found ${myZones.length} zones matching your location`);
+    console.log(`📦 [STEP 2 RESULT] Found ${myZones.length} zones NEAR your location`);
 
     if (myZones.length === 0) {
-        console.log("⚠️ [STEP 2 ERROR] No zones found at this coordinate. (Check if Lat/Lng in DB matches exactly)");
+        console.log("⚠️ [STEP 2 ERROR] Still no zones found even with 100m radius.");
         return res.json([]);
     }
 
@@ -1661,22 +1666,18 @@ const myZones = allZones.filter(z => {
     for (const admin of allLevel1Admins) {
         // เช็คพิกัดล่าสุดของ Admin L1
         if (!admin.lastLocation) {
-            console.log(`  - ❌ Admin: ${admin.username} has NO lastLocation (Skip)`);
+            // console.log(`  - ❌ Admin: ${admin.username} has NO lastLocation (Skip)`);
             continue;
         }
 
-        // คำนวณหาโซนที่ Admin L1 คนนั้นอยู่
+        // คำนวณว่าเขาอยู่โซนไหน
         const responsible = await findResponsibleAdmin(admin.lastLocation);
         const adminCurrentZoneId = responsible.zoneData ? responsible.zoneData.id : "NONE";
 
-        console.log(`  - 👤 Admin: ${admin.username} | Current Pos: [${admin.lastLocation.lat}, ${admin.lastLocation.lng}] | Zone Found: ${adminCurrentZoneId}`);
-
         // ตรวจสอบว่า Zone ID ของเขา ตรงกับ Zone ID ของเราหรือไม่
         if (responsible.zoneData && myZoneIds.includes(responsible.zoneData.id)) {
-            console.log(`    ✅ MATCH! Admin ${admin.username} is in your zone.`);
+            console.log(`    ✅ MATCH! Admin ${admin.username} is in your zone (${adminCurrentZoneId}).`);
             filteredAdmins.push(admin);
-        } else {
-            console.log(`    🚫 NO MATCH. Zone ${adminCurrentZoneId} is not in your reference IDs.`);
         }
     }
 
