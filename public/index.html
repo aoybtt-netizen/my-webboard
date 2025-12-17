@@ -2454,9 +2454,9 @@ function openAllZoneManagement() {
             ${latText}, ${lngText}
         </td>
         <td style="padding:12px; text-align: right; vertical-align: middle;">
-			<button onclick="promptAppointOwner('${zone._id}', '${zoneName}')" 
+			<button onclick="openAdminAssignModal('${zone._id}', '${zoneName}')" 
                     style="padding:6px 10px; background: #ffc107; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em;">
-                <i class="fas fa-user-plus"></i> แต่งตั้ง
+                <i class="fas fa-user-plus"></i> Appoint Admin
             </button>
 			
             <button onclick="zoomToZone(${displayLat}, ${displayLng})" 
