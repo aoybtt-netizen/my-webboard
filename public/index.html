@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.54 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.55 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2393,13 +2393,62 @@ async function openAdminZoneModal() {
 }
 
 function openAllZoneManagement() {
-    closeZoneChoiceModal();
-    // เรียกใช้ฟังก์ชันเดิมที่มีอยู่ (openAdminZoneModal) 
-    // ซึ่งปกติจะแสดงรายการโซนทั้งหมด แต่ระบบจะกรองตามสิทธิ์ Admin ที่ล็อคอินอยู่
-    if (typeof openAdminZoneModal === 'function') {
-        openAdminZoneModal();
+        document.getElementById('zone-management-choice-modal').classList.add('hidden');
+        
+        // เปิด Modal แสดงรายการและแสดง Loading
+        document.getElementById('assigned-zone-modal').classList.remove('hidden');
+        document.getElementById('assigned-zone-list').innerHTML = ''; // เคลียร์ค่าเก่า
+        document.getElementById('assigned-zone-loading').style.display = 'block';
+        document.getElementById('display-ref-location').innerText = 'Loading...';
+
+        // ส่งคำสั่งไปขอข้อมูลจาก Server
+        socket.emit('get-assigned-zones');
     }
-}
+	
+	// --- Socket Listener รับข้อมูลโซน ---
+    socket.on('receive-assigned-zones', (data) => {
+        const loadingElem = document.getElementById('assigned-zone-loading');
+        if (loadingElem) loadingElem.style.display = 'none';
+
+        if (!data.success) {
+            alert(data.message); // แจ้งเตือนถ้าไม่มีสิทธิ์หรือเกิด error
+            document.getElementById('assigned-zone-modal').classList.add('hidden');
+            return;
+        }
+
+        // แสดงชื่อตำแหน่งอ้างอิง
+        document.getElementById('display-ref-location').innerText = data.refLocation || 'Unknown';
+
+        const listContainer = document.getElementById('assigned-zone-list');
+        listContainer.innerHTML = ''; // เคลียร์อีกครั้งเพื่อความชัวร์
+
+        if (data.zones.length === 0) {
+            listContainer.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">ไม่พบโซนภายใต้การดูแลของคุณ</td></tr>';
+            return;
+        }
+
+        // วนลูปสร้างแถวในตาราง
+        data.zones.forEach(zone => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #eee';
+            
+            // ปรับแต่งการแสดงผลตาม Schema ของคุณ (ตัวอย่างใช้ name, lat, lng)
+            tr.innerHTML = `
+                <td style="padding:10px; font-weight:bold;">${zone.name || zone.zone_name || 'Unnamed Zone'}</td>
+                <td style="padding:10px; color:#666; font-size:0.9em;">
+                    ${zone.lat ? zone.lat.toFixed(4) : '-'}, ${zone.lng ? zone.lng.toFixed(4) : '-'}
+                </td>
+                <td style="padding:10px;">
+                    <span style="background:${zone.active ? '#d4edda' : '#f8d7da'}; 
+                                 color:${zone.active ? '#155724' : '#721c24'}; 
+                                 padding:2px 8px; border-radius:10px; font-size:0.8em;">
+                        ${zone.active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+            `;
+            listContainer.appendChild(tr);
+        });
+    });
 
 function closeZoneChoiceModal() {
     document.getElementById('zone-management-choice-modal').classList.add('hidden');
@@ -4520,6 +4569,45 @@ function openUserDetail(targetUsername) {
         </button>
     </div>
 </div>
+
+	
+	<div id="assigned-zone-modal" class="modal-overlay hidden" style="z-index: 2600;">
+    <div class="modal-box" style="max-width: 600px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 style="margin:0;"><i class="fas fa-map-marked-alt"></i> Zones Under Management</h3>
+            <button onclick="document.getElementById('assigned-zone-modal').classList.add('hidden')" 
+                    style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
+        </div>
+
+        <div style="background:#e9ecef; padding:10px; border-radius:8px; margin-bottom:15px; font-weight:bold; color:#495057;">
+            📍 Reference Location: <span id="display-ref-location" style="color:#007bff;">-</span>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background:#f8f9fa; text-align:left;">
+                        <th style="padding:10px; border-bottom:2px solid #ddd;">Zone Name</th>
+                        <th style="padding:10px; border-bottom:2px solid #ddd;">Coordinates</th>
+                        <th style="padding:10px; border-bottom:2px solid #ddd;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="assigned-zone-list">
+                    </tbody>
+            </table>
+        </div>
+        
+        <div id="assigned-zone-loading" style="text-align:center; padding:20px; display:none;">
+            <i class="fas fa-spinner fa-spin"></i> Loading data...
+        </div>
+
+        <div style="margin-top: 20px; text-align: right;">
+            <button class="sidebar-btn" onclick="document.getElementById('assigned-zone-modal').classList.add('hidden')" 
+                    style="width: auto; background: #6c757d; color: white;">ปิด</button>
+        </div>
+    </div>
+</div>
+
 
 	
 
