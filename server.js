@@ -1617,44 +1617,38 @@ app.get('/api/admin/admins-list', async (req, res) => {
         // กรณี: Admin Level 2 (ต้องกรองเฉพาะคนที่อยู่โซนเดียวกับเรา)
         // =========================================================
         if (requester.adminLevel === 2) {
-            // A. หาพิกัดอ้างอิงของ Admin Level 2
-            const loc = requester.assignedLocation || requester.refLocation;
-            if (!loc || !loc.lat || !loc.lng) {
-                return res.json([]); // ถ้าตัวเองไม่มีพิกัด ก็จะไม่เห็นใครเลย
-            }
+    // 1. ดึงพิกัดอ้างอิงของตัวเราเอง (Admin L2)
+    // ใช้ assignedLocation (พิกัดที่แอดมิน 3 จิ้มให้) หรือ refLocation (พิกัดโปรไฟล์)
+    const loc = requester.assignedLocation || requester.refLocation;
+    const myLat = loc ? loc.lat : null;
+    const myLng = loc ? loc.lng : null;
 
-            // B. หา Zone ID ที่ตรงกับพิกัดของ Admin Level 2
-            // (ใช้ logic เดียวกับ findResponsibleAdmin หรือหาตรงๆ)
-            const myZones = await zonesCollection.find({ 
-                lat: loc.lat, 
-                lng: loc.lng 
-            }).toArray();
-            
-            const myZoneIds = myZones.map(z => z.id); // รายการ ID โซนที่ฉันดูแล
+    if (myLat === null || myLng === null) {
+        return res.json([]); // ถ้าเราไม่มีพิกัดอ้างอิง จะมองไม่เห็นใครเลย
+    }
 
-            // C. ดึง Admin Level 1 ทั้งหมดออกมาก่อน (เพราะใน User ไม่มี userZoneId ให้ Query)
-            const allLevel1Admins = await usersCollection.find({ adminLevel: 1 }).toArray();
+    // 2. ค้นหา "โซนทั้งหมด" ที่มีพิกัดตรงกับพิกัดอ้างอิงของเรา
+    // (เปรียบเสมือนการหาว่า "จุดที่เราอยู่นี้ มีกี่โซนซ้อนทับกันอยู่บ้าง")
+    const myReferenceZones = await zonesCollection.find({ 
+        lat: myLat, 
+        lng: myLng 
+    }).toArray();
 
-            // D. [สำคัญ] วนลูปเช็คทีละคนว่า พิกัดล่าสุดของเขา อยู่ในโซนของฉันไหม
-            // เราใช้ Promise.all เพื่อรอให้ findResponsibleAdmin ทำงานเสร็จในแต่ละลูป
-            const filteredAdmins = await Promise.all(allLevel1Admins.map(async (admin) => {
-                // ถ้าไม่มีพิกัดล่าสุด ข้ามไปเลย
-                if (!admin.lastLocation) return null;
+    // ดึง ID ของโซนเหล่านั้นออกมาเป็น Array (เช่น [101, 102])
+    const zoneIds = myReferenceZones.map(z => z.id);
 
-                // คำนวณว่าพิกัดล่าสุดของ Admin คนนี้ ตกอยู่ที่โซนไหน
-                // (เรียกใช้ฟังก์ชัน findResponsibleAdmin ที่มีอยู่แล้วใน server.js)
-                const checkZone = await findResponsibleAdmin(admin.lastLocation);
-                
-                // ถ้าโซนที่เขาอยู่ (checkZone.zoneData.id) ตรงกับโซนของฉัน (myZoneIds)
-                if (checkZone.zoneData && myZoneIds.includes(checkZone.zoneData.id)) {
-                    return admin; // คนนี้ผ่านเงื่อนไข เก็บไว้
-                }
-                return null; // คนนี้อยู่โซนอื่น ตัดออก
-            }));
+    if (zoneIds.length === 0) {
+        return res.json([]); // ถ้าจุดอ้างอิงของเราไม่มีโซนไหนตั้งอยู่เลย ก็ไม่พบคนเช็คอิน
+    }
 
-            // กรองเอาค่า null ออก
-            finalAdminsList = filteredAdmins.filter(a => a !== null);
-        } 
+    // 3. กรองแอดมินระดับ 1 ทั้งหมดที่ "เช็คอิน" อยู่ในโซนเหล่านั้น
+    // โดยใช้เงื่อนไข userZoneId (ซึ่งระบบเก็บตอน User เช็คอิน)
+    query = {
+        adminLevel: 1,
+        userZoneId: { $in: zoneIds }, // เช็คอินอยู่ในโซนใดโซนหนึ่งที่เราอ้างอิง
+        username: { $ne: requester.username } // ไม่แสดงชื่อตัวเอง
+    };
+}
         
         // =========================================================
         // กรณี: Admin Level 3 (เห็นทั้งหมด)
