@@ -1631,10 +1631,13 @@ app.get('/api/admin/admins-list', async (req, res) => {
 
     // 2. หาโซนทั้งหมดที่มีพิกัดตรงกับเรา
     console.log(`🔎 [STEP 2] Searching zones with Lat: ${loc.lat}, Lng: ${loc.lng}`);
-    const myZones = await zonesCollection.find({ 
-        lat: loc.lat, 
-        lng: loc.lng 
-    }).toArray();
+    const allZones = await zonesCollection.find({}).toArray();
+
+const myZones = allZones.filter(z => {
+    // คำนวณระยะทางระหว่าง พิกัดอ้างอิงของเรา กับ พิกัดของโซน
+    const dist = getDistanceFromLatLonInKm(loc.lat, loc.lng, z.lat, z.lng);
+    return dist < 0.1; // 0.1 กม. คือ 100 เมตร (ยืดหยุ่นให้ความละเอียดพิกัด)
+});
 
     console.log(`📦 [STEP 2 RESULT] Found ${myZones.length} zones matching your location`);
 
