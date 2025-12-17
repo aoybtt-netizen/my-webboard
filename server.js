@@ -1617,44 +1617,68 @@ app.get('/api/admin/admins-list', async (req, res) => {
         // กรณี: Admin Level 2 (ต้องกรองเฉพาะคนที่อยู่โซนเดียวกับเรา)
         // =========================================================
         if (requester.adminLevel === 2) {
+    console.log("------------------------------------------");
+    console.log(`🚀 [DEBUG START] RequestBy: ${requestBy}`);
+
     // 1. ดึงพิกัดอ้างอิงของเรา (Admin L2)
     const loc = requester.assignedLocation || requester.refLocation;
-    if (!loc || !loc.lat || !loc.lng) return res.json([]);
+    console.log("📍 [STEP 1] Admin L2 Location:", JSON.stringify(loc));
 
-    // 2. หาโซนทั้งหมดที่มีพิกัดตรงกับเรา (หรือใช้ระยะใกล้เคียงก็ได้)
-    // ตรงนี้ใช้การเทียบเท่ากันเป๊ะๆ ตามเดิม
+    if (!loc || !loc.lat || !loc.lng) {
+        console.log("⚠️ [STEP 1 ERROR] No Location data for this Admin L2");
+        return res.json([]);
+    }
+
+    // 2. หาโซนทั้งหมดที่มีพิกัดตรงกับเรา
+    console.log(`🔎 [STEP 2] Searching zones with Lat: ${loc.lat}, Lng: ${loc.lng}`);
     const myZones = await zonesCollection.find({ 
         lat: loc.lat, 
         lng: loc.lng 
     }).toArray();
 
-    if (myZones.length === 0) return res.json([]);
-    const myZoneIds = myZones.map(z => z.id); // รายการ ID โซนของเรา
+    console.log(`📦 [STEP 2 RESULT] Found ${myZones.length} zones matching your location`);
+
+    if (myZones.length === 0) {
+        console.log("⚠️ [STEP 2 ERROR] No zones found at this coordinate. (Check if Lat/Lng in DB matches exactly)");
+        return res.json([]);
+    }
+
+    const myZoneIds = myZones.map(z => z.id);
+    console.log("🔑 [STEP 2 RESULT] My Zone IDs:", myZoneIds);
 
     // 3. ดึง Admin Level 1 ทั้งหมดมาก่อน
+    console.log("👥 [STEP 3] Fetching all Admin Level 1 from DB...");
     const allLevel1Admins = await usersCollection.find({ adminLevel: 1 }).toArray();
-	console.log("📌 DEBUG: จำนวน Admin Level 1 ที่พบ =", allLevel1Admins.length);
-if (allLevel1Admins.length > 0) {
-    console.log("📌 DEBUG: รายชื่อคนแรก =", allLevel1Admins[0].username);
-} else {
-    console.log("⚠️ DEBUG_WARNING: ไม่พบ Admin Level 1 ในฐานข้อมูลเลย");
-}
+    console.log(`👥 [STEP 3 RESULT] Total Admin L1 found in system: ${allLevel1Admins.length}`);
 
     // 4. วนลูปเช็คพิกัดล่าสุด (lastLocation) ของ Admin L1 ทีละคน
     const filteredAdmins = [];
-    
-    for (const admin of allLevel1Admins) {
-        // ข้ามคนที่ไม่มีพิกัดล่าสุด
-        if (!admin.lastLocation) continue;
+    console.log("🔄 [STEP 4] Starting coordinate filtering...");
 
-        // คำนวณว่าเขาอยู่โซนไหน (ใช้ฟังก์ชันที่มีอยู่แล้ว)
+    for (const admin of allLevel1Admins) {
+        // เช็คพิกัดล่าสุดของ Admin L1
+        if (!admin.lastLocation) {
+            console.log(`  - ❌ Admin: ${admin.username} has NO lastLocation (Skip)`);
+            continue;
+        }
+
+        // คำนวณหาโซนที่ Admin L1 คนนั้นอยู่
         const responsible = await findResponsibleAdmin(admin.lastLocation);
-        
-        // ถ้าโซนที่เขาอยู่ เป็นหนึ่งในโซนของเรา -> เก็บชื่อมาแสดง
+        const adminCurrentZoneId = responsible.zoneData ? responsible.zoneData.id : "NONE";
+
+        console.log(`  - 👤 Admin: ${admin.username} | Current Pos: [${admin.lastLocation.lat}, ${admin.lastLocation.lng}] | Zone Found: ${adminCurrentZoneId}`);
+
+        // ตรวจสอบว่า Zone ID ของเขา ตรงกับ Zone ID ของเราหรือไม่
         if (responsible.zoneData && myZoneIds.includes(responsible.zoneData.id)) {
+            console.log(`    ✅ MATCH! Admin ${admin.username} is in your zone.`);
             filteredAdmins.push(admin);
+        } else {
+            console.log(`    🚫 NO MATCH. Zone ${adminCurrentZoneId} is not in your reference IDs.`);
         }
     }
+
+    console.log(`🏁 [DEBUG END] Sending ${filteredAdmins.length} admins to client.`);
+    console.log("------------------------------------------");
 
     return res.json(filteredAdmins.map(a => ({ 
         name: a.username, 
