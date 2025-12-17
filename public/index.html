@@ -2403,6 +2403,10 @@ function openAllZoneManagement() {
     }
 }
 
+function closeZoneChoiceModal() {
+    document.getElementById('zone-management-choice-modal').classList.add('hidden');
+}
+
 // 2. ปิด Modal
 function closeAdminZoneModal() {
     document.getElementById('admin-zone-modal').classList.add('hidden');
@@ -2540,6 +2544,7 @@ async function fetchAndRenderAllZones() {
 		// ฟังก์ชันสำหรับเปิดหน้าต่างแสดงโซนที่ Admin L1/L2 รับผิดชอบ
 	async function openAssignedZoneMap() {
     if (myAdminLevel < 1 || myAdminLevel >= 3) return; 
+	if (myAdminLevel === 2) closeZoneChoiceModal();
 
     document.getElementById('assigned-zone-map-modal').classList.remove('hidden');
     const listDisplay = document.getElementById('assigned-zone-list-display');
