@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.7.55 (GoExDeli)</div>
+    <div class="version-display">v: 3.7.56 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2406,44 +2406,48 @@ function openAllZoneManagement() {
     }
 	
 	// --- Socket Listener รับข้อมูลโซน ---
+    // [index.html] แก้ไขในส่วน Socket Listener
+
     socket.on('receive-assigned-zones', (data) => {
+        const listContainer = document.getElementById('assigned-zone-list');
         const loadingElem = document.getElementById('assigned-zone-loading');
         if (loadingElem) loadingElem.style.display = 'none';
 
         if (!data.success) {
-            alert(data.message); // แจ้งเตือนถ้าไม่มีสิทธิ์หรือเกิด error
-            document.getElementById('assigned-zone-modal').classList.add('hidden');
+            alert(data.message);
             return;
         }
 
-        // แสดงชื่อตำแหน่งอ้างอิง
-        document.getElementById('display-ref-location').innerText = data.refLocation || 'Unknown';
+        // แสดงชื่อ Admin ในหัวข้อ (ถ้าต้องการ)
+        document.getElementById('display-ref-location').innerText = `Admin: ${data.adminName}`;
 
-        const listContainer = document.getElementById('assigned-zone-list');
-        listContainer.innerHTML = ''; // เคลียร์อีกครั้งเพื่อความชัวร์
+        listContainer.innerHTML = '';
 
         if (data.zones.length === 0) {
-            listContainer.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">ไม่พบโซนภายใต้การดูแลของคุณ</td></tr>';
+            listContainer.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">ไม่พบโซนที่คุณดูแลอยู่</td></tr>';
             return;
         }
 
-        // วนลูปสร้างแถวในตาราง
         data.zones.forEach(zone => {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #eee';
             
-            // ปรับแต่งการแสดงผลตาม Schema ของคุณ (ตัวอย่างใช้ name, lat, lng)
+            // --- ใช้ตัวแปรตามที่คุณค้นเจอ ---
+            // ชื่อโซน: zone.name 
+            // พิกัด: zone.refLocation.lat และ zone.refLocation.lng
+            const lat = zone.refLocation ? zone.refLocation.lat : '-';
+            const lng = zone.refLocation ? zone.refLocation.lng : '-';
+
             tr.innerHTML = `
-                <td style="padding:10px; font-weight:bold;">${zone.name || zone.zone_name || 'Unnamed Zone'}</td>
+                <td style="padding:10px; font-weight:bold;">${zone.name || 'Unnamed'}</td>
                 <td style="padding:10px; color:#666; font-size:0.9em;">
-                    ${zone.lat ? zone.lat.toFixed(4) : '-'}, ${zone.lng ? zone.lng.toFixed(4) : '-'}
+                    📍 ${lat}, ${lng}
                 </td>
-                <td style="padding:10px;">
-                    <span style="background:${zone.active ? '#d4edda' : '#f8d7da'}; 
-                                 color:${zone.active ? '#155724' : '#721c24'}; 
-                                 padding:2px 8px; border-radius:10px; font-size:0.8em;">
-                        ${zone.active ? 'Active' : 'Inactive'}
-                    </span>
+                <td style="padding:10px; text-align:right;">
+                    <button onclick="viewZoneDetails('${zone._id}')" 
+                            style="padding:5px 10px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer;">
+                        ดูข้อมูล
+                    </button>
                 </td>
             `;
             listContainer.appendChild(tr);

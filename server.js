@@ -2196,46 +2196,32 @@ socket.on('reply-deduct-confirm', async (data) => {
         if (!socket.username) return;
 
         try {
-            // 1. ดึงข้อมูล User ผู้เรียก
             const user = await usersCollection.findOne({ username: socket.username });
 
-            // 2. ตรวจสอบสิทธิ์ (ต้องเป็น Admin Level 2 ขึ้นไป)
+            // ตรวจสอบสิทธิ์ Admin Level 2 ขึ้นไป
             if (!user || !user.adminLevel || user.adminLevel < 2) {
                 socket.emit('receive-assigned-zones', { 
                     success: false, 
-                    message: '⛔ ปฏิเสธการเข้าถึง: สำหรับ Admin Level 2 ขึ้นไปเท่านั้น' 
+                    message: '⛔ เฉพาะแอดมินระดับ 2 ขึ้นไป' 
                 });
                 return;
             }
 
-            // 3. ตรวจสอบว่า User มีตำแหน่งอ้างอิง (ref_location) หรือไม่
-            // (สมมติว่าใน DB เก็บฟิลด์ชื่อ ref_location ถ้าชื่ออื่นให้แก้ตรงนี้ครับ)
-            if (!user.ref_location) {
-                socket.emit('receive-assigned-zones', { 
-                    success: false, 
-                    message: '⚠️ ไม่พบข้อมูลตำแหน่งอ้างอิง (Reference Location) ในบัญชีของคุณ' 
-                });
-                return;
-            }
-
-            // 4. ค้นหา Zone ที่ผูกกับตำแหน่งอ้างอิงของ Admin คนนี้
+            // ค้นหา Zone โดยใช้โครงสร้างที่คุณเจอ: refLocation.sourceUser
+            // โดยให้หา Zone ที่มี sourceUser ตรงกับชื่อ Admin ที่ล็อกอินอยู่
             const zones = await zonesCollection.find({ 
-                ref_location: user.ref_location 
+                "refLocation.sourceUser": socket.username 
             }).toArray();
 
-            // 5. ส่งข้อมูลกลับไปที่ Client
             socket.emit('receive-assigned-zones', { 
                 success: true, 
                 zones: zones,
-                refLocation: user.ref_location // ส่งชื่อตำแหน่งอ้างอิงกลับไปด้วยเพื่อแสดงผล
+                adminName: socket.username
             });
 
         } catch (err) {
             console.error(err);
-            socket.emit('receive-assigned-zones', { 
-                success: false, 
-                message: '❌ เกิดข้อผิดพลาดทางเทคนิค' 
-            });
+            socket.emit('receive-assigned-zones', { success: false, message: '❌ เกิดข้อผิดพลาด' });
         }
     });
 
