@@ -1568,7 +1568,7 @@ app.post('/api/admin/add-zone', async (req, res) => { // Endpoint changed
     
     // 1. ตรวจสอบสิทธิ์: ต้องเป็น Admin Level 3
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 2) { 
+    if (!requester || requester.adminLevel < 3) { 
         return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
     }
 
@@ -1675,7 +1675,7 @@ app.post('/api/admin/assign-zone', async (req, res) => {
     
     // 2. Check Permissions (Requester must be Admin Level 3)
     const requester = await getUserData(requestBy);
-    if (!requester || requester.adminLevel < 3) { 
+    if (!requester || requester.adminLevel < 2) { 
         return res.status(403).json({ error: 'Permission denied. Admin Level 3 required' });
     }
     
