@@ -2433,7 +2433,7 @@ function openAllZoneManagement() {
     const displayLat = zone.lat || (zone.refLocation ? zone.refLocation.lat : null);
     const displayLng = zone.lng || (zone.refLocation ? zone.refLocation.lng : null);
 	
-	const ownerName = zone.assignedAdmin || (zone.refLocation ? zone.refLocation.sourceUser : '-');
+	const ownerName = zone.assignedAdmin || '-';
     
     const latText = (displayLat !== null) ? displayLat.toFixed(6) : 'N/A';
     const lngText = (displayLng !== null) ? displayLng.toFixed(6) : 'N/A';
