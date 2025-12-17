@@ -2454,6 +2454,11 @@ function openAllZoneManagement() {
             ${latText}, ${lngText}
         </td>
         <td style="padding:12px; text-align: right; vertical-align: middle;">
+			<button onclick="promptAppointOwner('${zone._id}', '${zoneName}')" 
+                    style="padding:6px 10px; background: #ffc107; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em;">
+                <i class="fas fa-user-plus"></i> แต่งตั้ง
+            </button>
+			
             <button onclick="zoomToZone(${displayLat}, ${displayLng})" 
                     style="padding:8px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;">
                 <i class="fas fa-location-arrow"></i> Map
