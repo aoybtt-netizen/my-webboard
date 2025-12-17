@@ -505,41 +505,37 @@
 }
 
 // ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
-async function assignAdminToZone(zoneId, adminUsername, zoneName) {
-    if (myAdminLevel < 3) return;
-    
-    const t = translations[currentLang];
-    
-    if (!confirm(`${t['confirm_assign_admin'].replace('[ADMIN]', adminUsername).replace('[ZONE]', zoneName)}`)) {
-        return;
-    }
+function assignAdminToZone(zoneId, adminName, zoneName) {
+        if (!confirm(`ยืนยันการแต่งตั้งคุณ "${adminName}" \nให้เป็นผู้ดูแลประจำ "${zoneName}" ใช่หรือไม่?`)) {
+            return;
+        }
 
-    try {
-        const res = await fetch('/api/admin/assign-zone', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                zoneId: zoneId, 
-                adminUsername: adminUsername,
-                requestBy: myUsername 
-            })
+        // ส่งคำสั่งไปที่ Server
+        socket.emit('assign-admin-to-zone', {
+            zoneId: zoneId,
+            adminName: adminName,
+            requestBy: myUsername // ตัวแปร Global ที่เก็บชื่อ user ปัจจุบัน
         });
 
-        const data = await res.json();
+        // ปิด Modal รายชื่อรอไว้เลย (เพื่อความลื่นไหล)
+        document.getElementById('admin-assign-modal').classList.add('hidden');
         
-        if (data.success) {
-            alert(t['alert_admin_assign_success'].replace('[ADMIN]', adminUsername).replace('[ZONE]', zoneName));
-            document.getElementById('admin-assign-modal').classList.add('hidden');
-            openAdminZoneModal(); // Refresh the main zone list
-        } else {
-            alert(`❌ Error: ${data.error || 'มอบหมายไม่สำเร็จ'}`);
-        }
-    } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-        console.error('Error assigning admin:', e);
+        // แสดง Loading หรือรอฟังผลลัพธ์
+        alert('⏳ กำลังดำเนินการ...');
     }
-}
 
+    // [index.html] เพิ่มส่วนรับผลลัพธ์จาก Server (ใส่ไว้ใน socket.on connection หรือ global scope)
+    socket.on('assign-admin-result', (data) => {
+        if (data.success) {
+            alert(data.message);
+            // รีเฟรชรายการโซนใหม่ เพื่อให้เห็นชื่อแอดมินคนใหม่ทันที
+            openAllZoneManagement(); 
+        } else {
+            alert(data.message);
+            // ถ้าพลาด ให้เปิดหน้าต่างกลับมาใหม่
+            document.getElementById('admin-assign-modal').classList.remove('hidden');
+        }
+    });
 window.openAdminAssignModal = openAdminAssignModal;
 window.assignAdminToZone = assignAdminToZone;
 

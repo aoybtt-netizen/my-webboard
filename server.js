@@ -1797,6 +1797,66 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
     }
 });
 
+// 33
+socket.on('assign-admin-to-zone', async (data) => {
+        const { zoneId, adminName, requestBy } = data;
+
+        if (!requestBy || !zoneId || !adminName) return;
+
+        try {
+            // 1. เช็คสิทธิ์คนสั่งการ (Requester)
+            const requester = await usersCollection.findOne({ username: requestBy });
+            if (!requester || requester.adminLevel < 2) {
+                socket.emit('assign-admin-result', { success: false, message: '⛔ ไม่มีสิทธิ์ดำเนินการ (ต้องเป็น Admin L2 ขึ้นไป)' });
+                return;
+            }
+
+            // 2. เช็คว่าโซนนี้เป็นของเขาจริงไหม? (ป้องกันการแอบอ้าง)
+            // หาโซนที่ ID ตรงกัน และ (คนสั่งเป็นเจ้าของที่สร้างมา หรือ เป็นคนที่ดูแลอยู่เดิม)
+            // ถ้าเป็น Admin Level 3 ให้ข้ามการเช็คเจ้าของไปได้เลย
+            let query = { _id: new ObjectId(zoneId) };
+            
+            if (requester.adminLevel === 2) {
+                query.$or = [
+                    { "refLocation.sourceUser": requestBy }, // เป็นคนสร้างจุดนี้
+                    { assignedAdmin: requestBy }             // หรือเป็นคนดูแลจุดนี้อยู่แล้ว
+                ];
+            }
+
+            const zone = await zonesCollection.findOne(query);
+
+            if (!zone) {
+                socket.emit('assign-admin-result', { success: false, message: '❌ ไม่พบโซน หรือคุณไม่ใช่เจ้าของโซนนี้' });
+                return;
+            }
+
+            // 3. ทำการอัปเดตชื่อผู้ดูแล (assignedAdmin)
+            await zonesCollection.updateOne(
+                { _id: new ObjectId(zoneId) },
+                { 
+                    $set: { 
+                        assignedAdmin: adminName,
+                        updatedAt: new Date()
+                    } 
+                }
+            );
+
+            // 4. แจ้งผลกลับไปหน้าบ้าน
+            socket.emit('assign-admin-result', { 
+                success: true, 
+                message: `✅ แต่งตั้ง ${adminName} ดูแลโซนเรียบร้อยแล้ว`,
+                zoneId: zoneId,
+                newAdmin: adminName
+            });
+
+            // (Optional) แจ้งเตือนไปหาคนที่เป็น Admin ใหม่ด้วยก็ได้ (ถ้ามีระบบ Noti)
+
+        } catch (err) {
+            console.error("Assign Admin Error:", err);
+            socket.emit('assign-admin-result', { success: false, message: '❌ Server Error' });
+        }
+    });
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 
