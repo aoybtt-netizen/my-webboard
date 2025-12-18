@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.10 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.11 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -4724,6 +4724,32 @@ function openUserDetail(targetUsername) {
                     style="width: auto; background: #6c757d; color: white;">Close</button>
         </div>
     </div>
+	
+	
+	
+	<div id="zone-config-section" style="margin-top: 20px; padding: 15px; border-top: 2px solid #eee;">
+    <h4 style="margin-bottom: 10px;"><i class="fas fa-cog"></i> ตั้งค่าการแสดงผลโซน</h4>
+    
+    <div style="margin-bottom: 10px;">
+        <label>ชื่อไตเติ้ลที่ต้องการแสดง:</label>
+        <input type="text" id="custom-zone-title" placeholder="เช่น ศูนย์สั่งการ กู้ภัยสกลนคร" 
+               style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc;">
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <label>URL รูปภาพ Banner (1200x300px):</label>
+        <input type="text" id="custom-zone-banner" placeholder="ใส่ลิงก์รูปภาพ https://..." 
+               style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc;">
+    </div>
+
+    <button onclick="saveZoneSettings()" class="sidebar-btn" 
+            style="background: #28a745; color: white; width: 100%; padding: 10px; border: none; cursor: pointer;">
+        <i class="fas fa-save"></i> บันทึกการตั้งค่า
+    </button>
+</div>
+
+
+
 </div>
 
 

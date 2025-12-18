@@ -203,6 +203,40 @@ async function getPostCost() {
     };
 }
 
+async function saveZoneSettings() {
+    const title = document.getElementById('custom-zone-title').value;
+    const banner = document.getElementById('custom-zone-banner').value;
+
+    if (!title) {
+        showNotification('กรุณาระบุชื่อไตเติ้ล', 'fas fa-info-circle', 3000, '#ffc107');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/admin/update-zone-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: myUsername,
+                customTitle: title,
+                customBanner: banner
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification(data.message, 'fas fa-check-circle', 3000, '#28a745');
+            // หลังจากบันทึกเสร็จ ให้โหลดหน้า Dashboard ใหม่เพื่อดูการเปลี่ยนแปลง
+            location.reload(); 
+        } else {
+            showNotification(data.message, 'fas fa-times-circle', 3000, '#dc3545');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+    }
+}
+
 // Haversine Formula Helper function to find the assigned admin for a post based on location
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     const R = 6371; 
@@ -1856,6 +1890,41 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
+    }
+});
+
+	// 33.
+	app.post('/api/admin/update-zone-settings', async (req, res) => {
+    const { username, customTitle, customBanner } = req.body;
+
+    try {
+        // ตรวจสอบว่าเป็นแอดมินจริงไหม
+        const admin = await usersCollection.findOne({ username });
+        if (!admin || admin.adminLevel < 2) {
+            return res.status(403).json({ success: false, message: 'สิทธิ์ไม่เพียงพอ' });
+        }
+
+        // อัปเดตข้อมูลลงในโซนที่แอดมินคนนี้ดูแล
+        const result = await zonesCollection.updateOne(
+            { "refLocation.sourceUser": username }, // ค้นหาโซนของแอดมินคนนี้
+            { 
+                $set: { 
+                    "customSettings.dashboardTitle": customTitle,
+                    "customSettings.dashboardBannerUrl": customBanner,
+                    "updatedAt": new Date()
+                } 
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.json({ success: false, message: 'ไม่พบโซนที่ท่านรับผิดชอบ' });
+        }
+
+        res.json({ success: true, message: 'บันทึกการตั้งค่าโซนเรียบร้อยแล้ว' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึก' });
     }
 });
 
