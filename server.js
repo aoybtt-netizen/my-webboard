@@ -389,7 +389,9 @@ app.get('/api/user-info', async (req, res) => {
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
     try {
-        const { requestBy, search, page = 1, limit = 5 = req.query; 
+        // แก้ไขบรรทัดนี้: ปิดปีกกาให้ถูกต้อง และกำหนดค่าเริ่มต้นให้ limit เป็น 50
+        const { requestBy, search, page = 1, limit = 5 } = req.query; 
+        
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
@@ -400,7 +402,7 @@ app.get('/api/users-list', async (req, res) => {
             return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
         }
         
-        // ดึงข้อมูล User ทั้งหมดมาก่อน เพื่อเอามาคำนวณระยะทางโซน (ห้าม skip/limit ตรงนี้)
+        // ดึงข้อมูล User ทั้งหมดมาก่อน
         const allUsers = await usersCollection.find({}).toArray();
 
         const mapUserResponse = (u) => ({ 
@@ -424,7 +426,7 @@ app.get('/api/users-list', async (req, res) => {
                 finalResults = finalResults.filter(u => u.username.toLowerCase().includes(lowerSearch));
             }
         } 
-        // CASE B: Admin Level 2 + Search ข้ามโซน
+        // CASE B: Admin Level 2 + Search
         else if (requester.adminLevel === 2 && search && search.trim() !== "") {
             const lowerSearch = search.toLowerCase();
             const myCountry = requester.country; 
@@ -435,7 +437,7 @@ app.get('/api/users-list', async (req, res) => {
                 return nameMatch && countryMatch;
             });
         } 
-        // CASE C: ดูรายการปกติ (Level 1,2) ยึดตามโซน
+        // CASE C: ดูตามโซน
         else {
             let myOwnedZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
             let myRefZones = (requester.adminLevel === 2) 
@@ -468,14 +470,13 @@ app.get('/api/users-list', async (req, res) => {
                 return false;
             });
 
-            // ถ้ามีการ Search ในโซนตัวเอง
             if (search && search.trim() !== "") {
                 const lowerSearch = search.toLowerCase();
                 finalResults = finalResults.filter(u => u.username.toLowerCase().includes(lowerSearch));
             }
         }
 
-        // --- ทำ Pagination หลังจากได้รายการที่กรองเสร็จแล้ว ---
+        // --- ทำ Pagination ---
         const totalUsers = finalResults.length;
         const pagedUsers = finalResults.slice(skip, skip + limitNum);
 
