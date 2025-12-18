@@ -802,27 +802,32 @@ app.post('/api/admin/upload-zone-bg', upload.single('image'), async (req, res) =
 // 8.2 API สำหรับสมาชิกเช็คพื้นหลังตามพิกัด (Public)
 app.get('/api/zone-check-bg', async (req, res) => {
     const { lat, lng } = req.query;
-    if (!lat || !lng) return res.json({ bgImage: null });
+    if (!lat || !lng) return res.json({ success: false });
 
     try {
-        const location = { lat: parseFloat(lat), lng: parseFloat(lng) };
-        
-        // [NEW] ใช้ logic เดียวกับตอนหา Admin รับผิดชอบ
-        const responsible = await findResponsibleAdmin(location);
+        const zones = await zonesCollection.find().toArray();
+        let matchedZone = null;
 
-        // ถ้าเจอกระทั่งโซน และโซนนั้นมีภาพพื้นหลัง
-        if (responsible.zoneData && responsible.zoneData.bgImage) {
+        // วนลูปเช็คว่าพิกัด User อยู่ในรัศมีของโซนไหน (รัศมีตัวอย่าง 500 เมตร)
+        for (let zone of zones) {
+            const dist = getDistance(parseFloat(lat), parseFloat(lng), zone.lat, zone.lng);
+            if (dist <= (zone.radius || 500)) { 
+                matchedZone = zone;
+                break; 
+            }
+        }
+
+        if (matchedZone) {
             res.json({ 
-                bgImage: responsible.zoneData.bgImage, 
-                zoneName: responsible.zoneName 
+                success: true, 
+                bgImage: matchedZone.bgImage, // ส่งรูป
+                zoneName: matchedZone.name    // ⭐ ส่งชื่อโซนกลับไปที่หน้าเว็บ
             });
         } else {
-            // ถ้าไม่เจอ หรือโซนนั้นไม่มีรูป
-            res.json({ bgImage: null });
+            res.json({ success: false });
         }
-    } catch (e) {
-        console.error(e);
-        res.json({ bgImage: null });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -1775,67 +1780,6 @@ app.post('/api/admin/delete-zone', async (req, res) => {
     res.json({ success: true });
 });
 
-// 29.1 Update Zone Settings (Universal Update)
-app.post('/api/admin/update-zone-settings', async (req, res) => {
-    const { zoneId, lat, lng, name, zoneFee, requestBy } = req.body;
-
-    try {
-        // 1. ตรวจสอบสิทธิ์เบื้องต้น (ต้องเป็น Admin Level 1 ขึ้นไป)
-        const requester = await getUserData(requestBy);
-        if (!requester || requester.adminLevel < 1) {
-            return res.status(403).json({ success: false, error: 'Permission denied.' });
-        }
-
-        const zoneIdInt = parseInt(zoneId);
-        const zone = await zonesCollection.findOne({ id: zoneIdInt });
-
-        if (!zone) {
-            return res.status(404).json({ success: false, error: 'ไม่พบข้อมูลโซนที่ต้องการแก้ไข' });
-        }
-
-        // 2. ตรวจสอบสิทธิ์การแก้ไข
-        // - Admin Level 3: แก้ไขได้ทุกโซน
-        // - Admin Level 1-2: แก้ไขได้เฉพาะโซนที่ตัวเองได้รับมอบหมาย (Assigned Admin)
-        if (requester.adminLevel < 3 && zone.assignedAdmin !== requestBy) {
-            return res.status(403).json({ success: false, error: 'คุณไม่มีสิทธิ์แก้ไขการตั้งค่าของโซนนี้' });
-        }
-
-        // 3. เตรียมข้อมูลที่จะอัปเดต (ตรวจสอบค่าว่างและรูปแบบข้อมูล)
-        const updateFields = {};
-        
-        if (lat !== undefined && lat !== '') updateFields.lat = parseFloat(lat);
-        if (lng !== undefined && lng !== '') updateFields.lng = parseFloat(lng);
-        if (name !== undefined) updateFields.name = name.trim();
-        
-        // สำหรับ Zone Fee: ถ้าส่งค่าว่างมาให้เป็น null (เพื่อกลับไปใช้ค่า Default ของระบบ)
-        if (zoneFee !== undefined) {
-            updateFields.zoneFee = (zoneFee === '' || zoneFee === null) ? null : parseFloat(zoneFee);
-        }
-
-        // 4. ดำเนินการอัปเดตลง MongoDB
-        const result = await zonesCollection.updateOne(
-            { id: zoneIdInt },
-            { $set: updateFields }
-        );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ success: false, error: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล' });
-        }
-
-        console.log(`🛠️ Zone ${zoneIdInt} updated by ${requestBy}:`, updateFields);
-
-        res.json({ 
-            success: true, 
-            message: 'อัปเดตการตั้งค่าโซนเรียบร้อยแล้ว',
-            updatedData: updateFields 
-        });
-
-    } catch (error) {
-        console.error('Error updating zone settings:', error);
-        res.status(500).json({ success: false, error: 'Internal Server Error' });
-    }
-});
-
 // 30. Get Assigned Zones for Admin (L1/L2)
 app.get('/api/admin/get-assigned-zones', async (req, res) => {
     const { requestBy } = req.query;
@@ -1919,8 +1863,6 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-
-	
 
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
