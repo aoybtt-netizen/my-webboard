@@ -129,19 +129,12 @@
     </style>
 </head>
 <body>
-	<div id="header-dynamic-bg" style="padding: 20px; text-align: center; background-size: cover; background-position: center; transition: 0.5s;">
-    <h1 id="header-zone-name" style="color: white; text-shadow: 2px 2px 4px #000;">
-        กำลังตรวจสอบตำแหน่ง...
-    </h1>
-    <p id="header-zone-status" style="color: #eee; font-size: 0.8em;"></p>
-</div>
-
 
     <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
     <div class="sidebar" id="sidebar">
-    <h2 style="text-align:center; margin-top:0;">Webboard</h2>
+    <h2 id="sidebar-title" style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
         <div style="font-size:40px;" id="user-avatar-display">👤</div>
@@ -397,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.13 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.15 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -696,44 +689,33 @@ async function saveZoneRefFromAdmin(targetAdmin) {
     );
 }
 
-// ฟังก์ชันสำหรับอัปเดตทั้ง "ชื่อโซน" และ "รูปพื้นหลัง"
-async function updateZoneDisplay(lat, lng) {
-    const headerName = document.getElementById('header-zone-name');
-    const headerBg = document.getElementById('header-dynamic-bg');
-    const t = translations[currentLang];
-
+// ฟังก์ชันเช็คพื้นหลัง
+async function updateZoneBackground(lat, lng) {
     try {
-        // เรียก API ตัวเดิมที่คุณมีอยู่ (แนะนำให้ Server ส่งชื่อโซนกลับมาด้วย)
         const res = await fetch(`/api/zone-check-bg?lat=${lat}&lng=${lng}`);
         const data = await res.json();
         
+        const sidebarTitle = document.getElementById('sidebar-app-title');
         const defaultBg = "linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url('https://sv1.img.in.th/7fB1Jg.png')";
         
-        if (data.success && data.zoneName) {
-            // 1. อัปเดตชื่อโซนบนหัวเว็บ
-            headerName.innerText = `📍 ${data.zoneName}`;
-            
-            // 2. อัปเดตพื้นหลังของ Header และ Body (ถ้ามีรูป)
-            if (data.bgImage) {
-                const bgStyle = `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('${data.bgImage}')`;
-                headerBg.style.backgroundImage = bgStyle;
-                document.body.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url('${data.bgImage}')`;
-            }
+        // --- ส่วนที่เพิ่มเข้ามาเพื่อเปลี่ยนชื่อใน Sidebar ---
+        if (data.zoneName) {
+            sidebarTitle.innerText = data.zoneName; // เปลี่ยนเป็นชื่อโซนที่ส่งมาจาก Server
         } else {
-            // กรณีอยู่นอกเขต หรือหาโซนไม่เจอ
-            headerName.innerText = currentLang === 'th' ? "🌐 นอกเขตพื้นที่ดูแล" : "🌐 Outside Service Area";
+            sidebarTitle.innerText = "Webboard"; // หากไม่มีโซน ให้กลับเป็นค่าตั้งต้น
+        }
+        // ------------------------------------------
+
+        if (data.bgImage) {
+            // ถ้ามีรูปประจำโซน ให้เปลี่ยน
+            document.body.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url('${data.bgImage}')`;
+        } else {
+            // ถ้าไม่มี ให้กลับไปใช้รูป Default
             document.body.style.backgroundImage = defaultBg;
-            headerBg.style.backgroundImage = 'none';
         }
     } catch (e) {
-        console.error("Error updating zone display:", e);
-        headerName.innerText = "⚠️ ไม่สามารถระบุโซนได้";
+        console.error("Error updating background:", e);
     }
-}
-
-// แก้ไขฟังก์ชัน updateZoneBackground เดิมให้เรียกตัวใหม่แทน (เพื่อความเข้ากันได้กับจุดอื่นในโค้ดคุณ)
-function updateZoneBackground(lat, lng) {
-    updateZoneDisplay(lat, lng);
 }
 	
         

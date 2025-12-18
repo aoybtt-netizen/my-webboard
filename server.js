@@ -802,32 +802,27 @@ app.post('/api/admin/upload-zone-bg', upload.single('image'), async (req, res) =
 // 8.2 API สำหรับสมาชิกเช็คพื้นหลังตามพิกัด (Public)
 app.get('/api/zone-check-bg', async (req, res) => {
     const { lat, lng } = req.query;
-    if (!lat || !lng) return res.json({ success: false });
+    if (!lat || !lng) return res.json({ bgImage: null });
 
     try {
-        const zones = await zonesCollection.find().toArray();
-        let matchedZone = null;
+        const location = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        
+        // [NEW] ใช้ logic เดียวกับตอนหา Admin รับผิดชอบ
+        const responsible = await findResponsibleAdmin(location);
 
-        // วนลูปเช็คว่าพิกัด User อยู่ในรัศมีของโซนไหน (รัศมีตัวอย่าง 500 เมตร)
-        for (let zone of zones) {
-            const dist = getDistance(parseFloat(lat), parseFloat(lng), zone.lat, zone.lng);
-            if (dist <= (zone.radius || 500)) { 
-                matchedZone = zone;
-                break; 
-            }
-        }
-
-        if (matchedZone) {
+        // ถ้าเจอกระทั่งโซน และโซนนั้นมีภาพพื้นหลัง
+        if (responsible.zoneData && responsible.zoneData.bgImage) {
             res.json({ 
-                success: true, 
-                bgImage: matchedZone.bgImage, // ส่งรูป
-                zoneName: matchedZone.name    // ⭐ ส่งชื่อโซนกลับไปที่หน้าเว็บ
+                bgImage: responsible.zoneData.bgImage, 
+                zoneName: responsible.zoneName 
             });
         } else {
-            res.json({ success: false });
+            // ถ้าไม่เจอ หรือโซนนั้นไม่มีรูป
+            res.json({ bgImage: null });
         }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    } catch (e) {
+        console.error(e);
+        res.json({ bgImage: null });
     }
 });
 
