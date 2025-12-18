@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.5 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.6 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -408,6 +408,7 @@
 		let currentLat = null;       // เก็บ Lat ล่าสุด
 		let currentLng = null;
 		let currentZoneIdForRef = null;
+		let currentUserPage = 1;
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -4030,7 +4031,8 @@ async function fetchNearestAdminForInbox(elementId) {
     
     let allUsersCache = [];
     
-	async function openAllUserList(searchTerm = '') {
+	async function openAllUserList(searchTerm = '', page = 1) {
+	currentUserPage = page;
     // 1. จัดการการเปิด Modal
     const modal = document.getElementById('user-list-modal');
     if (searchTerm === '' && modal.classList.contains('hidden')) {
@@ -4061,16 +4063,16 @@ async function fetchNearestAdminForInbox(elementId) {
         container.innerHTML = `<p style="text-align:center;">${loadingText}</p>`;
         
         try {
-            let url = `/api/users-list?requestBy=${myUsername}`;
+            // 2. แก้ URL ให้ส่ง page ไปด้วย
+            let url = `/api/users-list?requestBy=${myUsername}&page=${page}&limit=50`;
             if (query) url += `&search=${encodeURIComponent(query)}`;
 
             const res = await fetch(url);
-            if (res.status !== 200) {
-                container.innerHTML = `<p style='color:red; text-align:center;'>Error Loading List</p>`;
-                return;
-            }
             
-            const users = await res.json();
+            // 3. รับข้อมูล (สมมติ API ส่ง { users, totalPages })
+            const response = await res.json();
+            const users = response.users || []; 
+            const totalPages = response.totalPages || 1;
             
             // --- แก้ไขจุดที่แสดงข้อความเมื่อไม่พบข้อมูล ---
             if (users.length === 0) {
@@ -4150,7 +4152,7 @@ async function fetchNearestAdminForInbox(elementId) {
 
             container.innerHTML = finalHTML;
             allUsersCache = users;
-
+			renderPagination(totalPages, page, searchTerm);
         } catch (e) {
             console.error(e);
             container.innerHTML = `<p style='color:red; text-align:center;'>Connection Error</p>`;
@@ -4159,12 +4161,33 @@ async function fetchNearestAdminForInbox(elementId) {
 
     if (searchTerm) {
         clearTimeout(userSearchTimeout);
-        userSearchTimeout = setTimeout(() => {
-            fetchData(searchTerm);
-        }, 500); 
+        userSearchTimeout = setTimeout(() => { fetchData(searchTerm); }, 500); 
     } else {
         fetchData(''); 
     }
+}
+
+function renderPagination(totalPages, currentPage, searchTerm) {
+    const nav = document.getElementById('pagination-controls');
+    if (!nav) return;
+    
+    nav.style.display = 'flex';
+    nav.style.justifyContent = 'center';
+    nav.style.padding = '15px';
+    nav.style.gap = '10px';
+
+    let navHTML = '';
+    if (currentPage > 1) {
+        navHTML += `<button class="btn-nav" onclick="openAllUserList('${searchTerm}', ${currentPage - 1})">ก่อนหน้า</button>`;
+    }
+    
+    navHTML += `<span style="align-self:center;">หน้า ${currentPage} / ${totalPages}</span>`;
+    
+    if (currentPage < totalPages) {
+        navHTML += `<button class="btn-nav" onclick="openAllUserList('${searchTerm}', ${currentPage + 1})">ถัดไป</button>`;
+    }
+    
+    nav.innerHTML = navHTML;
 }
 
 function toggleUserGroup(contentId, headerElement) {

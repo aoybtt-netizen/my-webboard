@@ -388,7 +388,8 @@ app.get('/api/user-info', async (req, res) => {
 
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
-    const { requestBy, search } = req.query; 
+    const { requestBy, search, page = 1, limit = 50 } = req.query; 
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // 1. ตรวจสอบสิทธิ์
     const requester = await getUserData(requestBy);
@@ -396,7 +397,12 @@ app.get('/api/users-list', async (req, res) => {
         return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
     }
     
-    const allUsers = await usersCollection.find({}).toArray();
+    const allUsers = await usersCollection.find({})
+        .skip(skip)
+        .limit(parseInt(limit))
+        .toArray();
+
+    const totalUsers = await usersCollection.countDocuments({});
 
     const mapUserResponse = (u) => ({ 
         name: u.username, 
@@ -505,7 +511,11 @@ app.get('/api/users-list', async (req, res) => {
         finalResults = filteredUsers.filter(u => u.username.toLowerCase().includes(lowerSearch));
     }
 
-    res.json(finalResults.map(mapUserResponse));
+    res.json({
+        users: results.map(mapUserResponse),
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalUsers / limit)
+    });
 });
 
 // 4. Contacts (Messages)
