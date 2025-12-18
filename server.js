@@ -217,10 +217,12 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 
 	async function findResponsibleAdmin(location) {
     if (!location || !location.lat || !location.lng) {
+        // คืนค่า null ที่ zoneData เพื่อบอกว่าไม่เจอโซน
         return { username: 'Admin', zoneName: 'System (No Location)', zoneData: null };
     }
     
     const allZones = await zonesCollection.find({ assignedAdmin: { $exists: true, $ne: null } }).toArray();
+
     if (allZones.length === 0) {
         return { username: 'Admin', zoneName: 'System (No Zones)', zoneData: null };
     }
@@ -240,9 +242,10 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
         return { 
             username: closestZone.assignedAdmin, 
             zoneName: closestZone.name || `Zone #${closestZone.id}`,
-            zoneData: closestZone 
+            zoneData: closestZone // ⭐ ส่งข้อมูลโซนกลับไปด้วยเพื่อเช็ค zoneFee
         };
     }
+
     return { username: 'Admin', zoneName: 'System (Default)', zoneData: null };
 }
 
@@ -433,21 +436,18 @@ app.get('/api/users-list', async (req, res) => {
                 if (u.username === requester.username) return false;
                 
                 // --- เพิ่มส่วนนี้: ถ้า Admin Level 2 กำลัง Search และอยู่ประเทศเดียวกัน ให้ผ่านเลย (ไม่ต้องเช็คพิกัด) ---
-                if (requester.adminLevel === 2) {
-					if (u.country === requester.country) {
-						u.relationType = 'OWNED'; // ถือว่าเป็นคนในความดูแล
-					return true;
-					}
-				}
+                if (requester.adminLevel === 2 && search && u.country === requester.country) {
+                    return true; 
+                }
 
                 // --- ถ้าไม่ใช่กรณี Search ข้ามโซน ให้เช็คตามพิกัดปกติ ---
                 if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
-					let minDistance = Infinity;
-					let closestZone = null;
-					allZones.forEach(zone => {
-					const dist = getDistanceFromLatLonInKm(u.lastLocation.lat, u.lastLocation.lng, zone.lat, zone.lng);
-					if (dist < minDistance) { minDistance = dist; closestZone = zone; }
-					});
+                let minDistance = Infinity;
+                let closestZone = null;
+                allZones.forEach(zone => {
+                    const dist = getDistanceFromLatLonInKm(u.lastLocation.lat, u.lastLocation.lng, zone.lat, zone.lng);
+                    if (dist < minDistance) { minDistance = dist; closestZone = zone; }
+                });
 
                 if (closestZone) {
                     const isOwned = myOwnedZones.some(mz => mz.id === closestZone.id);
@@ -1633,10 +1633,12 @@ app.get('/api/admin/admins-list', async (req, res) => {
             if (myZoneIds.length === 0) return res.json([]);
 
             const allL1 = await usersCollection.find({ adminLevel: 1 }).toArray();
-					for (const admin of allL1) {
-					if (admin.country === requester.country) {
-						finalAdminsList.push(admin)
-					}
+            for (const admin of allL1) {
+                if (!admin.lastLocation) continue;
+                const responsible = await findResponsibleAdmin(admin.lastLocation);
+                if (responsible.zoneData && myZoneIds.includes(responsible.zoneData.id)) {
+                    finalAdminsList.push(admin);
+                }
             }
         }
     
