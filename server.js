@@ -421,44 +421,32 @@ app.get('/api/users-list', async (req, res) => {
         // CASE A: Admin Level 3
         if (requester.adminLevel >= 3) {
             finalResults = allUsers.filter(u => u.username !== requester.username);
-            if (search && search.trim() !== "") {
-                const lowerSearch = search.toLowerCase();
-                finalResults = finalResults.filter(u => u.username.toLowerCase().includes(lowerSearch));
-            }
-        } 
+        }
         // CASE B: Admin Level 2 + Search
-        else if (requester.adminLevel === 2 && search && search.trim() !== "") {
-            const lowerSearch = search.toLowerCase();
-            const myCountry = requester.country; 
-            finalResults = allUsers.filter(u => {
-                if (u.username === requester.username) return false;
-                const nameMatch = u.username.toLowerCase().includes(lowerSearch);
-                const countryMatch = (myCountry && u.country && u.country === myCountry);
-                return nameMatch && countryMatch;
-            });
-        } 
-        // CASE C: ดูตามโซน
         else {
+            // 1. ดึงโซนที่เกี่ยวข้องก่อนเสมอ
             let myOwnedZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
             let myRefZones = (requester.adminLevel === 2) 
                 ? await zonesCollection.find({ "refLocation.sourceUser": requester.username }).toArray() 
                 : [];
-
             const allZones = await zonesCollection.find({}).toArray();
 
+            // 2. กรอง User ตามโซนพิกัด (Logic เดิมของคุณ)
             finalResults = allUsers.filter(u => {
                 if (u.username === requester.username) return false;
+                
+                // --- เพิ่มส่วนนี้: ถ้า Admin Level 2 กำลัง Search และอยู่ประเทศเดียวกัน ให้ผ่านเลย (ไม่ต้องเช็คพิกัด) ---
+                if (requester.adminLevel === 2 && search && u.country === requester.country) {
+                    return true; 
+                }
+
+                // --- ถ้าไม่ใช่กรณี Search ข้ามโซน ให้เช็คตามพิกัดปกติ ---
                 if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
-
-                let closestZone = null;
                 let minDistance = Infinity;
-
+                let closestZone = null;
                 allZones.forEach(zone => {
                     const dist = getDistanceFromLatLonInKm(u.lastLocation.lat, u.lastLocation.lng, zone.lat, zone.lng);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        closestZone = zone;
-                    }
+                    if (dist < minDistance) { minDistance = dist; closestZone = zone; }
                 });
 
                 if (closestZone) {
@@ -469,11 +457,13 @@ app.get('/api/users-list', async (req, res) => {
                 }
                 return false;
             });
+        }
 
-            if (search && search.trim() !== "") {
-                const lowerSearch = search.toLowerCase();
-                finalResults = finalResults.filter(u => u.username.toLowerCase().includes(lowerSearch));
-            }
+        // 3. กรองด้วยชื่อ (Search Keyword) ในขั้นตอนสุดท้าย
+        if (search && search.trim() !== "") {
+            const lowerSearch = search.toLowerCase();
+            finalResults = finalResults.filter(u => u.username.toLowerCase().includes(lowerSearch));
+        }
         }
 
         // --- ทำ Pagination ---
