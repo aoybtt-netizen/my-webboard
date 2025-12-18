@@ -389,7 +389,7 @@ app.get('/api/user-info', async (req, res) => {
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
     try {
-        const { requestBy, search, page = 1, limit = 5 } = req.query; 
+        const { requestBy, search, page = 1, limit = 5 = req.query; 
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
