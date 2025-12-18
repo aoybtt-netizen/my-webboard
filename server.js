@@ -390,10 +390,10 @@ app.get('/api/user-info', async (req, res) => {
 app.get('/api/users-list', async (req, res) => {
     try {
         // แก้ไขบรรทัดนี้: ปิดปีกกาให้ถูกต้อง และกำหนดค่าเริ่มต้นให้ limit เป็น 50
-        const { requestBy, search, page = 1, limit = 5 } = req.query;
+        const { requestBy, search, page = 1, limit = 50} = req.query;
         
         const pageNum = parseInt(page) || 1;
-		const limitNum = parseInt(limit) || 5; // ใช้ค่านี้
+		const limitNum = parseInt(limit) || 50;
 		const skip = (pageNum - 1) * limitNum;
 
         // 1. ตรวจสอบสิทธิ์
@@ -464,6 +464,10 @@ app.get('/api/users-list', async (req, res) => {
             const lowerSearch = search.toLowerCase();
             finalResults = finalResults.filter(u => u.username.toLowerCase().includes(lowerSearch));
         }
+		
+		const totalOwned = finalResults.filter(u => u.relationType === 'OWNED').length;
+		const totalRef = finalResults.filter(u => u.relationType === 'REF').length;
+		const totalOther = finalResults.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF').length;
      
 
         // --- ทำ Pagination ---
@@ -471,10 +475,15 @@ app.get('/api/users-list', async (req, res) => {
         const pagedUsers = finalResults.slice(skip, skip + limitNum);
 
         res.json({
-            users: pagedUsers.map(mapUserResponse),
-            currentPage: pageNum,
-            totalPages: Math.ceil(totalUsers / limitNum)
-        });
+			users: pagedUsers.map(mapUserResponse),
+			currentPage: pageNum,
+			totalPages: Math.ceil(finalResults.length / limitNum),
+			counts: {
+			owned: totalOwned,
+			ref: totalRef,
+			other: totalOther
+    }
+});
 
     } catch (err) {
         console.error(err);
