@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.8 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.9 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -4128,7 +4128,7 @@ async function fetchNearestAdminForInbox(elementId) {
             if (ownedUsers.length > 0) {
                 finalHTML += `
                     <div style="background:#007bff; color:white; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
-                        <span><i class="fas fa-user-shield"></i> 👤My Zone (Direct)</span>
+                        <span><i class="fas fa-user-shield"></i> My Zone (Direct)</span>
                         <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:10px; font-size:0.9em;">${counts.owned}</span>
                     </div>`;
                 finalHTML += `<div id="owned-list-content">${ownedUsers.map(createRowHTML).join('')}</div>`;
