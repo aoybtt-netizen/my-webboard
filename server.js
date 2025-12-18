@@ -388,103 +388,124 @@ app.get('/api/user-info', async (req, res) => {
 
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
-    // รับค่า search และ filterType (my_zone หรือ all) จาก Frontend
-    const { requestBy, search, filterType } = req.query; 
+    const { requestBy, search } = req.query; 
 
-    try {
-        const requester = await usersCollection.findOne({ username: requestBy });
-        if (!requester || requester.adminLevel < 1) {
-            return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
-        }
-        
-        const allUsers = await usersCollection.find({}).toArray();
-
-        // ฟังก์ชันช่วยจัดรูปแบบข้อมูลส่งกลับ
-        const mapUserResponse = (u) => ({ 
-            name: u.username, 
-            coins: u.coins, 
-            rating: u.rating, 
-            isBanned: u.isBanned,
-            adminLevel: u.adminLevel || 0,
-            country: u.country || 'N/A',
-            assignedLocation: u.assignedLocation || null,
-            relationType: u.relationType || 'OTHER'
-        });
-
-        // ---------------------------------------------------------
-        // CASE A: Admin Level 3 (Super Admin) -> เห็นทุกคน + Search ได้ปกติ
-        // ---------------------------------------------------------
-        if (requester.adminLevel >= 3) {
-            let results = allUsers.filter(u => u.username !== requester.username);
-            if (search && search.trim() !== "") {
-                results = results.filter(u => u.username.toLowerCase().includes(search.toLowerCase()));
-            }
-            return res.json(results.map(mapUserResponse));
-        }
-
-        // ---------------------------------------------------------
-        // CASE B: Admin Level 2 + เลือกโหมด "ดูสมาชิกทั้งหมด" (🌐)
-        // ---------------------------------------------------------
-        if (requester.adminLevel === 2 && filterType === 'all') {
-            let results = allUsers.filter(u => {
-                if (u.username === requester.username) return false;
-                // ต้องอยู่ประเทศเดียวกันตามเงื่อนไขเดิมของคุณ
-                return requester.country && u.country === requester.country;
-            });
-
-            if (search && search.trim() !== "") {
-                results = results.filter(u => u.username.toLowerCase().includes(search.toLowerCase()));
-            }
-            return res.json(results.map(mapUserResponse));
-        }
-
-        // ---------------------------------------------------------
-        // CASE C: ดูตามโซน (Level 1 ปกติ และ Level 2 เมื่อเลือกโหมด 📍)
-        // ---------------------------------------------------------
-        let myOwnedZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
-        let myRefZones = (requester.adminLevel === 2) 
-            ? await zonesCollection.find({ "refLocation.sourceUser": requester.username }).toArray() 
-            : [];
-        
-        const allZones = await zonesCollection.find({}).toArray();
-
-        const filteredByZone = allUsers.filter(u => {
-            if (u.username === requester.username) return false;
-            if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
-
-            // Logic หาโซนที่ใกล้ที่สุด (ใช้ระยะทางเพื่อระบุว่า User อยู่โซนไหนปัจจุบัน)
-            let closestZone = null;
-            let minDistance = Infinity;
-            allZones.forEach(zone => {
-                const dist = getDistanceFromLatLonInKm(u.lastLocation.lat, u.lastLocation.lng, zone.lat, zone.lng);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    closestZone = zone;
-                }
-            });
-
-            if (closestZone) {
-                const isOwned = myOwnedZones.some(mz => mz._id.toString() === closestZone._id.toString());
-                const isRef = myRefZones.some(mz => mz._id.toString() === closestZone._id.toString());
-
-                if (isOwned) { u.relationType = 'OWNED'; return true; }
-                if (isRef) { u.relationType = 'REF'; return true; }
-            }
-            return false;
-        });
-
-        // หลังจากกรองด้วยโซนแล้ว ก็เอามา Search ต่อ
-        let finalResults = filteredByZone;
-        if (search && search.trim() !== "") {
-            finalResults = filteredByZone.filter(u => u.username.toLowerCase().includes(search.toLowerCase()));
-        }
-
-        res.json(finalResults.map(mapUserResponse));
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server Error' });
+    // 1. ตรวจสอบสิทธิ์
+    const requester = await getUserData(requestBy);
+    if (!requester || requester.adminLevel < 1) {
+        return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
     }
+    
+    const allUsers = await usersCollection.find({}).toArray();
+
+    const mapUserResponse = (u) => ({ 
+        name: u.username, 
+        coins: u.coins, 
+        rating: u.rating, 
+        isBanned: u.isBanned,
+        adminLevel: u.adminLevel || 0,
+        country: u.country || 'N/A',
+		assignedLocation: u.assignedLocation || null,
+        relationType: u.relationType || 'OTHER'
+    });
+
+    // CASE A: Admin Level 3 (Super Admin) -> เห็นทุกคน ทุกประเทศ
+    if (requester.adminLevel >= 3) {
+        let results = allUsers.filter(u => u.username !== requester.username);
+        if (search && search.trim() !== "") {
+            const lowerSearch = search.toLowerCase();
+            results = results.filter(u => u.username.toLowerCase().includes(lowerSearch));
+        }
+        return res.json(results.map(mapUserResponse));
+    }
+
+    // CASE B: Admin Level 2 (Manager) -> ค้นหาข้ามโซน (แต่ต้องประเทศเดียวกัน)
+    if (requester.adminLevel === 2) {
+        if (search && search.trim() !== "") {
+            const lowerSearch = search.toLowerCase();
+            
+            // ดึงประเทศของ Admin (ถ้าไม่มีให้ Default เป็น TH หรือค่ากลาง)
+            const myCountry = requester.country; 
+
+            const globalMatches = allUsers.filter(u => {
+                // 1. กรองตัวเองออก
+                if (u.username === requester.username) return false;
+                
+                // 2. เช็คชื่อ (Search Keyword)
+                const nameMatch = u.username.toLowerCase().includes(lowerSearch);
+                
+                // 3. [สำคัญ] เช็คประเทศ: ต้องมีประเทศระบุไว้ และต้องตรงกัน
+                // (ถ้าฝ่ายใดฝ่ายหนึ่งไม่มีข้อมูลประเทศ จะค้นหาไม่เจอเพื่อความปลอดภัย หรือคุณจะแก้ให้เจอถ้า myCountry เป็น null ก็ได้)
+                const countryMatch = (myCountry && u.country && u.country === myCountry);
+
+                return nameMatch && countryMatch;
+            });
+
+            return res.json(globalMatches.map(mapUserResponse));
+        }
+    }
+
+    // CASE C: ดูรายการปกติ (Level 1,2 แบบไม่ Search) -> เห็นแค่ในโซนตัวเอง (Logic เดิม)
+    let myZones = [];
+	let myOwnedZones = [];
+    let myRefZones = [];
+
+    // เช็คระดับ Admin เพื่อเลือกวิธีการดึง Zone
+    if (requester.adminLevel === 2) {
+        // ดึงโซนทั้ง 2 ประเภท
+        myOwnedZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
+        myRefZones = await zonesCollection.find({ "refLocation.sourceUser": requester.username }).toArray();
+    } else {
+        // Level 1 ดึงแค่โซนที่ดูแลปกติ
+        myOwnedZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
+    }
+
+    const allMyZones = [...myOwnedZones, ...myRefZones];
+    if (allMyZones.length === 0 && requester.adminLevel < 3) return res.json([]);
+
+    const allZones = await zonesCollection.find({}).toArray();
+
+    const filteredUsers = allUsers.filter(u => {
+        if (u.username === requester.username) return false;
+        //if (u.adminLevel > 0) return true; // เห็น Admin ด้วยกัน
+        
+        if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
+
+        let closestZone = null;
+        let minDistance = Infinity;
+
+        allZones.forEach(zone => {
+            const dist = getDistanceFromLatLonInKm(u.lastLocation.lat, u.lastLocation.lng, zone.lat, zone.lng);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestZone = zone;
+            }
+        });
+
+        if (closestZone) {
+            // ⭐ ตรวจสอบว่า User อยู่ในโซนประเภทไหน ⭐
+            const isOwned = myOwnedZones.some(mz => mz.id === closestZone.id);
+            const isRef = myRefZones.some(mz => mz.id === closestZone.id);
+
+            if (isOwned) {
+                u.relationType = 'OWNED'; // ป้ายกำกับกลุ่มเจ้าของ
+                return true;
+            }
+            if (isRef) {
+                u.relationType = 'REF';   // ป้ายกำกับกลุ่มอ้างอิงพิกัด
+                return true;
+            }
+        }
+        return false;
+    });
+
+    let finalResults = filteredUsers;
+    if (search && search.trim() !== "") {
+        const lowerSearch = search.toLowerCase();
+        finalResults = filteredUsers.filter(u => u.username.toLowerCase().includes(lowerSearch));
+    }
+
+    res.json(finalResults.map(mapUserResponse));
 });
 
 // 4. Contacts (Messages)

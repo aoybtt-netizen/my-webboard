@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.3 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.4 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -408,7 +408,6 @@
 		let currentLat = null;       // เก็บ Lat ล่าสุด
 		let currentLng = null;
 		let currentZoneIdForRef = null;
-		let currentFilterMode = 'my_zone';
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -417,22 +416,6 @@
 		const FILTER_COOLDOWN_MS = 20000; // 20 วินาที
 		
 		let userSearchTimeout = null;
-		
-		function toggleFilter() {
-    const btn = document.getElementById('filter-toggle-btn');
-    if (currentFilterMode === 'my_zone') {
-        currentFilterMode = 'all';
-        btn.innerHTML = '🌐'; // โหมดดูทั้งหมด
-        btn.style.background = '#28a745';
-    } else {
-        currentFilterMode = 'my_zone';
-        btn.innerHTML = '📍'; // โหมดดูเฉพาะโซน
-        btn.style.background = '#6c757d';
-    }
-    // เมื่อเปลี่ยนโหมด ให้สั่งโหลดข้อมูลใหม่ โดยดึงค่าจากช่อง Search ปัจจุบันไปด้วย
-    const currentSearch = document.getElementById('user-search-input').value;
-    loadUserList(currentSearch);
-}
 		
 		// ควบคุมสถานะปุ่มและแสดงเวลานับถอยหลัง
 		function updateFilterButtonState() {
@@ -4067,61 +4050,18 @@ async function fetchNearestAdminForInbox(elementId) {
     
     const searchInput = document.getElementById('user-search-input');
     searchInput.style.display = 'block';
-    searchInput.placeholder = t['search_placeholder'];
-
-    // --- ส่วนที่เพิ่มใหม่: จัดการปุ่ม Toggle สำหรับ Admin Level 2 ---
-    // ตรวจสอบว่ามีปุ่มหรือยัง ถ้าไม่มีให้สร้าง (หรือถ้าคุณเขียนใน HTML แล้วให้ใช้ดึง Element มา)
-    let toggleBtn = document.getElementById('admin-v2-filter-btn');
-    if (!toggleBtn) {
-        // สร้างปุ่มแบบ Dynamic หากไม่มีใน HTML
-        toggleBtn = document.createElement('button');
-        toggleBtn.id = 'admin-v2-filter-btn';
-        toggleBtn.onclick = () => {
-            userListFilterMode = (userListFilterMode === 'my_zone') ? 'all' : 'my_zone';
-            openAllUserList(document.getElementById('user-search-input').value);
-        };
-        // ใส่ไว้ข้างๆ ช่องค้นหา
-        searchInput.parentNode.style.display = 'flex';
-        searchInput.parentNode.style.gap = '8px';
-        searchInput.parentNode.appendChild(toggleBtn);
-    }
-
-    // แสดง/ซ่อนปุ่มตาม Level (ดึง myAdminLevel จากข้อมูลผู้ใช้ที่ Login)
-    if (myAdminLevel === 2) {
-        toggleBtn.style.display = 'block';
-        toggleBtn.style.padding = '5px 15px';
-        toggleBtn.style.borderRadius = '8px';
-        toggleBtn.style.border = 'none';
-        toggleBtn.style.cursor = 'pointer';
-        toggleBtn.style.fontSize = '1.2rem';
-        
-        // อัปเดตสีและไอคอนตามโหมด
-        if (userListFilterMode === 'my_zone') {
-            toggleBtn.innerHTML = '📍';
-            toggleBtn.style.background = '#6c757d';
-            toggleBtn.title = "กำลังดู: เฉพาะโซนที่ดูแล";
-        } else {
-            toggleBtn.innerHTML = '🌐';
-            toggleBtn.style.background = '#28a745';
-            toggleBtn.style.color = 'white';
-            toggleBtn.title = "กำลังดู: สมาชิกทั้งหมด (ประเทศเดียวกัน)";
-        }
-    } else {
-        toggleBtn.style.display = 'none';
-        userListFilterMode = 'my_zone'; // ระดับอื่นบังคับใช้โหมดปกติ
-    }
-    // -------------------------------------------------------
+    searchInput.placeholder = t['search_placeholder']; // อัปเดต Placeholder ตามภาษา
 
     const container = document.getElementById('user-list-container');
 
     // 3. ฟังก์ชันดึงข้อมูล (Internal)
     const fetchData = async (query) => {
+        // แสดงสถานะ Loading (ใช้คำแปลถ้ามี หรือใช้ Hardcode ชั่วคราว)
         const loadingText = currentLang === 'th' ? '⏳ กำลังค้นหา...' : '⏳ Searching...';
         container.innerHTML = `<p style="text-align:center;">${loadingText}</p>`;
         
         try {
-            // เพิ่ม &filterType เข้าไปใน URL
-            let url = `/api/users-list?requestBy=${myUsername}&filterType=${userListFilterMode}`;
+            let url = `/api/users-list?requestBy=${myUsername}`;
             if (query) url += `&search=${encodeURIComponent(query)}`;
 
             const res = await fetch(url);
@@ -4132,21 +4072,24 @@ async function fetchNearestAdminForInbox(elementId) {
             
             const users = await res.json();
             
+            // --- แก้ไขจุดที่แสดงข้อความเมื่อไม่พบข้อมูล ---
             if (users.length === 0) {
+                // ดึงข้อความจาก translations และแทนที่ [NAME] ด้วยคำค้นหา
                 const notFoundMsg = t['msg_user_not_found'].replace('[NAME]', query);
                 const noMembersMsg = t['msg_no_members'];
 
                 container.innerHTML = query 
-                    ? `<p style='text-align:center; color:#dc3545; margin-top:20px;'>${notFoundMsg}</p>` 
+                    ? `<p style='text-align:center; color:#dc3545; margin-top:20px;'>${notFoundMsg}</p>`
                     : `<p style='text-align:center; color:gray;'>${noMembersMsg}</p>`;
                 return;
             }
+            // ------------------------------------------
 
-            // แยกกลุ่มตาม relationType (OWNED / REF / OTHER)
             const ownedUsers = users.filter(u => u.relationType === 'OWNED');
             const refUsers = users.filter(u => u.relationType === 'REF');
             const otherUsers = users.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF');
 
+            // 2. ฟังก์ชันช่วยสร้าง HTML แถว User (ยกมาจากโค้ดเดิมของคุณ)
             const createRowHTML = (u) => {
                 const isBanned = u.isBanned;
                 const targetLevel = u.adminLevel || 0;
@@ -4175,28 +4118,38 @@ async function fetchNearestAdminForInbox(elementId) {
                     </div>`;
             };
 
+            // 3. ประกอบร่าง HTML
             let finalHTML = '';
 
-            // แสดงหัวข้อตามกลุ่ม
+            // --- กลุ่ม 1: เจ้าของโซน ---
             if (ownedUsers.length > 0) {
                 finalHTML += `<div style="background:#007bff; color:white; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold;"><i class="fas fa-user-shield"></i> สมาชิกในความดูแล (Direct)</div>`;
-                finalHTML += ownedUsers.map(createRowHTML).join('');
+                finalHTML += `<div id="owned-list-content">${ownedUsers.map(createRowHTML).join('')}</div>`;
             }
 
+            // --- กลุ่ม 2: อ้างอิงพิกัด ---
             if (refUsers.length > 0) {
-                finalHTML += `<div style="background:#ffc107; color:#333; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold;"><i class="fas fa-map-marker-alt"></i> สมาชิกโซนพิกัด (Ref Location)</div>`;
-                finalHTML += refUsers.map(createRowHTML).join('');
+                finalHTML += `
+                    <div class="group-header" onclick="toggleUserGroup('ref-list-content', this)" style="background:#ffc107; color:#333; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        <span><i class="fas fa-map-marker-alt"></i> สมาชิกโซนพิกัด (Ref Location)</span>
+                        <i class="fas fa-chevron-down toggle-icon" style="transition: transform 0.3s;"></i>
+                    </div>`;
+                // ใส่ display: none; ถ้าต้องการให้ซ่อนไว้ตั้งแต่แรก
+                finalHTML += `<div id="ref-list-content" style="display: block;">${refUsers.map(createRowHTML).join('')}</div>`;
             }
 
+            // --- กลุ่มอื่นๆ (เช่น แอดมินคนอื่นๆ) ---
             if (otherUsers.length > 0) {
-                // ถ้าอยู่ในโหมด "ดูทั้งหมด" หัวข้อกลุ่มอื่นอาจจะหมายถึงคนนอกโซน
-                const otherTitle = (userListFilterMode === 'all') ? 'สมาชิกนอกพื้นที่ดูแล' : 'อื่นๆ';
-                finalHTML += `<div style="background:#6c757d; color:white; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold;"><i class="fas fa-users"></i> ${otherTitle}</div>`;
-                finalHTML += otherUsers.map(createRowHTML).join('');
+                finalHTML += `
+                    <div class="group-header" onclick="toggleUserGroup('other-list-content', this)" style="color:gray; padding:10px 5px; font-size:0.9em; margin-top:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee;">
+                        <span>อื่นๆ</span>
+                        <i class="fas fa-chevron-down toggle-icon" style="transition: transform 0.3s;"></i>
+                    </div>`;
+                finalHTML += `<div id="other-list-content" style="display: block;">${otherUsers.map(createRowHTML).join('')}</div>`;
             }
 
             container.innerHTML = finalHTML;
-            allUsersCache = users; 
+            allUsersCache = users;
 
         } catch (e) {
             console.error(e);
@@ -4204,7 +4157,6 @@ async function fetchNearestAdminForInbox(elementId) {
         }
     };
 
-    // จัดการ Debounce การ Search
     if (searchTerm) {
         clearTimeout(userSearchTimeout);
         userSearchTimeout = setTimeout(() => {
@@ -4212,6 +4164,21 @@ async function fetchNearestAdminForInbox(elementId) {
         }, 500); 
     } else {
         fetchData(''); 
+    }
+}
+
+function toggleUserGroup(contentId, headerElement) {
+    const content = document.getElementById(contentId);
+    const icon = headerElement.querySelector('.toggle-icon');
+
+    if (!content) return;
+
+    if (content.style.display === "none") {
+        content.style.display = "block"; // กางออก
+        if (icon) icon.style.transform = "rotate(0deg)"; // หมุนลูกศรกลับที่เดิม
+    } else {
+        content.style.display = "none"; // ซ่อน
+        if (icon) icon.style.transform = "rotate(-90deg)"; // หมุนลูกศรไปด้านข้าง
     }
 }
 
