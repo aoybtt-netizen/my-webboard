@@ -802,27 +802,23 @@ app.post('/api/admin/upload-zone-bg', upload.single('image'), async (req, res) =
 // 8.2 API สำหรับสมาชิกเช็คพื้นหลังตามพิกัด (Public)
 app.get('/api/zone-check-bg', async (req, res) => {
     const { lat, lng } = req.query;
-    if (!lat || !lng) return res.json({ bgImage: null });
+    
+    // หากไม่มีพิกัด ให้ส่งค่าเริ่มต้นกลับไป
+    if (!lat || !lng) return res.json({ bgImage: null, zoneName: "Webboard" });
 
     try {
         const location = { lat: parseFloat(lat), lng: parseFloat(lng) };
-        
-        // [NEW] ใช้ logic เดียวกับตอนหา Admin รับผิดชอบ
         const responsible = await findResponsibleAdmin(location);
 
-        // ถ้าเจอกระทั่งโซน และโซนนั้นมีภาพพื้นหลัง
-        if (responsible.zoneData && responsible.zoneData.bgImage) {
-            res.json({ 
-                bgImage: responsible.zoneData.bgImage, 
-                zoneName: responsible.zoneName 
-            });
-        } else {
-            // ถ้าไม่เจอ หรือโซนนั้นไม่มีรูป
-            res.json({ bgImage: null });
-        }
+        // ✅ แก้ไขตรงนี้: ส่ง zoneName กลับไปเสมอ ไม่ว่าจะเจอรหัสรูปภาพหรือไม่
+        res.json({ 
+            bgImage: (responsible.zoneData && responsible.zoneData.bgImage) ? responsible.zoneData.bgImage : null,
+            zoneName: responsible.zoneName || "Webboard" 
+        });
+
     } catch (e) {
         console.error(e);
-        res.json({ bgImage: null });
+        res.json({ bgImage: null, zoneName: "Webboard" });
     }
 });
 

@@ -134,7 +134,7 @@
     <div class="overlay" onclick="toggleSidebar()"></div>
 
     <div class="sidebar" id="sidebar">
-    <h2 style="text-align:center; margin-top:0;">GED GoExDeli</h2>
+    <h2 id="sidebar-app-title" style="text-align:center; margin-top:0;">Webboard</h2>
     
     <div style="text-align:center; margin-bottom:20px;">
         <div style="font-size:40px;" id="user-avatar-display">👤</div>
@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.10 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.17 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -695,18 +695,24 @@ async function updateZoneBackground(lat, lng) {
         const res = await fetch(`/api/zone-check-bg?lat=${lat}&lng=${lng}`);
         const data = await res.json();
         
+        const sidebarTitle = document.getElementById('sidebar-app-title');
+        
+        // เช็คว่ามี Element นี้อยู่ในหน้าเว็บจริงๆ ไหมก่อนสั่งเปลี่ยนข้อความ
+        if (sidebarTitle) {
+            sidebarTitle.innerText = data.zoneName || "Webboard";
+        }
+
         const defaultBg = "linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url('https://sv1.img.in.th/7fB1Jg.png')";
         
         if (data.bgImage) {
-            // ถ้ามีรูปประจำโซน ให้เปลี่ยน
-            // ใส่ Overlay สีขาวจางๆ เหมือนเดิมเพื่อให้ตัวหนังสืออ่านง่าย
             document.body.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url('${data.bgImage}')`;
         } else {
-            // ถ้าไม่มี ให้กลับไปใช้รูป Default
             document.body.style.backgroundImage = defaultBg;
         }
     } catch (e) {
-        console.error("Error updating background:", e);
+        // หากยัง error อยู่ ให้ลองดูใน Console ของ Browser (F12) 
+        // ว่ามันฟ้องว่าติดที่ตัวแปรไหนครับ
+        console.error("Error updating background:", e); 
     }
 }
 	
