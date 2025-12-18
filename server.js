@@ -1485,18 +1485,60 @@ app.get('/api/my-active-posts', async (req, res) => {
 
 // 21. My Closed Posts
 app.get('/api/my-closed-posts', async (req, res) => {
-    const { username, page, limit } = req.query;
-    const p = parseInt(page) || 1;
-    const l = parseInt(limit) || 20;
-    const skip = (p - 1) * l;
-    const query = { author: username, isClosed: true };
-    const totalItems = await postsCollection.countDocuments(query);
-    const closedPosts = await postsCollection.find(query).sort({ id: -1 }).skip(skip).limit(l).toArray();
-    const authorUser = await getUserData(username);
-    res.json({
-        posts: closedPosts.map(post => ({ ...post, authorRating: authorUser.rating.toFixed(2) })),
-        totalItems, totalPages: Math.ceil(totalItems / l), currentPage: p, limit: l
-    });
+    const { username, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    try {
+        // 1. ตรวจสอบข้อมูล User ก่อนว่าเป็นแอดมินระดับไหน
+        const user = await usersCollection.findOne({ username: username });
+        
+        let query = {};
+
+        if (user && user.adminLevel >= 1) {
+            // ⭐ [กรณีเป็นแอดมิน] ให้ดึงพิกัดจากโซนที่รับผิดชอบ
+            const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
+
+            if (myZone) {
+                const lat = parseFloat(myZone.lat);
+                const lng = parseFloat(myZone.lng);
+                const range = 0.05; // กำหนดรัศมีรอบพิกัดโซน (ประมาณ 5 กม.)
+
+                query = {
+                    isClosed: true,
+                    // ดึงกระทู้ที่อยู่ในพิกัดของโซน
+                    lat: { $gte: lat - range, $lte: lat + range },
+                    lng: { $gte: lng - range, $lte: lng + range }
+                };
+            } else {
+                // ถ้าแอดมินยังไม่มีโซนที่ดูแล ให้ดึงเฉพาะของตัวเองไปก่อน
+                query = { username: username, isClosed: true };
+            }
+        } else {
+            // [กรณี User ทั่วไป] ให้ดึงเฉพาะกระทู้ที่ตัวเองเป็นคนปิด
+            query = { username: username, isClosed: true };
+        }
+
+        // 2. สั่ง Query ข้อมูลตามเงื่อนไขที่ตั้งไว้
+        const posts = await postsCollection.find(query)
+            .sort({ closedAt: -1 }) // เรียงตามเวลาที่ปิดล่าสุด
+            .skip(skip)
+            .limit(parseInt(limit))
+            .toArray();
+
+        const totalItems = await postsCollection.countDocuments(query);
+
+        res.json({
+            success: true,
+            posts,
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            currentPage: parseInt(page)
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
 });
 
 // 22. Active Count
