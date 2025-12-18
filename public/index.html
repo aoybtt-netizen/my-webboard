@@ -4059,7 +4059,7 @@ async function fetchNearestAdminForInbox(elementId) {
     // 3. ฟังก์ชันดึงข้อมูล (Internal)
     const fetchData = async (query) => {
         // แสดงสถานะ Loading (ใช้คำแปลถ้ามี หรือใช้ Hardcode ชั่วคราว)
-        const loadingText = currentLang === 'th' ? '⏳ กำลังค้นหา...' : '⏳ Searching...';
+        const loadingText = currentLang === 'th' ? '⏳ Searching...' : '⏳ Searching...';
         container.innerHTML = `<p style="text-align:center;">${loadingText}</p>`;
         
         try {
@@ -4125,40 +4125,40 @@ async function fetchNearestAdminForInbox(elementId) {
             let finalHTML = '';
 
             // --- กลุ่ม 1: เจ้าของโซน ---
-            if (ownedUsers.length > 0 || counts.owned > 0) { // เช็คทั้งในหน้าและยอดรวม
-			finalHTML += `
-				<div style="background:#007bff; ...">
-				<span>...</span>
-				<span style="...">ยอดรวม ${counts.owned}</span> 
-				</div>`;
-			finalHTML += `<div id="owned-list-content">${ownedUsers.map(createRowHTML).join('')}</div>`;
-}
+            if (ownedUsers.length > 0) {
+                finalHTML += `
+                    <div style="background:#007bff; color:white; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+                        <span><i class="fas fa-user-shield"></i> 👤My Zone (Direct)</span>
+                        <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:10px; font-size:0.9em;">${counts.owned}</span>
+                    </div>`;
+                finalHTML += `<div id="owned-list-content">${ownedUsers.map(createRowHTML).join('')}</div>`;
+            }
 
             // --- กลุ่ม 2: อ้างอิงพิกัด ---
-            if (refUsers.length > 0 || counts.ref > 0) {
-    finalHTML += `
-        <div class="group-header" ...>
-            <span>...</span>
-            <div style="...">
-                <span style="...">ยอดรวม ${counts.ref}</span>
-                <i class="fas fa-chevron-down ..."></i>
-            </div>
-        </div>`;
-    finalHTML += `<div id="ref-list-content">${refUsers.map(createRowHTML).join('')}</div>`;
-}
+            if (refUsers.length > 0) {
+                finalHTML += `
+                    <div class="group-header" onclick="toggleUserGroup('ref-list-content', this)" style="background:#ffc107; color:#333; padding:8px 15px; border-radius:5px; margin:15px 0 10px 0; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        <span><i class="fas fa-map-marker-alt"></i> 👤 (Ref Location)</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="background:rgba(0,0,0,0.1); padding:2px 8px; border-radius:10px; font-size:0.9em;">${counts.ref}</span>
+                            <i class="fas fa-chevron-down toggle-icon" style="transition: transform 0.3s;"></i>
+                        </div>
+                    </div>`;
+                finalHTML += `<div id="ref-list-content">${refUsers.map(createRowHTML).join('')}</div>`;
+            }
 
             // --- กลุ่มอื่นๆ (เช่น แอดมินคนอื่นๆ) ---
-            if (otherUsers.length > 0 || counts.other > 0) {
-    finalHTML += `
-        <div class="group-header" ...>
-            <span>อื่นๆ</span>
-            <div style="...">
-                <span>รวม ${counts.other} รายชื่อ</span>
-                <i class="fas fa-chevron-down ..."></i>
-            </div>
-        </div>`;
-    finalHTML += `<div id="other-list-content">${otherUsers.map(createRowHTML).join('')}</div>`;
-}
+            if (otherUsers.length > 0) {
+                finalHTML += `
+                    <div class="group-header" onclick="toggleUserGroup('other-list-content', this)" style="color:gray; padding:10px 5px; font-size:0.9em; margin-top:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee;">
+                        <span>อื่นๆ</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span>${counts.other} 👤</span>
+                            <i class="fas fa-chevron-down toggle-icon" style="transition: transform 0.3s;"></i>
+                        </div>
+                    </div>`;
+                finalHTML += `<div id="other-list-content" style="display: block;">${otherUsers.map(createRowHTML).join('')}</div>`;
+            }
 
             container.innerHTML = finalHTML;
             allUsersCache = users;
@@ -4188,13 +4188,13 @@ function renderPagination(totalPages, currentPage, searchTerm) {
 
     let navHTML = '';
     if (currentPage > 1) {
-        navHTML += `<button class="btn-nav" onclick="openAllUserList('${searchTerm}', ${currentPage - 1})">ก่อนหน้า</button>`;
+        navHTML += `<button class="btn-nav" onclick="openAllUserList('${searchTerm}', ${currentPage - 1})"></button>`;
     }
     
-    navHTML += `<span style="align-self:center;">หน้า ${currentPage} / ${totalPages}</span>`;
+    navHTML += `<span style="align-self:center;">page ${currentPage} / ${totalPages}</span>`;
     
     if (currentPage < totalPages) {
-        navHTML += `<button class="btn-nav" onclick="openAllUserList('${searchTerm}', ${currentPage + 1})">ถัดไป</button>`;
+        navHTML += `<button class="btn-nav" onclick="openAllUserList('${searchTerm}', ${currentPage + 1})"></button>`;
     }
     
     nav.innerHTML = navHTML;
