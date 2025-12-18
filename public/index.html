@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.11 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.12 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -2446,31 +2446,22 @@ function openAllZoneManagement() {
     const zoneName = zone.name || '-';
 
     tr.innerHTML = `
-        <td style="padding:12px; vertical-align: middle;">
-            <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 0.8em; color: #6c757d; margin-bottom: 2px;">
-                    <i class="fas fa-user-circle"></i> ${ownerName}
-                </span>
-                <span style="font-weight: bold; color: #333; font-size: 1.05em;">
-                    <i class="fas fa-map-marker-alt" style="color: #e74c3c; width: 15px;"></i> ${zoneName}
-                </span>
-            </div>
-        </td>
-        <td style="padding:12px; font-family: monospace; font-size: 0.85em; color: #555; vertical-align: middle;">
-            ${latText}, ${lngText}
-        </td>
-        <td style="padding:12px; text-align: right; vertical-align: middle;">
-			<button onclick="document.getElementById('assigned-zone-modal').classList.add('hidden'); openAdminAssignModal('${zone._id}', '${zoneName}', ${displayLat}, ${displayLng})" 
-        style="padding:6px 10px; background: #ffc107; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em; margin-right:5px;">
-    <i class="fas fa-user-plus"></i> Appoint Admin
-</button>
+    <td style="padding:12px;"> ... </td>
+    <td style="padding:12px;"> ... </td>
+    <td style="padding:12px; text-align: right;">
+        <button onclick='openZoneEditor(${JSON.stringify(zone)})' 
+                style="padding:6px 10px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em; margin-right:5px;">
+            <i class="fas fa-cog"></i> ตั้งค่า
+        </button>
 
-            <button onclick="zoomToZone(${displayLat}, ${displayLng})" 
-                    style="padding:8px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;">
-                <i class="fas fa-location-arrow"></i> Map
-            </button>
-        </td>
-    `;
+        <button onclick="document.getElementById('assigned-zone-modal').classList.add('hidden'); openAdminAssignModal('${zone._id}', '${zoneName}', ${displayLat}, ${displayLng})" style="padding:6px 10px; background: #ffc107; ...">
+            <i class="fas fa-user-plus"></i> Appoint
+        </button>
+        <button onclick="zoomToZone(${displayLat}, ${displayLng})" style="...">
+            <i class="fas fa-location-arrow"></i> Map
+        </button>
+    </td>
+`;
     listContainer.appendChild(tr);
         });
     });
@@ -4457,6 +4448,56 @@ function openUserDetail(targetUsername) {
             alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
         }
     }
+	
+	function openZoneEditor(zone) {
+    document.getElementById('zone-edit-form').classList.remove('hidden');
+    document.getElementById('edit-zone-id').value = zone._id;
+    document.getElementById('editing-zone-name').innerText = `⚙️ ตั้งค่า: ${zone.name || 'โซนพื้นฐาน'}`;
+    
+    // ดึงค่าเก่าจากฐานข้อมูลมาโชว์ (ถ้ามี)
+    const settings = zone.customSettings || {};
+    document.getElementById('edit-zone-title').value = settings.dashboardTitle || '';
+    document.getElementById('edit-zone-banner').value = settings.dashboardBannerUrl || '';
+    
+    // เลื่อนหน้าจอไปที่ฟอร์ม
+    document.getElementById('zone-edit-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ฟังก์ชันส่งข้อมูลไปบันทึกที่ Server
+async function saveZoneCustomSettings() {
+    const zoneId = document.getElementById('edit-zone-id').value;
+    const customTitle = document.getElementById('edit-zone-title').value.trim();
+    const customBanner = document.getElementById('edit-zone-banner').value.trim();
+
+    if (!zoneId) return;
+
+    try {
+        const response = await fetch('/api/admin/update-zone-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                zoneId: zoneId,
+                customTitle: customTitle,
+                customBanner: customBanner,
+                username: myUsername // ชื่อแอดมินที่กำลังทำรายการ
+            })
+        });
+
+        const res = await response.json();
+        if (res.success) {
+            showNotification('✅ บันทึกการตั้งค่าโซนสำเร็จ', 'fas fa-check', 3000, '#28a745');
+            document.getElementById('zone-edit-form').classList.add('hidden');
+            // สั่งให้โหลดรายการโซนใหม่เพื่ออัปเดตข้อมูลในตาราง
+            socket.emit('get-assigned-zones'); 
+        } else {
+            alert('❌ ' + (res.message || 'บันทึกไม่สำเร็จ'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
+}
+
 
 </script>
 
@@ -4693,12 +4734,7 @@ function openUserDetail(targetUsername) {
     <div class="modal-box" style="max-width: 600px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h3 style="margin:0;"><i class="fas fa-map-marked-alt"></i> Zones Under Management</h3>
-            <button onclick="document.getElementById('assigned-zone-modal').classList.add('hidden')" 
-                    style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
-        </div>
-
-        <div style="background:#e9ecef; padding:10px; border-radius:8px; margin-bottom:15px; font-weight:bold; color:#495057;">
-            📍 Reference Location: <span id="display-ref-location" style="color:#007bff;">-</span>
+            <button onclick="document.getElementById('assigned-zone-modal').classList.add('hidden')" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
         </div>
 
         <div style="overflow-x: auto;">
@@ -4707,49 +4743,29 @@ function openUserDetail(targetUsername) {
                     <tr style="background:#f8f9fa; text-align:left;">
                         <th style="padding:10px; border-bottom:2px solid #ddd;">Zone Name</th>
                         <th style="padding:10px; border-bottom:2px solid #ddd;">Coordinates</th>
-                        <th style="padding:10px; border-bottom:2px solid #ddd;">Status</th>
-                    </tr>
+                        <th style="padding:10px; border-bottom:2px solid #ddd; text-align:right;">จัดการ</th> </tr>
                 </thead>
-                <tbody id="assigned-zone-list">
-                    </tbody>
+                <tbody id="assigned-zone-list"></tbody>
             </table>
         </div>
         
-        <div id="assigned-zone-loading" style="text-align:center; padding:20px; display:none;">
-            <i class="fas fa-spinner fa-spin"></i> Loading data...
+        <div id="zone-edit-form" class="hidden" style="margin-top: 20px; padding: 15px; background: #fdfdfd; border: 1px solid #007bff; border-radius: 8px;">
+            <h4 id="editing-zone-name" style="color: #007bff; margin-bottom: 10px;">ตั้งค่า Dashboard</h4>
+            <input type="hidden" id="edit-zone-id">
+            <div style="margin-bottom: 10px;">
+                <label>ชื่อไตเติ้ลโซน:</label>
+                <input type="text" id="edit-zone-title" placeholder="เช่น กู้ภัยสกลนคร" style="width:100%; padding:8px;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>URL รูป Banner:</label>
+                <input type="text" id="edit-zone-banner" placeholder="https://..." style="width:100%; padding:8px;">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="saveZoneCustomSettings()" style="background:#28a745; color:white; border:none; padding:10px; border-radius:4px; flex:1; cursor:pointer;">บันทึก</button>
+                <button onclick="document.getElementById('zone-edit-form').classList.add('hidden')" style="background:#6c757d; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">ยกเลิก</button>
+            </div>
         </div>
-
-        <div style="margin-top: 20px; text-align: right;">
-            <button class="sidebar-btn" onclick="document.getElementById('assigned-zone-modal').classList.add('hidden')" 
-                    style="width: auto; background: #6c757d; color: white;">Close</button>
         </div>
-    </div>
-	
-	
-	
-	<div id="zone-config-section" style="margin-top: 20px; padding: 15px; border-top: 2px solid #eee;">
-    <h4 style="margin-bottom: 10px;"><i class="fas fa-cog"></i> ตั้งค่าการแสดงผลโซน</h4>
-    
-    <div style="margin-bottom: 10px;">
-        <label>ชื่อไตเติ้ลที่ต้องการแสดง:</label>
-        <input type="text" id="custom-zone-title" placeholder="เช่น ศูนย์สั่งการ กู้ภัยสกลนคร" 
-               style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc;">
-    </div>
-
-    <div style="margin-bottom: 10px;">
-        <label>URL รูปภาพ Banner (1200x300px):</label>
-        <input type="text" id="custom-zone-banner" placeholder="ใส่ลิงก์รูปภาพ https://..." 
-               style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc;">
-    </div>
-
-    <button onclick="saveZoneSettings()" class="sidebar-btn" 
-            style="background: #28a745; color: white; width: 100%; padding: 10px; border: none; cursor: pointer;">
-        <i class="fas fa-save"></i> บันทึกการตั้งค่า
-    </button>
-</div>
-
-
-
 </div>
 
 
