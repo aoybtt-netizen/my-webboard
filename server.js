@@ -390,11 +390,11 @@ app.get('/api/user-info', async (req, res) => {
 app.get('/api/users-list', async (req, res) => {
     try {
         // แก้ไขบรรทัดนี้: ปิดปีกกาให้ถูกต้อง และกำหนดค่าเริ่มต้นให้ limit เป็น 50
-        const { requestBy, search, page = 1, limit = 5 } = req.query; 
+        const { requestBy, search, page = 1, limit = 5 } = req.query;
         
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-        const skip = (pageNum - 1) * limitNum;
+        const pageNum = parseInt(page) || 1;
+		const limitNum = parseInt(limit) || 5; // ใช้ค่านี้
+		const skip = (pageNum - 1) * limitNum;
 
         // 1. ตรวจสอบสิทธิ์
         const requester = await getUserData(requestBy);

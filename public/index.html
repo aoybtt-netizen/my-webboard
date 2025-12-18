@@ -4064,7 +4064,7 @@ async function fetchNearestAdminForInbox(elementId) {
         
         try {
             // 2. แก้ URL ให้ส่ง page ไปด้วย
-            let url = `/api/users-list?requestBy=${myUsername}&page=${page}&limit=50`;
+            let url = `/api/users-list?requestBy=${myUsername}&page=${page}&limit=5`;
             if (query) url += `&search=${encodeURIComponent(query)}`;
 
             const res = await fetch(url);
