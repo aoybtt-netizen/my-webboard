@@ -1080,7 +1080,12 @@ app.get('/api/posts/:id', async (req, res) => {
         post.isClosed = true; 
     }
     const author = await getUserData(post.author);
-    res.json({ ...post, authorRating: author.rating.toFixed(2) });
+    res.json({ 
+        ...post, 
+        authorRating: author.rating.toFixed(2),
+        authorTotalPosts: author.totalPosts || 0,     // เพิ่มตรงนี้
+        authorCompletedJobs: author.completedJobs || 0 // เพิ่มตรงนี้
+    });
 });
 
 // 13. Viewer Status

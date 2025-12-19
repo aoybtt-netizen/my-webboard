@@ -1228,6 +1228,8 @@ socket.on('viewer-left-location', (data) => {
         }
 
         function renderPost(post, isAdmin = false) {
+			const total = post.authorTotalPosts || 0;
+			const completed = post.authorCompletedJobs || 0;
 			const authorStats = `
 						<div style="font-size: 0.85em; color: #666; margin-top: 5px;">
 						📝: ${post.authorTotalPosts || 0} |
