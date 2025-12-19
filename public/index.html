@@ -1348,13 +1348,12 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 const userDisplay = document.getElementById('user-display');
 
 if (userDisplay) {
-    // ตรวจสอบว่าถ้าเป็น Admin Level 1 ให้เปลี่ยนชื่อเป็นสีแดง
-    if (myAdminLevel === 1) {
-        userDisplay.innerHTML = `<span style="color: #66CCFF; font-weight: bold;">${name}</span>`;
+    if (myAdminLevel > 0) {
+        userDisplay.style.color = "#0033FF";
+        userDisplay.style.fontWeight = "normal";
     } else {
-        // ถ้าไม่ใช่แอดมิน ให้แสดงชื่อสีปกติ
-        userDisplay.innerText = name;
-        userDisplay.style.color = ""; // ล้างค่าสีที่อาจค้างอยู่
+        userDisplay.style.color = "#000000";
+        userDisplay.style.fontWeight = "normal";
     }
 }
 
