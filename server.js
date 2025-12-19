@@ -1541,35 +1541,31 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
 
     try {
         const user = await usersCollection.findOne({ username: username });
-        let query = { isClosed: true }; 
+        let query = { isClosed: true };
 
         if (user && user.adminLevel >= 1) {
-            // 1. หาโซนที่แอดมินคนนี้ "คุม" อยู่จากฐานข้อมูล
-            const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
+            // 🎯 ใช้หลักการเดียวกับ get-assigned-zones
+            // ค้นหาโซนทั้งหมดที่แอดมินคนนี้ดูแลอยู่
+            // หมายเหตุ: ถ้าใน DB คุณใช้ "refLocation.sourceUser" ให้เปลี่ยนชื่อฟิลด์ตรงนี้
+            const myZones = await zonesCollection.find({ 
+                $or: [
+                    { assignedAdmin: username },
+                    { "refLocation.sourceUser": username }
+                ]
+            }).toArray();
 
-            if (myZone) {
-                // 🎯 2. ดึงข้อมูลพิกัดและ ID จากโซนมาใช้ (ไม่ต้องสน GPS มือถือแอดมิน)
-                const zoneId = myZone.id || myZone._id.toString();
-                const zoneLat = parseFloat(myZone.refLocation.lat || myZone.lat);
-                const zoneLng = parseFloat(myZone.refLocation.lng || myZone.lng);
-
-                console.log(`✅ แอดมิน ${username} คุมโซน: ${myZone.name} (พิกัด: ${zoneLat}, ${zoneLng})`);
-
-                // 3. ตั้งเงื่อนไขการดึงข้อมูล (แนะนำให้ใช้ zoneId เป็นหลัก)
-                // ถ้ามี zoneId ในโพสต์ ให้ใช้ zoneId (แม่นยำ 100%)
-                query.zoneId = zoneId;
-
-                /* 💡 แต่ถ้ากระทู้เก่าไม่มี zoneId และคุณอยากใช้พิกัดโซนกรองแทนรัศมี 500km 
-                ให้ใช้ Range แคบๆ (เช่น 0.05 = ~5km) รอบ "พิกัดโซน" แทน
+            if (myZones.length > 0) {
+                // ดึงรายการ ID โซนทั้งหมดที่แอดมินคนนี้คุม (กรณีคุมหลายโซน)
+                const zoneIds = myZones.map(z => z.id || z._id.toString());
                 
-                const range = 0.05; 
-                query.lat = { $gte: zoneLat - range, $lte: zoneLat + range };
-                query.lng = { $gte: zoneLng - range, $lte: zoneLng + range };
-                */
-
+                // ✅ เปลี่ยน Query ให้ดึงกระทู้ที่มี zoneId อยู่ในรายการโซนที่คุม
+                query.zoneId = { $in: zoneIds };
+                
+                console.log(`✅ Admin ${username} กำลังดูงานใน ${myZones.length} โซนที่ได้รับมอบหมาย`);
             } else {
-                console.log(`❌ ไม่พบโซนที่แอดมิน ${username} ดูแล`);
-                query.author = username; 
+                // ถ้าไม่พบโซนที่ได้รับมอบหมาย ให้เห็นเฉพาะของตัวเอง
+                console.log(`⚠️ ไม่พบโซนที่มอบหมายให้ ${username}`);
+                query.author = username;
             }
         } else {
             query.author = username;
@@ -1581,15 +1577,17 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
             .limit(parseInt(limit))
             .toArray();
 
+        const totalItems = await postsCollection.countDocuments(query);
+
         res.json({
             success: true,
             posts,
-            totalItems: await postsCollection.countDocuments(query),
-            totalPages: Math.ceil(await postsCollection.countDocuments(query) / limit),
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
             currentPage: parseInt(page)
         });
     } catch (err) {
-        console.error(err);
+        console.error("Error:", err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
