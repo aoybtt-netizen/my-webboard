@@ -1229,18 +1229,20 @@ socket.on('viewer-left-location', (data) => {
 
         function renderPost(post, isAdmin = false) {
 			const oldStats = document.getElementById('author-stats-container');
-			if (oldStats) oldStats.remove();
+    if (oldStats) oldStats.remove();
 
-			const total = post.authorTotalPosts || 0;
-			const completed = post.authorCompletedJobs || 0;
+    const total = post.authorTotalPosts || 0;
+    const completed = post.authorCompletedJobs || 0;
     
     // สร้าง HTML สำหรับสถิติ
-			const authorStats = `
+    const authorStats = `
         <div id="author-stats-container" style="font-size: 0.85em; color: #666; margin-top: 5px;">
             📝 โพสต์: ${total} | ✅ จบงาน: ${completed}
         </div>
-		`;
-			const authorEl = document.getElementById('post-author');
+    `;
+
+    // 🎯 2. แทรกสถิติเข้าไปใต้ชื่อผู้เขียน
+    const authorEl = document.getElementById('post-author');
     if (authorEl) {
         authorEl.insertAdjacentHTML('afterend', authorStats);
     }
