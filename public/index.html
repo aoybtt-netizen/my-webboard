@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.18 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.19 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -714,15 +714,6 @@ async function updateZoneBackground(lat, lng) {
         // ว่ามันฟ้องว่าติดที่ตัวแปรไหนครับ
         console.error("Error updating background:", e); 
     }
-}
-
-function getAdminBadge(level) {
-    if (!level || level < 1) return "";
-    let crowns = "";
-    for (let i = 0; i < level; i++) {
-        crowns += "👑";
-    }
-    return `<span title="Admin Level ${level}">${crowns}</span>`;
 }
 	
         
@@ -1354,9 +1345,18 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
         async function startApp(name) {
     myUsername = name;
-    // ใช้ user-display แทน user-display-name เพื่อให้ตรงกับ HTML
-    const userDisplay = document.getElementById('user-display');
-    if(userDisplay) userDisplay.innerText = name;
+const userDisplay = document.getElementById('user-display');
+
+if (userDisplay) {
+    // ตรวจสอบว่าถ้าเป็น Admin Level 1 ให้เปลี่ยนชื่อเป็นสีแดง
+    if (myAdminLevel === 1) {
+        userDisplay.innerHTML = `<span style="color: #66CCFF; font-weight: bold;">${name}</span>`;
+    } else {
+        // ถ้าไม่ใช่แอดมิน ให้แสดงชื่อสีปกติ
+        userDisplay.innerText = name;
+        userDisplay.style.color = ""; // ล้างค่าสีที่อาจค้างอยู่
+    }
+}
 
     document.getElementById('login-modal').classList.add('hidden');
     socket.emit('register', myUsername);
@@ -1467,9 +1467,9 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         const avatarEl = document.getElementById('user-avatar-display');
         if (avatarEl) {
             let stars = '';
-            if (myAdminLevel === 1) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐</div>';
-            if (myAdminLevel === 2) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐⭐</div>';
-            if (myAdminLevel === 3) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">⭐⭐⭐</div>';
+            if (myAdminLevel === 1) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑</div>';
+            if (myAdminLevel === 2) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑</div>';
+            if (myAdminLevel === 3) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑👑</div>';
             
             avatarEl.innerHTML = `👤${stars}`;
         }
@@ -2242,90 +2242,95 @@ async function showMyClosedPosts(page = 1) {
 
         // ---addPostToDOM (With Winner Display) ---
         function addPostToDOM(post, isOccupied) {
-    const list = document.getElementById('post-list');
-    
-    // --- [เพิ่มส่วนนี้] Helper สำหรับสร้างมงกุฎ ---
-    const getAdminBadge = (level) => {
-        if (!level || level < 1) return "";
-        let crowns = "";
-        for (let i = 0; i < level; i++) { crowns += "👑"; }
-        return crowns;
-    };
+            const list = document.getElementById('post-list');
+            
+            let deleteBtn = myUsername === 'Admin' 
+                ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
+                : '';
 
-    // ตรวจสอบสถานะ Admin และระดับเลเวล
-    const isAdmin = post.authorAdminLevel && post.authorAdminLevel >= 1;
-    const adminCrowns = isAdmin ? getAdminBadge(post.authorAdminLevel) : "";
-    const nameColor = isAdmin ? "#0066FF" : "inherit"; // สีน้ำเงินสำหรับ Admin
-    // ------------------------------------------
+            let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
+            let occupiedText = isOccupied 
+                ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(กำลังคุย 💬)</span>`
+                : '';
 
-    let deleteBtn = myUsername === 'Admin' 
-        ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
-        : '';
+            let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
+			
+            // ✅ [FIXED] ส่วนแสดงผู้ชนะ
+			let winnerHtml = '';
+			if (post.acceptedViewer) {
+			    winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
+			}
 
-    let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
-    let occupiedText = isOccupied 
-        ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(กำลังคุย 💬)</span>`
-        : '';
+            let baseStyle = '';
+            let icon = '';
+			
+			//สำหรับ Pinned Post
+            let pinnedText = '';
+            if (post.isPinned) {
+                baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; // สีม่วง
+                icon = '📌'; 
+                pinnedText = ' (กระทู้ปักหมุด)';
+            }
 
-    // ถ้าเป็น Admin จะซ่อนคะแนนดาว (⭐) แล้วใช้มงกุฎแทน
-    let ratingHtml = isAdmin 
-        ? "" 
-        : `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
-    
-    let winnerHtml = '';
-    if (post.acceptedViewer) {
-        winnerHtml = ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>`;
-    }
+            if (post.status === 'finished' || post.status === 'closed_permanently') {
+                baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
+                icon = '🔒'; 
+            } else if (post.isClosed) {
+                baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
+                icon = '🔒';
+            } else if (!post.isPinned) {
+                baseStyle = 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
+                icon = '✅'; 
+            }
 
-    let baseStyle = '';
-    let icon = '';
-    
-    if (post.isPinned) {
-        baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;';
-        icon = '📌'; 
-    } else if (post.status === 'finished' || post.status === 'closed_permanently') {
-        baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
-        icon = '🔒'; 
-    } else if (post.isClosed) {
-        baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
-        icon = '🔒';
-    } else {
-        baseStyle = 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
-        icon = '✅'; 
-    }
+            let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) 
+				? "alert('⛔ กระทู้นี้ถูกปิดแล้ว')" 
+				: `location.href='post.html?id=${post.id}'`;
 
-    let action = (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) 
-        ? "alert('⛔ กระทู้นี้ถูกปิดแล้ว')" 
-        : `location.href='post.html?id=${post.id}'`;
+            let locationHtml = '';
+            if (post.location && post.location.lat && post.location.lng) {
+                const lat = post.location.lat.toFixed(4);
+                const lng = post.location.lng.toFixed(4);
+                
+                let displayText = post.location.name; // ค่าเริ่มต้น: แสดงชื่อสถานที่
+                
+                // ตรวจสอบว่าผู้ใช้เช็คอินหรือยัง (ถ้ามี filterLocation ให้คำนวณระยะ)
+                if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
+                    const dist = getDistanceFromLatLonInKm(
+                        filterLocation.lat, filterLocation.lng,
+                        post.location.lat, post.location.lng
+                    );
+                    displayText = `${dist.toFixed(1)} km`; 
+                }
 
-    let locationHtml = '';
-    if (post.location && post.location.lat && post.location.lng) {
-        let displayText = post.location.name;
-        if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
-            const dist = getDistanceFromLatLonInKm(filterLocation.lat, filterLocation.lng, post.location.lat, post.location.lng);
-            displayText = `${dist.toFixed(1)} km`; 
+                const mapsLink = `https://www.google.com/maps?q=${post.location.lat},${post.location.lng}`;
+                
+                locationHtml = `
+                    <a href="${mapsLink}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none; color:#007bff; font-size:0.85em; margin-left:10px;" 
+                        title="สถานที่: ${post.location.name}">
+                        📍 ${displayText} 
+                    </a>
+                `;
+            }
+
+            // ✅ แทรก winnerHtml ลงใน title
+            list.insertAdjacentHTML('beforeend', `
+                <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
+                    <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
+                        <br>
+                        <small>
+                            ${post.author} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
+                        </small>
+                        ${locationHtml}
+                        ${occupiedText}
+                    </div>
+                    
+                    <div style="display:flex; align-items:center;">
+                        ${deleteBtn}
+                    </div>
+                </div>
+            `);
         }
-        const mapsLink = `https://www.google.com/maps?q=${post.location.lat},${post.location.lng}`;
-        locationHtml = `<a href="${mapsLink}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none; color:#007bff; font-size:0.85em; margin-left:10px;">📍 ${displayText}</a>`;
-    }
-
-    list.insertAdjacentHTML('beforeend', `
-        <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
-            <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
-                <br>
-                <small>
-                    <span style="color:${nameColor}; font-weight:bold;">${adminCrowns} ${post.author}</span> 
-                    ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
-                </small>
-                ${locationHtml}
-                ${occupiedText}
-            </div>
-            <div style="display:flex; align-items:center;">
-                ${deleteBtn}
-            </div>
-        </div>
-    `);
-}
 		
 		// ฟังก์ชันสำหรับเปิด Modal ตั้งค่าโซน (โหลดรายการโซนทั้งหมด)
 async function openAdminZoneModal() {
@@ -3869,46 +3874,31 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     if (data.sender === 'System' && data.msgKey) {
         const lang = currentLang;
         const key = data.msgKey;
-        const t = translations[lang] || translations['th']; 
+        const t = translations[lang] || translations['th']; // Fallback เป็นไทย
         const messageTemplateFunc = t[key];
 
         if (typeof messageTemplateFunc === 'function') {
+            // เรียกใช้ฟังก์ชันแปล พร้อมส่งข้อมูลที่จำเป็น
             translatedMsg = messageTemplateFunc(data.msgData);
         } else {
-            translatedMsg = data.msg; 
+            translatedMsg = data.msg; // ใช้ข้อความเดิมหากไม่พบ Key
         }
     } else {
-        translatedMsg = data.msg; 
+        translatedMsg = data.msg; // ข้อความปกติ
     }
-
-    // --- [เพิ่มส่วนนี้] Logic สำหรับแสดงผล Admin ---
-    // สร้างมงกุฎตามเลเวล
-    const getCrowns = (level) => {
-        let crowns = "";
-        for (let i = 0; i < level; i++) { crowns += "👑"; }
-        return crowns;
-    };
-
-    // เช็คว่าเป็น Admin หรือไม่ (เช็คจาก data.senderAdminLevel ที่ส่งมาจาก Server)
-    const isAdmin = data.senderAdminLevel && data.senderAdminLevel >= 1;
-    const adminCrowns = isAdmin ? getCrowns(data.senderAdminLevel) : "";
-    const nameColor = isAdmin ? "#0066FF" : "inherit"; // ถ้าเป็นแอดมินใช้สีน้ำเงิน
-    // ------------------------------------------
+    // ----------------------------------------------------
 
     if (data.sender === 'System') {
         div.className = 'system-msg'; 
         if (data.postId) {
-            div.innerHTML = `<span class="system-link" onclick="checkAndGo(${data.postId})">${translatedMsg} <br><small>👉 Go To Topic</small></span>`;
+            div.innerHTML = `<span class="system-link" onclick="checkAndGo(${data.postId})">${translatedMsg} <br><small>👉 Go To  Topic</small></span>`;
         } else {
             div.innerHTML = `${translatedMsg}`; 
         }
     } else {
         div.className = 'msg ' + (data.sender === myUsername ? 'my-msg' : 'other-msg');
-        
-        // ใส่สีชื่อและมงกุฎในส่วนนี้
-        div.innerHTML = `<b style="color: ${nameColor};">${adminCrowns} ${data.sender}:</b> ${translatedMsg}`;
+        div.innerHTML = `<b>${data.sender}:</b> ${translatedMsg}`;
     }
-    
     box.appendChild(div);
 }
 
