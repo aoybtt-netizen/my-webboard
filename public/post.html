@@ -1230,7 +1230,7 @@ socket.on('viewer-left-location', (data) => {
         function renderPost(post, isAdmin = false) {
 			const authorStats = `
 						<div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-						📝: ${post.authorTotalPosts || 0}|
+						📝: ${post.authorTotalPosts || 0} |
 						✅: ${post.authorCompletedJobs || 0}
 					</div>
 				`;
@@ -1533,6 +1533,14 @@ socket.on('viewer-left-location', (data) => {
                     titleEl.innerText = t['handover_status_found_title'];
                     
                     messageEl.innerHTML = `<span style="color:#28a745"><i class="fas fa-check-circle"></i> ${t['handover_status_found_msg']}</span>`;
+					
+					const authorStats = `
+    <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+        📝 : ${post.authorTotalPosts || 0} | 
+        ✅ : ${post.authorCompletedJobs || 0} 
+    </div>
+`;
+document.getElementById('post-author').insertAdjacentHTML('afterend', authorStats);
                     
                     viewerEl.innerHTML = `${data.viewer} <span style="color:#ffc107; margin-left:5px;">⭐ ${ratingShow}</span>`;
                     
