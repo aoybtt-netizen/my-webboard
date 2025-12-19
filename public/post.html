@@ -1390,11 +1390,11 @@ socket.on('viewer-left-location', (data) => {
     // ตรวจสอบยืนยันก่อนปิด
     if (confirm(t['confirm_close_post'])) { 
         try {
-            const res = await fetch(`/api/posts/${postId}/close-manual`, {
-                method: 'PUT', // ต้องตรงกับ app.put ใน server
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ requestBy: myUsername }) // ส่งชื่อคนกดไปด้วย
-            });
+            const res = await fetch(`/api/posts/${postId}/close`, { // แก้ให้เหลือแค่ /close
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestBy: myUsername })
+});
 
             const data = await res.json();
 
