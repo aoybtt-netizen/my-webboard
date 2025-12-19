@@ -1471,7 +1471,7 @@ if (userDisplay) {
             if (myAdminLevel === 2) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑</div>';
             if (myAdminLevel === 3) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑👑</div>';
             
-            avatarEl.innerHTML = `👤${stars}`;
+            avatarEl.innerHTML = `🐱${stars}`;
         }
                         
         const adminPanelDiv = document.getElementById('admin-panel');
@@ -3966,7 +3966,7 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
                 let nameDisplay = `👤 ${c.partner}`;
                 if (c.isAdmin) {
                     hasAdminContact = true; // เจอแล้ว! เคยคุยกับ Admin
-                    nameDisplay = `🛡️ <b>${c.partner}</b> ${t['admin_label'] || '(Admin)'}`;
+                    nameDisplay = `👑️ <b>${c.partner}</b> ${t['admin_label'] || '(Admin)'}`;
                 }
 
                 return `
@@ -4030,7 +4030,7 @@ async function fetchNearestAdminForInbox(elementId) {
         if (data.found && data.admin) {
             el.innerHTML = `
                 <div class="user-list-item" style="background:#e3f2fd; border:1px solid #90caf9; border-radius:8px;" onclick="openPrivateChat('${data.admin}')">
-                    <span>🛡️ <b>${data.admin}</b> <small style="color:gray;">(${data.zoneName || (t['admin_label'] ? t['admin_label'].replace(/[()]/g, '') : 'Administrator')})</small></span>
+                    <span>👑️ <b>${data.admin}</b> <small style="color:gray;">(${data.zoneName || (t['admin_label'] ? t['admin_label'].replace(/[()]/g, '') : 'Administrator')})</small></span>
                     <span style="color:#007bff; font-weight:bold; font-size:0.8em;">${t['admin_start_chat'] || 'เริ่มแชทเลย!'}</span>
                 </div>
                 <div style="font-size:0.75em; color:gray; text-align:center; margin-top:2px;">${t['admin_recommended_label'] || 'แนะนำผู้ดูแลโซนใกล้คุณ'}</div>
