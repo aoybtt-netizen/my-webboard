@@ -1307,12 +1307,7 @@ socket.on('viewer-left-location', (data) => {
                     backBtn.style.display = 'block';
                     
                     // ถ้าเป็น Admin ให้โชว์ปุ่มปิดกระทู้ได้
-                    if (isOwner) {
-        // 1. ถ้าเป็น "เจ้าของโพสต์": เห็นทุกปุ่ม (เตะคน, ส่งมอบงาน, ปิดกระทู้)
-        restartBtn.style.display = 'block';
-        handoverBtn.style.display = 'block';
-        manualCloseBtn.style.display = 'block';
-    } else if (isAdminRole) {
+                    if (isAdminRole) {
         // 2. ถ้าเป็น "แอดมิน" (และไม่ใช่เจ้าของ): ให้เห็นแค่ปุ่ม "ปิดกระทู้" เท่านั้น
         manualCloseBtn.style.display = 'block';
         
@@ -1320,7 +1315,6 @@ socket.on('viewer-left-location', (data) => {
         restartBtn.style.display = 'none';
         handoverBtn.style.display = 'none';
     }
-}
                 }
                 // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
                 return; 
