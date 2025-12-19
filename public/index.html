@@ -1345,12 +1345,8 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
         async function startApp(name) {
     myUsername = name;
-const userDisplay = document.getElementById('user-display');
-
-if (userDisplay) {
-    userDisplay.innerText = name; 
-    userDisplay.style.color = "#000000";
-}
+	const userDisplay = document.getElementById('user-display');
+    if(userDisplay) userDisplay.innerText = name;
 
     document.getElementById('login-modal').classList.add('hidden');
     socket.emit('register', myUsername);
