@@ -1057,34 +1057,13 @@ app.get('/api/posts', async (req, res) => {
 
     const paginatedPosts = sortedPosts.slice(skip, skip + limit);
     const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
-    
-    // ดึงข้อมูล User รวมถึง adminLevel ออกมาด้วย
     const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
-    
     const authorMap = {};
-    authors.forEach(u => {
-        // ⭐ เก็บทั้ง rating และ adminLevel ไว้ใน Map
-        authorMap[u.username] = {
-            rating: u.rating,
-            adminLevel: u.adminLevel || 0 
-        };
-    });
+    authors.forEach(u => authorMap[u.username] = u.rating);
 
     res.json({
-        posts: paginatedPosts.map(post => {
-            const authorData = authorMap[post.author];
-            return { 
-                ...post, 
-                // ส่งค่า rating ไปแสดงผล
-                authorRating: authorData !== undefined ? authorData.rating.toFixed(2) : '0.00',
-                // ⭐ ส่งค่า authorAdminLevel ไปเพื่อให้หน้าบ้านใช้สร้างมงกุฎ
-                authorAdminLevel: authorData !== undefined ? authorData.adminLevel : 0 
-            };
-        }),
-        totalItems: sortedPosts.length, 
-        totalPages: Math.ceil(sortedPosts.length / limit), 
-        currentPage: page, 
-        limit
+        posts: paginatedPosts.map(post => ({ ...post, authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' })),
+        totalItems: sortedPosts.length, totalPages: Math.ceil(sortedPosts.length / limit), currentPage: page, limit
     });
 });
 
