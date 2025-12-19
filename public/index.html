@@ -2153,6 +2153,7 @@ async function showMyClosedPosts(page = 1) {
         console.error('Error fetching my closed posts:', e);
         showNotification('เกิดข้อผิดพลาดในการดึงรายการกระทู้', 'fas fa-exclamation-triangle', 3000, '#dc3545');
     }
+	toggleSidebar();
 }
 
         function renderPostList() {
