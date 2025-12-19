@@ -1563,7 +1563,7 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
         }
 
         const posts = await postsCollection.find(query)
-            .sort({ closedAt: -1 })
+            .sort({ id: -1 })
             .skip(skip)
             .limit(parseInt(limit))
             .toArray();
