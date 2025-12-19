@@ -1222,6 +1222,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         isClosed: false, isPinned: (author === 'Admin'),
         zoneId: postZoneId
     };
+	await postsCollection.insertOne(newPost);
     await usersCollection.updateOne(
     { username: author },
     { $inc: { totalPosts: 1 } } // $inc คือการบวกค่าเพิ่มไป 1
