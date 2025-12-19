@@ -415,7 +415,7 @@ app.get('/api/users-list', async (req, res) => {
             adminLevel: u.adminLevel || 0,
             country: u.country || 'N/A',
             assignedLocation: u.assignedLocation || null,
-            relationType: u.relationType || 'OTHER'
+            relationType: u.relationType || 'OTHER',
 			totalPosts: u.totalPosts || 0,
 			completedJobs: u.completedJobs || 0
         });
