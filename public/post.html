@@ -1285,15 +1285,13 @@ socket.on('viewer-left-location', (data) => {
             if (oldAlert) oldAlert.remove();
 
             // --- LOGIC การแสดงปุ่มและการล็อค ---
-            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin' || isAdmin;
-			const isOwner = myUsername === post.author; // เพิ่มตัวแปรเช็คว่าเป็นเจ้าของหรือไม่
-			const isAdminRole = myUsername === 'Admin' || isAdmin; // เช็คว่าเป็นแอดมินหรือไม่
+            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin';
 
-					// ซ่อนปุ่มทั้งหมดก่อนเป็นค่าเริ่มต้น
-					finishBtn.style.display = 'none';
-					restartBtn.style.display = 'none';
-					handoverBtn.style.display = 'none';
-					manualCloseBtn.style.display = 'none';
+            // ซ่อนปุ่มทั้งหมดก่อน
+            finishBtn.style.display = 'none';
+            restartBtn.style.display = 'none';
+            handoverBtn.style.display = 'none';
+            manualCloseBtn.style.display = 'none'; 
             
             if (post.isPinned) {
                 // ถ้ากระทู้ถูกปิดแล้ว
@@ -1305,23 +1303,14 @@ socket.on('viewer-left-location', (data) => {
                     
                     // Admin สามารถเปิดปิดใหม่ได้ไหม? (ในที่นี้ให้ Admin เห็นปุ่มปิดไม่ได้แล้ว เพราะปิดไปแล้ว)
                 } else {
-    // 🟢 สถานะปกติ (กระทู้ยังเปิดอยู่)
-    backBtn.style.display = 'block';
-    
-    if (isOwner) {
-        // 1. ถ้าเป็น "เจ้าของโพสต์": เห็นทุกปุ่ม (เตะคน, ส่งมอบงาน, ปิดกระทู้)
-        restartBtn.style.display = 'block';
-        handoverBtn.style.display = 'block';
-        manualCloseBtn.style.display = 'block';
-    } else if (isAdminRole) {
-        // 2. ถ้าเป็น "แอดมิน" (และไม่ใช่เจ้าของ): ให้เห็นแค่ปุ่ม "ปิดกระทู้" เท่านั้น
-        manualCloseBtn.style.display = 'block';
-        
-        // มั่นใจว่าปุ่มอื่นถูกซ่อน
-        restartBtn.style.display = 'none';
-        handoverBtn.style.display = 'none';
-    }
-}
+                    // ถ้ายังเปิดอยู่
+                    backBtn.style.display = 'block';
+                    
+                    // ถ้าเป็น Admin ให้โชว์ปุ่มปิดกระทู้ได้
+                    if (myUsername === 'Admin') {
+                        manualCloseBtn.style.display = 'block';
+                    }
+                }
                 // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
                 return; 
             }
