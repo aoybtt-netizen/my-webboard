@@ -1249,26 +1249,50 @@ app.delete('/api/posts/:id', async (req, res) => {
 });
 
 // 17. Manual Close
+// เปลี่ยนเป็น app.put ให้ตรงกับหน้าบ้าน หรือใช้ PATCH ก็ได้
 app.put('/api/posts/:id/close', async (req, res) => {
     const postId = req.params.id;
     const { requestBy } = req.body;
     
-    const post = await postsCollection.findOne({ id: postId });
-    if (!post) return res.status(404).json({ error: 'Post not found' });
+    try {
+        // 1. ตรวจสอบเรื่องเลข ID (แปลงเป็นตัวเลข)
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ error: 'Post not found' });
 
-    // ตรวจสอบสิทธิ์: ต้องเป็นเจ้าของโพสต์ หรือเป็น Admin Level 1 ขึ้นไป
-    const requester = await getUserData(requestBy);
-    if (requestBy !== post.author && requester.adminLevel < 1) {
-        return res.status(403).json({ error: 'Permission denied. Only Author or Admin (Level 1+) can close this post.' });
+        // 2. ตรวจสอบสิทธิ์
+        const requester = await getUserData(requestBy);
+        if (requestBy !== post.author && (!requester || requester.adminLevel < 1)) {
+            return res.status(403).json({ error: 'ไม่มีสิทธิ์ปิดกระทู้นี้' });
+        }
+
+        // 3. อัปเดตทั้ง status และ isClosed (เพื่อให้สอดคล้องกับ API อื่น)
+        await postsCollection.updateOne(
+            { id: parseInt(postId) }, 
+            { $set: { 
+                status: 'closed', 
+                isClosed: true, 
+                closedAt: Date.now() 
+            } }
+        );
+        
+        // 4. ส่งแจ้งเตือน (Notification)
+        const notifMsg = { 
+            sender: 'System', 
+            target: post.author, 
+            msgKey: 'POST_CLOSED', 
+            msgData: { title: post.title }, 
+            msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, 
+            timestamp: Date.now() 
+        };
+        await messagesCollection.insertOne(notifMsg);
+        io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
+
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server Error' });
     }
-
-    await postsCollection.updateOne({ id: postId }, { $set: { status: 'closed' } });
-    
-    const notifMsg = { sender: 'System', target: post.author, msgKey: 'POST_CLOSED', msgData: { title: post.title }, msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, timestamp: Date.now() };
-    await messagesCollection.insertOne(notifMsg);
-    io.to(post.author).emit('private-message', { ...notifMsg, to: post.author });
-
-    res.json({ success: true });
 });
 
 // 18. Deduct Coins (แก้ไข: แยกเงื่อนไข Level 3 กับ 1-2)
