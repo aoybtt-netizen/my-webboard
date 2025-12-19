@@ -2023,65 +2023,74 @@ io.on('connection', (socket) => {
     });
 
     socket.on('join-post-room', async ({ postId, username, lang }) => {
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
+    // 1. ค้นหากระทู้
+    const post = await postsCollection.findOne({ id: parseInt(postId) });
+    
+    if (!post) {
+        socket.emit('access-denied', translateServerMsg('post_not_found', lang));
+        return;
+    }
+
+    // 🎯 [แก้ไขจุดที่ 1] ดึงข้อมูลเจ้าของกระทู้เพื่อเอาสถิติมาแสดง
+    const authorData = await getUserData(post.author);
+    
+    // 🎯 [แก้ไขจุดที่ 2] รวมร่างข้อมูล Post + สถิติ Author
+    const postWithStats = {
+        ...post,
+        authorRating: authorData.rating ? authorData.rating.toFixed(2) : '0.00',
+        authorTotalPosts: authorData.totalPosts || 0,
+        authorCompletedJobs: authorData.completedJobs || 0
+    };
+
+    // DEBUG เพื่อดูว่าดึงเลขมาได้จริงไหมก่อนส่งออก
+    console.log(`\n--- 📡 Socket Room Join: ${postId} ---`);
+    console.log(`👤 Author: ${post.author} | Posts: ${authorData.totalPosts} | Done: ${authorData.completedJobs}`);
+
+    // ดึงข้อมูล User คนที่กำลังเข้าร่วม (Viewer)
+    const user = await usersCollection.findOne({ username: username });
+    const myAdminLevel = user ? (user.adminLevel || 0) : 0;
+
+    const isOwner = username === post.author;
+    const isAdmin = (username === 'Admin') || (myAdminLevel >= 1);
+    const isParticipant = isOwner || username === post.acceptedViewer;
+
+    // --- ตรวจสอบสิทธิ์การเข้าถึง ---
+    
+    // CASE A: เจ้าของ หรือ Admin เข้าได้เสมอ
+    if (isOwner || isAdmin) {
+        socket.join(`post-${postId}`);
+        // ✅ ส่ง postWithStats แทน post
+        socket.emit('access-granted', { post: postWithStats, isAdmin });
         
-        if (!post) {
-            // ถ้าไม่เจอกระทู้
-            socket.emit('access-denied', translateServerMsg('post_not_found', lang));
-            return;
-        }
-
-        // ⭐ [NEW] ดึงข้อมูล User จากฐานข้อมูลเพื่อดู Admin Level
-        const user = await usersCollection.findOne({ username: username });
-        const myAdminLevel = user ? (user.adminLevel || 0) : 0;
-
-        const isOwner = username === post.author;
-        // ⭐ [EDIT] เป็น Admin ถ้าชื่อ 'Admin' หรือมี Level >= 1
-        const isAdmin = (username === 'Admin') || (myAdminLevel >= 1);
-        
-        const isParticipant = isOwner || username === post.acceptedViewer;
-
-        // ถ้าเป็น เจ้าของ หรือ Admin -> เข้าได้เสมอ (ทะลุทุกเงื่อนไข)
-        if (isOwner || isAdmin) {
-		socket.join(`post-${postId}`);
-		socket.emit('access-granted', { post, isAdmin });
-            
-            // ส่งข้อมูลพิกัดให้ดู (ถ้ามี)
-            if (viewerGeolocation[postId]) {
-                for (const [viewerName, loc] of Object.entries(viewerGeolocation[postId])) {
-                    socket.emit('viewer-location-update', { 
-                        viewer: viewerName, 
-                        location: loc 
-                    });
-                }
+        if (viewerGeolocation[postId]) {
+            for (const [viewerName, loc] of Object.entries(viewerGeolocation[postId])) {
+                socket.emit('viewer-location-update', { viewer: viewerName, location: loc });
             }
-            return; 
         }
+        return; 
+    }
 
-        // กรณีจบงาน หรือ ปิดกระทู้ -> คนอื่นเข้าไม่ได้ (แต่ Admin ทะลุไปแล้วด้านบน)
-        if (post.status === 'finished' || post.isClosed) {
-            if (isParticipant) {
-                socket.join(`post-${postId}`);
-                socket.emit('access-granted', { post, isAdmin: false });
-            } else {
-                socket.emit('access-denied', translateServerMsg('closed_or_finished', lang));
-            }
-            return;
-        }
-
-        // กรณีห้องปกติ (เช็คว่าห้องเต็มไหม)
-        const currentViewer = postViewers[postId];
-        if (!currentViewer) {
-            postViewers[postId] = username;
+    // CASE B: กระทู้จบงาน หรือ ปิดแล้ว
+    if (post.status === 'finished' || post.isClosed) {
+        if (isParticipant) {
             socket.join(`post-${postId}`);
-            socket.emit('access-granted', { post, isAdmin: false });
-        } else if (currentViewer === username) {
-            socket.join(`post-${postId}`);
-            socket.emit('access-granted', { post, isAdmin: false });
+            socket.emit('access-granted', { post: postWithStats, isAdmin: false });
         } else {
-            socket.emit('access-denied', translateServerMsg('room_occupied', lang));
+            socket.emit('access-denied', translateServerMsg('closed_or_finished', lang));
         }
-    });
+        return;
+    }
+
+    // CASE C: กรณีการเข้าชมปกติ (เช็คห้องเต็ม)
+    const currentViewer = postViewers[postId];
+    if (!currentViewer || currentViewer === username) {
+        postViewers[postId] = username;
+        socket.join(`post-${postId}`);
+        socket.emit('access-granted', { post: postWithStats, isAdmin: false });
+    } else {
+        socket.emit('access-denied', translateServerMsg('room_occupied', lang));
+    }
+});
 
 	
 
