@@ -1540,48 +1540,53 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     try {
+        console.log("--- Debug: Start Fetching Zone Posts ---");
+        console.log("1. Username received:", username);
+
         const user = await usersCollection.findOne({ username: username });
-        
-        // 1. ตั้งเงื่อนไขพื้นฐาน: ต้องเป็นกระทู้ที่ปิดแล้วเท่านั้น
         let query = { isClosed: true }; 
 
         if (user && user.adminLevel >= 1) {
-            // 2. หาโซนที่แอดมินคนนี้ดูแล
-            const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
+            console.log("2. User is Admin, Level:", user.adminLevel);
 
+            // 🔍 [จุดที่น่าจะผิด] ใส่ Debug เช็คตรงนี้
+            const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
+            
             if (myZone) {
-                // 🎯 จุดสำคัญ: ใช้ zoneId ในการกรองเท่านั้น!! 
-                // ไม่ต้องใส่เงื่อนไข lat, lng เข้าไปใน query นี้เด็ดขาด
-                query.zoneId = myZone.id || myZone._id.toString();
+                // ถ้าหาเจอ จะเข้าเงื่อนไขนี้
+                console.log("3. ✅ Zone Found:", myZone.name, "| ID:", myZone.id || myZone._id);
                 
-                console.log(`[Admin View] ${username} ดูเฉพาะกระทู้ใน Zone ID: ${query.zoneId}`);
+                query.zoneId = myZone.id || myZone._id.toString();
             } else {
-                // ถ้าแอดมินไม่มีโซน ให้เห็นเฉพาะกระทู้ที่ตัวเองเป็นคนสร้างและปิดเอง
-                query.author = username;
+                // ถ้าหาไม่เจอ จะเข้าเงื่อนไขนี้ (นี่คือสาเหตุที่ทำให้เห็นเฉพาะของตัวเอง)
+                console.log("3. ❌ Zone NOT Found for this user. Falling back to author search.");
+                query.author = username; 
             }
         } else {
-            // User ทั่วไป เห็นเฉพาะกระทู้ที่ตัวเองเป็นคนสร้างและปิดเอง
+            console.log("2. User is not an Admin.");
             query.author = username;
         }
 
-        // 3. ดึงข้อมูลจากฐานข้อมูล
+        console.log("4. Final MongoDB Query:", JSON.stringify(query));
+
         const posts = await postsCollection.find(query)
-            .sort({ closedAt: -1 }) // เรียงตามเวลาที่ปิดล่าสุด
+            .sort({ closedAt: -1 })
             .skip(skip)
             .limit(parseInt(limit))
             .toArray();
 
-        const totalItems = await postsCollection.countDocuments(query);
+        console.log("5. Number of posts found:", posts.length);
+        console.log("--- Debug: End ---");
 
         res.json({
             success: true,
             posts,
-            totalItems,
-            totalPages: Math.ceil(totalItems / limit),
+            totalItems: await postsCollection.countDocuments(query),
+            totalPages: Math.ceil(await postsCollection.countDocuments(query) / limit),
             currentPage: parseInt(page)
         });
     } catch (err) {
-        console.error("Error fetching zone closed posts:", err);
+        console.error("Debug Error:", err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
