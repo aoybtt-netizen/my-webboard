@@ -1086,15 +1086,27 @@ app.get('/api/posts/:id/viewer-status', async (req, res) => {
     const postId = parseInt(req.params.id);
     const requestBy = req.query.requestBy;
     const post = await postsCollection.findOne({ id: postId });
-    if (!post) return res.status(404).json({ error: 'Post not found' });
-	if (post.isPinned) return res.json({ isOccupied: false, viewer: null });
 
-    if (requestBy !== 'Admin' && requestBy !== post.author) return res.status(403).json({ error: 'Permission denied.' });
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (post.isPinned) return res.json({ isOccupied: false, viewer: null });
+
+    if (requestBy !== 'Admin' && requestBy !== post.author) {
+        return res.status(403).json({ error: 'Permission denied.' });
+    }
 
     const currentViewer = postViewers[postId];
     if (currentViewer && currentViewer !== 'Admin' && currentViewer !== post.author) {
+        // ดึงข้อมูล User ของคนดู (Viewer) มาทั้งหมด
         const viewerUser = await getUserData(currentViewer);
-        return res.json({ isOccupied: true, viewer: currentViewer, rating: viewerUser.rating });
+
+        // 🎯 ส่งค่าสถิติออกไปใน JSON Response
+        return res.json({ 
+            isOccupied: true, 
+            viewer: currentViewer, 
+            rating: viewerUser.rating,
+            totalPosts: viewerUser.totalPosts || 0,     // เพิ่มตรงนี้
+            completedJobs: viewerUser.completedJobs || 0 // เพิ่มตรงนี้
+        });
     }
     res.json({ isOccupied: false, viewer: null });
 });

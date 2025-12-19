@@ -1529,23 +1529,23 @@ socket.on('viewer-left-location', (data) => {
                     const ratingShow = data.rating !== undefined 
                         ? parseFloat(data.rating).toFixed(2) 
                         : '0.00'; 
+						const totalPosts = data.totalPosts || 0;
+						const completedJobs = data.completedJobs || 0;
 
                     titleEl.innerText = t['handover_status_found_title'];
                     
                     messageEl.innerHTML = `<span style="color:#28a745"><i class="fas fa-check-circle"></i> ${t['handover_status_found_msg']}</span>`;
-					
-					const authorStats = `
-    <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-        📝 : ${post.authorTotalPosts || 0} | 
-        ✅ : ${post.authorCompletedJobs || 0} 
+                    
+                    viewerEl.innerHTML = `
+    <div>${data.viewer} <span style="color:#ffc107; margin-left:5px;">⭐ ${ratingShow}</span></div>
+    <div style="font-size: 0.75em; color: #666; margin-top: 5px; font-weight: normal;">
+        <i class="fas fa-edit"></i> โพสต์: ${totalPosts} | 
+        <i class="fas fa-check-double"></i> จบงาน: ${completedJobs}
     </div>
 `;
-document.getElementById('post-author').insertAdjacentHTML('afterend', authorStats);
-                    
-                    viewerEl.innerHTML = `${data.viewer} <span style="color:#ffc107; margin-left:5px;">⭐ ${ratingShow}</span>`;
-                    
-                    viewerContainer.classList.remove('hidden'); 
-                    actionsEl.classList.remove('hidden');
+
+viewerContainer.classList.remove('hidden'); 
+actionsEl.classList.remove('hidden');
                     
                 } else {
                     // ⚠️ กรณีไม่พบ Viewer
