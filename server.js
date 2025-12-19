@@ -1069,23 +1069,63 @@ app.get('/api/posts', async (req, res) => {
     });
 });
 
-// 12. Single Post
+// 12. Single Post (ดึงข้อมูลกระทู้แบบระบุทุกตัวแปร)
 app.get('/api/posts/:id', async (req, res) => {
-    const id = parseInt(req.params.id);
-    const post = await postsCollection.findOne({ id: id });
-    if (!post) return res.status(404).json({ error: 'ไม่พบกระทู้' });
+    try {
+        const id = parseInt(req.params.id);
+        const post = await postsCollection.findOne({ id: id });
 
-    if(!post.isClosed && Date.now() - post.id > 3600000 && !post.isPinned){ 
-        await postsCollection.updateOne({ id: id }, { $set: { isClosed: true } });
-        post.isClosed = true; 
+        if (!post) {
+            console.log(`❌ [Debug] ไม่พบกระทู้ ID: ${id}`);
+            return res.status(404).json({ error: 'ไม่พบกระทู้' });
+        }
+
+        // --- ระบบปิดกระทู้อัตโนมัติ ---
+        if(!post.isClosed && Date.now() - post.id > 3600000 && !post.isPinned){ 
+            await postsCollection.updateOne({ id: id }, { $set: { isClosed: true } });
+            post.isClosed = true; 
+        }
+
+        // ดึงข้อมูลเจ้าของกระทู้
+        const author = await getUserData(post.author);
+
+        // --- สร้าง Object สำหรับส่งออก (Manual Mapping) ---
+        // เราหยิบค่าจาก post มาใส่ในตัวแปรใหม่ทีละตัว
+        const responseData = {
+            // ข้อมูลจากฝั่งกระทู้ (Post)
+            id: post.id,
+            title: post.title,
+            topicId: post.topicId,
+            content: post.content,
+            author: post.author,
+            location: post.location,
+            imageUrl: post.imageUrl,
+            comments: post.comments || [],
+            isClosed: post.isClosed,
+            isPinned: post.isPinned,
+            status: post.status,
+            acceptedViewer: post.acceptedViewer,
+            zoneId: post.zoneId,
+
+            // ข้อมูลจากฝั่งผู้ใช้ (Author) ที่เราดึงเพิ่มมา
+            authorRating: author.rating ? author.rating.toFixed(2) : '0.00',
+            authorTotalPosts: author.totalPosts || 0,
+            authorCompletedJobs: author.completedJobs || 0
+        };
+
+        // DEBUG: เช็คค่าที่กำลังจะส่งออกทาง Terminal
+        console.log(`-------------------------------------------`);
+        console.log(`📡 [Debug] Sending Post ID: ${responseData.id}`);
+        console.log(`✍️  Title: ${responseData.title}`);
+        console.log(`👤 Author: ${responseData.author} (Posts: ${responseData.authorTotalPosts} | Done: ${responseData.authorCompletedJobs})`);
+        console.log(`-------------------------------------------`);
+
+        res.json(responseData);
+
+    } catch (err) {
+        console.error("🔥 [Error] API Failed:", err);
+        res.status(500).json({ error: 'Server Error' });
     }
-    const author = await getUserData(post.author);
-    res.json({ 
-        ...post, 
-        authorRating: author.rating.toFixed(2),
-        authorTotalPosts: author.totalPosts || 0,     // เพิ่มตรงนี้
-        authorCompletedJobs: author.completedJobs || 0 // เพิ่มตรงนี้
-    });
 });
 
 // 13. Viewer Status
