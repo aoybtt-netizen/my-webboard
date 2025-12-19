@@ -1249,7 +1249,6 @@ app.delete('/api/posts/:id', async (req, res) => {
 });
 
 // 17. Manual Close
-// เปลี่ยนเป็น app.put ให้ตรงกับหน้าบ้าน หรือใช้ PATCH ก็ได้
 app.put('/api/posts/:id/close', async (req, res) => {
     const postId = req.params.id;
     const { requestBy } = req.body;
@@ -1542,25 +1541,32 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
 
     try {
         const user = await usersCollection.findOne({ username: username });
-        let query = { isClosed: true };
+        
+        // 1. ตั้งเงื่อนไขพื้นฐาน: ต้องเป็นกระทู้ที่ปิดแล้วเท่านั้น
+        let query = { isClosed: true }; 
 
         if (user && user.adminLevel >= 1) {
-            // 1. หาว่า Admin คนนี้ดูแลโซนไหนอยู่
+            // 2. หาโซนที่แอดมินคนนี้ดูแล
             const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
 
             if (myZone) {
-                query.zoneId = myZone._id.toString(); 
+                // 🎯 จุดสำคัญ: ใช้ zoneId ในการกรองเท่านั้น!! 
+                // ไม่ต้องใส่เงื่อนไข lat, lng เข้าไปใน query นี้เด็ดขาด
+                query.zoneId = myZone.id || myZone._id.toString();
                 
-                console.log(`Admin ${username} กำลังดูงานในโซน: ${myZone.name}`);
+                console.log(`[Admin View] ${username} ดูเฉพาะกระทู้ใน Zone ID: ${query.zoneId}`);
             } else {
-                query.author = username; // ถ้าไม่มีโซน ให้ดูแค่ของตัวเอง
+                // ถ้าแอดมินไม่มีโซน ให้เห็นเฉพาะกระทู้ที่ตัวเองเป็นคนสร้างและปิดเอง
+                query.author = username;
             }
         } else {
-            query.author = username; // User ทั่วไป
+            // User ทั่วไป เห็นเฉพาะกระทู้ที่ตัวเองเป็นคนสร้างและปิดเอง
+            query.author = username;
         }
 
+        // 3. ดึงข้อมูลจากฐานข้อมูล
         const posts = await postsCollection.find(query)
-            .sort({ closedAt: -1 })
+            .sort({ closedAt: -1 }) // เรียงตามเวลาที่ปิดล่าสุด
             .skip(skip)
             .limit(parseInt(limit))
             .toArray();
@@ -1575,7 +1581,7 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
             currentPage: parseInt(page)
         });
     } catch (err) {
-        console.error(err);
+        console.error("Error fetching zone closed posts:", err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
