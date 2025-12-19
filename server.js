@@ -1511,7 +1511,8 @@ app.get('/api/my-closed-posts', async (req, res) => {
             }
         } else {
             // [กรณี User ทั่วไป] ให้ดึงเฉพาะกระทู้ที่ตัวเองเป็นคนปิด
-            query = { username: username, isClosed: true };
+            //query = { username: username, isClosed: true };
+			query = { author: username, isClosed: true };
         }
 
         // 2. สั่ง Query ข้อมูลตามเงื่อนไขที่ตั้งไว้
