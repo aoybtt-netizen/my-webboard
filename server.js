@@ -1222,7 +1222,11 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         isClosed: false, isPinned: (author === 'Admin'),
         zoneId: postZoneId
     };
-    await postsCollection.insertOne(newPost);
+    await usersCollection.updateOne(
+    { username: author },
+    { $inc: { totalPosts: 1 } } // $inc คือการบวกค่าเพิ่มไป 1
+		);
+	
     
     if (author !== 'Admin') {
         // แจ้งเตือน user ว่าโดนหักเงินเท่าไหร่
@@ -1513,7 +1517,7 @@ app.get('/api/my-closed-posts', async (req, res) => {
     
         // 2. สั่ง Query ข้อมูลตามเงื่อนไขที่ตั้งไว้
         const posts = await postsCollection.find(query)
-            .sort({ closedAt: -1 }) // เรียงตามเวลาที่ปิดล่าสุด
+            .sort({ id: -1 })
             .skip(skip)
             .limit(parseInt(limit))
             .toArray();
@@ -2149,16 +2153,40 @@ io.on('connection', (socket) => {
     });
 
     socket.on('confirm-finish-job', async ({ postId, accepted, requester }) => {
-        if (accepted) {
+    if (accepted) {
+        // 1. ดึงข้อมูลกระทู้มาก่อนเพื่อดูว่าใครคือคนโพสต์ (Author) และใครคือคนรับงาน (AcceptedViewer)
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        
+        if (post) {
+            // 2. อัปเดตสถานะกระทู้ตามปกติ
             await postsCollection.updateOne({ id: parseInt(postId) }, { 
                 $set: { status: 'rating_pending', isClosed: true, ratings: {} } 
             });
+
+            // 🎯 3. [เพิ่มใหม่] นับจำนวน "จบงาน" ให้กับทั้ง 2 ฝ่าย
+            // เพิ่มให้เจ้าของกระทู้ (Employer)
+            await usersCollection.updateOne(
+                { username: post.author },
+                { $inc: { completedJobs: 1 } }
+            );
+
+            // เพิ่มให้ผู้รับงาน (Worker)
+            if (post.acceptedViewer) {
+                await usersCollection.updateOne(
+                    { username: post.acceptedViewer },
+                    { $inc: { completedJobs: 1 } }
+                );
+            }
+
+            console.log(`📊 Updated completedJobs for ${post.author} and ${post.acceptedViewer}`);
+            
             io.emit('update-post-status');
             io.to(`post-${postId}`).emit('start-rating-phase');
-        } else {
-            io.to(requester).emit('finish-request-rejected', { msgKey: 'SYS_FINISH_REJECTED' });
         }
-    });
+    } else {
+        io.to(requester).emit('finish-request-rejected', { msgKey: 'SYS_FINISH_REJECTED' });
+    }
+});
 
     socket.on('submit-rating', async (data) => {
         const { postId, rater, rating, comment } = data;

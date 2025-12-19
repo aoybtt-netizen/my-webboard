@@ -1228,6 +1228,13 @@ socket.on('viewer-left-location', (data) => {
         }
 
         function renderPost(post, isAdmin = false) {
+			const authorStats = `
+						<div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+						📝 ตั้งกระทู้แล้ว: ${post.authorTotalPosts || 0} ครั้ง | 
+						✅ จบงานแล้ว: ${post.authorCompletedJobs || 0} ครั้ง
+					</div>
+				`;
+			document.getElementById('post-author').insertAdjacentHTML('afterend', authorStats);
             // 1. แสดงข้อมูลพื้นฐาน
             document.getElementById('post-title').innerText = post.title;
             document.getElementById('post-author').innerText = post.author;
