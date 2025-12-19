@@ -1452,17 +1452,20 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         
         // ... (ส่วนที่เหลือถูกต้องแล้วครับ ใช้โค้ดเดิมต่อได้เลย) ...
         myAdminLevel = data.adminLevel || 0;
-		const userDisplay = document.getElementById('user-display');
-    if (userDisplay) {
-        if (myAdminLevel > 0) {
-            userDisplay.style.color = "#0033FF"; // สีน้ำเงินสำหรับแอดมินทุกระดับ
-            userDisplay.style.fontWeight = "bold"; // แนะนำให้ใส่ตัวหนาด้วยครับ
-        } else {
-            userDisplay.style.color = "#000000"; // สีดำสำหรับ User ปกติ
-            userDisplay.style.fontWeight = "normal";
-        }
-    }
         myZoneId = data.userZoneId || null;
+
+        // 2. จัดการการแสดงผลชื่อ
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) {
+            userDisplay.innerText = myUsername; // ใส่ชื่อ
+            if (myAdminLevel > 0) {
+                userDisplay.style.color = "#0033FF"; // สีน้ำเงิน
+                userDisplay.style.fontWeight = "bold"; // ตัวหนา
+            } else {
+                userDisplay.style.color = "#000000"; // สีดำปกติ
+                userDisplay.style.fontWeight = "normal";
+            }
+        }
                 
         const avatarEl = document.getElementById('user-avatar-display');
         if (avatarEl) {
@@ -1563,8 +1566,8 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         const sidebarRating = document.getElementById('sidebar-rating');
         if (sidebarRating) sidebarRating.innerText = data.rating.toFixed(2);
         
-        const userDisplay = document.getElementById('user-display');
-        if (userDisplay) userDisplay.innerText = myUsername;
+        //const userDisplay = document.getElementById('user-display');
+        //if (userDisplay) userDisplay.innerText = myUsername;
         
         if (locationQuery) {
                 const locData = JSON.parse(decodeURIComponent(locationQuery.split('=')[1]));
