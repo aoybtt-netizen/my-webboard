@@ -310,6 +310,7 @@
     <button class="sidebar-btn" id="list-next-btn" onclick="changeListPage(1)" style="width:auto; padding: 5px 15px; font-size: 0.9em;" data-i18n-key="btn_next">ถัดไป ➡️</button>
 </div>
 
+
 		<div id="user-detail-modal" class="modal-overlay hidden" style="z-index: 2500;">
     <div class="modal-box" style="text-align: center;">
         <div style="display:flex; justify-content:flex-end;">
@@ -322,16 +323,21 @@
         <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
             💵 <span id="detail-coins" style="color:#28a745;">0.00</span> USD
         </div>
-        <div style="color:gray; font-size: 0.9em; margin-bottom: 20px;">
+        <div style="color:gray; font-size: 0.9em; margin-bottom: 10px;">
             ⭐ Rating: <span id="detail-rating">0.00</span> / 5.0
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 20px; font-size: 0.9em; color: #555; background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+            <div><i class="fas fa-edit"></i> โพสต์: <strong id="detail-total-posts">0</strong></div>
+            <div><i class="fas fa-check-double"></i> จบงาน: <strong id="detail-completed-jobs">0</strong></div>
         </div>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
         <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
-            </div>
+        </div>
     </div>
-	</div>
+</div>
 
 
             <div id="user-list-container">Loading...</div>
@@ -399,7 +405,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.22 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.23 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -4283,6 +4289,11 @@ function openUserDetail(targetUsername) {
     document.getElementById('detail-name').innerText = u.name;
     document.getElementById('detail-coins').innerText = u.coins.toLocaleString();
     document.getElementById('detail-rating').innerText = u.rating.toFixed(2);
+	
+	const postEl = document.getElementById('detail-total-posts');
+    const jobEl = document.getElementById('detail-completed-jobs');
+    if (postEl) postEl.innerText = u.totalPosts || 0;
+    if (jobEl) jobEl.innerText = u.completedJobs || 0;
     
     // สร้าง Badges
     let badgesHtml = '';

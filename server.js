@@ -416,6 +416,8 @@ app.get('/api/users-list', async (req, res) => {
             country: u.country || 'N/A',
             assignedLocation: u.assignedLocation || null,
             relationType: u.relationType || 'OTHER'
+			totalPosts: u.totalPosts || 0,
+			completedJobs: u.completedJobs || 0
         });
 
         let finalResults = [];
@@ -1069,23 +1071,19 @@ app.get('/api/posts', async (req, res) => {
     });
 });
 
-// 12. Single Post
-// 12. Single Post (API สำหรับดึงข้อมูลกระทู้เดี่ยว)
+// 12. Single Post	
 app.get('/api/posts/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        console.log(`🔍 [Debug] Fetching post ID: ${id}`); // DEBUG: เช็คว่า ID ที่ส่งมาถูกไหม
 
         const post = await postsCollection.findOne({ id: id });
         
         if (!post) {
-            console.log(`❌ [Debug] Post ID ${id} not found`);
             return res.status(404).json({ error: 'ไม่พบกระทู้' });
         }
 
         // --- ระบบปิดกระทู้อัตโนมัติ (1 ชม.) ---
         if(!post.isClosed && Date.now() - post.id > 3600000 && !post.isPinned){ 
-            console.log(`🔒 [Debug] Auto-closing post ${id} due to timeout`);
             await postsCollection.updateOne({ id: id }, { $set: { isClosed: true } });
             post.isClosed = true; 
         }
@@ -1093,8 +1091,6 @@ app.get('/api/posts/:id', async (req, res) => {
         // --- ดึงข้อมูลสถิติเจ้าของกระทู้ ---
         const author = await getUserData(post.author);
         
-        // DEBUG: เช็คค่าที่ดึงมาจาก Database ของ User คนนั้น
-        console.log(`📊 [Debug] Author: ${post.author} | Total: ${author.totalPosts || 0} | Done: ${author.completedJobs || 0}`);
 
         // --- เตรียมข้อมูลส่งกลับ (Response) ---
         const responseData = { 
@@ -1103,9 +1099,6 @@ app.get('/api/posts/:id', async (req, res) => {
             authorTotalPosts: author.totalPosts || 0,     // ส่งไปชื่อนี้ตรงกับ post.html
             authorCompletedJobs: author.completedJobs || 0 // ส่งไปชื่อนี้ตรงกับ post.html
         };
-
-        // DEBUG: เช็คโครงสร้างข้อมูลก่อนส่งออกครั้งสุดท้าย
-        // console.log("📦 [Debug] Final Response JSON:", responseData); 
 
         res.json(responseData);
 
@@ -2031,10 +2024,8 @@ io.on('connection', (socket) => {
         return;
     }
 
-    // 🎯 [แก้ไขจุดที่ 1] ดึงข้อมูลเจ้าของกระทู้เพื่อเอาสถิติมาแสดง
     const authorData = await getUserData(post.author);
     
-    // 🎯 [แก้ไขจุดที่ 2] รวมร่างข้อมูล Post + สถิติ Author
     const postWithStats = {
         ...post,
         authorRating: authorData.rating ? authorData.rating.toFixed(2) : '0.00',
@@ -2042,9 +2033,6 @@ io.on('connection', (socket) => {
         authorCompletedJobs: authorData.completedJobs || 0
     };
 
-    // DEBUG เพื่อดูว่าดึงเลขมาได้จริงไหมก่อนส่งออก
-    console.log(`\n--- 📡 Socket Room Join: ${postId} ---`);
-    console.log(`👤 Author: ${post.author} | Posts: ${authorData.totalPosts} | Done: ${authorData.completedJobs}`);
 
     // ดึงข้อมูล User คนที่กำลังเข้าร่วม (Viewer)
     const user = await usersCollection.findOne({ username: username });
