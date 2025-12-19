@@ -1967,10 +1967,12 @@ function getTransactionDetail(t) {
         title.innerText = translations[currentLang]['my_closed_posts'];
         // 💡 แทนที่จะเรียกฟังก์ชันแยก เราสั่ง fetch ตรงนี้ หรือสร้างฟังก์ชันกลางที่รับ URL ได้
         loadMyZoneClosedPosts(1); 
-    }else if (view === 'closed') {
-    title.innerText = translations[currentLang]['admin_closed_posts'];
-    title.style.color = "#6c757d";
-    loadPosts(); // <--- ปัญหาอาจจะอยู่ตรงนี้
+    } else if (view === 'closed') {
+    filterMaxDistance = null; // ปิดการกรองระยะทางเมื่อดูงานโซน
+    const statusElem = document.getElementById('filter-status');
+    if (statusElem) statusElem.innerText = ''; // ล้างข้อความบนหน้าจอ
+    
+    loadAdminZoneClosedPosts(1); // เรียกฟังก์ชันเฉพาะของแอดมิน
 }
     
     toggleSidebar();
