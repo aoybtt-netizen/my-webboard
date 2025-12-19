@@ -1967,7 +1967,11 @@ function getTransactionDetail(t) {
         title.innerText = translations[currentLang]['my_closed_posts'];
         // 💡 แทนที่จะเรียกฟังก์ชันแยก เราสั่ง fetch ตรงนี้ หรือสร้างฟังก์ชันกลางที่รับ URL ได้
         loadMyZoneClosedPosts(1); 
-    }
+    }else if (view === 'closed') {
+    title.innerText = translations[currentLang]['admin_closed_posts'];
+    title.style.color = "#6c757d";
+    loadPosts(); // <--- ปัญหาอาจจะอยู่ตรงนี้
+}
     
     toggleSidebar();
 }
@@ -3380,7 +3384,7 @@ function openAdminPinnedModal() {
     }
 	
 
-			async function createPost() {
+	async function createPost() {
     const titleInput = document.getElementById('title-input');
     const content = document.getElementById('content').value.trim();
     const imageFile = document.getElementById('post-image').files[0];
