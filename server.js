@@ -1518,24 +1518,21 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
 
     try {
         const user = await usersCollection.findOne({ username: username });
-        let query = { isClosed: true }; // พื้นฐานคือต้องเป็นกระทู้ที่ปิดแล้ว
+        let query = { isClosed: true };
 
         if (user && user.adminLevel >= 1) {
+            // 1. หาว่า Admin คนนี้ดูแลโซนไหนอยู่
             const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
+
             if (myZone) {
-                const lat = parseFloat(myZone.lat);
-                const lng = parseFloat(myZone.lng);
-                const range = 0.05;
-                // แอดมินดูตามพื้นที่
-                query.lat = { $gte: lat - range, $lte: lat + range };
-                query.lng = { $gte: lng - range, $lte: lng + range };
+                query.zoneId = myZone._id.toString(); 
+                
+                console.log(`Admin ${username} กำลังดูงานในโซน: ${myZone.name}`);
             } else {
-                // ถ้าไม่มีโซน ให้ดูเฉพาะของตัวเอง
-                query.author = username; 
+                query.author = username; // ถ้าไม่มีโซน ให้ดูแค่ของตัวเอง
             }
         } else {
-            // User ทั่วไปดูเฉพาะของตัวเอง
-            query.author = username;
+            query.author = username; // User ทั่วไป
         }
 
         const posts = await postsCollection.find(query)
@@ -1554,6 +1551,7 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
             currentPage: parseInt(page)
         });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
