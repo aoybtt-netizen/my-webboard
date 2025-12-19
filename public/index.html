@@ -390,7 +390,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.19 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.20 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1948,40 +1948,47 @@ function getTransactionDetail(t) {
             }
         }
         
-        function switchView(view) {
+        async function switchView(view) {
     currentView = view;
     currentPostPage = 1; 
-	
-	const filterContainer = document.getElementById('filter-container');
-            if (filterContainer) {
-                // โชว์เฉพาะหน้า 'home' เท่านั้น
-                filterContainer.style.display = (view === 'home') ? 'block' : 'none';
-            }
     
     const title = document.getElementById('page-title');
+    const filterContainer = document.getElementById('filter-container');
+    
+    if (filterContainer) {
+        filterContainer.style.display = (view === 'home') ? 'block' : 'none';
+    }
+
     if (view === 'home') {
-        title.innerText = translations[currentLang]['page_title']; // ใช้ translation key
-        title.style.color = "#333";
-        loadPosts(); 
-        
-        // 💡 ตั้งค่าปุ่ม Pagination ให้กลับไปเรียก loadPosts
-        document.getElementById('post-prev-btn').onclick = () => changePostPage(-1);
-        document.getElementById('post-next-btn').onclick = () => changePostPage(1);
+        title.innerText = translations[currentLang]['page_title'];
+        loadPosts(); // โหลดกระทู้ปกติ
 
-    } else if (view === 'closed') {
-        // ⭐ [FIXED] ใช้ translation key สำหรับหน้า Admin Closed
-        title.innerText = translations[currentLang]['admin_closed_posts'];
-        title.style.color = "#6c757d";
-        loadPosts(); // โหลดรายการปกติ (กระทู้ปิดทั้งหมด)
-
-    } else if (view === 'my_active') { 
-        showMyActivePosts(1); 
-        
-    } else if (view === 'my_closed') { 
-        showMyClosedPosts(1); 
+    } else if (view === 'my_closed') {
+        title.innerText = translations[currentLang]['my_closed_posts'];
+        // 💡 แทนที่จะเรียกฟังก์ชันแยก เราสั่ง fetch ตรงนี้ หรือสร้างฟังก์ชันกลางที่รับ URL ได้
+        loadMyZoneClosedPosts(1); 
     }
     
     toggleSidebar();
+}
+
+// สร้างฟังก์ชันช่วยโหลด (คล้าย loadPosts แต่เปลี่ยน URL)
+async function loadMyZoneClosedPosts(page) {
+    currentPostPage = page;
+    const response = await fetch(`/api/myzone-closed-posts?username=${myUsername}&page=${page}&limit=${POST_LIMIT}`);
+    const data = await response.json();
+    
+    const postListDiv = document.getElementById('post-list');
+    postListDiv.innerHTML = ''; // ล้างหน้าจอ
+
+    if (data.posts.length === 0) {
+        postListDiv.innerHTML = '<div style="text-align:center; padding:20px;">ไม่พบรายการ</div>';
+    } else {
+        data.posts.forEach(post => addPostToDOM(post)); // วาดโพสต์ลงหน้าจอ
+    }
+    
+    // อัปเดตปุ่ม Pagination ให้เรียกตัวเองซ้ำเมื่อเปลี่ยนหน้า
+    renderPagination(data.currentPage, data.totalPages, (p) => loadMyZoneClosedPosts(p));
 }
 
         async function loadPosts() {

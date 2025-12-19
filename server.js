@@ -1485,36 +1485,9 @@ app.get('/api/my-closed-posts', async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     try {
-        // 1. ตรวจสอบข้อมูล User ก่อนว่าเป็นแอดมินระดับไหน
-        const user = await usersCollection.findOne({ username: username });
-        
-        let query = {};
-
-        if (user && user.adminLevel >= 1) {
-            // ⭐ [กรณีเป็นแอดมิน] ให้ดึงพิกัดจากโซนที่รับผิดชอบ
-            const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
-
-            if (myZone) {
-                const lat = parseFloat(myZone.lat);
-                const lng = parseFloat(myZone.lng);
-                const range = 0.05; // กำหนดรัศมีรอบพิกัดโซน (ประมาณ 5 กม.)
-
-                query = {
-                    isClosed: true,
-                    // ดึงกระทู้ที่อยู่ในพิกัดของโซน
-                    lat: { $gte: lat - range, $lte: lat + range },
-                    lng: { $gte: lng - range, $lte: lng + range }
-                };
-            } else {
-                // ถ้าแอดมินยังไม่มีโซนที่ดูแล ให้ดึงเฉพาะของตัวเองไปก่อน
-                query = { username: username, isClosed: true };
-            }
-        } else {
-            // [กรณี User ทั่วไป] ให้ดึงเฉพาะกระทู้ที่ตัวเองเป็นคนปิด
-            //query = { username: username, isClosed: true };
-			query = { author: username, isClosed: true };
-        }
-
+		
+		query = { author: username, isClosed: true };
+    
         // 2. สั่ง Query ข้อมูลตามเงื่อนไขที่ตั้งไว้
         const posts = await postsCollection.find(query)
             .sort({ closedAt: -1 }) // เรียงตามเวลาที่ปิดล่าสุด
@@ -1534,6 +1507,53 @@ app.get('/api/my-closed-posts', async (req, res) => {
 
     } catch (err) {
         console.error(err);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
+// 21.2
+app.get('/api/myzone-closed-posts', async (req, res) => {
+    const { username, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    try {
+        const user = await usersCollection.findOne({ username: username });
+        let query = { isClosed: true }; // พื้นฐานคือต้องเป็นกระทู้ที่ปิดแล้ว
+
+        if (user && user.adminLevel >= 1) {
+            const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
+            if (myZone) {
+                const lat = parseFloat(myZone.lat);
+                const lng = parseFloat(myZone.lng);
+                const range = 0.05;
+                // แอดมินดูตามพื้นที่
+                query.lat = { $gte: lat - range, $lte: lat + range };
+                query.lng = { $gte: lng - range, $lte: lng + range };
+            } else {
+                // ถ้าไม่มีโซน ให้ดูเฉพาะของตัวเอง
+                query.author = username; 
+            }
+        } else {
+            // User ทั่วไปดูเฉพาะของตัวเอง
+            query.author = username;
+        }
+
+        const posts = await postsCollection.find(query)
+            .sort({ closedAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .toArray();
+
+        const totalItems = await postsCollection.countDocuments(query);
+
+        res.json({
+            success: true,
+            posts,
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            currentPage: parseInt(page)
+        });
+    } catch (err) {
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
