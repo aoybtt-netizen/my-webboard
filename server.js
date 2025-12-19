@@ -1540,43 +1540,46 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     try {
-        console.log("--- Debug: Start Fetching Zone Posts ---");
-        console.log("1. Username received:", username);
-
         const user = await usersCollection.findOne({ username: username });
         let query = { isClosed: true }; 
 
         if (user && user.adminLevel >= 1) {
-            console.log("2. User is Admin, Level:", user.adminLevel);
-
-            // 🔍 [จุดที่น่าจะผิด] ใส่ Debug เช็คตรงนี้
+            // 1. หาโซนที่แอดมินคนนี้ "คุม" อยู่จากฐานข้อมูล
             const myZone = await zonesCollection.findOne({ "refLocation.sourceUser": username });
-            
+
             if (myZone) {
-                // ถ้าหาเจอ จะเข้าเงื่อนไขนี้
-                console.log("3. ✅ Zone Found:", myZone.name, "| ID:", myZone.id || myZone._id);
+                // 🎯 2. ดึงข้อมูลพิกัดและ ID จากโซนมาใช้ (ไม่ต้องสน GPS มือถือแอดมิน)
+                const zoneId = myZone.id || myZone._id.toString();
+                const zoneLat = parseFloat(myZone.refLocation.lat || myZone.lat);
+                const zoneLng = parseFloat(myZone.refLocation.lng || myZone.lng);
+
+                console.log(`✅ แอดมิน ${username} คุมโซน: ${myZone.name} (พิกัด: ${zoneLat}, ${zoneLng})`);
+
+                // 3. ตั้งเงื่อนไขการดึงข้อมูล (แนะนำให้ใช้ zoneId เป็นหลัก)
+                // ถ้ามี zoneId ในโพสต์ ให้ใช้ zoneId (แม่นยำ 100%)
+                query.zoneId = zoneId;
+
+                /* 💡 แต่ถ้ากระทู้เก่าไม่มี zoneId และคุณอยากใช้พิกัดโซนกรองแทนรัศมี 500km 
+                ให้ใช้ Range แคบๆ (เช่น 0.05 = ~5km) รอบ "พิกัดโซน" แทน
                 
-                query.zoneId = myZone.id || myZone._id.toString();
+                const range = 0.05; 
+                query.lat = { $gte: zoneLat - range, $lte: zoneLat + range };
+                query.lng = { $gte: zoneLng - range, $lte: zoneLng + range };
+                */
+
             } else {
-                // ถ้าหาไม่เจอ จะเข้าเงื่อนไขนี้ (นี่คือสาเหตุที่ทำให้เห็นเฉพาะของตัวเอง)
-                console.log("3. ❌ Zone NOT Found for this user. Falling back to author search.");
+                console.log(`❌ ไม่พบโซนที่แอดมิน ${username} ดูแล`);
                 query.author = username; 
             }
         } else {
-            console.log("2. User is not an Admin.");
             query.author = username;
         }
-
-        console.log("4. Final MongoDB Query:", JSON.stringify(query));
 
         const posts = await postsCollection.find(query)
             .sort({ closedAt: -1 })
             .skip(skip)
             .limit(parseInt(limit))
             .toArray();
-
-        console.log("5. Number of posts found:", posts.length);
-        console.log("--- Debug: End ---");
 
         res.json({
             success: true,
@@ -1586,7 +1589,7 @@ app.get('/api/myzone-closed-posts', async (req, res) => {
             currentPage: parseInt(page)
         });
     } catch (err) {
-        console.error("Debug Error:", err);
+        console.error(err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
