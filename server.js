@@ -383,6 +383,8 @@ app.get('/api/user-info', async (req, res) => {
         adminLevel: user.adminLevel || 0,
         userZoneId: userZoneId,
         country: user.country || 'TH' // ส่งค่าประเทศกลับไปด้วย (Default TH)
+		totalPosts: user.totalPosts || 0,     
+        completedJobs: user.completedJobs || 0
     });
 });
 

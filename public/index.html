@@ -136,19 +136,28 @@
     <div class="sidebar" id="sidebar">
     <h2 id="sidebar-app-title" style="text-align:center; margin-top:0;">Webboard</h2>
     
+	
     <div style="text-align:center; margin-bottom:20px;">
-        <div style="font-size:40px;" id="user-avatar-display">👤</div>
-        <div id="user-display">Guest</div>
-        <div style="color:black; font-weight:bold; margin-top:5px;">
-            ⭐ <span id="sidebar-rating" style="color:black;">5.0</span> / 5.0
-        </div>
-        <div style="color:#28a745; font-weight:bold; margin-top:5px; line-height: 1.1;">
-            <div id="sidebar-coins">
-                <div id="sidebar-usd-display">0 USD</div> 
-                <div id="sidebar-converted-display" style="font-size:0.75em; color:#6c757d; font-weight: normal;">(0.00 THB)</div>
-            </div>
+    <div style="font-size:40px;" id="user-avatar-display">👤</div>
+    <div id="user-display">Guest</div>
+    
+    <div style="color:black; font-weight:bold; margin-top:5px;">
+        ⭐ <span id="sidebar-rating" style="color:black;">5.0</span> / 5.0
+    </div>
+
+    <div style="font-size: 0.8em; color: #666; margin-top: 5px; display: flex; justify-content: center; gap: 10px;">
+        <span><i class="fas fa-edit"></i> Post: <span id="sidebar-total-posts">0</span></span>
+        <span><i class="fas fa-check-double"></i> Job: <span id="sidebar-completed-jobs">0</span></span>
+    </div>
+
+    <div style="color:#28a745; font-weight:bold; margin-top:5px; line-height: 1.1;">
+        <div id="sidebar-coins">
+            <div id="sidebar-usd-display">0 USD</div> 
+            <div id="sidebar-converted-display" style="font-size:0.75em; color:#6c757d; font-weight: normal;">(0.00 THB)</div>
         </div>
     </div>
+</div>
+
     
     <div style="margin: 0 15px 15px 15px; display: flex; align-items: center; gap: 10px;">
     <label for="currency-select" style="font-size: 0.85em; color: #6c757d; margin-bottom:0;" data-i18n-key="label_currency">สกุลเงิน:</label>
@@ -1388,7 +1397,6 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         localStorage.setItem('preferredCurrency', currency);
         updateUserInfo(); // รีเฟรชยอดเงินทันที
         
-        // ⭐ [FIXED] ใช้ Translation Key และแทนที่ [CURRENCY]
         const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
 
         showNotification(translatedMsg, 'fas fa-money-bill');
@@ -1476,6 +1484,7 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             
             avatarEl.innerHTML = `🐱${stars}`;
         }
+		
                         
         const adminPanelDiv = document.getElementById('admin-panel');
         if (myAdminLevel >= 1) {
@@ -1565,6 +1574,17 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         
         const sidebarRating = document.getElementById('sidebar-rating');
         if (sidebarRating) sidebarRating.innerText = data.rating.toFixed(2);
+
+        // 🎯 [เพิ่มส่วนนี้เข้าไป] อัปเดตสถิติโพสต์และจบงานใน Sidebar
+        const sidebarTotalPosts = document.getElementById('sidebar-total-posts');
+        if (sidebarTotalPosts) {
+            sidebarTotalPosts.innerText = data.totalPosts || 0;
+        }
+
+        const sidebarCompletedJobs = document.getElementById('sidebar-completed-jobs');
+        if (sidebarCompletedJobs) {
+            sidebarCompletedJobs.innerText = data.completedJobs || 0;
+        }
         
         //const userDisplay = document.getElementById('user-display');
         //if (userDisplay) userDisplay.innerText = myUsername;
