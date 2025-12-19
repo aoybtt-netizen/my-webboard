@@ -1348,13 +1348,8 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 const userDisplay = document.getElementById('user-display');
 
 if (userDisplay) {
-    if (myAdminLevel > 0) {
-        userDisplay.style.color = "#0033FF";
-        userDisplay.style.fontWeight = "normal";
-    } else {
-        userDisplay.style.color = "#000000";
-        userDisplay.style.fontWeight = "normal";
-    }
+    userDisplay.innerText = name; 
+    userDisplay.style.color = "#000000";
 }
 
     document.getElementById('login-modal').classList.add('hidden');
@@ -1461,6 +1456,16 @@ if (userDisplay) {
         
         // ... (ส่วนที่เหลือถูกต้องแล้วครับ ใช้โค้ดเดิมต่อได้เลย) ...
         myAdminLevel = data.adminLevel || 0;
+		const userDisplay = document.getElementById('user-display');
+    if (userDisplay) {
+        if (myAdminLevel > 0) {
+            userDisplay.style.color = "#0033FF"; // สีน้ำเงินสำหรับแอดมินทุกระดับ
+            userDisplay.style.fontWeight = "bold"; // แนะนำให้ใส่ตัวหนาด้วยครับ
+        } else {
+            userDisplay.style.color = "#000000"; // สีดำสำหรับ User ปกติ
+            userDisplay.style.fontWeight = "normal";
+        }
+    }
         myZoneId = data.userZoneId || null;
                 
         const avatarEl = document.getElementById('user-avatar-display');
