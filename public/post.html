@@ -1228,14 +1228,22 @@ socket.on('viewer-left-location', (data) => {
         }
 
         function renderPost(post, isAdmin = false) {
+			const oldStats = document.getElementById('author-stats-container');
+			if (oldStats) oldStats.remove();
+
 			const total = post.authorTotalPosts || 0;
 			const completed = post.authorCompletedJobs || 0;
+    
+    // สร้าง HTML สำหรับสถิติ
 			const authorStats = `
         <div id="author-stats-container" style="font-size: 0.85em; color: #666; margin-top: 5px;">
             📝 โพสต์: ${total} | ✅ จบงาน: ${completed}
         </div>
-    `;
-			document.getElementById('post-author').insertAdjacentHTML('afterend', authorStats);
+		`;
+			const authorEl = document.getElementById('post-author');
+    if (authorEl) {
+        authorEl.insertAdjacentHTML('afterend', authorStats);
+    }
             // 1. แสดงข้อมูลพื้นฐาน
             document.getElementById('post-title').innerText = post.title;
             document.getElementById('post-author').innerText = post.author;
