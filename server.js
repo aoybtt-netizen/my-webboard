@@ -349,7 +349,8 @@ app.get('/api/admin/transactions', async (req, res) => {
 // 2. User Info
 app.get('/api/user-info', async (req, res) => {
     // 1. รับค่า country เพิ่มเข้ามา (ส่งมาจาก Frontend)
-    const { username, currency, location, country } = req.query; 
+    const { username, currency, location, country, lang } = req.query; 
+	const currentLang = lang || 'th'; // ป้องกันค่าว่าง 
     const targetCurrency = currency || DEFAULT_CURRENCY; 
 
     if (!username) return res.status(400).json({ error: 'No username' });
@@ -357,19 +358,22 @@ app.get('/api/user-info', async (req, res) => {
     const user = await getUserData(username);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.isBanned) {
-    let banMessage = (lang === 'th') ? "❌ Your account is suspended." : "❌ Your account is suspended.";
+    // กำหนดหัวข้อหลักเป็นภาษาอังกฤษตามที่คุณต้องการ
+    let banMessage = "❌ Your account is suspended.";
     
     if (user.banExpires) {
         const expireDate = new Date(user.banExpires);
-        // แปลงรูปแบบวันที่ให้ดูง่าย
-        const dateStr = expireDate.toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US');
-        const timeStr = expireDate.toLocaleTimeString(lang === 'th' ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+        // เลือก Format ตาม lang ที่ส่งมา (ถ้า th จะเห็นเป็นวันที่ไทย ถ้า en จะเห็นสากล)
+        const dateStr = expireDate.toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US');
+        const timeStr = expireDate.toLocaleTimeString(currentLang === 'th' ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' });
         
-        banMessage += (lang === 'th') 
-            ? ` To ${dateStr} Time ${timeStr} ` 
+        // คอมเมนต์ไทย: ต่อท้ายด้วยวันเวลาหมดอายุ
+        banMessage += (currentLang === 'th') 
+            ? ` until ${dateStr} Time ${timeStr}` 
             : ` until ${dateStr} at ${timeStr}.`;
     } else {
-        banMessage += (lang === 'th') ? " permanently." : " permanently.";
+        // คอมเมนต์ไทย: กรณีแบนถาวร
+        banMessage += " permanently.";
     }
 
     return res.status(403).json({ error: banMessage });
