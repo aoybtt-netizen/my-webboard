@@ -1471,16 +1471,21 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         }
 
         // --- [แก้ไขจุดที่ 2] เพิ่ม &country=${myCountry} เข้าไปใน URL ---
-        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}`);
+        const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}&lang=${currentLang}`);
         
         const data = await response.json();
 
+        if (response.status === 403) {
+            // ถ้า Server ตอบกลับมาเป็น 403 (Forbidden) หมายถึงโดนแบน
+            // ระบบจะแสดง alert ข้อความการแบนที่มีวันเวลาหมดอายุ (จากที่คุณเขียนไว้ใน API)
+            alert(data.error);
+            localStorage.removeItem('myUsername');
+            window.location.reload();
+            return;
+        }
+
         if (data.error) {
-            if (data.error.includes('ระงับ')) {
-                alert(data.error);
-                localStorage.removeItem('myUsername');
-                window.location.reload();
-            }
+            console.error(data.error);
             return;
         }
         
