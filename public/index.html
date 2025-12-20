@@ -342,25 +342,25 @@
 
 		<div id="ban-selection-modal" class="modal-overlay hidden" style="z-index: 3000;">
     <div class="modal-box" style="text-align: center; border-top: 5px solid #dc3545;">
-        <h3 style="color: #c53030;">⏱️ ระยะเวลาการระงับสิทธิ์</h3>
-        <p>ระบุระยะเวลาที่ต้องการแบนสมาชิก: <strong id="ban-target-name"></strong></p>
+        <h3 style="color: #c53030;">⏱️ Ban duration</h3>
+        <p>Specify the desired ban duration for the member.: <strong id="ban-target-name"></strong></p>
         
         <select id="ban-days-select-new" onchange="toggleCustomBanInputNew()" style="width: 100%; padding: 10px; margin-bottom: 10px;">
-            <option value="1">1 วัน</option>
-            <option value="2">2 วัน</option>
-            <option value="3">3 วัน</option>
-            <option value="7">7 วัน</option>
-            <option value="15">15 วัน</option>
-            <option value="30">30 วัน</option>
-            <option value="0">ถาวร (Permanent)</option>
-            <option value="custom">ระบุเอง (วัน)</option>
+            <option value="1">1 Day</option>
+            <option value="2">2 Day</option>
+            <option value="3">3 Day</option>
+            <option value="7">7 Day</option>
+            <option value="15">15 Day</option>
+            <option value="30">30 Day</option>
+            <option value="0">indefinite</option>
+            <option value="custom">Set Day</option>
         </select>
         
-        <input type="number" id="custom-ban-days-new" placeholder="ระบุจำนวนวัน..." style="display: none; width: 100%; margin-bottom: 15px;">
+        <input type="number" id="custom-ban-days-new" placeholder="Specify the number of days..." style="display: none; width: 100%; margin-bottom: 15px;">
         
         <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
-            <button class="sidebar-btn" onclick="document.getElementById('ban-selection-modal').classList.add('hidden')" style="background: #6c757d; color: white; width: auto;">ยกเลิก</button>
-            <button class="sidebar-btn" onclick="confirmAndSendBan()" style="background: #dc3545; color: white; width: auto; font-weight: bold;">ยืนยันการแบน</button>
+            <button class="sidebar-btn" onclick="document.getElementById('ban-selection-modal').classList.add('hidden')" style="background: #6c757d; color: white; width: auto;">Cancel</button>
+            <button class="sidebar-btn" onclick="confirmAndSendBan()" style="background: #dc3545; color: white; width: auto; font-weight: bold;">Confirm ban.</button>
         </div>
     </div>
 </div>
@@ -1653,7 +1653,7 @@ async function toggleBanUser(targetUser, currentStatus) {
 
     // ถ้าสถานะปัจจุบันคือโดนแบนอยู่แล้ว (จะกดเพื่อปลดแบน)
     if (currentStatus === true) {
-        if (!confirm(`คุณแน่ใจที่จะ ปลดแบน สมาชิก: ${targetUser} ใช่หรือไม่?`)) return;
+        if (!confirm(`Are you sure you want to unban the member?: ${targetUser} `)) return;
         executeBanStatus(targetUser, false, 0); // ปลดแบนทันที ไม่ต้องเลือกวัน
         return;
     }
@@ -1687,12 +1687,12 @@ async function confirmAndSendBan() {
     }
 
     if (select.value === 'custom' && (isNaN(banDays) || banDays <= 0)) {
-        alert("❌ กรุณาระบุจำนวนวันให้ถูกต้อง");
+        alert("❌ Specify the correct number of days.");
         return;
     }
 
-    const dayText = banDays === 0 ? "ถาวร" : banDays + " วัน";
-    if (!confirm(`ยืนยันการแบนคุณ ${currentBanTarget} เป็นเวลา ${dayText}?`)) return;
+    const dayText = banDays === 0 ? "-" : banDays + " Day";
+    if (!confirm(`Ban Confirm ${currentBanTarget} Time ${dayText}?`)) return;
 
     executeBanStatus(currentBanTarget, true, banDays);
 }
@@ -1722,7 +1722,7 @@ async function executeBanStatus(targetUser, shouldBan, banDays) {
         }
     } catch (e) {
         console.error(e);
-        alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
+        alert("❌ A connection error occurred.");
     }
 }
 
