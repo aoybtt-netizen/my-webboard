@@ -336,18 +336,19 @@
 
 
 		<div id="ban-options" style="margin-bottom: 10px; display: none; background: #fff5f5; padding: 10px; border-radius: 8px; border: 1px solid #feb2b2; text-align: left;">
-            <label style="display: block; font-size: 0.8em; margin-bottom: 5px; color: #c53030; font-weight: bold;">⏱️ ระยะเวลาการแบน:</label>
-            <select id="ban-days-select" onchange="toggleCustomBanInput()" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
-                <option value="1">1 วัน</option>
-                <option value="2">2 วัน</option>
-                <option value="3">3 วัน</option>
-                <option value="7">7 วัน</option>
-                <option value="15">15 วัน</option>
-                <option value="0">ถาวร (Permanent)</option>
-                <option value="custom">ระบุเอง (วัน)</option>
-            </select>
-            <input type="number" id="custom-ban-days" placeholder="ระบุจำนวนวัน..." style="width: 100%; margin-top: 8px; padding: 8px; display: none; border: 1px solid #ddd; border-radius: 5px;">
-        </div>
+    <label style="display: block; font-size: 0.8em; margin-bottom: 5px; color: #c53030; font-weight: bold;">⏱️ ระยะเวลาการแบน:</label>
+    <select id="ban-days-select" onchange="toggleCustomBanInput()" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+        <option value="1">1 วัน</option>
+        <option value="2">2 วัน</option>
+        <option value="3">3 วัน</option>
+        <option value="7">7 วัน</option>
+        <option value="15">15 วัน</option>
+        <option value="30">30 วัน</option>
+        <option value="0">ถาวร (Permanent)</option>
+        <option value="custom">ระบุเอง (วัน)</option>
+    </select>
+    <input type="number" id="custom-ban-days" placeholder="ระบุจำนวนวัน..." style="width: 100%; margin-top: 8px; padding: 8px; display: none; border: 1px solid #ddd; border-radius: 5px;">
+</div>
 
         <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
         </div>
@@ -424,7 +425,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.23 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.24 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1639,17 +1640,17 @@ async function toggleBanUser(targetUser, currentStatus) {
     const shouldBan = !currentStatus;
     let banDays = 0;
 
-    // ถ้ากำลังจะ "แบน" ให้เช็คเรื่องจำนวนวัน
+    // --- Logic จัดการวันแบน ---
     if (shouldBan) {
         const banOptions = document.getElementById('ban-options');
         
-        // ถ้ายังไม่ได้เปิดเมนูวัน ให้เปิดก่อน
+        // ครั้งแรกที่กด: ให้โชว์เมนูเลือกวันก่อน
         if (banOptions.style.display === 'none') {
             banOptions.style.display = 'block';
-            return; // หยุดเพื่อให้แอดมินเลือกวันก่อน
+            return; 
         }
 
-        // อ่านค่าจำนวนวัน
+        // อ่านค่าจาก Select/Input
         const selectValue = document.getElementById('ban-days-select').value;
         if (selectValue === 'custom') {
             banDays = parseInt(document.getElementById('custom-ban-days').value);
@@ -1657,20 +1658,21 @@ async function toggleBanUser(targetUser, currentStatus) {
             banDays = parseInt(selectValue);
         }
 
-        if (shouldBan && selectValue === 'custom' && (isNaN(banDays) || banDays <= 0)) {
+        // ตรวจสอบความถูกต้อง
+        if (selectValue === 'custom' && (isNaN(banDays) || banDays <= 0)) {
             alert("❌ กรุณาระบุจำนวนวันให้ถูกต้อง");
             return;
         }
     }
 
-    // --- ส่วนการส่งข้อมูล (Fetch) ---
+    // --- ส่วนส่งข้อมูลไป API ---
     const confirmMsgKey = shouldBan ? 'prompt_confirm_ban' : 'prompt_confirm_unban';
     const translatedTemplate = translations[currentLang][confirmMsgKey];
     let finalPrompt = translatedTemplate.replace('[USERNAME]', targetUser);
     
-    // ถ้าแบนแบบระบุวัน ให้เพิ่มข้อความบอกใน Prompt
-    if (shouldBan && banDays > 0) finalPrompt += ` (${banDays} วัน)`;
-    else if (shouldBan && banDays === 0) finalPrompt += ` (ถาวร)`;
+    if (shouldBan) {
+        finalPrompt += banDays > 0 ? ` (${banDays} วัน)` : ` (ถาวร)`;
+    }
 
     if (!confirm(finalPrompt)) return;
 
@@ -1681,7 +1683,7 @@ async function toggleBanUser(targetUser, currentStatus) {
             body: JSON.stringify({
                 targetUser: targetUser,
                 shouldBan: shouldBan,
-                banDays: banDays, // 🎯 ส่งจำนวนวันไปที่ Server
+                banDays: banDays, // ✅ ส่งจำนวนวันไปที่ Server แล้ว
                 requestBy: myUsername,
                 lang: currentLang
             })
@@ -1689,21 +1691,21 @@ async function toggleBanUser(targetUser, currentStatus) {
 
         const data = await res.json();
         if (data.success) {
-            // ซ่อนเมนูวันหลังแบนเสร็จ
             document.getElementById('ban-options').style.display = 'none';
-            
-            const notifMsgKey = shouldBan ? 'notif_user_banned' : 'notif_user_unbanned';
-            const translatedMsg = translations[currentLang][notifMsgKey].replace('[USERNAME]', targetUser);
-            showNotification(translatedMsg, shouldBan ? 'fas fa-ban' : 'fas fa-check-circle', 3000);
-
-            // รีเฟรชรายชื่อ
             openAllUserList(document.getElementById('user-search-input').value, currentUserPage);
         } else {
-            showNotification(`❌ ${data.error}`, 'fas fa-times-circle', 4000);
+            alert(`❌ Error: ${data.error}`);
         }
     } catch (error) {
         console.error('Ban error:', error);
     }
+}
+
+function toggleCustomBanInput() {
+    const select = document.getElementById('ban-days-select');
+    const customInput = document.getElementById('custom-ban-days');
+    // ถ้าเลือก "custom" ให้โชว์ช่องกรอกตัวเลข ถ้าไม่เลือกให้ซ่อน
+    customInput.style.display = (select.value === 'custom') ? 'block' : 'none';
 }
 
         function setMemberRating(targetUser) {

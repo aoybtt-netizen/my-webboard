@@ -356,7 +356,24 @@ app.get('/api/user-info', async (req, res) => {
     
     const user = await getUserData(username);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.isBanned) return res.status(403).json({ error: '⛔ บัญชีของคุณถูกระงับการใช้งาน' });
+    if (user.isBanned) {
+    let banMessage = (lang === 'th') ? "❌ Your account is suspended." : "❌ Your account is suspended.";
+    
+    if (user.banExpires) {
+        const expireDate = new Date(user.banExpires);
+        // แปลงรูปแบบวันที่ให้ดูง่าย
+        const dateStr = expireDate.toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US');
+        const timeStr = expireDate.toLocaleTimeString(lang === 'th' ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+        
+        banMessage += (lang === 'th') 
+            ? ` To ${dateStr} Time ${timeStr} ` 
+            : ` until ${dateStr} at ${timeStr}.`;
+    } else {
+        banMessage += (lang === 'th') ? " permanently." : " permanently.";
+    }
+
+    return res.status(403).json({ error: banMessage });
+}
     
     let userZoneId = null;
     let postCostData;
