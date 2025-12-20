@@ -331,6 +331,11 @@
             <div><i class="fas fa-edit"></i> Post: <strong id="detail-total-posts">0</strong></div>
             <div><i class="fas fa-check-double"></i> Job: <strong id="detail-completed-jobs">0</strong></div>
         </div>
+		
+		<div id="ban-reason-display-section" style="display:none; margin-top: 10px; background: #fff5f5; padding: 10px; border-radius: 8px; border: 1px solid #feb2b2;">
+			<small style="color: #c53030; font-weight: bold;">🚫 Reasons for being banned:</small>
+			<p id="detail-ban-reason" style="margin: 5px 0 0 0; font-size: 0.9em; color: #333;"></p>
+		</div>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
@@ -443,7 +448,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.24 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.25 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -4382,6 +4387,17 @@ function openUserDetail(targetUsername) {
     const jobEl = document.getElementById('detail-completed-jobs');
     if (postEl) postEl.innerText = u.totalPosts || 0;
     if (jobEl) jobEl.innerText = u.completedJobs || 0;
+	const reasonBox = document.getElementById('ban-reason-box');
+    const reasonText = document.getElementById('display-ban-reason');
+    
+    if (reasonBox && reasonText) {
+        if (isBanned && u.banReason) {
+            reasonBox.style.display = 'block';
+            reasonText.innerText = u.banReason;
+        } else {
+            reasonBox.style.display = 'none';
+        }
+    }
     
     // สร้าง Badges
     let badgesHtml = '';

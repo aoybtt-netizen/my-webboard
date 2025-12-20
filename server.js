@@ -1482,7 +1482,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
 // 19. Toggle Ban
 app.post('/api/admin/toggle-ban', async (req, res) => {
     // 1. รับค่า banDays เพิ่มเติมจาก req.body
-    const { targetUser, shouldBan, requestBy, lang, banDays } = req.body;
+    const { targetUser, shouldBan, requestBy, lang, banDays, reason } = req.body; 
     const currentLang = lang || 'th';
 
     // ตรวจสอบผู้สั่งการ (Requester)
@@ -1530,17 +1530,23 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
     // คำนวณวันหมดอายุ (New Logic)
     // =========================================================
     let banExpires = null;
-    if (shouldBan && banDays > 0) {
-        // สร้างวันหมดอายุ: เวลาปัจจุบัน + (จำนวนวัน * 24 ชม. * 60 นาที * 60 วิ * 1000 มิลลิวินาที)
-        banExpires = new Date();
-        banExpires.setDate(banExpires.getDate() + parseInt(banDays));
+    let savedReason = null; // ตัวแปรสำหรับเก็บเหตุผล
+
+    if (shouldBan) {
+        // คำนวณวันหมดอายุ
+        if (banDays > 0) {
+            banExpires = new Date();
+            banExpires.setDate(banExpires.getDate() + parseInt(banDays));
+        }
+        savedReason = reason || "No reason specified"; // กำหนดค่า Default ถ้าไม่ได้กรอกมา
     }
 
     // ดำเนินการ Update Database
     // เพิ่มการบันทึก banExpires ลงไปใน Document ของ User
     await updateUser(targetUser, { 
         isBanned: shouldBan, 
-        banExpires: banExpires 
+        banExpires: banExpires,
+        banReason: shouldBan ? savedReason : null
     });
 
     // เตรียมข้อความแจ้งเตือน
@@ -1583,7 +1589,12 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
         io.emit('update-post-status');
     }
 
-    res.json({ success: true, isBanned: shouldBan, banExpires: banExpires });
+    res.json({ 
+        success: true, 
+        isBanned: shouldBan, 
+        banExpires: banExpires,
+        banReason: savedReason 
+    });
 });
 
 // 20. My Active Posts
@@ -2065,7 +2076,7 @@ io.on('connection', (socket) => {
         socket.join(username);
         socket.username = username;
         if (await isUserBanned(username)) {
-            socket.emit('force-logout', '⛔ บัญชีถูกระงับ');
+            socket.emit('force-logout', '⛔ The account has been suspended.');
             return;
         }
         const occupiedPosts = Object.keys(postViewers).map(postId => ({ postId: parseInt(postId), isOccupied: true }));
