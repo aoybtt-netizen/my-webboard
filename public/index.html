@@ -334,30 +334,38 @@
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
-
-		<div id="ban-options" style="margin-bottom: 10px; display: none; background: #fff5f5; padding: 10px; border-radius: 8px; border: 1px solid #feb2b2; text-align: left;">
-    <label style="display: block; font-size: 0.8em; margin-bottom: 5px; color: #c53030; font-weight: bold;">⏱️ ระยะเวลาการแบน:</label>
-    <select id="ban-days-select" onchange="toggleCustomBanInput()" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
-        <option value="1">1 วัน</option>
-        <option value="2">2 วัน</option>
-        <option value="3">3 วัน</option>
-        <option value="7">7 วัน</option>
-        <option value="15">15 วัน</option>
-        <option value="30">30 วัน</option>
-        <option value="0">ถาวร (Permanent)</option>
-        <option value="custom">ระบุเอง (วัน)</option>
-    </select>
-    <input type="number" id="custom-ban-days" placeholder="ระบุจำนวนวัน..." style="width: 100%; margin-top: 8px; padding: 8px; display: none; border: 1px solid #ddd; border-radius: 5px;">
-</div>
-
-        <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
-        </div>
-		
-		
         <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
         </div>
     </div>
 </div>
+
+
+		<div id="ban-selection-modal" class="modal-overlay hidden" style="z-index: 3000;">
+    <div class="modal-box" style="text-align: center; border-top: 5px solid #dc3545;">
+        <h3 style="color: #c53030;">⏱️ ระยะเวลาการระงับสิทธิ์</h3>
+        <p>ระบุระยะเวลาที่ต้องการแบนสมาชิก: <strong id="ban-target-name"></strong></p>
+        
+        <select id="ban-days-select-new" onchange="toggleCustomBanInputNew()" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+            <option value="1">1 วัน</option>
+            <option value="2">2 วัน</option>
+            <option value="3">3 วัน</option>
+            <option value="7">7 วัน</option>
+            <option value="15">15 วัน</option>
+            <option value="30">30 วัน</option>
+            <option value="0">ถาวร (Permanent)</option>
+            <option value="custom">ระบุเอง (วัน)</option>
+        </select>
+        
+        <input type="number" id="custom-ban-days-new" placeholder="ระบุจำนวนวัน..." style="display: none; width: 100%; margin-bottom: 15px;">
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+            <button class="sidebar-btn" onclick="document.getElementById('ban-selection-modal').classList.add('hidden')" style="background: #6c757d; color: white; width: auto;">ยกเลิก</button>
+            <button class="sidebar-btn" onclick="confirmAndSendBan()" style="background: #dc3545; color: white; width: auto; font-weight: bold;">ยืนยันการแบน</button>
+        </div>
+    </div>
+</div>
+
+
 
 
             <div id="user-list-container">Loading...</div>
@@ -444,6 +452,7 @@
 		let currentLng = null;
 		let currentZoneIdForRef = null;
 		let currentUserPage = 1;
+		let currentBanTarget = "";
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -1642,47 +1651,54 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 async function toggleBanUser(targetUser, currentStatus) {
     if (myAdminLevel < 1) return;
 
-    const shouldBan = !currentStatus;
+    // ถ้าสถานะปัจจุบันคือโดนแบนอยู่แล้ว (จะกดเพื่อปลดแบน)
+    if (currentStatus === true) {
+        if (!confirm(`คุณแน่ใจที่จะ ปลดแบน สมาชิก: ${targetUser} ใช่หรือไม่?`)) return;
+        executeBanStatus(targetUser, false, 0); // ปลดแบนทันที ไม่ต้องเลือกวัน
+        return;
+    }
+
+    // --- กรณีจะสั่งแบน (ปิดหน้าต่างเดิม เปิดหน้าต่างเลือกเวลา) ---
+    currentBanTarget = targetUser;
+    document.getElementById('ban-target-name').innerText = targetUser;
+    
+    // 1. ปิดหน้าต่างรายละเอียดสมาชิก
+    document.getElementById('user-detail-modal').classList.add('hidden');
+    
+    // 2. เปิดหน้าต่างเลือกเวลาแบน
+    document.getElementById('ban-selection-modal').classList.remove('hidden');
+}
+
+// ฟังก์ชันช่วยแสดงช่องกรอกวันเอง (ใน Modal ใหม่)
+function toggleCustomBanInputNew() {
+    const val = document.getElementById('ban-days-select-new').value;
+    document.getElementById('custom-ban-days-new').style.display = (val === 'custom') ? 'block' : 'none';
+}
+
+// ฟังก์ชันยืนยันและส่ง API
+async function confirmAndSendBan() {
+    const select = document.getElementById('ban-days-select-new');
     let banDays = 0;
 
-    // --- ส่วนการแบน (ต้องเลือกเวลา) ---
-    if (shouldBan) {
-        const banOptions = document.getElementById('ban-options');
-        
-        // ถ้าเมนูเลือกเวลายังไม่ถูกเปิด ให้เปิดขึ้นมาก่อน
-        if (banOptions.style.display === 'none' || banOptions.style.display === '') {
-            banOptions.style.display = 'block';
-            // แจ้งเตือนแอดมินให้เลือกเวลาก่อน
-            alert("กรุณาเลือก 'ระยะเวลาการแบน' แล้วกดปุ่มแบนอีกครั้งเพื่อยืนยัน");
-            return; 
-        }
-
-        // อ่านค่าจาก Select/Input
-        const selectValue = document.getElementById('ban-days-select').value;
-        if (selectValue === 'custom') {
-            banDays = parseInt(document.getElementById('custom-ban-days').value);
-        } else {
-            banDays = parseInt(selectValue);
-        }
-
-        // ตรวจสอบความถูกต้องของจำนวนวัน
-        if (selectValue === 'custom' && (isNaN(banDays) || banDays <= 0)) {
-            alert("❌ กรุณาระบุจำนวนวันให้ถูกต้อง");
-            return;
-        }
+    if (select.value === 'custom') {
+        banDays = parseInt(document.getElementById('custom-ban-days-new').value);
+    } else {
+        banDays = parseInt(select.value);
     }
 
-    // --- ส่วนการยืนยันและส่ง API ---
-    const confirmMsgKey = shouldBan ? 'prompt_confirm_ban' : 'prompt_confirm_unban';
-    const translatedTemplate = translations[currentLang][confirmMsgKey];
-    let finalPrompt = translatedTemplate.replace('[USERNAME]', targetUser);
-    
-    if (shouldBan) {
-        finalPrompt += banDays > 0 ? ` (${banDays} วัน)` : ` (ถาวร)`;
+    if (select.value === 'custom' && (isNaN(banDays) || banDays <= 0)) {
+        alert("❌ กรุณาระบุจำนวนวันให้ถูกต้อง");
+        return;
     }
 
-    if (!confirm(finalPrompt)) return;
+    const dayText = banDays === 0 ? "ถาวร" : banDays + " วัน";
+    if (!confirm(`ยืนยันการแบนคุณ ${currentBanTarget} เป็นเวลา ${dayText}?`)) return;
 
+    executeBanStatus(currentBanTarget, true, banDays);
+}
+
+// ฟังก์ชันส่งคำสั่งไปที่ Server (ตัวกลาง)
+async function executeBanStatus(targetUser, shouldBan, banDays) {
     try {
         const res = await fetch('/api/admin/toggle-ban', {
             method: 'POST',
@@ -1698,17 +1714,15 @@ async function toggleBanUser(targetUser, currentStatus) {
 
         const data = await res.json();
         if (data.success) {
-            // เมื่อสำเร็จให้ซ่อนเมนูเลือกเวลาไว้เหมือนเดิม
-            document.getElementById('ban-options').style.display = 'none';
-            // ปิดหน้าต่างรายละเอียด (ถ้าเปิดอยู่) และโหลดรายชื่อใหม่
-            const detailModal = document.getElementById('user-detail-modal');
-            if (detailModal) detailModal.classList.add('hidden');
+            document.getElementById('ban-selection-modal').classList.add('hidden');
+            // รีเฟรชรายชื่อ
             openAllUserList(document.getElementById('user-search-input').value, currentUserPage);
         } else {
             alert(`❌ Error: ${data.error}`);
         }
-    } catch (error) {
-        console.error('Ban error:', error);
+    } catch (e) {
+        console.error(e);
+        alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
     }
 }
 
