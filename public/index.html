@@ -1688,10 +1688,15 @@ function toggleCustomBanInputNew() {
 // ฟังก์ชันยืนยันและส่ง API
 async function confirmAndSendBan() {
     const select = document.getElementById('ban-days-select-new');
+    const reasonInput = document.getElementById('ban-reason-input'); // ดึง Element มาก่อน
+    const reason = reasonInput.value.trim(); // ดึงค่าข้อความออกมา และตัดช่องว่างทิ้ง
+    
     let banDays = 0;
 
+    // 1. ตรวจสอบจำนวนวัน
     if (select.value === 'custom') {
-        banDays = parseInt(document.getElementById('custom-ban-days-new').value);
+        const customInput = document.getElementById('custom-ban-days-new');
+        banDays = parseInt(customInput.value);
     } else {
         banDays = parseInt(select.value);
     }
@@ -1701,15 +1706,18 @@ async function confirmAndSendBan() {
         return;
     }
 	
-	if (!reason) {
+    // 2. ตรวจสอบเหตุผล (ตอนนี้ใช้งานได้แล้วเพราะมีตัวแปร reason)
+    if (!reason) {
         alert("⚠️ Please specify the reason for the ban to be used as evidence.");
-        reasonInput.focus();
+        reasonInput.focus(); // สั่งให้ Cursor ไปกระพริบที่ช่องกรอกเหตุผล
         return;
     }
 
-    const dayText = banDays === 0 ? "-" : banDays + " Day";
+    // 3. ยืนยันข้อมูล
+    const dayText = banDays === 0 ? "Indefinite" : banDays + " Day";
     if (!confirm(`Ban Confirm ${currentBanTarget} \nTime: ${dayText} \nReason: ${reason}`)) return;
 
+    // 4. ส่งไปที่ฟังก์ชันจัดการ API
     executeBanStatus(currentBanTarget, true, banDays, reason);
 }
 
