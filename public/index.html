@@ -4402,6 +4402,8 @@ function openUserDetail(targetUsername) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
 
+    document.getElementById('detail-actions').innerHTML = buttonsHtml;
+
     const banOptions = document.getElementById('ban-options');
     if (banOptions) banOptions.style.display = 'none';
     
