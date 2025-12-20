@@ -334,6 +334,25 @@
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
+
+		<div id="ban-options" style="margin-bottom: 10px; display: none; background: #fff5f5; padding: 10px; border-radius: 8px; border: 1px solid #feb2b2; text-align: left;">
+            <label style="display: block; font-size: 0.8em; margin-bottom: 5px; color: #c53030; font-weight: bold;">⏱️ ระยะเวลาการแบน:</label>
+            <select id="ban-days-select" onchange="toggleCustomBanInput()" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                <option value="1">1 วัน</option>
+                <option value="2">2 วัน</option>
+                <option value="3">3 วัน</option>
+                <option value="7">7 วัน</option>
+                <option value="15">15 วัน</option>
+                <option value="0">ถาวร (Permanent)</option>
+                <option value="custom">ระบุเอง (วัน)</option>
+            </select>
+            <input type="number" id="custom-ban-days" placeholder="ระบุจำนวนวัน..." style="width: 100%; margin-top: 8px; padding: 8px; display: none; border: 1px solid #ddd; border-radius: 5px;">
+        </div>
+
+        <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
+        </div>
+		
+		
         <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
         </div>
     </div>
@@ -1608,71 +1627,84 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     }
 }
 		
-        async function toggleBanUser(targetUser, currentStatus) {
-        if (myAdminLevel < 1) return; 
+        function toggleCustomBanInput() {
+    const select = document.getElementById('ban-days-select');
+    const customInput = document.getElementById('custom-ban-days');
+    customInput.style.display = (select.value === 'custom') ? 'block' : 'none';
+}
+
+async function toggleBanUser(targetUser, currentStatus) {
+    if (myAdminLevel < 1) return;
+
+    const shouldBan = !currentStatus;
+    let banDays = 0;
+
+    // ถ้ากำลังจะ "แบน" ให้เช็คเรื่องจำนวนวัน
+    if (shouldBan) {
+        const banOptions = document.getElementById('ban-options');
         
-        const shouldBan = !currentStatus;
-        
-        let confirmMsgKey;
-        let notifMsgKey;
-        let notifIcon;
-        
-        // 1. กำหนดคีย์ข้อความสำหรับยืนยันและแจ้งเตือน
-        if (shouldBan) {
-            confirmMsgKey = 'prompt_confirm_ban';
-            notifMsgKey = 'notif_user_banned';
-            notifIcon = 'fas fa-ban';
-        } else {
-            confirmMsgKey = 'prompt_confirm_unban';
-            notifMsgKey = 'notif_user_unbanned';
-            notifIcon = 'fas fa-check-circle';
+        // ถ้ายังไม่ได้เปิดเมนูวัน ให้เปิดก่อน
+        if (banOptions.style.display === 'none') {
+            banOptions.style.display = 'block';
+            return; // หยุดเพื่อให้แอดมินเลือกวันก่อน
         }
-        
-        // 2. ดึงข้อความต้นแบบและแทนที่ [USERNAME] สำหรับ PROMPT
-        const translatedTemplate = translations[currentLang][confirmMsgKey];
-        const finalPrompt = translatedTemplate.replace('[USERNAME]', targetUser);
-        
-        if (!confirm(finalPrompt)) {
+
+        // อ่านค่าจำนวนวัน
+        const selectValue = document.getElementById('ban-days-select').value;
+        if (selectValue === 'custom') {
+            banDays = parseInt(document.getElementById('custom-ban-days').value);
+        } else {
+            banDays = parseInt(selectValue);
+        }
+
+        if (shouldBan && selectValue === 'custom' && (isNaN(banDays) || banDays <= 0)) {
+            alert("❌ กรุณาระบุจำนวนวันให้ถูกต้อง");
             return;
         }
-
-        try {
-            const res = await fetch('/api/admin/toggle-ban', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        targetUser: targetUser, // ✅ แก้จาก userToBan เป็น targetUser
-            shouldBan: shouldBan,   // ✅ แก้จาก true เป็นตัวแปร shouldBan (เพื่อให้ปลดแบนได้)
-        requestBy: myUsername,
-        lang: currentLang 
-    })
-})
-
-            const data = await res.json();
-            
-            // ⭐ 3. โค้ดแปลความสำเร็จต้องอยู่ภายใน IF BLOCK นี้เท่านั้น
-            if (data.success) { 
-                const translatedMsg = translations[currentLang][notifMsgKey].replace('[USERNAME]', targetUser);
-                showNotification(translatedMsg, notifIcon, 3000); 
-                
-                // ⭐ 4. [SAFE REFRESH] ใช้ Null Check อย่างถูกต้อง
-                const searchInput = document.getElementById('user-search-input');
-                const currentSearch = searchInput ? searchInput.value : ''; 
-
-                allUsersCache = []; 
-                if (!document.getElementById('user-list-modal').classList.contains('hidden')) {
-                    openAllUserList(currentSearch);
-                }
-            } else {
-                // 5. แจ้งเตือนข้อผิดพลาด
-                showNotification(`❌ ${data.error || 'Operation failed'}`, 'fas fa-times-circle', 4000);
-            }
-        } catch (error) {
-            // 6. แจ้งเตือนเมื่อการเชื่อมต่อล้มเหลว
-            showNotification('❌ An error occurred while connecting to the server.', 'fas fa-times-circle', 4000);
-            console.error('Ban toggle error:', error);
-        }
     }
+
+    // --- ส่วนการส่งข้อมูล (Fetch) ---
+    const confirmMsgKey = shouldBan ? 'prompt_confirm_ban' : 'prompt_confirm_unban';
+    const translatedTemplate = translations[currentLang][confirmMsgKey];
+    let finalPrompt = translatedTemplate.replace('[USERNAME]', targetUser);
+    
+    // ถ้าแบนแบบระบุวัน ให้เพิ่มข้อความบอกใน Prompt
+    if (shouldBan && banDays > 0) finalPrompt += ` (${banDays} วัน)`;
+    else if (shouldBan && banDays === 0) finalPrompt += ` (ถาวร)`;
+
+    if (!confirm(finalPrompt)) return;
+
+    try {
+        const res = await fetch('/api/admin/toggle-ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                targetUser: targetUser,
+                shouldBan: shouldBan,
+                banDays: banDays, // 🎯 ส่งจำนวนวันไปที่ Server
+                requestBy: myUsername,
+                lang: currentLang
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            // ซ่อนเมนูวันหลังแบนเสร็จ
+            document.getElementById('ban-options').style.display = 'none';
+            
+            const notifMsgKey = shouldBan ? 'notif_user_banned' : 'notif_user_unbanned';
+            const translatedMsg = translations[currentLang][notifMsgKey].replace('[USERNAME]', targetUser);
+            showNotification(translatedMsg, shouldBan ? 'fas fa-ban' : 'fas fa-check-circle', 3000);
+
+            // รีเฟรชรายชื่อ
+            openAllUserList(document.getElementById('user-search-input').value, currentUserPage);
+        } else {
+            showNotification(`❌ ${data.error}`, 'fas fa-times-circle', 4000);
+        }
+    } catch (error) {
+        console.error('Ban error:', error);
+    }
+}
 
         function setMemberRating(targetUser) {
             let newRating = prompt(`⭐ Set Rating (1.0 - 5.0) User: ${targetUser}:`);

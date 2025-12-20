@@ -173,6 +173,7 @@ async function seedInitialData() {
 
 async function getUserData(username) {
     let user = await usersCollection.findOne({ username: username });
+    
     if (!user) {
         user = { 
             username: username, 
@@ -180,11 +181,32 @@ async function getUserData(username) {
             rating: 0.0, 
             ratingCount: 0, 
             isBanned: false,
-            adminLevel: 0 // ✅ Default เป็น 0 (User ทั่วไป)
+            banExpires: null, // เพิ่มฟิลด์เก็บวันหมดอายุแบนสำหรับ User ใหม่
+            adminLevel: 0 
         };
         await usersCollection.insertOne(user);
     }
-    // ป้องกันกรณี user เก่าไม่มี field นี้
+
+    // =========================================================
+    // 🎯 เพิ่ม Logic ตรวจสอบการพ้นโทษแบนอัตโนมัติ (ใส่เพิ่มตรงนี้)
+    // =========================================================
+    if (user.isBanned && user.banExpires) {
+        const now = new Date();
+        const expiry = new Date(user.banExpires);
+
+        if (now > expiry) {
+            // ถ้าเวลาปัจจุบันเลยเวลาที่กำหนดแบนไว้แล้ว -> ปลดแบนในฐานข้อมูล
+            await usersCollection.updateOne(
+                { username: username },
+                { $set: { isBanned: false, banExpires: null } }
+            );
+            // อัปเดตตัวแปร user ในหน่วยความจำเพื่อให้ด่านตรวจสอบถัดไปผ่าน
+            user.isBanned = false;
+            user.banExpires = null;
+        }
+    }
+    // =========================================================
+
     if (user.adminLevel === undefined) user.adminLevel = 0;
     
     return user;
@@ -1438,11 +1460,11 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
 
 // 19. Toggle Ban
 app.post('/api/admin/toggle-ban', async (req, res) => {
-    // รับค่า lang มาด้วย
-    const { targetUser, shouldBan, requestBy, lang } = req.body;
+    // 1. รับค่า banDays เพิ่มเติมจาก req.body
+    const { targetUser, shouldBan, requestBy, lang, banDays } = req.body;
     const currentLang = lang || 'th';
 
-    // 1. ตรวจสอบผู้สั่งการ (Requester)
+    // ตรวจสอบผู้สั่งการ (Requester)
     const requester = await getUserData(requestBy);
     if (!requester || requester.adminLevel < 1) {
         return res.status(403).json({ error: translateServerMsg('ban_perm_denied', currentLang) });
@@ -1457,31 +1479,22 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
         return res.status(404).json({ error: translateServerMsg('ban_user_not_found', currentLang) });
     }
 
-    // =========================================================
-    // ตรวจสอบความปลอดภัย (Security Checks) - Logic เดียวกับ Deduct
-    // =========================================================
-
-    // A. Hierarchy Check: ห้ามแบนคนระดับเดียวกันหรือสูงกว่า
+    // A. Hierarchy Check
     const requesterLevel = requester.adminLevel || 0;
     const targetLevel = targetData.adminLevel || 0;
-
     if (targetLevel >= requesterLevel) {
         let msg = translateServerMsg('ban_hierarchy_err', currentLang);
         msg = msg.replace('{level}', targetLevel);
         return res.status(403).json({ error: msg });
     }
 
-    // B. Zone Check: ห้ามแบนข้ามโซน (Admin Level 3 ยกเว้น)
+    // B. Zone Check (Admin Level 1-2)
     if (requesterLevel < 3) {
         if (!requester.lastLocation || !targetData.lastLocation) {
-            return res.status(400).json({ 
-                error: translateServerMsg('ban_zone_missing', currentLang) 
-            });
+            return res.status(400).json({ error: translateServerMsg('ban_zone_missing', currentLang) });
         }
-
         const requesterZoneInfo = await findResponsibleAdmin(requester.lastLocation);
         const targetZoneInfo = await findResponsibleAdmin(targetData.lastLocation);
-
         const rZoneId = requesterZoneInfo.zoneData ? requesterZoneInfo.zoneData.id : 'no-zone';
         const tZoneId = targetZoneInfo.zoneData ? targetZoneInfo.zoneData.id : 'no-zone';
 
@@ -1493,16 +1506,40 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
     }
 
     // =========================================================
-    // ดำเนินการ (Action)
+    // คำนวณวันหมดอายุ (New Logic)
     // =========================================================
+    let banExpires = null;
+    if (shouldBan && banDays > 0) {
+        // สร้างวันหมดอายุ: เวลาปัจจุบัน + (จำนวนวัน * 24 ชม. * 60 นาที * 60 วิ * 1000 มิลลิวินาที)
+        banExpires = new Date();
+        banExpires.setDate(banExpires.getDate() + parseInt(banDays));
+    }
 
-    await updateUser(targetUser, { isBanned: shouldBan });
-    
-    // แจ้งเตือนเป้าหมายให้หลุดออกจากระบบ
+    // ดำเนินการ Update Database
+    // เพิ่มการบันทึก banExpires ลงไปใน Document ของ User
+    await updateUser(targetUser, { 
+        isBanned: shouldBan, 
+        banExpires: banExpires 
+    });
+
+    // เตรียมข้อความแจ้งเตือน
+    let expiryMsg = "";
+    if (shouldBan) {
+        if (banExpires) {
+            const dateStr = banExpires.toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US');
+            expiryMsg = currentLang === 'th' ? ` จนถึงวันที่ ${dateStr}` : ` until ${dateStr}`;
+        } else {
+            expiryMsg = currentLang === 'th' ? ` แบบถาวร` : ` permanently`;
+        }
+    }
+
     const kickMsg = shouldBan 
-        ? (currentLang === 'th' ? '❌ บัญชีของคุณถูกระงับการใช้งาน' : '❌ Your account has been suspended.') 
+        ? (currentLang === 'th' ? `❌ บัญชีของคุณถูกระงับการใช้งาน${expiryMsg}` : `❌ Your account has been suspended${expiryMsg}`) 
         : (currentLang === 'th' ? '✅ บัญชีของคุณได้รับการปลดแบนแล้ว' : '✅ Your account has been unbanned.');
 
+    // =========================================================
+    // การเตะออกจากระบบ (Action)
+    // =========================================================
     io.to(targetUser).emit('force-logout', kickMsg);
 
     if (shouldBan) {
@@ -1518,7 +1555,6 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
             }
         });
         
-        // ปิดกระทู้ทั้งหมดของคนที่โดนแบน
         await postsCollection.updateMany(
             { author: targetUser, isClosed: false },
             { $set: { isClosed: true, status: 'closed_permanently' } }
@@ -1526,7 +1562,7 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
         io.emit('update-post-status');
     }
 
-    res.json({ success: true, isBanned: shouldBan });
+    res.json({ success: true, isBanned: shouldBan, banExpires: banExpires });
 });
 
 // 20. My Active Posts
