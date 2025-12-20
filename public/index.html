@@ -1645,13 +1645,15 @@ async function toggleBanUser(targetUser, currentStatus) {
     const shouldBan = !currentStatus;
     let banDays = 0;
 
-    // --- Logic จัดการวันแบน ---
+    // --- ส่วนการแบน (ต้องเลือกเวลา) ---
     if (shouldBan) {
         const banOptions = document.getElementById('ban-options');
         
-        // ครั้งแรกที่กด: ให้โชว์เมนูเลือกวันก่อน
-        if (banOptions.style.display === 'none') {
+        // ถ้าเมนูเลือกเวลายังไม่ถูกเปิด ให้เปิดขึ้นมาก่อน
+        if (banOptions.style.display === 'none' || banOptions.style.display === '') {
             banOptions.style.display = 'block';
+            // แจ้งเตือนแอดมินให้เลือกเวลาก่อน
+            alert("กรุณาเลือก 'ระยะเวลาการแบน' แล้วกดปุ่มแบนอีกครั้งเพื่อยืนยัน");
             return; 
         }
 
@@ -1663,14 +1665,14 @@ async function toggleBanUser(targetUser, currentStatus) {
             banDays = parseInt(selectValue);
         }
 
-        // ตรวจสอบความถูกต้อง
+        // ตรวจสอบความถูกต้องของจำนวนวัน
         if (selectValue === 'custom' && (isNaN(banDays) || banDays <= 0)) {
             alert("❌ กรุณาระบุจำนวนวันให้ถูกต้อง");
             return;
         }
     }
 
-    // --- ส่วนส่งข้อมูลไป API ---
+    // --- ส่วนการยืนยันและส่ง API ---
     const confirmMsgKey = shouldBan ? 'prompt_confirm_ban' : 'prompt_confirm_unban';
     const translatedTemplate = translations[currentLang][confirmMsgKey];
     let finalPrompt = translatedTemplate.replace('[USERNAME]', targetUser);
@@ -1688,7 +1690,7 @@ async function toggleBanUser(targetUser, currentStatus) {
             body: JSON.stringify({
                 targetUser: targetUser,
                 shouldBan: shouldBan,
-                banDays: banDays, // ✅ ส่งจำนวนวันไปที่ Server แล้ว
+                banDays: banDays,
                 requestBy: myUsername,
                 lang: currentLang
             })
@@ -1696,7 +1698,11 @@ async function toggleBanUser(targetUser, currentStatus) {
 
         const data = await res.json();
         if (data.success) {
+            // เมื่อสำเร็จให้ซ่อนเมนูเลือกเวลาไว้เหมือนเดิม
             document.getElementById('ban-options').style.display = 'none';
+            // ปิดหน้าต่างรายละเอียด (ถ้าเปิดอยู่) และโหลดรายชื่อใหม่
+            const detailModal = document.getElementById('user-detail-modal');
+            if (detailModal) detailModal.classList.add('hidden');
             openAllUserList(document.getElementById('user-search-input').value, currentUserPage);
         } else {
             alert(`❌ Error: ${data.error}`);
@@ -4396,8 +4402,9 @@ function openUserDetail(targetUsername) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
 
-    document.getElementById('detail-actions').innerHTML = buttonsHtml;
-
+    const banOptions = document.getElementById('ban-options');
+    if (banOptions) banOptions.style.display = 'none';
+    
     modal.classList.remove('hidden');
 }
 
