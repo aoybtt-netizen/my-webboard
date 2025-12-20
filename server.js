@@ -429,6 +429,14 @@ app.get('/api/user-info', async (req, res) => {
 		totalPosts: user.totalPosts || 0,     
         completedJobs: user.completedJobs || 0
     });
+	
+	if (user.isBanned) {
+    return res.status(403).json({ 
+        error: 'banned', // ส่งคีย์เพื่อให้หน้าบ้านเช็คได้ง่าย
+        banReason: user.banReason || 'No reason specified',
+        banExpires: user.banExpires 
+    });
+	
 });
 
 // 3. User List
