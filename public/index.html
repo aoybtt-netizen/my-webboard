@@ -340,27 +340,37 @@
 </div>
 
 
+		
+
 		<div id="ban-selection-modal" class="modal-overlay hidden" style="z-index: 3000;">
     <div class="modal-box" style="text-align: center; border-top: 5px solid #dc3545;">
-        <h3 style="color: #c53030;">⏱️ Ban duration</h3>
-        <p>Specify the desired ban duration for the member.: <strong id="ban-target-name"></strong></p>
+        <h3 style="color: #c53030;"><i class="fas fa-gavel"></i> Specify the ban details.</h3>
+        <p>สมาชิก: <strong id="ban-target-name" style="color:#007bff;"></strong></p>
         
-        <select id="ban-days-select-new" onchange="toggleCustomBanInputNew()" style="width: 100%; padding: 10px; margin-bottom: 10px;">
-            <option value="1">1 Day</option>
-            <option value="2">2 Day</option>
-            <option value="3">3 Day</option>
-            <option value="7">7 Day</option>
-            <option value="15">15 Day</option>
-            <option value="30">30 Day</option>
-            <option value="0">indefinite</option>
-            <option value="custom">Set Day</option>
-        </select>
+        <div style="text-align: left; margin-bottom: 15px;">
+            <label style="font-size: 0.85em; font-weight: bold; color: #555;">⏱️ Ban duration:</label>
+            <select id="ban-days-select-new" onchange="toggleCustomBanInputNew()" style="width: 100%; padding: 10px; border-radius: 8px;">
+                <option value="1">1 Day</option>
+				<option value="2">2 Day</option>
+				<option value="3">3 Day</option>
+				<option value="7">7 Day</option>
+				<option value="15">15 Day</option>
+				<option value="30">30 Day</option>
+				<option value="0">indefinite</option>
+				<option value="custom">Set Day</option>
+            </select>
+            <input type="number" id="custom-ban-days-new" placeholder="Specify the number of days..." style="display: none; width: 100%; margin-top: 5px;">
+        </div>
+
+        <div style="text-align: left; margin-bottom: 15px;">
+            <label style="font-size: 0.85em; font-weight: bold; color: #555;">📝 Specify the ban details.:</label>
+            <textarea id="ban-reason-input" placeholder="Specify the ban details..." rows="3" 
+                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Kanit'; box-sizing: border-box;"></textarea>
+        </div>
         
-        <input type="number" id="custom-ban-days-new" placeholder="Specify the number of days..." style="display: none; width: 100%; margin-bottom: 15px;">
-        
-        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+        <div style="display: flex; gap: 10px; justify-content: center;">
             <button class="sidebar-btn" onclick="document.getElementById('ban-selection-modal').classList.add('hidden')" style="background: #6c757d; color: white; width: auto;">Cancel</button>
-            <button class="sidebar-btn" onclick="confirmAndSendBan()" style="background: #dc3545; color: white; width: auto; font-weight: bold;">Confirm ban.</button>
+            <button class="sidebar-btn" onclick="confirmAndSendBan()" style="background: #dc3545; color: white; width: auto; font-weight: bold;">Confirm ban</button>
         </div>
     </div>
 </div>
@@ -1690,15 +1700,21 @@ async function confirmAndSendBan() {
         alert("❌ Specify the correct number of days.");
         return;
     }
+	
+	if (!reason) {
+        alert("⚠️ Please specify the reason for the ban to be used as evidence.");
+        reasonInput.focus();
+        return;
+    }
 
     const dayText = banDays === 0 ? "-" : banDays + " Day";
-    if (!confirm(`Ban Confirm ${currentBanTarget} Time ${dayText}?`)) return;
+    if (!confirm(`Ban Confirm ${currentBanTarget} \nTime: ${dayText} \nReason: ${reason}`)) return;
 
-    executeBanStatus(currentBanTarget, true, banDays);
+    executeBanStatus(currentBanTarget, true, banDays, reason);
 }
 
 // ฟังก์ชันส่งคำสั่งไปที่ Server (ตัวกลาง)
-async function executeBanStatus(targetUser, shouldBan, banDays) {
+async function executeBanStatus(targetUser, shouldBan, banDays, reason = "") {
     try {
         const res = await fetch('/api/admin/toggle-ban', {
             method: 'POST',
@@ -1707,6 +1723,7 @@ async function executeBanStatus(targetUser, shouldBan, banDays) {
                 targetUser: targetUser,
                 shouldBan: shouldBan,
                 banDays: banDays,
+                reason: reason, // <--- ส่งเหตุผลไปที่ Server
                 requestBy: myUsername,
                 lang: currentLang
             })
@@ -1715,8 +1732,12 @@ async function executeBanStatus(targetUser, shouldBan, banDays) {
         const data = await res.json();
         if (data.success) {
             document.getElementById('ban-selection-modal').classList.add('hidden');
-            // รีเฟรชรายชื่อ
+            document.getElementById('ban-reason-input').value = ''; // ล้างช่องเหตุผล
+            
+            // รีเฟรชรายชื่อสมาชิก
             openAllUserList(document.getElementById('user-search-input').value, currentUserPage);
+            
+            showNotification(`✅ Ban ${targetUser} Success`, 'fas fa-check-circle');
         } else {
             alert(`❌ Error: ${data.error}`);
         }
