@@ -314,7 +314,7 @@
 		<div id="user-detail-modal" class="modal-overlay hidden" style="z-index: 2500;">
     <div class="modal-box" style="text-align: center;">
         <div style="display:flex; justify-content:flex-end;">
-            <button onclick="document.getElementById('user-detail-modal').classList.add('hidden')" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
+            <button onclick="document.getElementById('user-detail-modal').classList.add('hidden')" style="border:none; background:none; font-size:1.5em; cursor:pointer;">×</button>
         </div>
         
         <h2 id="detail-name" style="margin-top:0; color:#007bff;">User Name</h2>
@@ -331,16 +331,21 @@
             <div><i class="fas fa-edit"></i> Post: <strong id="detail-total-posts">0</strong></div>
             <div><i class="fas fa-check-double"></i> Job: <strong id="detail-completed-jobs">0</strong></div>
         </div>
+		
+		
+		<div id="ban-reason-box" style="display: none; background: #fff5f5; border: 1px solid #feb2b2; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: left;">
+    <strong style="color: #c53030; font-size: 0.85em;"><i class="fas fa-exclamation-triangle"></i> Reason:</strong>
+    <p id="display-ban-reason" style="margin: 5px 0 0 0; color: #4a5568; font-size: 0.9em; line-height: 1.4;"></p>
+	</div>
 
-        <div id="ban-reason-box" style="display: none; background: #fff5f5; border: 1px solid #feb2b2; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: left;">
-            <strong style="color: #c53030; font-size: 0.85em;"><i class="fas fa-exclamation-triangle"></i> Reason:</strong>
-            <p id="display-ban-reason" style="margin: 5px 0 0 0; color: #4a5568; font-size: 0.9em; line-height: 1.4;"></p>
-        </div>
+<div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
+    </div>
+
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
         <div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
-            </div>
+        </div>
     </div>
 </div>
 
@@ -1500,25 +1505,11 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
         const data = await response.json();
 
         if (response.status === 403) {
-            let banMessage = currentLang === 'th' ? "❌ Your account has been suspended." : "❌ Your account has been suspended.";
-            
-            if (data.banReason) {
-                banMessage += `\n\nReason: ${data.banReason}`;
-            }
-            
-            if (data.banExpires) {
-                const date = new Date(data.banExpires).toLocaleString(currentLang === 'th' ? 'th-TH' : 'en-US');
-                banMessage += `\nUntil: ${date}`;
-            } else {
-                banMessage += `\nDuration: Permanent`;
-            }
-
-            // แสดง alert และรอให้ผู้ใช้กด OK (Alert จะ Block การทำงานของบรรทัดถัดไปจนกว่าจะกดปิด)
-            alert(banMessage); 
-
-            // หลังจากกด OK แล้วค่อยล้างค่าและ Reload
+            // ถ้า Server ตอบกลับมาเป็น 403 (Forbidden) หมายถึงโดนแบน
+            // ระบบจะแสดง alert ข้อความการแบนที่มีวันเวลาหมดอายุ (จากที่คุณเขียนไว้ใน API)
+            alert(data.error);
             localStorage.removeItem('myUsername');
-            window.location.replace('/'); // ใช้ replace แทน reload เพื่อกลับไปหน้าแรก/หน้า login
+            window.location.reload();
             return;
         }
 

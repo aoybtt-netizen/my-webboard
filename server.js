@@ -376,13 +376,8 @@ app.get('/api/user-info', async (req, res) => {
         banMessage += " permanently.";
     }
 
-    return res.status(403).json({ 
-            error: banMessage,
-            banReason: user.banReason, // ส่งเหตุผลแยกไป
-            banExpires: user.banExpires // ส่งวันหมดอายุแยกไป
-        });
-    }
-
+    return res.status(403).json({ error: banMessage });
+}
     
     let userZoneId = null;
     let postCostData;
