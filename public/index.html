@@ -1641,8 +1641,8 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-        targetUser: userToBan, 
-        shouldBan: true,
+        targetUser: targetUser, // ✅ แก้จาก userToBan เป็น targetUser
+            shouldBan: shouldBan,   // ✅ แก้จาก true เป็นตัวแปร shouldBan (เพื่อให้ปลดแบนได้)
         requestBy: myUsername,
         lang: currentLang 
     })
