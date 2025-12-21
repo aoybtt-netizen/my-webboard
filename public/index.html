@@ -458,7 +458,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.25 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.26 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1562,6 +1562,18 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             
             avatarEl.innerHTML = `🐱${stars}`;
         }
+		
+		const verifyBtn = document.getElementById('verify-btn');
+
+    if (verifyBtn) {
+        // ถ้าเป็นแอดมิน (Level > 0) ให้ซ่อนปุ่ม
+        if (myAdminLevel > 0) {
+            verifyBtn.classList.add('hidden');
+        } else {
+            // ถ้าเป็นสมาชิกทั่วไป ให้โชว์ปุ่ม
+            verifyBtn.classList.remove('hidden');
+        }
+    }
 		
                         
         const adminPanelDiv = document.getElementById('admin-panel');
