@@ -4944,53 +4944,40 @@ function handleMultipleFiles(input) {
 
 
 
-let adminUsername = "";
-async function processApproval() {
-    // 1. ตรวจสอบชื่อแอดมิน (หากยังไม่มีในตัวแปร ให้ลองดึงจาก localStorage)
-    const currentAdmin = adminUsername || localStorage.getItem('username');
 
-    if (!currentAdmin) {
-        // ลองดึงจากตัวแปรอื่นที่โปรเจกต์คุณอาจมี เช่น username
-        const backupAdmin = typeof username !== 'undefined' ? username : "";
-        if (!backupAdmin) {
-            alert("ไม่พบข้อมูลแอดมิน กรุณารีเฟรชหน้าจอหรือเข้าสู่ระบบใหม่");
-            return;
-        }
-        adminUsername = backupAdmin; // เก็บไว้ใช้
+async function processApproval() {
+    // 🎯 แก้ปัญหา: ดึงชื่อแอดมินที่ล็อกอินอยู่ปัจจุบัน
+    // โดยปกติระบบของคุณจะเก็บชื่อไว้ใน localStorage หลัง Login
+    const currentAdmin = localStorage.getItem('username') || (typeof username !== 'undefined' ? username : "");
+
+    // ตรวจสอบอีกครั้งเพื่อความชัวร์
+    if (!currentAdmin || currentAdmin === "") {
+        alert("❌ ไม่พบชื่อผู้ใช้งานแอดมินในระบบ กรุณาลองเข้าสู่ระบบใหม่อีกครั้ง");
+        return;
     }
 
-    const finalAdmin = adminUsername || currentAdmin;
-
-    // 2. ตรวจสอบว่ามีการถ่ายรูปหรือยัง
     if (evidenceFiles.length === 0) {
-        alert("กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
+        alert("📸 กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
         return;
     }
 
     const confirmBtn = document.getElementById('final-confirm-btn');
-    
-    // 3. แสดงสถานะกำลังโหลด
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    confirmBtn.style.opacity = '0.7';
 
-    // 4. เตรียมซองข้อมูล (FormData)
     const formData = new FormData();
     const memberName = document.getElementById('approve-target-name').innerText;
     
-    formData.append('member_name', memberName); // ชื่อสมาชิกที่จะถูกหักเงิน
-    formData.append('amount', '25');             // จำนวนเงิน
-    formData.append('requestBy', finalAdmin);  // ชื่อแอดมินผู้ดำเนินการ
+    // ✅ ส่งชื่อแอดมินที่ล็อกอินอยู่ (currentAdmin) ไปที่ Server
+    formData.append('member_name', memberName);
+    formData.append('amount', '25');
+    formData.append('requestBy', currentAdmin); 
 
-    // ใส่ไฟล์รูปทั้งหมดลงใน FormData
     evidenceFiles.forEach((file) => {
         formData.append('evidence', file);
     });
 
     try {
-        console.log("🚀 กำลังส่งข้อมูลยืนยันตัวตนไปที่ Server...");
-        
-        // 5. ยิง API ไปที่ Server (Node.js)
         const response = await fetch('/api/admin/approve-kyc', {
             method: 'POST',
             body: formData
@@ -4999,19 +4986,15 @@ async function processApproval() {
         const result = await response.json();
 
         if (result.success) {
-            // ✅ กรณีสำเร็จ
             alert("✅ " + result.message);
-            evidenceFiles = []; // ล้างรูปภาพ
-            closeApprovalDetailModal(); // ปิดหน้าต่าง
-            location.reload(); // รีเฟรชเพื่ออัปเดตยอดเงิน
+            location.reload(); 
         } else {
-            // ❌ กรณี Server ปฏิเสธ (เช่น เงินสมาชิกไม่พอ)
             alert("❌ Error: " + result.error);
             resetButton(confirmBtn);
         }
     } catch (error) {
-        console.error("🔥 Fetch Error:", error);
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ หรือไฟล์อาจมีขนาดใหญ่เกินไป");
+        console.error("Error:", error);
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
         resetButton(confirmBtn);
     }
 }
