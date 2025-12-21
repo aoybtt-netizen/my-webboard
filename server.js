@@ -2697,6 +2697,34 @@ socket.on('get-pending-verifications', async (data) => {
     }
 });
 
+	socket.on('get-admin-live-location', async (data, callback) => {
+    try {
+        const { zoneId } = data;
+        
+        // 1. ค้นหาแอดมินที่ดูแลโซนนี้ และต้องออนไลน์อยู่ (หรือมีตำแหน่งล่าสุด)
+        // สมมติว่า Admin มี role: 'admin' และเก็บ zoneId ไว้
+        const admin = await usersCollection.findOne({ 
+            role: 'admin', 
+            zoneId: zoneId,
+            lastLocation: { $exists: true } 
+        });
+
+        if (admin && admin.lastLocation) {
+            // ส่งพิกัดกลับไปให้ User ที่เรียกมา (ผ่าน callback)
+            callback({
+                lat: admin.lastLocation.lat,
+                lng: admin.lastLocation.lng
+            });
+        } else {
+            // ถ้าไม่พบ Admin หรือ Admin ไม่ได้เปิดพิกัด
+            callback(null);
+        }
+    } catch (err) {
+        console.error("Error fetching admin location:", err);
+        callback(null);
+    }
+});
+
 
 });
 
