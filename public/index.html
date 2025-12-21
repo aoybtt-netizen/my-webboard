@@ -956,6 +956,7 @@ async function updateZoneBackground(lat, lng) {
 		'msg_user_not_found': '❌ ไม่พบสมาชิกชื่อ "[NAME]"',
         'msg_no_members': 'ไม่มีรายชื่อสมาชิก',
         'label_banned': '(ถูกระงับ)',
+		'error_file_too_large': 'รูปภาพมีขนาดใหญ่เกินไป (สูงสุด 5MB)',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1123,6 +1124,7 @@ async function updateZoneBackground(lat, lng) {
 		'msg_user_not_found': '❌ User "[NAME]" not found',
         'msg_no_members': 'No members found',
         'label_banned': '(BANNED)',
+		'error_file_too_large': 'The image file is too large (Maximum 5MB).',
     }
 };
 
@@ -4833,21 +4835,6 @@ function openReviewDetail(targetUsername, distance) {
 }
 
 
-// ดักจับเหตุการณ์เมื่อมีการถ่ายรูปเสร็จสิ้น
-document.getElementById('evidence-upload').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const previewImg = document.getElementById('preview-img');
-            const previewArea = document.getElementById('evidence-preview');
-            
-            previewImg.src = event.target.result;
-            previewArea.style.display = "block"; // แสดงรูปที่ถ่าย
-        };
-        reader.readAsDataURL(file);
-    }
-});
 
 
 
@@ -5013,6 +5000,32 @@ document.getElementById('evidence-upload').addEventListener('change', function(e
             alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
         }
     }
+	
+	
+	document.getElementById('evidence-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // ตรวจสอบขนาดไฟล์ 5MB
+        if (file.size > 5 * 1024 * 1024) {
+            // ดึงข้อความแจ้งเตือนตามภาษาปัจจุบัน (currentLang)
+            const alertMsg = translations[currentLang]['error_file_too_large'];
+            alert(alertMsg);
+            
+            this.value = ""; // ล้างค่าใน input
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const previewImg = document.getElementById('preview-img');
+            const previewArea = document.getElementById('evidence-preview');
+            
+            previewImg.src = event.target.result;
+            previewArea.style.display = "block"; 
+        };
+        reader.readAsDataURL(file);
+    }
+});
 
 </script>
 
