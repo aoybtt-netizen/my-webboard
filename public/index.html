@@ -187,6 +187,10 @@
 	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
 กระทู้ของฉันที่ปิดแล้ว
 </button>
+	<button class="sidebar-btn" id="verify-btn" onclick="openVerifyModal()" style="background: #e3f2fd; color: #007bff; border: 1px dashed #007bff;">
+    <i class="fas fa-user-check"></i> <span data-i18n-key="verify_identity">Get Verified</span>
+</button>
+
     
     <div id="admin-panel" class="hidden">
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
@@ -195,6 +199,7 @@
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
+	<button class="sidebar-btn admin-btn" onclick="openAdminVerifyList()" data-i18n-key="admin_verify_zone"><i class="fas fa-id-card-alt"></i> Members verified zone</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -4488,6 +4493,34 @@ function openUserDetail(targetUsername) {
     modal.classList.remove('hidden');
 }
 
+
+// ฟังก์ชันเปิดหน้าต่างยืนยันตัวตน
+function openVerifyModal() {
+    // ปิด Sidebar ก่อนถ้าเปิดอยู่
+    if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+    
+    document.getElementById('verify-modal').classList.remove('hidden');
+}
+
+// ฟังก์ชันปิดหน้าต่าง
+function closeVerifyModal() {
+    document.getElementById('verify-modal').classList.add('hidden');
+}
+
+// ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
+function submitVerification() {
+    alert("ระบบกำลังส่งข้อมูลให้แอดมินประจำโซนตรวจสอบ...");
+    // ตรงนี้ไว้ใส่ Logic การส่งรูปหรือข้อมูลไปยัง Server
+    closeVerifyModal();
+}
+
+function openAdminVerifyList() {
+    if (myAdminLevel < 1) return;
+    alert("ระบบตรวจสอบสมาชิกในโซนกำลังถูกออกแบบ...");
+    // หลังจากคุณออกแบบเสร็จค่อยมาแก้ให้ดึงรายชื่อที่รอตรวจสอบ
+}
+
+
 	// Google Maps NEW Tab
     function openGoogleMaps(lat, lng) {
         if (!lat || !lng) {
@@ -4916,6 +4949,27 @@ function openUserDetail(targetUsername) {
         </div>
     </div>
 </div>
+
+
+		<div id="verify-modal" class="modal-overlay hidden" style="z-index: 4000;">
+    <div class="modal-box" style="max-width: 450px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 style="margin:0;"><i class="fas fa-user-check"></i> <span data-i18n-key="verify_identity">Verify Identity</span></h3>
+            <button onclick="closeVerifyModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
+        </div>
+
+        <div id="verify-content-area" style="min-height: 150px; border: 2px dashed #ddd; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #aaa; margin-bottom: 20px;">
+            <p>พื้นที่สำหรับออกแบบฟอร์มยืนยันตัวตน</p>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="sidebar-btn" onclick="closeVerifyModal()" style="background: #6c757d; color: white; width: auto; margin-bottom: 0;" data-i18n-key="cancel_btn">Cancel</button>
+            <button class="sidebar-btn create-btn" onclick="submitVerification()" style="width: auto; margin-bottom: 0;" data-i18n-key="post_btn">Confirm</button>
+        </div>
+    </div>
+</div>
+
+
 
 
 	
