@@ -4718,7 +4718,6 @@ socket.on('receive-pending-list', (data) => {
 
 
 
-let currentAdminName = "";
 // ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
 async function submitVerification() {
     if (!navigator.geolocation) {
@@ -4729,14 +4728,12 @@ async function submitVerification() {
     // 1. ขอข้อมูลสถานะผู้ใช้ผ่าน Socket
     socket.emit('get-user-status-socket', (userData) => {
         if (userData.success) {
-        // ✅ บันทึกค่าลงตัวแปร Global ทันทีที่โหลดข้อมูลเสร็จ
-        adminUsername = userData.username; 
-        console.log("Admin Name Loaded:", adminUsername);
-    }
-
-        // ✅ บันทึกลงตัวแปร Global ที่ประกาศไว้ข้างนอก
-        currentAdminName = userData.username; 
-        console.log("บันทึกชื่อแอดมินแล้ว:", currentAdminName);
+            // ✅ บันทึกลงตัวแปร adminUsername เท่านั้น
+            adminUsername = userData.username; 
+            console.log("บันทึกชื่อแอดมินแล้ว:", adminUsername);
+        } else {
+            return;
+        }
 
         const userCoins = userData.coins || 0;
         if (userCoins < 50) {
@@ -4946,15 +4943,23 @@ function handleMultipleFiles(input) {
 }
 
 
+
 let adminUsername = "";
 async function processApproval() {
     // 1. ตรวจสอบชื่อแอดมิน (หากยังไม่มีในตัวแปร ให้ลองดึงจาก localStorage)
     const currentAdmin = adminUsername || localStorage.getItem('username');
 
     if (!currentAdmin) {
-        alert("ไม่พบข้อมูลแอดมิน กรุณารีเฟรชหน้าจอหรือเข้าสู่ระบบใหม่");
-        return;
+        // ลองดึงจากตัวแปรอื่นที่โปรเจกต์คุณอาจมี เช่น username
+        const backupAdmin = typeof username !== 'undefined' ? username : "";
+        if (!backupAdmin) {
+            alert("ไม่พบข้อมูลแอดมิน กรุณารีเฟรชหน้าจอหรือเข้าสู่ระบบใหม่");
+            return;
+        }
+        adminUsername = backupAdmin; // เก็บไว้ใช้
     }
+
+    const finalAdmin = adminUsername || currentAdmin;
 
     // 2. ตรวจสอบว่ามีการถ่ายรูปหรือยัง
     if (evidenceFiles.length === 0) {
@@ -4975,7 +4980,7 @@ async function processApproval() {
     
     formData.append('member_name', memberName); // ชื่อสมาชิกที่จะถูกหักเงิน
     formData.append('amount', '25');             // จำนวนเงิน
-    formData.append('requestBy', currentAdmin);  // ชื่อแอดมินผู้ดำเนินการ
+    formData.append('requestBy', finalAdmin);  // ชื่อแอดมินผู้ดำเนินการ
 
     // ใส่ไฟล์รูปทั้งหมดลงใน FormData
     evidenceFiles.forEach((file) => {
