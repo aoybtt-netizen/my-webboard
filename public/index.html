@@ -4867,6 +4867,66 @@ function openReviewDetail(targetUsername, distance) {
 }
 
 
+// เก็บไฟล์ไว้ในตัวแปรเผื่อต้องการส่งไป Server
+let evidenceFiles = []; 
+
+function handleMultipleFiles(input) {
+    const previewContainer = document.getElementById('evidence-preview');
+    
+    // ล้างข้อมูลเก่าออกก่อน (ถ้าต้องการให้เลือกใหม่แล้วของเก่าหายไป)
+    // หากต้องการให้สะสมรูปภาพ ให้ลบบรรทัดล่างนี้ออกครับ
+    previewContainer.innerHTML = ''; 
+
+    if (input.files && input.files.length > 0) {
+        // เปลี่ยนการแสดงผลเป็น Grid สำหรับรูปหลายรูป
+        previewContainer.style.display = 'grid';
+        previewContainer.style.gridTemplateColumns = 'repeat(2, 1fr)'; // แสดง 2 คอลัมน์
+        previewContainer.style.gap = '10px';
+        previewContainer.style.marginTop = '15px';
+
+        evidenceFiles = Array.from(input.files); // เก็บเข้าตัวแปร global
+
+        evidenceFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // สร้าง Wrapper สำหรับแต่ละรูป
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+
+                // สร้างแท็ก <img>
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.width = '100%';
+                img.style.height = '120px'; // ล็อกความสูงให้เท่ากัน
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '8px';
+                img.style.border = '2px solid #28a745';
+                img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+
+                // เพิ่มป้ายกำกับรูปที่
+                const badge = document.createElement('div');
+                badge.innerHTML = `<i class="fas fa-camera"></i> #${index + 1}`;
+                badge.style.cssText = `
+                    position: absolute; top: 5px; left: 5px; 
+                    background: rgba(40, 167, 69, 0.8); color: white; 
+                    padding: 2px 6px; border-radius: 4px; font-size: 0.6em;
+                `;
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(badge);
+                previewContainer.appendChild(wrapper);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // ปลดล็อกปุ่ม Approve
+        const confirmBtn = document.getElementById('final-confirm-btn');
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '1';
+    }
+}
+
+
 
 
 
@@ -5448,14 +5508,10 @@ function openReviewDetail(targetUsername, distance) {
         <i class="fas fa-camera" style="font-size: 2.5em; color: #28a745;"></i>
         <p style="margin: 10px 0 0; font-size: 0.9em; color: #28a745; font-weight: bold;">Tap to Open Camera</p>
         
-        <input type="file" id="evidence-upload" accept="image/*" capture="environment" style="display:none;" onchange="previewEvidence(this)">
+        <input type="file" id="evidence-upload" accept="image/*" capture="environment" style="display:none;" multiple onchange="handleMultipleFiles(this)">
     </div>
     
-    <div id="evidence-preview" style="margin-top:15px; display:none; position: relative;">
-        <img id="preview-img" src="" style="width:100%; border-radius:8px; border:2px solid #28a745; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7em;">
-            Live Photo Captured
-        </div>
+    <div id="evidence-preview" style="margin-top:15px; display:none;">
     </div>
 </div>
 
