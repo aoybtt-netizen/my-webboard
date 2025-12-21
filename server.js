@@ -2519,6 +2519,133 @@ socket.on('reply-deduct-confirm', async (data) => {
             socket.emit('receive-assigned-zones', { success: false, message: '❌ เกิดข้อผิดพลาด' });
         }
     });
+	
+	
+	// --- [SERVER SIDE] ระบบอนุมัติการยืนยันตัวตน และแบ่งจ่ายเงิน ---
+socket.on('approve-verification', async (data) => {
+    if (!socket.username) return;
+
+    try {
+        const adminUser = await usersCollection.findOne({ username: socket.username });
+        
+        // 1. ตรวจสอบสิทธิ์ว่าเป็นแอดมิน (Level 1 หรือ 2 ตามที่คุณออกแบบ)
+        if (!adminUser || adminUser.adminLevel < 1) {
+            socket.emit('verification-error', { message: '⛔ คุณไม่มีสิทธิ์อนุมัติ' });
+            return;
+        }
+
+        const targetUserId = data.userId; // ID ของสมาชิกที่ต้องการอนุมัติ
+        const targetUser = await usersCollection.findOne({ username: targetUserId });
+
+        if (!targetUser) {
+            socket.emit('verification-error', { message: '❌ ไม่พบข้อมูลสมาชิก' });
+            return;
+        }
+
+        // --- เริ่มต้นกระบวนการแบ่งเงิน (Financial Logic) ---
+        const totalFee = 50;       // ยอดเต็ม
+        const adminShare = 40;     // แอดมินได้
+        const systemShare = 10;    // ระบบได้
+        const initialDeposit = 25; // มัดจำที่หักไปแล้ว (Locked)
+        const remainingPay = totalFee - initialDeposit; // ส่วนที่ต้องหักเพิ่ม (25)
+
+        // เช็คว่า User มีเงินเหลือพอหักส่วนที่สองไหม
+        if (targetUser.balance < remainingPay) {
+            socket.emit('verification-error', { message: '❌ สมาชิกมีเงินไม่พอจ่ายส่วนที่เหลือ (25 USD)' });
+            return;
+        }
+
+        // --- UPDATE DATABASE (Transaction) ---
+        
+        // 1. หักเงินส่วนที่เหลือจากสมาชิก และอัปเดตสถานะเป็น Verified
+        await usersCollection.updateOne(
+            { username: targetUserId },
+            { 
+                $inc: { balance: -remainingPay },
+                $set: { isVerified: true, verifyStatus: 'verified' }
+            }
+        );
+
+        // 2. โอนเงินให้แอดมิน (40 USD)
+        await usersCollection.updateOne(
+            { username: socket.username },
+            { $inc: { balance: adminShare } }
+        );
+
+        // 3. โอนเงินเข้าระบบ (10 USD)
+        // คุณอาจจะมี User พิเศษชื่อ 'system_account' หรือเก็บใน Config
+        await configCollection.updateOne(
+            { name: "system_revenue" },
+            { $inc: { totalAmount: systemShare } },
+            { upsert: true }
+        );
+
+        // 4. บันทึกประวัติ Transaction
+        await transactionsCollection.insertOne({
+            userId: targetUserId,
+            adminId: socket.username,
+            amount: totalFee,
+            distribution: { admin: adminShare, system: systemShare },
+            type: 'identity_verification',
+            status: 'completed',
+            timestamp: new Date()
+        });
+
+        // แจ้งกลับแอดมิน
+        socket.emit('verification-success', { 
+            message: `✅ อนุมัติเรียบร้อย! คุณได้รับ ${adminShare} USD`,
+            targetUserId: targetUserId 
+        });
+
+        // ส่งข้อความหา User (ถ้าเขาออนไลน์อยู่)
+        io.to(targetUserId).emit('identity-verified', { 
+            message: '🎉 บัญชีของคุณได้รับการยืนยันตัวตนเรียบร้อยแล้ว!' 
+        });
+
+    } catch (err) {
+        console.error('Approve Error:', err);
+        socket.emit('verification-error', { message: '❌ เกิดข้อผิดพลาดในระบบฐานข้อมูล' });
+    }
+});
+
+	socket.on('request-verification', async (data) => {
+    if (!socket.username) return;
+
+    try {
+        const user = await usersCollection.findOne({ username: socket.username });
+        
+        // 1. เช็คยอดเงินขั้นต่ำ 50 USD
+        if (!user || user.balance < 50) {
+            socket.emit('verification-error', { message: '❌ ยอดเงินไม่เพียงพอ (ต้องมีอย่างน้อย 50 USD)' });
+            return;
+        }
+
+        // 2. หักเงินมัดจำ 25 USD และตั้งสถานะรอตรวจสอบ
+        await usersCollection.updateOne(
+            { username: socket.username },
+            { 
+                $inc: { balance: -25 }, // หักเงินทันที
+                $set: { verifyStatus: 'pending' } // ตั้งสถานะรอแอดมิน
+            }
+        );
+
+        // 3. บันทึกลงประวัติธุรกรรม
+        await transactionsCollection.insertOne({
+            userId: socket.username,
+            amount: 25,
+            type: 'verification_deposit',
+            status: 'locked',
+            timestamp: new Date()
+        });
+
+        socket.emit('verification-sent', { message: '✅ หักมัดจำ 25 USD เรียบร้อย โปรดพบแอดมินในระยะ 10 เมตร' });
+
+    } catch (err) {
+        console.error(err);
+        socket.emit('verification-error', { message: '❌ เกิดข้อผิดพลาดทางเทคนิค' });
+    }
+});
+
 
 });
 

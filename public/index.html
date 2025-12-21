@@ -458,7 +458,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.26 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.27 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1574,6 +1574,25 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             verifyBtn.classList.remove('hidden');
         }
     }
+	
+		const verifyBtn = document.getElementById('verify-btn');
+		const verifyStatusArea = document.getElementById('verify-status-text'); // สร้าง id ใหม่รอไว้
+
+    if (verifyBtn) {
+        // 1. ถ้าเป็นแอดมิน ให้ซ่อนปุ่ม
+        if (myAdminLevel > 0) {
+            verifyBtn.style.display = 'none';
+        } 
+        // 2. ถ้าอยู่ระหว่างการตรวจสอบ (Pending)
+        else if (userData.verifyStatus === 'pending') {
+            verifyBtn.disabled = true;
+            verifyBtn.style.background = '#f8f9fa';
+            verifyBtn.style.color = '#6c757d';
+            verifyBtn.style.border = '1px solid #ddd';
+            verifyBtn.innerHTML = `<i class="fas fa-hourglass-half"></i> Under review by admin...`;
+        }
+    }
+
 		
                         
         const adminPanelDiv = document.getElementById('admin-panel');
@@ -4577,10 +4596,17 @@ async function submitVerification() {
 }
 
 function confirmVerificationRequest() {
-    if (confirm("ระบบจะหักมัดจำ 25 USD เพื่อเริ่มการตรวจสอบ ยืนยันหรือไม่?")) {
-        // ส่งคำขอไปยัง Server เพื่อตัดเงินและสร้าง Pending Log
+    if (confirm("The system will deduct a 25 USD deposit to start the verification. Confirm?")) {
+        const verifyBtn = document.getElementById('verify-btn');
+        
+        // เปลี่ยนสถานะปุ่มทันที
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
+
+        // ส่งสัญญาณไปที่ Server
         socket.emit('request-verification', { deposit: 25 });
-        alert("ส่งคำขอเรียบร้อย โปรดรอแอดมินดำเนินการ");
+        
+        alert("Your request has been sent. Please wait for the area admin's review.");
         closeVerifyModal();
     }
 }
@@ -5080,6 +5106,38 @@ function openAdminVerifyList() {
         <div style="display: flex; gap: 12px; justify-content: flex-end;">
             <button class="sidebar-btn" onclick="closeVerifyModal()" style="background: #e0e0e0; color: #444; width: auto; margin-bottom: 0; padding: 10px 25px; border: none;" data-i18n-key="cancel_btn">Cancel</button>
             <button class="sidebar-btn create-btn" onclick="submitVerification()" style="width: auto; margin-bottom: 0; padding: 10px 25px; background: #007bff; color: white;" data-i18n-key="post_btn">Confirm</button>
+        </div>
+    </div>
+</div>
+
+
+
+		<div id="admin-verify-modal" class="modal-overlay hidden" style="z-index: 4000;">
+    <div class="modal-box" style="max-width: 600px; width: 90%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 style="margin:0;"><i class="fas fa-id-card-alt"></i> Members Verified Zone</h3>
+            <button onclick="closeAdminVerifyModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
+        </div>
+
+        <div id="pending-requests-area" class="hidden">
+            <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #ffc107;">
+                <div>
+                    <strong style="color: #856404;">New Verification Request!</strong>
+                    <div id="pending-count" style="font-size: 0.85em; color: #856404;">You have 1 request waiting...</div>
+                </div>
+                <button class="sidebar-btn create-btn" onclick="showPendingDetails()" style="width: auto; margin: 0; padding: 5px 15px; background: #ffc107; border: none; color: #856404;">
+                    Check Now
+                </button>
+            </div>
+        </div>
+
+        <div style="font-weight: bold; margin-bottom: 10px; color: #555;">Verified Members in your zone:</div>
+        <div id="verified-members-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+            <div style="padding: 20px; text-align: center; color: #999;">No verified members yet.</div>
+        </div>
+
+        <div style="margin-top: 20px; text-align: right;">
+            <button class="sidebar-btn" onclick="closeAdminVerifyModal()" style="background: #6c757d; color: white; width: auto; margin-bottom: 0;">Close</button>
         </div>
     </div>
 </div>
