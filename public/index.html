@@ -4868,42 +4868,50 @@ function openReviewDetail(targetUsername, distance) {
 
 
 // เก็บไฟล์ไว้ในตัวแปรเผื่อต้องการส่งไป Server
+// 1. ประกาศตัวแปรไว้นอกฟังก์ชันเพื่อสะสมไฟล์ (Global Scope)
 let evidenceFiles = []; 
 
 function handleMultipleFiles(input) {
     const previewContainer = document.getElementById('evidence-preview');
     
-    // ล้างข้อมูลเก่าออกก่อน (ถ้าต้องการให้เลือกใหม่แล้วของเก่าหายไป)
-    // หากต้องการให้สะสมรูปภาพ ให้ลบบรรทัดล่างนี้ออกครับ
+    // รับไฟล์ใหม่จาก input
+    const newFiles = Array.from(input.files);
+
+    // 2. ตรวจสอบว่าถ้าเพิ่มรูปใหม่เข้าไป จะเกิน 3 รูปหรือไม่
+    if (evidenceFiles.length + newFiles.length > 3) {
+        alert("คุณสามารถอัปโหลดรูปภาพได้สูงสุด 3 รูปเท่านั้น");
+        input.value = ""; // ล้างค่าใน input
+        return;
+    }
+
+    // รวมไฟล์ใหม่เข้ากับไฟล์เดิมที่มีอยู่
+    evidenceFiles = evidenceFiles.concat(newFiles);
+
+    // ล้างหน้าจอ Preview เพื่อวาดใหม่ทั้งหมดจากข้อมูลใน evidenceFiles (กันลำดับเพี้ยน)
     previewContainer.innerHTML = ''; 
 
-    if (input.files && input.files.length > 0) {
-        // เปลี่ยนการแสดงผลเป็น Grid สำหรับรูปหลายรูป
+    if (evidenceFiles.length > 0) {
+        // ตั้งค่า Grid
         previewContainer.style.display = 'grid';
-        previewContainer.style.gridTemplateColumns = 'repeat(2, 1fr)'; // แสดง 2 คอลัมน์
+        previewContainer.style.gridTemplateColumns = 'repeat(3, 1fr)'; // เปลี่ยนเป็น 3 คอลัมน์เพื่อให้พอดี
         previewContainer.style.gap = '10px';
         previewContainer.style.marginTop = '15px';
-
-        evidenceFiles = Array.from(input.files); // เก็บเข้าตัวแปร global
 
         evidenceFiles.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = function(e) {
-                // สร้าง Wrapper สำหรับแต่ละรูป
                 const wrapper = document.createElement('div');
                 wrapper.style.position = 'relative';
 
-                // สร้างแท็ก <img>
                 const img = document.createElement('img');
                 img.src = e.target.result;
                 img.style.width = '100%';
-                img.style.height = '120px'; // ล็อกความสูงให้เท่ากัน
+                img.style.height = '100px'; // ปรับความสูงลงเล็กน้อยเพื่อให้ดูง่าย
                 img.style.objectFit = 'cover';
                 img.style.borderRadius = '8px';
                 img.style.border = '2px solid #28a745';
                 img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
 
-                // เพิ่มป้ายกำกับรูปที่
                 const badge = document.createElement('div');
                 badge.innerHTML = `<i class="fas fa-camera"></i> #${index + 1}`;
                 badge.style.cssText = `
@@ -4912,18 +4920,35 @@ function handleMultipleFiles(input) {
                     padding: 2px 6px; border-radius: 4px; font-size: 0.6em;
                 `;
 
+                // เพิ่มปุ่มลบ (Optional - แนะนำให้มีเพื่อให้ผู้ใช้ลบรูปที่ถ่ายเสียได้)
+                const deleteBtn = document.createElement('div');
+                deleteBtn.innerHTML = '×';
+                deleteBtn.style.cssText = `
+                    position: absolute; top: -5px; right: -5px;
+                    background: #ff4d4d; color: white; width: 18px; height: 18px;
+                    border-radius: 50%; text-align: center; line-height: 16px;
+                    cursor: pointer; font-weight: bold; font-size: 14px;
+                `;
+                deleteBtn.onclick = function() {
+                    evidenceFiles.splice(index, 1); // ลบไฟล์ออกจาก Array
+                    handleMultipleFiles({files: []}); // สั่งวาด Preview ใหม่
+                };
+
                 wrapper.appendChild(img);
                 wrapper.appendChild(badge);
+                wrapper.appendChild(deleteBtn);
                 previewContainer.appendChild(wrapper);
             };
             reader.readAsDataURL(file);
         });
         
-        // ปลดล็อกปุ่ม Approve
         const confirmBtn = document.getElementById('final-confirm-btn');
         confirmBtn.disabled = false;
         confirmBtn.style.opacity = '1';
     }
+    
+    // ล้างค่า input เพื่อให้สามารถกดเลือกไฟล์เดิมซ้ำได้ในกรณีที่ลบไปแล้วอยากเลือกใหม่
+    input.value = ""; 
 }
 
 
@@ -5524,9 +5549,9 @@ function handleMultipleFiles(input) {
             <button onclick="closeApprovalDetailModal()" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:bold;">
                 Cancel
             </button>
-            <button id="final-confirm-btn" style="flex:2; padding:12px; border-radius:8px; border:none; background:#28a745; color:white; cursor:pointer; font-weight:bold;">
-                Approve & Collect 25 USD
-            </button>
+            <button id="final-confirm-btn" disabled style="flex:2; padding:12px; border-radius:8px; border:none; background:#28a745; color:white; cursor:not-allowed; font-weight:bold; opacity: 0.5;">
+			Approve & Collect 25 USD
+			</button>
         </div>
     </div>
 </div>
