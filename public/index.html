@@ -4568,21 +4568,40 @@ function loadZoneMembersData() {
     }
 }
 
-// เมื่อกด "Check Now" จะโชว์รายละเอียดคนที่จะ Verify
-async function showPendingDetails() {
-    // 1. ดึงพิกัดปัจจุบันของแอดมิน (เพราะแอดมินต้องอยู่ใกล้ User ในระยะ 10 เมตร)
-    if (!navigator.geolocation) {
-        alert("Browser ของคุณไม่รองรับการระบุตำแหน่ง");
-        return;
+
+socket.on('new-verification-request', (data) => {
+    console.log("ได้รับคำขอใหม่จาก:", data.fromUser);
+    
+    // แสดงแถบแจ้งเตือนสีเหลือง (pending-requests-area)
+    const alertArea = document.getElementById('pending-requests-area');
+    if (alertArea) {
+        alertArea.classList.remove('hidden');
+        
+        // เล่นเสียงแจ้งเตือน (ถ้าต้องการ)
+        // playNotificationSound(); 
     }
+    
+    // อัปเดตตัวเลขจำนวนคนที่รอ (ถ้ามีหลายคน)
+    const countLabel = document.getElementById('pending-count');
+    if (countLabel) {
+        countLabel.innerText = `You have a new request from ${data.fromUser}!`;
+    }
+});
 
-    navigator.geolocation.getCurrentPosition(async (position) => {
-        const adminLat = position.coords.latitude;
-        const adminLng = position.coords.longitude;
+// เมื่อกด "Check Now" จะโชว์รายละเอียดคนที่จะ Verify
+function showPendingDetails() {
+    // ดึงพิกัดแอดมินปัจจุบันก่อน เพื่อเอาไปเทียบระยะทางกับสมาชิก
+    navigator.geolocation.getCurrentPosition((pos) => {
+        const adminCoords = {
+            adminLat: pos.coords.latitude,
+            adminLng: pos.coords.longitude
+        };
 
-        // 2. เรียกไปที่ Server เพื่อขอรายชื่อคนที่มีสถานะ 'pending' ในโซนนี้
-        // (เราต้องส่งพิกัดแอดมินไปให้ Server ช่วยคำนวณด้วยเพื่อความปลอดภัย)
-        socket.emit('get-pending-verifications', { adminLat, adminLng });
+        // ส่งสัญญาณขอรายชื่อ Pending ทั้งหมดที่อยู่ใกล้ๆ
+        socket.emit('get-pending-verifications', adminCoords);
+        
+    }, (err) => {
+        alert("Please enable GPS to check member distance.");
     });
 }
 
@@ -4693,26 +4712,35 @@ async function submitVerification() {
 function confirmVerificationRequest() {
     if (confirm("The system will deduct a 25 USD deposit to start the verification. Confirm?")) {
         const verifyBtn = document.getElementById('verify-btn');
-        
-        // 1. เก็บข้อความเดิมไว้ก่อนเปลี่ยน (เผื่อต้องเปลี่ยนกลับเมื่อ Error)
         const originalText = verifyBtn.innerHTML;
 
-        // 2. เปลี่ยนสถานะปุ่มทันที
+        // 1. เปลี่ยนสถานะปุ่ม
         verifyBtn.disabled = true;
         verifyBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
 
-        // 3. ส่งสัญญาณไปที่ Server
-        socket.emit('request-verification'); 
+        // 2. ดึงพิกัดปัจจุบันก่อนส่งสัญญาณ (เพื่อให้ Server บันทึกตำแหน่งที่กดขอ)
+        navigator.geolocation.getCurrentPosition((position) => {
+            const loc = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
 
-        // 4. รอรับผลลัพธ์ (เพิ่ม Listener เหล่านี้ไว้ในส่วนเริ่มต้นของไฟล์ หรือข้างนอกฟังก์ชัน)
-        
-        // กรณีสำเร็จ
-        socket.once('verification-sent', (data) => {
-            alert(data.message);
-            closeVerifyModal();
+            // 3. ส่งสัญญาณไปที่ Server พร้อมแนบตำแหน่ง
+            socket.emit('request-verification', { location: loc });
+
+        }, (err) => {
+            // กรณีดึงพิกัดไม่ได้ตอนจะกดส่ง
+            alert("Unable to get your location. Please check your GPS settings.");
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = originalText;
         });
 
-        // กรณีเกิดข้อผิดพลาด (คืนค่าปุ่มให้กดใหม่ได้)
+        // 4. รอรับผลลัพธ์ (ใช้ .once เหมือนเดิม ดีอยู่แล้วครับ)
+        socket.once('verification-sent', (data) => {
+            alert(data.message);
+            if (typeof closeVerifyModal === "function") closeVerifyModal();
+        });
+
         socket.once('verification-error', (data) => {
             alert(data.message);
             verifyBtn.disabled = false;

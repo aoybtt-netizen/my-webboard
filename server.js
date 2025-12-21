@@ -2673,22 +2673,32 @@ socket.on('approve-verification', async (data) => {
     try {
         const user = await usersCollection.findOne({ username: socket.username });
         
+        // 🎯 ตรวจสอบชื่อฟิลด์: เปลี่ยนจาก user.balance เป็น user.coins ตามฐานข้อมูลหลักของคุณ
+        const currentCoins = user.coins || 0;
+
         // 1. เช็คยอดเงินขั้นต่ำ 50 USD
-        if (!user || user.balance < 50) {
+        if (!user || currentCoins < 50) {
             socket.emit('verification-error', { message: '❌ ยอดเงินไม่เพียงพอ (ต้องมีอย่างน้อย 50 USD)' });
             return;
         }
 
-        // 2. หักเงินมัดจำ 25 USD และตั้งสถานะรอตรวจสอบ
+        // 2. รับพิกัดจาก Client (ถ้ามีการส่งมา) เพื่อบันทึกจุดที่สมาชิกยืนขอ
+        const userLoc = data && data.location ? data.location : user.lastLocation;
+
+        // 3. หักเงินมัดจำ 25 USD และตั้งสถานะ
         await usersCollection.updateOne(
             { username: socket.username },
             { 
-                $inc: { balance: -25 }, // หักเงินทันที
-                $set: { verifyStatus: 'pending' } // ตั้งสถานะรอแอดมิน
+                $inc: { coins: -25 }, // หักมัดจำก้อนแรก
+                $set: { 
+                    verifyStatus: 'pending',
+                    lastVerifyLocation: userLoc, // บันทึกพิกัดตอนกดขอไว้ให้แอดมินเช็คระยะ
+                    verifyRequestTime: new Date()
+                } 
             }
         );
 
-        // 3. บันทึกลงประวัติธุรกรรม
+        // 4. บันทึกลงประวัติธุรกรรม
         await transactionsCollection.insertOne({
             userId: socket.username,
             amount: 25,
@@ -2697,10 +2707,22 @@ socket.on('approve-verification', async (data) => {
             timestamp: new Date()
         });
 
-        socket.emit('verification-sent', { message: '✅ หักมัดจำ 25 USD เรียบร้อย โปรดพบแอดมินในระยะ 10 เมตร' });
+        // 5. แจ้งเตือนแอดมินเจ้าของพื้นที่ (Broadcast)
+        // หาว่าโซนนี้ใครคุม เพื่อส่งสัญญาณให้แอดมินคนนั้นรู้ตัวทันที
+        const responsible = await findResponsibleAdmin(userLoc);
+        if (responsible && responsible.username) {
+            io.to(responsible.username).emit('new-verification-request', {
+                fromUser: socket.username,
+                location: userLoc
+            });
+        }
+
+        socket.emit('verification-sent', { 
+            message: '✅ หักมัดจำ 25 USD เรียบร้อย โปรดพบแอดมินในระยะ 10 เมตร' 
+        });
 
     } catch (err) {
-        console.error(err);
+        console.error("Request Verification Error:", err);
         socket.emit('verification-error', { message: '❌ เกิดข้อผิดพลาดทางเทคนิค' });
     }
 });
