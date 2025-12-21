@@ -2773,6 +2773,36 @@ socket.on('get-pending-verifications', async (data) => {
     }
 });
 
+	socket.on('get-user-status-socket', async (callback) => {
+        try {
+            // ใช้ socket.username ที่ได้จากการ register ตอนเชื่อมต่อ
+            const username = socket.username; 
+
+            if (!username) {
+                return callback({ success: false, message: "กรุณาเข้าสู่ระบบใหม่ (Socket Timeout)" });
+            }
+
+            const user = await usersCollection.findOne({ username: username });
+            
+            if (!user) {
+                return callback({ success: false, message: "ไม่พบข้อมูลผู้ใช้" });
+            }
+
+            // ส่งข้อมูลกลับไปให้ Client
+            callback({
+                success: true,
+                username: user.username,
+                coins: user.coins || 0, // ใช้ coins ตามโครงสร้าง DB ของคุณ
+                zoneId: user.zoneId || null,
+                verifyStatus: user.verifyStatus || 'unverified'
+            });
+        } catch (err) {
+            console.error("DEBUG ERROR SOCKET STATUS:", err);
+            callback({ success: false, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+        }
+    });
+
+
 
 });
 
