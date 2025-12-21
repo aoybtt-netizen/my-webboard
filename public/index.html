@@ -4588,34 +4588,36 @@ async function showPendingDetails() {
 
 	// 3. รอรับข้อมูลคนรอตรวจสอบจาก Server
 socket.on('receive-pending-list', (data) => {
-    const listArea = document.getElementById('verified-members-list'); // ใช้พื้นที่เดิมแต่ล้างข้อมูลเก่าออก
+    const listArea = document.getElementById('verified-members-list');
     listArea.innerHTML = ''; 
 
-    if (data.pendingUsers.length === 0) {
+    if (!data.pendingUsers || data.pendingUsers.length === 0) {
         listArea.innerHTML = '<div style="padding:20px; text-align:center;">ไม่พบคำขอในระยะ 10 เมตร</div>';
         return;
     }
 
     data.pendingUsers.forEach(user => {
-        // คำนวณระยะห่างเพื่อโชว์ให้แอดมินเห็น
         const distance = user.distance.toFixed(2);
-        
+        const isNearby = user.distance <= 10;
+
         const userRow = document.createElement('div');
         userRow.style = "padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;";
+        
+        // สังเกตตรงปุ่มนะครับ จะไม่มีการใช้ ` (Backtick) ซ้อนข้างในอีก
         userRow.innerHTML = `
             <div>
                 <strong>👤 ${user.username}</strong><br>
-                <small style="color:${distance <= 10 ? 'green' : 'red'}">
+                <small style="color:${isNearby ? 'green' : 'red'}">
                     📍 ห่างจากคุณ: ${distance} เมตร
                 </small>
             </div>
             <div>
-                ${distance <= 10 
-                    ? `<button class="sidebar-btn create-btn" onclick="adminApproveUser('${user.username}')" style="width:auto; margin:0; padding:5px 15px;">Approve</button>`
-                    : `<span style="color:gray; font-size:0.8em;">ไกลเกินไป</span>`
+                ${isNearby 
+                    ? '<button class="sidebar-btn create-btn" onclick="adminApproveUser(\'' + user.username + '\')" style="width:auto; margin:0; padding:5px 15px;">Approve</button>'
+                    : '<span style="color:gray; font-size:0.8em;">ไกลเกินไป</span>'
                 }
             </div>
-        `;
+        `; 
         listArea.appendChild(userRow);
     });
 });
