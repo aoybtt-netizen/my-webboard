@@ -458,7 +458,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.27 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.28 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -4587,6 +4587,38 @@ function adminApproveUser(username) {
     document.getElementById('approval-detail-modal').classList.remove('hidden');
 }
 
+// ฟังก์ชันสำหรับแสดงรูปภาพตัวอย่าง (Preview)
+function previewEvidence(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // ตรวจสอบขนาดไฟล์ (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            // ดึงข้อความแจ้งเตือน (กัน error กรณีลืมใส่คำแปล)
+            const msg = (translations && translations[currentLang] && translations[currentLang]['error_file_too_large']) 
+                        ? translations[currentLang]['error_file_too_large'] 
+                        : 'File too large (Max 5MB)';
+            alert(msg);
+            input.value = ""; // ล้างค่า
+            return;
+        }
+
+        // อ่านไฟล์เพื่อแสดงรูป
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewImg = document.getElementById('preview-img');
+            const previewArea = document.getElementById('evidence-preview');
+            
+            if (previewImg && previewArea) {
+                previewImg.src = e.target.result;
+                previewArea.style.display = "block"; // โชว์กรอบรูป
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+
 // ฟังก์ชันปิดหน้าต่าง
 function closeApprovalDetailModal() {
     document.getElementById('approval-detail-modal').classList.add('hidden');
@@ -5416,7 +5448,7 @@ function openReviewDetail(targetUsername, distance) {
         <i class="fas fa-camera" style="font-size: 2.5em; color: #28a745;"></i>
         <p style="margin: 10px 0 0; font-size: 0.9em; color: #28a745; font-weight: bold;">Tap to Open Camera</p>
         
-        <input type="file" id="evidence-upload" accept="image/*" capture="environment" style="display:none;">
+        <input type="file" id="evidence-upload" accept="image/*" capture="environment" style="display:none;" onchange="previewEvidence(this)">
     </div>
     
     <div id="evidence-preview" style="margin-top:15px; display:none; position: relative;">
