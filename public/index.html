@@ -5005,24 +5005,14 @@ function openReviewDetail(targetUsername, distance) {
 	document.getElementById('evidence-upload').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
-        // ตรวจสอบขนาดไฟล์ 5MB
-        if (file.size > 5 * 1024 * 1024) {
-            // ดึงข้อความแจ้งเตือนตามภาษาปัจจุบัน (currentLang)
-            const alertMsg = translations[currentLang]['error_file_too_large'];
-            alert(alertMsg);
-            
-            this.value = ""; // ล้างค่าใน input
-            return;
-        }
-
         const reader = new FileReader();
         reader.onload = function(event) {
             const previewImg = document.getElementById('preview-img');
-            const previewArea = document.getElementById('evidence-preview');
+            const previewContainer = document.getElementById('evidence-preview');
             
             previewImg.src = event.target.result;
-            previewArea.style.display = "block"; 
-        };
+            previewContainer.style.display = 'block'; // แสดง Preview
+        }
         reader.readAsDataURL(file);
     }
 });
