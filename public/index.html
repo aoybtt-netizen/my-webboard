@@ -4660,9 +4660,11 @@ async function submitVerification() {
             const userLng = position.coords.longitude;
 
             // 4. ถามหาพิกัด Admin ผ่าน Socket
-            socket.emit('get-admin-live-location', { zoneId: userData.zoneId }, (adminPos) => {
-                
-                if (!adminPos) {
+            socket.emit('get-admin-live-location', { 
+					zoneId: userData.zoneId, // ส่งไปเผื่อมี
+					lat: userLat,            // ส่งพิกัดปัจจุบันไปด้วยเพื่อความชัวร์
+					lng: userLng 
+				}, (adminPos) => {
                     alert("ขณะนี้แอดมินในโซนของคุณยังไม่เปิดระบุตำแหน่ง หรือไม่อยู่ในระบบ");
                     return;
                 }

@@ -2744,27 +2744,38 @@ socket.on('get-pending-verifications', async (data) => {
 	socket.on('get-admin-live-location', async (data, callback) => {
     console.log("--- DEBUG: Socket get-admin-live-location ---");
     try {
-        const { zoneId } = data;
-        console.log(`Debug: Request location for Zone ID: ${zoneId} from User: ${socket.username}`);
-
-        // ตรวจสอบเงื่อนไขใน MongoDB Query
-        const query = { 
-            role: 'admin', 
-            zoneId: zoneId,
-            lastLocation: { $exists: true } 
-        };
+        let { zoneId, lat, lng } = data;
         
-        const admin = await usersCollection.findOne(query);
+        // ✨ ถ้า zoneId เป็น null แต่มีพิกัดส่งมา ให้หาโซนก่อน
+        if (!zoneId && lat && lng) {
+            console.log("Debug: Zone ID is null, searching zone by coordinates...");
+            const responsible = await findResponsibleAdmin({ lat, lng });
+            if (responsible && responsible.zoneData) {
+                zoneId = responsible.zoneData.id;
+                console.log(`Debug: Found Zone -> ${responsible.zoneName} (ID: ${zoneId})`);
+            }
+        }
+
+        if (!zoneId) {
+            console.warn("Debug: Still no Zone ID found for this location");
+            return callback(null);
+        }
+
+        // ค้นหาแอดมินในโซนนั้น
+        const admin = await usersCollection.findOne({ 
+            adminLevel: { $gte: 1 }, // หา Admin จริงๆ
+            zoneId: zoneId,          // เฉพาะในโซนนี้
+            lastLocation: { $exists: true } 
+        });
 
         if (admin && admin.lastLocation) {
-            console.log(`Debug: Admin Found! -> ${admin.username} at [${admin.lastLocation.lat}, ${admin.lastLocation.lng}]`);
+            console.log(`Debug: Admin Found! -> ${admin.username}`);
             callback({
                 lat: admin.lastLocation.lat,
                 lng: admin.lastLocation.lng
             });
         } else {
-            console.warn(`Debug: No active Admin found for zone ${zoneId}`);
-            // ส่งค่ากลับเป็น null เพื่อให้ฝั่ง Client แจ้งเตือน User
+            console.warn(`Debug: No active Admin with location in zone ${zoneId}`);
             callback(null);
         }
     } catch (err) {
