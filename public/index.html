@@ -4833,6 +4833,23 @@ function openReviewDetail(targetUsername, distance) {
 }
 
 
+// ดักจับเหตุการณ์เมื่อมีการถ่ายรูปเสร็จสิ้น
+document.getElementById('evidence-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const previewImg = document.getElementById('preview-img');
+            const previewArea = document.getElementById('evidence-preview');
+            
+            previewImg.src = event.target.result;
+            previewArea.style.display = "block"; // แสดงรูปที่ถ่าย
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+
 
 
 
@@ -5387,18 +5404,26 @@ function openReviewDetail(targetUsername, distance) {
             <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">Member Name:</label>
             <div id="approve-target-name" style="background:#f8f9fa; padding:10px; border-radius:5px; border:1px solid #ddd; font-weight:bold;">-</div>
         </div>
+		
 
         <div style="margin-bottom: 20px;">
-            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">Upload Evidence (Optional):</label>
-            <div style="border: 2px dashed #ddd; border-radius: 10px; padding: 20px; text-align: center; cursor: pointer;" onclick="document.getElementById('evidence-upload').click()">
-                <i class="fas fa-camera" style="font-size: 2em; color: #ccc;"></i>
-                <p style="margin: 10px 0 0; font-size: 0.9em; color: #999;">Click to upload or take a photo</p>
-                <input type="file" id="evidence-upload" accept="image/*" style="display:none;">
-            </div>
-            <div id="evidence-preview" style="margin-top:10px; display:none;">
-                <img id="preview-img" src="" style="width:100%; border-radius:5px; border:1px solid #ddd;">
-            </div>
+    <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">Capture Evidence (Live Camera Only):</label>
+    <div style="border: 2px dashed #28a745; border-radius: 10px; padding: 25px; text-align: center; cursor: pointer; background: #f0fff4;" 
+         onclick="document.getElementById('evidence-upload').click()">
+        <i class="fas fa-camera" style="font-size: 2.5em; color: #28a745;"></i>
+        <p style="margin: 10px 0 0; font-size: 0.9em; color: #28a745; font-weight: bold;">Tap to Open Camera</p>
+        
+        <input type="file" id="evidence-upload" accept="image/*" capture="environment" style="display:none;">
+    </div>
+    
+    <div id="evidence-preview" style="margin-top:15px; display:none; position: relative;">
+        <img id="preview-img" src="" style="width:100%; border-radius:8px; border:2px solid #28a745; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7em;">
+            Live Photo Captured
         </div>
+    </div>
+</div>
+
 
         <div style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #666;">
             <i class="fas fa-info-circle"></i> After approval, the system will deduct <strong>25 USD</strong> from the member and transfer the fee to you immediately.
