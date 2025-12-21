@@ -4520,10 +4520,85 @@ function closeVerifyModal() {
 }
 
 // ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
-function submitVerification() {
-    alert("ระบบกำลังส่งข้อมูลให้แอดมินประจำโซนตรวจสอบ...");
-    // ตรงนี้ไว้ใส่ Logic การส่งรูปหรือข้อมูลไปยัง Server
-    closeVerifyModal();
+async function submitVerification() {
+    // 1. ดึงพิกัดปัจจุบันของ User
+    if (!navigator.geolocation) {
+        alert("Location is not supported by your browser");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        // 2. เช็คว่าอยู่ในโซนไหน (ใช้ Logic เดียวกับตอนตั้งกระทู้)
+        // สมมติว่าระบบค้นหาโซนที่ใกล้ที่สุดและดึงพิกัด Real-time ของ Admin โซนนั้นมา
+        // *หมายเหตุ: คุณต้องมี API หรือ Socket สำหรับดึงพิกัดล่าสุดของ Admin*
+        
+        try {
+            // ดึงข้อมูล User ปัจจุบันเพื่อเช็คยอดเงิน (ตัวอย่างราคา 50 USD)
+            const response = await fetch('/api/user-status'); // ปรับตาม API ของคุณ
+            const userData = await response.json();
+
+            // เช็คยอดเงิน: ต้องมีอย่างน้อย 50 USD
+            if (userData.balance < 50) {
+                alert("ยอดเงินของคุณไม่เพียงพอ (ต้องการ 50 USD)");
+                closeVerifyModal();
+                return;
+            }
+
+            // สมมติดึงพิกัด Admin มาได้ (adminLat, adminLng)
+            // ในที่นี้คุณต้องหาทางส่งคำขอไปถามพิกัด Admin ผ่าน Socket ก่อน
+            socket.emit('get-admin-live-location', { zoneId: userData.zoneId }, (adminPos) => {
+                
+                if (!adminPos) {
+                    alert("ไม่สามารถระบุตำแหน่งแอดมินได้ในขณะนี้");
+                    return;
+                }
+
+                const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
+
+                // ตรวจสอบระยะ 10 เมตร
+                if (distance > 10) {
+                    alert(`คุณอยู่นอกระยะการยืนยันตัวตน (ระยะห่างปัจจุบัน: ${distance.toFixed(2)} เมตร)`);
+                    closeVerifyModal();
+                    return;
+                }
+
+                // 3. ผ่านเงื่อนไขทั้งหมด -> หักเงินมัดจำ 25 USD และส่งคำขอ
+                confirmVerificationRequest();
+            });
+
+        } catch (err) {
+            console.error(err);
+            alert("เกิดข้อผิดพลาดในการตรวจสอบข้อมูล");
+        }
+    });
+}
+
+function confirmVerificationRequest() {
+    if (confirm("ระบบจะหักมัดจำ 25 USD เพื่อเริ่มการตรวจสอบ ยืนยันหรือไม่?")) {
+        // ส่งคำขอไปยัง Server เพื่อตัดเงินและสร้าง Pending Log
+        socket.emit('request-verification', { deposit: 25 });
+        alert("ส่งคำขอเรียบร้อย โปรดรอแอดมินดำเนินการ");
+        closeVerifyModal();
+    }
+}
+
+// ฟังก์ชันคำนวณระยะทาง (เมตร) ระหว่าง 2 จุดพิกัด
+function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // รัศมีโลก (เมตร)
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // ระยะห่างหน่วยเป็นเมตร
 }
 
 function openAdminVerifyList() {
@@ -4964,19 +5039,47 @@ function openAdminVerifyList() {
 
 
 		<div id="verify-modal" class="modal-overlay hidden" style="z-index: 4000;">
-    <div class="modal-box" style="max-width: 450px;">
+    <div class="modal-box" style="max-width: 500px; padding: 25px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 style="margin:0;"><i class="fas fa-user-check"></i> <span data-i18n-key="verify_identity">Verify Identity</span></h3>
-            <button onclick="closeVerifyModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
+            <h3 style="margin:0; color: #333;">
+                <i class="fas fa-user-check" style="color: #007bff;"></i> 
+                <span data-i18n-key="verify_identity">Verify Identity</span>
+            </h3>
+            <button onclick="closeVerifyModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer; color: #999;">&times;</button>
         </div>
 
-        <div id="verify-content-area" style="min-height: 150px; border: 2px dashed #ddd; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #aaa; margin-bottom: 20px;">
-            <p>พื้นที่สำหรับออกแบบฟอร์มยืนยันตัวตน</p>
+        <div id="verify-content-area" style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 12px; padding: 20px; background-color: #fafafa; margin-bottom: 25px; line-height: 1.6;">
+            
+            <div style="margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px;">
+                <strong style="color: #d32f2f; display: block; margin-bottom: 8px; font-size: 1.1em;">🇹🇭 เงื่อนไขการยืนยันตัวตน</strong>
+                <p style="margin: 0; font-size: 0.95em; color: #444;">
+                    คุณจะต้องยืนยันตัวตนกับแอดมินในพื้นที่ของคุณ โดยมีเงื่อนไขสำคัญคือ:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li><strong>ตำแหน่ง (GPS):</strong> ระยะห่างระหว่างคุณกับแอดมินต้อง<strong>ไม่เกิน 10 เมตร</strong></li>
+                        <li><strong>การส่งคำขอ:</strong> เมื่ออยู่ในระยะที่กำหนดแล้ว จึงจะกดปุ่มส่งคำขอได้</li>
+                        <li><strong>เอกสาร:</strong> ขึ้นอยู่กับแอดมินโซนนั้นๆ ควรแชทสอบถามและเตรียมเอกสารให้ครบก่อนไปพบแอดมิน</li>
+                    </ul>
+                    <span style="display: block; margin-top: 10px; font-weight: bold; color: #007bff;">💸 ค่าธรรมเนียมยืนยันตัวตน: 50 USD</span>
+                </p>
+            </div>
+
+            <div>
+                <strong style="color: #d32f2f; display: block; margin-bottom: 8px; font-size: 1.1em;">🇺🇸 Identity Verification Terms</strong>
+                <p style="margin: 0; font-size: 0.9em; color: #555;">
+                    You must verify your identity with your local area admin under these conditions:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li><strong>GPS Location:</strong> Your distance from the admin must <strong>not exceed 10 meters.</strong></li>
+                        <li><strong>Submission:</strong> You can only submit the request when within the required range.</li>
+                        <li><strong>Documents:</strong> Requirements vary by zone. Please chat with your admin to prepare necessary documents beforehand.</li>
+                    </ul>
+                    <span style="display: block; margin-top: 10px; font-weight: bold; color: #007bff;">💸 Verification Fee: 50 USD</span>
+                </p>
+            </div>
         </div>
 
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button class="sidebar-btn" onclick="closeVerifyModal()" style="background: #6c757d; color: white; width: auto; margin-bottom: 0;" data-i18n-key="cancel_btn">Cancel</button>
-            <button class="sidebar-btn create-btn" onclick="submitVerification()" style="width: auto; margin-bottom: 0;" data-i18n-key="post_btn">Confirm</button>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="sidebar-btn" onclick="closeVerifyModal()" style="background: #e0e0e0; color: #444; width: auto; margin-bottom: 0; padding: 10px 25px; border: none;" data-i18n-key="cancel_btn">Cancel</button>
+            <button class="sidebar-btn create-btn" onclick="submitVerification()" style="width: auto; margin-bottom: 0; padding: 10px 25px; background: #007bff; color: white;" data-i18n-key="post_btn">Confirm</button>
         </div>
     </div>
 </div>
