@@ -4728,58 +4728,60 @@ async function submitVerification() {
 
     console.log("กำลังตรวจสอบเงื่อนไขผ่าน Socket...");
 
+
+let currentAdminName = "";
     // 1. ขอข้อมูลสถานะผู้ใช้ผ่าน Socket
-    socket.emit('get-user-status-socket', (userData) => {
-        
-        if (!userData.success) {
-            alert(userData.message || "ไม่สามารถดึงข้อมูลผู้ใช้ได้");
-            return;
-        }
+		socket.emit('get-user-status-socket', (userData) => {
+			
+			if (!userData.success) return;
 
-        const userCoins = userData.coins || 0;
+			// ✅ เก็บชื่อแอดมินไว้ใช้ในงานอื่น
+			currentAdminName = userData.username;
 
-        // 2. เช็คยอดเงิน: ต้องมีอย่างน้อย 50 USD
-        if (userCoins < 50) {
-            alert(`ยอดเงินของคุณไม่เพียงพอ (มี ${userCoins} USD / ต้องการ 50 USD)`);
-            if (typeof closeVerifyModal === "function") closeVerifyModal();
-            return;
-        }
+			const userCoins = userData.coins || 0;
 
-        // 3. ถ้าเงินพอ -> ดึงพิกัดปัจจุบันของ User
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
+			// 2. เช็คยอดเงิน: ต้องมีอย่างน้อย 50 USD
+			if (userCoins < 50) {
+				alert(`ยอดเงินของคุณไม่เพียงพอ (มี ${userCoins} USD / ต้องการ 50 USD)`);
+				if (typeof closeVerifyModal === "function") closeVerifyModal();
+				return;
+			}
 
-            // 4. ถามหาพิกัด Admin ผ่าน Socket
-            socket.emit('get-admin-live-location', { 
-                zoneId: userData.zoneId, 
-                lat: userLat, 
-                lng: userLng 
-            }, (adminPos) => {
-                
-                // 🛑 แก้ไขจุดนี้: ต้องเช็คว่า "ถ้าไม่มี adminPos" ค่อย Alert
-                if (!adminPos) {
-                    alert("ขณะนี้แอดมินในโซนของคุณยังไม่เปิดระบุตำแหน่ง หรือไม่อยู่ในระบบ");
-                    return;
-                }
+			// 3. ถ้าเงินพอ -> ดึงพิกัดปัจจุบันของ User
+			navigator.geolocation.getCurrentPosition(async (position) => {
+				const userLat = position.coords.latitude;
+				const userLng = position.coords.longitude;
 
-                // ✅ ถ้ามี adminPos (ทำงานต่อด้านล่างนี้)
-                const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
+				// 4. ถามหาพิกัด Admin ผ่าน Socket
+				socket.emit('get-admin-live-location', { 
+					zoneId: userData.zoneId, 
+					lat: userLat, 
+					lng: userLng 
+				}, (adminPos) => {
+					
+					// 🛑 แก้ไขจุดนี้: ต้องเช็คว่า "ถ้าไม่มี adminPos" ค่อย Alert
+					if (!adminPos) {
+						alert("ขณะนี้แอดมินในโซนของคุณยังไม่เปิดระบุตำแหน่ง หรือไม่อยู่ในระบบ");
+						return;
+					}
 
-                // 5. ตรวจสอบระยะ 10 เมตร
-                if (distance > 10) {
-                    alert(`คุณอยู่นอกระยะการยืนยันตัวตน\nระยะห่างปัจจุบัน: ${distance.toFixed(2)} เมตร\n(ต้องอยู่ห่างไม่เกิน 10 เมตร)`);
-                    return;
-                }
+					// ✅ ถ้ามี adminPos (ทำงานต่อด้านล่างนี้)
+					const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
 
-                // 6. ผ่านเงื่อนไขทั้งหมด -> เรียกฟังก์ชันหักเงินมัดจำ
-                confirmVerificationRequest();
-            }); // ปิด socket.emit
+					// 5. ตรวจสอบระยะ 10 เมตร
+					if (distance > 10) {
+						alert(`คุณอยู่นอกระยะการยืนยันตัวตน\nระยะห่างปัจจุบัน: ${distance.toFixed(2)} เมตร\n(ต้องอยู่ห่างไม่เกิน 10 เมตร)`);
+						return;
+					}
 
-        }, (error) => {
-            alert("กรุณาอนุญาตการเข้าถึงพิกัด (GPS)");
-        });
-    });
+					// 6. ผ่านเงื่อนไขทั้งหมด -> เรียกฟังก์ชันหักเงินมัดจำ
+					confirmVerificationRequest();
+				}); // ปิด socket.emit
+
+			}, (error) => {
+				alert("กรุณาอนุญาตการเข้าถึงพิกัด (GPS)");
+			});
+		});
 }
 
 function confirmVerificationRequest() {
@@ -4956,35 +4958,36 @@ function handleMultipleFiles(input) {
 
 
 async function processApproval() {
-    // 1. ตรวจสอบว่ามีรูปภาพอย่างน้อย 1 รูปหรือไม่
+    // 1. ตรวจสอบว่ามีชื่อแอดมินหรือไม่
+    if (!adminUsername) {
+        alert("ไม่พบข้อมูลแอดมิน กรุณารีเฟรชหน้าจอหรือเข้าสู่ระบบใหม่");
+        return;
+    }
+
     if (evidenceFiles.length === 0) {
         alert("กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
         return;
     }
 
     const confirmBtn = document.getElementById('final-confirm-btn');
-    
-    // 2. แสดงสถานะกำลังโหลด
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     confirmBtn.style.opacity = '0.7';
 
-    // 3. เตรียมข้อมูล FormData
     const formData = new FormData();
     const memberName = document.getElementById('approve-target-name').innerText;
     
     formData.append('member_name', memberName);
     formData.append('amount', '25');
-    // ดึงชื่อแอดมินปัจจุบัน (ตัวแปรที่มีชื่อแอดมินที่ล็อกอินอยู่)
-    formData.append('requestBy', currentUser); 
+    
+    // ✅ เปลี่ยนจาก currentUser เป็น adminUsername
+    formData.append('requestBy', adminUsername); 
 
-    // เพิ่มไฟล์รูปภาพทั้งหมดเข้า FormData
     evidenceFiles.forEach((file) => {
-        formData.append('evidence', file); // ใช้คีย์ 'evidence' ให้ตรงกับ upload.any() ที่ฝั่ง Server
+        formData.append('evidence', file);
     });
 
     try {
-        // --- 4. ส่งข้อมูลไปยัง API จริงที่คุณเพิ่มใน server.js ---
         const response = await fetch('/api/admin/approve-kyc', {
             method: 'POST',
             body: formData
@@ -4993,24 +4996,12 @@ async function processApproval() {
         const result = await response.json();
 
         if (result.success) {
-            // แจ้งเตือนเมื่อสำเร็จ
             alert("✅ " + result.message);
-            
-            // ล้างข้อมูลและปิด Modal
-            evidenceFiles = [];
-            const previewContainer = document.getElementById('evidence-preview');
-            if(previewContainer) previewContainer.innerHTML = '';
-            
-            closeApprovalDetailModal();
-            
-            // รีเฟรชหน้าจอเพื่อให้ยอดเงินและสถานะอัปเดต
             location.reload(); 
         } else {
-            // กรณี Server ส่ง error กลับมา (เช่น เงินไม่พอ หรือไม่ใช่แอดมิน)
             alert("❌ Error: " + result.error);
             resetButton(confirmBtn);
         }
-
     } catch (error) {
         console.error("Error:", error);
         alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
