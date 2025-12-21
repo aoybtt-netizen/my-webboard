@@ -4745,25 +4745,37 @@ async function submitVerification() {
             const userLat = position.coords.latitude;
             const userLng = position.coords.longitude;
 
-            socket.emit('get-admin-live-location', { 
-                zoneId: userData.zoneId, 
-                lat: userLat, 
-                lng: userLng 
-            }, (adminPos) => {
-                if (!adminPos) {
-                    alert("ขณะนี้แอดมินในโซนยังไม่เปิดระบุตำแหน่ง");
-                    return;
-                }
+            // ในฟังก์ชัน submitVerification...
+socket.emit('get-admin-live-location', { 
+    zoneId: userData.zoneId, 
+    lat: userLat, 
+    lng: userLng 
+}, (adminPos) => {
+    
+    if (!adminPos) {
+        alert("ขณะนี้แอดมินในโซนยังไม่เปิดระบุตำแหน่ง");
+        return;
+    }
 
-                const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
-                if (distance > 10) {
-                    alert(`อยู่นอกระยะยืนยันตัวตน (${distance.toFixed(2)} เมตร)`);
-                    return;
-                }
+    // ✅ จุดสำคัญ: เมื่อ Server ส่งชื่อแอดมินกลับมา ให้บันทึกลง localStorage ทันที
+    if (adminPos.username) {
+        localStorage.setItem('username', adminPos.username);
+        // และอัปเดตตัวแปร Global (ถ้ามีประกาศไว้)
+        if (typeof adminUsername !== 'undefined') adminUsername = adminPos.username;
+        
+        console.log("📌 บันทึกชื่อแอดมินเจ้าของโซนลงเครื่องแล้ว:", adminPos.username);
+    }
 
-                // หากผ่านเงื่อนไขระยะทาง
-                confirmVerificationRequest();
-            });
+    const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
+    
+    if (distance > 10) {
+        alert(`อยู่นอกระยะยืนยันตัวตน (${distance.toFixed(2)} เมตร)`);
+        return;
+    }
+
+    // หากผ่านเงื่อนไขระยะทาง
+    confirmVerificationRequest();
+});
         }, (error) => {
             alert("กรุณาเปิด GPS");
         });
@@ -4946,24 +4958,14 @@ function handleMultipleFiles(input) {
 
 
 async function processApproval() {
-    console.log("🔍 กำลังตรวจสอบแหล่งที่มาของชื่อแอดมิน...");
+    const currentAdmin = localStorage.getItem('username');
+    console.log("🔍 Checking admin name before upload:", currentAdmin);
 
-const fromLocalStorage = localStorage.getItem('username');
-const fromVariable = (typeof username !== 'undefined' ? username : "ไม่พบตัวแปร username");
-
-console.log("💾 จาก LocalStorage:", fromLocalStorage);
-console.log("🔑 จากตัวแปร Global:", fromVariable);
-
-// รวมค่าเพื่อใช้งาน
-const currentAdmin = fromLocalStorage || (typeof username !== 'undefined' ? username : "");
-
-console.log("🎯 ค่าที่จะถูกส่งไป Server (currentAdmin):", currentAdmin);
-
-if (!currentAdmin || currentAdmin === "") {
-    console.error("❌ สรุปผล: หาชื่อแอดมินไม่เจอในระบบ!");
-} else {
-    console.log("✅ สรุปผล: เตรียมส่งข้อมูลในชื่อแอดมิน ->", currentAdmin);
-}
+    // 1. ถ้าไม่มีชื่อแอดมิน ให้แจ้งเตือนและหยุดทำงาน
+    if (!currentAdmin) {
+        alert("❌ ไม่พบข้อมูลแอดมิน! กรุณากดปุ่ม 'เช็คพิกัด/ระยะทาง' ก่อนทำการอนุมัติ");
+        return;
+    }
 
     if (evidenceFiles.length === 0) {
         alert("📸 กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
@@ -4975,9 +4977,15 @@ if (!currentAdmin || currentAdmin === "") {
     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
     const formData = new FormData();
-    const memberName = document.getElementById('approve-target-name').innerText;
+    // ตรวจสอบว่า ID นี้มีอยู่จริงและมีข้อความข้างใน
+    const memberName = document.getElementById('approve-target-name')?.innerText?.trim();
     
-    // ✅ ส่งชื่อแอดมินที่ล็อกอินอยู่ (currentAdmin) ไปที่ Server
+    if (!memberName) {
+        alert("❌ ไม่พบชื่อสมาชิกที่จะอนุมัติ");
+        resetButton(confirmBtn); // เรียกใช้ฟังก์ชันคืนค่าปุ่ม
+        return;
+    }
+
     formData.append('member_name', memberName);
     formData.append('amount', '25');
     formData.append('requestBy', currentAdmin); 
@@ -5008,13 +5016,14 @@ if (!currentAdmin || currentAdmin === "") {
     }
 }
 
-// ฟังก์ชันช่วยรีเซ็ตปุ่มกรณีเกิดข้อผิดพลาด
+// ✅ อย่าลืมเพิ่มฟังก์ชันนี้ไว้ด้านล่างด้วยครับ
 function resetButton(btn) {
+    if (!btn) return;
     btn.disabled = false;
-    btn.innerHTML = 'Approve & Collect 25 USD';
-    btn.style.opacity = '1';
-    btn.style.cursor = 'pointer';
+    btn.innerHTML = 'Approve & Collect 25 USD'; // หรือข้อความเดิมบนปุ่มคุณ
 }
+
+
 
 
 
