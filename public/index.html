@@ -4544,13 +4544,50 @@ function closeVerifyModal() {
 async function openAdminVerifyList() {
     if (myAdminLevel < 1) return;
     
-    // ปิด Sidebar
+    // 1. ปิด Sidebar
     if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
     
+    // 2. จัดการสถานะ UI ก่อนแสดงผล
+    const alertArea = document.getElementById('pending-requests-area');
+    if (alertArea) {
+        // ให้ซ่อนแถบเหลืองไว้ก่อนเสมอเมื่อเปิดหน้าต่างขึ้นมา
+        alertArea.classList.add('hidden'); 
+    }
+
+    // 3. แสดง Modal หลัก
     document.getElementById('admin-verify-modal').classList.remove('hidden');
     
-    // โหลดข้อมูลจาก Server (เดี๋ยวเราต้องทำ API รับส่งข้อมูลนี้)
+    // 4. โหลดรายชื่อคนที่ยืนยันแล้วในโซนมาโชว์ (ฟังก์ชันเดิมของคุณ)
     loadZoneMembersData();
+
+    // 5. [เพิ่มใหม่] เช็คทันทีว่ามีใครรอตรวจ (Pending) อยู่ใกล้ๆ ไหม
+    // เพื่อให้ List มันอัปเดตสมาชิกที่รออยู่โดยไม่ต้องรอให้แอดมินกด "Check Now"
+    navigator.geolocation.getCurrentPosition((pos) => {
+        socket.emit('get-pending-verifications', {
+            adminLat: pos.coords.latitude,
+            adminLng: pos.coords.longitude
+        });
+    });
+}
+
+
+function adminApproveUser(username) {
+    if (!username) return;
+
+    // 1. ใส่ชื่อสมาชิกลงในหน้าต่าง
+    document.getElementById('approve-target-name').innerText = username;
+
+    // 2. รีเซ็ตฟอร์มรูปภาพ (ถ้ามี)
+    document.getElementById('evidence-upload').value = "";
+    document.getElementById('evidence-preview').style.display = "none";
+
+    // 3. แสดง Modal
+    document.getElementById('approval-detail-modal').classList.remove('hidden');
+}
+
+// ฟังก์ชันปิดหน้าต่าง
+function closeApprovalDetailModal() {
+    document.getElementById('approval-detail-modal').classList.add('hidden');
 }
 
 function closeAdminVerifyModal() {
@@ -4569,39 +4606,38 @@ function loadZoneMembersData() {
 }
 
 
+// ดักฟัง: เมื่อมีสมาชิกกดปุ่ม "Verify" ในโซนที่แอดมินคนนี้ดูแล
 socket.on('new-verification-request', (data) => {
-    console.log("ได้รับคำขอใหม่จาก:", data.fromUser);
-    
-    // แสดงแถบแจ้งเตือนสีเหลือง (pending-requests-area)
     const alertArea = document.getElementById('pending-requests-area');
-    if (alertArea) {
-        alertArea.classList.remove('hidden');
-        
-        // เล่นเสียงแจ้งเตือน (ถ้าต้องการ)
-        // playNotificationSound(); 
-    }
-    
-    // อัปเดตตัวเลขจำนวนคนที่รอ (ถ้ามีหลายคน)
     const countLabel = document.getElementById('pending-count');
-    if (countLabel) {
-        countLabel.innerText = `You have a new request from ${data.fromUser}!`;
+
+    if (alertArea) {
+        // โชว์แถบสีเหลืองแจ้งเตือน
+        alertArea.classList.remove('hidden'); 
+        
+        // ถ้าแอดมินเปิด Modal ค้างไว้อยู่แล้ว ให้เขารู้ว่าใครขอมา
+        if (countLabel) {
+            countLabel.innerText = `New request from ${data.fromUser}!`;
+        }
+        
+        // (Optional) สั่นหรือเล่นเสียงเตือนแอดมิน
+        if (navigator.vibrate) navigator.vibrate(200);
     }
 });
 
 // เมื่อกด "Check Now" จะโชว์รายละเอียดคนที่จะ Verify
 function showPendingDetails() {
-    // ดึงพิกัดแอดมินปัจจุบันก่อน เพื่อเอาไปเทียบระยะทางกับสมาชิก
+    const alertArea = document.getElementById('pending-requests-area');
+    
+    // ซ่อนแถบแจ้งเตือนเมื่อกดแล้ว
+    if (alertArea) alertArea.classList.add('hidden');
+
+    // ดึงพิกัดเพื่อเช็คระยะทางตามปกติ
     navigator.geolocation.getCurrentPosition((pos) => {
-        const adminCoords = {
+        socket.emit('get-pending-verifications', {
             adminLat: pos.coords.latitude,
             adminLng: pos.coords.longitude
-        };
-
-        // ส่งสัญญาณขอรายชื่อ Pending ทั้งหมดที่อยู่ใกล้ๆ
-        socket.emit('get-pending-verifications', adminCoords);
-        
-    }, (err) => {
-        alert("Please enable GPS to check member distance.");
+        });
     });
 }
 
@@ -5337,6 +5373,48 @@ function openReviewDetail(targetUsername, distance) {
         </div>
     </div>
 </div>
+
+
+
+		<div id="approval-detail-modal" class="modal-overlay hidden" style="z-index: 5000;">
+    <div class="modal-box" style="max-width: 500px; width: 90%; border-top: 5px solid #28a745;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 style="margin:0;"><i class="fas fa-check-circle"></i> Verification Detail</h3>
+            <button onclick="closeApprovalDetailModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">Member Name:</label>
+            <div id="approve-target-name" style="background:#f8f9fa; padding:10px; border-radius:5px; border:1px solid #ddd; font-weight:bold;">-</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">Upload Evidence (Optional):</label>
+            <div style="border: 2px dashed #ddd; border-radius: 10px; padding: 20px; text-align: center; cursor: pointer;" onclick="document.getElementById('evidence-upload').click()">
+                <i class="fas fa-camera" style="font-size: 2em; color: #ccc;"></i>
+                <p style="margin: 10px 0 0; font-size: 0.9em; color: #999;">Click to upload or take a photo</p>
+                <input type="file" id="evidence-upload" accept="image/*" style="display:none;">
+            </div>
+            <div id="evidence-preview" style="margin-top:10px; display:none;">
+                <img id="preview-img" src="" style="width:100%; border-radius:5px; border:1px solid #ddd;">
+            </div>
+        </div>
+
+        <div style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #666;">
+            <i class="fas fa-info-circle"></i> After approval, the system will deduct <strong>25 USD</strong> from the member and transfer the fee to you immediately.
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button onclick="closeApprovalDetailModal()" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:bold;">
+                Cancel
+            </button>
+            <button id="final-confirm-btn" style="flex:2; padding:12px; border-radius:8px; border:none; background:#28a745; color:white; cursor:pointer; font-weight:bold;">
+                Approve & Collect 25 USD
+            </button>
+        </div>
+    </div>
+</div>
+
 
 
 
