@@ -2742,42 +2742,46 @@ socket.on('get-pending-verifications', async (data) => {
 });
 
 	socket.on('get-admin-live-location', async (data, callback) => {
-    console.log("--- DEBUG: Socket get-admin-live-location ---");
+    console.log("--- DEBUG: เริ่มกระบวนการค้นหาแอดมินจากโซน ---");
     try {
-        let { zoneId, lat, lng } = data;
-        
-        // ✨ ถ้า zoneId เป็น null แต่มีพิกัดส่งมา ให้หาโซนก่อน
-        if (!zoneId && lat && lng) {
-            console.log("Debug: Zone ID is null, searching zone by coordinates...");
-            const responsible = await findResponsibleAdmin({ lat, lng });
-            if (responsible && responsible.zoneData) {
-                zoneId = responsible.zoneData.id;
-                console.log(`Debug: Found Zone -> ${responsible.zoneName} (ID: ${zoneId})`);
-            }
-        }
+        const { lat, lng } = data;
 
-        if (!zoneId) {
-            console.warn("Debug: Still no Zone ID found for this location");
+        // 1. เช็คว่าพิกัดที่ส่งมา "อยู่โซนไหน" และ "ใครเป็นแอดมินโซนนั้น"
+        const responsible = await findResponsibleAdmin({ lat, lng });
+
+        // ตรวจสอบว่าเจอโซนและมีชื่อแอดมินไหม
+        if (!responsible || !responsible.username) {
+            console.log("Debug: พิกัดนี้ไม่อยู่ในโซนใดๆ หรือไม่มีแอดมินคุม");
             return callback(null);
         }
 
-        // ค้นหาแอดมินในโซนนั้น
-        const admin = await usersCollection.findOne({ 
-            adminLevel: { $gte: 1 }, // หา Admin จริงๆ
-            zoneId: zoneId,          // เฉพาะในโซนนี้
+        // 2. เมื่อรู้โซนและชื่อแอดมินแล้ว (ดึงมาจากตารางโซนโดยตรง)
+        const adminName = responsible.username; 
+        const zoneName = responsible.zoneName;
+        
+        console.log(`Debug: สมาชิกอยู่โซน [${zoneName}] | แอดมินผู้รับผิดชอบคือ [${adminName}]`);
+
+        // 3. ไปตามหา "พิกัดล่าสุด" ของแอดมินชื่อนี้ใน Database (เพื่อเอามาเทียบระยะ 10 เมตร)
+        const adminDoc = await usersCollection.findOne({ 
+            username: adminName,
             lastLocation: { $exists: true } 
         });
 
-        if (admin && admin.lastLocation) {
-            console.log(`Debug: Admin Found! -> ${admin.username}`);
+        if (adminDoc && adminDoc.lastLocation) {
+            console.log(`Debug: เจอตัวแอดมิน ${adminName} และเขามีพิกัดออนไลน์อยู่`);
+            
+            // ส่งข้อมูลกลับไปให้สมาชิก (พิกัดแอดมิน และ ชื่อแอดมิน)
             callback({
-                lat: admin.lastLocation.lat,
-                lng: admin.lastLocation.lng
+                lat: adminDoc.lastLocation.lat,
+                lng: adminDoc.lastLocation.lng,
+                username: adminDoc.username,
+                zoneName: zoneName
             });
         } else {
-            console.warn(`Debug: No active Admin with location in zone ${zoneId}`);
+            console.warn(`Debug: เจอชื่อแอดมิน ${adminName} ในโซน แต่เขาไม่ได้ออนไลน์ (ไม่มี lastLocation)`);
             callback(null);
         }
+
     } catch (err) {
         console.error("DEBUG ERROR SOCKET:", err);
         callback(null);
