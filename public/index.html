@@ -4629,58 +4629,63 @@ socket.on('receive-pending-list', (data) => {
 
 // ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
 async function submitVerification() {
-    // 1. ดึงพิกัดปัจจุบันของ User
+    // 1. ตรวจสอบว่า Browser รองรับ Geolocation หรือไม่
     if (!navigator.geolocation) {
-        alert("Location is not supported by your browser");
+        alert("ขออภัย Browser ของคุณไม่รองรับการระบุตำแหน่ง");
         return;
     }
+
+    // แสดง Loading หรือปิด Modal ก่อนเพื่อป้องกันการกดซ้ำ
+    console.log("กำลังตรวจสอบเงื่อนไข...");
 
     navigator.geolocation.getCurrentPosition(async (position) => {
         const userLat = position.coords.latitude;
         const userLng = position.coords.longitude;
 
-        // 2. เช็คว่าอยู่ในโซนไหน (ใช้ Logic เดียวกับตอนตั้งกระทู้)
-        // สมมติว่าระบบค้นหาโซนที่ใกล้ที่สุดและดึงพิกัด Real-time ของ Admin โซนนั้นมา
-        // *หมายเหตุ: คุณต้องมี API หรือ Socket สำหรับดึงพิกัดล่าสุดของ Admin*
-        
         try {
-            // ดึงข้อมูล User ปัจจุบันเพื่อเช็คยอดเงิน (ตัวอย่างราคา 50 USD)
-            const response = await fetch('/api/user-status'); // ปรับตาม API ของคุณ
+            // 2. ดึงข้อมูล User เพื่อเช็คยอดเงิน (เรียก API ที่เราเพิ่งสร้าง)
+            const response = await fetch('/api/user-status');
             const userData = await response.json();
 
-            // เช็คยอดเงิน: ต้องมีอย่างน้อย 50 USD
-            if (userData.balance < 50) {
-                alert("ยอดเงินของคุณไม่เพียงพอ (ต้องการ 50 USD)");
-                closeVerifyModal();
+            if (!userData.success) {
+                alert(userData.message || "ไม่สามารถดึงข้อมูลผู้ใช้ได้");
                 return;
             }
 
-            // สมมติดึงพิกัด Admin มาได้ (adminLat, adminLng)
-            // ในที่นี้คุณต้องหาทางส่งคำขอไปถามพิกัด Admin ผ่าน Socket ก่อน
+            // 3. เช็คยอดเงิน: ต้องมีอย่างน้อย 50 USD ใน Balance
+            if (userData.balance < 50) {
+                alert(`ยอดเงินของคุณไม่เพียงพอ (มี ${userData.balance} USD / ต้องการ 50 USD)`);
+                if (typeof closeVerifyModal === "function") closeVerifyModal();
+                return;
+            }
+
+            // 4. ถามหาพิกัด Real-time ของ Admin ในโซนนั้นผ่าน Socket
             socket.emit('get-admin-live-location', { zoneId: userData.zoneId }, (adminPos) => {
                 
                 if (!adminPos) {
-                    alert("ไม่สามารถระบุตำแหน่งแอดมินได้ในขณะนี้");
+                    alert("ขณะนี้แอดมินในโซนของคุณยังไม่เปิดระบุตำแหน่ง หรือไม่อยู่ในระบบ");
                     return;
                 }
 
+                // คำนวณระยะห่าง (เมตร)
                 const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
 
-                // ตรวจสอบระยะ 10 เมตร
+                // 5. ตรวจสอบระยะ 10 เมตร
                 if (distance > 10) {
-                    alert(`คุณอยู่นอกระยะการยืนยันตัวตน (ระยะห่างปัจจุบัน: ${distance.toFixed(2)} เมตร)`);
-                    closeVerifyModal();
+                    alert(`คุณอยู่นอกระยะการยืนยันตัวตน\nระยะห่างปัจจุบัน: ${distance.toFixed(2)} เมตร\n(ต้องอยู่ห่างไม่เกิน 10 เมตร)`);
                     return;
                 }
 
-                // 3. ผ่านเงื่อนไขทั้งหมด -> หักเงินมัดจำ 25 USD และส่งคำขอ
+                // 6. ผ่านเงื่อนไขทั้งหมด -> เรียกฟังก์ชันเพื่อส่งคำขอหักเงินมัดจำ
                 confirmVerificationRequest();
             });
 
         } catch (err) {
-            console.error(err);
-            alert("เกิดข้อผิดพลาดในการตรวจสอบข้อมูล");
+            console.error("Verification Error:", err);
+            alert("เกิดข้อผิดพลาดในการตรวจสอบข้อมูล โปรดลองอีกครั้ง");
         }
+    }, (error) => {
+        alert("ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาอนุญาตการเข้าถึงพิกัด (GPS)");
     });
 }
 
@@ -4688,15 +4693,30 @@ function confirmVerificationRequest() {
     if (confirm("The system will deduct a 25 USD deposit to start the verification. Confirm?")) {
         const verifyBtn = document.getElementById('verify-btn');
         
-        // เปลี่ยนสถานะปุ่มทันที
+        // 1. เก็บข้อความเดิมไว้ก่อนเปลี่ยน (เผื่อต้องเปลี่ยนกลับเมื่อ Error)
+        const originalText = verifyBtn.innerHTML;
+
+        // 2. เปลี่ยนสถานะปุ่มทันที
         verifyBtn.disabled = true;
         verifyBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
 
-        // ส่งสัญญาณไปที่ Server
-        socket.emit('request-verification', { deposit: 25 });
+        // 3. ส่งสัญญาณไปที่ Server
+        socket.emit('request-verification'); 
+
+        // 4. รอรับผลลัพธ์ (เพิ่ม Listener เหล่านี้ไว้ในส่วนเริ่มต้นของไฟล์ หรือข้างนอกฟังก์ชัน)
         
-        alert("Your request has been sent. Please wait for the area admin's review.");
-        closeVerifyModal();
+        // กรณีสำเร็จ
+        socket.once('verification-sent', (data) => {
+            alert(data.message);
+            closeVerifyModal();
+        });
+
+        // กรณีเกิดข้อผิดพลาด (คืนค่าปุ่มให้กดใหม่ได้)
+        socket.once('verification-error', (data) => {
+            alert(data.message);
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = originalText;
+        });
     }
 }
 

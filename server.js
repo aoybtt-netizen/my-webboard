@@ -2015,6 +2015,49 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
     }
 });
 
+// 33. Endpoint สำหรับเช็คสถานะและยอดเงินของผู้ใช้
+app.get('/api/user-status', async (req, res) => {
+    try {
+        // 1. ตรวจสอบว่าผู้ใช้ Login หรือยัง (เช็คจาก Session)
+        // หมายเหตุ: ต้องมั่นใจว่าตอน Login คุณได้เก็บ req.session.username ไว้
+        const sessionUsername = req.session.username;
+
+        if (!sessionUsername) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" 
+            });
+        }
+
+        // 2. ค้นหาข้อมูลล่าสุดจาก Database
+        const user = await usersCollection.findOne({ username: sessionUsername });
+
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "ไม่พบข้อมูลผู้ใช้ในระบบ" 
+            });
+        }
+
+        // 3. ส่งข้อมูลกลับไปให้ Client
+        // เราส่งเฉพาะข้อมูลที่จำเป็นเพื่อความปลอดภัย
+        res.json({
+            success: true,
+            username: user.username,
+            balance: user.balance || 0,
+            zoneId: user.zoneId || null,
+            verifyStatus: user.verifyStatus || 'unverified'
+        });
+
+    } catch (err) {
+        console.error("User Status API Error:", err);
+        res.status(500).json({ 
+            success: false, 
+            message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" 
+        });
+    }
+});
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 
