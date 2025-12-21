@@ -4728,7 +4728,11 @@ async function submitVerification() {
 
     // 1. ขอข้อมูลสถานะผู้ใช้ผ่าน Socket
     socket.emit('get-user-status-socket', (userData) => {
-        if (!userData.success) return;
+        if (userData.success) {
+        // ✅ บันทึกค่าลงตัวแปร Global ทันทีที่โหลดข้อมูลเสร็จ
+        adminUsername = userData.username; 
+        console.log("Admin Name Loaded:", adminUsername);
+    }
 
         // ✅ บันทึกลงตัวแปร Global ที่ประกาศไว้ข้างนอก
         currentAdminName = userData.username; 
