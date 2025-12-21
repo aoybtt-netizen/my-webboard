@@ -4539,6 +4539,44 @@ function closeVerifyModal() {
     document.getElementById('verify-modal').classList.add('hidden');
 }
 
+
+// เปิดหน้าต่างจัดการของแอดมิน
+async function openAdminVerifyList() {
+    if (myAdminLevel < 1) return;
+    
+    // ปิด Sidebar
+    if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+    
+    document.getElementById('admin-verify-modal').classList.remove('hidden');
+    
+    // โหลดข้อมูลจาก Server (เดี๋ยวเราต้องทำ API รับส่งข้อมูลนี้)
+    loadZoneMembersData();
+}
+
+function closeAdminVerifyModal() {
+    document.getElementById('admin-verify-modal').classList.add('hidden');
+}
+
+// ฟังก์ชันจำลองการดึงข้อมูล (รอเชื่อมต่อ Server)
+function loadZoneMembersData() {
+    // สมมติว่าเช็คแล้วพบคำขอค้างอยู่
+    const hasPending = true; // เดี๋ยวใช้ Logic เช็คจริง
+    if (hasPending) {
+        document.getElementById('pending-requests-area').classList.remove('hidden');
+    } else {
+        document.getElementById('pending-requests-area').classList.add('hidden');
+    }
+}
+
+// เมื่อกด "Check Now" จะโชว์รายละเอียดคนที่จะ Verify
+function showPendingDetails() {
+    alert("กำลังดึงข้อมูลพิกัดและตรวจสอบระยะห่าง 10 เมตร...");
+    // ขั้นตอนนี้จะเชื่อมโยงกับฟังก์ชันคำนวณระยะทางที่เราคุยกันไว้
+}
+
+
+
+
 // ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
 async function submitVerification() {
     // 1. ดึงพิกัดปัจจุบันของ User
@@ -4628,11 +4666,7 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
     return R * c; // ระยะห่างหน่วยเป็นเมตร
 }
 
-function openAdminVerifyList() {
-    if (myAdminLevel < 1) return;
-    alert("ระบบตรวจสอบสมาชิกในโซนกำลังถูกออกแบบ...");
-    // หลังจากคุณออกแบบเสร็จค่อยมาแก้ให้ดึงรายชื่อที่รอตรวจสอบ
-}
+
 
 
 	// Google Maps NEW Tab
