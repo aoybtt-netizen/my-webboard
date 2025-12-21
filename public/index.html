@@ -1160,8 +1160,9 @@ if (homeBtn) {
 }
 
         // 3. โหลดข้อมูลพื้นฐานใหม่
-        updateUserInfo(); 
-        loadPosts(); 
+        //updateUserInfo(); 
+        //loadPosts(); 
+		updateUserInfo();
 
         // ตรวจสอบว่า Modal ไหนเปิดอยู่ แล้วรีเฟรชหน้านั้นให้ถูกอัน
         const modal = document.getElementById('user-list-modal');
@@ -1177,6 +1178,18 @@ if (homeBtn) {
             }
         }
     }
+	
+	function refreshCurrentPage() {
+    // ตรวจสอบว่าตอนนี้ User อยู่ที่หน้าไหน และสั่งโหลดข้อมูลหน้าเดิมใหม่ให้ถูกต้อง
+    if (currentView === 'home' || currentView === 'closed') {
+        loadPosts(); // หน้าหลัก หรือ หน้ากระทู้ปิดรวมของ Admin
+    } else if (currentView === 'my_active') {
+        showMyActivePosts(currentPostPage, true); // หน้ากระทู้ที่ยังไม่ปิดของฉัน
+    } else if (currentView === 'my_closed') {
+        showMyClosedPosts(currentPostPage, true); // หน้ากระทู้ที่ปิดแล้วของฉัน
+    }
+}
+
         
         let currentCost = 0;
         let currentChatPartner = ""; 
@@ -1655,7 +1668,8 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
                 fetchAndRenderAnnouncement(locData);
             }
 
-        loadPosts();
+        //loadPosts();
+		refreshCurrentPage();
 
     } catch (e) {
         console.error('Error fetching user info:', e);
@@ -2224,7 +2238,8 @@ async function loadMyZoneClosedPosts(page) {
 }
 
 		// [NEW FUNCTION] ดูกระทู้ของฉันที่ถูกปิดแล้ว
-async function showMyClosedPosts(page = 1) { 
+async function showMyClosedPosts(page = 1) {
+	toggleSidebar();
     if (!myUsername) return;
     try {
         currentView = 'my_closed'; // 👈 ตั้งค่า currentView ใหม่
@@ -2277,7 +2292,6 @@ async function showMyClosedPosts(page = 1) {
         console.error('Error fetching my closed posts:', e);
         showNotification('เกิดข้อผิดพลาดในการดึงรายการกระทู้', 'fas fa-exclamation-triangle', 3000, '#dc3545');
     }
-	toggleSidebar();
 }
 
         function renderPostList() {
