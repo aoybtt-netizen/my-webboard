@@ -1563,35 +1563,36 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             avatarEl.innerHTML = `🐱${stars}`;
         }
 		
-		const verifyBtn = document.getElementById('verify-btn');
-
-    if (verifyBtn) {
-        // ถ้าเป็นแอดมิน (Level > 0) ให้ซ่อนปุ่ม
-        if (myAdminLevel > 0) {
-            verifyBtn.classList.add('hidden');
-        } else {
-            // ถ้าเป็นสมาชิกทั่วไป ให้โชว์ปุ่ม
-            verifyBtn.classList.remove('hidden');
+		// --- ส่วนจัดการปุ่มยืนยันตัวตน (Verify Button) ---
+        const verifyBtn = document.getElementById('verify-btn');
+        
+        if (verifyBtn) {
+            // 1. ถ้าเป็นแอดมิน ให้ซ่อนปุ่มถาวร
+            if (myAdminLevel > 0) {
+                verifyBtn.style.display = 'none'; 
+            } 
+            // 2. ถ้าอยู่ระหว่างการตรวจสอบ (ใช้ data.verifyStatus)
+            else if (data.verifyStatus === 'pending') {
+                verifyBtn.style.display = 'block'; // มั่นใจว่าโชว์ปุ่ม
+                verifyBtn.disabled = true;
+                verifyBtn.style.background = '#f8f9fa';
+                verifyBtn.style.color = '#6c757d';
+                verifyBtn.style.border = '1px solid #ddd';
+                verifyBtn.innerHTML = `<i class="fas fa-hourglass-half"></i> Under review by admin...`;
+            } 
+            // 3. ถ้าเป็นสมาชิกทั่วไปและยังไม่ได้กดยืนยัน
+            else if (data.isVerified) {
+                verifyBtn.style.display = 'none'; // ถ้ายืนยันผ่านแล้วก็ซ่อนไปเลย
+            }
+            else {
+                // สถานะปกติ
+                verifyBtn.style.display = 'block';
+                verifyBtn.disabled = false;
+                verifyBtn.style.background = '#e3f2fd';
+                verifyBtn.style.color = '#007bff';
+                verifyBtn.innerHTML = `<i class="fas fa-user-check"></i> <span data-i18n-key="verify_identity">Get Verified</span>`;
+            }
         }
-    }
-	
-		const verifyBtn = document.getElementById('verify-btn');
-		const verifyStatusArea = document.getElementById('verify-status-text'); // สร้าง id ใหม่รอไว้
-
-    if (verifyBtn) {
-        // 1. ถ้าเป็นแอดมิน ให้ซ่อนปุ่ม
-        if (myAdminLevel > 0) {
-            verifyBtn.style.display = 'none';
-        } 
-        // 2. ถ้าอยู่ระหว่างการตรวจสอบ (Pending)
-        else if (userData.verifyStatus === 'pending') {
-            verifyBtn.disabled = true;
-            verifyBtn.style.background = '#f8f9fa';
-            verifyBtn.style.color = '#6c757d';
-            verifyBtn.style.border = '1px solid #ddd';
-            verifyBtn.innerHTML = `<i class="fas fa-hourglass-half"></i> Under review by admin...`;
-        }
-    }
 
 		
                         
