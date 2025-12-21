@@ -4687,7 +4687,7 @@ socket.on('receive-pending-list', (data) => {
 
     data.pendingUsers.forEach(user => {
         const distance = user.distance.toFixed(2);
-        const isNearby = user.distance <= 396780;//แก้คืน10เมตร
+        const isNearby = user.distance <= 100000;//แก้คืน10เมตร
 
         const userRow = document.createElement('div');
         userRow.style = "padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;";
@@ -4764,7 +4764,7 @@ async function submitVerification() {
                 const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
 
                 // 5. ตรวจสอบระยะ 10 เมตร
-                if (distance > 10) {
+                if (distance > 100000) {//แก้คืน10
                     alert(`คุณอยู่นอกระยะการยืนยันตัวตน\nระยะห่างปัจจุบัน: ${distance.toFixed(2)} เมตร\n(ต้องอยู่ห่างไม่เกิน 10 เมตร)`);
                     return;
                 }
