@@ -4946,15 +4946,24 @@ function handleMultipleFiles(input) {
 
 
 async function processApproval() {
-    // 🎯 แก้ปัญหา: ดึงชื่อแอดมินที่ล็อกอินอยู่ปัจจุบัน
-    // โดยปกติระบบของคุณจะเก็บชื่อไว้ใน localStorage หลัง Login
-    const currentAdmin = localStorage.getItem('username') || (typeof username !== 'undefined' ? username : "");
+    console.log("🔍 กำลังตรวจสอบแหล่งที่มาของชื่อแอดมิน...");
 
-    // ตรวจสอบอีกครั้งเพื่อความชัวร์
-    if (!currentAdmin || currentAdmin === "") {
-        alert("❌ ไม่พบชื่อผู้ใช้งานแอดมินในระบบ กรุณาลองเข้าสู่ระบบใหม่อีกครั้ง");
-        return;
-    }
+const fromLocalStorage = localStorage.getItem('username');
+const fromVariable = (typeof username !== 'undefined' ? username : "ไม่พบตัวแปร username");
+
+console.log("💾 จาก LocalStorage:", fromLocalStorage);
+console.log("🔑 จากตัวแปร Global:", fromVariable);
+
+// รวมค่าเพื่อใช้งาน
+const currentAdmin = fromLocalStorage || (typeof username !== 'undefined' ? username : "");
+
+console.log("🎯 ค่าที่จะถูกส่งไป Server (currentAdmin):", currentAdmin);
+
+if (!currentAdmin || currentAdmin === "") {
+    console.error("❌ สรุปผล: หาชื่อแอดมินไม่เจอในระบบ!");
+} else {
+    console.log("✅ สรุปผล: เตรียมส่งข้อมูลในชื่อแอดมิน ->", currentAdmin);
+}
 
     if (evidenceFiles.length === 0) {
         alert("📸 กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
