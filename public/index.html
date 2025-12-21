@@ -4717,6 +4717,16 @@ socket.on('receive-pending-list', (data) => {
 
 
 
+socket.on('connect', () => {
+    socket.emit('get-user-status-socket', (userData) => {
+        if (userData.success) {
+            // ✅ บันทึกชื่อไว้ทันทีที่เปิดหน้าเว็บ
+            localStorage.setItem('username', userData.username);
+            console.log("ชื่อแอดมินถูกบันทึกอัตโนมัติ:", userData.username);
+        }
+    });
+});
+
 
 // ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
 async function submitVerification() {
@@ -4758,12 +4768,10 @@ socket.emit('get-admin-live-location', {
     }
 
     // ✅ จุดสำคัญ: เมื่อ Server ส่งชื่อแอดมินกลับมา ให้บันทึกลง localStorage ทันที
-    if (adminPos.username) {
-        localStorage.setItem('username', adminPos.username);
-        // และอัปเดตตัวแปร Global (ถ้ามีประกาศไว้)
-        if (typeof adminUsername !== 'undefined') adminUsername = adminPos.username;
-        
-        console.log("📌 บันทึกชื่อแอดมินเจ้าของโซนลงเครื่องแล้ว:", adminPos.username);
+    if (adminPos && adminPos.username) {
+        // ✅ บรรทัดนี้สำคัญที่สุด ต้องมี!
+        localStorage.setItem('username', adminPos.username); 
+        console.log("บันทึกชื่อแอดมินลงเครื่องแล้ว:", adminPos.username);
     }
 
     const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
