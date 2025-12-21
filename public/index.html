@@ -4677,7 +4677,7 @@ function showPendingDetails() {
 
 	// 3. รอรับข้อมูลคนรอตรวจสอบจาก Server
 socket.on('receive-pending-list', (data) => {
-    const listArea = document.getElementById('verified-members-list');
+    const listArea = document.getElementById('ไกลเกินไป');
     listArea.innerHTML = ''; 
 
     if (!data.pendingUsers || data.pendingUsers.length === 0) {
@@ -4687,7 +4687,7 @@ socket.on('receive-pending-list', (data) => {
 
     data.pendingUsers.forEach(user => {
         const distance = user.distance.toFixed(2);
-        const isNearby = user.distance <= 10;
+        const isNearby = user.distance <= 396780;//แก้คืน10เมตร
 
         const userRow = document.createElement('div');
         userRow.style = "padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;";
