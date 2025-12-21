@@ -5219,9 +5219,15 @@ function openReviewDetail(targetUsername, distance) {
         </div>
 
         <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button class="sidebar-btn" onclick="closeVerifyModal()" style="background: #e0e0e0; color: #444; width: auto; margin-bottom: 0; padding: 10px 25px; border: none;" data-i18n-key="cancel_btn">Cancel</button>
-            <button class="sidebar-btn create-btn" onclick="submitVerification()" style="width: auto; margin-bottom: 0; padding: 10px 25px; background: #007bff; color: white;" data-i18n-key="post_btn">Confirm</button>
-        </div>
+    <button class="sidebar-btn" onclick="closeVerifyModal()" 
+            style="background: #e0e0e0; color: #444; width: auto; margin-bottom: 0; padding: 10px 25px; border: none;">
+        Cancel
+    </button>
+    <button class="sidebar-btn create-btn" onclick="submitVerification()" 
+            style="width: auto; margin-bottom: 0; padding: 10px 25px; background: #007bff; color: white;">
+        Request Verification
+    </button>
+</div>
     </div>
 </div>
 
