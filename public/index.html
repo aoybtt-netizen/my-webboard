@@ -4569,10 +4569,58 @@ function loadZoneMembersData() {
 }
 
 // เมื่อกด "Check Now" จะโชว์รายละเอียดคนที่จะ Verify
-function showPendingDetails() {
-    alert("กำลังดึงข้อมูลพิกัดและตรวจสอบระยะห่าง 10 เมตร...");
-    // ขั้นตอนนี้จะเชื่อมโยงกับฟังก์ชันคำนวณระยะทางที่เราคุยกันไว้
+async function showPendingDetails() {
+    // 1. ดึงพิกัดปัจจุบันของแอดมิน (เพราะแอดมินต้องอยู่ใกล้ User ในระยะ 10 เมตร)
+    if (!navigator.geolocation) {
+        alert("Browser ของคุณไม่รองรับการระบุตำแหน่ง");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const adminLat = position.coords.latitude;
+        const adminLng = position.coords.longitude;
+
+        // 2. เรียกไปที่ Server เพื่อขอรายชื่อคนที่มีสถานะ 'pending' ในโซนนี้
+        // (เราต้องส่งพิกัดแอดมินไปให้ Server ช่วยคำนวณด้วยเพื่อความปลอดภัย)
+        socket.emit('get-pending-verifications', { adminLat, adminLng });
+    });
 }
+
+	// 3. รอรับข้อมูลคนรอตรวจสอบจาก Server
+socket.on('receive-pending-list', (data) => {
+    const listArea = document.getElementById('verified-members-list'); // ใช้พื้นที่เดิมแต่ล้างข้อมูลเก่าออก
+    listArea.innerHTML = ''; 
+
+    if (data.pendingUsers.length === 0) {
+        listArea.innerHTML = '<div style="padding:20px; text-align:center;">ไม่พบคำขอในระยะ 10 เมตร</div>';
+        return;
+    }
+
+    data.pendingUsers.forEach(user => {
+        // คำนวณระยะห่างเพื่อโชว์ให้แอดมินเห็น
+        const distance = user.distance.toFixed(2);
+        
+        const userRow = document.createElement('div');
+        userRow.style = "padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;";
+        userRow.innerHTML = `
+            <div>
+                <strong>👤 ${user.username}</strong><br>
+                <small style="color:${distance <= 10 ? 'green' : 'red'}">
+                    📍 ห่างจากคุณ: ${distance} เมตร
+                </small>
+            </div>
+            <div>
+                ${distance <= 10 
+                    ? `<button class="sidebar-btn create-btn" onclick="adminApproveUser('${user.username}')" style="width:auto; margin:0; padding:5px 15px;">Approve</button>`
+                    : `<span style="color:gray; font-size:0.8em;">ไกลเกินไป</span>`
+                }
+            </div>
+        `;
+        listArea.appendChild(userRow);
+    });
+});
+
+
 
 
 
@@ -4665,6 +4713,38 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
 
     return R * c; // ระยะห่างหน่วยเป็นเมตร
 }
+
+
+function openReviewDetail(targetUsername, distance) {
+    const modal = document.getElementById('admin-review-modal');
+    const content = document.getElementById('review-detail-content');
+    const approveBtn = document.getElementById('final-approve-btn');
+
+    // ใส่ข้อมูลลงในหน้าขาวๆ
+    content.innerHTML = `
+        <div style="text-align:center; margin-bottom:15px;">
+            <strong style="font-size:1.2em;">${targetUsername}</strong>
+        </div>
+        <div style="background:#f8f9fa; padding:15px; border-radius:8px;">
+            <p style="margin:5px 0;">📍 ระยะห่างปัจจุบัน: <strong>${distance.toFixed(2)} เมตร</strong></p>
+            <p style="margin:5px 0;">💰 ยอดที่ต้องเรียกเก็บเพิ่ม: <strong>25.00 USD</strong></p>
+        </div>
+        <p style="font-size:0.8em; color:red; margin-top:10px;">
+            *โปรดตรวจสอบใบหน้าและเอกสารตัวจริงก่อนกดอนุมัติ
+        </p>
+    `;
+
+    // ตั้งค่าปุ่ม Approve ให้ส่ง ID ไปที่ Server
+    approveBtn.onclick = function() {
+        if (confirm(`ยืนยันการหักเงิน 25 USD จากคุณ ${targetUsername} และอนุมัติสิทธิ์?`)) {
+            socket.emit('approve-verification', { userId: targetUsername });
+            modal.classList.add('hidden');
+        }
+    };
+
+    modal.classList.remove('hidden');
+}
+
 
 
 
@@ -5176,6 +5256,31 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
         </div>
     </div>
 </div>
+
+
+
+		<div id="admin-review-modal" class="modal-overlay hidden" style="z-index: 4001;">
+    <div class="modal-box" style="max-width: 450px; background: white; padding: 25px; border-radius: 15px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 style="margin:0;"><i class="fas fa-search-location" style="color:#007bff;"></i> ตรวจสอบพิกัดสมาชิก</h3>
+        </div>
+
+        <div id="review-detail-content" style="min-height: 200px; background: #ffffff; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+            <div style="text-align: center; color: #ccc; margin-top: 70px;">
+                <i class="fas fa-user-circle fa-3x"></i>
+                <p>รอโหลดข้อมูลสมาชิก...</p>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button class="sidebar-btn" onclick="document.getElementById('admin-review-modal').classList.add('hidden')" style="background: #6c757d; color: white; margin: 0;">ยกเลิก</button>
+            <button id="final-approve-btn" class="sidebar-btn create-btn" style="background: #28a745; color: white; margin: 0; flex-grow: 1;">
+                Approve & Collect 25 USD
+            </button>
+        </div>
+    </div>
+</div>
+
 
 
 

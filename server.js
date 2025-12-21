@@ -2031,6 +2031,21 @@ async function calculateNewRating(username, newScore) {
     io.emit('rating-update', { user: username, rating: nextRating.toFixed(2) });
 }
 
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; 
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+
 // API กำหนดพิกัดอ้างอิงให้ Admin Level 2 (เฉพาะ Level 3 ทำได้)
 app.post('/api/admin/set-assigned-location', async (req, res) => {
     // รับค่า addressName เพิ่มเข้ามาด้วย
@@ -2643,6 +2658,42 @@ socket.on('approve-verification', async (data) => {
     } catch (err) {
         console.error(err);
         socket.emit('verification-error', { message: '❌ เกิดข้อผิดพลาดทางเทคนิค' });
+    }
+});
+
+	// --- [SERVER SIDE] ส่วนดึงรายชื่อคนที่รอตรวจสอบและเช็คระยะทาง ---
+socket.on('get-pending-verifications', async (data) => {
+    if (!socket.username) return;
+
+    try {
+        const adminLat = data.adminLat;
+        const adminLng = data.adminLng;
+
+        // 1. หา User ที่มีสถานะ 'pending' ทั้งหมด
+        // (ในอนาคตคุณอาจเพิ่มเงื่อนไขเฉพาะโซนของแอดมินคนนี้)
+        const pendingUsers = await usersCollection.find({ verifyStatus: 'pending' }).toArray();
+
+        // 2. คำนวณระยะห่าง และกรองเอาเฉพาะคนที่อยู่ใกล้ หรือส่งไปให้แอดมินตัดสินใจ
+        const filteredUsers = pendingUsers.map(user => {
+            // ใช้พิกัดที่ User เคยส่งไว้ใน 'lastVerifyLocation' (ที่เราบันทึกไว้ตอนกด Verify)
+            if (user.lastVerifyLocation) {
+                const dist = calculateDistance(
+                    adminLat, adminLng, 
+                    user.lastVerifyLocation.lat, user.lastVerifyLocation.lng
+                );
+                return {
+                    username: user.username,
+                    distance: dist // ระยะทางหน่วยเป็นเมตร
+                };
+            }
+            return null;
+        }).filter(u => u !== null);
+
+        // 3. ส่งรายชื่อกลับไปให้ Admin (ฝั่ง Client รอรับด้วย .on('receive-pending-list'))
+        socket.emit('receive-pending-list', { pendingUsers: filteredUsers });
+
+    } catch (err) {
+        console.error(err);
     }
 });
 
