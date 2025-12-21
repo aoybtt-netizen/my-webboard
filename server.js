@@ -2059,6 +2059,104 @@ app.get('/api/user-status', async (req, res) => {
     }
 });
 
+
+// 34.API สำหรับอนุมัติ KYC และรับรูปหลักฐาน 3 รูป
+app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
+    console.log("--- 🚀 START KYC PROCESS ---");
+    console.log("📦 Request Body:", req.body);
+    console.log("📸 Files Received:", req.files ? req.files.length : 0);
+
+    const { member_name, amount, requestBy } = req.body;
+
+    try {
+        // 1. ตรวจสอบสิทธิ์ผู้ดูแล
+        console.log(`🔍 Checking Admin: ${requestBy}`);
+        const adminUser = await usersCollection.findOne({ username: requestBy });
+        
+        if (!adminUser) {
+            console.log("❌ Admin not found in DB");
+            return res.status(403).json({ success: false, error: '⛔ ไม่พบข้อมูล Admin ในระบบ' });
+        }
+        
+        if (adminUser.adminLevel < 1) {
+            console.log(`❌ Admin Level Too Low: ${adminUser.adminLevel}`);
+            return res.status(403).json({ success: false, error: '⛔ คุณไม่มีสิทธิ์อนุมัติ' });
+        }
+
+        // 2. ดึงข้อมูลสมาชิก
+        console.log(`🔍 Checking Member: ${member_name}`);
+        const targetUser = await usersCollection.findOne({ username: member_name });
+        if (!targetUser) {
+            console.log("❌ Member not found in DB");
+            return res.status(404).json({ success: false, error: '❌ ไม่พบข้อมูลสมาชิก' });
+        }
+
+        const deductAmount = parseFloat(amount) || 25;
+
+        // 3. ตรวจสอบเงินสมาชิก
+        console.log(`💰 Member Coins: ${targetUser.coins}, Required: ${deductAmount}`);
+        if (targetUser.coins < deductAmount) {
+            console.log("❌ Insufficient coins");
+            return res.status(400).json({ success: false, error: '❌ สมาชิกมี USD ไม่พอจ่ายค่าธรรมเนียม' });
+        }
+
+        // 4. ตรวจสอบไฟล์รูปภาพ
+        if (!req.files || req.files.length === 0) {
+            console.log("❌ No files uploaded to Cloudinary");
+            return res.status(400).json({ success: false, error: '❌ ไม่พบไฟล์รูปภาพหลักฐาน' });
+        }
+        const imageUrls = req.files.map(file => file.path);
+        console.log("✅ Cloudinary URLs:", imageUrls);
+
+        // 5. อัปเดตข้อมูลใน MongoDB
+        console.log("📝 Updating DB records...");
+        await usersCollection.updateOne(
+            { username: member_name },
+            { 
+                $inc: { coins: -deductAmount },
+                $set: { 
+                    verifyStatus: 'verified',
+                    isVerified: true,
+                    kyc_evidence: imageUrls,
+                    verifiedAt: new Date(),
+                    verifiedBy: requestBy
+                }
+            }
+        );
+
+        // 6. โอนเงินให้ Admin
+        await usersCollection.updateOne(
+            { username: requestBy },
+            { $inc: { coins: deductAmount } }
+        );
+
+        // 7. บันทึกประวัติ Transaction
+        await transactionsCollection.insertOne({
+            id: Date.now(),
+            type: 'KYC_APPROVE_COLLECT',
+            amount: deductAmount,
+            fromUser: member_name,
+            toUser: requestBy,
+            note: `อนุมัติยืนยันตัวตน (KYC)`,
+            evidence_count: imageUrls.length,
+            timestamp: Date.now()
+        });
+
+        // 8. แจ้งเตือน Realtime
+        console.log("📡 Sending Socket.io updates...");
+        io.emit('balance-update', { user: member_name, coins: targetUser.coins - deductAmount });
+        io.emit('balance-update', { user: requestBy, coins: adminUser.coins + deductAmount });
+        io.to(member_name).emit('identity-verified', { message: '🎉 บัญชีได้รับการยืนยันแล้ว!' });
+
+        console.log("✅ --- KYC PROCESS COMPLETED ---");
+        res.json({ success: true, message: '✅ อนุมัติและได้รับเงินเรียบร้อย', images: imageUrls });
+
+    } catch (err) {
+        console.error('🔥 CRITICAL ERROR:', err);
+        res.status(500).json({ success: false, error: 'Internal Server Error', details: err.message });
+    }
+});
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 

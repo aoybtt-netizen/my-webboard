@@ -4952,6 +4952,77 @@ function handleMultipleFiles(input) {
 }
 
 
+async function processApproval() {
+    // 1. ตรวจสอบว่ามีรูปภาพอย่างน้อย 1 รูปหรือไม่
+    if (evidenceFiles.length === 0) {
+        alert("กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
+        return;
+    }
+
+    const confirmBtn = document.getElementById('final-confirm-btn');
+    
+    // 2. แสดงสถานะกำลังโหลด
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    confirmBtn.style.opacity = '0.7';
+
+    // 3. เตรียมข้อมูล FormData
+    const formData = new FormData();
+    const memberName = document.getElementById('approve-target-name').innerText;
+    
+    formData.append('member_name', memberName);
+    formData.append('amount', '25');
+    // ดึงชื่อแอดมินปัจจุบัน (ตัวแปรที่มีชื่อแอดมินที่ล็อกอินอยู่)
+    formData.append('requestBy', currentUser); 
+
+    // เพิ่มไฟล์รูปภาพทั้งหมดเข้า FormData
+    evidenceFiles.forEach((file) => {
+        formData.append('evidence', file); // ใช้คีย์ 'evidence' ให้ตรงกับ upload.any() ที่ฝั่ง Server
+    });
+
+    try {
+        // --- 4. ส่งข้อมูลไปยัง API จริงที่คุณเพิ่มใน server.js ---
+        const response = await fetch('/api/admin/approve-kyc', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // แจ้งเตือนเมื่อสำเร็จ
+            alert("✅ " + result.message);
+            
+            // ล้างข้อมูลและปิด Modal
+            evidenceFiles = [];
+            const previewContainer = document.getElementById('evidence-preview');
+            if(previewContainer) previewContainer.innerHTML = '';
+            
+            closeApprovalDetailModal();
+            
+            // รีเฟรชหน้าจอเพื่อให้ยอดเงินและสถานะอัปเดต
+            location.reload(); 
+        } else {
+            // กรณี Server ส่ง error กลับมา (เช่น เงินไม่พอ หรือไม่ใช่แอดมิน)
+            alert("❌ Error: " + result.error);
+            resetButton(confirmBtn);
+        }
+
+    } catch (error) {
+        console.error("Error:", error);
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+        resetButton(confirmBtn);
+    }
+}
+
+// ฟังก์ชันช่วยรีเซ็ตปุ่มกรณีเกิดข้อผิดพลาด
+function resetButton(btn) {
+    btn.disabled = false;
+    btn.innerHTML = 'Approve & Collect 25 USD';
+    btn.style.opacity = '1';
+}
+
+
 
 
 
@@ -5549,8 +5620,11 @@ function handleMultipleFiles(input) {
             <button onclick="closeApprovalDetailModal()" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:bold;">
                 Cancel
             </button>
-            <button id="final-confirm-btn" disabled style="flex:2; padding:12px; border-radius:8px; border:none; background:#28a745; color:white; cursor:not-allowed; font-weight:bold; opacity: 0.5;">
-			Approve & Collect 25 USD
+            <button id="final-confirm-btn" 
+					onclick="processApproval()" 
+					disabled 
+				style="flex:2; padding:12px; border-radius:8px; border:none; background:#28a745; color:white; cursor:not-allowed; font-weight:bold; opacity: 0.5;">
+				Approve & Collect 25 USD
 			</button>
         </div>
     </div>
