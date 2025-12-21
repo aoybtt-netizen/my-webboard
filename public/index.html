@@ -464,9 +464,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-	
-		var vConsole = new window.VConsole();
-		
+	var vConsole = new window.VConsole();
         const socket = io();
         let myUsername = "";
 		let myAdminLevel = 0;
@@ -4682,7 +4680,7 @@ function showPendingDetails() {
 
 	// 3. รอรับข้อมูลคนรอตรวจสอบจาก Server
 socket.on('receive-pending-list', (data) => {
-    const listArea = document.getElementById('ไกลเกินไป');
+    const listArea = document.getElementById('verified-members-list');
     listArea.innerHTML = ''; 
 
     if (!data.pendingUsers || data.pendingUsers.length === 0) {
@@ -4692,7 +4690,7 @@ socket.on('receive-pending-list', (data) => {
 
     data.pendingUsers.forEach(user => {
         const distance = user.distance.toFixed(2);
-        const isNearby = user.distance <= 10;//แก้คืน10เมตร
+        const isNearby = user.distance <= 10;
 
         const userRow = document.createElement('div');
         userRow.style = "padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;";
@@ -4769,7 +4767,7 @@ async function submitVerification() {
                 const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
 
                 // 5. ตรวจสอบระยะ 10 เมตร
-                if (distance > 10) {//แก้คืน10
+                if (distance > 10) {
                     alert(`คุณอยู่นอกระยะการยืนยันตัวตน\nระยะห่างปัจจุบัน: ${distance.toFixed(2)} เมตร\n(ต้องอยู่ห่างไม่เกิน 10 เมตร)`);
                     return;
                 }
@@ -5581,7 +5579,7 @@ function resetButton(btn) {
         <div style="display: flex; gap: 10px;">
             <button class="sidebar-btn" onclick="document.getElementById('admin-review-modal').classList.add('hidden')" style="background: #6c757d; color: white; margin: 0;">ยกเลิก</button>
             <button id="final-approve-btn" class="sidebar-btn create-btn" style="background: #28a745; color: white; margin: 0; flex-grow: 1;">
-                Approve User
+                Approve 
             </button>
         </div>
     </div>
