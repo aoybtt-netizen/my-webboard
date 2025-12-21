@@ -2017,30 +2017,31 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
 
 // 33. Endpoint สำหรับเช็คสถานะและยอดเงินของผู้ใช้
 app.get('/api/user-status', async (req, res) => {
+    console.log("--- DEBUG: Fetching User Status ---");
     try {
-        // 1. ตรวจสอบว่าผู้ใช้ Login หรือยัง (เช็คจาก Session)
-        // หมายเหตุ: ต้องมั่นใจว่าตอน Login คุณได้เก็บ req.session.username ไว้
         const sessionUsername = req.session.username;
+        console.log("Session Username:", sessionUsername);
 
         if (!sessionUsername) {
+            console.warn("Debug: No session found");
             return res.status(401).json({ 
                 success: false, 
                 message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" 
             });
         }
 
-        // 2. ค้นหาข้อมูลล่าสุดจาก Database
         const user = await usersCollection.findOne({ username: sessionUsername });
-
+        
         if (!user) {
+            console.warn(`Debug: User ${sessionUsername} not found in DB`);
             return res.status(404).json({ 
                 success: false, 
                 message: "ไม่พบข้อมูลผู้ใช้ในระบบ" 
             });
         }
 
-        // 3. ส่งข้อมูลกลับไปให้ Client
-        // เราส่งเฉพาะข้อมูลที่จำเป็นเพื่อความปลอดภัย
+        console.log(`Debug: User Found -> Balance: ${user.balance}, Status: ${user.verifyStatus}`);
+
         res.json({
             success: true,
             username: user.username,
@@ -2050,7 +2051,7 @@ app.get('/api/user-status', async (req, res) => {
         });
 
     } catch (err) {
-        console.error("User Status API Error:", err);
+        console.error("DEBUG ERROR API:", err);
         res.status(500).json({ 
             success: false, 
             message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" 
@@ -2741,29 +2742,33 @@ socket.on('get-pending-verifications', async (data) => {
 });
 
 	socket.on('get-admin-live-location', async (data, callback) => {
+    console.log("--- DEBUG: Socket get-admin-live-location ---");
     try {
         const { zoneId } = data;
-        
-        // 1. ค้นหาแอดมินที่ดูแลโซนนี้ และต้องออนไลน์อยู่ (หรือมีตำแหน่งล่าสุด)
-        // สมมติว่า Admin มี role: 'admin' และเก็บ zoneId ไว้
-        const admin = await usersCollection.findOne({ 
+        console.log(`Debug: Request location for Zone ID: ${zoneId} from User: ${socket.username}`);
+
+        // ตรวจสอบเงื่อนไขใน MongoDB Query
+        const query = { 
             role: 'admin', 
             zoneId: zoneId,
             lastLocation: { $exists: true } 
-        });
+        };
+        
+        const admin = await usersCollection.findOne(query);
 
         if (admin && admin.lastLocation) {
-            // ส่งพิกัดกลับไปให้ User ที่เรียกมา (ผ่าน callback)
+            console.log(`Debug: Admin Found! -> ${admin.username} at [${admin.lastLocation.lat}, ${admin.lastLocation.lng}]`);
             callback({
                 lat: admin.lastLocation.lat,
                 lng: admin.lastLocation.lng
             });
         } else {
-            // ถ้าไม่พบ Admin หรือ Admin ไม่ได้เปิดพิกัด
+            console.warn(`Debug: No active Admin found for zone ${zoneId}`);
+            // ส่งค่ากลับเป็น null เพื่อให้ฝั่ง Client แจ้งเตือน User
             callback(null);
         }
     } catch (err) {
-        console.error("Error fetching admin location:", err);
+        console.error("DEBUG ERROR SOCKET:", err);
         callback(null);
     }
 });
