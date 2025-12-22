@@ -433,7 +433,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.34 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.24 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1141,45 +1141,22 @@ if (homeBtn) {
 
         // 3. โหลดข้อมูลพื้นฐานใหม่
         updateUserInfo(); 
+        renderPostList();
 
-    // --- ส่วนที่แก้ไข: เช็คก่อนโหลด List ใหม่ ---
-    // ตรวจสอบว่าหน้าต่างรายละเอียดกระทู้ (Post Detail) เปิดอยู่หรือไม่
-    const postDetailModal = document.getElementById('post-detail-modal'); 
-    const isPostDetailVisible = postDetailModal && !postDetailModal.classList.contains('hidden');
-
-    if (!isPostDetailVisible) {
-        // ถ้า "ไม่ได้" เปิดหน้าเนื้อหากระทู้อยู่ ถึงค่อยโหลดรายการกระทู้ใหม่
-        if (typeof currentView !== 'undefined' && currentView === 'closed') {
-            loadClosedPosts(); // ถ้าอยู่ที่หน้ากระทู้ที่ปิด ให้โหลดหน้าเดิม
-        } else {
-            loadPosts(); // ถ้าอยู่ที่หน้าหลัก ให้โหลดหน้าหลัก
+        // ตรวจสอบว่า Modal ไหนเปิดอยู่ แล้วรีเฟรชหน้านั้นให้ถูกอัน
+        const modal = document.getElementById('user-list-modal');
+        if (!modal.classList.contains('hidden')) {
+            const listType = document.getElementById('pagination-controls').dataset.type;
+            
+            if (listType === 'adminTx') {
+                 // ถ้าเปิดหน้า "ประวัติรวม (Admin)" อยู่
+                 openTransactionModal(adminTxPage); 
+            } else if (listType === 'memberTx') {
+                 // ถ้าเปิดหน้า "ประวัติส่วนตัว" อยู่
+                 openMemberLedger(memberTxPage);
+            }
         }
     }
-	
-	if (!isPostDetailVisible) {
-    switch(currentView) {
-        case 'my-closed': // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วของฉัน'
-            loadMyClosedPosts(); 
-            break;
-        case 'closed':    // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วทั่วไป'
-            loadClosedPosts();
-            break;
-        default:
-            loadPosts();
-    }
-}
-
-    // ส่วนตรวจสอบ Modal อื่นๆ ของคุณ (โค้ดเดิม...)
-    const modal = document.getElementById('user-list-modal');
-    if (modal && !modal.classList.contains('hidden')) {
-        const listType = document.getElementById('pagination-controls').dataset.type;
-        if (listType === 'adminTx') {
-             openTransactionModal(adminTxPage); 
-        } else if (listType === 'memberTx') {
-             openMemberLedger(memberTxPage);
-        }
-    }
-}
         
         let currentCost = 0;
         let currentChatPartner = ""; 
@@ -1451,39 +1428,15 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
     function setPreferredCurrency(currency) {
-    currentCurrency = currency;
-    localStorage.setItem('preferredCurrency', currency);
-    updateUserInfo(); 
-    
-    // --- เพิ่มเติมตรงนี้ เพื่อให้ราคาในหน้า List อัปเดต แต่ไม่เด้งตอนดูเนื้อหา ---
-    const postDetailModal = document.getElementById('post-detail-modal');
-    const isPostDetailVisible = postDetailModal && !postDetailModal.classList.contains('hidden');
+        currentCurrency = currency;
+        localStorage.setItem('preferredCurrency', currency);
+        updateUserInfo(); // รีเฟรชยอดเงินทันที
+		renderPostList();
+        
+        const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
 
-    if (!isPostDetailVisible) {
-        if (typeof currentView !== 'undefined' && currentView === 'closed') {
-            loadClosedPosts();
-        } else {
-            loadPosts();
-        }
+        showNotification(translatedMsg, 'fas fa-money-bill');
     }
-	
-	if (!isPostDetailVisible) {
-    switch(currentView) {
-        case 'my-closed': // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วของฉัน'
-            loadMyClosedPosts(); 
-            break;
-        case 'closed':    // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วทั่วไป'
-            loadClosedPosts();
-            break;
-        default:
-            loadPosts();
-    }
-}
-    // ---------------------------------------------------------
-
-    const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
-    showNotification(translatedMsg, 'fas fa-money-bill');
-}
 
      
 
