@@ -3,7 +3,6 @@
 <head>
 	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
 	
-	
 	<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -4723,23 +4722,18 @@ socket.on('receive-pending-list', (data) => {
 // --- หน้า Dashboard แอดมิน ---
 
 socket.on('connect', () => {
-    // 🎯 2. แก้จุดนี้: ถ้าไฟล์นี้เป็น .js แยก ตัว <%= %> จะไม่ทำงาน
-    // แนะนำให้ดึงชื่อจากตัวแปรที่ส่งมาจากหน้าหลัก หรือใช้ค่าที่ Server ส่งกลับมา
-    const adminUsername = typeof window.currentUserName !== 'undefined' ? window.currentUserName : "<%= user.username %>"; 
+    // ใช้ตัวแปร JS มารับค่าจาก EJS ป้องกัน Error ใน console
+    const adminUsername = "<%= user.username %>"; 
     
-    // ตรวจสอบว่า adminUsername ไม่ใช่ตัวอักษรดิบของ EJS
-    if (adminUsername && !adminUsername.includes("<%=")) {
+    if (adminUsername && adminUsername !== "<" + "%= user.username %" + ">") {
         socket.emit('register-admin', adminUsername);
         
         setTimeout(() => {
             socket.emit('get-user-status-socket', (response) => {
                 if (response.success) {
                     console.log("Admin Verified:", response);
-                    
-                    // 🎯 3. แก้ชื่อตัวแปรให้ตรงกับที่ processApproval ใช้
-                    myAdminName = response.username; 
-                    
-                    console.log("✅ ตอนนี้ myAdminName มีค่าเป็น:", myAdminName);
+                    // 🎯 บันทึกค่าลงตัวแปร Global ตรงนี้!
+                    currentAdminData = response; 
                 } else {
                     console.error("❌ ไม่สามารถระบุตัวตนแอดมินได้");
                 }
