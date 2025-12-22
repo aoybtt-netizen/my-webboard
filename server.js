@@ -2511,26 +2511,53 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
-        // ค้นหาโซนที่พิกัดปัจจุบันอยู่ในรัศมี (อ้างอิงโครงสร้าง zonesCollection ของคุณ)
-        // ใช้หลักการ $near หรือการคำนวณระยะทาง
-        const zone = await zonesCollection.findOne({
+        const { lat, lng } = coords;
+        
+        // 1. ดึงโซนทั้งหมดที่มีการระบุพิกัดไว้
+        const allZones = await zonesCollection.find({
             "refLocation.lat": { $exists: true },
-            // ตัวอย่าง: หาโซนที่ใกล้ที่สุดในรัศมี 5กม. (ถ้าคุณใช้ GeoJSON Index)
-            // หรือหาจากการเปรียบเทียบค่าตรงๆ ตาม Logic ระบบคุณ
+            "refLocation.lng": { $exists: true }
+        }).toArray();
+
+        if (allZones.length === 0) {
+            return callback({ success: false, message: "No zones found in database" });
+        }
+
+        let closestZone = null;
+        let minDistance = Infinity;
+
+        // 2. วนลูปหาโซนที่ระยะห่างน้อยที่สุด (Nearest Neighbor)
+        allZones.forEach(zone => {
+            const distance = calculateDistance(lat, lng, zone.refLocation.lat, zone.refLocation.lng);
+            
+            // ถ้าเจอโซนที่ระยะใกล้กว่าค่าที่เคยเก็บไว้ ให้บันทึกเป็นโซนที่ใกล้ที่สุดใหม่
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestZone = zone;
+            }
         });
 
-        if (zone) {
-            // ดึงชื่อแอดมินจาก refLocation.sourceUser ที่คุณเก็บไว้
+        if (closestZone) {
+            // ใส่ Debug Log ที่ฝั่ง Server
+            console.log("====================================");
+            console.log(`🎯 Found Closest Zone: ${closestZone.name}`);
+            console.log(`👤 Owner: ${closestZone.refLocation.sourceUser}`);
+            console.log(`📏 Distance: ${minDistance.toFixed(2)} km`);
+            console.log("====================================");
+
             callback({
                 success: true,
-                zone: zone,
-                admin: { username: zone.refLocation.sourceUser }
+                zone: closestZone,
+                admin: { 
+                    username: closestZone.refLocation.sourceUser,
+                    distance: minDistance.toFixed(2)
+                }
             });
         } else {
             callback({ success: false });
         }
     } catch (err) {
-        console.error(err);
+        console.error("❌ find-zone-admin error:", err);
         callback({ success: false });
     }
 });
