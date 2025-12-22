@@ -198,6 +198,7 @@
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
+	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()" data-i18n-key="admin_user_list">👥 Verify</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -3102,17 +3103,7 @@ function openVerifyModal() {
     // เปิดหน้าคำอธิบายหน้าแรก
     document.getElementById('verify-info-modal').classList.remove('hidden');
 	
-	if (isAdmin && navigator.geolocation) {
-    navigator.geolocation.watchPosition((position) => {
-        const liveCoords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            timestamp: new Date()
-        };
-        // ส่งพิกัดไปอัปเดตที่ Server
-        socket.emit('update-admin-live-location', liveCoords);
-    });
-}
+	
 }
 
 // ฟังก์ชันปิดหน้าคำอธิบาย
@@ -3143,6 +3134,29 @@ function submitIdentityData() {
     
     alert("ส่งข้อมูลการยืนยันตัวตนเรียบร้อยแล้ว รอการตรวจสอบจากเจ้าหน้าที่");
     closeVerifyConfirm();
+}
+
+
+function adminZoneVerify(){
+	if (navigator.geolocation) {
+    // ใช้ watchPosition เพื่อให้ส่งพิกัดอัตโนมัติเมื่อมีการเคลื่อนที่
+    navigator.geolocation.watchPosition((position) => {
+        const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+        };
+        
+        // ส่งไปที่ Server (ถ้าเป็นแอดมิน)
+        if (typeof socket !== 'undefined' && socket.connected) {
+            socket.emit('update-admin-live-location', coords);
+        }
+    }, (err) => {
+        console.warn("GPS error:", err);
+    }, {
+        enableHighAccuracy: true, // ใช้ GPS ความแม่นยำสูง
+        distanceFilter: 10 // ส่งข้อมูลใหม่ทุกๆ การเคลื่อนที่ 10 เมตร (ช่วยประหยัดแบต)
+    });
+}
 }
 
 
