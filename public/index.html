@@ -3101,6 +3101,18 @@ function openVerifyModal() {
     
     // เปิดหน้าคำอธิบายหน้าแรก
     document.getElementById('verify-info-modal').classList.remove('hidden');
+	
+	if (isAdmin && navigator.geolocation) {
+    navigator.geolocation.watchPosition((position) => {
+        const liveCoords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            timestamp: new Date()
+        };
+        // ส่งพิกัดไปอัปเดตที่ Server
+        socket.emit('update-admin-live-location', liveCoords);
+    });
+}
 }
 
 // ฟังก์ชันปิดหน้าคำอธิบาย
@@ -3142,15 +3154,19 @@ function checkZoneOwnership(showDebug = true) {
 
         socket.emit('find-zone-admin', { lat, lng }, (response) => {
             if (response.success) {
-                // แสดงผลชื่อโซนและชื่อแอดมินเจ้าของโซน
-                console.log("📍 โซน:", response.zoneName);
-                console.log("👤 เจ้าของโซน:", response.adminName);
-                
-                if (showDebug) {
-                    alert(`📍 โซนที่ใกล้ที่สุด: ${response.zoneName}\n👤 เจ้าของโซน (แอดมิน): ${response.adminName}\n📏 ระยะจากหมุด: ${response.distance} เมตร`);
+                let msg = `📍 โซน: ${response.zoneName}\n👤 แอดมิน: ${response.adminName}\n------------------------\n`;
+                msg += `🚩 ห่างจากจุดปักหมุดโซน: ${response.pinDistance} เมตร\n`;
+
+                if (response.adminDistance !== null) {
+                    // แสดงระยะห่างระหว่างเรากับแอดมิน
+                    msg += `🛰️ ตัวแอดมินอยู่ห่างจากคุณ: ${response.adminDistance} เมตร`;
+                } else {
+                    msg += `⚠️ ไม่สามารถระบุตำแหน่งแอดมินได้ (แอดมินปิด GPS)`;
                 }
+
+                if (showDebug) alert(msg);
             } else {
-                alert("ไม่พบโซนในบริเวณนี้");
+                alert("ไม่พบข้อมูลโซน");
             }
         });
     });

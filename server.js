@@ -2522,63 +2522,75 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
-        const { lat, lng } = coords;
-        console.log(`[Server Debug] Checking location from User: Lat ${lat}, Lng ${lng}`);
+        const { lat, lng } = coords; // พิกัดของผู้ใช้ (เรา)
 
-        // 1. ดึงโซนทั้งหมดที่มี "ตำแหน่งจริง" (lat, lng หลักของโซน)
+        // 1. หาโซนที่พิกัดหลัก (Pin) ใกล้ที่สุด
         const allZones = await zonesCollection.find({
             "lat": { $exists: true, $ne: null },
             "lng": { $exists: true, $ne: null },
-            "assignedAdmin": { $exists: true, $ne: null } // ต้องมีเจ้าของด้วย
+            "assignedAdmin": { $exists: true, $ne: null }
         }).toArray();
 
-        if (allZones.length === 0) {
-            console.log("❌ ไม่พบโซนที่มีพิกัดจริงในฐานข้อมูล");
-            return callback({ success: false, message: "No zones found" });
-        }
-
         let closestZone = null;
-        let minDistance = Infinity;
+        let minPinDistance = Infinity;
 
-        // 2. คำนวณหาโซนที่ "ตำแหน่งจริง" (Pin) ใกล้ที่สุด
         allZones.forEach((zone) => {
-            const pinLat = parseFloat(zone.lat);
-            const pinLng = parseFloat(zone.lng);
-            
-            // ใช้ฟังก์ชันคำนวณระยะทาง (เมตร)
-            const distance = calculateDistance(lat, lng, pinLat, pinLng);
-
-            if (distance < minDistance) {
-                minDistance = distance;
+            const d = calculateDistance(lat, lng, parseFloat(zone.lat), parseFloat(zone.lng));
+            if (d < minPinDistance) {
+                minPinDistance = d;
                 closestZone = zone;
             }
         });
 
         if (closestZone) {
-            // 3. ดึงชื่อเจ้าของโซนจากฟิลด์ assignedAdmin เท่านั้น
-            const realOwner = closestZone.assignedAdmin;
+            const adminUsername = closestZone.assignedAdmin;
+            
+            // 2. ดึงพิกัดปัจจุบัน (Live) ของแอดมินจากฐานข้อมูล User
+            const adminUser = await usersCollection.findOne({ username: adminUsername });
+            
+            let adminLiveLocation = null;
+            let distanceToAdmin = null;
 
-            console.log("====================================");
-            console.log(`🎯 พบโซนที่ใกล้ที่สุด: ${closestZone.name}`);
-            console.log(`📍 พิกัดจริง (Pin): ${closestZone.lat}, ${closestZone.lng}`);
-            console.log(`👤 เจ้าของโซน (Real Owner): ${realOwner}`);
-            console.log(`📏 ระยะห่าง: ${minDistance.toFixed(0)} เมตร`);
-            console.log("====================================");
+            if (adminUser && adminUser.currentLocation) {
+                adminLiveLocation = adminUser.currentLocation;
+                
+                // 🔥 3. คำนวณระยะห่างระหว่าง "ผู้ใช้" กับ "แอดมินตัวจริง" (Live GPS)
+                distanceToAdmin = calculateDistance(
+                    lat, 
+                    lng, 
+                    parseFloat(adminLiveLocation.lat), 
+                    parseFloat(adminLiveLocation.lng)
+                );
+            }
+
+            console.log(`[Debug] Admin: ${adminUsername} | Live Distance: ${distanceToAdmin ? distanceToAdmin.toFixed(0) : 'N/A'} m`);
 
             callback({
                 success: true,
                 zoneName: closestZone.name,
-                adminName: realOwner, // คืนค่าชื่อเจ้าของโซนที่ถูกต้อง
-                distance: minDistance.toFixed(0)
+                adminName: adminUsername,
+                pinDistance: minPinDistance.toFixed(0), // ห่างจากหมุดโซน
+                adminDistance: distanceToAdmin ? distanceToAdmin.toFixed(0) : null, // ห่างจากตัวแอดมิน
+                adminLive: !!adminLiveLocation // เช็คว่าแอดมินเปิด GPS ไหม
             });
         } else {
             callback({ success: false });
         }
     } catch (err) {
-        console.error("❌ find-zone-admin error:", err);
+        console.error(err);
         callback({ success: false });
     }
 });
+
+	
+	socket.on('update-admin-live-location', async (coords) => {
+    if (!socket.username) return;
+    await usersCollection.updateOne(
+        { username: socket.username },
+        { $set: { currentLocation: coords } }
+    );
+});
+
 
 
 });
