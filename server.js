@@ -2062,14 +2062,11 @@ app.get('/api/user-status', async (req, res) => {
 
 // 34.API สำหรับอนุมัติ KYC และรับรูปหลักฐาน 3 รูป
 app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
-    console.log("--- 🚀 START KYC PROCESS ---");
-    
-    const member_name = req.body.member_name ? req.body.member_name.trim() : null;
-    const amount = req.body.amount || 25;
-	const { requestBy, member_name } = req.body;
+    const { requestBy, member_name } = req.body;
 
     console.log("Server received requestBy:", requestBy); // ดีบักดูว่าที่ส่งมาเป็น null ไหม
-	if (!requestBy) {
+
+    if (!requestBy) {
         return res.status(403).json({ success: false, error: '⛔ ไม่พบชื่อผู้ดำเนินการ' });
     }
 
