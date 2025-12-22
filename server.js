@@ -2217,6 +2217,13 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 // Socket.io Logic
 // ==========================================
 io.on('connection', (socket) => {
+	
+	socket.on('register-admin', (username) => {
+        socket.username = username; // บันทึกชื่อเข้าตัวแปร socket
+        socket.join(username);      // ให้ socket เข้าห้องชื่อตัวเอง (เพื่อใช้ io.to(username).emit)
+        console.log(`✅ Admin Registered: ${username}`);
+    });
+	
     
     socket.on('register', async (username) => {
         socket.join(username);
