@@ -2218,12 +2218,6 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 // ==========================================
 io.on('connection', (socket) => {
 	
-	socket.on('register-admin', (username) => {
-        socket.username = username; // บันทึกชื่อเข้าตัวแปร socket
-        socket.join(username);      // ให้ socket เข้าห้องชื่อตัวเอง (เพื่อใช้ io.to(username).emit)
-        console.log(`✅ Admin Registered: ${username}`);
-    });
-	
     
     socket.on('register', async (username) => {
         socket.join(username);
@@ -2902,7 +2896,15 @@ socket.on('get-pending-verifications', async (data) => {
     }
 });
 
-	socket.on('get-user-status-socket', async (callback) => {
+	// 1. สร้าง Event สำหรับรับชื่อแอดมินมาบันทึกใน Socket
+	socket.on('register-admin', (username) => {
+        socket.username = username; // บันทึกชื่อเข้าตัวแปร socket
+        socket.join(username);      // ให้ socket เข้าห้องชื่อตัวเอง (เพื่อใช้ io.to(username).emit)
+        console.log(`✅ Admin Registered: ${username}`);
+    });
+
+    // 2. ฟังก์ชันเดิมที่คุณมีอยู่ (จะทำงานได้แล้วเพราะมี socket.username)
+    socket.on('get-user-status-socket', async (callback) => {
         try {
             const username = socket.username; 
             if (!username) {
