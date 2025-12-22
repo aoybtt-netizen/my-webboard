@@ -2522,9 +2522,10 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
-        // ดึง requesterName (ชื่อคนกดเช็คอิน) เพิ่มจาก coords
-        const { lat, lng, requesterName } = coords; 
-		const requesterName = socket.username || "สมาชิกนิรนาม";
+        const { lat, lng } = coords; 
+        // ใช้ชื่อจาก socket.username เป็นหลัก ถ้าไม่มีค่อยใช้ที่ส่งมาจาก coords หรือค่าพื้นฐาน
+        const requesterName = socket.username || coords.requesterName || "สมาชิกนิรนาม";
+
         // 1. หาโซนที่พิกัดหลัก (Pin) ใกล้ที่สุด
         const allZones = await zonesCollection.find({
             "lat": { $exists: true, $ne: null },
@@ -2564,14 +2565,13 @@ socket.on('reply-deduct-confirm', async (data) => {
                 );
             }
 
-            // 🔥 [ส่วนที่แทรกใหม่]: ส่งสัญญาณแจ้งเตือนไปที่หน้าจอของ Admin คนนั้นโดยเฉพาะ
+            // 🔥 ส่งสัญญาณแจ้งเตือนไปที่หน้าจอของ Admin
             const adminSockets = await io.fetchSockets();
             const targetAdminSocket = adminSockets.find(s => s.username === adminUsername);
 
             if (targetAdminSocket) {
-                // 🔥 เพิ่ม adminTarget: adminUsername เพื่อให้แอดมินตรวจสอบชื่อตัวเอง
-					io.to(targetAdminSocket.id).emit('notify-admin-verify', {
-                    member: requesterName, // ชื่อจะตรงตามที่ login แน่นอน
+                io.to(targetAdminSocket.id).emit('notify-admin-verify', {
+                    member: requesterName, 
                     zone: closestZone.name,
                     distance: minPinDistance.toFixed(0),
                     adminTarget: adminUsername
@@ -2581,7 +2581,7 @@ socket.on('reply-deduct-confirm', async (data) => {
 
             console.log(`[Debug] Admin: ${adminUsername} | Live Distance: ${distanceToAdmin ? distanceToAdmin.toFixed(0) : 'N/A'} m`);
 
-            // 4. ส่งข้อมูลกลับไปหาคนกด (User)
+            // 4. ส่งข้อมูลกลับไปหา User
             callback({
                 success: true,
                 zoneName: closestZone.name,
