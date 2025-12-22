@@ -1155,6 +1155,19 @@ if (homeBtn) {
             loadPosts(); // ถ้าอยู่ที่หน้าหลัก ให้โหลดหน้าหลัก
         }
     }
+	
+	if (!isPostDetailVisible) {
+    switch(currentView) {
+        case 'my-closed': // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วของฉัน'
+            loadMyClosedPosts(); 
+            break;
+        case 'closed':    // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วทั่วไป'
+            loadClosedPosts();
+            break;
+        default:
+            loadPosts();
+    }
+}
 
     // ส่วนตรวจสอบ Modal อื่นๆ ของคุณ (โค้ดเดิม...)
     const modal = document.getElementById('user-list-modal');
@@ -1453,6 +1466,19 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             loadPosts();
         }
     }
+	
+	if (!isPostDetailVisible) {
+    switch(currentView) {
+        case 'my-closed': // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วของฉัน'
+            loadMyClosedPosts(); 
+            break;
+        case 'closed':    // ถ้าหน้าปัจจุบันคือ 'กระทู้ที่ปิดแล้วทั่วไป'
+            loadClosedPosts();
+            break;
+        default:
+            loadPosts();
+    }
+}
     // ---------------------------------------------------------
 
     const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
