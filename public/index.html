@@ -3096,61 +3096,40 @@ window.deductCoinInChat = deductCoinInChat;
 //Verify
 // ฟังก์ชันเมื่อกดปุ่ม Verify Identity จากเมนู
 function openVerifyModal() {
-    // แทนที่จะเปิดหน้าส่งข้อมูลทันที ให้เปิดหน้าต่างยืนยันก่อน
+    // ปิด Sidebar ก่อน (ถ้ามี)
+    if (typeof toggleSidebar === "function") toggleSidebar();
+    
+    // เปิดหน้าคำอธิบายหน้าแรก
+    document.getElementById('verify-info-modal').classList.remove('hidden');
+}
+
+// ฟังก์ชันปิดหน้าคำอธิบาย
+function closeVerifyInfo() {
+    document.getElementById('verify-info-modal').classList.add('hidden');
+}
+
+// ฟังก์ชันเมื่อกด Confirm จากหน้าแรก เพื่อไปหน้ากรอกข้อมูล
+function proceedToVerifyForm() {
+    document.getElementById('verify-info-modal').classList.add('hidden');
     document.getElementById('verify-confirm-modal').classList.remove('hidden');
 }
 
-// ฟังก์ชันปิดหน้าต่างยืนยัน
+// ฟังก์ชันปิดหน้ากรอกข้อมูล (ใช้กับปุ่ม Cancel ในหน้าสอง)
 function closeVerifyConfirm() {
     document.getElementById('verify-confirm-modal').classList.add('hidden');
 }
 
-// ฟังก์ชันเมื่อกดยืนยัน (Confirm)
-function confirmIdentitySubmission() {
-    closeVerifyConfirm();
-    
-    // ตรงนี้คือ Logic เดิมที่คุณต้องการให้ทำงานหลังจากกด Confirm
-    // เช่น การเปิดฟอร์มกรอกข้อมูล หรือส่ง Socket ไปยัง Server
-    alert("ระบบกำลังนำคุณไปยังขั้นตอนการส่งเอกสาร...");
-    
-    // ตัวอย่าง: ถ้าคุณมี modal สำหรับกรอกข้อมูลชื่อ verify-form-modal
-    // document.getElementById('verify-form-modal').classList.remove('hidden');
-}
-
-
+// ฟังก์ชันส่งข้อมูล (หน้าสอง)
 function submitIdentityData() {
+    // ใส่ logic การส่งข้อมูลของคุณที่นี่
     const fullName = document.getElementById('verify-fullname').value;
-    const phone = document.getElementById('verify-phone').value;
-    const address = document.getElementById('verify-address').value;
-    const idCardFile = document.getElementById('verify-id-card').files[0];
-    const selfieFile = document.getElementById('verify-selfie').files[0];
-
-    // ตรวจสอบว่ากรอกข้อมูลครบหรือไม่
-    if (!fullName || !phone || !address || !idCardFile || !selfieFile) {
-        alert("กรุณากรอกข้อมูลและอัปโหลดรูปภาพให้ครบถ้วน");
+    if(!fullName) {
+        alert("Please enter your full name");
         return;
     }
-
-    // ตัวอย่างการเตรียมข้อมูลส่ง (ถ้าใช้ Socket.io หรือ FormData)
-    // ในกรณีที่มีไฟล์แนะนำให้แปลงไฟล์เป็น Base64 หรือใช้ FormData ส่งไปที่ API
     
-    const reader = new FileReader();
-    reader.readAsDataURL(idCardFile);
-    reader.onload = function () {
-        const idCardBase64 = reader.result;
-        
-        // ส่งข้อมูล (สมมติว่าใช้ socket.emit)
-        socket.emit('submit-verify-identity', {
-            fullName,
-            phone,
-            address,
-            idCardImage: idCardBase64,
-            // เพิ่มรูป selfie ในทำนองเดียวกัน
-        });
-
-        alert("ส่งข้อมูลเรียบร้อยแล้ว กรุณารอการตรวจสอบจากแอดมิน");
-        closeVerifyConfirm();
-    };
+    alert("ส่งข้อมูลการยืนยันตัวตนเรียบร้อยแล้ว รอการตรวจสอบจากเจ้าหน้าที่");
+    closeVerifyConfirm();
 }
 
 
@@ -4921,6 +4900,29 @@ function openUserDetail(targetUsername) {
         </div>
     </div>
 </div>
+
+
+
+	<div id="verify-info-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 450px; text-align: center;">
+        <h2 style="color: #28a745;"><i class="fas fa-shield-alt"></i> Identity Verification</h2>
+        <div style="text-align: left; margin-bottom: 20px; line-height: 1.6; color: #555;">
+            <p>เพื่อเพิ่มความน่าเชื่อถือในการทำธุรกรรมและการใช้งานระบบ เราขอแนะนำให้คุณยืนยันตัวตนด้วยข้อมูลจริง</p>
+            <ul>
+                <li>เพิ่มความเชื่อมั่นให้กับผู้ใช้อื่น</li>
+                <li>ใช้ข้อมูลจริงตามบัตรประชาชน/พาสปอร์ต</li>
+                <li>ข้อมูลของคุณจะถูกเก็บเป็นความลับสูงสุด</li>
+            </ul>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="sidebar-btn" onclick="closeVerifyInfo()" style="background: #6c757d; color: white; flex: 1;">Cancel</button>
+            <button class="sidebar-btn" onclick="proceedToVerifyForm()" style="background: #28a745; color: white; flex: 1;">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="verify-confirm-modal" class="modal-overlay hidden">
+    </div>
 
 	
 	
