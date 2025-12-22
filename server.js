@@ -2901,16 +2901,16 @@ socket.on('get-pending-verifications', async (data) => {
     socket.username = username;
     socket.join(username);
     
-    // ค้นหาข้อมูลแล้วส่งกลับไปยืนยันทันที
     const user = await usersCollection.findOne({ username: username });
     if (user) {
+        // ส่ง username กลับไปด้วย เพื่อให้หน้าบ้านเอาไปใส่ใน myAdminName
         socket.emit('admin-registered-success', {
             success: true,
+            username: user.username, // เพิ่มบรรทัดนี้เพื่อความชัวร์
             coins: user.coins,
             adminLevel: user.adminLevel
         });
     }
-    console.log(`✅ Admin Registered: ${username}`);
 });
 
     // 2. ฟังก์ชันเดิมที่คุณมีอยู่ (จะทำงานได้แล้วเพราะมี socket.username)
