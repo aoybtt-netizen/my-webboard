@@ -187,7 +187,9 @@
 	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
 กระทู้ของฉันที่ปิดแล้ว
 </button>
-	<button class="verify-btn" onclick="openVerifyModal()" style="background: #28a745; color: white;">Verify Identity</button>
+	<button class="sidebar-btn" onclick="openVerifyModal()" style="background: #28a745; color: white;">
+    <i class="fas fa-user-shield"></i> <span data-i18n-key="menu_verify">Verify Identity</span>
+</button>
     
     <div id="admin-panel" class="hidden">
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
@@ -3116,6 +3118,43 @@ function confirmIdentitySubmission() {
 }
 
 
+function submitIdentityData() {
+    const fullName = document.getElementById('verify-fullname').value;
+    const phone = document.getElementById('verify-phone').value;
+    const address = document.getElementById('verify-address').value;
+    const idCardFile = document.getElementById('verify-id-card').files[0];
+    const selfieFile = document.getElementById('verify-selfie').files[0];
+
+    // ตรวจสอบว่ากรอกข้อมูลครบหรือไม่
+    if (!fullName || !phone || !address || !idCardFile || !selfieFile) {
+        alert("กรุณากรอกข้อมูลและอัปโหลดรูปภาพให้ครบถ้วน");
+        return;
+    }
+
+    // ตัวอย่างการเตรียมข้อมูลส่ง (ถ้าใช้ Socket.io หรือ FormData)
+    // ในกรณีที่มีไฟล์แนะนำให้แปลงไฟล์เป็น Base64 หรือใช้ FormData ส่งไปที่ API
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(idCardFile);
+    reader.onload = function () {
+        const idCardBase64 = reader.result;
+        
+        // ส่งข้อมูล (สมมติว่าใช้ socket.emit)
+        socket.emit('submit-verify-identity', {
+            fullName,
+            phone,
+            address,
+            idCardImage: idCardBase64,
+            // เพิ่มรูป selfie ในทำนองเดียวกัน
+        });
+
+        alert("ส่งข้อมูลเรียบร้อยแล้ว กรุณารอการตรวจสอบจากแอดมิน");
+        closeVerifyConfirm();
+    };
+}
+
+
+
         
         // --- SOCKET LOGIC ---
 		socket.on('announcement-update', (data) => {
@@ -4886,20 +4925,45 @@ function openUserDetail(targetUsername) {
 	
 	
 	<div id="verify-confirm-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h2 style="text-align: center;"><i class="fas fa-user-shield"></i> ยืนยันการส่งข้อมูล</h2>
+    <div class="modal-box" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
+        <h2 style="text-align: center;"><i class="fas fa-user-shield"></i> ยืนยันตัวตน (Verify Identity)</h2>
         
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9em; color: #555;">
-            <p><strong>คำอธิบาย:</strong> การยืนยันตัวตนจะช่วยเพิ่มความน่าเชื่อถือให้กับบัญชีของคุณ โดยระบบจะส่งข้อมูลไปยังทีมแอดมินเพื่อตรวจสอบ</p>
-            <ul style="padding-left: 20px;">
-                <li>รูปถ่ายใบหน้าคู่กับบัตร</li>
-                <li>ข้อมูลส่วนตัวที่ระบุ</li>
-            </ul>
+        <div style="background: #eef6f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85em; color: #28a745; border: 1px solid #c3e6cb;">
+            <i class="fas fa-info-circle"></i> ข้อมูลนี้จะถูกเก็บเป็นความลับเพื่อใช้ในการตรวจสอบเท่านั้น
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+            <div>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">ชื่อ-นามสกุล:</label>
+                <input type="text" id="verify-fullname" placeholder="กรอกชื่อและนามสกุลตามบัตร" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;">
+            </div>
+
+            <div>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">เบอร์โทรศัพท์ติดต่อ:</label>
+                <input type="tel" id="verify-phone" placeholder="08X-XXXXXXX" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;">
+            </div>
+
+            <div>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">ที่อยู่ตามทะเบียนบ้าน/ปัจจุบัน:</label>
+                <textarea id="verify-address" rows="3" placeholder="เลขที่บ้าน, ถนน, แขวง/ตำบล, เขต/อำเภอ..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box; font-family: inherit;"></textarea>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+
+            <div>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">1. รูปถ่ายบัตรประจำตัวประชาชน:</label>
+                <input type="file" id="verify-id-card" accept="image/*" style="font-size: 0.9em;">
+            </div>
+
+            <div>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">2. รูปถ่ายหน้าตรงคู่กับบัตร:</label>
+                <input type="file" id="verify-selfie" accept="image/*" style="font-size: 0.9em;">
+            </div>
         </div>
 
         <div style="display: flex; gap: 10px;">
-            <button class="sidebar-btn" onclick="closeVerifyConfirm()" style="background: #6c757d; color: white;">ยกเลิก (Cancel)</button>
-            <button class="sidebar-btn" onclick="confirmIdentitySubmission()" style="background: #28a745; color: white;">ตกลง (Confirm)</button>
+            <button class="sidebar-btn" onclick="closeVerifyConfirm()" style="background: #6c757d; color: white; flex: 1;">ยกเลิก</button>
+            <button class="sidebar-btn" onclick="submitIdentityData()" style="background: #28a745; color: white; flex: 1;">ส่งข้อมูลตรวจสอบ</button>
         </div>
     </div>
 </div>
