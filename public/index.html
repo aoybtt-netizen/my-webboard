@@ -4548,7 +4548,11 @@ function closeVerifyModal() {
 
 // เปิดหน้าต่างจัดการของแอดมิน
 async function openAdminVerifyList() {
-    if (myAdminLevel < 1) return;
+	console.log("3. [Debug] Opening Modal. Current myAdminName is:", myAdminName);
+    if (myAdminLevel < 1) {
+        console.warn("4. [Debug] Access denied: myAdminLevel is", myAdminLevel);
+        return;
+    }
     
     // 1. ปิด Sidebar
     if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
@@ -4717,6 +4721,7 @@ socket.on('receive-pending-list', (data) => {
 
 
 socket.on('admin-registered-success', function(data) {
+	console.log("1. [Debug] Data received from Server:", data); // เช็คว่า data.adminName มีค่าไหม
     try {
         // บันทึกชื่อแอดมินลงในตัวแปร Global ทันที
         myAdminName = data.adminName;
@@ -4739,6 +4744,13 @@ socket.on('admin-registered-success', function(data) {
         if (adminMenu) {
             adminMenu.style.display = 'block';
         }
+		
+		if (data && data.adminName) {
+        myAdminName = data.adminName;
+        console.log("2. [Debug] myAdminName is now set to:", myAdminName);
+    } else {
+        console.error("2. [Debug] Failed to set myAdminName: Data is empty or invalid!");
+    }
 
     } catch (error) {
         console.error("Error in admin-registered-success:", error);
@@ -4992,11 +5004,18 @@ function handleMultipleFiles(input) {
 
 
 async function processApproval() {
-    // 1. ตรวจสอบชื่อแอดมินจากตัวแปร Global
+    console.log("5. [Debug] Starting processApproval...");
+    console.log("6. [Debug] Global variable 'myAdminName':", myAdminName);
+    console.log("7. [Debug] Socket object state:", socket); // ดูว่าใน socket.username มีชื่อไหม
     console.log("🔍 Checking admin name before upload:", myAdminName);
 
     if (!myAdminName) {
-        alert("❌ ไม่พบข้อมูลแอดมินในระบบ! กรุณารอครู่เดียวหรือรีเฟรชหน้าเว็บ");
+        console.log("8. [Debug] Trying to recover admin name from socket...");
+        myAdminName = socket.username || socket.id; // ใช้ ID แทนถ้าไม่มีชื่อ
+    }
+
+    if (!myAdminName) {
+        alert("❌ ไม่พบข้อมูลแอดมิน! (Debug: Check Console)");
         return;
     }
 
