@@ -2064,28 +2064,20 @@ app.get('/api/user-status', async (req, res) => {
 app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
     console.log("--- 🚀 START KYC PROCESS ---");
     
-    // ดึงค่าและจัดการช่องว่าง (ถ้ามี)
     const member_name = req.body.member_name ? req.body.member_name.trim() : null;
     const requestBy = req.body.requestBy ? req.body.requestBy.trim() : null;
-    const amount = req.body.amount;
-
-    console.log("📦 Received:", { member_name, requestBy, amount });
+    const amount = req.body.amount || 25;
 
     try {
-        // 1. ตรวจสอบว่ามีชื่อ Admin ส่งมาไหม
-        if (!requestBy) {
-            console.log("❌ Error: requestBy is missing from Client");
-            return res.status(400).json({ success: false, error: '⛔ ระบบไม่ได้รับชื่อแอดมิน กรุณาลองใหม่' });
+        // 1. ตรวจสอบความครบถ้วนของข้อมูล
+        if (!requestBy || !member_name) {
+            return res.status(400).json({ success: false, error: 'ข้อมูลไม่ครบถ้วน (ขาดชื่อแอดมินหรือสมาชิก)' });
         }
 
-        // 2. ตรวจสอบสิทธิ์ผู้ดูแล
+        // 2. ตรวจสอบตัวตนแอดมินจาก Database (ความปลอดภัยชั้นที่ 2)
         const adminUser = await usersCollection.findOne({ username: requestBy });
-        if (!adminUser) {
-            console.log(`❌ Admin Not Found: ${requestBy}`);
-            return res.status(403).json({ success: false, error: `⛔ ไม่พบแอดมินชื่อ ${requestBy}` });
-        }
-        
-        if (adminUser.adminLevel < 1) {
+        if (!adminUser || adminUser.adminLevel < 1) {
+            console.log(`❌ Unauthorized: ${requestBy} is not an admin.`);
             return res.status(403).json({ success: false, error: '⛔ คุณไม่มีสิทธิ์อนุมัติ' });
         }
 
@@ -2095,11 +2087,10 @@ app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
             return res.status(404).json({ success: false, error: '❌ ไม่พบข้อมูลสมาชิก' });
         }
 
-        const deductAmount = parseFloat(amount) || 25;
-
-        // 4. ตรวจสอบเงินสมาชิก
-        if (targetUser.coins < deductAmount) {
-            return res.status(400).json({ success: false, error: '❌ สมาชิกมี USD ไม่พอจ่ายค่าธรรมเนียม' });
+        // 4. ตรวจสอบเงินสมาชิก (เช็คยอด 50 USD แต่หักจริง 25)
+        const currentCoins = targetUser.coins || 0;
+        if (currentCoins < 50) {
+            return res.status(400).json({ success: false, error: '❌ สมาชิกมี USD ไม่เพียงพอ (ต้องการ 50)' });
         }
 
         // 5. ตรวจสอบไฟล์รูปภาพ
@@ -2108,11 +2099,11 @@ app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
         }
         const imageUrls = req.files.map(file => file.path);
 
-        // 6. อัปเดตข้อมูล MongoDB (หักเงินสมาชิก)
+        // 6. [DB Update] หักเงินสมาชิก + เปลี่ยนสถานะเป็น Verified
         await usersCollection.updateOne(
             { username: member_name },
             { 
-                $inc: { coins: -deductAmount },
+                $inc: { coins: -25 },
                 $set: { 
                     verifyStatus: 'verified',
                     isVerified: true,
@@ -2123,35 +2114,33 @@ app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
             }
         );
 
-        // 7. โอนเงินให้ Admin
+        // 7. [DB Update] โอนเงินให้ Admin
         await usersCollection.updateOne(
             { username: requestBy },
-            { $inc: { coins: deductAmount } }
+            { $inc: { coins: 25 } }
         );
 
         // 8. บันทึก Transaction
         await transactionsCollection.insertOne({
-            id: Date.now(),
-            type: 'KYC_APPROVE_COLLECT',
-            amount: deductAmount,
+            type: 'KYC_APPROVE_SUCCESS',
+            amount: 25,
             fromUser: member_name,
             toUser: requestBy,
-            note: `อนุมัติยืนยันตัวตน (KYC)`,
-            evidence_count: imageUrls.length,
-            timestamp: Date.now()
+            note: `ยืนยันตัวตนสำเร็จโดยแอดมิน ${requestBy}`,
+            timestamp: new Date()
         });
 
-        // 9. แจ้งเตือน Realtime
-        io.emit('balance-update', { user: member_name, coins: targetUser.coins - deductAmount });
-        io.emit('balance-update', { user: requestBy, coins: adminUser.coins + deductAmount });
+        // 9. แจ้งเตือนผ่าน Socket
+        io.emit('balance-update', { user: member_name, coins: currentCoins - 25 });
+        io.emit('balance-update', { user: requestBy, coins: (adminUser.coins || 0) + 25 });
         io.to(member_name).emit('identity-verified', { message: '🎉 บัญชีได้รับการยืนยันแล้ว!' });
 
-        console.log("✅ --- KYC PROCESS COMPLETED ---");
-        res.json({ success: true, message: '✅ อนุมัติและได้รับเงินเรียบร้อย', images: imageUrls });
+        console.log(`✅ KYC Success: ${requestBy} approved ${member_name}`);
+        res.json({ success: true, message: '✅ อนุมัติและได้รับค่าธรรมเนียมเรียบร้อย' });
 
     } catch (err) {
         console.error('🔥 Server Error:', err);
-        res.status(500).json({ success: false, error: 'Internal Server Error' });
+        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
     }
 });
 

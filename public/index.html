@@ -468,6 +468,7 @@
         const socket = io();
         let myUsername = "";
 		let myAdminLevel = 0;
+		let myAdminName = null;
 		let myZoneId = null;
 		let filterLocation = null;
         let filterMaxDistance = null; 
@@ -4718,11 +4719,15 @@ socket.on('receive-pending-list', (data) => {
 
 
 socket.on('connect', () => {
+    console.log("✅ Socket Connected: กำลังดึงข้อมูลแอดมิน...");
+    
+    // ดึงข้อมูลชื่อจาก Socket Session หรือจากฐานข้อมูล
     socket.emit('get-user-status-socket', (userData) => {
-        if (userData.success) {
-            // ✅ บันทึกชื่อไว้ทันทีที่เปิดหน้าเว็บ
-            localStorage.setItem('username', userData.username);
-            console.log("ชื่อแอดมินถูกบันทึกอัตโนมัติ:", userData.username);
+        if (userData.success && userData.username) {
+            myAdminName = userData.username; 
+            console.log("👤 ยินดีต้อนรับแอดมิน:", myAdminName);
+        } else {
+            console.error("❌ ไม่สามารถระบุตัวตนแอดมินได้");
         }
     });
 });
@@ -4966,43 +4971,40 @@ function handleMultipleFiles(input) {
 
 
 async function processApproval() {
-    let currentAdmin = localStorage.getItem('admin_username') || localStorage.getItem('username');
-    
-    // 💡 ตัวเลือกเสริม: ถ้าหาใน localStorage ไม่เจอจริงๆ ลองดึงจาก Socket (ถ้าฝั่ง Client เก็บไว้)
-    if (!currentAdmin && typeof socket !== 'undefined' && socket.username) {
-        currentAdmin = socket.username;
-    }
+    // 1. ตรวจสอบชื่อแอดมินจากตัวแปร Global
+    console.log("🔍 Checking admin name before upload:", myAdminName);
 
-    console.log("🔍 Checking admin name before upload:", currentAdmin);
-
-    if (!currentAdmin) {
-        // ถ้ายังไม่มีจริงๆ ให้ลองถามชื่อแอดมิน หรือให้แอดมิน Login ใหม่
-        alert("❌ ไม่พบข้อมูลแอดมิน! ระบบไม่รู้ว่าใครเป็นผู้อนุมัติ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
+    if (!myAdminName) {
+        alert("❌ ไม่พบข้อมูลแอดมินในระบบ! กรุณารอครู่เดียวหรือรีเฟรชหน้าเว็บ");
         return;
     }
 
+    // 2. ตรวจสอบรูปภาพ
     if (evidenceFiles.length === 0) {
         alert("📸 กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
         return;
     }
 
     const confirmBtn = document.getElementById('final-confirm-btn');
+    const originalText = confirmBtn.innerHTML;
+    
+    // ล็อคปุ่มป้องกันการกดซ้ำ
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
+    // 3. เตรียมข้อมูลส่งไป Server
     const formData = new FormData();
-    // ตรวจสอบว่า ID นี้มีอยู่จริงและมีข้อความข้างใน
     const memberName = document.getElementById('approve-target-name')?.innerText?.trim();
     
     if (!memberName) {
         alert("❌ ไม่พบชื่อสมาชิกที่จะอนุมัติ");
-        resetButton(confirmBtn); // เรียกใช้ฟังก์ชันคืนค่าปุ่ม
+        resetButton(confirmBtn, originalText);
         return;
     }
 
     formData.append('member_name', memberName);
     formData.append('amount', '25');
-    formData.append('requestBy', currentAdmin); 
+    formData.append('requestBy', myAdminName); // ส่งชื่อแอดมินจากตัวแปร Global
 
     evidenceFiles.forEach((file) => {
         formData.append('evidence', file);
@@ -5021,20 +5023,19 @@ async function processApproval() {
             location.reload(); 
         } else {
             alert("❌ Error: " + result.error);
-            resetButton(confirmBtn);
+            resetButton(confirmBtn, originalText);
         }
     } catch (error) {
         console.error("Error:", error);
         alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-        resetButton(confirmBtn);
+        resetButton(confirmBtn, originalText);
     }
 }
 
-// ✅ อย่าลืมเพิ่มฟังก์ชันนี้ไว้ด้านล่างด้วยครับ
-function resetButton(btn) {
-    if (!btn) return;
+// ฟังก์ชันเสริมสำหรับคืนค่าปุ่ม
+function resetButton(btn, text) {
     btn.disabled = false;
-    btn.innerHTML = 'Approve & Collect 25 USD'; // หรือข้อความเดิมบนปุ่มคุณ
+    btn.innerHTML = text || 'Confirm Approval';
 }
 
 
