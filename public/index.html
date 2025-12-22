@@ -2250,10 +2250,12 @@ async function showMyClosedPosts(page = 1) {
             let postsArray = Object.values(postStatusMap).map(item => item);
             let filteredPosts = postsArray;
 
-            if (currentView === 'home') {
-        filteredPosts = postsArray.filter(item => !item.data.isClosed);
-    } else if (currentView === 'closed') {
+            if (currentView === 'closed') {
         filteredPosts = postsArray.filter(item => item.data.isClosed);
+    } else {
+        // ต่อให้ currentView เป็น 'home' หรือเป็นค่าว่าง/undefined ก็ให้กรองเอาอันที่ปิดออก
+        filteredPosts = postsArray.filter(item => !item.data.isClosed);
+        currentView = 'home'; // บังคับเซ็ตค่ากลับเผื่อกรณีตัวแปรหลุด
     }
 
     // -----------------------------------------------------------
