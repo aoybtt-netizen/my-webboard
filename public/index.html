@@ -5016,20 +5016,20 @@ function handleMultipleFiles(input) {
 
 
 async function processApproval() {
-    console.log("5. [Debug] Starting processApproval...");
-    console.log("6. [Debug] Global variable 'myAdminName':", myAdminName);
-    console.log("7. [Debug] Socket object state:", socket); // ดูว่าใน socket.username มีชื่อไหม
-    console.log("🔍 Checking admin name before upload:", myAdminName);
+    const savedName = localStorage.getItem('username'); 
+    
+    // ลำดับการเลือกชื่อ: 1.ตัวแปรหลัก 2.ใน localStorage 3.ใน socket (ถ้ามีระบุไว้)
+    const finalAdminName = myAdminName || savedName || (socket.username);
 
-    if (!myAdminName) {
-        console.log("8. [Debug] Trying to recover admin name from socket...");
-        myAdminName = socket.username || socket.id; // ใช้ ID แทนถ้าไม่มีชื่อ
-    }
+    console.log("🔍 Final Admin Name to send:", finalAdminName);
 
-    if (!myAdminName) {
-        alert("❌ ไม่พบข้อมูลแอดมิน! (Debug: Check Console)");
+    if (!finalAdminName) {
+        alert("❌ ไม่พบชื่อแอดมิน กรุณาล็อกอินใหม่");
         return;
     }
+
+    const formData = new FormData();
+	formData.append('requestBy', finalAdminName);
 
     // 2. ตรวจสอบรูปภาพ
     if (evidenceFiles.length === 0) {

@@ -2062,12 +2062,22 @@ app.get('/api/user-status', async (req, res) => {
 
 // 34.API สำหรับอนุมัติ KYC และรับรูปหลักฐาน 3 รูป
 app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
-    const { requestBy, member_name } = req.body;
+    let adminName = req.body.requestBy;
 
-    console.log("Server received requestBy:", requestBy); // ดีบักดูว่าที่ส่งมาเป็น null ไหม
+    // ถ้าที่ส่งมาเป็น Socket ID หรือ null ให้พยายามหาชื่อจริงๆ จาก DB หรือ Session
+    if (!adminName || adminName.length > 15) { // ID มักจะยาวกว่าชื่อปกติ
+        // ลองหาใน Database โดยใช้เงื่อนไขอื่น หรือถ้าคุณมีระบบ Session
+        // adminName = req.session.username; 
+    }
 
-    if (!requestBy) {
-        return res.status(403).json({ success: false, error: '⛔ ไม่พบชื่อผู้ดำเนินการ' });
+    console.log("🔍 Server processing approval by:", adminName);
+
+    // เช็คสิทธิ์ใน DB
+    const adminUser = await usersCollection.findOne({ username: adminName, isAdmin: true });
+
+    if (!adminUser) {
+        console.log(`❌ Unauthorized: ${adminName} is not an admin.`);
+        return res.status(403).json({ success: false, error: '⛔ คุณไม่มีสิทธิ์อนุมัติ' });
     }
 
     try {
