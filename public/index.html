@@ -198,7 +198,7 @@
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
-	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()" data-i18n-key="admin_user_list">👥 Verify</button>
+	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()">👥 Verify</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -3138,7 +3138,12 @@ function submitIdentityData() {
 
 
 function adminZoneVerify(){
-	if (navigator.geolocation) {
+	if (typeof toggleSidebar === "function") toggleSidebar();
+	document.getElementById('admin-members-verify-modal').classList.add('hidden');
+}
+
+function adminOnGPSVerify{
+		if (navigator.geolocation) {
     // ใช้ watchPosition เพื่อให้ส่งพิกัดอัตโนมัติเมื่อมีการเคลื่อนที่
     navigator.geolocation.watchPosition((position) => {
         const coords = {
@@ -5022,6 +5027,26 @@ function openUserDetail(targetUsername) {
         <div style="display: flex; gap: 10px;">
             <button class="sidebar-btn" onclick="closeVerifyConfirm()" style="background: #6c757d; color: white; flex: 1;">Cancel</button>
             <button class="sidebar-btn" onclick="submitIdentityData()" style="background: #28a745; color: white; flex: 1;">Submit for Review</button>
+        </div>
+    </div>
+</div>
+
+
+		
+		<div id="admin-members-verify-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 450px; text-align: center;">
+        <h2 style="color: #28a745;"><i class="fas fa-shield-alt"></i> Wait Member Verification</h2>
+        <div style="text-align: left; margin-bottom: 20px; line-height: 1.6; color: #555;">
+            <p>.......</p>
+            <ul>
+                <li>......</li>
+                <li>......</li>
+                <li>......</li>
+            </ul>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="sidebar-btn" onclick="closeVerifyInfo()" style="background: #6c757d; color: white; flex: 1;">Cancel</button>
+            <button class="sidebar-btn" onclick="adminOnGPSVerify()" style="background: #28a745; color: white; flex: 1;">Confirm</button>
         </div>
     </div>
 </div>
