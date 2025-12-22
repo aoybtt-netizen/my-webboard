@@ -327,6 +327,17 @@ function convertUSD(amountUSD, targetCurrency) {
     return rate ? amountUSD * rate : amountUSD;
 }
 
+	function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // เมตร
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; 
+}
+
 // ==========================================
 // API Endpoints
 // ==========================================
@@ -2512,25 +2523,32 @@ socket.on('reply-deduct-confirm', async (data) => {
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
         const { lat, lng } = coords;
-        
-        // 1. ดึงโซนทั้งหมดที่มีการระบุพิกัดไว้
+        console.log(`[Server Debug] Incoming request from: Lat ${lat}, Lng ${lng}`);
+
+        // 1. ดึงโซนทั้งหมดที่มีพิกัด (ตรวจสอบโครงสร้าง refLocation ให้ดี)
         const allZones = await zonesCollection.find({
-            "refLocation.lat": { $exists: true },
-            "refLocation.lng": { $exists: true }
+            "refLocation.lat": { $exists: true }
         }).toArray();
 
+        console.log(`[Server Debug] Total zones found in DB: ${allZones.length}`);
+
         if (allZones.length === 0) {
-            return callback({ success: false, message: "No zones found in database" });
+            console.log("❌ No zones found in collection.");
+            return callback({ success: false, message: "No zones in DB" });
         }
 
         let closestZone = null;
         let minDistance = Infinity;
 
-        // 2. วนลูปหาโซนที่ระยะห่างน้อยที่สุด (Nearest Neighbor)
-        allZones.forEach(zone => {
-            const distance = calculateDistance(lat, lng, zone.refLocation.lat, zone.refLocation.lng);
+        // 2. ค้นหาโซนที่ใกล้ที่สุด
+        allZones.forEach((zone, index) => {
+            const zLat = parseFloat(zone.refLocation.lat);
+            const zLng = parseFloat(zone.refLocation.lng);
             
-            // ถ้าเจอโซนที่ระยะใกล้กว่าค่าที่เคยเก็บไว้ ให้บันทึกเป็นโซนที่ใกล้ที่สุดใหม่
+            const distance = calculateDistance(lat, lng, zLat, zLng);
+            
+            console.log(`Zone[${index}]: ${zone.name} | Distance: ${distance.toFixed(2)} meters`);
+
             if (distance < minDistance) {
                 minDistance = distance;
                 closestZone = zone;
@@ -2538,19 +2556,13 @@ socket.on('reply-deduct-confirm', async (data) => {
         });
 
         if (closestZone) {
-            // ใส่ Debug Log ที่ฝั่ง Server
-            console.log("====================================");
-            console.log(`🎯 Found Closest Zone: ${closestZone.name}`);
-            console.log(`👤 Owner: ${closestZone.refLocation.sourceUser}`);
-            console.log(`📏 Distance: ${minDistance.toFixed(2)} km`);
-            console.log("====================================");
-
+            console.log(`✅ Success! Closest: ${closestZone.name} (${minDistance.toFixed(2)} m)`);
             callback({
                 success: true,
                 zone: closestZone,
                 admin: { 
-                    username: closestZone.refLocation.sourceUser,
-                    distance: minDistance.toFixed(2)
+                    username: closestZone.refLocation.sourceUser || "Unknown Admin",
+                    distance: minDistance.toFixed(0) // เมตร
                 }
             });
         } else {

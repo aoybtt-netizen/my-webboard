@@ -3154,21 +3154,10 @@ function checkZoneOwnership(showDebug = true) {
         // หมายเหตุ: คุณต้องเพิ่มฝั่ง Server รับ Event 'find-zone-admin' ด้วย
         socket.emit('find-zone-admin', { lat, lng }, (response) => {
             if (response.success) {
-                const zone = response.zone;
-                const admin = response.admin;
-
-                // --- ส่วนของ Debug Log ตามที่ต้องการ ---
-                console.log("====================================");
-                console.log("✅ ZONE IDENTIFIED");
-                console.log("🚩 Zone Name:", zone.name);
-                console.log("👤 Admin Owner:", admin.username || zone.refLocation.sourceUser);
-                console.log("🆔 Zone ID:", zone._id);
-                console.log("====================================");
-
-                if (showDebug) {
-                    alert(`คุณอยู่ในพื้นที่ของ: ${zone.name}\nผู้ดูแล: ${admin.username || zone.refLocation.sourceUser}`);
-                }
-            } else {
+				const zone = response.zone;
+				const admin = response.admin;
+				alert(`📍 โซนที่ใกล้ที่สุด: ${zone.name}\n👤 ผู้ดูแล: ${admin.username}\n📏 ระยะห่าง: ${admin.distance} เมตร`);
+				} else {
                 console.warn("⚠️ [Debug] This location is not assigned to any specific zone.");
                 if (showDebug) alert("ไม่พบข้อมูลโซนในพื้นที่นี้");
             }
@@ -3179,20 +3168,7 @@ function checkZoneOwnership(showDebug = true) {
     });
 }
 
-	function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // รัศมีโลกเฉลี่ยเปลี่ยนเป็นหน่วย เมตร (Meters)
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    
-    const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; 
-    
-    return distance; // คืนค่าเป็นหน่วยเมตร เช่น 500 (คือ 500 เมตร)
-}
+	
 
 
 
