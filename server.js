@@ -2522,7 +2522,8 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
-        const { lat, lng } = coords; // พิกัดของผู้ใช้ (เรา)
+        // ดึง requesterName (ชื่อคนกดเช็คอิน) เพิ่มจาก coords
+        const { lat, lng, requesterName } = coords; 
 
         // 1. หาโซนที่พิกัดหลัก (Pin) ใกล้ที่สุด
         const allZones = await zonesCollection.find({
@@ -2554,7 +2555,7 @@ socket.on('reply-deduct-confirm', async (data) => {
             if (adminUser && adminUser.currentLocation) {
                 adminLiveLocation = adminUser.currentLocation;
                 
-                // 🔥 3. คำนวณระยะห่างระหว่าง "ผู้ใช้" กับ "แอดมินตัวจริง" (Live GPS)
+                // 3. คำนวณระยะห่างระหว่าง "ผู้ใช้" กับ "แอดมินตัวจริง"
                 distanceToAdmin = calculateDistance(
                     lat, 
                     lng, 
@@ -2563,21 +2564,35 @@ socket.on('reply-deduct-confirm', async (data) => {
                 );
             }
 
+            // 🔥 [ส่วนที่แทรกใหม่]: ส่งสัญญาณแจ้งเตือนไปที่หน้าจอของ Admin คนนั้นโดยเฉพาะ
+            const adminSockets = await io.fetchSockets();
+            const targetAdminSocket = adminSockets.find(s => s.username === adminUsername);
+
+            if (targetAdminSocket) {
+                io.to(targetAdminSocket.id).emit('notify-admin-verify', {
+                    member: requesterName || socket.username || "Member", // ชื่อคนส่ง
+                    zone: closestZone.name,
+                    distance: minPinDistance.toFixed(0)
+                });
+                console.log(`🚀 Sent verify notification to admin: ${adminUsername}`);
+            }
+
             console.log(`[Debug] Admin: ${adminUsername} | Live Distance: ${distanceToAdmin ? distanceToAdmin.toFixed(0) : 'N/A'} m`);
 
+            // 4. ส่งข้อมูลกลับไปหาคนกด (User)
             callback({
                 success: true,
                 zoneName: closestZone.name,
                 adminName: adminUsername,
-                pinDistance: minPinDistance.toFixed(0), // ห่างจากหมุดโซน
-                adminDistance: distanceToAdmin ? distanceToAdmin.toFixed(0) : null, // ห่างจากตัวแอดมิน
-                adminLive: !!adminLiveLocation // เช็คว่าแอดมินเปิด GPS ไหม
+                pinDistance: minPinDistance.toFixed(0),
+                adminDistance: distanceToAdmin ? distanceToAdmin.toFixed(0) : null,
+                adminLive: !!adminLiveLocation
             });
         } else {
             callback({ success: false });
         }
     } catch (err) {
-        console.error(err);
+        console.error("Error in find-zone-admin:", err);
         callback({ success: false });
     }
 });
@@ -2590,6 +2605,10 @@ socket.on('reply-deduct-confirm', async (data) => {
         { $set: { currentLocation: coords } }
     );
 });
+
+
+	
+
 
 
 

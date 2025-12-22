@@ -198,8 +198,7 @@
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
-	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()">👥 Verify</button>
-	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()" style="background: #28a745; color: white; flex: 1;">Verify Members</button>
+	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()">Verify Members</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -3138,8 +3137,29 @@ function submitIdentityData() {
 }
 
 
+socket.on('notify-admin-verify', (data) => {
+    // 1. ใส่ข้อมูลลงใน Modal
+    const modalContent = document.querySelector('#admin-members-verify-modal div div');
+    modalContent.innerHTML = `
+        <p>มีสมาชิกกำลังขอการยืนยันในโซนของคุณ!</p>
+        <ul style="list-style: none; padding: 0;">
+            <li><strong>ชื่อสมาชิก:</strong> ${data.member}</li>
+            <li><strong>โซน:</strong> ${data.zone}</li>
+            <li><strong>ห่างจากจุดปักหมุด:</strong> ${data.distance} เมตร</li>
+        </ul>
+    `;
+    
+    // 2. เปิด Modal เด้งขึ้นมา
+    adminZoneVerify();
+    
+    // 3. (Optional) ส่งเสียงแจ้งเตือน
+    const audio = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
+    audio.play();
+});
+
+
 function adminZoneVerify(){
-	document.getElementById('admin-members-verify-modal').classList.remove('hidden');
+    document.getElementById('admin-members-verify-modal').classList.remove('hidden');
 }
 
 function adminCloseZoneVerify(){
@@ -3174,22 +3194,13 @@ function checkZoneOwnership(showDebug = true) {
     navigator.geolocation.getCurrentPosition((position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
+        
+        // สมมติว่ามีตัวแปร currentUser เก็บชื่อผู้ใช้ไว้
+        const requesterName = typeof currentUser !== 'undefined' ? currentUser.username : "Member";
 
-        socket.emit('find-zone-admin', { lat, lng }, (response) => {
+        socket.emit('find-zone-admin', { lat, lng, requesterName }, (response) => {
             if (response.success) {
-                let msg = `📍 โซน: ${response.zoneName}\n👤 แอดมิน: ${response.adminName}\n------------------------\n`;
-                msg += `🚩 ห่างจากจุดปักหมุดโซน: ${response.pinDistance} เมตร\n`;
-
-                if (response.adminDistance !== null) {
-                    // แสดงระยะห่างระหว่างเรากับแอดมิน
-                    msg += `🛰️ ตัวแอดมินอยู่ห่างจากคุณ: ${response.adminDistance} เมตร`;
-                } else {
-                    msg += `⚠️ ไม่สามารถระบุตำแหน่งแอดมินได้ (แอดมินปิด GPS)`;
-                }
-
-                if (showDebug) alert(msg);
-            } else {
-                alert("ไม่พบข้อมูลโซน");
+                alert(`ส่งข้อมูลการเช็คอินไปหาแอดมิน ${response.adminName} เรียบร้อยแล้ว`);
             }
         });
     });
