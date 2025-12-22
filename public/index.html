@@ -4716,6 +4716,37 @@ socket.on('receive-pending-list', (data) => {
 });
 
 
+socket.on('admin-registered-success', function(data) {
+    try {
+        // บันทึกชื่อแอดมินลงในตัวแปร Global ทันที
+        myAdminName = data.adminName;
+
+        console.log("✅ Admin verified successfully:", myAdminName);
+
+        // (Option) แสดงการแจ้งเตือนบนหน้าจอ
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'ยินดีต้อนรับแอดมิน',
+                text: `ล็อกอินในชื่อ: ${myAdminName}`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+
+        // (Option) แสดงปุ่มเมนูสำหรับแอดมินที่เคยซ่อนไว้
+        const adminMenu = document.getElementById('admin-menu-section');
+        if (adminMenu) {
+            adminMenu.style.display = 'block';
+        }
+
+    } catch (error) {
+        console.error("Error in admin-registered-success:", error);
+    }
+});
+
+
+
 
 
 // --- หน้า Dashboard แอดมิน ---
