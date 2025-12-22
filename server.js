@@ -2921,7 +2921,6 @@ socket.on('get-pending-verifications', async (data) => {
             callback({ success: false });
         }
     });
-});
 
 
 
