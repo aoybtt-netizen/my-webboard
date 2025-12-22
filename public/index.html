@@ -199,6 +199,7 @@
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
 	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()">👥 Verify</button>
+	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()" style="background: #28a745; color: white; flex: 1;">Verify Members</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -437,7 +438,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.24 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.40 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3138,6 +3139,10 @@ function submitIdentityData() {
 
 
 function adminZoneVerify(){
+	document.getElementById('admin-members-verify-modal').classList.remove('hidden');
+}
+
+function adminCloseZoneVerify(){
 	document.getElementById('admin-members-verify-modal').classList.add('hidden');
 }
 
@@ -5044,7 +5049,7 @@ function openUserDetail(targetUsername) {
             </ul>
         </div>
         <div style="display: flex; gap: 10px;">
-            <button class="sidebar-btn" onclick="closeVerifyInfo()" style="background: #6c757d; color: white; flex: 1;">Cancel</button>
+            <button class="sidebar-btn" onclick="adminCloseZoneVerify()" style="background: #6c757d; color: white; flex: 1;">Cancel</button>
             <button class="sidebar-btn" onclick="adminOnGPSVerify()" style="background: #28a745; color: white; flex: 1;">Confirm</button>
         </div>
     </div>
