@@ -2569,10 +2569,12 @@ socket.on('reply-deduct-confirm', async (data) => {
             const targetAdminSocket = adminSockets.find(s => s.username === adminUsername);
 
             if (targetAdminSocket) {
+                // 🔥 เพิ่ม adminTarget: adminUsername เพื่อให้แอดมินตรวจสอบชื่อตัวเอง
                 io.to(targetAdminSocket.id).emit('notify-admin-verify', {
-                    member: requesterName || socket.username || "Member", // ชื่อคนส่ง
+                    member: requesterName || "ไม่ทราบชื่อ",
                     zone: closestZone.name,
-                    distance: minPinDistance.toFixed(0)
+                    distance: minPinDistance.toFixed(0),
+                    adminTarget: adminUsername // แนบชื่อแอดมินเป้าหมายไปด้วย
                 });
                 console.log(`🚀 Sent verify notification to admin: ${adminUsername}`);
             }

@@ -3138,23 +3138,20 @@ function submitIdentityData() {
 
 
 socket.on('notify-admin-verify', (data) => {
-    // 1. ใส่ข้อมูลลงใน Modal
-    const modalContent = document.querySelector('#admin-members-verify-modal div div');
+    const modalContent = document.querySelector('#admin-members-verify-modal .modal-box div');
+    
+    // แสดงข้อมูลใน Modal
     modalContent.innerHTML = `
-        <p>มีสมาชิกกำลังขอการยืนยันในโซนของคุณ!</p>
-        <ul style="list-style: none; padding: 0;">
-            <li><strong>ชื่อสมาชิก:</strong> ${data.member}</li>
-            <li><strong>โซน:</strong> ${data.zone}</li>
-            <li><strong>ห่างจากจุดปักหมุด:</strong> ${data.distance} เมตร</li>
-        </ul>
+        <div style="background: #e9ecef; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <p style="margin: 5px 0;"><strong>👤 สมาชิก:</strong> ${data.member}</p>
+            <p style="margin: 5px 0;"><strong>📍 โซน:</strong> ${data.zone}</p>
+            <p style="margin: 5px 0;"><strong>🛡️ ผู้รับผิดชอบ:</strong> <span style="color: blue;">${data.adminTarget}</span></p>
+            <p style="margin: 5px 0;"><strong>📏 ระยะห่าง:</strong> ${data.distance} เมตร</p>
+        </div>
+        <p style="font-size: 0.9em; color: #666;">กรุณาตรวจสอบชื่อผู้รับผิดชอบว่าคือคุณหรือไม่ก่อนกด Confirm</p>
     `;
     
-    // 2. เปิด Modal เด้งขึ้นมา
-    adminZoneVerify();
-    
-    // 3. (Optional) ส่งเสียงแจ้งเตือน
-    const audio = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
-    audio.play();
+    adminZoneVerify(); // เปิด Modal
 });
 
 
@@ -3195,12 +3192,16 @@ function checkZoneOwnership(showDebug = true) {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         
-        // สมมติว่ามีตัวแปร currentUser เก็บชื่อผู้ใช้ไว้
-        const requesterName = typeof currentUser !== 'undefined' ? currentUser.username : "Member";
+        // 🛠️ ดึงชื่อสมาชิกจากระบบ (ลองเช็คว่าคุณใช้ชื่อตัวแปรอะไรเก็บ username)
+        // ถ้าไม่มี ให้ดึงจาก localStorage หรือตัวแปรที่เก็บตอน Login
+        const myName = typeof currentUser !== 'undefined' ? currentUser.username : "สมาชิกทั่วไป";
 
-        socket.emit('find-zone-admin', { lat, lng, requesterName }, (response) => {
+        // ส่ง requesterName ไปด้วย
+        socket.emit('find-zone-admin', { lat, lng, requesterName: myName }, (response) => {
             if (response.success) {
-                alert(`ส่งข้อมูลการเช็คอินไปหาแอดมิน ${response.adminName} เรียบร้อยแล้ว`);
+                if (showDebug) {
+                    alert(`✅ ส่งข้อมูลให้แอดมิน ${response.adminName} แล้ว\nกำลังรอการยืนยัน...`);
+                }
             }
         });
     });
