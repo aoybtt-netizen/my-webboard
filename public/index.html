@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-	
 	<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -189,10 +187,6 @@
 	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
 กระทู้ของฉันที่ปิดแล้ว
 </button>
-	<button class="sidebar-btn" id="verify-btn" onclick="openVerifyModal()" style="background: #e3f2fd; color: #007bff; border: 1px dashed #007bff;">
-    <i class="fas fa-user-check"></i> <span data-i18n-key="verify_identity">Get Verified</span>
-</button>
-
     
     <div id="admin-panel" class="hidden">
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
@@ -201,7 +195,6 @@
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
-	<button class="sidebar-btn admin-btn" onclick="openAdminVerifyList()" data-i18n-key="admin_verify_zone"><i class="fas fa-id-card-alt"></i> Members verified zone</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -338,16 +331,6 @@
             <div><i class="fas fa-edit"></i> Post: <strong id="detail-total-posts">0</strong></div>
             <div><i class="fas fa-check-double"></i> Job: <strong id="detail-completed-jobs">0</strong></div>
         </div>
-		
-		
-		<div id="ban-reason-box" style="display: none; background: #fff5f5; border: 1px solid #feb2b2; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: left;">
-    <strong style="color: #c53030; font-size: 0.85em;"><i class="fas fa-exclamation-triangle"></i> Reason:</strong>
-    <p id="display-ban-reason" style="margin: 5px 0 0 0; color: #4a5568; font-size: 0.9em; line-height: 1.4;"></p>
-	</div>
-
-<div id="detail-actions" style="display: flex; flex-direction: column; gap: 10px;">
-    </div>
-
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
@@ -357,37 +340,27 @@
 </div>
 
 
-		
-
 		<div id="ban-selection-modal" class="modal-overlay hidden" style="z-index: 3000;">
     <div class="modal-box" style="text-align: center; border-top: 5px solid #dc3545;">
-        <h3 style="color: #c53030;"><i class="fas fa-gavel"></i> Specify the ban details.</h3>
-        <p>สมาชิก: <strong id="ban-target-name" style="color:#007bff;"></strong></p>
+        <h3 style="color: #c53030;">⏱️ Ban duration</h3>
+        <p>Specify the desired ban duration for the member.: <strong id="ban-target-name"></strong></p>
         
-        <div style="text-align: left; margin-bottom: 15px;">
-            <label style="font-size: 0.85em; font-weight: bold; color: #555;">⏱️ Ban duration:</label>
-            <select id="ban-days-select-new" onchange="toggleCustomBanInputNew()" style="width: 100%; padding: 10px; border-radius: 8px;">
-                <option value="1">1 Day</option>
-				<option value="2">2 Day</option>
-				<option value="3">3 Day</option>
-				<option value="7">7 Day</option>
-				<option value="15">15 Day</option>
-				<option value="30">30 Day</option>
-				<option value="0">indefinite</option>
-				<option value="custom">Set Day</option>
-            </select>
-            <input type="number" id="custom-ban-days-new" placeholder="Specify the number of days..." style="display: none; width: 100%; margin-top: 5px;">
-        </div>
-
-        <div style="text-align: left; margin-bottom: 15px;">
-            <label style="font-size: 0.85em; font-weight: bold; color: #555;">📝 Specify the ban details.:</label>
-            <textarea id="ban-reason-input" placeholder="Specify the ban details..." rows="3" 
-                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Kanit'; box-sizing: border-box;"></textarea>
-        </div>
+        <select id="ban-days-select-new" onchange="toggleCustomBanInputNew()" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+            <option value="1">1 Day</option>
+            <option value="2">2 Day</option>
+            <option value="3">3 Day</option>
+            <option value="7">7 Day</option>
+            <option value="15">15 Day</option>
+            <option value="30">30 Day</option>
+            <option value="0">indefinite</option>
+            <option value="custom">Set Day</option>
+        </select>
         
-        <div style="display: flex; gap: 10px; justify-content: center;">
+        <input type="number" id="custom-ban-days-new" placeholder="Specify the number of days..." style="display: none; width: 100%; margin-bottom: 15px;">
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
             <button class="sidebar-btn" onclick="document.getElementById('ban-selection-modal').classList.add('hidden')" style="background: #6c757d; color: white; width: auto;">Cancel</button>
-            <button class="sidebar-btn" onclick="confirmAndSendBan()" style="background: #dc3545; color: white; width: auto; font-weight: bold;">Confirm ban</button>
+            <button class="sidebar-btn" onclick="confirmAndSendBan()" style="background: #dc3545; color: white; width: auto; font-weight: bold;">Confirm ban.</button>
         </div>
     </div>
 </div>
@@ -460,15 +433,13 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.30 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.24 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-	var vConsole = new window.VConsole();
         const socket = io();
         let myUsername = "";
 		let myAdminLevel = 0;
-		let myAdminName = null;
 		let myZoneId = null;
 		let filterLocation = null;
         let filterMaxDistance = null; 
@@ -960,7 +931,6 @@ async function updateZoneBackground(lat, lng) {
 		'msg_user_not_found': '❌ ไม่พบสมาชิกชื่อ "[NAME]"',
         'msg_no_members': 'ไม่มีรายชื่อสมาชิก',
         'label_banned': '(ถูกระงับ)',
-		'error_file_too_large': 'รูปภาพมีขนาดใหญ่เกินไป (สูงสุด 5MB)',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1128,7 +1098,6 @@ async function updateZoneBackground(lat, lng) {
 		'msg_user_not_found': '❌ User "[NAME]" not found',
         'msg_no_members': 'No members found',
         'label_banned': '(BANNED)',
-		'error_file_too_large': 'The image file is too large (Maximum 5MB).',
     }
 };
 
@@ -1171,9 +1140,8 @@ if (homeBtn) {
 }
 
         // 3. โหลดข้อมูลพื้นฐานใหม่
-        //updateUserInfo(); 
-        //loadPosts(); 
-		updateUserInfo();
+        updateUserInfo(); 
+        loadPosts(); 
 
         // ตรวจสอบว่า Modal ไหนเปิดอยู่ แล้วรีเฟรชหน้านั้นให้ถูกอัน
         const modal = document.getElementById('user-list-modal');
@@ -1189,18 +1157,6 @@ if (homeBtn) {
             }
         }
     }
-	
-	function refreshCurrentPage() {
-    // ตรวจสอบว่าตอนนี้ User อยู่ที่หน้าไหน และสั่งโหลดข้อมูลหน้าเดิมใหม่ให้ถูกต้อง
-    if (currentView === 'home' || currentView === 'closed') {
-        loadPosts(); // หน้าหลัก หรือ หน้ากระทู้ปิดรวมของ Admin
-    } else if (currentView === 'my_active') {
-        showMyActivePosts(currentPostPage, true); // หน้ากระทู้ที่ยังไม่ปิดของฉัน
-    } else if (currentView === 'my_closed') {
-        showMyClosedPosts(currentPostPage, true); // หน้ากระทู้ที่ปิดแล้วของฉัน
-    }
-}
-
         
         let currentCost = 0;
         let currentChatPartner = ""; 
@@ -1569,38 +1525,6 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
             avatarEl.innerHTML = `🐱${stars}`;
         }
 		
-		// --- ส่วนจัดการปุ่มยืนยันตัวตน (Verify Button) ---
-        const verifyBtn = document.getElementById('verify-btn');
-        
-        if (verifyBtn) {
-            // 1. ถ้าเป็นแอดมิน ให้ซ่อนปุ่มถาวร
-            if (myAdminLevel > 0) {
-                verifyBtn.style.display = 'none'; 
-            } 
-            // 2. ถ้าอยู่ระหว่างการตรวจสอบ (ใช้ data.verifyStatus)
-            else if (data.verifyStatus === 'pending') {
-                verifyBtn.style.display = 'block'; // มั่นใจว่าโชว์ปุ่ม
-                verifyBtn.disabled = true;
-                verifyBtn.style.background = '#f8f9fa';
-                verifyBtn.style.color = '#6c757d';
-                verifyBtn.style.border = '1px solid #ddd';
-                verifyBtn.innerHTML = `<i class="fas fa-hourglass-half"></i> Under review by admin...`;
-            } 
-            // 3. ถ้าเป็นสมาชิกทั่วไปและยังไม่ได้กดยืนยัน
-            else if (data.isVerified) {
-                verifyBtn.style.display = 'none'; // ถ้ายืนยันผ่านแล้วก็ซ่อนไปเลย
-            }
-            else {
-                // สถานะปกติ
-                verifyBtn.style.display = 'block';
-                verifyBtn.disabled = false;
-                verifyBtn.style.background = '#e3f2fd';
-                verifyBtn.style.color = '#007bff';
-                verifyBtn.innerHTML = `<i class="fas fa-user-check"></i> <span data-i18n-key="verify_identity">Get Verified</span>`;
-            }
-        }
-
-		
                         
         const adminPanelDiv = document.getElementById('admin-panel');
         if (myAdminLevel >= 1) {
@@ -1711,8 +1635,7 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
                 fetchAndRenderAnnouncement(locData);
             }
 
-        //loadPosts();
-		refreshCurrentPage();
+        loadPosts();
 
     } catch (e) {
         console.error('Error fetching user info:', e);
@@ -1755,15 +1678,10 @@ function toggleCustomBanInputNew() {
 // ฟังก์ชันยืนยันและส่ง API
 async function confirmAndSendBan() {
     const select = document.getElementById('ban-days-select-new');
-    const reasonInput = document.getElementById('ban-reason-input'); // ดึง Element มาก่อน
-    const reason = reasonInput.value.trim(); // ดึงค่าข้อความออกมา และตัดช่องว่างทิ้ง
-    
     let banDays = 0;
 
-    // 1. ตรวจสอบจำนวนวัน
     if (select.value === 'custom') {
-        const customInput = document.getElementById('custom-ban-days-new');
-        banDays = parseInt(customInput.value);
+        banDays = parseInt(document.getElementById('custom-ban-days-new').value);
     } else {
         banDays = parseInt(select.value);
     }
@@ -1772,24 +1690,15 @@ async function confirmAndSendBan() {
         alert("❌ Specify the correct number of days.");
         return;
     }
-	
-    // 2. ตรวจสอบเหตุผล (ตอนนี้ใช้งานได้แล้วเพราะมีตัวแปร reason)
-    if (!reason) {
-        alert("⚠️ Please specify the reason for the ban to be used as evidence.");
-        reasonInput.focus(); // สั่งให้ Cursor ไปกระพริบที่ช่องกรอกเหตุผล
-        return;
-    }
 
-    // 3. ยืนยันข้อมูล
-    const dayText = banDays === 0 ? "Indefinite" : banDays + " Day";
-    if (!confirm(`Ban Confirm ${currentBanTarget} \nTime: ${dayText} \nReason: ${reason}`)) return;
+    const dayText = banDays === 0 ? "-" : banDays + " Day";
+    if (!confirm(`Ban Confirm ${currentBanTarget} Time ${dayText}?`)) return;
 
-    // 4. ส่งไปที่ฟังก์ชันจัดการ API
-    executeBanStatus(currentBanTarget, true, banDays, reason);
+    executeBanStatus(currentBanTarget, true, banDays);
 }
 
 // ฟังก์ชันส่งคำสั่งไปที่ Server (ตัวกลาง)
-async function executeBanStatus(targetUser, shouldBan, banDays, reason = "") {
+async function executeBanStatus(targetUser, shouldBan, banDays) {
     try {
         const res = await fetch('/api/admin/toggle-ban', {
             method: 'POST',
@@ -1798,7 +1707,6 @@ async function executeBanStatus(targetUser, shouldBan, banDays, reason = "") {
                 targetUser: targetUser,
                 shouldBan: shouldBan,
                 banDays: banDays,
-                reason: reason, // <--- ส่งเหตุผลไปที่ Server
                 requestBy: myUsername,
                 lang: currentLang
             })
@@ -1807,12 +1715,8 @@ async function executeBanStatus(targetUser, shouldBan, banDays, reason = "") {
         const data = await res.json();
         if (data.success) {
             document.getElementById('ban-selection-modal').classList.add('hidden');
-            document.getElementById('ban-reason-input').value = ''; // ล้างช่องเหตุผล
-            
-            // รีเฟรชรายชื่อสมาชิก
+            // รีเฟรชรายชื่อ
             openAllUserList(document.getElementById('user-search-input').value, currentUserPage);
-            
-            showNotification(`✅ Ban ${targetUser} Success`, 'fas fa-check-circle');
         } else {
             alert(`❌ Error: ${data.error}`);
         }
@@ -2281,8 +2185,7 @@ async function loadMyZoneClosedPosts(page) {
 }
 
 		// [NEW FUNCTION] ดูกระทู้ของฉันที่ถูกปิดแล้ว
-async function showMyClosedPosts(page = 1) {
-	toggleSidebar();
+async function showMyClosedPosts(page = 1) { 
     if (!myUsername) return;
     try {
         currentView = 'my_closed'; // 👈 ตั้งค่า currentView ใหม่
@@ -2335,6 +2238,7 @@ async function showMyClosedPosts(page = 1) {
         console.error('Error fetching my closed posts:', e);
         showNotification('เกิดข้อผิดพลาดในการดึงรายการกระทู้', 'fas fa-exclamation-triangle', 3000, '#dc3545');
     }
+	toggleSidebar();
 }
 
         function renderPostList() {
@@ -4449,17 +4353,6 @@ function openUserDetail(targetUsername) {
     const jobEl = document.getElementById('detail-completed-jobs');
     if (postEl) postEl.innerText = u.totalPosts || 0;
     if (jobEl) jobEl.innerText = u.completedJobs || 0;
-	const reasonBox = document.getElementById('ban-reason-box');
-    const reasonText = document.getElementById('display-ban-reason');
-    
-    if (reasonBox && reasonText) {
-        if (isBanned && u.banReason) {
-            reasonBox.style.display = 'block';
-            reasonText.innerText = u.banReason;
-        } else {
-            reasonBox.style.display = 'none';
-        }
-    }
     
     // สร้าง Badges
     let badgesHtml = '';
@@ -4530,573 +4423,6 @@ function openUserDetail(targetUsername) {
     
     modal.classList.remove('hidden');
 }
-
-
-// ฟังก์ชันเปิดหน้าต่างยืนยันตัวตน
-function openVerifyModal() {
-    // ปิด Sidebar ก่อนถ้าเปิดอยู่
-    if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
-    
-    document.getElementById('verify-modal').classList.remove('hidden');
-}
-
-// ฟังก์ชันปิดหน้าต่าง
-function closeVerifyModal() {
-    document.getElementById('verify-modal').classList.add('hidden');
-}
-
-
-// เปิดหน้าต่างจัดการของแอดมิน
-async function openAdminVerifyList() {
-	console.log("3. [Debug] Opening Modal. Current myAdminName is:", myAdminName);
-    if (myAdminLevel < 1) {
-        console.warn("4. [Debug] Access denied: myAdminLevel is", myAdminLevel);
-        return;
-    }
-    
-    // 1. ปิด Sidebar
-    if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
-    
-    // 2. จัดการสถานะ UI ก่อนแสดงผล
-    const alertArea = document.getElementById('pending-requests-area');
-    if (alertArea) {
-        // ให้ซ่อนแถบเหลืองไว้ก่อนเสมอเมื่อเปิดหน้าต่างขึ้นมา
-        alertArea.classList.add('hidden'); 
-    }
-
-    // 3. แสดง Modal หลัก
-    document.getElementById('admin-verify-modal').classList.remove('hidden');
-    
-    // 4. โหลดรายชื่อคนที่ยืนยันแล้วในโซนมาโชว์ (ฟังก์ชันเดิมของคุณ)
-    loadZoneMembersData();
-
-    // 5. [เพิ่มใหม่] เช็คทันทีว่ามีใครรอตรวจ (Pending) อยู่ใกล้ๆ ไหม
-    // เพื่อให้ List มันอัปเดตสมาชิกที่รออยู่โดยไม่ต้องรอให้แอดมินกด "Check Now"
-    navigator.geolocation.getCurrentPosition((pos) => {
-        socket.emit('get-pending-verifications', {
-            adminLat: pos.coords.latitude,
-            adminLng: pos.coords.longitude
-        });
-    });
-}
-
-
-socket.on('connect', () => {
-    console.log("Socket Connected ID:", socket.id);
-});
-
-socket.on('user-data', (data) => {
-    console.log("Found User Data:", data);
-    myAdminName = data.username;
-    myAdminLevel = data.level || 1; // สมมติว่ามี level
-});
-
-
-
-function adminApproveUser(username) {
-    if (!username) return;
-
-    // 1. ใส่ชื่อสมาชิกลงในหน้าต่าง
-    document.getElementById('approve-target-name').innerText = username;
-
-    // 2. รีเซ็ตฟอร์มรูปภาพ (ถ้ามี)
-    document.getElementById('evidence-upload').value = "";
-    document.getElementById('evidence-preview').style.display = "none";
-
-    // 3. แสดง Modal
-    document.getElementById('approval-detail-modal').classList.remove('hidden');
-}
-
-// ฟังก์ชันสำหรับแสดงรูปภาพตัวอย่าง (Preview)
-function previewEvidence(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // ตรวจสอบขนาดไฟล์ (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            // ดึงข้อความแจ้งเตือน (กัน error กรณีลืมใส่คำแปล)
-            const msg = (translations && translations[currentLang] && translations[currentLang]['error_file_too_large']) 
-                        ? translations[currentLang]['error_file_too_large'] 
-                        : 'File too large (Max 5MB)';
-            alert(msg);
-            input.value = ""; // ล้างค่า
-            return;
-        }
-
-        // อ่านไฟล์เพื่อแสดงรูป
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const previewImg = document.getElementById('preview-img');
-            const previewArea = document.getElementById('evidence-preview');
-            
-            if (previewImg && previewArea) {
-                previewImg.src = e.target.result;
-                previewArea.style.display = "block"; // โชว์กรอบรูป
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-
-// ฟังก์ชันปิดหน้าต่าง
-function closeApprovalDetailModal() {
-    document.getElementById('approval-detail-modal').classList.add('hidden');
-}
-
-function closeAdminVerifyModal() {
-    document.getElementById('admin-verify-modal').classList.add('hidden');
-}
-
-// ฟังก์ชันจำลองการดึงข้อมูล (รอเชื่อมต่อ Server)
-function loadZoneMembersData() {
-    // สมมติว่าเช็คแล้วพบคำขอค้างอยู่
-    const hasPending = true; // เดี๋ยวใช้ Logic เช็คจริง
-    if (hasPending) {
-        document.getElementById('pending-requests-area').classList.remove('hidden');
-    } else {
-        document.getElementById('pending-requests-area').classList.add('hidden');
-    }
-}
-
-
-// ดักฟัง: เมื่อมีสมาชิกกดปุ่ม "Verify" ในโซนที่แอดมินคนนี้ดูแล
-socket.on('new-verification-request', (data) => {
-    const alertArea = document.getElementById('pending-requests-area');
-    const countLabel = document.getElementById('pending-count');
-
-    if (alertArea) {
-        // โชว์แถบสีเหลืองแจ้งเตือน
-        alertArea.classList.remove('hidden'); 
-        
-        // ถ้าแอดมินเปิด Modal ค้างไว้อยู่แล้ว ให้เขารู้ว่าใครขอมา
-        if (countLabel) {
-            countLabel.innerText = `New request from ${data.fromUser}!`;
-        }
-        
-        // (Optional) สั่นหรือเล่นเสียงเตือนแอดมิน
-        if (navigator.vibrate) navigator.vibrate(200);
-    }
-});
-
-// เมื่อกด "Check Now" จะโชว์รายละเอียดคนที่จะ Verify
-function showPendingDetails() {
-    const alertArea = document.getElementById('pending-requests-area');
-    
-    // ซ่อนแถบแจ้งเตือนเมื่อกดแล้ว
-    if (alertArea) alertArea.classList.add('hidden');
-
-    // ดึงพิกัดเพื่อเช็คระยะทางตามปกติ
-    navigator.geolocation.getCurrentPosition((pos) => {
-        socket.emit('get-pending-verifications', {
-            adminLat: pos.coords.latitude,
-            adminLng: pos.coords.longitude
-        });
-    });
-}
-
-	// 3. รอรับข้อมูลคนรอตรวจสอบจาก Server
-socket.on('receive-pending-list', (data) => {
-    const listArea = document.getElementById('verified-members-list');
-    listArea.innerHTML = ''; 
-
-    if (!data.pendingUsers || data.pendingUsers.length === 0) {
-        listArea.innerHTML = '<div style="padding:20px; text-align:center;">ไม่พบคำขอในระยะ 10 เมตร</div>';
-        return;
-    }
-
-    data.pendingUsers.forEach(user => {
-        const distance = user.distance.toFixed(2);
-        const isNearby = user.distance <= 10;
-
-        const userRow = document.createElement('div');
-        userRow.style = "padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;";
-        
-        // สังเกตตรงปุ่มนะครับ จะไม่มีการใช้ ` (Backtick) ซ้อนข้างในอีก
-        userRow.innerHTML = `
-            <div>
-                <strong>👤 ${user.username}</strong><br>
-                <small style="color:${isNearby ? 'green' : 'red'}">
-                    📍 ห่างจากคุณ: ${distance} เมตร
-                </small>
-            </div>
-            <div>
-                ${isNearby 
-                    ? '<button class="sidebar-btn create-btn" onclick="adminApproveUser(\'' + user.username + '\')" style="width:auto; margin:0; padding:5px 15px;">Approve</button>'
-                    : '<span style="color:gray; font-size:0.8em;">ไกลเกินไป</span>'
-                }
-            </div>
-        `; 
-        listArea.appendChild(userRow);
-    });
-});
-
-
-socket.on('admin-registered-success', function(data) {
-	console.log("1. [Debug] Data received from Server:", data); // เช็คว่า data.adminName มีค่าไหม
-    try {
-        // บันทึกชื่อแอดมินลงในตัวแปร Global ทันที
-        myAdminName = data.adminName;
-
-        console.log("✅ Admin verified successfully:", myAdminName);
-
-        // (Option) แสดงการแจ้งเตือนบนหน้าจอ
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                icon: 'success',
-                title: 'ยินดีต้อนรับแอดมิน',
-                text: `ล็อกอินในชื่อ: ${myAdminName}`,
-                timer: 1500,
-                showConfirmButton: false
-            });
-        }
-
-        // (Option) แสดงปุ่มเมนูสำหรับแอดมินที่เคยซ่อนไว้
-        const adminMenu = document.getElementById('admin-menu-section');
-        if (adminMenu) {
-            adminMenu.style.display = 'block';
-        }
-		
-		if (data && data.adminName) {
-        myAdminName = data.adminName;
-        console.log("2. [Debug] myAdminName is now set to:", myAdminName);
-    } else {
-        console.error("2. [Debug] Failed to set myAdminName: Data is empty or invalid!");
-    }
-
-    } catch (error) {
-        console.error("Error in admin-registered-success:", error);
-    }
-});
-
-
-
-
-
-// --- หน้า Dashboard แอดมิน ---
-
-
-
-
-// ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
-async function submitVerification() {
-    if (!navigator.geolocation) {
-        alert("ขออภัย Browser ของคุณไม่รองรับการระบุตำแหน่ง");
-        return;
-    }
-
-    // 1. ขอข้อมูลสถานะผู้ใช้ผ่าน Socket
-    socket.emit('get-user-status-socket', (userData) => {
-        if (userData.success) {
-            // ✅ บันทึกลงตัวแปร adminUsername เท่านั้น
-            adminUsername = userData.username; 
-            console.log("บันทึกชื่อแอดมินแล้ว:", adminUsername);
-        } else {
-            return;
-        }
-
-        const userCoins = userData.coins || 0;
-        if (userCoins < 50) {
-            alert(`ยอดเงินของคุณไม่เพียงพอ (มี ${userCoins} USD / ต้องการ 50 USD)`);
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition((position) => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-
-            // ในฟังก์ชัน submitVerification...
-socket.emit('get-admin-live-location', { 
-    zoneId: userData.zoneId, 
-    lat: userLat, 
-    lng: userLng 
-}, (adminPos) => {
-    
-    if (!adminPos) {
-        alert("ขณะนี้แอดมินในโซนยังไม่เปิดระบุตำแหน่ง");
-        return;
-    }
-
-    // ✅ จุดสำคัญ: เมื่อ Server ส่งชื่อแอดมินกลับมา ให้บันทึกลง localStorage ทันที
-    if (adminPos && adminPos.username) {
-        // ✅ บรรทัดนี้สำคัญที่สุด ต้องมี!
-        localStorage.setItem('username', adminPos.username); 
-        console.log("บันทึกชื่อแอดมินลงเครื่องแล้ว:", adminPos.username);
-    }
-
-    const distance = getDistanceInMeters(userLat, userLng, adminPos.lat, adminPos.lng);
-    
-    if (distance > 10) {
-        alert(`อยู่นอกระยะยืนยันตัวตน (${distance.toFixed(2)} เมตร)`);
-        return;
-    }
-
-    // หากผ่านเงื่อนไขระยะทาง
-    confirmVerificationRequest();
-});
-        }, (error) => {
-            alert("กรุณาเปิด GPS");
-        });
-    });
-}
-
-function confirmVerificationRequest() {
-    if (confirm("The system will deduct a 25 USD deposit to start the verification. Confirm?")) {
-        const verifyBtn = document.getElementById('verify-btn');
-        const originalText = verifyBtn.innerHTML;
-
-        // 1. เปลี่ยนสถานะปุ่ม
-        verifyBtn.disabled = true;
-        verifyBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
-
-        // 2. ดึงพิกัดปัจจุบันก่อนส่งสัญญาณ (เพื่อให้ Server บันทึกตำแหน่งที่กดขอ)
-        navigator.geolocation.getCurrentPosition((position) => {
-            const loc = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
-
-            // 3. ส่งสัญญาณไปที่ Server พร้อมแนบตำแหน่ง
-            socket.emit('request-verification', { location: loc });
-
-        }, (err) => {
-            // กรณีดึงพิกัดไม่ได้ตอนจะกดส่ง
-            alert("Unable to get your location. Please check your GPS settings.");
-            verifyBtn.disabled = false;
-            verifyBtn.innerHTML = originalText;
-        });
-
-        // 4. รอรับผลลัพธ์ (ใช้ .once เหมือนเดิม ดีอยู่แล้วครับ)
-        socket.once('verification-sent', (data) => {
-            alert(data.message);
-            if (typeof closeVerifyModal === "function") closeVerifyModal();
-        });
-
-        socket.once('verification-error', (data) => {
-            alert(data.message);
-            verifyBtn.disabled = false;
-            verifyBtn.innerHTML = originalText;
-        });
-    }
-}
-
-// ฟังก์ชันคำนวณระยะทาง (เมตร) ระหว่าง 2 จุดพิกัด
-function getDistanceInMeters(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // รัศมีโลก (เมตร)
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-    return R * c; // ระยะห่างหน่วยเป็นเมตร
-}
-
-
-function openReviewDetail(targetUsername, distance) {
-    const modal = document.getElementById('admin-review-modal');
-    const content = document.getElementById('review-detail-content');
-    const approveBtn = document.getElementById('final-approve-btn');
-
-    // ใส่ข้อมูลลงในหน้าขาวๆ
-    content.innerHTML = `
-        <div style="text-align:center; margin-bottom:15px;">
-            <strong style="font-size:1.2em;">${targetUsername}</strong>
-        </div>
-        <div style="background:#f8f9fa; padding:15px; border-radius:8px;">
-            <p style="margin:5px 0;">📍 ระยะห่างปัจจุบัน: <strong>${distance.toFixed(2)} เมตร</strong></p>
-            <p style="margin:5px 0;">💰 ยอดที่ต้องเรียกเก็บเพิ่ม: <strong>25.00 USD</strong></p>
-        </div>
-        <p style="font-size:0.8em; color:red; margin-top:10px;">
-            *โปรดตรวจสอบใบหน้าและเอกสารตัวจริงก่อนกดอนุมัติ
-        </p>
-    `;
-
-    // ตั้งค่าปุ่ม Approve ให้ส่ง ID ไปที่ Server
-    approveBtn.onclick = function() {
-        if (confirm(`ยืนยันการหักเงิน 25 USD จากคุณ ${targetUsername} และอนุมัติสิทธิ์?`)) {
-            socket.emit('approve-verification', { userId: targetUsername });
-            modal.classList.add('hidden');
-        }
-    };
-
-    modal.classList.remove('hidden');
-}
-
-
-// เก็บไฟล์ไว้ในตัวแปรเผื่อต้องการส่งไป Server
-// 1. ประกาศตัวแปรไว้นอกฟังก์ชันเพื่อสะสมไฟล์ (Global Scope)
-let evidenceFiles = []; 
-
-function handleMultipleFiles(input) {
-    const previewContainer = document.getElementById('evidence-preview');
-    
-    // รับไฟล์ใหม่จาก input
-    const newFiles = Array.from(input.files);
-
-    // 2. ตรวจสอบว่าถ้าเพิ่มรูปใหม่เข้าไป จะเกิน 3 รูปหรือไม่
-    if (evidenceFiles.length + newFiles.length > 3) {
-        alert("คุณสามารถอัปโหลดรูปภาพได้สูงสุด 3 รูปเท่านั้น");
-        input.value = ""; // ล้างค่าใน input
-        return;
-    }
-
-    // รวมไฟล์ใหม่เข้ากับไฟล์เดิมที่มีอยู่
-    evidenceFiles = evidenceFiles.concat(newFiles);
-
-    // ล้างหน้าจอ Preview เพื่อวาดใหม่ทั้งหมดจากข้อมูลใน evidenceFiles (กันลำดับเพี้ยน)
-    previewContainer.innerHTML = ''; 
-
-    if (evidenceFiles.length > 0) {
-        // ตั้งค่า Grid
-        previewContainer.style.display = 'grid';
-        previewContainer.style.gridTemplateColumns = 'repeat(3, 1fr)'; // เปลี่ยนเป็น 3 คอลัมน์เพื่อให้พอดี
-        previewContainer.style.gap = '10px';
-        previewContainer.style.marginTop = '15px';
-
-        evidenceFiles.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const wrapper = document.createElement('div');
-                wrapper.style.position = 'relative';
-
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.style.width = '100%';
-                img.style.height = '100px'; // ปรับความสูงลงเล็กน้อยเพื่อให้ดูง่าย
-                img.style.objectFit = 'cover';
-                img.style.borderRadius = '8px';
-                img.style.border = '2px solid #28a745';
-                img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-
-                const badge = document.createElement('div');
-                badge.innerHTML = `<i class="fas fa-camera"></i> #${index + 1}`;
-                badge.style.cssText = `
-                    position: absolute; top: 5px; left: 5px; 
-                    background: rgba(40, 167, 69, 0.8); color: white; 
-                    padding: 2px 6px; border-radius: 4px; font-size: 0.6em;
-                `;
-
-                // เพิ่มปุ่มลบ (Optional - แนะนำให้มีเพื่อให้ผู้ใช้ลบรูปที่ถ่ายเสียได้)
-                const deleteBtn = document.createElement('div');
-                deleteBtn.innerHTML = '×';
-                deleteBtn.style.cssText = `
-                    position: absolute; top: -5px; right: -5px;
-                    background: #ff4d4d; color: white; width: 18px; height: 18px;
-                    border-radius: 50%; text-align: center; line-height: 16px;
-                    cursor: pointer; font-weight: bold; font-size: 14px;
-                `;
-                deleteBtn.onclick = function() {
-                    evidenceFiles.splice(index, 1); // ลบไฟล์ออกจาก Array
-                    handleMultipleFiles({files: []}); // สั่งวาด Preview ใหม่
-                };
-
-                wrapper.appendChild(img);
-                wrapper.appendChild(badge);
-                wrapper.appendChild(deleteBtn);
-                previewContainer.appendChild(wrapper);
-            };
-            reader.readAsDataURL(file);
-        });
-        
-        const confirmBtn = document.getElementById('final-confirm-btn');
-        confirmBtn.disabled = false;
-        confirmBtn.style.opacity = '1';
-    }
-    
-    // ล้างค่า input เพื่อให้สามารถกดเลือกไฟล์เดิมซ้ำได้ในกรณีที่ลบไปแล้วอยากเลือกใหม่
-    input.value = ""; 
-}
-
-
-
-
-async function processApproval() {
-    const savedName = localStorage.getItem('username'); 
-    
-    // ลำดับการเลือกชื่อ: 1.ตัวแปรหลัก 2.ใน localStorage 3.ใน socket (ถ้ามีระบุไว้)
-    const finalAdminName = myAdminName || savedName || (socket.username);
-
-    console.log("🔍 Final Admin Name to send:", finalAdminName);
-
-    if (!finalAdminName) {
-        alert("❌ ไม่พบชื่อแอดมิน กรุณาล็อกอินใหม่");
-        return;
-    }
-
-    const formData = new FormData();
-	formData.append('requestBy', finalAdminName);
-
-    // 2. ตรวจสอบรูปภาพ
-    if (evidenceFiles.length === 0) {
-        alert("📸 กรุณาถ่ายภาพหลักฐานอย่างน้อย 1 รูป");
-        return;
-    }
-
-    const confirmBtn = document.getElementById('final-confirm-btn');
-    const originalText = confirmBtn.innerHTML;
-    
-    // ล็อคปุ่มป้องกันการกดซ้ำ
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-
-    // 3. เตรียมข้อมูลส่งไป Server
-    const formData = new FormData();
-    const memberName = document.getElementById('approve-target-name')?.innerText?.trim();
-    
-    if (!memberName) {
-        alert("❌ ไม่พบชื่อสมาชิกที่จะอนุมัติ");
-        resetButton(confirmBtn, originalText);
-        return;
-    }
-
-    formData.append('member_name', memberName);
-    formData.append('amount', '25');
-    formData.append('requestBy', myAdminName); // ส่งชื่อแอดมินจากตัวแปร Global
-
-    evidenceFiles.forEach((file) => {
-        formData.append('evidence', file);
-    });
-
-    try {
-        const response = await fetch('/api/admin/approve-kyc', {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert("✅ " + result.message);
-            location.reload(); 
-        } else {
-            alert("❌ Error: " + result.error);
-            resetButton(confirmBtn, originalText);
-        }
-    } catch (error) {
-        console.error("Error:", error);
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-        resetButton(confirmBtn, originalText);
-    }
-}
-
-// ฟังก์ชันเสริมสำหรับคืนค่าปุ่ม
-function resetButton(btn, text) {
-    btn.disabled = false;
-    btn.innerHTML = text || 'Confirm Approval';
-}
-
-
-
-
-
-
-
-
 
 	// Google Maps NEW Tab
     function openGoogleMaps(lat, lng) {
@@ -5258,22 +4584,6 @@ function resetButton(btn, text) {
             alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
         }
     }
-	
-	
-	document.getElementById('evidence-upload').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const previewImg = document.getElementById('preview-img');
-            const previewContainer = document.getElementById('evidence-preview');
-            
-            previewImg.src = event.target.result;
-            previewContainer.style.display = 'block'; // แสดง Preview
-        }
-        reader.readAsDataURL(file);
-    }
-});
 
 </script>
 
@@ -5542,164 +4852,6 @@ function resetButton(btn, text) {
         </div>
     </div>
 </div>
-
-
-		<div id="verify-modal" class="modal-overlay hidden" style="z-index: 4000;">
-    <div class="modal-box" style="max-width: 500px; padding: 25px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 style="margin:0; color: #333;">
-                <i class="fas fa-user-check" style="color: #007bff;"></i> 
-                <span data-i18n-key="verify_identity">Verify Identity</span>
-            </h3>
-            <button onclick="closeVerifyModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer; color: #999;">&times;</button>
-        </div>
-
-        <div id="verify-content-area" style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 12px; padding: 20px; background-color: #fafafa; margin-bottom: 25px; line-height: 1.6;">
-            
-            <div style="margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px;">
-                <strong style="color: #d32f2f; display: block; margin-bottom: 8px; font-size: 1.1em;">🇹🇭 เงื่อนไขการยืนยันตัวตน</strong>
-                <p style="margin: 0; font-size: 0.95em; color: #444;">
-                    คุณจะต้องยืนยันตัวตนกับแอดมินในพื้นที่ของคุณ โดยมีเงื่อนไขสำคัญคือ:
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li><strong>ตำแหน่ง (GPS):</strong> ระยะห่างระหว่างคุณกับแอดมินต้อง<strong>ไม่เกิน 10 เมตร</strong></li>
-                        <li><strong>การส่งคำขอ:</strong> เมื่ออยู่ในระยะที่กำหนดแล้ว จึงจะกดปุ่มส่งคำขอได้</li>
-                        <li><strong>เอกสาร:</strong> ขึ้นอยู่กับแอดมินโซนนั้นๆ ควรแชทสอบถามและเตรียมเอกสารให้ครบก่อนไปพบแอดมิน</li>
-                    </ul>
-                    <span style="display: block; margin-top: 10px; font-weight: bold; color: #007bff;">💸 ค่าธรรมเนียมยืนยันตัวตน: 50 USD</span>
-                </p>
-            </div>
-
-            <div>
-                <strong style="color: #d32f2f; display: block; margin-bottom: 8px; font-size: 1.1em;">🇺🇸 Identity Verification Terms</strong>
-                <p style="margin: 0; font-size: 0.9em; color: #555;">
-                    You must verify your identity with your local area admin under these conditions:
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li><strong>GPS Location:</strong> Your distance from the admin must <strong>not exceed 10 meters.</strong></li>
-                        <li><strong>Submission:</strong> You can only submit the request when within the required range.</li>
-                        <li><strong>Documents:</strong> Requirements vary by zone. Please chat with your admin to prepare necessary documents beforehand.</li>
-                    </ul>
-                    <span style="display: block; margin-top: 10px; font-weight: bold; color: #007bff;">💸 Verification Fee: 50 USD</span>
-                </p>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 12px; justify-content: flex-end;">
-    <button class="sidebar-btn" onclick="closeVerifyModal()" 
-            style="background: #e0e0e0; color: #444; width: auto; margin-bottom: 0; padding: 10px 25px; border: none;">
-        Cancel
-    </button>
-    <button class="sidebar-btn create-btn" onclick="submitVerification()" 
-            style="width: auto; margin-bottom: 0; padding: 10px 25px; background: #007bff; color: white;">
-        Request Verification
-    </button>
-</div>
-    </div>
-</div>
-
-
-
-		<div id="admin-verify-modal" class="modal-overlay hidden" style="z-index: 4000;">
-    <div class="modal-box" style="max-width: 600px; width: 90%;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 style="margin:0;"><i class="fas fa-id-card-alt"></i> Members Verified Zone</h3>
-            <button onclick="closeAdminVerifyModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
-        </div>
-
-        <div id="pending-requests-area" class="hidden">
-            <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #ffc107;">
-                
-                <button class="sidebar-btn create-btn" onclick="showPendingDetails()" style="width: auto; margin: 0; padding: 5px 15px; background: #ffc107; border: none; color: #856404;">
-                    Check Now
-                </button>
-            </div>
-        </div>
-
-        <div style="font-weight: bold; margin-bottom: 10px; color: #555;">Verified Members in your zone:</div>
-        <div id="verified-members-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
-            <div style="padding: 20px; text-align: center; color: #999;">No verified members yet.</div>
-        </div>
-
-        <div style="margin-top: 20px; text-align: right;">
-            <button class="sidebar-btn" onclick="closeAdminVerifyModal()" style="background: #6c757d; color: white; width: auto; margin-bottom: 0;">Close</button>
-        </div>
-    </div>
-</div>
-
-
-
-		<div id="admin-review-modal" class="modal-overlay hidden" style="z-index: 4001;">
-    <div class="modal-box" style="max-width: 450px; background: white; padding: 25px; border-radius: 15px;">
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h3 style="margin:0;"><i class="fas fa-search-location" style="color:#007bff;"></i> ตรวจสอบพิกัดสมาชิก</h3>
-        </div>
-
-        <div id="review-detail-content" style="min-height: 200px; background: #ffffff; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
-            <div style="text-align: center; color: #ccc; margin-top: 70px;">
-                <i class="fas fa-user-circle fa-3x"></i>
-                <p>รอโหลดข้อมูลสมาชิก...</p>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-            <button class="sidebar-btn" onclick="document.getElementById('admin-review-modal').classList.add('hidden')" style="background: #6c757d; color: white; margin: 0;">ยกเลิก</button>
-            <button id="final-approve-btn" class="sidebar-btn create-btn" style="background: #28a745; color: white; margin: 0; flex-grow: 1;">
-                Approve 
-            </button>
-        </div>
-    </div>
-</div>
-
-
-
-		<div id="approval-detail-modal" class="modal-overlay hidden" style="z-index: 5000;">
-    <div class="modal-box" style="max-width: 500px; width: 90%; border-top: 5px solid #28a745;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 style="margin:0;"><i class="fas fa-check-circle"></i> Verification Detail</h3>
-            <button onclick="closeApprovalDetailModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">Member Name:</label>
-            <div id="approve-target-name" style="background:#f8f9fa; padding:10px; border-radius:5px; border:1px solid #ddd; font-weight:bold;">-</div>
-        </div>
-		
-
-        <div style="margin-bottom: 20px;">
-    <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">Capture Evidence (Live Camera Only):</label>
-    <div style="border: 2px dashed #28a745; border-radius: 10px; padding: 25px; text-align: center; cursor: pointer; background: #f0fff4;" 
-         onclick="document.getElementById('evidence-upload').click()">
-        <i class="fas fa-camera" style="font-size: 2.5em; color: #28a745;"></i>
-        <p style="margin: 10px 0 0; font-size: 0.9em; color: #28a745; font-weight: bold;">Tap to Open Camera</p>
-        
-        <input type="file" id="evidence-upload" accept="image/*" capture="environment" style="display:none;" multiple onchange="handleMultipleFiles(this)">
-    </div>
-    
-    <div id="evidence-preview" style="margin-top:15px; display:none;">
-    </div>
-</div>
-
-
-        <div style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em; color: #666;">
-            <i class="fas fa-info-circle"></i> After approval, the system will deduct <strong>25 USD</strong> from the member and transfer the fee to you immediately.
-        </div>
-
-        <div style="display:flex; gap:10px;">
-            <button onclick="closeApprovalDetailModal()" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:bold;">
-                Cancel
-            </button>
-            <button id="final-confirm-btn" 
-					onclick="processApproval()" 
-					disabled 
-				style="flex:2; padding:12px; border-radius:8px; border:none; background:#28a745; color:white; cursor:not-allowed; font-weight:bold; opacity: 0.5;">
-				Approve & Collect 25 USD
-			</button>
-        </div>
-    </div>
-</div>
-
-
-
-
 
 
 	

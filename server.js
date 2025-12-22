@@ -429,8 +429,6 @@ app.get('/api/user-info', async (req, res) => {
 		totalPosts: user.totalPosts || 0,     
         completedJobs: user.completedJobs || 0
     });
-	
-	
 });
 
 // 3. User List
@@ -1484,7 +1482,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
 // 19. Toggle Ban
 app.post('/api/admin/toggle-ban', async (req, res) => {
     // 1. รับค่า banDays เพิ่มเติมจาก req.body
-    const { targetUser, shouldBan, requestBy, lang, banDays, reason } = req.body; 
+    const { targetUser, shouldBan, requestBy, lang, banDays } = req.body;
     const currentLang = lang || 'th';
 
     // ตรวจสอบผู้สั่งการ (Requester)
@@ -1532,23 +1530,17 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
     // คำนวณวันหมดอายุ (New Logic)
     // =========================================================
     let banExpires = null;
-    let savedReason = null; // ตัวแปรสำหรับเก็บเหตุผล
-
-    if (shouldBan) {
-        // คำนวณวันหมดอายุ
-        if (banDays > 0) {
-            banExpires = new Date();
-            banExpires.setDate(banExpires.getDate() + parseInt(banDays));
-        }
-        savedReason = reason || "No reason specified"; // กำหนดค่า Default ถ้าไม่ได้กรอกมา
+    if (shouldBan && banDays > 0) {
+        // สร้างวันหมดอายุ: เวลาปัจจุบัน + (จำนวนวัน * 24 ชม. * 60 นาที * 60 วิ * 1000 มิลลิวินาที)
+        banExpires = new Date();
+        banExpires.setDate(banExpires.getDate() + parseInt(banDays));
     }
 
     // ดำเนินการ Update Database
     // เพิ่มการบันทึก banExpires ลงไปใน Document ของ User
     await updateUser(targetUser, { 
         isBanned: shouldBan, 
-        banExpires: banExpires,
-        banReason: shouldBan ? savedReason : null
+        banExpires: banExpires 
     });
 
     // เตรียมข้อความแจ้งเตือน
@@ -1591,12 +1583,7 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
         io.emit('update-post-status');
     }
 
-    res.json({ 
-        success: true, 
-        isBanned: shouldBan, 
-        banExpires: banExpires,
-        banReason: savedReason 
-    });
+    res.json({ success: true, isBanned: shouldBan, banExpires: banExpires });
 });
 
 // 20. My Active Posts
@@ -2015,147 +2002,6 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
     }
 });
 
-// 33. Endpoint สำหรับเช็คสถานะและยอดเงินของผู้ใช้
-app.get('/api/user-status', async (req, res) => {
-    console.log("--- DEBUG: Fetching User Status ---");
-    try {
-        const sessionUsername = req.session.username;
-        console.log("Session Username:", sessionUsername);
-
-        if (!sessionUsername) {
-            console.warn("Debug: No session found");
-            return res.status(401).json({ 
-                success: false, 
-                message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" 
-            });
-        }
-
-        const user = await usersCollection.findOne({ username: sessionUsername });
-        
-        if (!user) {
-            console.warn(`Debug: User ${sessionUsername} not found in DB`);
-            return res.status(404).json({ 
-                success: false, 
-                message: "ไม่พบข้อมูลผู้ใช้ในระบบ" 
-            });
-        }
-
-        console.log(`Debug: User Found -> Balance: ${user.balance}, Status: ${user.verifyStatus}`);
-
-        res.json({
-            success: true,
-            username: user.username,
-            balance: user.balance || 0,
-            zoneId: user.zoneId || null,
-            verifyStatus: user.verifyStatus || 'unverified'
-        });
-
-    } catch (err) {
-        console.error("DEBUG ERROR API:", err);
-        res.status(500).json({ 
-            success: false, 
-            message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" 
-        });
-    }
-});
-
-
-// 34.API สำหรับอนุมัติ KYC และรับรูปหลักฐาน 3 รูป
-app.post('/api/admin/approve-kyc', upload.any(), async (req, res) => {
-    let adminName = req.body.requestBy;
-
-    // ถ้าที่ส่งมาเป็น Socket ID หรือ null ให้พยายามหาชื่อจริงๆ จาก DB หรือ Session
-    if (!adminName || adminName.length > 15) { // ID มักจะยาวกว่าชื่อปกติ
-        // ลองหาใน Database โดยใช้เงื่อนไขอื่น หรือถ้าคุณมีระบบ Session
-        // adminName = req.session.username; 
-    }
-
-    console.log("🔍 Server processing approval by:", adminName);
-
-    // เช็คสิทธิ์ใน DB
-    const adminUser = await usersCollection.findOne({ username: adminName, isAdmin: true });
-
-    if (!adminUser) {
-        console.log(`❌ Unauthorized: ${adminName} is not an admin.`);
-        return res.status(403).json({ success: false, error: '⛔ คุณไม่มีสิทธิ์อนุมัติ' });
-    }
-
-    try {
-        // 1. ตรวจสอบความครบถ้วนของข้อมูล
-        if (!requestBy || !member_name) {
-            return res.status(400).json({ success: false, error: 'ข้อมูลไม่ครบถ้วน (ขาดชื่อแอดมินหรือสมาชิก)' });
-        }
-
-        // 2. ตรวจสอบตัวตนแอดมินจาก Database (ความปลอดภัยชั้นที่ 2)
-        const adminUser = await usersCollection.findOne({ username: requestBy });
-        if (!adminUser || adminUser.adminLevel < 1) {
-            console.log(`❌ Unauthorized: ${requestBy} is not an admin.`);
-            return res.status(403).json({ success: false, error: '⛔ คุณไม่มีสิทธิ์อนุมัติ' });
-        }
-
-        // 3. ตรวจสอบข้อมูลสมาชิก
-        const targetUser = await usersCollection.findOne({ username: member_name });
-        if (!targetUser) {
-            return res.status(404).json({ success: false, error: '❌ ไม่พบข้อมูลสมาชิก' });
-        }
-
-        // 4. ตรวจสอบเงินสมาชิก (เช็คยอด 50 USD แต่หักจริง 25)
-        const currentCoins = targetUser.coins || 0;
-        if (currentCoins < 50) {
-            return res.status(400).json({ success: false, error: '❌ สมาชิกมี USD ไม่เพียงพอ (ต้องการ 50)' });
-        }
-
-        // 5. ตรวจสอบไฟล์รูปภาพ
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ success: false, error: '❌ ไม่พบไฟล์รูปภาพหลักฐาน' });
-        }
-        const imageUrls = req.files.map(file => file.path);
-
-        // 6. [DB Update] หักเงินสมาชิก + เปลี่ยนสถานะเป็น Verified
-        await usersCollection.updateOne(
-            { username: member_name },
-            { 
-                $inc: { coins: -25 },
-                $set: { 
-                    verifyStatus: 'verified',
-                    isVerified: true,
-                    kyc_evidence: imageUrls,
-                    verifiedAt: new Date(),
-                    verifiedBy: requestBy
-                }
-            }
-        );
-
-        // 7. [DB Update] โอนเงินให้ Admin
-        await usersCollection.updateOne(
-            { username: requestBy },
-            { $inc: { coins: 25 } }
-        );
-
-        // 8. บันทึก Transaction
-        await transactionsCollection.insertOne({
-            type: 'KYC_APPROVE_SUCCESS',
-            amount: 25,
-            fromUser: member_name,
-            toUser: requestBy,
-            note: `ยืนยันตัวตนสำเร็จโดยแอดมิน ${requestBy}`,
-            timestamp: new Date()
-        });
-
-        // 9. แจ้งเตือนผ่าน Socket
-        io.emit('balance-update', { user: member_name, coins: currentCoins - 25 });
-        io.emit('balance-update', { user: requestBy, coins: (adminUser.coins || 0) + 25 });
-        io.to(member_name).emit('identity-verified', { message: '🎉 บัญชีได้รับการยืนยันแล้ว!' });
-
-        console.log(`✅ KYC Success: ${requestBy} approved ${member_name}`);
-        res.json({ success: true, message: '✅ อนุมัติและได้รับค่าธรรมเนียมเรียบร้อย' });
-
-    } catch (err) {
-        console.error('🔥 Server Error:', err);
-        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
-    }
-});
-
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 
@@ -2171,21 +2017,6 @@ async function calculateNewRating(username, newScore) {
     await updateUser(username, { rating: parseFloat(nextRating.toFixed(2)), ratingCount: nextCount });
     io.emit('rating-update', { user: username, rating: nextRating.toFixed(2) });
 }
-
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; 
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-
 
 // API กำหนดพิกัดอ้างอิงให้ Admin Level 2 (เฉพาะ Level 3 ทำได้)
 app.post('/api/admin/set-assigned-location', async (req, res) => {
@@ -2229,13 +2060,12 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 // Socket.io Logic
 // ==========================================
 io.on('connection', (socket) => {
-	
     
     socket.on('register', async (username) => {
         socket.join(username);
         socket.username = username;
         if (await isUserBanned(username)) {
-            socket.emit('force-logout', '⛔ The account has been suspended.');
+            socket.emit('force-logout', '⛔ บัญชีถูกระงับ');
             return;
         }
         const occupiedPosts = Object.keys(postViewers).map(postId => ({ postId: parseInt(postId), isOccupied: true }));
@@ -2676,290 +2506,6 @@ socket.on('reply-deduct-confirm', async (data) => {
             socket.emit('receive-assigned-zones', { success: false, message: '❌ เกิดข้อผิดพลาด' });
         }
     });
-	
-	
-	// --- [SERVER SIDE] ระบบอนุมัติการยืนยันตัวตน และแบ่งจ่ายเงิน ---
-socket.on('approve-verification', async (data) => {
-    if (!socket.username) return;
-
-    try {
-        const adminUser = await usersCollection.findOne({ username: socket.username });
-        
-        // 1. ตรวจสอบสิทธิ์ว่าเป็นแอดมิน (Level 1 หรือ 2 ตามที่คุณออกแบบ)
-        if (!adminUser || adminUser.adminLevel < 1) {
-            socket.emit('verification-error', { message: '⛔ คุณไม่มีสิทธิ์อนุมัติ' });
-            return;
-        }
-
-        const targetUserId = data.userId; // ID ของสมาชิกที่ต้องการอนุมัติ
-        const targetUser = await usersCollection.findOne({ username: targetUserId });
-
-        if (!targetUser) {
-            socket.emit('verification-error', { message: '❌ ไม่พบข้อมูลสมาชิก' });
-            return;
-        }
-
-        // --- เริ่มต้นกระบวนการแบ่งเงิน (Financial Logic) ---
-        const totalFee = 50;       // ยอดเต็ม
-        const adminShare = 40;     // แอดมินได้
-        const systemShare = 10;    // ระบบได้
-        const initialDeposit = 25; // มัดจำที่หักไปแล้ว (Locked)
-        const remainingPay = totalFee - initialDeposit; // ส่วนที่ต้องหักเพิ่ม (25)
-
-        // เช็คว่า User มีเงินเหลือพอหักส่วนที่สองไหม
-        if (targetUser.balance < remainingPay) {
-            socket.emit('verification-error', { message: '❌ สมาชิกมีเงินไม่พอจ่ายส่วนที่เหลือ (25 USD)' });
-            return;
-        }
-
-        // --- UPDATE DATABASE (Transaction) ---
-        
-        // 1. หักเงินส่วนที่เหลือจากสมาชิก และอัปเดตสถานะเป็น Verified
-        await usersCollection.updateOne(
-            { username: targetUserId },
-            { 
-                $inc: { balance: -remainingPay },
-                $set: { isVerified: true, verifyStatus: 'verified' }
-            }
-        );
-
-        // 2. โอนเงินให้แอดมิน (40 USD)
-        await usersCollection.updateOne(
-            { username: socket.username },
-            { $inc: { balance: adminShare } }
-        );
-
-        // 3. โอนเงินเข้าระบบ (10 USD)
-        // คุณอาจจะมี User พิเศษชื่อ 'system_account' หรือเก็บใน Config
-        await configCollection.updateOne(
-            { name: "system_revenue" },
-            { $inc: { totalAmount: systemShare } },
-            { upsert: true }
-        );
-
-        // 4. บันทึกประวัติ Transaction
-        await transactionsCollection.insertOne({
-            userId: targetUserId,
-            adminId: socket.username,
-            amount: totalFee,
-            distribution: { admin: adminShare, system: systemShare },
-            type: 'identity_verification',
-            status: 'completed',
-            timestamp: new Date()
-        });
-
-        // แจ้งกลับแอดมิน
-        socket.emit('verification-success', { 
-            message: `✅ อนุมัติเรียบร้อย! คุณได้รับ ${adminShare} USD`,
-            targetUserId: targetUserId 
-        });
-
-        // ส่งข้อความหา User (ถ้าเขาออนไลน์อยู่)
-        io.to(targetUserId).emit('identity-verified', { 
-            message: '🎉 บัญชีของคุณได้รับการยืนยันตัวตนเรียบร้อยแล้ว!' 
-        });
-
-    } catch (err) {
-        console.error('Approve Error:', err);
-        socket.emit('verification-error', { message: '❌ เกิดข้อผิดพลาดในระบบฐานข้อมูล' });
-    }
-});
-
-	socket.on('request-verification', async (data) => {
-    if (!socket.username) return;
-
-    try {
-        const user = await usersCollection.findOne({ username: socket.username });
-        
-        // 🎯 ตรวจสอบชื่อฟิลด์: เปลี่ยนจาก user.balance เป็น user.coins ตามฐานข้อมูลหลักของคุณ
-        const currentCoins = user.coins || 0;
-
-        // 1. เช็คยอดเงินขั้นต่ำ 50 USD
-        if (!user || currentCoins < 50) {
-            socket.emit('verification-error', { message: '❌ ยอดเงินไม่เพียงพอ (ต้องมีอย่างน้อย 50 USD)' });
-            return;
-        }
-
-        // 2. รับพิกัดจาก Client (ถ้ามีการส่งมา) เพื่อบันทึกจุดที่สมาชิกยืนขอ
-        const userLoc = data && data.location ? data.location : user.lastLocation;
-
-        // 3. หักเงินมัดจำ 25 USD และตั้งสถานะ
-        await usersCollection.updateOne(
-            { username: socket.username },
-            { 
-                $inc: { coins: -25 }, // หักมัดจำก้อนแรก
-                $set: { 
-                    verifyStatus: 'pending',
-                    lastVerifyLocation: userLoc, // บันทึกพิกัดตอนกดขอไว้ให้แอดมินเช็คระยะ
-                    verifyRequestTime: new Date()
-                } 
-            }
-        );
-
-        // 4. บันทึกลงประวัติธุรกรรม
-        await transactionsCollection.insertOne({
-            userId: socket.username,
-            amount: 25,
-            type: 'verification_deposit',
-            status: 'locked',
-            timestamp: new Date()
-        });
-
-        // 5. แจ้งเตือนแอดมินเจ้าของพื้นที่ (Broadcast)
-        // หาว่าโซนนี้ใครคุม เพื่อส่งสัญญาณให้แอดมินคนนั้นรู้ตัวทันที
-        const responsible = await findResponsibleAdmin(userLoc);
-        if (responsible && responsible.username) {
-            io.to(responsible.username).emit('new-verification-request', {
-                fromUser: socket.username,
-                location: userLoc
-            });
-        }
-
-        socket.emit('verification-sent', { 
-            message: '✅ หักมัดจำ 25 USD เรียบร้อย โปรดพบแอดมินในระยะ 10 เมตร' 
-        });
-
-    } catch (err) {
-        console.error("Request Verification Error:", err);
-        socket.emit('verification-error', { message: '❌ เกิดข้อผิดพลาดทางเทคนิค' });
-    }
-});
-
-	// --- [SERVER SIDE] ส่วนดึงรายชื่อคนที่รอตรวจสอบและเช็คระยะทาง ---
-socket.on('get-pending-verifications', async (data) => {
-    if (!socket.username) return;
-
-    try {
-        const adminLat = data.adminLat;
-        const adminLng = data.adminLng;
-
-        // 1. หา User ที่มีสถานะ 'pending' ทั้งหมด
-        // (ในอนาคตคุณอาจเพิ่มเงื่อนไขเฉพาะโซนของแอดมินคนนี้)
-        const pendingUsers = await usersCollection.find({ verifyStatus: 'pending' }).toArray();
-
-        // 2. คำนวณระยะห่าง และกรองเอาเฉพาะคนที่อยู่ใกล้ หรือส่งไปให้แอดมินตัดสินใจ
-        const filteredUsers = pendingUsers.map(user => {
-            // ใช้พิกัดที่ User เคยส่งไว้ใน 'lastVerifyLocation' (ที่เราบันทึกไว้ตอนกด Verify)
-            if (user.lastVerifyLocation) {
-                const dist = calculateDistance(
-                    adminLat, adminLng, 
-                    user.lastVerifyLocation.lat, user.lastVerifyLocation.lng
-                );
-                return {
-                    username: user.username,
-                    distance: dist // ระยะทางหน่วยเป็นเมตร
-                };
-            }
-            return null;
-        }).filter(u => u !== null);
-
-        // 3. ส่งรายชื่อกลับไปให้ Admin (ฝั่ง Client รอรับด้วย .on('receive-pending-list'))
-        socket.emit('receive-pending-list', { pendingUsers: filteredUsers });
-
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-	socket.on('get-admin-live-location', async (data, callback) => {
-    console.log("--- DEBUG: เริ่มกระบวนการค้นหาแอดมินจากโซน ---");
-    try {
-        const { lat, lng } = data;
-
-        // 1. เช็คว่าพิกัดที่ส่งมา "อยู่โซนไหน" และ "ใครเป็นแอดมินโซนนั้น"
-        const responsible = await findResponsibleAdmin({ lat, lng });
-
-        // ตรวจสอบว่าเจอโซนและมีชื่อแอดมินไหม
-        if (!responsible || !responsible.username) {
-            console.log("Debug: พิกัดนี้ไม่อยู่ในโซนใดๆ หรือไม่มีแอดมินคุม");
-            return callback(null);
-        }
-
-        // 2. เมื่อรู้โซนและชื่อแอดมินแล้ว (ดึงมาจากตารางโซนโดยตรง)
-        const adminName = responsible.username; 
-        const zoneName = responsible.zoneName;
-        
-        console.log(`Debug: สมาชิกอยู่โซน [${zoneName}] | แอดมินผู้รับผิดชอบคือ [${adminName}]`);
-
-        // 3. ไปตามหา "พิกัดล่าสุด" ของแอดมินชื่อนี้ใน Database (เพื่อเอามาเทียบระยะ 10 เมตร)
-        const adminDoc = await usersCollection.findOne({ 
-            username: adminName,
-            lastLocation: { $exists: true } 
-        });
-
-        if (adminDoc && adminDoc.lastLocation) {
-            console.log(`Debug: เจอตัวแอดมิน ${adminName} และเขามีพิกัดออนไลน์อยู่`);
-            
-            // ส่งข้อมูลกลับไปให้สมาชิก (พิกัดแอดมิน และ ชื่อแอดมิน)
-            callback({
-                lat: adminDoc.lastLocation.lat,
-                lng: adminDoc.lastLocation.lng,
-                username: adminDoc.username,
-                zoneName: zoneName
-            });
-        } else {
-            console.warn(`Debug: เจอชื่อแอดมิน ${adminName} ในโซน แต่เขาไม่ได้ออนไลน์ (ไม่มี lastLocation)`);
-            callback(null);
-        }
-
-    } catch (err) {
-        console.error("DEBUG ERROR SOCKET:", err);
-        callback(null);
-    }
-});
-
-	// 1. สร้าง Event สำหรับรับชื่อแอดมินมาบันทึกใน Socket
-	socket.on('register-admin', async (username) => {
-    socket.username = username;
-    socket.join(username);
-    
-    // ค้นหาข้อมูลแล้วส่งกลับไปยืนยันทันที
-    const user = await usersCollection.findOne({ username: username });
-    if (user) {
-        socket.emit('admin-registered-success', {
-            success: true,
-            coins: user.coins,
-            adminLevel: user.adminLevel
-        });
-    }
-    console.log(`✅ Admin Registered: ${username}`);
-});
-
-    // 2. ฟังก์ชันเดิมที่คุณมีอยู่ (จะทำงานได้แล้วเพราะมี socket.username)
-    socket.on('get-user-status-socket', async (callback) => {
-    try {
-        // ถ้า socket.username ไม่มี ให้ลองเช็คจาก Room ที่ socket นี้อยู่
-        let username = socket.username;
-
-        if (!username) {
-            // ดึง username จากห้องที่เคยมัดไว้ (Fallback)
-            const rooms = Array.from(socket.rooms);
-            username = rooms.find(r => r !== socket.id); 
-        }
-
-        if (!username) {
-            return callback({ success: false, message: "Identification failed" });
-        }
-
-        const user = await usersCollection.findOne({ username: username });
-        if (!user) return callback({ success: false });
-
-        // บันทึกซ้ำเพื่อให้แน่ใจว่าครั้งหน้าจะมีชื่อ
-        socket.username = user.username;
-
-        callback({
-            success: true,
-            username: user.username,
-            coins: user.coins || 0,
-            adminLevel: user.adminLevel || 0
-        });
-    } catch (err) {
-        console.error("Socket Auth Error:", err);
-        callback({ success: false });
-    }
-});
-
-
 
 });
 
