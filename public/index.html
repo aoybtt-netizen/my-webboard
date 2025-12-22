@@ -4721,28 +4721,24 @@ socket.on('receive-pending-list', (data) => {
 // --- หน้า Dashboard แอดมิน ---
 
 socket.on('connect', () => {
-    console.log("✅ Socket Connected!");
+    const username = "<%= user.username %>"; // หรือดึงจาก localStorage/Session
+    
+    if (username) {
+        // 1. ลงทะเบียนเป็น Admin ทันทีเมื่อ Connect
+        socket.emit('register-admin', username);
+        console.log("Sent register-admin for:", username);
 
-    // 1. ดึงชื่อแอดมินที่ล็อกอินอยู่ (จากตัวแปร global ที่ได้จากฝั่ง Server หรือ EJS)
-    // สมมติว่าฝั่ง Server พ่นตัวแปรชื่อ userLoggedIn มาให้ในหน้า HTML
-    const adminNameFromServer = "<%= user.username %>"; // ถ้าใช้ EJS
-    // หรือถ้าคุณไม่มี ให้ดึงจากตัวแปรที่คุณเก็บไว้ตอน Login
-
-    if (adminNameFromServer) {
-        // 2. บอก Server ว่า Socket นี้เป็นของแอดมินคนนี้นะ
-        socket.emit('register-admin', adminNameFromServer);
-
-        // 3. หลังจาก Register แล้วค่อยขอ Status
+        // 2. เรียกเช็คสถานะหลังจาก Register ไปแล้วเล็กน้อย
         setTimeout(() => {
-            socket.emit('get-user-status-socket', (userData) => {
-                if (userData.success) {
-                    myAdminName = userData.username;
-                    console.log("👤 ยินดีต้อนรับแอดมิน:", myAdminName);
+            socket.emit('get-user-status-socket', (response) => {
+                if (response.success) {
+                    console.log("Admin Verified:", response);
+                    // อัปเดต UI ตรงนี้
                 } else {
                     console.error("❌ ไม่สามารถระบุตัวตนแอดมินได้");
                 }
             });
-        }, 500); // รอจังหวะให้ Server บันทึกข้อมูลนิดนึง
+        }, 1000); // ดีเลย์ 500ms เพื่อให้ Server จัดการ Room เสร็จก่อน
     }
 });
 

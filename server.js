@@ -2897,32 +2897,55 @@ socket.on('get-pending-verifications', async (data) => {
 });
 
 	// 1. สร้าง Event สำหรับรับชื่อแอดมินมาบันทึกใน Socket
-	socket.on('register-admin', (username) => {
-        socket.username = username; // บันทึกชื่อเข้าตัวแปร socket
-        socket.join(username);      // ให้ socket เข้าห้องชื่อตัวเอง (เพื่อใช้ io.to(username).emit)
-        console.log(`✅ Admin Registered: ${username}`);
-    });
+	socket.on('register-admin', async (username) => {
+    socket.username = username;
+    socket.join(username);
+    
+    // ค้นหาข้อมูลแล้วส่งกลับไปยืนยันทันที
+    const user = await usersCollection.findOne({ username: username });
+    if (user) {
+        socket.emit('admin-registered-success', {
+            success: true,
+            coins: user.coins,
+            adminLevel: user.adminLevel
+        });
+    }
+    console.log(`✅ Admin Registered: ${username}`);
+});
 
     // 2. ฟังก์ชันเดิมที่คุณมีอยู่ (จะทำงานได้แล้วเพราะมี socket.username)
     socket.on('get-user-status-socket', async (callback) => {
-        try {
-            const username = socket.username; 
-            if (!username) {
-                return callback({ success: false, message: "No socket.username" });
-            }
-            const user = await usersCollection.findOne({ username: username });
-            if (!user) return callback({ success: false });
+    try {
+        // ถ้า socket.username ไม่มี ให้ลองเช็คจาก Room ที่ socket นี้อยู่
+        let username = socket.username;
 
-            callback({
-                success: true,
-                username: user.username,
-                coins: user.coins || 0,
-                adminLevel: user.adminLevel // ส่ง level กลับไปด้วย
-            });
-        } catch (err) {
-            callback({ success: false });
+        if (!username) {
+            // ดึง username จากห้องที่เคยมัดไว้ (Fallback)
+            const rooms = Array.from(socket.rooms);
+            username = rooms.find(r => r !== socket.id); 
         }
-    });
+
+        if (!username) {
+            return callback({ success: false, message: "Identification failed" });
+        }
+
+        const user = await usersCollection.findOne({ username: username });
+        if (!user) return callback({ success: false });
+
+        // บันทึกซ้ำเพื่อให้แน่ใจว่าครั้งหน้าจะมีชื่อ
+        socket.username = user.username;
+
+        callback({
+            success: true,
+            username: user.username,
+            coins: user.coins || 0,
+            adminLevel: user.adminLevel || 0
+        });
+    } catch (err) {
+        console.error("Socket Auth Error:", err);
+        callback({ success: false });
+    }
+});
 
 
 
