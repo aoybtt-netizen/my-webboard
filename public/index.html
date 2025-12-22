@@ -3110,8 +3110,9 @@ function closeVerifyInfo() {
 
 // ฟังก์ชันเมื่อกด Confirm จากหน้าแรก เพื่อไปหน้ากรอกข้อมูล
 function proceedToVerifyForm() {
-    document.getElementById('verify-info-modal').classList.add('hidden');
-    document.getElementById('verify-confirm-modal').classList.remove('hidden');
+	checkZoneOwnership();
+    //document.getElementById('verify-info-modal').classList.add('hidden');
+    //document.getElementById('verify-confirm-modal').classList.remove('hidden');
 }
 
 // ฟังก์ชันปิดหน้ากรอกข้อมูล (ใช้กับปุ่ม Cancel ในหน้าสอง)
@@ -3130,6 +3131,52 @@ function submitIdentityData() {
     
     alert("ส่งข้อมูลการยืนยันตัวตนเรียบร้อยแล้ว รอการตรวจสอบจากเจ้าหน้าที่");
     closeVerifyConfirm();
+}
+
+
+
+function checkZoneOwnership(showDebug = true) {
+    if (!navigator.geolocation) {
+        console.error("Geolocation is not supported by this browser.");
+        return;
+    }
+
+    console.log("🔍 [Debug] Checking Zone Ownership...");
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        // แสดงพิกัดที่ดึงได้ใน Console
+        console.log(`📍 [Debug] My Coordinates: Lat ${lat}, Lng ${lng}`);
+
+        // ส่งข้อมูลไปยัง Server ผ่าน Socket (อ้างอิงจาก socket ใน server.js ของคุณ)
+        // หมายเหตุ: คุณต้องเพิ่มฝั่ง Server รับ Event 'find-zone-admin' ด้วย
+        socket.emit('find-zone-admin', { lat, lng }, (response) => {
+            if (response.success) {
+                const zone = response.zone;
+                const admin = response.admin;
+
+                // --- ส่วนของ Debug Log ตามที่ต้องการ ---
+                console.log("====================================");
+                console.log("✅ ZONE IDENTIFIED");
+                console.log("🚩 Zone Name:", zone.name);
+                console.log("👤 Admin Owner:", admin.username || zone.refLocation.sourceUser);
+                console.log("🆔 Zone ID:", zone._id);
+                console.log("====================================");
+
+                if (showDebug) {
+                    alert(`คุณอยู่ในพื้นที่ของ: ${zone.name}\nผู้ดูแล: ${admin.username || zone.refLocation.sourceUser}`);
+                }
+            } else {
+                console.warn("⚠️ [Debug] This location is not assigned to any specific zone.");
+                if (showDebug) alert("ไม่พบข้อมูลโซนในพื้นที่นี้");
+            }
+        });
+
+    }, (error) => {
+        console.error("❌ [Debug] Geolocation Error:", error.message);
+    });
 }
 
 

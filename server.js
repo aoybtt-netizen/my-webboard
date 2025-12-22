@@ -2506,6 +2506,35 @@ socket.on('reply-deduct-confirm', async (data) => {
             socket.emit('receive-assigned-zones', { success: false, message: '❌ เกิดข้อผิดพลาด' });
         }
     });
+	
+	
+	
+	socket.on('find-zone-admin', async (coords, callback) => {
+    try {
+        // ค้นหาโซนที่พิกัดปัจจุบันอยู่ในรัศมี (อ้างอิงโครงสร้าง zonesCollection ของคุณ)
+        // ใช้หลักการ $near หรือการคำนวณระยะทาง
+        const zone = await zonesCollection.findOne({
+            "refLocation.lat": { $exists: true },
+            // ตัวอย่าง: หาโซนที่ใกล้ที่สุดในรัศมี 5กม. (ถ้าคุณใช้ GeoJSON Index)
+            // หรือหาจากการเปรียบเทียบค่าตรงๆ ตาม Logic ระบบคุณ
+        });
+
+        if (zone) {
+            // ดึงชื่อแอดมินจาก refLocation.sourceUser ที่คุณเก็บไว้
+            callback({
+                success: true,
+                zone: zone,
+                admin: { username: zone.refLocation.sourceUser }
+            });
+        } else {
+            callback({ success: false });
+        }
+    } catch (err) {
+        console.error(err);
+        callback({ success: false });
+    }
+});
+
 
 });
 
