@@ -4581,6 +4581,18 @@ async function openAdminVerifyList() {
 }
 
 
+socket.on('connect', () => {
+    console.log("Socket Connected ID:", socket.id);
+});
+
+socket.on('user-data', (data) => {
+    console.log("Found User Data:", data);
+    myAdminName = data.username;
+    myAdminLevel = data.level || 1; // สมมติว่ามี level
+});
+
+
+
 function adminApproveUser(username) {
     if (!username) return;
 
