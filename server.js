@@ -2523,30 +2523,31 @@ socket.on('reply-deduct-confirm', async (data) => {
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
         const { lat, lng } = coords;
-        
-        // 1. ดึงโซนทั้งหมดที่มีการ "ปักหมุด" พิกัดไว้จริงๆ
-        // เราจะตรวจสอบฟิลด์ lat และ lng ที่อยู่ใน refLocation ของโซนนั้นๆ
+        console.log(`[Server Debug] Checking location from User: Lat ${lat}, Lng ${lng}`);
+
+        // 1. ดึงโซนทั้งหมดที่มี "ตำแหน่งจริง" (lat, lng หลักของโซน)
         const allZones = await zonesCollection.find({
-            "refLocation.lat": { $exists: true, $ne: null },
-            "refLocation.lng": { $exists: true, $ne: null }
+            "lat": { $exists: true, $ne: null },
+            "lng": { $exists: true, $ne: null },
+            "assignedAdmin": { $exists: true, $ne: null } // ต้องมีเจ้าของด้วย
         }).toArray();
 
         if (allZones.length === 0) {
-            return callback({ success: false, message: "ไม่พบข้อมูลการปักหมุดโซนในระบบ" });
+            console.log("❌ ไม่พบโซนที่มีพิกัดจริงในฐานข้อมูล");
+            return callback({ success: false, message: "No zones found" });
         }
 
         let closestZone = null;
         let minDistance = Infinity;
 
-        // 2. ลอจิกหาโซนที่ "หมุด" อยู่ใกล้ตำแหน่งปัจจุบันที่สุด
+        // 2. คำนวณหาโซนที่ "ตำแหน่งจริง" (Pin) ใกล้ที่สุด
         allZones.forEach((zone) => {
-            // ดึงค่าพิกัดจากหมุดของโซน (มั่นใจว่าเป็นตัวเลขด้วย parseFloat)
-            const pinLat = parseFloat(zone.refLocation.lat);
-            const pinLng = parseFloat(zone.refLocation.lng);
+            const pinLat = parseFloat(zone.lat);
+            const pinLng = parseFloat(zone.lng);
             
+            // ใช้ฟังก์ชันคำนวณระยะทาง (เมตร)
             const distance = calculateDistance(lat, lng, pinLat, pinLng);
 
-            // เปรียบเทียบเพื่อหาค่าที่น้อยที่สุด (ใกล้ที่สุด)
             if (distance < minDistance) {
                 minDistance = distance;
                 closestZone = zone;
@@ -2554,23 +2555,27 @@ socket.on('reply-deduct-confirm', async (data) => {
         });
 
         if (closestZone) {
-            // 3. เมื่อได้โซนที่ใกล้ที่สุดแล้ว ดึงชื่อแอดมินเจ้าของโซน (sourceUser)
-            // อ้างอิงจากโครงสร้าง DB ของคุณ: เจ้าของคือคนที่สร้างโซนนี้ (sourceUser)
-            const zoneOwner = closestZone.refLocation.sourceUser || "ไม่ระบุชื่อเจ้าของ";
+            // 3. ดึงชื่อเจ้าของโซนจากฟิลด์ assignedAdmin เท่านั้น
+            const realOwner = closestZone.assignedAdmin;
 
-            console.log(`[Debug] ใกล้หมุดโซน: ${closestZone.name} | ระยะ: ${minDistance.toFixed(0)} ม. | เจ้าของ: ${zoneOwner}`);
+            console.log("====================================");
+            console.log(`🎯 พบโซนที่ใกล้ที่สุด: ${closestZone.name}`);
+            console.log(`📍 พิกัดจริง (Pin): ${closestZone.lat}, ${closestZone.lng}`);
+            console.log(`👤 เจ้าของโซน (Real Owner): ${realOwner}`);
+            console.log(`📏 ระยะห่าง: ${minDistance.toFixed(0)} เมตร`);
+            console.log("====================================");
 
             callback({
                 success: true,
                 zoneName: closestZone.name,
-                adminName: zoneOwner, // ชื่อแอดมินเจ้าของโซน
+                adminName: realOwner, // คืนค่าชื่อเจ้าของโซนที่ถูกต้อง
                 distance: minDistance.toFixed(0)
             });
         } else {
             callback({ success: false });
         }
     } catch (err) {
-        console.error("❌ Error finding zone owner:", err);
+        console.error("❌ find-zone-admin error:", err);
         callback({ success: false });
     }
 });
