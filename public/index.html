@@ -469,6 +469,7 @@
         let myUsername = "";
 		let myAdminLevel = 0;
 		let myAdminName = null;
+		let currentAdminData = null;
 		let myZoneId = null;
 		let filterLocation = null;
         let filterMaxDistance = null; 
@@ -4721,24 +4722,23 @@ socket.on('receive-pending-list', (data) => {
 // --- หน้า Dashboard แอดมิน ---
 
 socket.on('connect', () => {
-    const username = "<%= user.username %>"; // หรือดึงจาก localStorage/Session
+    // ใช้ตัวแปร JS มารับค่าจาก EJS ป้องกัน Error ใน console
+    const adminUsername = "<%= user.username %>"; 
     
-    if (username) {
-        // 1. ลงทะเบียนเป็น Admin ทันทีเมื่อ Connect
-        socket.emit('register-admin', username);
-        console.log("Sent register-admin for:", username);
-
-        // 2. เรียกเช็คสถานะหลังจาก Register ไปแล้วเล็กน้อย
+    if (adminUsername && adminUsername !== "<" + "%= user.username %" + ">") {
+        socket.emit('register-admin', adminUsername);
+        
         setTimeout(() => {
             socket.emit('get-user-status-socket', (response) => {
                 if (response.success) {
                     console.log("Admin Verified:", response);
-                    // อัปเดต UI ตรงนี้
+                    // 🎯 บันทึกค่าลงตัวแปร Global ตรงนี้!
+                    currentAdminData = response; 
                 } else {
                     console.error("❌ ไม่สามารถระบุตัวตนแอดมินได้");
                 }
             });
-        }, 1000); // ดีเลย์ 500ms เพื่อให้ Server จัดการ Room เสร็จก่อน
+        }, 1000);
     }
 });
 
