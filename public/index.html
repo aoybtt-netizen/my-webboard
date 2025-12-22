@@ -4720,27 +4720,7 @@ socket.on('receive-pending-list', (data) => {
 
 // --- หน้า Dashboard แอดมิน ---
 
-socket.on('connect', () => {
-    const username = "<%= user.username %>"; // หรือดึงจาก localStorage/Session
-    
-    if (username) {
-        // 1. ลงทะเบียนเป็น Admin ทันทีเมื่อ Connect
-        socket.emit('register-admin', username);
-        console.log("Sent register-admin for:", username);
 
-        // 2. เรียกเช็คสถานะหลังจาก Register ไปแล้วเล็กน้อย
-        setTimeout(() => {
-            socket.emit('get-user-status-socket', (response) => {
-                if (response.success) {
-                    console.log("Admin Verified:", response);
-                    // อัปเดต UI ตรงนี้
-                } else {
-                    console.error("❌ ไม่สามารถระบุตัวตนแอดมินได้");
-                }
-            });
-        }, 1000); // ดีเลย์ 500ms เพื่อให้ Server จัดการ Room เสร็จก่อน
-    }
-});
 
 
 // ฟังก์ชันเมื่อกดยืนยัน (เบื้องต้น)
