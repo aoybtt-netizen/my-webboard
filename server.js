@@ -328,14 +328,14 @@ function convertUSD(amountUSD, targetCurrency) {
 }
 
 	function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // เมตร
+    const R = 6371000; // รัศมีโลกเป็นเมตร
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
         Math.sin(dLat/2) * Math.sin(dLat/2) +
         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; 
+    return R * c;
 }
 
 // ==========================================
@@ -2523,32 +2523,30 @@ socket.on('reply-deduct-confirm', async (data) => {
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
         const { lat, lng } = coords;
-        console.log(`[Server Debug] Incoming request from: Lat ${lat}, Lng ${lng}`);
-
-        // 1. ดึงโซนทั้งหมดที่มีพิกัด (ตรวจสอบโครงสร้าง refLocation ให้ดี)
+        
+        // 1. ดึงโซนทั้งหมดที่มีการ "ปักหมุด" พิกัดไว้จริงๆ
+        // เราจะตรวจสอบฟิลด์ lat และ lng ที่อยู่ใน refLocation ของโซนนั้นๆ
         const allZones = await zonesCollection.find({
-            "refLocation.lat": { $exists: true }
+            "refLocation.lat": { $exists: true, $ne: null },
+            "refLocation.lng": { $exists: true, $ne: null }
         }).toArray();
 
-        console.log(`[Server Debug] Total zones found in DB: ${allZones.length}`);
-
         if (allZones.length === 0) {
-            console.log("❌ No zones found in collection.");
-            return callback({ success: false, message: "No zones in DB" });
+            return callback({ success: false, message: "ไม่พบข้อมูลการปักหมุดโซนในระบบ" });
         }
 
         let closestZone = null;
         let minDistance = Infinity;
 
-        // 2. ค้นหาโซนที่ใกล้ที่สุด
-        allZones.forEach((zone, index) => {
-            const zLat = parseFloat(zone.refLocation.lat);
-            const zLng = parseFloat(zone.refLocation.lng);
+        // 2. ลอจิกหาโซนที่ "หมุด" อยู่ใกล้ตำแหน่งปัจจุบันที่สุด
+        allZones.forEach((zone) => {
+            // ดึงค่าพิกัดจากหมุดของโซน (มั่นใจว่าเป็นตัวเลขด้วย parseFloat)
+            const pinLat = parseFloat(zone.refLocation.lat);
+            const pinLng = parseFloat(zone.refLocation.lng);
             
-            const distance = calculateDistance(lat, lng, zLat, zLng);
-            
-            console.log(`Zone[${index}]: ${zone.name} | Distance: ${distance.toFixed(2)} meters`);
+            const distance = calculateDistance(lat, lng, pinLat, pinLng);
 
+            // เปรียบเทียบเพื่อหาค่าที่น้อยที่สุด (ใกล้ที่สุด)
             if (distance < minDistance) {
                 minDistance = distance;
                 closestZone = zone;
@@ -2556,20 +2554,23 @@ socket.on('reply-deduct-confirm', async (data) => {
         });
 
         if (closestZone) {
-            console.log(`✅ Success! Closest: ${closestZone.name} (${minDistance.toFixed(2)} m)`);
+            // 3. เมื่อได้โซนที่ใกล้ที่สุดแล้ว ดึงชื่อแอดมินเจ้าของโซน (sourceUser)
+            // อ้างอิงจากโครงสร้าง DB ของคุณ: เจ้าของคือคนที่สร้างโซนนี้ (sourceUser)
+            const zoneOwner = closestZone.refLocation.sourceUser || "ไม่ระบุชื่อเจ้าของ";
+
+            console.log(`[Debug] ใกล้หมุดโซน: ${closestZone.name} | ระยะ: ${minDistance.toFixed(0)} ม. | เจ้าของ: ${zoneOwner}`);
+
             callback({
                 success: true,
-                zone: closestZone,
-                admin: { 
-                    username: closestZone.refLocation.sourceUser || "Unknown Admin",
-                    distance: minDistance.toFixed(0) // เมตร
-                }
+                zoneName: closestZone.name,
+                adminName: zoneOwner, // ชื่อแอดมินเจ้าของโซน
+                distance: minDistance.toFixed(0)
             });
         } else {
             callback({ success: false });
         }
     } catch (err) {
-        console.error("❌ find-zone-admin error:", err);
+        console.error("❌ Error finding zone owner:", err);
         callback({ success: false });
     }
 });

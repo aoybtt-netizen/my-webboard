@@ -3136,35 +3136,23 @@ function submitIdentityData() {
 
 
 function checkZoneOwnership(showDebug = true) {
-    if (!navigator.geolocation) {
-        console.error("Geolocation is not supported by this browser.");
-        return;
-    }
-
-    console.log("🔍 [Debug] Checking Zone Ownership...");
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
+    navigator.geolocation.getCurrentPosition((position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
 
-        // แสดงพิกัดที่ดึงได้ใน Console
-        console.log(`📍 [Debug] My Coordinates: Lat ${lat}, Lng ${lng}`);
-
-        // ส่งข้อมูลไปยัง Server ผ่าน Socket (อ้างอิงจาก socket ใน server.js ของคุณ)
-        // หมายเหตุ: คุณต้องเพิ่มฝั่ง Server รับ Event 'find-zone-admin' ด้วย
         socket.emit('find-zone-admin', { lat, lng }, (response) => {
             if (response.success) {
-				const zone = response.zone;
-				const admin = response.admin;
-				alert(`📍 โซนที่ใกล้ที่สุด: ${zone.name}\n👤 ผู้ดูแล: ${admin.username}\n📏 ระยะห่าง: ${admin.distance} เมตร`);
-				} else {
-                console.warn("⚠️ [Debug] This location is not assigned to any specific zone.");
-                if (showDebug) alert("ไม่พบข้อมูลโซนในพื้นที่นี้");
+                // แสดงผลชื่อโซนและชื่อแอดมินเจ้าของโซน
+                console.log("📍 โซน:", response.zoneName);
+                console.log("👤 เจ้าของโซน:", response.adminName);
+                
+                if (showDebug) {
+                    alert(`📍 โซนที่ใกล้ที่สุด: ${response.zoneName}\n👤 เจ้าของโซน (แอดมิน): ${response.adminName}\n📏 ระยะจากหมุด: ${response.distance} เมตร`);
+                }
+            } else {
+                alert("ไม่พบโซนในบริเวณนี้");
             }
         });
-
-    }, (error) => {
-        console.error("❌ [Debug] Geolocation Error:", error.message);
     });
 }
 
