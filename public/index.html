@@ -4926,44 +4926,44 @@ function openUserDetail(targetUsername) {
 	
 	<div id="verify-confirm-modal" class="modal-overlay hidden">
     <div class="modal-box" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
-        <h2 style="text-align: center;"><i class="fas fa-user-shield"></i> ยืนยันตัวตน (Verify Identity)</h2>
+        <h2 style="text-align: center;"><i class="fas fa-user-shield"></i> Verify Identity</h2>
         
         <div style="background: #eef6f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85em; color: #28a745; border: 1px solid #c3e6cb;">
-            <i class="fas fa-info-circle"></i> ข้อมูลนี้จะถูกเก็บเป็นความลับเพื่อใช้ในการตรวจสอบเท่านั้น
+            <i class="fas fa-info-circle"></i> This information will be kept confidential and used for verification purposes only.
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
             <div>
-                <label style="display:block; margin-bottom:5px; font-weight:bold;">ชื่อ-นามสกุล:</label>
-                <input type="text" id="verify-fullname" placeholder="กรอกชื่อและนามสกุลตามบัตร" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Full Name:</label>
+                <input type="text" id="verify-fullname" placeholder="Enter full name as shown on ID" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;">
             </div>
 
             <div>
-                <label style="display:block; margin-bottom:5px; font-weight:bold;">เบอร์โทรศัพท์ติดต่อ:</label>
-                <input type="tel" id="verify-phone" placeholder="08X-XXXXXXX" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Phone Number:</label>
+                <input type="tel" id="verify-phone" placeholder="e.g., +66 8X XXX XXXX" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;">
             </div>
 
             <div>
-                <label style="display:block; margin-bottom:5px; font-weight:bold;">ที่อยู่ตามทะเบียนบ้าน/ปัจจุบัน:</label>
-                <textarea id="verify-address" rows="3" placeholder="เลขที่บ้าน, ถนน, แขวง/ตำบล, เขต/อำเภอ..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box; font-family: inherit;"></textarea>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">Current Address:</label>
+                <textarea id="verify-address" rows="3" placeholder="House No., Street, District, Province, Postal Code..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box; font-family: inherit;"></textarea>
             </div>
 
             <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
 
             <div>
-                <label style="display:block; margin-bottom:5px; font-weight:bold;">1. รูปถ่ายบัตรประจำตัวประชาชน:</label>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">1. ID Card / Passport Photo:</label>
                 <input type="file" id="verify-id-card" accept="image/*" style="font-size: 0.9em;">
             </div>
 
             <div>
-                <label style="display:block; margin-bottom:5px; font-weight:bold;">2. รูปถ่ายหน้าตรงคู่กับบัตร:</label>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">2. Selfie with ID Card:</label>
                 <input type="file" id="verify-selfie" accept="image/*" style="font-size: 0.9em;">
             </div>
         </div>
 
         <div style="display: flex; gap: 10px;">
-            <button class="sidebar-btn" onclick="closeVerifyConfirm()" style="background: #6c757d; color: white; flex: 1;">ยกเลิก</button>
-            <button class="sidebar-btn" onclick="submitIdentityData()" style="background: #28a745; color: white; flex: 1;">ส่งข้อมูลตรวจสอบ</button>
+            <button class="sidebar-btn" onclick="closeVerifyConfirm()" style="background: #6c757d; color: white; flex: 1;">Cancel</button>
+            <button class="sidebar-btn" onclick="submitIdentityData()" style="background: #28a745; color: white; flex: 1;">Submit for Review</button>
         </div>
     </div>
 </div>
