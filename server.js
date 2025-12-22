@@ -2524,7 +2524,7 @@ socket.on('reply-deduct-confirm', async (data) => {
     try {
         // ดึง requesterName (ชื่อคนกดเช็คอิน) เพิ่มจาก coords
         const { lat, lng, requesterName } = coords; 
-
+		const requesterName = socket.username || "สมาชิกนิรนาม";
         // 1. หาโซนที่พิกัดหลัก (Pin) ใกล้ที่สุด
         const allZones = await zonesCollection.find({
             "lat": { $exists: true, $ne: null },
@@ -2570,11 +2570,11 @@ socket.on('reply-deduct-confirm', async (data) => {
 
             if (targetAdminSocket) {
                 // 🔥 เพิ่ม adminTarget: adminUsername เพื่อให้แอดมินตรวจสอบชื่อตัวเอง
-                io.to(targetAdminSocket.id).emit('notify-admin-verify', {
-                    member: requesterName || "ไม่ทราบชื่อ",
+					io.to(targetAdminSocket.id).emit('notify-admin-verify', {
+                    member: requesterName, // ชื่อจะตรงตามที่ login แน่นอน
                     zone: closestZone.name,
                     distance: minPinDistance.toFixed(0),
-                    adminTarget: adminUsername // แนบชื่อแอดมินเป้าหมายไปด้วย
+                    adminTarget: adminUsername
                 });
                 console.log(`🚀 Sent verify notification to admin: ${adminUsername}`);
             }

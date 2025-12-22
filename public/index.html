@@ -437,7 +437,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.40 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.41 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3138,20 +3138,24 @@ function submitIdentityData() {
 
 
 socket.on('notify-admin-verify', (data) => {
+    // เช็คว่า adminTarget ที่ Server ส่งมา ตรงกับชื่อเราไหม (ป้องกัน Modal เด้งผิดคน)
+    // โดยเปรียบเทียบกับชื่อที่คุณใช้ login ในหน้า admin
+    
+    const myName = typeof currentUser !== 'undefined' ? currentUser.username : ""; 
+    
+    // ถ้าชื่อแอดมินเป้าหมายไม่ตรงกับเรา ไม่ต้องแสดง modal
+    if (data.adminTarget !== myName && myName !== "") {
+        return; 
+    }
+
+    // แสดง Modal ตามปกติ
     const modalContent = document.querySelector('#admin-members-verify-modal .modal-box div');
-    
-    // แสดงข้อมูลใน Modal
     modalContent.innerHTML = `
-        <div style="background: #e9ecef; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-            <p style="margin: 5px 0;"><strong>👤 สมาชิก:</strong> ${data.member}</p>
-            <p style="margin: 5px 0;"><strong>📍 โซน:</strong> ${data.zone}</p>
-            <p style="margin: 5px 0;"><strong>🛡️ ผู้รับผิดชอบ:</strong> <span style="color: blue;">${data.adminTarget}</span></p>
-            <p style="margin: 5px 0;"><strong>📏 ระยะห่าง:</strong> ${data.distance} เมตร</p>
-        </div>
-        <p style="font-size: 0.9em; color: #666;">กรุณาตรวจสอบชื่อผู้รับผิดชอบว่าคือคุณหรือไม่ก่อนกด Confirm</p>
+        <p><strong>👤 สมาชิก:</strong> ${data.member}</p>
+        <p><strong>🛡️ แอดมินผู้รับผิดชอบ:</strong> ${data.adminTarget}</p>
+        <p><strong>📍 โซน:</strong> ${data.zone}</p>
     `;
-    
-    adminZoneVerify(); // เปิด Modal
+    adminZoneVerify();
 });
 
 
