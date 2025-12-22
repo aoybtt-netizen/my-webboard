@@ -187,9 +187,9 @@
 	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
 กระทู้ของฉันที่ปิดแล้ว
 </button>
-	<div class="sidebar-item" onclick="openVerifyModal()" data-i18n-key="menu_verify">
-    <i class="fas fa-user-shield"></i> ยืนยันตัวตนกับแอดมิน
-</div>
+	<button class="verify-btn" onclick="openVerifyModal()" data-i18n-key="menu_verify">
+    <i class="fas fa-user-shield"></i> Verify Identity
+</button>
     
     <div id="admin-panel" class="hidden">
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
@@ -3092,6 +3092,22 @@ window.addZoneConfig = addZoneConfig;
     }
 }
 window.deductCoinInChat = deductCoinInChat;
+
+//Verify
+function openVerifyModal() {
+    document.getElementById('verifyModal').style.display = 'flex';
+}
+
+function closeVerifyModal() {
+    document.getElementById('verifyModal').style.display = 'none';
+}
+
+function handleConfirm() {
+    alert("Identity Verified!"); // ใส่โค้ดที่ต้องการให้ทำงานเมื่อกดยืนยันตรงนี้
+    closeVerifyModal();
+}
+
+
         
         // --- SOCKET LOGIC ---
 		socket.on('announcement-update', (data) => {
@@ -4858,6 +4874,25 @@ function openUserDetail(targetUsername) {
         </div>
     </div>
 </div>
+
+
+	
+	<div id="verifyModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Verify Identity</h3>
+        </div>
+        <div class="modal-body">
+            <p>Please confirm your identity to proceed.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeVerifyModal()">Cancel</button>
+            <button class="btn-confirm" onclick="handleConfirm()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+
 
 
 	
