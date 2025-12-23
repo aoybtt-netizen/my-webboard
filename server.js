@@ -2520,11 +2520,76 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	
 	
+	// --- [Step 1] จ่ายค่าธรรมเนียมและส่งข้อความหาแอดมิน ---
+socket.on('send-request-verify', async (data, callback) => {
+    try {
+        const username = socket.username;
+        const amount = 50; // ค่าธรรมเนียม 50 USD
+
+        // 1. ตรวจสอบยอดเงิน
+        const user = await usersCollection.findOne({ username: username });
+        if (!user || (user.balance || 0) < amount) {
+            return callback({ success: false, message: "ยอดเงินของคุณไม่เพียงพอ (ต้องการ 50 USD)" });
+        }
+
+        // 2. หาโซนปัจจุบันของผู้ใช้ (เพื่อดูว่าแอดมินคนไหนควรได้รับข้อความ)
+        // หมายเหตุ: จังหวะนี้ยังไม่บล็อกเรื่องระยะทาง แต่หาโซนที่ใกล้ที่สุดมาอ้างอิง
+        const allZones = await zonesCollection.find({ "lat": { $exists: true } }).toArray();
+        let closestZone = null;
+        let minD = Infinity;
+        
+        // ถ้าหน้าบ้านส่งพิกัดมาด้วยใน Step 1 ให้คำนวณหาแอดมินโซนนั้น
+        if (data.lat && data.lng) {
+            allZones.forEach(z => {
+                const d = calculateDistance(data.lat, data.lng, parseFloat(z.lat), parseFloat(z.lng));
+                if (d < minD) { minD = d; closestZone = z; }
+            });
+        }
+
+        const targetAdmin = closestZone ? closestZone.assignedAdmin : "Admin";
+
+        // 3. หักเงินและตั้งค่า verifyStep = 1
+        await usersCollection.updateOne(
+            { username: username },
+            { 
+                $inc: { balance: -amount },
+                $set: { verifyStep: 1, lastVerifyAdmin: targetAdmin } 
+            }
+        );
+
+        // 4. ส่งข้อความเข้า Inbox ของแอดมิน
+        await messagesCollection.insertOne({
+            sender: "System",
+            receiver: targetAdmin,
+            content: `📢 สมาชิก ${username} ได้ชำระค่าธรรมเนียมยืนยันตัวตนแล้ว และกำลังรอพบคุณเพื่อเช็คระยะทาง (Step 1 สำเร็จ)`,
+            timestamp: new Date(),
+            isRead: false
+        });
+
+        console.log(`[Step 1] ${username} paid 50 USD. Notified Admin: ${targetAdmin}`);
+        callback({ success: true, adminName: targetAdmin });
+
+    } catch (err) {
+        console.error("Step 1 Error:", err);
+        callback({ success: false, message: "เกิดข้อผิดพลาดในระบบ" });
+    }
+});
+	
+	
+	
 	socket.on('find-zone-admin', async (coords, callback) => {
     try {
-        const { lat, lng } = coords; 
-        // ใช้ชื่อจาก socket.username เป็นหลัก ถ้าไม่มีค่อยใช้ที่ส่งมาจาก coords หรือค่าพื้นฐาน
-        const requesterName = socket.username || coords.requesterName || "สมาชิกนิรนาม";
+        const { lat, lng } = coords;
+        const username = socket.username;
+
+        // 🔥 [เพิ่มใหม่] ตรวจสอบก่อนว่าผ่าน Step 1 (จ่ายเงิน) มาหรือยัง
+        const user = await usersCollection.findOne({ username: username });
+        if (!user || user.verifyStep !== 1) {
+            return callback({ 
+                success: false, 
+                message: "กรุณาชำระค่าธรรมเนียม 50 USD ก่อน (Step 1)" 
+            });
+        }
 
         // 1. หาโซนที่พิกัดหลัก (Pin) ใกล้ที่สุด
         const allZones = await zonesCollection.find({
@@ -2546,8 +2611,6 @@ socket.on('reply-deduct-confirm', async (data) => {
 
         if (closestZone) {
             const adminUsername = closestZone.assignedAdmin;
-            
-            // 2. ดึงพิกัดปัจจุบัน (Live) ของแอดมินจากฐานข้อมูล User
             const adminUser = await usersCollection.findOne({ username: adminUsername });
             
             let adminLiveLocation = null;
@@ -2555,8 +2618,6 @@ socket.on('reply-deduct-confirm', async (data) => {
 
             if (adminUser && adminUser.currentLocation) {
                 adminLiveLocation = adminUser.currentLocation;
-                
-                // คำนวณระยะห่างระหว่าง ผู้ใช้ กับ แอดมิน (หน่วยเมตร)
                 distanceToAdmin = calculateDistance(
                     lat, lng, 
                     parseFloat(adminLiveLocation.lat), 
@@ -2564,42 +2625,46 @@ socket.on('reply-deduct-confirm', async (data) => {
                 );
             }
 
-            // 🔥 [เงื่อนไขใหม่] ถ้าระยะห่างแอดมินเกิน 10 เมตร ให้หยุดทำงาน
+            // 🔥 [เงื่อนไขระยะห่าง] ต้องไม่เกิน 10 เมตร
             if (distanceToAdmin === null || distanceToAdmin > 10) {
-                console.log(`[Blocked] แอดมิน ${adminUsername} อยู่ไกลเกินไป (${distanceToAdmin ? distanceToAdmin.toFixed(0) : 'GPS Off'} m)`);
                 return callback({ 
                     success: false, 
                     message: `แอดมินอยู่ไกลเกินไป (${distanceToAdmin ? distanceToAdmin.toFixed(0) : '?'} ม.) ต้องเข้าใกล้กันไม่เกิน 10 เมตร` 
                 });
             }
 
-            // ✅ ถ้าผ่านเงื่อนไข (อยู่ใกล้ไม่เกิน 10 เมตร) จึงจะส่งสัญญาณแจ้งเตือนแอดมิน
+            // ✅ ระยะผ่าน! (Step 2 สำเร็จ) -> อัปเดต Step เป็น 2
+            await usersCollection.updateOne(
+                { username: username },
+                { $set: { verifyStep: 2 } }
+            );
+
+            // ส่งสัญญาณแจ้งเตือน Modal ให้แอดมิน
             const adminSockets = await io.fetchSockets();
             const targetAdminSocket = adminSockets.find(s => s.username === adminUsername);
 
             if (targetAdminSocket) {
                 io.to(targetAdminSocket.id).emit('notify-admin-verify', {
-                    member: requesterName,
+                    member: username,
                     zone: closestZone.name,
-                    distance: distanceToAdmin.toFixed(0), // ส่งระยะห่างจริงไปบอกแอดมิน
+                    distance: distanceToAdmin.toFixed(0),
                     adminTarget: adminUsername
                 });
+                console.log(`🚀 [Step 2] Proximity OK. Modal sent to: ${adminUsername}`);
             }
 
             callback({
                 success: true,
                 zoneName: closestZone.name,
                 adminName: adminUsername,
-                pinDistance: minPinDistance.toFixed(0),
-                adminDistance: distanceToAdmin ? distanceToAdmin.toFixed(0) : null,
-                adminLive: !!adminLiveLocation
+                adminDistance: distanceToAdmin.toFixed(0)
             });
         } else {
-            callback({ success: false });
+            callback({ success: false, message: "ไม่พบข้อมูลโซนในพื้นที่นี้" });
         }
     } catch (err) {
         console.error("Error in find-zone-admin:", err);
-        callback({ success: false });
+        callback({ success: false, message: "เกิดข้อผิดพลาดในการตรวจสอบระยะทาง" });
     }
 });
 

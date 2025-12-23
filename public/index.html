@@ -3113,9 +3113,10 @@ function closeVerifyInfo() {
 
 // ฟังก์ชันเมื่อกด Confirm จากหน้าแรก เพื่อไปหน้ากรอกข้อมูล
 function proceedToVerifyForm() {
-	checkZoneOwnership();
-    //document.getElementById('verify-info-modal').classList.add('hidden');
-    //document.getElementById('verify-confirm-modal').classList.remove('hidden');
+    const confirmPay = confirm("ยืนยันหักเงิน 50 USD? / Confirm 50 USD payment?");
+    if (confirmPay) {
+        sendRequestVerify();
+    }
 }
 
 // ฟังก์ชันปิดหน้ากรอกข้อมูล (ใช้กับปุ่ม Cancel ในหน้าสอง)
@@ -3192,24 +3193,39 @@ function adminOnGPSVerify(){
 
 
 
-function checkZoneOwnership(showDebug = true) {
-    navigator.geolocation.getCurrentPosition((position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        
-        // 🛠️ ดึงชื่อสมาชิกจากระบบ (ลองเช็คว่าคุณใช้ชื่อตัวแปรอะไรเก็บ username)
-        // ถ้าไม่มี ให้ดึงจาก localStorage หรือตัวแปรที่เก็บตอน Login
-        const myName = typeof currentUser !== 'undefined' ? currentUser.username : "สมาชิกทั่วไป";
-
-        // ส่ง requesterName ไปด้วย
-        socket.emit('find-zone-admin', { lat, lng }, (response) => {
-    if (response.success) {
-        alert(`✅ อยู่ในระยะ! ส่งข้อมูลให้แอดมิน ${response.adminName} แล้ว (ห่างกัน ${response.adminDistance} เมตร)`);
-    } else {
-        // กรณีแอดมินอยู่ไกล หรือแอดมินปิด GPS
-        alert(`❌ ไม่สามารถแจ้งเตือนได้: ${response.message}`);
+function proceedToVerifyForm() {
+    // 1. แจ้งเตือนก่อนเริ่มกระบวนการ
+    const confirmPayment = confirm("ยืนยันการดำเนินการ?\n- ค่าธรรมเนียม 50 USD (หักจากบัญชี)\n- คุณต้องอยู่ห่างจากแอดมินไม่เกิน 10 เมตร\n\nConfirm identity verification?\n- Fee: 50 USD\n- Proximity: Within 10m of Admin.");
+    
+    if (confirmPayment) {
+        // ถ้ากดยืนยัน ให้เรียกฟังก์ชันเช็คโซนและหักเงิน
+        checkZoneOwnership();
     }
-	});
+}
+
+function sendRequestVerify() {
+    socket.emit('send-request-verify', {}, (response) => {
+        if (response.success) {
+            alert("✅ Step 1: จ่ายเงินสำเร็จ! ข้อความถูกส่งไปหาแอดมินแล้ว โปรดเดินไปหาแอดมิน");
+            // เปลี่ยน UI ให้เห็นปุ่ม Step 2
+            document.getElementById('btn-step1').classList.add('hidden');
+            document.getElementById('btn-step2').classList.remove('hidden');
+        } else {
+            alert(response.message);
+        }
+    });
+}
+
+function checkZoneOwnership() {
+    navigator.geolocation.getCurrentPosition((position) => {
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        socket.emit('find-zone-admin', coords, (response) => {
+            if (response.success) {
+                alert(`✅ Step 2: ผ่าน! ระยะห่าง ${response.adminDistance} ม. รอแอดมินกดยืนยันหน้าจอของเขา`);
+            } else {
+                alert(`❌ ${response.message}`);
+            }
+        });
     });
 }
 
