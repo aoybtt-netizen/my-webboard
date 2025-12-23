@@ -2556,32 +2556,36 @@ socket.on('reply-deduct-confirm', async (data) => {
             if (adminUser && adminUser.currentLocation) {
                 adminLiveLocation = adminUser.currentLocation;
                 
-                // 3. คำนวณระยะห่างระหว่าง "ผู้ใช้" กับ "แอดมินตัวจริง"
+                // คำนวณระยะห่างระหว่าง ผู้ใช้ กับ แอดมิน (หน่วยเมตร)
                 distanceToAdmin = calculateDistance(
-                    lat, 
-                    lng, 
+                    lat, lng, 
                     parseFloat(adminLiveLocation.lat), 
                     parseFloat(adminLiveLocation.lng)
                 );
             }
 
-            // 🔥 ส่งสัญญาณแจ้งเตือนไปที่หน้าจอของ Admin
+            // 🔥 [เงื่อนไขใหม่] ถ้าระยะห่างแอดมินเกิน 10 เมตร ให้หยุดทำงาน
+            if (distanceToAdmin === null || distanceToAdmin > 10) {
+                console.log(`[Blocked] แอดมิน ${adminUsername} อยู่ไกลเกินไป (${distanceToAdmin ? distanceToAdmin.toFixed(0) : 'GPS Off'} m)`);
+                return callback({ 
+                    success: false, 
+                    message: `แอดมินอยู่ไกลเกินไป (${distanceToAdmin ? distanceToAdmin.toFixed(0) : '?'} ม.) ต้องเข้าใกล้กันไม่เกิน 10 เมตร` 
+                });
+            }
+
+            // ✅ ถ้าผ่านเงื่อนไข (อยู่ใกล้ไม่เกิน 10 เมตร) จึงจะส่งสัญญาณแจ้งเตือนแอดมิน
             const adminSockets = await io.fetchSockets();
             const targetAdminSocket = adminSockets.find(s => s.username === adminUsername);
 
             if (targetAdminSocket) {
                 io.to(targetAdminSocket.id).emit('notify-admin-verify', {
-                    member: requesterName, 
+                    member: requesterName,
                     zone: closestZone.name,
-                    distance: minPinDistance.toFixed(0),
+                    distance: distanceToAdmin.toFixed(0), // ส่งระยะห่างจริงไปบอกแอดมิน
                     adminTarget: adminUsername
                 });
-                console.log(`🚀 Sent verify notification to admin: ${adminUsername}`);
             }
 
-            console.log(`[Debug] Admin: ${adminUsername} | Live Distance: ${distanceToAdmin ? distanceToAdmin.toFixed(0) : 'N/A'} m`);
-
-            // 4. ส่งข้อมูลกลับไปหา User
             callback({
                 success: true,
                 zoneName: closestZone.name,

@@ -3137,6 +3137,7 @@ function submitIdentityData() {
 }
 
 
+
 socket.on('notify-admin-verify', (data) => {
     // เช็คว่า adminTarget ที่ Server ส่งมา ตรงกับชื่อเราไหม (ป้องกัน Modal เด้งผิดคน)
     // โดยเปรียบเทียบกับชื่อที่คุณใช้ login ในหน้า admin
@@ -3201,13 +3202,14 @@ function checkZoneOwnership(showDebug = true) {
         const myName = typeof currentUser !== 'undefined' ? currentUser.username : "สมาชิกทั่วไป";
 
         // ส่ง requesterName ไปด้วย
-        socket.emit('find-zone-admin', { lat, lng, requesterName: myName }, (response) => {
-            if (response.success) {
-                if (showDebug) {
-                    alert(`✅ ส่งข้อมูลให้แอดมิน ${response.adminName} แล้ว\nกำลังรอการยืนยัน...`);
-                }
-            }
-        });
+        socket.emit('find-zone-admin', { lat, lng }, (response) => {
+    if (response.success) {
+        alert(`✅ อยู่ในระยะ! ส่งข้อมูลให้แอดมิน ${response.adminName} แล้ว (ห่างกัน ${response.adminDistance} เมตร)`);
+    } else {
+        // กรณีแอดมินอยู่ไกล หรือแอดมินปิด GPS
+        alert(`❌ ไม่สามารถแจ้งเตือนได้: ${response.message}`);
+    }
+	});
     });
 }
 
