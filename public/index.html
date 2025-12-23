@@ -193,7 +193,7 @@
 	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
 กระทู้ของฉันที่ปิดแล้ว
 </button>
-	<button class="sidebar-btn" onclick="openVerifyModal()" style="background: #28a745; color: white;">
+	<button class="sidebar-btn" onclick="verify-info-modal" style="background: #28a745; color: white;">
     <i class="fas fa-user-shield"></i> <span data-i18n-key="menu_verify">Verify Identity</span>
 </button>
     
@@ -204,7 +204,6 @@
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
-	<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()">Verify Members</button>
     <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
@@ -3250,6 +3249,7 @@ socket.on('notify-admin-verify', (data) => {
 
 
 function adminZoneVerify(){
+	//<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()">Verify Members</button> 
     document.getElementById('admin-members-verify-modal').classList.remove('hidden');
 }
 
@@ -5228,8 +5228,9 @@ function openUserDetail(targetUsername) {
                 <li>Unrestricted access to all features. / การใช้งานจะไม่ถูกจำกัด</li>
                 <li>Use real ID card or Passport data. / ใช้ข้อมูลจริงตามบัตรประชาชน/พาสปอร์ต</li>
                 <li>Your data is kept strictly confidential. / ข้อมูลของคุณจะถูกเก็บเป็นความลับสูงสุด</li>
-                <li><b>Must be within 10 meters of the admin.</b> / ต้องอยู่ใกล้แอดมินไม่เกิน 10 เมตร</li>
-                <li><b>Fee: 50 USD (Deducted from system balance).</b> / ค่าธรรมเนียม 50 USD (หักจากเงินในระบบ)</li>
+                <li>Must be within 10 meters of the admin. / ต้องอยู่ใกล้แอดมินไม่เกิน 10 เมตร</li>
+                <li>Fee: 50 USD (Deducted from system balance). / ค่าธรรมเนียม 50 USD (หักจากเงินในระบบ)</li>
+				<li><b>The identity verification system is not yet enabled....................</b></li>
             </ul>
         </div>
 
@@ -5237,8 +5238,8 @@ function openUserDetail(targetUsername) {
             <button class="sidebar-btn" onclick="closeVerifyInfo()" style="background: #6c757d; color: white; flex: 1; padding: 12px; border-radius: 8px;">
                 Cancel / ยกเลิก
             </button>
-            <button class="sidebar-btn" onclick="proceedToVerifyForm()" style="background: #28a745; color: white; flex: 1; padding: 12px; border-radius: 8px;">
-                Confirm / ยืนยัน
+            <button class="sidebar-btn" onclick="closeVerifyInfo()" style="background: #28a745; color: white; flex: 1; padding: 12px; border-radius: 8px;">
+                OK
             </button>
         </div>
     </div>
