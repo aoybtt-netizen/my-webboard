@@ -3147,21 +3147,21 @@ function closeVerifyConfirm() {
 }
 
 // ฟังก์ชันส่งข้อมูล (หน้าสอง)
-async function submitIdentityData() {
-    // 1. ดึงค่าจาก Input ต่างๆ
-    const fullName = document.getElementById('verify-fullname').value;
-    const phone = document.getElementById('verify-phone').value;
-    const address = document.getElementById('verify-address').value;
+async function submitIdentityData(event) { // รับ event เข้ามา
+    // 1. ดักจับปุ่มที่กดไว้ก่อน (ป้องกัน event หาย)
+    const btn = event.currentTarget || event.target;
+    
+    const fullName = document.getElementById('verify-fullname').value.trim();
+    const phone = document.getElementById('verify-phone').value.trim();
+    const address = document.getElementById('verify-address').value.trim();
     const idCardFile = document.getElementById('verify-id-card').files[0];
     const selfieFile = document.getElementById('verify-selfie').files[0];
 
-    // 2. ตรวจสอบความครบถ้วน
     if (!fullName || !phone || !address || !idCardFile || !selfieFile) {
         alert("Please complete all fields and upload both photos.");
         return;
     }
 
-    // ฟังก์ชันช่วยแปลง File เป็น Base64
     const toBase64 = file => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -3170,16 +3170,16 @@ async function submitIdentityData() {
     });
 
     try {
-        // แสดง Loading (ถ้ามี)
-        const btn = event.target;
+        // เปลี่ยนสถานะปุ่ม
         btn.disabled = true;
-        btn.innerText = "Uploading...";
+        const originalText = btn.innerText;
+        btn.innerText = "⌛ Uploading & Locating...";
 
-        // 3. แปลงไฟล์ภาพ
+        // แปลงไฟล์ภาพ
         const idCardBase64 = await toBase64(idCardFile);
         const selfieBase64 = await toBase64(selfieFile);
 
-        // 4. ดึงพิกัดปัจจุบัน
+        // ดึงพิกัดปัจจุบัน
         navigator.geolocation.getCurrentPosition(async (position) => {
             const payload = {
                 fullName,
@@ -3191,26 +3191,31 @@ async function submitIdentityData() {
                 lng: position.coords.longitude
             };
 
-            // 5. ส่งข้อมูลไปที่ Server
+            console.log("Sending data to server...");
+            
+            // ส่งข้อมูลผ่าน Socket
             socket.emit('submit-final-verification', payload, (response) => {
                 if (response.success) {
-                    alert("Data submitted successfully! Please show your original ID to the Admin.");
+                    alert("✅ Data submitted successfully! Please show your original ID to the Admin.");
                     closeVerifyConfirm();
                 } else {
-                    alert("Error: " + response.message);
+                    alert("❌ Error: " + response.message);
                     btn.disabled = false;
-                    btn.innerText = "Submit for Review";
+                    btn.innerText = originalText;
                 }
             });
+
         }, (err) => {
-            alert("Please enable GPS to confirm your location with the Admin.");
+            alert("📍 GPS Error: Please enable GPS to confirm your location.");
             btn.disabled = false;
-            btn.innerText = "Submit for Review";
-        });
+            btn.innerText = originalText;
+        }, { enableHighAccuracy: true, timeout: 10000 });
 
     } catch (err) {
         console.error(err);
-        alert("Failed to process images.");
+        alert("🚨 Image processing failed. File might be too large.");
+        btn.disabled = false;
+        btn.innerText = "Submit for Review";
     }
 }
 
@@ -5276,7 +5281,7 @@ function openUserDetail(targetUsername) {
 
         <div style="display: flex; gap: 10px;">
             <button class="sidebar-btn" onclick="closeVerifyConfirm()" style="background: #6c757d; color: white; flex: 1;">Cancel</button>
-            <button class="sidebar-btn" onclick="submitIdentityData()" style="background: #28a745; color: white; flex: 1;">Submit for Review</button>
+            <button class="sidebar-btn" onclick="submitIdentityData(event)" style="background: #28a745; color: white; flex: 1;">Submit for Review</button>
         </div>
     </div>
 </div>
