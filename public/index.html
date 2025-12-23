@@ -193,7 +193,7 @@
 	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
 กระทู้ของฉันที่ปิดแล้ว
 </button>
-	<button class="sidebar-btn" onclick="verify-info-modal" style="background: #28a745; color: white;">
+	<button class="sidebar-btn" onclick="openVerifyModal()" style="background: #28a745; color: white;">
     <i class="fas fa-user-shield"></i> <span data-i18n-key="menu_verify">Verify Identity</span>
 </button>
     
@@ -3114,11 +3114,11 @@ function openVerifyModal() {
             document.getElementById('verify-info-modal').classList.add('hidden');
             document.getElementById('verify-confirm-modal').classList.add('hidden');
 
-            if (step === 1) {
+            if (step === 10) {
                 // Step 1: จ่ายเงินแล้ว -> เปิดหน้าให้กดเช็คระยะทาง (Step 2)
                 document.getElementById('verify-confirm-modal').classList.remove('hidden');
                 console.log("📍 User at Step 1: Opening Proximity Check");
-            } else if (step === 2) {
+            } else if (step === 20) {
                 // Step 2: ระยะผ่านแล้ว -> อาจจะแสดงหน้า "รอแอดมินอนุมัติ"
                 alert("คุณผ่านขั้นตอนตรวจสอบระยะทางแล้ว กรุณารอแอดมินกดยืนยันครับ");
             } else {
