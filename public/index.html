@@ -4091,6 +4091,9 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     if (sender === me && target === currentPartner) isRelevant = true;
     // กรณี C: ข้อความจากระบบ (System) ขณะคุยกับ Admin
     if (sender === 'System' && currentPartner === 'Admin') isRelevant = true;
+	// กรณี D: ข้อความแจ้งเตือนการจ่ายเงิน Verify (เพื่อให้แสดงในช่องแชทคู่สนทนาปัจจุบัน)
+    const isVerifyNotif = (data.sender === 'System' && (data.msgKey === 'VERIFY_PAYMENT_CHAT' || data.msg.includes('ยืนยันตัวตน')));
+    if (isVerifyNotif) isRelevant = true;
 
     // 3. การแสดงผล
     if (isChatOpen && isRelevant) {
@@ -4115,7 +4118,7 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     } else {
         // --- กรณีไม่ได้เปิดแชท หรือคุยกับคนอื่นอยู่: แจ้งเตือน ---
         if (target === me) {
-            const isFinancial = sender === 'System' && (data.msg.includes('USD') || data.msg.includes('💸'));
+            const isFinancial = sender === 'System' && (data.msg.includes('USD') || data.msg.includes('💸') || data.msg.includes('Verify Member'));
             
             if (isFinancial) {
                 // ถ้าเป็นเรื่องเงิน ให้แจ้งเตือนที่กระดิ่ง
@@ -4149,32 +4152,46 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     
     let translatedMsg = data.msg;
 
-    // ตรวจสอบและแปลข้อความ System Message
+    // --- ส่วนแปลภาษาเดิมของคุณ ---
     if (data.sender === 'System' && data.msgKey) {
         const lang = currentLang;
         const key = data.msgKey;
-        const t = translations[lang] || translations['th']; // Fallback เป็นไทย
+        const t = translations[lang] || translations['th'];
         const messageTemplateFunc = t[key];
 
         if (typeof messageTemplateFunc === 'function') {
-            // เรียกใช้ฟังก์ชันแปล พร้อมส่งข้อมูลที่จำเป็น
             translatedMsg = messageTemplateFunc(data.msgData);
-        } else {
-            translatedMsg = data.msg; // ใช้ข้อความเดิมหากไม่พบ Key
         }
-    } else {
-        translatedMsg = data.msg; // ข้อความปกติ
     }
     // ----------------------------------------------------
 
     if (data.sender === 'System') {
-        div.className = 'system-msg'; 
-        if (data.postId) {
-            div.innerHTML = `<span class="system-link" onclick="checkAndGo(${data.postId})">${translatedMsg} <br><small>👉 Go To  Topic</small></span>`;
+        // 🔥 จุดที่เพิ่ม: เช็คว่าเป็นงานจ่ายเงินยืนยันตัวตนหรือไม่
+        const isVerifyPayment = data.msgKey === 'VERIFY_PAYMENT_CHAT' || translatedMsg.includes('ยืนยันตัวตน');
+
+        if (isVerifyPayment) {
+            // แสดงผลแบบกึ่งกลาง เน้นสีทอง/เหลือง เพื่อให้ดูเหมือนใบเสร็จหรือระบบทางการ
+            div.className = 'system-msg verify-payment-msg'; 
+            div.style.textAlign = 'center';
+            div.style.width = '100%';
+            div.style.margin = '15px 0';
+            div.innerHTML = `
+                <div style="background: #fff9c4; color: #827717; border: 1px dashed #fbc02d; padding: 10px; border-radius: 10px; display: inline-block; max-width: 90%; line-height: 1.5;">
+                    ${translatedMsg}
+                </div>
+            `;
+        } else if (data.postId) {
+            // ระบบเดิมของคุณ
+            div.className = 'system-msg'; 
+            div.innerHTML = `<span class="system-link" onclick="checkAndGo(${data.postId})">${translatedMsg} <br><small>👉 Go To Topic</small></span>`;
         } else {
-            div.innerHTML = `${translatedMsg}`; 
+            // ระบบเดิมของคุณ (ข้อความระบบทั่วไป)
+            div.className = 'system-msg'; 
+            div.style.textAlign = 'center';
+            div.innerHTML = `<span style="background: #eee; padding: 2px 10px; border-radius: 10px; font-size: 0.85em;">${translatedMsg}</span>`; 
         }
     } else {
+        // แชทปกติ
         div.className = 'msg ' + (data.sender === myUsername ? 'my-msg' : 'other-msg');
         div.innerHTML = `<b>${data.sender}:</b> ${translatedMsg}`;
     }

@@ -2607,29 +2607,32 @@ socket.on('send-request-verify', async (data, callback) => {
 
         if (typeof messagesCollection !== 'undefined') {
             const chatMsg = { 
-                sender: username,     
+                sender: 'System',     // 🔒 ใช้ 'System' เพื่อให้ UI ฝั่งหน้าบ้านแสดงผลตรงกลาง
                 target: targetAdmin,  
-                msgKey: 'VERIFY_PAYMENT_CHAT', 
-                msgData: { member: username }, 
-                msg: `💳 [System Notify] ผม/ดิฉัน ได้ชำระค่าธรรมเนียมยืนยันตัวตน 50 USD เรียบร้อยแล้ว ขณะนี้กำลังรอพบคุณในโซนเพื่อตรวจสอบระยะทางครับ/ค่ะ`, 
+                realSender: username, // เก็บชื่อคนจ่ายจริงไว้ตรวจสอบเบื้องหลัง
+                msgKey: 'VERIFY_PAYMENT_SYSTEM', 
+                // ข้อความที่จะปรากฏกึ่งกลาง
+                msg: `🔔 ระบบ: สมาชิก "${username}" ได้ชำระค่าธรรมเนียม 50 USD เรียบร้อยแล้ว (สถานะ: รอนัดพบในระยะ 10 เมตร)`, 
                 timestamp: Date.now(),
+                isSystem: true,       // ✨ เพิ่ม Flag เพื่อให้ CSS หน้าบ้านแสดงผลกึ่งกลาง
                 isRead: false
             };
             
             await messagesCollection.insertOne(chatMsg);
             
-            // ✅ แก้จาก o.to เป็น io.to
+            // 🚀 ส่งให้แอดมิน
             io.to(targetAdmin).emit('private-message', { 
                 ...chatMsg, 
                 to: targetAdmin 
             });
             
+            // 🚀 ส่งให้สมาชิกเห็นหลักฐานการจ่ายในแชทตัวเองด้วย
             socket.emit('private-message', { 
                 ...chatMsg, 
                 to: targetAdmin 
             });
 
-            console.log(`💬 Chat notification sent from ${username} to ${targetAdmin}`);
+            console.log(`🔒 System chat notification sent for ${username} to ${targetAdmin}`);
         }
 
         const newCoins = (user.coins || 0) - amount;
