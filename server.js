@@ -2760,9 +2760,9 @@ socket.on('send-request-verify', async (data, callback) => {
         const user = await usersCollection.findOne({ username: username });
 
         // 1. ตรวจสอบว่าผ่าน Step 1 มาหรือยัง
-        if (!user || (user.verifyStep || 0) < 1) { 
+        /*if (!user || (user.verifyStep || 0) < 1) { 
             return callback({ success: false, message: "Please pay the verification fee first. (Step 1)" });
-        }
+        }*/
 
         const targetAdmin = user.lastVerifyAdmin;
         const adminUser = await usersCollection.findOne({ username: targetAdmin });
