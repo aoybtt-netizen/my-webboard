@@ -2767,13 +2767,7 @@ socket.on('send-request-verify', async (data, callback) => {
         const targetAdmin = user.lastVerifyAdmin;
         const adminUser = await usersCollection.findOne({ username: targetAdmin });
 
-        // 2. ตรวจสอบพิกัดสดของ Admin (Live Location) เหมือนใน find-zone-admin
-        if (!adminUser || !adminUser.currentLocation) {
-            return callback({ 
-                success: false, 
-                message: "Admin is currently offline or location not updated. Please ask Admin to refresh." 
-            });
-        }
+    
 
         // 3. คำนวณระยะห่างระหว่าง User กับ Admin (ใช้หน่วยเมตร)
         const distanceToAdmin = calculateDistance(
