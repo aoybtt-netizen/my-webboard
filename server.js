@@ -2606,34 +2606,42 @@ socket.on('send-request-verify', async (data, callback) => {
         }
 
         if (typeof messagesCollection !== 'undefined') {
-            const chatMsg = { 
-                sender: username,     // 🔒 ใช้ 'System' เพื่อให้ UI ฝั่งหน้าบ้านแสดงผลตรงกลาง
-                target: targetAdmin,  
-                realSender: username, // เก็บชื่อคนจ่ายจริงไว้ตรวจสอบ
-                msgKey: 'VERIFY_PAYMENT_SYSTEM', 
-                msgData: { member: username }, // ✨ ส่งชื่อสมาชิกไปเพื่อให้หน้าบ้านทำจุดแดงแจ้งเตือน
-                msg: `🔔 ระบบ: สมาชิก "${username}" ได้ชำระค่าธรรมเนียม 50 USD เรียบร้อยแล้ว (สถานะ: รอนัดพบในระยะ 10 เมตร)`, 
-                timestamp: Date.now(),
-                isSystem: true,       // ✨ Flag สำหรับ CSS/UI กึ่งกลาง
+            const timestamp = Date.now();
+
+            // 1. ข้อความชุดแรก: ส่งในนาม 'System' (เพื่อให้ขึ้นกึ่งกลางหน้าจอ)
+            const systemMsg = { 
+                sender: 'System',
+                target: targetAdmin,
+                realSender: username,
+                msgKey: 'VERIFY_PAYMENT_SYSTEM',
+                msgData: { member: username },
+                msg: `🔔 ระบบ: สมาชิก "${username}" ได้ชำระค่าธรรมเนียม 50 USD เรียบร้อยแล้ว`,
+                timestamp: timestamp,
+                isSystem: true,
                 isRead: false
             };
-            
-            // 1. บันทึกลงฐานข้อมูล
-            await messagesCollection.insertOne(chatMsg);
-            
-            // 2. 🚀 ส่งให้แอดมิน (Real-time)
-            io.to(targetAdmin).emit('private-message', { 
-                ...chatMsg, 
-                to: targetAdmin 
-            });
-            
-            // 3. 🚀 ส่งสะท้อนกลับให้สมาชิกเห็นในหน้าแชทตัวเองด้วย
-            socket.emit('private-message', { 
-                ...chatMsg, 
-                to: targetAdmin 
-            });
 
-            console.log(`🔒 System chat notification sent for ${username} to ${targetAdmin}`);
+            // 2. ข้อความชุดที่สอง: ส่งในนาม 'Username' (เพื่อให้ขึ้นในเธรดแชทปกติ)
+            const userMsg = { 
+                sender: username,
+                target: targetAdmin,
+                msg: `💳 ฉันได้ชำระเงินยืนยันตัวตนเรียบร้อยแล้ว กำลังรอพบคุณครับ/ค่ะ`,
+                timestamp: timestamp + 1, // เพิ่ม 1ms เพื่อให้เรียงต่อจากข้อความระบบ
+                isRead: false
+            };
+
+            // บันทึกลงฐานข้อมูลทั้งสองข้อความ (แอดมินจะเห็นประวัติครบถ้วน)
+            await messagesCollection.insertMany([systemMsg, userMsg]);
+
+            // --- ส่ง Socket ให้แอดมิน ---
+            io.to(targetAdmin).emit('private-message', { ...systemMsg, to: targetAdmin });
+            io.to(targetAdmin).emit('private-message', { ...userMsg, to: targetAdmin });
+
+            // --- ส่ง Socket สะท้อนกลับให้สมาชิก ---
+            socket.emit('private-message', { ...systemMsg, to: targetAdmin });
+            socket.emit('private-message', { ...userMsg, to: targetAdmin });
+
+            console.log(`🔒 Sent Double-Notification (System & User) to ${targetAdmin}`);
         }
 
         const newCoins = (user.coins || 0) - amount;
