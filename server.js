@@ -2755,45 +2755,50 @@ socket.on('send-request-verify', async (data, callback) => {
 	socket.on('submit-final-verification', async (data, callback) => {
     try {
         const username = socket.username;
+        const { lat, lng } = data; // พิกัดที่ส่งมาจากมือถือ User
+
         const user = await usersCollection.findOne({ username: username });
 
-        // 1. ตรวจสอบว่าผ่านการชำระเงินมาหรือยัง
-        /*if (!user || (user.verifyStep || 0) < 1) { 
+        // 1. ตรวจสอบว่าผ่าน Step 1 มาหรือยัง
+        if (!user || (user.verifyStep || 0) < 1) { 
             return callback({ success: false, message: "Please pay the verification fee first. (Step 1)" });
-        }*/
-
-        const targetAdmin = user.lastVerifyAdmin;
-        
-        // 2. ดึงข้อมูลพิกัดล่าสุด (Live Location) จากตัว Admin แทนการใช้พิกัดโซน
-        const adminUser = await usersCollection.findOne({ username: targetAdmin });
-
-        if (!adminUser || !adminUser.currentLocation) {
-            return callback({ success: false, message: "Admin is currently offline or location not updated. Please ask Admin to refresh." });
         }
 
-        // 3. คำนวณระยะห่างระหว่าง User กับ Admin (Live to Live)
-        const distance = calculateDistance(
-            data.lat, 
-            data.lng, 
+        const targetAdmin = user.lastVerifyAdmin;
+        const adminUser = await usersCollection.findOne({ username: targetAdmin });
+
+        // 2. ตรวจสอบพิกัดสดของ Admin (Live Location) เหมือนใน find-zone-admin
+        if (!adminUser || !adminUser.currentLocation) {
+            return callback({ 
+                success: false, 
+                message: "Admin is currently offline or location not updated. Please ask Admin to refresh." 
+            });
+        }
+
+        // 3. คำนวณระยะห่างระหว่าง User กับ Admin (ใช้หน่วยเมตร)
+        const distanceToAdmin = calculateDistance(
+            lat, 
+            lng, 
             parseFloat(adminUser.currentLocation.lat), 
             parseFloat(adminUser.currentLocation.lng)
         );
 
-        // 🔍 ตรวจสอบระยะห่าง: ปรับเป็น 0.03 km (30 เมตร) เพื่อให้ GPS ทำงานได้ลื่นไหลขึ้น
-        const allowedDistance = 0.03; 
-        if (distance > allowedDistance) {
+        // 4. ใช้เกณฑ์การเช็คเหมือน find-zone-admin (ปรับเป็น 10-30 เมตรตามที่คุณต้องการ)
+        // แนะนำให้ใช้ 30 เมตรเพื่อให้เสถียรกลางแจ้ง
+        const maxAllowedDistance = 30; 
+        if (distanceToAdmin === null || distanceToAdmin > maxAllowedDistance) {
             return callback({ 
                 success: false, 
-                message: `Too far! You are ${Math.round(distance * 1000)}m away from Admin. Must be within 30m.` 
+                message: `Too far! You are ${Math.round(distanceToAdmin)}m away from Admin. Must be within ${maxAllowedDistance}m.` 
             });
         }
 
-        // ✅ บันทึกข้อมูลเข้า Profile สมาชิก
+        // ✅ ระยะผ่าน! บันทึกข้อมูลเข้า Profile สมาชิก
         await usersCollection.updateOne(
             { username: username },
             { 
                 $set: { 
-                    verifyStep: 2, // เลื่อนระดับเป็นรอการอนุมัติ
+                    verifyStep: 2, 
                     identityData: {
                         fullName: data.fullName,
                         phone: data.phone,
@@ -2802,20 +2807,20 @@ socket.on('send-request-verify', async (data, callback) => {
                         selfieImage: data.selfieImage,
                         verifiedAt: new Date(),
                         managedBy: targetAdmin,
-                        verifiedDistance: Math.round(distance * 1000)
+                        verifiedDistance: Math.round(distanceToAdmin)
                     }
                 } 
             }
         );
 
-        // 🔔 ส่งสัญญาณแจ้งเตือนให้แอดมิน
+        // 🔔 แจ้งเตือนแอดมินให้ตรวจสอบ
         io.to(targetAdmin).emit('admin-review-request', {
             fromUser: username,
             fullName: data.fullName,
-            distance: Math.round(distance * 1000)
+            distance: Math.round(distanceToAdmin)
         });
 
-        console.log(`🔒 Identity Data submitted for ${username}. Proximity: ${Math.round(distance * 1000)}m`);
+        console.log(`🔒 Step 2 Success: ${username} submitted ID data. Proximity: ${Math.round(distanceToAdmin)}m`);
         callback({ success: true });
 
     } catch (err) {
