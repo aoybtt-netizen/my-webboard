@@ -2757,9 +2757,9 @@ socket.on('send-request-verify', async (data, callback) => {
         const username = socket.username;
         const user = await usersCollection.findOne({ username: username });
 
-        if (!user || user.verifyStep !== 1) {
-            return callback({ success: false, message: "Please pay the verification fee first." });
-        }
+        if (!user || (user.verifyStep || 0) < 1) { 
+		return callback({ success: false, message: "Please pay the verification fee first." });
+		}
 
         const targetAdmin = user.lastVerifyAdmin;
         const zone = await zonesCollection.findOne({ assignedAdmin: targetAdmin });
