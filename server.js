@@ -2757,19 +2757,35 @@ socket.on('send-request-verify', async (data, callback) => {
         const username = socket.username;
         const user = await usersCollection.findOne({ username: username });
 
+        // 1. ตรวจสอบว่าผ่านการชำระเงินมาหรือยัง
         if (!user || (user.verifyStep || 0) < 1) { 
-		return callback({ success: false, message: "Please pay the verification fee first." });
-		}
+            return callback({ success: false, message: "Please pay the verification fee first. (Step 1)" });
+        }
 
         const targetAdmin = user.lastVerifyAdmin;
-        const zone = await zonesCollection.findOne({ assignedAdmin: targetAdmin });
+        
+        // 2. ดึงข้อมูลพิกัดล่าสุด (Live Location) จากตัว Admin แทนการใช้พิกัดโซน
+        const adminUser = await usersCollection.findOne({ username: targetAdmin });
 
-        if (!zone) return callback({ success: false, message: "Zone admin not found." });
+        if (!adminUser || !adminUser.currentLocation) {
+            return callback({ success: false, message: "Admin is currently offline or location not updated. Please ask Admin to refresh." });
+        }
 
-        // 🔍 ตรวจสอบระยะห่าง 10 เมตร (0.01 km)
-        const distance = calculateDistance(data.lat, data.lng, parseFloat(zone.lat), parseFloat(zone.lng));
-        if (distance > 0.01) {
-            return callback({ success: false, message: `Too far! You are ${Math.round(distance * 1000)}m away. Must be within 10m.` });
+        // 3. คำนวณระยะห่างระหว่าง User กับ Admin (Live to Live)
+        const distance = calculateDistance(
+            data.lat, 
+            data.lng, 
+            parseFloat(adminUser.currentLocation.lat), 
+            parseFloat(adminUser.currentLocation.lng)
+        );
+
+        // 🔍 ตรวจสอบระยะห่าง: ปรับเป็น 0.03 km (30 เมตร) เพื่อให้ GPS ทำงานได้ลื่นไหลขึ้น
+        const allowedDistance = 0.03; 
+        if (distance > allowedDistance) {
+            return callback({ 
+                success: false, 
+                message: `Too far! You are ${Math.round(distance * 1000)}m away from Admin. Must be within 30m.` 
+            });
         }
 
         // ✅ บันทึกข้อมูลเข้า Profile สมาชิก
@@ -2777,32 +2793,34 @@ socket.on('send-request-verify', async (data, callback) => {
             { username: username },
             { 
                 $set: { 
-                    verifyStep: 2, // เลื่อนระดับเป็นรอการอนุมัติสุดท้าย
+                    verifyStep: 2, // เลื่อนระดับเป็นรอการอนุมัติ
                     identityData: {
                         fullName: data.fullName,
                         phone: data.phone,
                         address: data.address,
-                        idCardImage: data.idCardImage, // เก็บเป็น Base64 หรือ Link
+                        idCardImage: data.idCardImage, 
                         selfieImage: data.selfieImage,
                         verifiedAt: new Date(),
-                        managedBy: targetAdmin
+                        managedBy: targetAdmin,
+                        verifiedDistance: Math.round(distance * 1000)
                     }
                 } 
             }
         );
 
-        // 🔔 ส่งสัญญาณแจ้งเตือนให้แอดมินเปิดดูข้อมูลเพื่อกด Approve
+        // 🔔 ส่งสัญญาณแจ้งเตือนให้แอดมิน
         io.to(targetAdmin).emit('admin-review-request', {
             fromUser: username,
             fullName: data.fullName,
             distance: Math.round(distance * 1000)
         });
 
+        console.log(`🔒 Identity Data submitted for ${username}. Proximity: ${Math.round(distance * 1000)}m`);
         callback({ success: true });
 
     } catch (err) {
         console.error("Final Verify Error:", err);
-        callback({ success: false, message: "Server Error" });
+        callback({ success: false, message: "Server Error during processing." });
     }
 });
 
