@@ -2608,25 +2608,27 @@ socket.on('send-request-verify', async (data, callback) => {
         if (typeof messagesCollection !== 'undefined') {
             const timestamp = Date.now();
 
-            // 1. ข้อความชุดแรก: ส่งในนาม 'System' (เพื่อให้ขึ้นกึ่งกลางหน้าจอ)
+            // 1. System Notification (Displayed in the center)
             const systemMsg = { 
                 sender: 'System',
                 target: targetAdmin,
                 realSender: username,
                 msgKey: 'VERIFY_PAYMENT_SYSTEM',
                 msgData: { member: username },
-                msg: `🔔 ระบบ: สมาชิก "${username}" ได้ชำระค่าธรรมเนียม 50 USD เรียบร้อยแล้ว`,
+                // English System Message
+                msg: `🔔 SYSTEM: Member "${username}" has successfully paid the 50 USD Verification Fee. (Status: Awaiting Proximity Check)`,
                 timestamp: timestamp,
                 isSystem: true,
                 isRead: false
             };
 
-            // 2. ข้อความชุดที่สอง: ส่งในนาม 'Username' (เพื่อให้ขึ้นในเธรดแชทปกติ)
+            // 2. Automated Member Message (Displayed as user chat)
             const userMsg = { 
                 sender: username,
                 target: targetAdmin,
-                msg: `💳 ฉันได้ชำระเงินยืนยันตัวตนเรียบร้อยแล้ว กำลังรอพบคุณครับ/ค่ะ`,
-                timestamp: timestamp + 1, // เพิ่ม 1ms เพื่อให้เรียงต่อจากข้อความระบบ
+                // English User Message
+                msg: `💳 I have completed the identity verification payment. I am now heading to your location for the proximity check.`,
+                timestamp: timestamp + 1, // Ensure it appears after the system message
                 isRead: false
             };
 
