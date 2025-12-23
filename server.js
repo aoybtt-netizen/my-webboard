@@ -2535,25 +2535,24 @@ socket.on('reply-deduct-confirm', async (data) => {
     }
 });
 	
-	// --- [Step 1] จ่ายค่าธรรมเนียมและส่งข้อความหาแอดมิน ---
+	
+// --- [Step 1] เพิ่มการบันทึก Transaction ---
 socket.on('send-request-verify', async (data, callback) => {
     try {
         const username = socket.username;
-        const amount = 50; // ค่าธรรมเนียม 50 USD
-
-        // 1. ตรวจสอบยอดเงิน
+        if (!username) return callback({ success: false, message: "กรุณาเข้าสู่ระบบ" });
+        
+        const amount = 50;
         const user = await usersCollection.findOne({ username: username });
         if (!user || (user.balance || 0) < amount) {
-            return callback({ success: false, message: "ยอดเงินของคุณไม่เพียงพอ (ต้องการ 50 USD)" });
+            return callback({ success: false, message: "ยอดเงินไม่เพียงพอ" });
         }
 
-        // 2. หาโซนปัจจุบันของผู้ใช้ (เพื่อดูว่าแอดมินคนไหนควรได้รับข้อความ)
-        // หมายเหตุ: จังหวะนี้ยังไม่บล็อกเรื่องระยะทาง แต่หาโซนที่ใกล้ที่สุดมาอ้างอิง
         const allZones = await zonesCollection.find({ "lat": { $exists: true } }).toArray();
         let closestZone = null;
         let minD = Infinity;
         
-        // ถ้าหน้าบ้านส่งพิกัดมาด้วยใน Step 1 ให้คำนวณหาแอดมินโซนนั้น
+        // ควรส่ง lat, lng มาจากหน้าบ้านด้วย
         if (data.lat && data.lng) {
             allZones.forEach(z => {
                 const d = calculateDistance(data.lat, data.lng, parseFloat(z.lat), parseFloat(z.lng));
@@ -2563,7 +2562,7 @@ socket.on('send-request-verify', async (data, callback) => {
 
         const targetAdmin = closestZone ? closestZone.assignedAdmin : "Admin";
 
-        // 3. หักเงินและตั้งค่า verifyStep = 1
+        // หักเงิน + เปลี่ยน Step
         await usersCollection.updateOne(
             { username: username },
             { 
@@ -2572,21 +2571,30 @@ socket.on('send-request-verify', async (data, callback) => {
             }
         );
 
-        // 4. ส่งข้อความเข้า Inbox ของแอดมิน
+        // ✅ เพิ่มบันทึกการหักเงิน (Transaction Log)
+        if (typeof transactionsCollection !== 'undefined') {
+            await transactionsCollection.insertOne({
+                username: username,
+                amount: -amount,
+                type: 'verify_fee',
+                details: `Identity Verification Step 1 (Admin: ${targetAdmin})`,
+                timestamp: new Date()
+            });
+        }
+
+        // ส่งข้อความหาแอดมิน
         await messagesCollection.insertOne({
             sender: "System",
             receiver: targetAdmin,
-            content: `📢 สมาชิก ${username} ได้ชำระค่าธรรมเนียมยืนยันตัวตนแล้ว และกำลังรอพบคุณเพื่อเช็คระยะทาง (Step 1 สำเร็จ)`,
+            content: `📢 สมาชิก ${username} ชำระเงินยืนยันตัวตนแล้ว กำลังรอพบคุณ (Step 1)`,
             timestamp: new Date(),
             isRead: false
         });
 
-        console.log(`[Step 1] ${username} paid 50 USD. Notified Admin: ${targetAdmin}`);
         callback({ success: true, adminName: targetAdmin });
-
     } catch (err) {
         console.error("Step 1 Error:", err);
-        callback({ success: false, message: "เกิดข้อผิดพลาดในระบบ" });
+        callback({ success: false, message: "Error" });
     }
 });
 	
