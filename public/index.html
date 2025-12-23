@@ -4066,39 +4066,47 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
     });
 
     socket.on('private-message', (data) => {
-    // 1. ดักจับการแจ้งเตือน "ความคิดเห็นใหม่" (System Message)
+    // 1. ดักจับการแจ้งเตือน "ความคิดเห็นใหม่"
     if (data.target === myUsername && data.sender === 'System' && data.msg.includes('ความคิดเห็นใหม่')) {
         showCommentNotification(data.msg, data.postId);
-        return; // จบการทำงานทันทีถ้าเป็นแค่แจ้งเตือน Comment
+        return;
     }
 
     // 2. เริ่ม Logic ระบบแชท
     const modal = document.getElementById('private-chat-modal');
-    // เช็คว่าหน้าต่างแชทเปิดอยู่หรือไม่
     const isChatOpen = !modal.classList.contains('hidden');
     
-    // แปลงค่าให้ชัวร์ว่าเป็น String เพื่อการเปรียบเทียบที่แม่นยำ
     const sender = String(data.sender || '');
     const target = String(data.target || '');
     const currentPartner = String(currentChatPartner || '');
     const me = String(myUsername || '');
 
-    // ตรวจสอบว่าข้อความนี้เกี่ยวข้องกับแชทที่เราเปิดอยู่ไหม?
     let isRelevant = false;
-    // กรณี A: คู่สนทนาส่งหาเรา
     if (sender === currentPartner) isRelevant = true;
-    // กรณี B: เราส่งหาคู่สนทนา (กรณีเปิดหลายจอ)
     if (sender === me && target === currentPartner) isRelevant = true;
-    // กรณี C: ข้อความจากระบบ (System) ขณะคุยกับ Admin
     if (sender === 'System' && currentPartner === 'Admin') isRelevant = true;
-	// กรณี D: ข้อความแจ้งเตือนการจ่ายเงิน Verify (เพื่อให้แสดงในช่องแชทคู่สนทนาปัจจุบัน)
+
+    // กรณี D: ข้อความแจ้งเตือนการจ่ายเงิน Verify
     const isVerifyNotif = (data.sender === 'System' && (data.msgKey === 'VERIFY_PAYMENT_CHAT' || data.msg.includes('ยืนยันตัวตน')));
     if (isVerifyNotif) isRelevant = true;
 
     // 3. การแสดงผล
     if (isChatOpen && isRelevant) {
-        // --- กรณีเปิดแชทค้างไว้: แปะข้อความเลย ---
-        appendMessage(data);
+        // 🔥 วางไว้ตรงนี้ครับ: เช็คก่อนว่าเป็นข้อความระบบที่ต้องการให้อยู่กึ่งกลางไหม
+        if (data.sender === 'System' && data.msg.includes('ยืนยันตัวตน')) {
+            const box = document.getElementById('private-chat-messages');
+            const centerHtml = `
+                <div style="display: flex; justify-content: center; margin: 15px 0; width: 100%;">
+                    <div style="background: rgba(255, 193, 7, 0.1); color: #856404; border: 1px dashed #ffeeba; padding: 5px 15px; border-radius: 15px; font-size: 12px; text-align: center; max-width: 80%;">
+                        ${data.msg}
+                    </div>
+                </div>
+            `;
+            box.insertAdjacentHTML('beforeend', centerHtml);
+        } else {
+            // กรณีแชทปกติ หรือข้อความระบบอื่นๆ ให้เรียก appendMessage ตามเดิม
+            appendMessage(data);
+        }
         
         // เลื่อน Scrollbar ลงล่างสุด
         const box = document.getElementById('private-chat-messages');
@@ -4109,38 +4117,46 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
             notificationSound.play().catch(()=>{});
         }
         
-        // เคลียร์ Unread ทันทีที่เห็น
+        // เคลียร์ Unread
         if (unreadUsers.has(sender)) {
             unreadUsers.delete(sender);
             saveUnreadStatus();
         }
 
     } else {
-        // --- กรณีไม่ได้เปิดแชท หรือคุยกับคนอื่นอยู่: แจ้งเตือน ---
+        // --- กรณีไม่ได้เปิดแชท หรือแจ้งเตือนจุดแดง ---
         if (target === me) {
+            // ตรวจสอบเรื่องเงิน/ยืนยันตัวตน
+            const isVerifySystem = (sender === 'System' && (data.msgKey === 'VERIFY_PAYMENT_CHAT' || data.msg.includes('ยืนยันตัวตน')));
             const isFinancial = sender === 'System' && (data.msg.includes('USD') || data.msg.includes('💸') || data.msg.includes('Verify Member'));
-            
-            if (isFinancial) {
-                // ถ้าเป็นเรื่องเงิน ให้แจ้งเตือนที่กระดิ่ง
+
+            if (isVerifySystem) {
+                // 🔥 จุดสำคัญ: ทำให้แอดมินเห็นจุดแดงที่ชื่อคนจ่ายจริง
+                const actualMember = data.msgData ? data.msgData.member : null;
+                if (actualMember) {
+                    unreadUsers.add(actualMember);
+                    notify(data);
+                    saveUnreadStatus();
+                }
+            } else if (isFinancial) {
                 localStorage.setItem(`hasNewTransaction_${me}`, 'true');
                 document.getElementById('coin-notif-dot').classList.remove('hidden');
                 notificationSound.play().catch(()=>{});
             } else {
-                // ถ้าเป็นแชทปกติ ให้แจ้งเตือนที่ซองจดหมาย
                 if (sender !== 'System') unreadUsers.add(sender);
                 else unreadUsers.add('System');
                 
-                notify(data); // แสดง Badge สีแดง + เสียง
+                notify(data);
                 saveUnreadStatus();
-                
-                // ถ้ารายชื่อ Inbox (หน้ารายชื่อแชท) เปิดอยู่ ให้รีเฟรชหน้านั้นด้วยเพื่อให้จุดแดงขึ้นทันที
-                const inboxModal = document.getElementById('user-list-modal');
-                if (!inboxModal.classList.contains('hidden')) {
-                     const title = document.getElementById('user-list-title').innerText;
-                     if (!title.includes('สมาชิกทั้งหมด')) { // เช็คว่าเป็นหน้า Inbox ไม่ใช่รายชื่อรวม
-                        openInbox(inboxPage); 
-                     }
-                }
+            }
+
+            // รีเฟรชหน้ารายชื่อ Inbox
+            const inboxModal = document.getElementById('user-list-modal');
+            if (!inboxModal.classList.contains('hidden')) {
+                 const title = document.getElementById('user-list-title').innerText;
+                 if (!title.includes('สมาชิกทั้งหมด')) {
+                    openInbox(inboxPage); 
+                 }
             }
         }
     }
