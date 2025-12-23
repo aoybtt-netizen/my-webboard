@@ -2609,24 +2609,25 @@ socket.on('send-request-verify', async (data, callback) => {
             const chatMsg = { 
                 sender: 'System',     // 🔒 ใช้ 'System' เพื่อให้ UI ฝั่งหน้าบ้านแสดงผลตรงกลาง
                 target: targetAdmin,  
-                realSender: username, // เก็บชื่อคนจ่ายจริงไว้ตรวจสอบเบื้องหลัง
+                realSender: username, // เก็บชื่อคนจ่ายจริงไว้ตรวจสอบ
                 msgKey: 'VERIFY_PAYMENT_SYSTEM', 
-                // ข้อความที่จะปรากฏกึ่งกลาง
+                msgData: { member: username }, // ✨ ส่งชื่อสมาชิกไปเพื่อให้หน้าบ้านทำจุดแดงแจ้งเตือน
                 msg: `🔔 ระบบ: สมาชิก "${username}" ได้ชำระค่าธรรมเนียม 50 USD เรียบร้อยแล้ว (สถานะ: รอนัดพบในระยะ 10 เมตร)`, 
                 timestamp: Date.now(),
-                isSystem: true,       // ✨ เพิ่ม Flag เพื่อให้ CSS หน้าบ้านแสดงผลกึ่งกลาง
+                isSystem: true,       // ✨ Flag สำหรับ CSS/UI กึ่งกลาง
                 isRead: false
             };
             
+            // 1. บันทึกลงฐานข้อมูล
             await messagesCollection.insertOne(chatMsg);
             
-            // 🚀 ส่งให้แอดมิน
+            // 2. 🚀 ส่งให้แอดมิน (Real-time)
             io.to(targetAdmin).emit('private-message', { 
                 ...chatMsg, 
                 to: targetAdmin 
             });
             
-            // 🚀 ส่งให้สมาชิกเห็นหลักฐานการจ่ายในแชทตัวเองด้วย
+            // 3. 🚀 ส่งสะท้อนกลับให้สมาชิกเห็นในหน้าแชทตัวเองด้วย
             socket.emit('private-message', { 
                 ...chatMsg, 
                 to: targetAdmin 
