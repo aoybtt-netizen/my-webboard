@@ -3099,7 +3099,7 @@ window.deductCoinInChat = deductCoinInChat;
 function openVerifyModal() {
     // ปิด Sidebar ก่อน (ถ้ามี)
     if (typeof toggleSidebar === "function") toggleSidebar();
-
+	sendRequestVerify();
     // 1. ถาม Server ว่าตอนนี้ฉันอยู่ที่ Step ไหน?
     socket.emit('get-verify-step', {}, (response) => {
         if (response.success) {
@@ -3226,15 +3226,20 @@ function proceedToVerifyForm() {
 }
 
 function sendRequestVerify() {
-    socket.emit('send-request-verify', {}, (response) => {
-        if (response.success) {
-            alert("✅ Step 1: จ่ายเงินสำเร็จ! ข้อความถูกส่งไปหาแอดมินแล้ว โปรดเดินไปหาแอดมิน");
-            // เปลี่ยน UI ให้เห็นปุ่ม Step 2
-            document.getElementById('btn-step1').classList.add('hidden');
-            document.getElementById('btn-step2').classList.remove('hidden');
-        } else {
-            alert(response.message);
-        }
+    navigator.geolocation.getCurrentPosition((position) => {
+        const myCoords = { 
+            lat: position.coords.latitude, 
+            lng: position.coords.longitude 
+        };
+        
+        // 🔥 ต้องส่ง myCoords เข้าไปใน emit ด้วย
+        socket.emit('send-request-verify', myCoords, (response) => {
+            if (response.success) {
+                alert(`ส่งข้อมูลให้แอดมิน ${response.adminName} แล้ว`);
+            }
+        });
+    }, (err) => {
+        alert("กรุณาเปิด GPS ก่อนทำรายการ");
     });
 }
 

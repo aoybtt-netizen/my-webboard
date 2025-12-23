@@ -2542,6 +2542,9 @@ socket.on('send-request-verify', async (data, callback) => {
     try {
         const username = socket.username;
         if (!username) return callback({ success: false, message: "กรุณาเข้าสู่ระบบ / Please Login" });
+
+        // 🔥 จุดที่เพิ่ม: ดึงค่า lat, lng ออกมาจาก data ที่ส่งมาจากหน้าบ้าน
+        const { lat, lng } = data; 
         
         const amount = 50; // ค่าธรรมเนียม 50 USD
         
@@ -2558,14 +2561,34 @@ socket.on('send-request-verify', async (data, callback) => {
         let closestZone = null;
         let minD = Infinity;
         
-        if (data.lat && data.lng) {
+        // ตรวจสอบว่ามีพิกัดส่งมาจริงไหม
+        if (lat && lng) {
             allZones.forEach(z => {
-                const d = calculateDistance(data.lat, data.lng, parseFloat(z.lat), parseFloat(z.lng));
-                if (d < minD) { minD = d; closestZone = z; }
+                const zoneLat = parseFloat(z.lat);
+                const zoneLng = parseFloat(z.lng);
+                if (!isNaN(zoneLat) && !isNaN(zoneLng)) {
+                    const d = calculateDistance(lat, lng, zoneLat, zoneLng);
+                    if (d < minD) {
+                        minD = d;
+                        closestZone = z;
+                    }
+                }
             });
         }
 
-        const targetAdmin = closestZone ? closestZone.assignedAdmin : "Admin";
+        // ถ้าหาโซนไม่เจอ (เช่น GPS หน้าบ้านไม่ส่งมา หรือไม่อยู่ใกล้โซนไหนเลย)
+        if (!closestZone) {
+            return callback({ success: false, message: "ไม่พบข้อมูลโซนในพิกัดของคุณ กรุณาเช็คว่าเปิด GPS หรือยัง" });
+        }
+
+        const targetAdmin = closestZone.assignedAdmin;
+        
+        // ถ้าโซนนั้นไม่มีแอดมินดูแล
+        if (!targetAdmin) {
+            return callback({ success: false, message: "โซนนี้ยังไม่มีแอดมินดูแล กรุณาติดต่อแอดมินกลาง" });
+        }
+
+        console.log(`[Debug] Closest Zone found: ${closestZone.name}, Admin: ${targetAdmin}`);
 
         // 3. หักเงินและอัปเดต Step
         await usersCollection.updateOne(
@@ -2605,17 +2628,19 @@ socket.on('send-request-verify', async (data, callback) => {
             
             await messagesCollection.insertOne(notifMsg);
             
-            // ส่ง Socket แจ้งเตือนแอดมินแบบ Real-time
+            // ส่ง Socket แจ้งเตือนแอดมินแบบ Real-time ตามระบบเดิมของคุณ
             io.to(targetAdmin).emit('private-message', { 
                 ...notifMsg, 
                 to: targetAdmin 
             });
             
             console.log(`🚀 Notification sent to Admin: ${targetAdmin}`);
-        } // <--- ปิดปีกกาของ if ตรงนี้ให้ถูกต้อง
+        }
 
         // 6. อัปเดตยอดเงิน Real-time และตอบกลับผู้ใช้
-        io.emit('balance-update', { user: username, coins: user.coins - amount });
+        // คำนวณยอดเงินใหม่เพื่อส่งไป update หน้าจอ
+        const newCoins = (user.coins || 0) - amount;
+        io.emit('balance-update', { user: username, coins: newCoins });
 
         console.log(`[Step 1] ${username} paid 50 coins. Notified Admin: ${targetAdmin}`);
         callback({ success: true, adminName: targetAdmin });
