@@ -2545,20 +2545,19 @@ socket.on('send-request-verify', async (data, callback) => {
         
         const amount = 50; // ค่าธรรมเนียม 50 USD
         
-        // 1. ดึงข้อมูลด้วยฟังก์ชันเดิมของคุณ (อ้างอิงจากระบบเก่า)
+        // 1. ดึงข้อมูลผู้ใช้
         const user = await usersCollection.findOne({ username: username });
         
-        // ตรวจสอบยอดเงินโดยใช้ฟิลด์ coins
+        // ตรวจสอบยอดเงิน (coins)
         if (!user || (user.coins || 0) < amount) {
             return callback({ success: false, message: "ยอดเงิน USD ของคุณไม่เพียงพอ / Insufficient coins" });
         }
 
-        // 2. ค้นหาโซนที่ใกล้ที่สุดเพื่อระบุแอดมินเจ้าของพื้นที่
+        // 2. ค้นหาโซนที่ใกล้ที่สุด
         const allZones = await zonesCollection.find({ "lat": { $exists: true } }).toArray();
         let closestZone = null;
         let minD = Infinity;
         
-        // รับค่า lat, lng ที่ส่งมาจากหน้าบ้าน
         if (data.lat && data.lng) {
             allZones.forEach(z => {
                 const d = calculateDistance(data.lat, data.lng, parseFloat(z.lat), parseFloat(z.lng));
@@ -2568,11 +2567,11 @@ socket.on('send-request-verify', async (data, callback) => {
 
         const targetAdmin = closestZone ? closestZone.assignedAdmin : "Admin";
 
-        // 3. หักเงินและอัปเดต Step (ใช้ฟิลด์ coins และ verifyStep)
+        // 3. หักเงินและอัปเดต Step
         await usersCollection.updateOne(
             { username: username },
             { 
-                $inc: { coins: -amount }, // หักออก 50 coins
+                $inc: { coins: -amount },
                 $set: { 
                     verifyStep: 1, 
                     lastVerifyAdmin: targetAdmin 
@@ -2580,12 +2579,12 @@ socket.on('send-request-verify', async (data, callback) => {
             }
         );
 
-        // 4. บันทึก Transaction (ใช้รูปแบบเดียวกับ ADMIN_TRANSFER ของคุณ)
+        // 4. บันทึก Transaction
         if (typeof transactionsCollection !== 'undefined') {
             await transactionsCollection.insertOne({
                 id: Date.now(),
                 type: 'VERIFY_FEE_STEP1',
-                amount: amount, // หรือ -amount ตามสไตล์การเก็บของคุณ
+                amount: amount, 
                 fromUser: username,
                 toUser: 'SYSTEM',
                 note: `Identity Verification Step 1 (Admin: ${targetAdmin})`,
@@ -2593,18 +2592,29 @@ socket.on('send-request-verify', async (data, callback) => {
             });
         }
 
-        // 5. ส่งข้อความแจ้งเตือนเข้า Inbox ของแอดมิน
+        // 5. ส่งข้อความแจ้งเตือน (Notification) ไปหาแอดมิน
         if (typeof messagesCollection !== 'undefined') {
-            await messagesCollection.insertOne({
-                sender: "System",
-                receiver: targetAdmin,
-                content: `📢 สมาชิก ${username} ได้ชำระเงินยืนยันตัวตนแล้ว และกำลังรอพบคุณเพื่อเช็คระยะทาง (Step 1 สำเร็จ)`,
-                timestamp: new Date(),
-                isRead: false
+            const notifMsg = { 
+                sender: 'System', 
+                target: targetAdmin, 
+                msgKey: 'VERIFY_REQUEST', 
+                msgData: { member: username }, 
+                msg: `📢 สมาชิก "${username}" จ่ายค่าธรรมเนียมแล้ว และกำลังรอพบคุณ (Step 1)`, 
+                timestamp: Date.now()
+            };
+            
+            await messagesCollection.insertOne(notifMsg);
+            
+            // ส่ง Socket แจ้งเตือนแอดมินแบบ Real-time
+            io.to(targetAdmin).emit('private-message', { 
+                ...notifMsg, 
+                to: targetAdmin 
             });
-        }
+            
+            console.log(`🚀 Notification sent to Admin: ${targetAdmin}`);
+        } // <--- ปิดปีกกาของ if ตรงนี้ให้ถูกต้อง
 
-        // 6. อัปเดตยอดเงิน Real-time ไปที่หน้าจอผู้ใช้
+        // 6. อัปเดตยอดเงิน Real-time และตอบกลับผู้ใช้
         io.emit('balance-update', { user: username, coins: user.coins - amount });
 
         console.log(`[Step 1] ${username} paid 50 coins. Notified Admin: ${targetAdmin}`);
