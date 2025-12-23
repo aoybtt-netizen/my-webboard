@@ -2751,6 +2751,159 @@ socket.on('send-request-verify', async (data, callback) => {
     }
 });
 
+
+	socket.on('submit-final-verification', async (data, callback) => {
+    try {
+        const username = socket.username;
+        const user = await usersCollection.findOne({ username: username });
+
+        if (!user || user.verifyStep !== 1) {
+            return callback({ success: false, message: "Please pay the verification fee first." });
+        }
+
+        const targetAdmin = user.lastVerifyAdmin;
+        const zone = await zonesCollection.findOne({ assignedAdmin: targetAdmin });
+
+        if (!zone) return callback({ success: false, message: "Zone admin not found." });
+
+        // 🔍 ตรวจสอบระยะห่าง 10 เมตร (0.01 km)
+        const distance = calculateDistance(data.lat, data.lng, parseFloat(zone.lat), parseFloat(zone.lng));
+        if (distance > 0.01) {
+            return callback({ success: false, message: `Too far! You are ${Math.round(distance * 1000)}m away. Must be within 10m.` });
+        }
+
+        // ✅ บันทึกข้อมูลเข้า Profile สมาชิก
+        await usersCollection.updateOne(
+            { username: username },
+            { 
+                $set: { 
+                    verifyStep: 2, // เลื่อนระดับเป็นรอการอนุมัติสุดท้าย
+                    identityData: {
+                        fullName: data.fullName,
+                        phone: data.phone,
+                        address: data.address,
+                        idCardImage: data.idCardImage, // เก็บเป็น Base64 หรือ Link
+                        selfieImage: data.selfieImage,
+                        verifiedAt: new Date(),
+                        managedBy: targetAdmin
+                    }
+                } 
+            }
+        );
+
+        // 🔔 ส่งสัญญาณแจ้งเตือนให้แอดมินเปิดดูข้อมูลเพื่อกด Approve
+        io.to(targetAdmin).emit('admin-review-request', {
+            fromUser: username,
+            fullName: data.fullName,
+            distance: Math.round(distance * 1000)
+        });
+
+        callback({ success: true });
+
+    } catch (err) {
+        console.error("Final Verify Error:", err);
+        callback({ success: false, message: "Server Error" });
+    }
+});
+
+
+socket.on('admin-action-verify', async (data, callback) => {
+    try {
+        const adminUsername = socket.username; 
+        const { targetUser, status, reason } = data;
+
+        if (status === 'APPROVE') {
+            const amountToAdmin = 50;
+
+            // 1. อัปเดตสถานะสมาชิก
+            await usersCollection.updateOne(
+                { username: targetUser },
+                { $set: { verifyStep: 3, isVerified: true, verifiedBy: adminUsername, verifiedDate: new Date() } }
+            );
+
+            // 2. โอนเงินให้แอดมิน
+            await usersCollection.updateOne(
+                { username: adminUsername },
+                { $inc: { coins: amountToAdmin } }
+            );
+
+            // 3. บันทึก Transaction
+            if (typeof transactionsCollection !== 'undefined') {
+                await transactionsCollection.insertOne({
+                    id: Date.now(),
+                    type: 'VERIFY_EARNING',
+                    amount: amountToAdmin,
+                    fromUser: 'SYSTEM',
+                    toUser: adminUsername,
+                    note: `Verification Fee from ${targetUser}`,
+                    timestamp: Date.now()
+                });
+            }
+
+            // 4. แจ้งเตือนยอดเงินแอดมิน
+            const adminData = await usersCollection.findOne({ username: adminUsername });
+            io.to(adminUsername).emit('balance-update', { 
+                user: adminUsername, 
+                coins: adminData.coins 
+            });
+
+            // 5. ✅ เพิ่มการแจ้งเตือนใน "กล่องข้อความ" (ช่องแชท)
+            if (typeof messagesCollection !== 'undefined') {
+                const approveMsg = {
+                    sender: 'System',
+                    target: targetUser,
+                    msgKey: 'VERIFY_SUCCESS', // สำหรับแปลภาษา
+                    msg: `✅ SYSTEM: Your identity has been verified by Admin: ${adminUsername}. You are now a Verified Member!`,
+                    timestamp: Date.now(),
+                    isSystem: true,
+                    isRead: false
+                };
+                await messagesCollection.insertOne(approveMsg);
+                // ส่ง Socket ให้สมาชิกเห็นในแชททันที
+                io.to(targetUser).emit('private-message', { ...approveMsg, to: targetUser });
+            }
+
+            // แจ้งสมาชิกผ่าน Alert/Popup
+            io.to(targetUser).emit('verify-result', { success: true, message: "Identity Verified Successfully!" });
+
+            callback({ success: true });
+
+        } else {
+            // --- ❌ กรณี REJECT (ปฏิเสธ) ---
+            
+            // 1. อัปเดตสถานะกลับไปเริ่มต้น (Step 0) เพื่อให้กรอกใหม่
+            await usersCollection.updateOne(
+                { username: targetUser },
+                { $set: { verifyStep: 0 } }
+            );
+
+            // 2. ✅ แจ้งเตือนใน "กล่องข้อความ" ถึงเหตุผลที่ไม่ผ่าน
+            if (typeof messagesCollection !== 'undefined') {
+                const rejectMsg = {
+                    sender: 'System',
+                    target: targetUser,
+                    msgKey: 'VERIFY_REJECTED',
+                    msg: `❌ SYSTEM: Verification Rejected by Admin. Reason: ${reason}. Please update your profile and try again.`,
+                    timestamp: Date.now(),
+                    isSystem: true,
+                    isRead: false
+                };
+                await messagesCollection.insertOne(rejectMsg);
+                io.to(targetUser).emit('private-message', { ...rejectMsg, to: targetUser });
+            }
+
+            // แจ้งสมาชิกผ่าน Alert/Popup
+            io.to(targetUser).emit('verify-result', { success: false, message: `Rejected: ${reason}` });
+
+            callback({ success: true });
+        }
+    } catch (err) {
+        console.error(err);
+        callback({ success: false, message: "Error" });
+    }
+});
+
+
 	
 	socket.on('update-admin-live-location', async (coords) => {
     if (!socket.username) return;

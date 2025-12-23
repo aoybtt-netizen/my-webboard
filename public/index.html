@@ -437,7 +437,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.41 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.42 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -457,6 +457,7 @@
 		let currentZoneIdForRef = null;
 		let currentUserPage = 1;
 		let currentBanTarget = "";
+		let currentReviewUser = "";
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -3146,16 +3147,71 @@ function closeVerifyConfirm() {
 }
 
 // ฟังก์ชันส่งข้อมูล (หน้าสอง)
-function submitIdentityData() {
-    // ใส่ logic การส่งข้อมูลของคุณที่นี่
+async function submitIdentityData() {
+    // 1. ดึงค่าจาก Input ต่างๆ
     const fullName = document.getElementById('verify-fullname').value;
-    if(!fullName) {
-        alert("Please enter your full name");
+    const phone = document.getElementById('verify-phone').value;
+    const address = document.getElementById('verify-address').value;
+    const idCardFile = document.getElementById('verify-id-card').files[0];
+    const selfieFile = document.getElementById('verify-selfie').files[0];
+
+    // 2. ตรวจสอบความครบถ้วน
+    if (!fullName || !phone || !address || !idCardFile || !selfieFile) {
+        alert("Please complete all fields and upload both photos.");
         return;
     }
-    
-    alert("ส่งข้อมูลการยืนยันตัวตนเรียบร้อยแล้ว รอการตรวจสอบจากเจ้าหน้าที่");
-    closeVerifyConfirm();
+
+    // ฟังก์ชันช่วยแปลง File เป็น Base64
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    try {
+        // แสดง Loading (ถ้ามี)
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerText = "Uploading...";
+
+        // 3. แปลงไฟล์ภาพ
+        const idCardBase64 = await toBase64(idCardFile);
+        const selfieBase64 = await toBase64(selfieFile);
+
+        // 4. ดึงพิกัดปัจจุบัน
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const payload = {
+                fullName,
+                phone,
+                address,
+                idCardImage: idCardBase64,
+                selfieImage: selfieBase64,
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+
+            // 5. ส่งข้อมูลไปที่ Server
+            socket.emit('submit-final-verification', payload, (response) => {
+                if (response.success) {
+                    alert("Data submitted successfully! Please show your original ID to the Admin.");
+                    closeVerifyConfirm();
+                } else {
+                    alert("Error: " + response.message);
+                    btn.disabled = false;
+                    btn.innerText = "Submit for Review";
+                }
+            });
+        }, (err) => {
+            alert("Please enable GPS to confirm your location with the Admin.");
+            btn.disabled = false;
+            btn.innerText = "Submit for Review";
+        });
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to process images.");
+    }
 }
 
 
@@ -3254,6 +3310,65 @@ function checkZoneOwnership() {
         });
     });
 }
+
+
+function processApproval(status) {
+    if (!currentReviewUser) return;
+    
+    const reason = (status === 'REJECT') ? prompt("Enter reason for rejection:") : "";
+    if (status === 'REJECT' && reason === null) return;
+
+    socket.emit('admin-action-verify', {
+        targetUser: currentReviewUser,
+        status: status,
+        reason: reason
+    }, (res) => {
+        if (res.success) {
+            alert("Verification " + status + " successful.");
+            document.getElementById('admin-review-modal').classList.add('hidden');
+        } else {
+            alert(res.message);
+        }
+    });
+}
+
+
+
+socket.on('admin-review-request', (data) => {
+    // 1. เล่นเสียงแจ้งเตือน (ถ้ามี)
+    // new Audio('/notification.mp3').play();
+
+    currentReviewUser = data.fromUser; // username ของสมาชิก
+    
+    // 2. แสดง Modal และข้อมูล
+    const modal = document.getElementById('admin-review-modal');
+    const content = document.getElementById('review-content');
+    
+    modal.classList.remove('hidden');
+    
+    // 3. ใส่ข้อมูลสมาชิก (รวมถึงรูปภาพที่ส่งมา)
+    content.innerHTML = `
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 5px solid #007bff;">
+            <strong>From User:</strong> ${data.fromUser}<br>
+            <strong>Distance:</strong> <span style="color: green;">${data.distance} meters</span>
+        </div>
+        <div>
+            <strong>Full Name:</strong> <p>${data.identityData.fullName}</p>
+            <strong>Phone:</strong> <p>${data.identityData.phone}</p>
+            <strong>Address:</strong> <p>${data.identityData.address}</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <strong>ID Card:</strong>
+                <img src="${data.identityData.idCardImage}" style="width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open(this.src)">
+            </div>
+            <div style="flex: 1;">
+                <strong>Selfie:</strong>
+                <img src="${data.identityData.selfieImage}" style="width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open(this.src)">
+            </div>
+        </div>
+    `;
+});
 
 	
 
@@ -4160,6 +4275,27 @@ window.refreshModalPostCost = refreshModalPostCost; // Expose globally
         }
     }
 });
+
+
+socket.on('verify-result', (data) => {
+    if (data.success) {
+        // ✅ กรณีผ่าน: แจ้งเตือนด้วยสีเขียว หรือ SweetAlert
+        alert("🎉 " + data.message);
+        
+        // อาจจะสั่งรีเฟรชหน้าจอ หรือเปลี่ยนไอคอน Verify ให้เป็นสีฟ้า/ติ๊กถูก
+        if(document.getElementById('verify-status-icon')) {
+            document.getElementById('verify-status-icon').style.color = '#007bff';
+            document.getElementById('verify-status-text').innerText = 'Verified Member';
+        }
+    } else {
+        // ❌ กรณีไม่ผ่าน: แจ้งเหตุผลที่แอดมินระบุมา
+        alert("❌ Verification Rejected\nReason: " + data.message);
+        
+        // ย้อนกลับไปหน้าเริ่มต้นเพื่อให้สมาชิกแก้ไขข้อมูล
+        showVerifyStep(0); 
+    }
+});
+
 
     function appendMessage(data) {
     const box = document.getElementById('private-chat-messages');
@@ -5164,6 +5300,25 @@ function openUserDetail(targetUsername) {
         </div>
     </div>
 </div>
+
+
+
+	<div id="admin-review-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <h2 style="text-align: center; color: #007bff;"><i class="fas fa-search-location"></i> Review Verification</h2>
+        
+        <div id="review-content" style="display: flex; flex-direction: column; gap: 15px;">
+            </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="sidebar-btn" onclick="processApproval('REJECT')" style="background: #dc3545; color: white; flex: 1;">Reject</button>
+            <button class="sidebar-btn" onclick="processApproval('APPROVE')" style="background: #28a745; color: white; flex: 1;">Approve & Verify</button>
+        </div>
+        <button onclick="document.getElementById('admin-review-modal').classList.add('hidden')" style="width: 100%; margin-top: 10px; background: none; border: none; color: #666; cursor: pointer;">Close</button>
+    </div>
+</div>
+
+
 
 
 	
