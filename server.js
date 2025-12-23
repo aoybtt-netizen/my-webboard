@@ -2543,25 +2543,19 @@ socket.on('send-request-verify', async (data, callback) => {
         const username = socket.username;
         if (!username) return callback({ success: false, message: "กรุณาเข้าสู่ระบบ / Please Login" });
 
-        // 🔥 จุดที่เพิ่ม: ดึงค่า lat, lng ออกมาจาก data ที่ส่งมาจากหน้าบ้าน
         const { lat, lng } = data; 
+        const amount = 50; 
         
-        const amount = 50; // ค่าธรรมเนียม 50 USD
-        
-        // 1. ดึงข้อมูลผู้ใช้
         const user = await usersCollection.findOne({ username: username });
         
-        // ตรวจสอบยอดเงิน (coins)
         if (!user || (user.coins || 0) < amount) {
             return callback({ success: false, message: "ยอดเงิน USD ของคุณไม่เพียงพอ / Insufficient coins" });
         }
 
-        // 2. ค้นหาโซนที่ใกล้ที่สุด
         const allZones = await zonesCollection.find({ "lat": { $exists: true } }).toArray();
         let closestZone = null;
         let minD = Infinity;
         
-        // ตรวจสอบว่ามีพิกัดส่งมาจริงไหม
         if (lat && lng) {
             allZones.forEach(z => {
                 const zoneLat = parseFloat(z.lat);
@@ -2576,21 +2570,18 @@ socket.on('send-request-verify', async (data, callback) => {
             });
         }
 
-        // ถ้าหาโซนไม่เจอ (เช่น GPS หน้าบ้านไม่ส่งมา หรือไม่อยู่ใกล้โซนไหนเลย)
         if (!closestZone) {
             return callback({ success: false, message: "ไม่พบข้อมูลโซนในพิกัดของคุณ กรุณาเช็คว่าเปิด GPS หรือยัง" });
         }
 
         const targetAdmin = closestZone.assignedAdmin;
         
-        // ถ้าโซนนั้นไม่มีแอดมินดูแล
         if (!targetAdmin) {
             return callback({ success: false, message: "โซนนี้ยังไม่มีแอดมินดูแล กรุณาติดต่อแอดมินกลาง" });
         }
 
         console.log(`[Debug] Closest Zone found: ${closestZone.name}, Admin: ${targetAdmin}`);
 
-        // 3. หักเงินและอัปเดต Step
         await usersCollection.updateOne(
             { username: username },
             { 
@@ -2602,7 +2593,6 @@ socket.on('send-request-verify', async (data, callback) => {
             }
         );
 
-        // 4. บันทึก Transaction
         if (typeof transactionsCollection !== 'undefined') {
             await transactionsCollection.insertOne({
                 id: Date.now(),
@@ -2615,30 +2605,33 @@ socket.on('send-request-verify', async (data, callback) => {
             });
         }
 
-        // 5. ส่งข้อความแจ้งเตือน (Notification) ไปหาแอดมิน
         if (typeof messagesCollection !== 'undefined') {
-            const notifMsg = { 
-                sender: 'System', 
-                target: targetAdmin, 
-                msgKey: 'VERIFY_REQUEST', 
+            const chatMsg = { 
+                sender: username,     
+                target: targetAdmin,  
+                msgKey: 'VERIFY_PAYMENT_CHAT', 
                 msgData: { member: username }, 
-                msg: `📢 สมาชิก "${username}" จ่ายค่าธรรมเนียมแล้ว และกำลังรอพบคุณ (Step 1)`, 
-                timestamp: Date.now()
+                msg: `💳 [System Notify] ผม/ดิฉัน ได้ชำระค่าธรรมเนียมยืนยันตัวตน 50 USD เรียบร้อยแล้ว ขณะนี้กำลังรอพบคุณในโซนเพื่อตรวจสอบระยะทางครับ/ค่ะ`, 
+                timestamp: Date.now(),
+                isRead: false
             };
             
-            await messagesCollection.insertOne(notifMsg);
+            await messagesCollection.insertOne(chatMsg);
             
-            // ส่ง Socket แจ้งเตือนแอดมินแบบ Real-time ตามระบบเดิมของคุณ
+            // ✅ แก้จาก o.to เป็น io.to
             io.to(targetAdmin).emit('private-message', { 
-                ...notifMsg, 
+                ...chatMsg, 
                 to: targetAdmin 
             });
             
-            console.log(`🚀 Notification sent to Admin: ${targetAdmin}`);
+            socket.emit('private-message', { 
+                ...chatMsg, 
+                to: targetAdmin 
+            });
+
+            console.log(`💬 Chat notification sent from ${username} to ${targetAdmin}`);
         }
 
-        // 6. อัปเดตยอดเงิน Real-time และตอบกลับผู้ใช้
-        // คำนวณยอดเงินใหม่เพื่อส่งไป update หน้าจอ
         const newCoins = (user.coins || 0) - amount;
         io.emit('balance-update', { user: username, coins: newCoins });
 

@@ -3099,7 +3099,7 @@ window.deductCoinInChat = deductCoinInChat;
 function openVerifyModal() {
     // ปิด Sidebar ก่อน (ถ้ามี)
     if (typeof toggleSidebar === "function") toggleSidebar();
-	sendRequestVerify();
+	sendRequestVerify();//อย่าลืมลบ
     // 1. ถาม Server ว่าตอนนี้ฉันอยู่ที่ Step ไหน?
     socket.emit('get-verify-step', {}, (response) => {
         if (response.success) {
