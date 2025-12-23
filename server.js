@@ -2536,23 +2536,29 @@ socket.on('reply-deduct-confirm', async (data) => {
 });
 	
 	
-// --- [Step 1] เพิ่มการบันทึก Transaction ---
+	
+// --- [Step 1] จ่ายค่าธรรมเนียมและส่งข้อความหาแอดมิน (ใช้ระบบ Coins เดิม) ---
 socket.on('send-request-verify', async (data, callback) => {
     try {
         const username = socket.username;
-        if (!username) return callback({ success: false, message: "กรุณาเข้าสู่ระบบ" });
+        if (!username) return callback({ success: false, message: "กรุณาเข้าสู่ระบบ / Please Login" });
         
-        const amount = 50;
+        const amount = 50; // ค่าธรรมเนียม 50 USD
+        
+        // 1. ดึงข้อมูลด้วยฟังก์ชันเดิมของคุณ (อ้างอิงจากระบบเก่า)
         const user = await usersCollection.findOne({ username: username });
-        if (!user || (user.balance || 0) < amount) {
-            return callback({ success: false, message: "ยอดเงินไม่เพียงพอ" });
+        
+        // ตรวจสอบยอดเงินโดยใช้ฟิลด์ coins
+        if (!user || (user.coins || 0) < amount) {
+            return callback({ success: false, message: "ยอดเงิน USD ของคุณไม่เพียงพอ / Insufficient coins" });
         }
 
+        // 2. ค้นหาโซนที่ใกล้ที่สุดเพื่อระบุแอดมินเจ้าของพื้นที่
         const allZones = await zonesCollection.find({ "lat": { $exists: true } }).toArray();
         let closestZone = null;
         let minD = Infinity;
         
-        // ควรส่ง lat, lng มาจากหน้าบ้านด้วย
+        // รับค่า lat, lng ที่ส่งมาจากหน้าบ้าน
         if (data.lat && data.lng) {
             allZones.forEach(z => {
                 const d = calculateDistance(data.lat, data.lng, parseFloat(z.lat), parseFloat(z.lng));
@@ -2562,39 +2568,51 @@ socket.on('send-request-verify', async (data, callback) => {
 
         const targetAdmin = closestZone ? closestZone.assignedAdmin : "Admin";
 
-        // หักเงิน + เปลี่ยน Step
+        // 3. หักเงินและอัปเดต Step (ใช้ฟิลด์ coins และ verifyStep)
         await usersCollection.updateOne(
             { username: username },
             { 
-                $inc: { balance: -amount },
-                $set: { verifyStep: 1, lastVerifyAdmin: targetAdmin } 
+                $inc: { coins: -amount }, // หักออก 50 coins
+                $set: { 
+                    verifyStep: 1, 
+                    lastVerifyAdmin: targetAdmin 
+                } 
             }
         );
 
-        // ✅ เพิ่มบันทึกการหักเงิน (Transaction Log)
+        // 4. บันทึก Transaction (ใช้รูปแบบเดียวกับ ADMIN_TRANSFER ของคุณ)
         if (typeof transactionsCollection !== 'undefined') {
             await transactionsCollection.insertOne({
-                username: username,
-                amount: -amount,
-                type: 'verify_fee',
-                details: `Identity Verification Step 1 (Admin: ${targetAdmin})`,
-                timestamp: new Date()
+                id: Date.now(),
+                type: 'VERIFY_FEE_STEP1',
+                amount: amount, // หรือ -amount ตามสไตล์การเก็บของคุณ
+                fromUser: username,
+                toUser: 'SYSTEM',
+                note: `Identity Verification Step 1 (Admin: ${targetAdmin})`,
+                timestamp: Date.now()
             });
         }
 
-        // ส่งข้อความหาแอดมิน
-        await messagesCollection.insertOne({
-            sender: "System",
-            receiver: targetAdmin,
-            content: `📢 สมาชิก ${username} ชำระเงินยืนยันตัวตนแล้ว กำลังรอพบคุณ (Step 1)`,
-            timestamp: new Date(),
-            isRead: false
-        });
+        // 5. ส่งข้อความแจ้งเตือนเข้า Inbox ของแอดมิน
+        if (typeof messagesCollection !== 'undefined') {
+            await messagesCollection.insertOne({
+                sender: "System",
+                receiver: targetAdmin,
+                content: `📢 สมาชิก ${username} ได้ชำระเงินยืนยันตัวตนแล้ว และกำลังรอพบคุณเพื่อเช็คระยะทาง (Step 1 สำเร็จ)`,
+                timestamp: new Date(),
+                isRead: false
+            });
+        }
 
+        // 6. อัปเดตยอดเงิน Real-time ไปที่หน้าจอผู้ใช้
+        io.emit('balance-update', { user: username, coins: user.coins - amount });
+
+        console.log(`[Step 1] ${username} paid 50 coins. Notified Admin: ${targetAdmin}`);
         callback({ success: true, adminName: targetAdmin });
+
     } catch (err) {
         console.error("Step 1 Error:", err);
-        callback({ success: false, message: "Error" });
+        callback({ success: false, message: "เกิดข้อผิดพลาดในระบบ / Server Error" });
     }
 });
 	
