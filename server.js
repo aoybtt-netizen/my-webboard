@@ -2520,6 +2520,21 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	
 	
+	
+	socket.on('get-verify-step', async (data, callback) => {
+    try {
+        const user = await usersCollection.findOne({ username: socket.username });
+        if (user) {
+            // ส่งค่า verifyStep กลับไป (ถ้าไม่มีให้เป็น 0)
+            callback({ success: true, step: user.verifyStep || 0 });
+        } else {
+            callback({ success: false });
+        }
+    } catch (err) {
+        callback({ success: false });
+    }
+});
+	
 	// --- [Step 1] จ่ายค่าธรรมเนียมและส่งข้อความหาแอดมิน ---
 socket.on('send-request-verify', async (data, callback) => {
     try {

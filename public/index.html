@@ -3099,11 +3099,33 @@ window.deductCoinInChat = deductCoinInChat;
 function openVerifyModal() {
     // ปิด Sidebar ก่อน (ถ้ามี)
     if (typeof toggleSidebar === "function") toggleSidebar();
-    
-    // เปิดหน้าคำอธิบายหน้าแรก
-    document.getElementById('verify-info-modal').classList.remove('hidden');
-	
-	
+
+    // 1. ถาม Server ว่าตอนนี้ฉันอยู่ที่ Step ไหน?
+    socket.emit('get-verify-step', {}, (response) => {
+        if (response.success) {
+            const step = response.step;
+
+            // ปิด Modal ทั้งหมดก่อนเพื่อป้องกันการซ้อนกัน
+            document.getElementById('verify-info-modal').classList.add('hidden');
+            document.getElementById('verify-confirm-modal').classList.add('hidden');
+
+            if (step === 1) {
+                // Step 1: จ่ายเงินแล้ว -> เปิดหน้าให้กดเช็คระยะทาง (Step 2)
+                document.getElementById('verify-confirm-modal').classList.remove('hidden');
+                console.log("📍 User at Step 1: Opening Proximity Check");
+            } else if (step === 2) {
+                // Step 2: ระยะผ่านแล้ว -> อาจจะแสดงหน้า "รอแอดมินอนุมัติ"
+                alert("คุณผ่านขั้นตอนตรวจสอบระยะทางแล้ว กรุณารอแอดมินกดยืนยันครับ");
+            } else {
+                // Step 0 หรือยังไม่ได้เริ่ม: เปิดหน้าคำอธิบายและการจ่ายเงิน
+                document.getElementById('verify-info-modal').classList.remove('hidden');
+                console.log("📍 User at Step 0: Opening Info Modal");
+            }
+        } else {
+            // กรณี Error หรือหาข้อมูลไม่เจอ ให้เริ่มที่หน้าแรก
+            document.getElementById('verify-info-modal').classList.remove('hidden');
+        }
+    });
 }
 
 // ฟังก์ชันปิดหน้าคำอธิบาย
@@ -3113,7 +3135,7 @@ function closeVerifyInfo() {
 
 // ฟังก์ชันเมื่อกด Confirm จากหน้าแรก เพื่อไปหน้ากรอกข้อมูล
 function proceedToVerifyForm() {
-    const confirmPay = confirm("ยืนยันหักเงิน 50 USD? / Confirm 50 USD payment?");
+    const confirmPay = confirm("Send Request Confirm 50 USD payment?");
     if (confirmPay) {
         sendRequestVerify();
     }
