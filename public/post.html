@@ -954,19 +954,35 @@
 	
 	//Chat box
 	// --- ระบบลากย้ายปุ่ม (Draggable Logic) ---
-const chatBtn = document.getElementById('floating-chat-btn');
-const chatWindow = document.getElementById('floating-chat-window');
+// --- 1. ย้ายการประกาศตัวแปรที่ต้องอ้างอิง HTML เข้ามาในฟังก์ชันหรือเช็ค null ---
+let chatBtn, chatWindow, floatingCallBtn; 
+
+// ใช้ฟังก์ชันนี้เพื่อเริ่มทำงานระบบแชทหลังจากหน้าเว็บโหลดเสร็จ
+document.addEventListener('DOMContentLoaded', () => {
+    chatBtn = document.getElementById('floating-chat-btn');
+    chatWindow = document.getElementById('floating-chat-window');
+    floatingCallBtn = document.getElementById('btn-call-author');
+
+    if (chatBtn) {
+        chatBtn.addEventListener('mousedown', startDragging);
+        chatBtn.addEventListener('touchstart', startDragging, { passive: false });
+    }
+
+    if (chatWindow) {
+        // ป้องกันแชทปิดเมื่อกดพิมพ์หรือคลิกข้างใน
+        const stopProp = (e) => e.stopPropagation();
+        chatWindow.addEventListener('mousedown', stopProp);
+        chatWindow.addEventListener('touchstart', stopProp, { passive: true });
+        chatWindow.addEventListener('touchend', stopProp, { passive: true });
+    }
+});
+
 let isDragging = false;
-let moveCount = 0; // ใช้เก็บจำนวนการขยับ
+let moveCount = 0;
 let startX, startY, initialX, initialY;
 
-chatBtn.addEventListener('mousedown', startDragging);
-chatBtn.addEventListener('touchstart', startDragging, { passive: false });
-
 function startDragging(e) {
-    // ป้องกัน Browser Scroll ขณะกำลังจะลาก
     if (e.type === 'touchstart') moveCount = 0; 
-    
     const event = e.type === 'touchstart' ? e.touches[0] : e;
     startX = event.clientX;
     startY = event.clientY;
@@ -980,15 +996,13 @@ function startDragging(e) {
 }
 
 function drag(e) {
-    moveCount++; // นับจำนวนครั้งที่ขยับ
-    if (moveCount > 5) isDragging = true; // ถ้าขยับเกิน 5 ครั้งถือว่าลากจริงๆ
-
+    moveCount++;
+    if (moveCount > 5) isDragging = true;
     const event = e.type === 'touchmove' ? e.touches[0] : e;
-    if (e.type === 'touchmove') e.preventDefault(); // กันหน้าจอเลื่อนตาม
+    if (e.type === 'touchmove') e.preventDefault();
 
     let newX = initialX + (event.clientX - startX);
     let newY = initialY + (event.clientY - startY);
-
     const maxX = window.innerWidth - chatBtn.offsetWidth;
     const maxY = window.innerHeight - chatBtn.offsetHeight;
     
@@ -1004,45 +1018,30 @@ function stopDragging(e) {
     document.removeEventListener('mouseup', stopDragging);
     document.removeEventListener('touchend', stopDragging);
     
-    // ถ้าขยับน้อยมาก (moveCount ต่ำ) ให้ถือว่าเป็นการ "คลิก"
+    // ถ้าคลิกข้างในหน้าต่างแชท ไม่ต้องทำอะไร
+    if (e.target.closest('#floating-chat-window')) return;
+
     if (!isDragging || moveCount <= 5) {
         toggleFloatingChat();
     }
-    
     isDragging = false;
     moveCount = 0;
 }
 
-chatWindow.addEventListener('mousedown', (e) => e.stopPropagation());
-chatWindow.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-chatWindow.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
-
-
-// --- ระบบเปิด/ปิดหน้าต่างแชท ---
 function toggleFloatingChat() {
-    const windowEl = document.getElementById('floating-chat-window');
-    if (!windowEl) return;
-    
-    windowEl.classList.toggle('hidden');
-    
-    if (!windowEl.classList.contains('hidden')) {
+    if (!chatWindow) return;
+    chatWindow.classList.toggle('hidden');
+    if (!chatWindow.classList.contains('hidden')) {
         const msgDiv = document.getElementById('floating-chat-messages');
         msgDiv.scrollTop = msgDiv.scrollHeight;
-        document.getElementById('floating-comment-input').focus(); // ให้ Focus ที่ช่องพิมพ์ทันที
+        document.getElementById('floating-comment-input').focus();
     }
 }
 
-const chatWindow = document.getElementById('floating-chat-window');
-chatWindow.addEventListener('mousedown', (e) => e.stopPropagation());
-chatWindow.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-
-// --- เชื่อมต่อกับระบบส่งคอมเมนต์เดิมของคุณ ---
 function sendFloatingComment() {
     const input = document.getElementById('floating-comment-input');
     const content = input.value.trim();
     if (!content) return;
-
-    // จำลองการใช้ฟังก์ชัน sendComment เดิมที่มีอยู่
     document.getElementById('comment-input').value = content;
     sendComment(); 
     input.value = '';
