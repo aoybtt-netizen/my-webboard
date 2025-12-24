@@ -1704,14 +1704,29 @@ app.get('/api/my-active-count', async (req, res) => {
 });
 
 // 23. Add Comment
-app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => { 
+app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => {
     const postId = parseInt(req.params.id);
     const { content, author } = req.body;
     const imageUrl = req.file ? req.file.path : null; 
 
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'No posts found' });
-    if (post.isClosed && author !== 'Admin') return res.status(403).json({ error: '⛔ Comments are closed.' });
+
+    // 🟢 แก้ไขเงื่อนไขตรงนี้ครับ
+    const isOwner = (author === post.author);
+    const isAcceptedViewer = (author === post.acceptedViewer);
+    const isAdmin = (author === 'Admin');
+
+    // ถ้ากระทู้ปิดถาวร (closed_permanently) บล็อกทุกคน ยกเว้น Admin
+    if (post.status === 'closed_permanently' && !isAdmin) {
+        return res.status(403).json({ error: '⛔ กระทู้นี้ปิดถาวรแล้ว' });
+    }
+
+    // ถ้ากระทู้แค่ isClosed (เช่น ช่วงส่งมอบงาน)
+    // อนุญาตให้ Admin, เจ้าของ, และคนรับงาน แชทได้ปกติ
+    if (post.isClosed && !isOwner && !isAcceptedViewer && !isAdmin) {
+        return res.status(403).json({ error: '⛔ เฉพาะผู้เกี่ยวข้องที่ส่งข้อความได้' });
+    }
 
     const newComment = { id: Date.now(), author, content, imageUrl, timestamp: Date.now() };
     await postsCollection.updateOne({ id: postId }, { $push: { comments: newComment } });
