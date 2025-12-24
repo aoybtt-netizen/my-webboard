@@ -905,8 +905,7 @@ app.get('/api/topics', async (req, res) => {
             // ใช้ Logic เดิมที่มีอยู่แล้วในการหา Responsible Admin
             const responsible = await findResponsibleAdmin(loc); 
             if (responsible && responsible.username) {
-                adminUsername = responsible.username; // เปลี่ยนเป้าหมายเป็น Admin คนนี้
-                console.log(`📍 Topic Request from [${lat}, ${lng}] -> Assigned to: ${adminUsername}`);
+                adminUsername = responsible.username; 
             }
         }
 
