@@ -1599,46 +1599,49 @@ socket.on('viewer-left-location', (data) => {
     }
 
     // --- 9. LOGIC สถานะกระทู้ปกติ ---
-    if (post.status === 'finished') {
+    commentForm.style.display = 'flex';
+    if (floatingInputArea) floatingInputArea.style.display = 'flex';
+    closedMsg.style.display = 'none';
+
+    if (post.status === 'closed_permanently') {
+        // ❌ ปิดถาวร: ห้ามทุกคนแชท
+        commentForm.style.display = 'none';
+        if (floatingInputArea) floatingInputArea.style.display = 'none';
+        closedMsg.style.display = 'block';
+        closedMsg.innerHTML = '<i class="fas fa-lock"></i> กระทู้นี้ถูกปิดถาวรแล้ว';
+        
+    } else if (post.status === 'finished') {
+        // 🤝 สถานะส่งมอบงาน (ยังไม่ปิดถาวร)
         if (!isParticipant) {
-            // สำหรับคนนอก: ซ่อนเนื้อหา
-            [contentDiv, imageContainer, mapContainer, list, commentForm].forEach(el => { if(el) el.style.display = 'none'; });
+            // คนนอก: ดูได้อย่างเดียว/หรือซ่อนตามความเหมาะสม
+            commentForm.style.display = 'none';
+            if (floatingInputArea) floatingInputArea.style.display = 'none';
             closedMsg.style.display = 'block';
-            closedMsg.innerHTML = '<div style="background:#fff3cd; padding:20px; border-radius:10px; text-align:center;"><h2>⛔ ปิดดีลแล้ว</h2><p>จำกัดสิทธิ์เฉพาะผู้เกี่ยวข้องเท่านั้น</p></div>';
+            closedMsg.innerHTML = '<div style="background:#fff3cd; padding:10px;"><h2>⛔ ปิดดีลแล้ว</h2><p>เฉพาะผู้เกี่ยวข้องที่แชทได้</p></div>';
         } else {
-            // ✅ สำหรับเจ้าของงาน และ ผู้รับงาน: ต้องแสดงช่องพิมพ์ทั้ง 2 จุด
-            if (commentForm) commentForm.style.display = 'flex';
-            
-            // ดึง Element แชทลอยขึ้นมาใหม่เพื่อให้แน่ใจว่าเข้าถึงได้
-            const fInputArea = document.getElementById('floating-chat-input-area');
-            if (fInputArea) fInputArea.style.display = 'flex';
+            // คู่สัญญา: แชทได้ปกติ + โชว์ปุ่มจบงาน
+            if (finishBtn) finishBtn.style.display = 'block';
             
             const statusAlert = document.getElementById('status-alert') || document.createElement('div');
             statusAlert.id = 'status-alert';
             statusAlert.innerHTML = `
-                <div style="background:#d1ecf1; color:#0c5460; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #bee5eb; text-align:center;">
-                    <strong>🤝 ขั้นตอนการส่งมอบงาน:</strong> คุณยังสามารถพูดคุยและนำทางได้จนกว่าจะจบงาน
+                <div style="background:#d1ecf1; color:#0c5460; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #bee5eb; text-align:center; font-size:0.9em;">
+                    <strong>🤝 ช่วงส่งมอบงาน:</strong> แชทและนำทางได้จนกว่าจะกดปุ่มจบงาน
                 </div>`;
             if (!document.getElementById('status-alert')) list.parentNode.insertBefore(statusAlert, list);
-            
-            if (finishBtn) finishBtn.style.display = 'block';
         }
     } else if (post.isClosed) {
-        commentForm.style.display = 'none';
-        closedMsg.style.display = 'block';
-        closedMsg.innerHTML = post.status === 'closed_permanently' 
-            ? '<i class="fas fa-lock"></i> กระทู้นี้ถูกปิดถาวรแล้ว' 
-            : '<i class="fas fa-lock"></i> กระทู้นี้ปิดรับความคิดเห็นแล้ว';
-        
-        if (isOwnerOrAdmin && post.status !== 'closed_permanently') {
-            restartBtn.style.display = 'block';
+        // ⚠️ ปิดชั่วคราว/หมดเวลา (แต่ยังไม่ถาวร)
+        // ถ้าคุณอยากให้แชทได้ "ปกติ" ก็ไม่ต้องสั่งซ่อน commentForm ตรงนี้
+        if (isOwnerOrAdmin) {
+            if (restartBtn) restartBtn.style.display = 'block';
         }
     } else {
-        // สถานะเปิดปกติ
+        // ✅ สถานะเปิดปกติ
         if (isOwnerOrAdmin) {
-            restartBtn.style.display = 'block';
-            handoverBtn.style.display = 'block';
-            manualCloseBtn.style.display = 'block';
+            if (restartBtn) restartBtn.style.display = 'block';
+            if (handoverBtn) handoverBtn.style.display = 'block';
+            if (manualCloseBtn) manualCloseBtn.style.display = 'block';
         }
     }
 	if (floatingCallBtn) {
