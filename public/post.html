@@ -1304,38 +1304,38 @@ window.openGoogleMapsApp = function() {
     const lat = location.lat;
     const lng = location.lng;
     currentDestination = { lat, lng };
+    
+    // ดึงข้อมูลเพื่อเช็คสิทธิ์
+    const isAcceptedViewer = currentPost && myUsername === currentPost.acceptedViewer;
+    const isOwner = myUsername === currentPostAuthor;
 
     let initialMapUrl = '';
     let viewerText = '';
 
-    // เช็คว่ามีตำแหน่งของผู้เข้าชม (คนดู) หรือไม่
-    if (myCurrentLocation && myUsername !== currentPostAuthor) {
-        // --- กรณีเป็นผู้เข้าชม: แสดงเส้นทางจาก "ฉัน" ไป "กระทู้" ---
+    // ✅ เงื่อนไข: มีพิกัดเรา + ไม่ใช่เจ้าของ + (เป็นคนดูทั่วไป หรือ เป็นคนรับงานตัวจริง)
+    if (myCurrentLocation && !isOwner) {
+        
         const myLat = myCurrentLocation.lat;
         const myLng = myCurrentLocation.lng;
-        
-        // คำนวณระยะห่าง
         const distanceKm = getDistanceFromLatLonInKm(myLat, myLng, lat, lng).toFixed(2);
         
-        // URL สำหรับ Google Maps Embed แบบแสดงเส้นทาง (saddr = จุดเริ่ม, daddr = ปลายทาง)
-        initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&output=embed&z=14&hl=th`;
+        // 🟢 แก้ไขการใส่ตัวแปร ${ } ให้ถูกต้อง
+        // ใช้ URL มาตรฐานสำหรับการวาดเส้นทาง (Embed)
+        initialMapUrl = `https://www.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&output=embed`;
         
-        viewerText = `<br><div style="color:#28a745; font-size:0.9em; margin-top:5px;">📏 ระยะห่างจากคุณ: ${distanceKm} กม.</div>`;
+        viewerText = `<br><div style="color:#28a745; font-size:0.9em; margin-top:5px;">📏 ระยะห่างจากจุดหมาย: ${distanceKm} กม.</div>`;
         
         if (navButton) navButton.style.display = 'block';
 
     } else {
-        // --- กรณีเป็นเจ้าของ หรือไม่มีพิกัดคนดู: แสดงแค่หมุดจุดเดียว ---
-        initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&hl=th`;
+        // สำหรับคนอื่น หรือเจ้าของงาน หรือกรณีไม่มีพิกัดเรา: โชว์แค่หมุดปักปกติ
+        initialMapUrl = `https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
         
         if (navButton) navButton.style.display = 'none';
     }
 
-    // อัปเดต Iframe และหัวข้อ
     mapIframe.src = initialMapUrl;
-    if (mapTitle) {
-        mapTitle.innerHTML = ` ${viewerText}`;
-    }
+    if (mapTitle) mapTitle.innerHTML = ` ${viewerText}`;
 }
 
 	// ฟังก์ชันสำหรับ Show/Hide แผนที่
@@ -1524,6 +1524,10 @@ socket.on('viewer-left-location', (data) => {
     const shareBtn = document.getElementById('share-map-btn');
     const callBtn = document.getElementById('btn-call-author');
 
+    // 🟢 เพิ่มการดึง Element สำหรับแชทลอยตรงนี้
+    const floatingInputArea = document.getElementById('floating-chat-input-area');
+    const floatingCallBtn = document.getElementById('btn-call-author'); // หรือ ID ที่อยู่ในแชทลอย
+
     // Reset สถานะการแสดงผลพื้นฐาน
     contentDiv.style.display = 'block';
     imageContainer.style.display = 'block'; 
@@ -1535,13 +1539,16 @@ socket.on('viewer-left-location', (data) => {
     currentPostAuthor = post.author; 
     const isOwner = myUsername === post.author;
     const isOwnerOrAdmin = isOwner || isAdmin;
+    const isAcceptedViewer = myUsername === post.acceptedViewer; 
+    const isParticipant = isOwner || isAcceptedViewer || isAdmin;
 
-    // --- 4. Logic การควบคุมแผนที่ (ย้ายขึ้นมาไว้ก่อน Early Return) ---
-    if (isOwnerOrAdmin) {
-        mapContainer.style.display = 'block'; // เจ้าของ/แอดมิน เห็นทันที
-        if (shareBtn) shareBtn.style.display = 'inline-block';
+    // --- 4. Logic การควบคุมแผนที่ ---
+    // ถ้างานจบ (Handover) แล้ว คนรับงาน (AcceptedViewer) ต้องเห็นแผนที่ด้วย
+    if (isOwnerOrAdmin || isAcceptedViewer) {
+        mapContainer.style.display = 'block';
+        if (shareBtn) shareBtn.style.display = isOwnerOrAdmin ? 'inline-block' : 'none';
     } else {
-        mapContainer.style.display = 'none';  // ผู้เข้าชมทั่วไป "ซ่อน" ไว้ก่อนเสมอ
+        mapContainer.style.display = 'none';
         if (shareBtn) shareBtn.style.display = 'none';
     }
 
@@ -1592,28 +1599,25 @@ socket.on('viewer-left-location', (data) => {
 
     // --- 9. LOGIC สถานะกระทู้ปกติ ---
     if (post.status === 'finished') {
-        const isParticipant = isOwnerOrAdmin || myUsername === post.acceptedViewer;
-
         if (!isParticipant) {
-            // คนนอกไม่เห็นอะไรเลย
-            [contentDiv, imageContainer, mapContainer, list, commentForm].forEach(el => el.style.display = 'none');
+            // ❌ สำหรับคนนอก: ซ่อนเนื้อหาทั้งหมด
+            [contentDiv, imageContainer, mapContainer, list, commentForm].forEach(el => { if(el) el.style.display = 'none'; });
             closedMsg.style.display = 'block';
-            closedMsg.innerHTML = `
-                <div style="background:#fff3cd; color:#856404; padding:20px; border:1px solid #ffeeba; border-radius:10px;">
-                    <h2>⛔ ปิดดีลแล้ว</h2>
-                    <p>จำกัดสิทธิ์เฉพาะผู้เกี่ยวข้องเท่านั้น</p>
-                </div>`;
-            backBtn.style.display = 'block';
+            closedMsg.innerHTML = '<div style="background:#fff3cd; padding:20px; border-radius:10px; text-align:center;"><h2>⛔ ปิดดีลแล้ว</h2><p>จำกัดสิทธิ์เฉพาะผู้เกี่ยวข้องเท่านั้น</p></div>';
         } else {
-            // เจ้าของ หรือ คนรับงาน เห็นสถานะจบงาน
-            const statusAlert = document.createElement('div');
+            // ✅ สำหรับเจ้าของงาน และ ผู้รับงาน: เปิดแชทต่อ
+            if(commentForm) commentForm.style.display = 'flex';
+            if(floatingInputArea) floatingInputArea.style.display = 'flex';
+            
+            const statusAlert = document.getElementById('status-alert') || document.createElement('div');
             statusAlert.id = 'status-alert';
             statusAlert.innerHTML = `
-                <div style="background:#d4edda; color:#155724; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #c3e6cb; text-align:center;">
-                    <strong>✅ ปิดดีลสำเร็จ!</strong> ส่งมอบงานให้คุณ <strong>${post.acceptedViewer}</strong> แล้ว
+                <div style="background:#d1ecf1; color:#0c5460; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #bee5eb; text-align:center;">
+                    <strong>🤝 ขั้นตอนการส่งมอบงาน:</strong> คุณยังสามารถพูดคุยและนำทางได้จนกว่าจะจบงาน
                 </div>`;
-            list.parentNode.insertBefore(statusAlert, list);
-            finishBtn.style.display = 'block';
+            if (!document.getElementById('status-alert')) list.parentNode.insertBefore(statusAlert, list);
+            
+            if(finishBtn) finishBtn.style.display = 'block';
         }
     } else if (post.isClosed) {
         commentForm.style.display = 'none';
@@ -1632,6 +1636,10 @@ socket.on('viewer-left-location', (data) => {
             handoverBtn.style.display = 'block';
             manualCloseBtn.style.display = 'block';
         }
+    }
+	if (floatingCallBtn) {
+        // เงื่อนไข: ต้องเป็นคนในกลุ่ม Participant และต้อง "ไม่ใช่เจ้าของ" (เพราะเจ้าของไม่โทรหาตัวเอง)
+        floatingCallBtn.style.display = (isParticipant && !isOwner) ? 'flex' : 'none';
     }
 }
 		
