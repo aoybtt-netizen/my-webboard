@@ -1020,64 +1020,43 @@ window.closeImageViewer = function() {
     const mapIframe = document.getElementById('post-map-iframe');
     const navButton = document.getElementById('start-nav-btn');
     const mapTitle = document.getElementById('map-title');
-    const lang = localStorage.getItem('preferredLanguage') || 'th';
-    const t = postTranslations[lang] || postTranslations['th'];            
     
-    // ตรวจสอบก่อนว่ามี Element ครบไหมเพื่อป้องกัน Error
-    if (!mapIframe || !mapContainer) return;
+    if (!mapIframe || !location) return;
 
-    if (location && location.lat && location.lng) {
-        const lat = location.lat.toFixed(6); 
-        const lng = location.lng.toFixed(6);
+    const lat = location.lat;
+    const lng = location.lng;
+    currentDestination = { lat, lng };
+
+    let initialMapUrl = '';
+    let viewerText = '';
+
+    // เช็คว่ามีตำแหน่งของผู้เข้าชม (คนดู) หรือไม่
+    if (myCurrentLocation && myUsername !== currentPostAuthor) {
+        // --- กรณีเป็นผู้เข้าชม: แสดงเส้นทางจาก "ฉัน" ไป "กระทู้" ---
+        const myLat = myCurrentLocation.lat;
+        const myLng = myCurrentLocation.lng;
         
-        currentDestination = { lat, lng };
-
-        let viewerText = '';
-        let initialMapUrl = '';
+        // คำนวณระยะห่าง
+        const distanceKm = getDistanceFromLatLonInKm(myLat, myLng, lat, lng).toFixed(2);
         
-        if (myCurrentLocation) {
-             const distanceKm = getDistanceFromLatLonInKm(
-                location.lat, location.lng, 
-                myCurrentLocation.lat, myCurrentLocation.lng
-            ).toFixed(2);
-            
-            viewerText = `<br>
-                  <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
-                      <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                          📏 Distance: ${distanceKm} Km.
-                      </span>
-                  </div>`;
-
-             const myLat = myCurrentLocation.lat.toFixed(6);
-             const myLng = myCurrentLocation.lng.toFixed(6);
-             
-             // แก้ไขตรงนี้: จาก 0{ เป็น ${
-             initialMapUrl = `https://maps.google.com/maps?q=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&hl=th`;
-
-        } else {
-             // แก้ไขตรงนี้: จาก 1{ เป็น ${
-             initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&hl=th`;
-        }
-
-        mapIframe.src = initialMapUrl;
-
-        if (mapTitle) {
-            mapTitle.innerHTML = `📍 Location${viewerText}`;
-        }
-
-
-        const isOwnerOrAdmin = myUsername === currentPostAuthor || myUsername === 'Admin';
+        // URL สำหรับ Google Maps Embed แบบแสดงเส้นทาง (saddr = จุดเริ่ม, daddr = ปลายทาง)
+        initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&output=embed&z=14&hl=th`;
         
-        if (navButton) {
-            if (isOwnerOrAdmin) {
-                navButton.style.display = 'none';
-            } else {
-                navButton.style.display = 'block';
-                navButton.innerText = t['btn_show_route'];
-            }
-        }
+        viewerText = `<br><div style="color:#28a745; font-size:0.9em; margin-top:5px;">📏 ระยะห่างจากคุณ: ${distanceKm} กม.</div>`;
+        
+        if (navButton) navButton.style.display = 'block';
+
     } else {
-        mapContainer.style.display = 'none'; 
+        // --- กรณีเป็นเจ้าของ หรือไม่มีพิกัดคนดู: แสดงแค่หมุดจุดเดียว ---
+        initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&hl=th`;
+        
+        if (navButton) navButton.style.display = 'none';
+    }
+
+    // อัปเดต Iframe และหัวข้อ
+    mapIframe.src = initialMapUrl;
+    if (mapTitle) {
+        mapTitle.innerHTML = `📍 ตำแหน่งกระทู้ ${viewerText}`;
     }
 }
 
@@ -1391,11 +1370,18 @@ function shareMapToViewers() {
 // 2. รับสัญญาณจากเจ้าของกระทู้ (สำหรับฝั่งผู้เข้าชม)
 socket.on('map-access-granted', (data) => {
     const isOwner = myUsername === currentPostAuthor;
-    // ถ้าไม่ใช่เจ้าของ (คือคนดู) ให้เปลี่ยนสถานะจาก none เป็น block
+    
     if (!isOwner) {
         const mapContainer = document.getElementById('map-container');
         if (mapContainer) {
-            mapContainer.style.display = 'block'; // แสดงผลเมื่อเจ้าของกดอนุญาต
+            // 1. แสดงกรอบแผนที่
+            mapContainer.style.display = 'block';
+            
+            // 2. สั่งให้วาดแผนที่ใหม่ทันที (เพื่อให้มันเช็ค myCurrentLocation แล้วสร้าง URL เส้นทาง)
+            if (currentPost && currentPost.location) {
+                displayMap(currentPost.location);
+            }
+            
             showNotification("เจ้าของกระทู้อนุญาตให้คุณดูแผนที่แล้ว", "fas fa-map-marked-alt", 5000);
         }
     }
