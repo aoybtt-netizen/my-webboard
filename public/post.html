@@ -343,7 +343,7 @@
 
         <input type="file" id="comment-image" name="image" accept="image/*" class="hidden"> 
 
-        <input type="text" id="comment-input" placeholder="แสดงความคิดเห็น..." autocomplete="off">
+        <input type="text" id="comment-input" placeholder="comment..." autocomplete="off">
         
         <button id="btn-call-author" 
         onclick="startCall(currentPostAuthor)" 
@@ -1056,7 +1056,7 @@ window.closeImageViewer = function() {
     // อัปเดต Iframe และหัวข้อ
     mapIframe.src = initialMapUrl;
     if (mapTitle) {
-        mapTitle.innerHTML = `📍 ตำแหน่งกระทู้ ${viewerText}`;
+        mapTitle.innerHTML = ` ${viewerText}`;
     }
 }
 
