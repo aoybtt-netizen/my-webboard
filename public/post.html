@@ -261,38 +261,37 @@
 /* หน้าต่างแชท */
 #floating-chat-window {
     position: fixed;
-    bottom: 20px; /* ให้ลอยจากด้านล่างเหมือนเดิม หรือจะปรับเป็น top: 50% ก็ได้ */
-    right: 50px; /* ขยับเข้ามาจากขอบขวาเพื่อให้ไม่ทับปุ่ม */
-    width: 320px;
-    height: 450px;
+    top: 0;
+    left: 0;
+    width: 100vw;  /* เต็มความกว้างจอ */
+    height: 100vh; /* เต็มความสูงจอ */
     background: white;
-    border-radius: 15px;
-    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    z-index: 2400;
+    z-index: 3000; /* ให้อยู่เหนือทุกอย่าง */
+    transition: transform 0.3s ease-in-out;
 }
 
 #chat-window-header {
     background: #007bff;
     color: white;
-    padding: 12px 15px;
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-size: 1.2em;
     font-weight: 600;
 }
 
 #floating-chat-messages {
     flex-grow: 1;
-    padding: 15px;
+    padding: 20px;
     overflow-y: auto;
-    background: #f8f9fa;
+    background: #f0f2f5;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-	touch-action: pan-y;
+    gap: 12px;
 }
 
 #floating-comment-input {
@@ -317,12 +316,13 @@
 }
 
 #floating-chat-input-area {
-    padding: 10px;
+    padding: 15px;
     display: flex;
     align-items: center;
-    gap: 8px; /* เว้นระยะระหว่างปุ่มโทร-ช่องพิมพ์-ปุ่มส่ง */
+    gap: 10px;
     border-top: 1px solid #eee;
     background: #fff;
+    padding-bottom: calc(15px + env(safe-area-inset-bottom));
 }
 
 #floating-comment-input {
@@ -1040,13 +1040,18 @@ function toggleFloatingChat() {
     
     windowEl.classList.toggle('hidden');
     
-    // ถ้าเปิดขึ้นมา ให้เลื่อนแชทไปล่างสุดและโฟกัสช่องพิมพ์
     if (!windowEl.classList.contains('hidden')) {
+        // เมื่อเปิดแชท: ห้ามหน้าเว็บหลักเลื่อน
+        document.body.style.overflow = 'hidden';
+        
         const msgDiv = document.getElementById('floating-chat-messages');
         if (msgDiv) msgDiv.scrollTop = msgDiv.scrollHeight;
         
         const chatInput = document.getElementById('floating-comment-input');
         if (chatInput) chatInput.focus();
+    } else {
+        // เมื่อปิดแชท: กลับมาเลื่อนหน้าเว็บได้ปกติ
+        document.body.style.overflow = 'auto';
     }
 }
 
