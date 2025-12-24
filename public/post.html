@@ -153,12 +153,15 @@
         }
         #chat-input-area {
             display: flex;
-            align-items: center;
-            gap: 5px; 
-            padding: 0 10px;
+			align-items: center;
+			gap: 5px; 
+			padding: 0 10px;
+			width: 100%;     /* บังคับให้ขนาดพอดีกับ Container */
+			box-sizing: border-box;
         }
         #comment-input { 
             flex-grow: 1; 
+			min-width: 0;
             padding: 10px 15px; 
             border: none; 
             border-radius: 20px; 
@@ -171,9 +174,10 @@
             outline: none; 
             background-color: #fff;
         }
-        #add-media-btn, #send-comment-btn { 
+        #add-media-btn, #send-comment-btn, #emoji-btn, #btn-call-author { 
             width: 40px; 
             height: 40px; 
+			flex-shrink: 0;
             border-radius: 50%; 
             border: none; 
             cursor: pointer; 
@@ -473,30 +477,21 @@
         <h3><i class="fas fa-comments"></i> Comment</h3>
         <div id="comments-list"></div>
 
-        <div id="comment-form" style="display: flex; flex-direction: column;"> <div id="file-name-display" style="display: none; font-size: 0.85em; color: #007bff; margin-bottom: 5px; padding-left: 55px; text-align: left;"></div>
+        <div id="comment-form" style="display: flex; flex-direction: column; width: 100%;">
+    <div id="file-name-display" style="display: none; ..."></div>
 
-    <div id="chat-input-area" style="position: relative;">
-        <button id="add-media-btn" onclick="document.getElementById('comment-image').click()" title="แนบไฟล์">
+    <div id="chat-input-area">
+        <button id="add-media-btn" onclick="document.getElementById('comment-image').click()">
             <i class="fas fa-plus"></i>
         </button>
         
-        <button id="emoji-btn" onclick="toggleEmoji()" style="width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; background: #fff; font-size: 1.2em; margin-right: 5px;">
-            😊
-        </button>
-
-        <input type="file" id="comment-image" name="image" accept="image/*" class="hidden"> 
+        <button id="emoji-btn" onclick="toggleEmoji()">😊</button>
 
         <input type="text" id="comment-input" placeholder="comment..." autocomplete="off">
         
-        
-
-        <button id="send-comment-btn" onclick="sendComment()" title="ส่งข้อความ">
+        <button id="send-comment-btn" onclick="sendComment()">
             <i class="fas fa-paper-plane"></i>
         </button>
-
-        <div id="comment-emoji-picker" style="display: none; position: absolute; bottom: 60px; left: 10px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 8px;">
-            <emoji-picker id="picker-comment"></emoji-picker>
-        </div>
     </div>
 </div>
 
