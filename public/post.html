@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+	<script>
+	// เริ่มใช้งาน vConsole
+	var vConsole = new window.VConsole();
+	</script>
+	
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -259,6 +265,18 @@
             <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
         </button>
     </div>
+	
+	
+	<div id="author-tools" class="hidden" style="margin: 10px 0; text-align: center;">
+    <button id="share-loc-btn" onclick="shareLocation()" class="sidebar-btn" style="background: #28a745; color: white;">
+        <i class="fas fa-share-location"></i> แชร์ตำแหน่งให้ผู้เข้าชม
+    </button>
+</div>
+
+<div id="viewer-wait-msg" class="hidden" style="text-align: center; padding: 20px; background: #fff3cd; border-radius: 10px; margin: 10px 0;">
+    <i class="fas fa-lock"></i> รอเจ้าของกระทู้แชร์ตำแหน่ง...
+</div>
+
 
     <div id="map-content-wrapper" style="display: block; margin-top: 15px;">
         <button id="start-nav-btn" 
@@ -492,6 +510,7 @@
         const socket = io();
         let myCurrentLocation = null;
         let currentPostAuthor = null;
+		let locationShared = false;
         
         // WebRTC Voice Call Logic P2P ---
         let localStream;
@@ -871,6 +890,11 @@
         });
 
         socket.on('access-granted', ({ post, isAdmin }) => {
+			locationShared = false;
+			const waitMsg = document.getElementById('viewer-wait-msg');
+			if (waitMsg && myUsername !== data.post.author) {
+					waitMsg.style.display = 'block';
+				}
             // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
             currentPost = post; 
             // ดึงภาษาเพื่อใช้แสดงข้อความ
@@ -1111,55 +1135,98 @@ window.closeImageViewer = function() {
         btn.style.color = '#333';
     }
 }
+
+	
+	// ฟังคำสั่งจาก Server (สำหรับฝั่งผู้เข้าชม)
+socket.on('location-shared-by-author', (data) => {
+    alert("📢 เจ้าของกระทู้ได้แชร์ตำแหน่งให้คุณแล้ว!");
+    locationShared = true;
+    document.getElementById('viewer-wait-msg').classList.add('hidden');
+    
+    // เรียกแสดงแผนที่พร้อมเส้นทางทันที
+    if (myCurrentLocation) {
+        displayMapWithViewer(data.authorLocation, myCurrentLocation);
+    }
+});
+
+	socket.on('viewer-left-reset-share', () => {
+    const shareBtn = document.getElementById('share-loc-btn');
+    if (shareBtn) {
+        shareBtn.disabled = false;
+        shareBtn.innerText = "แชร์ตำแหน่งให้ผู้เข้าชม";
+        shareBtn.style.background = "#28a745";
+    }
+    // เมื่อคนดูออกไป แผนที่ฝั่งเจ้าของก็ควรกลับไปโชว์แค่จุดเดียวหรือล้างเส้นทาง
+    // displayMapWithViewer(currentPost.location, null); 
+});
+
+// ฟังก์ชันแชร์ตำแหน่ง (สำหรับฝั่งเจ้าของกระทู้)
+function shareLocation() {
+    const targetViewer = currentPostViewer; // ชื่อผู้เข้าชมที่ระบบเก็บไว้
+    if (!targetViewer) return alert("ยังไม่มีผู้เข้าชมในขณะนี้");
+
+    socket.emit('share-location-to-viewer', {
+        postId: currentPost.id,
+        targetViewer: targetViewer,
+        authorLocation: currentPost.location
+    });
+    
+    alert("✅ ส่งตำแหน่งให้ผู้เข้าชมแล้ว");
+    document.getElementById('share-loc-btn').disabled = true;
+    document.getElementById('share-loc-btn').innerText = "แชร์แล้ว";
+}
+
         
-        function displayMapWithViewer(postLocation, viewerLocation) {
+    function displayMapWithViewer(postLocation, viewerLocation) {
     const mapContainer = document.getElementById('map-container');
     const mapIframe = document.getElementById('post-map-iframe');
-    const navButton = document.getElementById('start-nav-btn'); 
     const mapTitle = document.getElementById('map-title'); 
+    const waitMsg = document.getElementById('viewer-wait-msg'); // ต้องสร้าง div นี้เพิ่มใน HTML
     
     if (!postLocation || !postLocation.lat || !postLocation.lng) {
         mapContainer.style.display = 'none'; 
         return;
     }
 
-    // พิกัดจุดตั้งกระทู้ (ปลายทางหลัก)
     const p_lat = postLocation.lat; 
     const p_lng = postLocation.lng;
+    const isOwnerOrAdmin = (myUsername === currentPost.author || myUsername === 'Admin');
     
     let mapUrl = '';
     let viewerText = '';
-    
-    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
 
-    if (viewerLocation && viewerLocation.lat && isOwnerOrAdmin) {
+    // --- LOGIC การแสดงผล ---
+    
+    // 1. ถ้าไม่ใช่เจ้าของ และยังไม่ได้รับแชร์ -> ซ่อนแผนที่
+    if (!isOwnerOrAdmin && !locationShared) {
+        mapContainer.style.display = 'none';
+        if (waitMsg) waitMsg.style.display = 'block';
+        return;
+    }
+
+    // 2. ถ้ามาถึงตรงนี้ได้ แปลว่าเป็นเจ้าของ หรือ ได้รับแชร์แล้ว
+    if (waitMsg) waitMsg.style.display = 'none';
+    mapContainer.style.display = 'block';
+
+    if (viewerLocation && viewerLocation.lat) {
         const v_lat = viewerLocation.lat;
         const v_lng = viewerLocation.lng;
-        
-        // 1. คำนวณระยะห่าง
         const distanceKm = getDistanceFromLatLonInKm(p_lat, p_lng, v_lat, v_lng).toFixed(2);
         
-        // 2. ✅ สร้าง URL เส้นทาง: saddr = จุดที่คนดูยืนอยู่, daddr = จุดที่ตั้งกระทู้
-        // เราใช้ maps.google.com/maps เพื่อให้รองรับการวาดเส้นทางใน Embed
+        // วาดเส้นทาง (คนดู -> จุดตั้งกระทู้)
         mapUrl = `https://maps.google.com/maps?saddr=${v_lat},${v_lng}&daddr=${p_lat},${p_lng}&output=embed&t=m&z=14`;
         
         viewerText = `<br>
                       <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
-                          <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                              📏 ระยะห่างจากคุณ: ${distanceKm} กม.
-                          </span>
+                          <span style="color:#d63384; font-weight:bold;">📏 ระยะห่าง: ${distanceKm} กม.</span>
                       </div>`;
     } else {
-        // 3. กรณีไม่มีพิกัดคนดู หรือไม่ใช่เจ้าของกระทู้ แสดงแค่จุดกระทู้จุดเดียว
+        // แสดงแค่จุดเดียว
         mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m`;
     }
     
-    // อัปเดต Iframe
     mapIframe.src = mapUrl;
-    
     if (mapTitle) mapTitle.innerHTML = `📍 ตำแหน่งกระทู้${viewerText}`;
-    mapContainer.style.display = 'block'; 
-    navButton.style.display = 'none';
 }
 
     window.startEmbeddedNavigation = function() {

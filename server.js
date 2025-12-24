@@ -2366,6 +2366,11 @@ io.on('connection', (socket) => {
                 io.to(`post-${postId}`).emit('viewer-left-location', { viewer: socket.username });
             }
         }
+		
+		const post = await postsCollection.findOne({ id: parseInt(postId) });
+			if (post) {
+			io.to(post.author).emit('viewer-left-reset-share');
+		}
         socket.leave(`post-${postId}`);
         socket.viewingPostId = null;
     });
@@ -2398,6 +2403,17 @@ io.on('connection', (socket) => {
             socket.emit('force-leave', msg); 
         }
     });
+	
+	
+	// เจ้าของกระทู้กดแชร์ตำแหน่ง
+socket.on('share-location-to-viewer', (data) => {
+    const { postId, targetViewer } = data;
+    // ส่งสัญญาณไปบอกผู้เข้าชม (targetViewer) ว่า "เจ้าของอนุญาตให้เห็นตำแหน่งแล้ว"
+    io.to(targetViewer).emit('location-shared-by-author', { 
+        postId, 
+        authorLocation: data.authorLocation // ส่งพิกัดไปด้วยเลย
+    });
+});
 	
 	//  WebRTC Signaling (ระบบโทร P2P) ---
 
