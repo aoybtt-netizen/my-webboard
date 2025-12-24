@@ -393,7 +393,7 @@
 
         <input type="text" id="floating-comment-input" placeholder="chat...">
         
-        <button onclick="sendFloatingComment()" style="background: #007bff; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer;">
+        <button type="button" onclick="sendFloatingComment()" style="background: #007bff; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer;">
             <i class="fas fa-paper-plane"></i>
         </button>
     </div>
@@ -493,9 +493,9 @@
         
         
 
-        <button id="send-comment-btn" onclick="sendComment()" title="ส่งข้อความ">
-            <i class="fas fa-paper-plane"></i>
-        </button>
+        <button type="button" id="send-comment-btn" onclick="sendComment()" title="Send">
+		<i class="fas fa-paper-plane"></i>
+		</button>
 
         <div id="comment-emoji-picker" style="display: none; position: absolute; bottom: 60px; left: 10px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 8px;">
             <emoji-picker id="picker-comment"></emoji-picker>
@@ -1050,16 +1050,21 @@ function toggleFloatingChat() {
 }
 
 function sendFloatingComment() {
-    const fInput = document.getElementById('floating-comment-input'); // ช่องในแชทลอย
-    const mainInput = document.getElementById('comment-input');     // ช่องหลักของหน้าเว็บ
+    const fInput = document.getElementById('floating-comment-input');
+    const mainInput = document.getElementById('comment-input');
     
     const content = fInput.value.trim();
     if (!content) return;
 
-    // ย้ายข้อความไปที่ช่องหลักแล้วสั่งส่งผ่านฟังก์ชันเดิม
-    mainInput.value = content;
-    sendComment(); 
-    fInput.value = ''; // ล้างช่องพิมพ์ในแชทลอย
+    // ย้ายข้อความไปที่ช่องหลัก
+    if (mainInput) {
+        mainInput.value = content;
+        // เรียกฟังก์ชันส่ง (ใช้แบบระบุ window เพื่อความแน่นอน)
+        if (typeof window.sendComment === 'function') {
+            window.sendComment();
+        }
+    }
+    fInput.value = ''; // ล้างช่องพิมพ์ในหน้าต่างแชท
 }
 
         
@@ -1078,15 +1083,7 @@ function sendFloatingComment() {
         input.focus();
     });
 
-    // ปิด Picker เมื่อกดส่งข้อความ (แก้ในฟังก์ชัน sendComment เดิม)
-    const originalSendComment = window.sendComment;
-    window.sendComment = async function() {
-        // ปิด Emoji picker
-        document.getElementById('comment-emoji-picker').style.display = 'none';
-        
-        // เรียกฟังก์ชันเดิม
-        await originalSendComment(); // เนื่องจากคุณประกาศ window.sendComment = sendComment ไว้ท้ายไฟล์เดิม
-    }
+    
         
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('id'); 
@@ -2093,6 +2090,17 @@ function closeDealWithViewer() {
 function deg2rad(deg) {
     return deg * (Math.PI / 180);
 }
+
+
+// ปิด Picker เมื่อกดส่งข้อความ (แก้ในฟังก์ชัน sendComment เดิม)
+    const originalSendComment = window.sendComment;
+    window.sendComment = async function() {
+        // ปิด Emoji picker
+        document.getElementById('comment-emoji-picker').style.display = 'none';
+        
+        // เรียกฟังก์ชันเดิม
+        await originalSendComment(); // เนื่องจากคุณประกาศ window.sendComment = sendComment ไว้ท้ายไฟล์เดิม
+    }
 
     </script>
     
