@@ -1614,10 +1614,10 @@ socket.on('viewer-left-location', (data) => {
         // 🤝 สถานะส่งมอบงาน (ยังไม่ปิดถาวร)
         if (!isParticipant) {
             // คนนอก: ดูได้อย่างเดียว/หรือซ่อนตามความเหมาะสม
-            commentForm.style.display = 'none';
+            commentForm.style.display = 'flex';
             if (floatingInputArea) floatingInputArea.style.display = 'none';
-            closedMsg.style.display = 'block';
-            closedMsg.innerHTML = '<div style="background:#fff3cd; padding:10px;"><h2>⛔ ปิดดีลแล้ว</h2><p>เฉพาะผู้เกี่ยวข้องที่แชทได้</p></div>';
+            closedMsg.style.display = 'none';
+            //closedMsg.innerHTML = '<div style="background:#fff3cd; padding:10px;"><h2>⛔ ปิดดีลแล้ว</h2><p>เฉพาะผู้เกี่ยวข้องที่แชทได้</p></div>';
         } else {
             // คู่สัญญา: แชทได้ปกติ + โชว์ปุ่มจบงาน
             if (finishBtn) finishBtn.style.display = 'block';
