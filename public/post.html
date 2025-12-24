@@ -257,16 +257,14 @@
     <div class="container">
         <div id="map-container" style="margin-top: 20px; display:none; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-    <button id="map-title" onclick="sharePerspective()" style="cursor:pointer; border-radius:15px; padding:5px 15px; border:1px solid #007bff; background:#fff; color:#007bff; font-weight:600;">
-    📍 ควบคุมแผนที่ (เฉพาะเจ้าของ)
-</button>
-    
-    <button id="toggle-map-btn" onclick="toggleMap()" 
-        data-i18n-key="btn_hide_map"
-        style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
-        <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
-    </button>
-</div>
+        <h3 id="map-title" style="margin: 0; border: none; padding: 0;">📍 Location</h3>
+        
+        <button id="toggle-map-btn" onclick="toggleMap()" 
+            data-i18n-key="btn_hide_map"
+            style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
+            <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
+        </button>
+    </div>
 
     <div id="map-content-wrapper" style="display: block; margin-top: 15px;">
         <button id="start-nav-btn" 
@@ -500,7 +498,6 @@
         const socket = io();
         let myCurrentLocation = null;
         let currentPostAuthor = null;
-		let isMapVisibleForViewers = false;
         
         // WebRTC Voice Call Logic P2P ---
         let localStream;
@@ -1091,45 +1088,6 @@ window.closeImageViewer = function() {
     } else {
         mapContainer.style.display = 'none'; 
         navButton.style.display = 'none';
-    }
-}
-
-
-	socket.on('toggle-map-visibility', (data) => {
-    // ถ้าเราไม่ใช่เจ้าของกระทู้ ให้ทำตามที่เขาสั่ง
-    if (post && myUsername !== post.author) {
-        const mapContainer = document.getElementById('map-container');
-        mapContainer.style.display = data.visible ? 'block' : 'none';
-    }
-});
-
-
-	let mapShow = false; // สถานะเริ่มต้นคือซ่อน
-
-function sharePerspective() {
-    // 1. ตรวจสอบก่อนว่าตัวแปร post มีข้อมูลหรือยัง (เหมือนที่ระบบเช็คก่อนโชว์ปุ่มเตะคน)
-    if (!post) {
-        console.error("รอข้อมูลกระทู้สักครู่...");
-        return;
-    }
-
-    // 2. ใช้เงื่อนไขเดียวกับปุ่ม "ปิดกระทู้ / จ้างงาน / เตะคน"
-    if (myUsername === post.author) {
-        
-        // สลับสถานะ (Toggle)
-        isMapVisibleForViewers = !isMapVisibleForViewers;
-
-        // ส่งสัญญาณ Socket (ใส่ postId ให้ถูกตัว)
-        socket.emit('toggle-map-visibility', {
-            postId: post._id, // ใช้ post._id เพราะเป็นค่าจาก Database โดยตรง
-            visible: isMapVisibleForViewers
-        });
-
-        console.log("เจ้าของกระทู้สั่งสลับแผนที่: ", isMapVisibleForViewers);
-
-    } else {
-        // ถ้าไม่ใช่เจ้าของกระทู้ (เหมือนที่ระบบจะซ่อนปุ่มเตะคนไม่ให้คนอื่นเห็น)
-        alert("ขออภัย เฉพาะเจ้าของกระทู้เท่านั้นที่กดปุ่มนี้ได้");
     }
 }
 
