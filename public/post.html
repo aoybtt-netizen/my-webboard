@@ -1360,10 +1360,10 @@ socket.on('viewer-left-location', (data) => {
 		
 		// 1. ฟังก์ชันเมื่อเจ้าของกดปุ่ม "อนุญาต"
 function shareMapToViewers() {
-    if (confirm("ต้องการเปิดการเข้าถึงแผนที่ให้ผู้เข้าชมทุกคนในขณะนี้ใช่ไหม?")) {
+    if (confirm("Do you want to grant visitors access to the map now?")) {
         // ส่ง Event ไปยัง Server (ใช้ postId เพื่อระบุห้อง)
         socket.emit('share-map-access', { postId: postId });
-        showNotification("เปิดการเข้าถึงแผนที่แล้ว", "fas fa-check-circle");
+        showNotification("Access to the map has been enabled.", "fas fa-check-circle");
     }
 }
 
@@ -1382,7 +1382,7 @@ socket.on('map-access-granted', (data) => {
                 displayMap(currentPost.location);
             }
             
-            showNotification("เจ้าของกระทู้อนุญาตให้คุณดูแผนที่แล้ว", "fas fa-map-marked-alt", 5000);
+            showNotification("The host has given you permission to view the map.", "fas fa-map-marked-alt", 5000);
         }
     }
 });
@@ -1434,7 +1434,7 @@ socket.on('map-access-granted', (data) => {
             const imageFile = document.getElementById('comment-image').files[0];
 
             if(!content && !imageFile) {
-                showNotification("กรุณาใส่ข้อความหรือเลือกรูปภาพ", 'fas fa-exclamation-circle', 2000);
+                showNotification("Please enter text or select an image.", 'fas fa-exclamation-circle', 2000);
                 return;
             }
             
@@ -1570,7 +1570,7 @@ function closeDealWithViewer() {
             const viewerElement = document.getElementById('target-viewer-display');
             
             if (!viewerElement) {
-                return showNotification('ระบบขัดข้อง: ไม่พบชื่อผู้รับงาน กรุณารีเฟรชหน้าเว็บแล้วลองใหม่', 'fas fa-bug', 5000);
+                return showNotification('System error: Recipient name not found. Please refresh the page and try again.', 'fas fa-bug', 5000);
             }
 
             // ดึงข้อความทั้งหมด (เช่น "Aoy ⭐ 4.31")
