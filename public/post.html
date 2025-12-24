@@ -1123,40 +1123,41 @@ window.closeImageViewer = function() {
         return;
     }
 
-    currentDestination = { lat: postLocation.lat, lng: postLocation.lng };
-    const p_lat = postLocation.lat.toFixed(6); 
-    const p_lng = postLocation.lng.toFixed(6);
+    // พิกัดจุดตั้งกระทู้ (ปลายทางหลัก)
+    const p_lat = postLocation.lat; 
+    const p_lng = postLocation.lng;
+    
     let mapUrl = '';
     let viewerText = '';
     
     const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
 
     if (viewerLocation && viewerLocation.lat && isOwnerOrAdmin) {
-        const v_lat = viewerLocation.lat.toFixed(6);
-        const v_lng = viewerLocation.lng.toFixed(6);
+        const v_lat = viewerLocation.lat;
+        const v_lng = viewerLocation.lng;
         
-        // ✅ คำนวณระยะห่างระหว่าง "จุดตั้งกระทู้" กับ "คนดู"
-        const distanceKm = getDistanceFromLatLonInKm(
-            postLocation.lat, postLocation.lng, 
-            viewerLocation.lat, viewerLocation.lng
-        ).toFixed(2);
+        // 1. คำนวณระยะห่าง
+        const distanceKm = getDistanceFromLatLonInKm(p_lat, p_lng, v_lat, v_lng).toFixed(2);
         
-        // ✅ สร้างเส้นทาง: ต้นทาง=จุดตั้งกระทู้ -> ปลายทาง=คนดู
-        initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
+        // 2. ✅ สร้าง URL เส้นทาง: saddr = จุดที่คนดูยืนอยู่, daddr = จุดที่ตั้งกระทู้
+        // เราใช้ maps.google.com/maps เพื่อให้รองรับการวาดเส้นทางใน Embed
+        mapUrl = `https://maps.google.com/maps?saddr=${v_lat},${v_lng}&daddr=${p_lat},${p_lng}&output=embed&t=m&z=14`;
         
         viewerText = `<br>
                       <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
                           <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                              📏 Distance: ${distanceKm} Km.
+                              📏 ระยะห่างจากคุณ: ${distanceKm} กม.
                           </span>
                       </div>`;
     } else {
-        // แสดงแค่จุดกระทู้
-        initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&t=m&hl=en`;
+        // 3. กรณีไม่มีพิกัดคนดู หรือไม่ใช่เจ้าของกระทู้ แสดงแค่จุดกระทู้จุดเดียว
+        mapUrl = `https://maps.google.com/maps?q=${p_lat},${p_lng}&z=15&output=embed&t=m`;
     }
     
+    // อัปเดต Iframe
     mapIframe.src = mapUrl;
-    if (mapTitle) mapTitle.innerHTML = `📍 Location${viewerText}`;
+    
+    if (mapTitle) mapTitle.innerHTML = `📍 ตำแหน่งกระทู้${viewerText}`;
     mapContainer.style.display = 'block'; 
     navButton.style.display = 'none';
 }

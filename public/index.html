@@ -193,9 +193,7 @@
 	<button class="sidebar-btn my-closed-posts-btn" onclick="showMyClosedPosts()" data-i18n-key="my_closed_posts">
 กระทู้ของฉันที่ปิดแล้ว
 </button>
-	<button class="sidebar-btn" onclick="openVerifyModal()" style="background: #28a745; color: white;">
-    <i class="fas fa-user-shield"></i> <span data-i18n-key="menu_verify">Verify Identity</span>
-</button>
+	
     
     <div id="admin-panel" class="hidden">
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
@@ -3102,6 +3100,9 @@ window.deductCoinInChat = deductCoinInChat;
 
 //Verify
 // ฟังก์ชันเมื่อกดปุ่ม Verify Identity จากเมนู
+/*<button class="sidebar-btn" onclick="openVerifyModal()" style="background: #28a745; color: white;">
+    <i class="fas fa-user-shield"></i> <span data-i18n-key="menu_verify">Verify Identity</span>
+</button>*/
 function openVerifyModal() {
     // ปิด Sidebar ก่อน (ถ้ามี)
     if (typeof toggleSidebar === "function") toggleSidebar();
