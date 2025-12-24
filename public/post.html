@@ -1106,18 +1106,29 @@ window.closeImageViewer = function() {
 
 
 	function sharePerspective() {
-    // เช็คว่าเป็นเจ้าของกระทู้จริงไหมก่อนส่ง
-    if (myUsername === post.author) {
-        isMapVisibleForViewers = !isMapVisibleForViewers;
+    // 1. ดึง ID จาก URL (ตามโครงสร้างบรรทัดที่ 213-214 ในไฟล์ของคุณ)
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPostId = urlParams.get('id');
 
-        // ส่งสัญญาณไป Server
-        socket.emit('toggle-map-visibility', {
-            postId: post._id, // หรือ ID กระทู้ของคุณ
-            visible: isMapVisibleForViewers
-        });
+    // 2. เช็คเงื่อนไขความพร้อมของข้อมูลก่อน
+    // ใช้ window.post เพื่อให้แน่ใจว่าเรียกตัวแปร Global
+    if (typeof post !== 'undefined' && post !== null && typeof myUsername !== 'undefined') {
+        
+        if (myUsername === post.author) {
+            // ถ้าเป็นเจ้าของกระทู้จริง ให้ส่ง Socket
+            isMapVisibleForViewers = !isMapVisibleForViewers;
+            
+            socket.emit('toggle-map-visibility', {
+                postId: currentPostId, 
+                visible: isMapVisibleForViewers
+            });
 
-        // ฝั่งเจ้าของกระทู้ แผนที่แสดงค้างไว้ตลอด ไม่ต้องสั่งซ่อนตัวเอง
-        console.log("คุณได้ " + (isMapVisibleForViewers ? "แสดง" : "ซ่อน") + " แผนที่ให้ผู้ชมแล้ว");
+            console.log("ส่งสถานะแผนที่:", isMapVisibleForViewers);
+        } else {
+            alert("คุณไม่ใช่เจ้าของกระทู้นี้");
+        }
+    } else {
+        console.error("ข้อมูลโพสต์ยังโหลดไม่เสร็จ หรือหาตัวแปร post ไม่เจอ");
     }
 }
 
