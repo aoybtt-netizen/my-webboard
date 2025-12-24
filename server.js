@@ -2357,30 +2357,18 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('leave-post-room', async (postId) => { 
-    if (postViewers[postId] === socket.username) {
-        delete postViewers[postId];
-        broadcastPostStatus(postId, false);
-        
-        if (viewerGeolocation[postId] && viewerGeolocation[postId][socket.username]) {
-            delete viewerGeolocation[postId][socket.username];
-            io.to(`post-${postId}`).emit('viewer-left-location', { viewer: socket.username });
+    socket.on('leave-post-room', (postId) => { 
+        if (postViewers[postId] === socket.username) {
+            delete postViewers[postId];
+            broadcastPostStatus(postId, false);
+            if (viewerGeolocation[postId] && viewerGeolocation[postId][socket.username]) {
+                delete viewerGeolocation[postId][socket.username];
+                io.to(`post-${postId}`).emit('viewer-left-location', { viewer: socket.username });
+            }
         }
-    }
-    
-    try {
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (post) {
-            // ส่งสัญญาณให้หน้าจอเจ้าของกระทู้ Reset ปุ่มแชร์และแผนที่
-            io.to(`post-${postId}`).emit('viewer-left-reset-share');
-        }
-    } catch (err) {
-        console.error("Error in leave-post-room:", err);
-    }
-    
-    socket.leave(`post-${postId}`);
-    socket.viewingPostId = null;
-});
+        socket.leave(`post-${postId}`);
+        socket.viewingPostId = null;
+    });
 
     socket.on('restart-post-room', async (postId) => { 
         const post = await postsCollection.findOne({ id: parseInt(postId) });
@@ -2410,17 +2398,6 @@ io.on('connection', (socket) => {
             socket.emit('force-leave', msg); 
         }
     });
-	
-	
-	// เจ้าของกระทู้กดแชร์ตำแหน่ง
-socket.on('share-location-to-viewer', (data) => {
-    const { postId, targetViewer } = data;
-    // ส่งสัญญาณไปบอกผู้เข้าชม (targetViewer) ว่า "เจ้าของอนุญาตให้เห็นตำแหน่งแล้ว"
-    io.to(targetViewer).emit('location-shared-by-author', { 
-        postId, 
-        authorLocation: data.authorLocation // ส่งพิกัดไปด้วยเลย
-    });
-});
 	
 	//  WebRTC Signaling (ระบบโทร P2P) ---
 
