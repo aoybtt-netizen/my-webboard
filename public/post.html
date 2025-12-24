@@ -1139,12 +1139,12 @@ socket.on('location-shared-by-author', (data) => {
 
 // ฟังก์ชันแชร์ตำแหน่ง (สำหรับฝั่งเจ้าของกระทู้)
 function shareLocation() {
-    const targetViewer = currentPostViewer; // ชื่อผู้เข้าชมที่ระบบเก็บไว้
-    if (!targetViewer) return alert("ยังไม่มีผู้เข้าชมในขณะนี้");
+    // ใช้ตัวแปร currentPostViewer ที่เก็บไว้จาก socket ด้านบน
+    if (!currentPostViewer) return alert("ยังไม่มีผู้เข้าชมในขณะนี้");
 
     socket.emit('share-location-to-viewer', {
         postId: currentPost.id,
-        targetViewer: targetViewer,
+        targetViewer: currentPostViewer,
         authorLocation: currentPost.location
     });
     
@@ -1233,14 +1233,11 @@ function shareLocation() {
 }
 
 socket.on('viewer-location-update', (data) => {
-    // อัปเดตเมื่อเป็นเจ้าของ/Admin และไม่ใช่ตัวเอง
     const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
-
     if (isOwnerOrAdmin && data.viewer !== myUsername) {
+         currentPostViewer = data.viewer; // ✅ เก็บชื่อคนดูไว้ที่นี่
          currentViewerLocation = data.location;
-         // เรียก re-render แผนที่ทันที
          displayMapWithViewer(currentPost.location, currentViewerLocation); 
-         showNotification(`(${data.viewer}) Walk in`, 'fas fa-map-marker-alt', 3000);
     }
 });
 
