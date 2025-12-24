@@ -257,14 +257,29 @@
     <div class="container">
         <div id="map-container" style="margin-top: 20px; display:none; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h3 id="map-title" style="margin: 0; border: none; padding: 0;">📍 Location</h3>
-        
-        <button id="toggle-map-btn" onclick="toggleMap()" 
-            data-i18n-key="btn_hide_map"
-            style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
-            <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
-        </button>
-    </div>
+    <button id="map-title" onclick="sharePerspective()" style="
+        margin: 0; 
+        border: 1px solid #007bff; 
+        padding: 5px 15px; 
+        background: #fff; 
+        color: #007bff; 
+        border-radius: 15px; 
+        cursor: pointer; 
+        font-family: 'Kanit'; 
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s;">
+        📍 Location
+    </button>
+    
+    <button id="toggle-map-btn" onclick="toggleMap()" 
+        data-i18n-key="btn_hide_map"
+        style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
+        <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
+    </button>
+</div>
 
     <div id="map-content-wrapper" style="display: block; margin-top: 15px;">
         <button id="start-nav-btn" 
@@ -1088,6 +1103,26 @@ window.closeImageViewer = function() {
     } else {
         mapContainer.style.display = 'none'; 
         navButton.style.display = 'none';
+    }
+}
+
+	function sharePerspective() {
+    const mapContainer = document.getElementById('map-container');
+    const toggleBtn = document.getElementById('toggle-map-btn');
+    const currentLang = typeof myLang !== 'undefined' ? myLang : 'th'; // ตรวจสอบภาษาปัจจุบัน
+
+    if (mapContainer.style.display === 'none' || mapContainer.style.display === '') {
+        // ถ้าซ่อนอยู่ -> ให้แสดง
+        mapContainer.style.display = 'block';
+        if (toggleBtn) {
+            toggleBtn.innerHTML = `<i class="fas fa-chevron-up"></i> ${postTranslations[currentLang].btn_hide_map}`;
+        }
+    } else {
+        // ถ้าแสดงอยู่ -> ให้ซ่อน
+        mapContainer.style.display = 'none';
+        if (toggleBtn) {
+            toggleBtn.innerHTML = `<i class="fas fa-chevron-down"></i> ${postTranslations[currentLang].btn_show_map}`;
+        }
     }
 }
 
