@@ -286,6 +286,7 @@
     flex-direction: column;
     overflow: hidden;
     z-index: 2400;
+	touch-action: none;
 }
 
 #chat-window-header {
@@ -306,6 +307,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+	touch-action: pan-y;
 }
 
 #floating-chat-input-area {
@@ -331,6 +333,9 @@
     height: 35px;
     border-radius: 50%;
     cursor: pointer;
+	min-width: 40px;
+    min-height: 40px;
+    z-index: 10;
 }
 
 #floating-chat-input-area {
@@ -356,22 +361,9 @@
     display: none !important;
 }
 
-#floating-chat-window {
-    /* เพิ่ม touch-action เพื่อไม่ให้การไถในแชทไปกวนระบบลากปุ่ม */
-    touch-action: none; 
-}
 
-#floating-chat-messages {
-    /* ส่วนนี้ยอมให้ไถขึ้นลงได้ปกติ */
-    touch-action: pan-y;
-}
 
-#floating-chat-input-area button {
-    /* ขยายพื้นที่กดให้กว้างขึ้นอีกนิดสำหรับมือถือ */
-    min-width: 40px;
-    min-height: 40px;
-    z-index: 10;
-}
+
 
 
     </style>
