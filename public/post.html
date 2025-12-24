@@ -255,7 +255,7 @@
 <body>
 
     <div class="container">
-        <div id="map-container" style="margin-top: 20px; display:none; ...">
+        <div id="map-container" style="margin-top: 20px; display:none;">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <h3 id="map-title" style="margin: 0; border: none; padding: 0;">📍 Location</h3>
         
@@ -272,7 +272,14 @@
             </button>
         </div>
     </div>
+
+    <div id="map-content-wrapper">
+        <iframe id="post-map-iframe" width="100%" height="300" style="border:0; border-radius: 10px;" allowfullscreen="" loading="lazy"></iframe>
+        <button id="start-nav-btn" onclick="startEmbeddedNavigation()" style="display:none; width: 100%; margin-top: 10px; background: #007bff; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+            🗺️ Google Map
+        </button>
     </div>
+</div>
 
         <div class="header-btns">
             <button id="back-btn" class="back-btn" onclick="goBack()" data-i18n-title="btn_back_tooltip">
@@ -1016,6 +1023,9 @@ window.closeImageViewer = function() {
     const lang = localStorage.getItem('preferredLanguage') || 'th';
     const t = postTranslations[lang] || postTranslations['th'];            
     
+    // ตรวจสอบก่อนว่ามี Element ครบไหมเพื่อป้องกัน Error
+    if (!mapIframe || !mapContainer) return;
+
     if (location && location.lat && location.lng) {
         const lat = location.lat.toFixed(6); 
         const lng = location.lng.toFixed(6);
@@ -1025,7 +1035,6 @@ window.closeImageViewer = function() {
         let viewerText = '';
         let initialMapUrl = '';
         
-        // ถ้าเป็น Viewer (มีตำแหน่งตัวเอง) ให้โชว์เส้นทางจาก "ตัวเอง -> กระทู้"
         if (myCurrentLocation) {
              const distanceKm = getDistanceFromLatLonInKm(
                 location.lat, location.lng, 
@@ -1041,13 +1050,13 @@ window.closeImageViewer = function() {
 
              const myLat = myCurrentLocation.lat.toFixed(6);
              const myLng = myCurrentLocation.lng.toFixed(6);
-             // ✅ ใช้ URL มาตรฐาน Google Maps
-             initialMapUrl = `https://maps.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&t=m&hl=en`;
+             
+             // แก้ไขตรงนี้: จาก 0{ เป็น ${
+             initialMapUrl = `https://maps.google.com/maps?q=${myLat},${myLng}&daddr=${lat},${lng}&z=13&output=embed&hl=th`;
 
         } else {
-             // ถ้าเป็นเจ้าของ (ไม่มีตำแหน่งตัวเอง) โชว์แค่จุดปักหมุดกระทู้
-             // ✅ ใช้ URL มาตรฐาน Google Maps
-             initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&t=m&hl=en`;
+             // แก้ไขตรงนี้: จาก 1{ เป็น ${
+             initialMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&hl=th`;
         }
 
         mapIframe.src = initialMapUrl;
@@ -1058,24 +1067,18 @@ window.closeImageViewer = function() {
 
         mapContainer.style.display = 'block'; 
 
-        const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
-        if (isOwnerOrAdmin) {
-            navButton.style.display = 'none';
-        } else {
-            navButton.style.display = 'block';
-            navButton.innerText = t['btn_show_route'];
-            
-            let googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-				if (myCurrentLocation) {
-					googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${myCurrentLocation.lat},${myCurrentLocation.lng}&destination=${lat},${lng}`;
-					}
-                //window.open(googleMapsUrl, '_blank');
-            };
-       
+        const isOwnerOrAdmin = myUsername === currentPostAuthor || myUsername === 'Admin';
         
+        if (navButton) {
+            if (isOwnerOrAdmin) {
+                navButton.style.display = 'none';
+            } else {
+                navButton.style.display = 'block';
+                navButton.innerText = t['btn_show_route'];
+            }
+        }
     } else {
         mapContainer.style.display = 'none'; 
-        navButton.style.display = 'none';
     }
 }
 
