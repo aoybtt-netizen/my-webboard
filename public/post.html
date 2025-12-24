@@ -1015,7 +1015,7 @@ window.closeImageViewer = function() {
         
         // --- CORE LOGIC (unchanged for brevity) ---
 
-        function displayMap(location) {
+    function displayMap(location) {
     const mapContainer = document.getElementById('map-container');
     const mapIframe = document.getElementById('post-map-iframe');
     const navButton = document.getElementById('start-nav-btn');
@@ -1065,7 +1065,6 @@ window.closeImageViewer = function() {
             mapTitle.innerHTML = `📍 Location${viewerText}`;
         }
 
-        mapContainer.style.display = 'block'; 
 
         const isOwnerOrAdmin = myUsername === currentPostAuthor || myUsername === 'Admin';
         
@@ -1282,10 +1281,10 @@ socket.on('viewer-left-location', (data) => {
 
     // --- 4. Logic การควบคุมแผนที่ (ย้ายขึ้นมาไว้ก่อน Early Return) ---
     if (isOwnerOrAdmin) {
-        mapContainer.style.display = 'block';
+        mapContainer.style.display = 'block'; // เจ้าของ/แอดมิน เห็นทันที
         if (shareBtn) shareBtn.style.display = 'inline-block';
     } else {
-        mapContainer.style.display = 'none'; // ผู้เข้าชมทั่วไปโดนซ่อนก่อนเสมอ
+        mapContainer.style.display = 'none';  // ผู้เข้าชมทั่วไป "ซ่อน" ไว้ก่อนเสมอ
         if (shareBtn) shareBtn.style.display = 'none';
     }
 
@@ -1392,11 +1391,11 @@ function shareMapToViewers() {
 // 2. รับสัญญาณจากเจ้าของกระทู้ (สำหรับฝั่งผู้เข้าชม)
 socket.on('map-access-granted', (data) => {
     const isOwner = myUsername === currentPostAuthor;
-    // ถ้าเราไม่ใช่เจ้าของ (ที่เป็นคนดูอยู่) ให้เปิดแผนที่ขึ้นมา
+    // ถ้าไม่ใช่เจ้าของ (คือคนดู) ให้เปลี่ยนสถานะจาก none เป็น block
     if (!isOwner) {
         const mapContainer = document.getElementById('map-container');
         if (mapContainer) {
-            mapContainer.style.display = 'block';
+            mapContainer.style.display = 'block'; // แสดงผลเมื่อเจ้าของกดอนุญาต
             showNotification("เจ้าของกระทู้อนุญาตให้คุณดูแผนที่แล้ว", "fas fa-map-marked-alt", 5000);
         }
     }
