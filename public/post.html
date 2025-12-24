@@ -1644,9 +1644,10 @@ socket.on('viewer-left-location', (data) => {
             if (manualCloseBtn) manualCloseBtn.style.display = 'block';
         }
     }
-	if (floatingCallBtn) {
-        // เงื่อนไข: ต้องเป็นคนในกลุ่ม Participant และต้อง "ไม่ใช่เจ้าของ" (เพราะเจ้าของไม่โทรหาตัวเอง)
-        floatingCallBtn.style.display = (isParticipant && !isOwner) ? 'flex' : 'none';
+	const canCall = !isOwner && post.status !== 'closed_permanently' && 
+                    (post.status !== 'finished' || isAcceptedViewer || isAdmin);
+
+    floatingCallBtn.style.display = canCall ? 'flex' : 'none';
     }
 }
 		
