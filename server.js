@@ -2357,23 +2357,30 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('leave-post-room', (postId) => { 
-        if (postViewers[postId] === socket.username) {
-            delete postViewers[postId];
-            broadcastPostStatus(postId, false);
-            if (viewerGeolocation[postId] && viewerGeolocation[postId][socket.username]) {
-                delete viewerGeolocation[postId][socket.username];
-                io.to(`post-${postId}`).emit('viewer-left-location', { viewer: socket.username });
-            }
+    socket.on('leave-post-room', async (postId) => { 
+    if (postViewers[postId] === socket.username) {
+        delete postViewers[postId];
+        broadcastPostStatus(postId, false);
+        
+        if (viewerGeolocation[postId] && viewerGeolocation[postId][socket.username]) {
+            delete viewerGeolocation[postId][socket.username];
+            io.to(`post-${postId}`).emit('viewer-left-location', { viewer: socket.username });
         }
-		
-		const post = await postsCollection.findOne({ id: parseInt(postId) });
-			if (post) {
-			io.to(post.author).emit('viewer-left-reset-share');
-		}
-        socket.leave(`post-${postId}`);
-        socket.viewingPostId = null;
-    });
+    }
+    
+    try {
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (post) {
+            // ส่งสัญญาณให้หน้าจอเจ้าของกระทู้ Reset ปุ่มแชร์และแผนที่
+            io.to(`post-${postId}`).emit('viewer-left-reset-share');
+        }
+    } catch (err) {
+        console.error("Error in leave-post-room:", err);
+    }
+    
+    socket.leave(`post-${postId}`);
+    socket.viewingPostId = null;
+});
 
     socket.on('restart-post-room', async (postId) => { 
         const post = await postsCollection.findOne({ id: parseInt(postId) });
