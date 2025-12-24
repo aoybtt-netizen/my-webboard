@@ -336,6 +336,20 @@
 </head>
 <body>
 
+	<div id="floating-chat-window" class="hidden">
+    <div id="chat-window-header">
+        <span><i class="fas fa-comment-alt"></i> Chat Topic</span>
+        <button onclick="toggleFloatingChat()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="floating-chat-messages">
+        </div>
+    <div id="floating-chat-input-area">
+        <input type="text" id="floating-comment-input" placeholder="chat...">
+        <button onclick="sendFloatingComment()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+
     <div class="container">
         <div id="map-container" style="margin-top: 20px; display:none;">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -1904,7 +1918,7 @@ function closeDealWithViewer() {
             floatingList.insertAdjacentHTML('beforeend', html);
             floatingList.scrollTop = floatingList.scrollHeight;
         }
-    } // <--- เติมปีกกาปิด if ตรงนี้
+    } 
 });
 
         function goBack() {
@@ -1987,18 +2001,6 @@ function deg2rad(deg) {
     <i class="fas fa-comments"></i>
 </div>
 
-<div id="floating-chat-window" class="hidden">
-    <div id="chat-window-header">
-        <span><i class="fas fa-comment-alt"></i> Chat Topic</span>
-        <button onclick="toggleFloatingChat()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-times"></i></button>
-    </div>
-    <div id="floating-chat-messages">
-        </div>
-    <div id="floating-chat-input-area">
-        <input type="text" id="floating-comment-input" placeholder="chat...">
-        <button onclick="sendFloatingComment()"><i class="fas fa-paper-plane"></i></button>
-    </div>
-</div>
 
 </body>
 </html>
