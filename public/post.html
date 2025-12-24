@@ -1106,23 +1106,19 @@ window.closeImageViewer = function() {
 
 
 	function sharePerspective() {
-    // ตรวจสอบก่อนว่าเป็นเจ้าของกระทู้หรือไม่ (สมมติว่ามีตัวแปร myUsername และ currentPostAuthor)
-    if (myUsername !== currentPostAuthor) {
-        alert("เฉพาะเจ้าของกระทู้เท่านั้นที่ควบคุมส่วนนี้ได้");
-        return;
+    // เช็คว่าเป็นเจ้าของกระทู้จริงไหมก่อนส่ง
+    if (myUsername === post.author) {
+        isMapVisibleForViewers = !isMapVisibleForViewers;
+
+        // ส่งสัญญาณไป Server
+        socket.emit('toggle-map-visibility', {
+            postId: post._id, // หรือ ID กระทู้ของคุณ
+            visible: isMapVisibleForViewers
+        });
+
+        // ฝั่งเจ้าของกระทู้ แผนที่แสดงค้างไว้ตลอด ไม่ต้องสั่งซ่อนตัวเอง
+        console.log("คุณได้ " + (isMapVisibleForViewers ? "แสดง" : "ซ่อน") + " แผนที่ให้ผู้ชมแล้ว");
     }
-
-    isMapVisibleForViewers = !isMapVisibleForViewers; // สลับค่า true/false
-    
-    // ส่งสัญญาณไปที่ Server เพื่อกระจายให้คนดู (Viewer)
-    socket.emit('toggle-map-visibility', {
-        postId: currentPostId, // ต้องมีตัวแปร ID กระทู้
-        visible: isMapVisibleForViewers
-    });
-
-    // แจ้งเตือนฝั่งเจ้าของกระทู้ให้ทราบสถานะ
-    const statusText = isMapVisibleForViewers ? "แสดงแผนที่ให้คนดูแล้ว" : "ซ่อนแผนที่จากคนดูแล้ว";
-    showNotification(statusText, 'fas fa-map-marked-alt');
 }
 
 	// ฟังก์ชันสำหรับ Show/Hide แผนที่
