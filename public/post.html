@@ -1107,19 +1107,29 @@ window.closeImageViewer = function() {
 	let mapShow = false; // สถานะเริ่มต้นคือซ่อน
 
 function sharePerspective() {
-    // 1. เช็คว่าโหลดข้อมูลเสร็จหรือยัง และเป็นเจ้าของไหม
-    if (post && myUsername === post.author) {
-        mapShow = !mapShow; // สลับ เปิด/ปิด
+    // 1. ตรวจสอบก่อนว่าตัวแปร post มีข้อมูลหรือยัง (เหมือนที่ระบบเช็คก่อนโชว์ปุ่มเตะคน)
+    if (!post) {
+        console.error("รอข้อมูลกระทู้สักครู่...");
+        return;
+    }
+
+    // 2. ใช้เงื่อนไขเดียวกับปุ่ม "ปิดกระทู้ / จ้างงาน / เตะคน"
+    if (myUsername === post.author) {
         
-        // 2. ส่งสัญญาณไปบอกทุกคนในห้องนี้
-        socket.emit('toggle-map-visibility', { 
-            postId: postId, 
-            visible: mapShow 
+        // สลับสถานะ (Toggle)
+        isMapVisibleForViewers = !isMapVisibleForViewers;
+
+        // ส่งสัญญาณ Socket (ใส่ postId ให้ถูกตัว)
+        socket.emit('toggle-map-visibility', {
+            postId: post._id, // ใช้ post._id เพราะเป็นค่าจาก Database โดยตรง
+            visible: isMapVisibleForViewers
         });
-        
-        console.log("ส่งสัญญาณแล้ว: " + (mapShow ? "เปิด" : "ซ่อน"));
+
+        console.log("เจ้าของกระทู้สั่งสลับแผนที่: ", isMapVisibleForViewers);
+
     } else {
-        alert("คุณไม่ใช่เจ้าของกระทู้ หรือข้อมูลยังโหลดไม่เสร็จ");
+        // ถ้าไม่ใช่เจ้าของกระทู้ (เหมือนที่ระบบจะซ่อนปุ่มเตะคนไม่ให้คนอื่นเห็น)
+        alert("ขออภัย เฉพาะเจ้าของกระทู้เท่านั้นที่กดปุ่มนี้ได้");
     }
 }
 
