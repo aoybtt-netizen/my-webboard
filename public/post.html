@@ -250,6 +250,88 @@
             align-items: center;
             gap: 10px;
         }
+		
+		
+		#floating-chat-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    cursor: grab;
+    z-index: 2500;
+    transition: transform 0.2s;
+}
+#floating-chat-btn:active { cursor: grabbing; transform: scale(0.9); }
+
+/* หน้าต่างแชท */
+#floating-chat-window {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 300px;
+    height: 400px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 2400;
+}
+
+#chat-window-header {
+    background: #007bff;
+    color: white;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+#floating-chat-messages {
+    flex-grow: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#floating-chat-input-area {
+    padding: 10px;
+    display: flex;
+    gap: 5px;
+    border-top: 1px solid #eee;
+}
+
+#floating-comment-input {
+    flex-grow: 1;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 8px 15px;
+    outline: none;
+}
+
+#floating-chat-input-area button {
+    background: #007bff;
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+}
     </style>
 </head>
 <body>
@@ -811,6 +893,83 @@
                 }
             });
         }
+		
+	
+	//Chat box
+	// --- ระบบลากย้ายปุ่ม (Draggable Logic) ---
+const chatBtn = document.getElementById('floating-chat-btn');
+let isDragging = false;
+let startX, startY, initialX, initialY;
+
+chatBtn.addEventListener('mousedown', startDragging);
+chatBtn.addEventListener('touchstart', startDragging, { passive: false });
+
+function startDragging(e) {
+    isDragging = false; // เริ่มต้นยังไม่ถือว่าลาก (เผื่อเป็นการคลิก)
+    const event = e.type === 'touchstart' ? e.touches[0] : e;
+    startX = event.clientX;
+    startY = event.clientY;
+    initialX = chatBtn.offsetLeft;
+    initialY = chatBtn.offsetTop;
+
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('touchmove', drag, { passive: false });
+    document.addEventListener('mouseup', stopDragging);
+    document.addEventListener('touchend', stopDragging);
+}
+
+function drag(e) {
+    isDragging = true; // มีการขยับเกิดขึ้น
+    const event = e.type === 'touchmove' ? e.touches[0] : e;
+    
+    // คำนวณตำแหน่งใหม่
+    let newX = initialX + (event.clientX - startX);
+    let newY = initialY + (event.clientY - startY);
+
+    // ป้องกันไม่ให้ลากทะลุขอบจอ
+    const maxX = window.innerWidth - chatBtn.offsetWidth;
+    const maxY = window.innerHeight - chatBtn.offsetHeight;
+    
+    chatBtn.style.left = Math.min(Math.max(0, newX), maxX) + 'px';
+    chatBtn.style.top = Math.min(Math.max(0, newY), maxY) + 'px';
+    chatBtn.style.right = 'auto'; // ปลดล็อคค่า right เดิม
+    chatBtn.style.bottom = 'auto'; // ปลดล็อคค่า bottom เดิม
+}
+
+function stopDragging() {
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('touchmove', drag);
+    
+    // ถ้าไม่มีการลาก (แค่คลิก) ให้เปิดหน้าต่างแชท
+    if (!isDragging) {
+        toggleFloatingChat();
+    }
+}
+
+// --- ระบบเปิด/ปิดหน้าต่างแชท ---
+function toggleFloatingChat() {
+    const windowEl = document.getElementById('floating-chat-window');
+    windowEl.classList.toggle('hidden');
+    
+    // ถ้าเปิดขึ้นมา ให้เลื่อนแชทไปล่างสุด
+    if (!windowEl.classList.contains('hidden')) {
+        const msgDiv = document.getElementById('floating-chat-messages');
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+    }
+}
+
+// --- เชื่อมต่อกับระบบส่งคอมเมนต์เดิมของคุณ ---
+function sendFloatingComment() {
+    const input = document.getElementById('floating-comment-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    // จำลองการใช้ฟังก์ชัน sendComment เดิมที่มีอยู่
+    document.getElementById('comment-input').value = content;
+    sendComment(); 
+    input.value = '';
+}
+
         
         // Emoji Logic for Comments
     function toggleEmoji() {
@@ -1722,12 +1881,31 @@ function closeDealWithViewer() {
 });
 
         socket.on('new-comment', (data) => { 
-            if(data.postId == postId) {
-                const list = document.getElementById('comments-list');
-                list.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, list.children.length));
-                list.scrollTop = list.scrollHeight;
-            }
-        });
+    if (data.postId == postId) {
+        // 1. อัปเดตรายการคอมเมนต์หลัก (หน้าเว็บปกติ)
+        const list = document.getElementById('comments-list');
+        if (list) {
+            list.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, list.children.length));
+            list.scrollTop = list.scrollHeight;
+        }
+
+        // 2. อัปเดตในหน้าต่างแชทลอย (Floating Chat)
+        const floatingList = document.getElementById('floating-chat-messages');
+        if (floatingList) {
+            // ตรวจสอบว่ามีรูปภาพแนบมาด้วยหรือไม่ ถ้ามีให้โชว์ไอคอนหรือข้อความบอก
+            const hasImage = data.comment.imageUrl ? ' <i class="fas fa-image"></i>' : '';
+            
+            const html = `
+                <div style="background:white; padding:8px; border-radius:10px; font-size:0.85em; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom:5px;">
+                    <strong style="color:#007bff;">${data.comment.author}:</strong> 
+                    <span>${data.comment.content}${hasImage}</span>
+                </div>`;
+            
+            floatingList.insertAdjacentHTML('beforeend', html);
+            floatingList.scrollTop = floatingList.scrollHeight;
+        }
+    } // <--- เติมปีกกาปิด if ตรงนี้
+});
 
         function goBack() {
             socket.emit('leave-post-room', postId); 
@@ -1802,6 +1980,24 @@ function deg2rad(deg) {
     </button>
     
     <audio id="remote-audio" autoplay></audio>
+</div>
+
+
+	<div id="floating-chat-btn">
+    <i class="fas fa-comments"></i>
+</div>
+
+<div id="floating-chat-window" class="hidden">
+    <div id="chat-window-header">
+        <span><i class="fas fa-comment-alt"></i> Chat Topic</span>
+        <button onclick="toggleFloatingChat()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="floating-chat-messages">
+        </div>
+    <div id="floating-chat-input-area">
+        <input type="text" id="floating-comment-input" placeholder="chat...">
+        <button onclick="sendFloatingComment()"><i class="fas fa-paper-plane"></i></button>
+    </div>
 </div>
 
 </body>
