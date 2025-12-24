@@ -255,36 +255,24 @@
 <body>
 
     <div class="container">
-        <div id="map-container" style="margin-top: 20px; display:none; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        <div id="map-container" style="margin-top: 20px; display:none; ...">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <h3 id="map-title" style="margin: 0; border: none; padding: 0;">📍 Location</h3>
         
-        <button id="toggle-map-btn" onclick="toggleMap()" 
-            data-i18n-key="btn_hide_map"
-            style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
-            <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
-        </button>
-    </div>
+        <div style="display: flex; gap: 8px;">
+            <button id="share-map-btn" onclick="shareMapToViewers()" 
+                style="display: none; background: #28a745; color: white; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
+                <i class="fas fa-share-alt"></i> อนุญาตให้คนอื่นดูแผนที่
+            </button>
 
-    <div id="map-content-wrapper" style="display: block; margin-top: 15px;">
-        <button id="start-nav-btn" 
-           class="send-btn" 
-           style="background:#28a745; margin-bottom: 10px; padding: 10px 18px; text-decoration: none; display:none; width: 100%;">
-            <i class="fas fa-route"></i> เริ่มนำทางไปที่นี่ (Google Maps)
-        </button> 
-
-        <iframe
-          id="post-map-iframe"
-          width="100%"
-          height="350"
-          style="border:0; border-radius: 8px;"
-          loading="lazy"
-          allowfullscreen
-          referrerpolicy="no-referrer-when-downgrade"
-          src=""
-        ></iframe>
+            <button id="toggle-map-btn" onclick="toggleMap()" 
+                data-i18n-key="btn_hide_map"
+                style="background: #dbeafe; color: #007bff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: 600;">
+                <i class="fas fa-chevron-up"></i> ซ่อนแผนที่
+            </button>
+        </div>
     </div>
-</div>
+    </div>
 
         <div class="header-btns">
             <button id="back-btn" class="back-btn" onclick="goBack()" data-i18n-title="btn_back_tooltip">
@@ -1235,177 +1223,181 @@ socket.on('viewer-left-location', (data) => {
         }
 
         function renderPost(post, isAdmin = false) {
-			const oldStats = document.getElementById('author-stats-container');
-			if (oldStats) oldStats.remove();
+    // --- 1. จัดการส่วนสถิติเจ้าของกระทู้ ---
+    const oldStats = document.getElementById('author-stats-container');
+    if (oldStats) oldStats.remove();
 
     const total = post.authorTotalPosts || 0;
     const completed = post.authorCompletedJobs || 0;
-    
-    // สร้าง HTML สำหรับสถิติ
     const authorStats = `
         <div id="author-stats-container" style="font-size: 0.85em; color: #666; margin-top: 5px;">
             📝 Post: ${total} | ✅ Job: ${completed}
         </div>
     `;
 
-    // 🎯 2. แทรกสถิติเข้าไปใต้ชื่อผู้เขียน
     const authorEl = document.getElementById('post-author');
-			if (authorEl) {
-			authorEl.insertAdjacentHTML('afterend', authorStats);
-			}
-            // 1. แสดงข้อมูลพื้นฐาน
-            document.getElementById('post-title').innerText = post.title;
-            document.getElementById('post-author').innerText = post.author;
-            document.getElementById('post-time').innerText = new Date(post.id).toLocaleString();
-            
-            // 2. แสดงคะแนนดาว
-            const ratingDisplay = document.getElementById('post-author-rating');
-            // ✅ FIX: ใช้ค่าที่ Server ส่งมาโดยตรง และกำหนดค่าเริ่มต้นเป็น '0.00'
-            const displayRating = post.authorRating || '0.00'; 
-            ratingDisplay.innerHTML = ` (⭐ ${displayRating} / 5.0)`;
-            // ------------------------
-
-            // 3. เตรียม Element
-            const contentDiv = document.getElementById('post-content');
-            const imageContainer = document.getElementById('post-image-container');
-            const mapDiv = document.getElementById('map-container');
-            const list = document.getElementById('comments-list');
-            const commentForm = document.getElementById('comment-form');
-            const closedMsg = document.getElementById('closed-msg');
-            
-            const backBtn = document.getElementById('back-btn');
-            const finishBtn = document.getElementById('final-finish-btn');
-            const restartBtn = document.getElementById('restart-btn');
-            const handoverBtn = document.getElementById('handover-btn');
-            const manualCloseBtn = document.getElementById('manual-close-btn');
-
-            contentDiv.style.display = 'block';
-            imageContainer.style.display = 'block'; 
-            mapDiv.style.display = 'block';
-            list.style.display = 'block';
-            commentForm.style.display = 'flex';
-            closedMsg.style.display = 'none';
-
-            contentDiv.innerText = post.content;
-            displayMap(post.location);
-
-            if (post.imageUrl) {
-                imageContainer.innerHTML = `
-        <div style="text-align:center; margin-bottom: 20px;">
-            <img src="${post.imageUrl}" 
-                 onclick="openImageViewer('${post.imageUrl}')"
-                 style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;"
-                 onmouseover="this.style.transform='scale(1.02)'" 
-                 onmouseout="this.style.transform='scale(1)'">
-        </div>
-    `;
-            } else {
-                imageContainer.innerHTML = '';
-                imageContainer.style.display = 'none';
-            }
-
-            list.innerHTML = post.comments.map((c, index) => createCommentHTML(c, index)).join('');
-            
-            const oldAlert = document.getElementById('status-alert');
-            if (oldAlert) oldAlert.remove();
-
-            // --- LOGIC การแสดงปุ่มและการล็อค ---
-            const isOwnerOrAdmin = myUsername === post.author || myUsername === 'Admin';
-
-            // ซ่อนปุ่มทั้งหมดก่อน
-            finishBtn.style.display = 'none';
-            restartBtn.style.display = 'none';
-            handoverBtn.style.display = 'none';
-            manualCloseBtn.style.display = 'none'; 
-            
-            if (post.isPinned) {
-                // ถ้ากระทู้ถูกปิดแล้ว
-                if (post.isClosed) {
-                    commentForm.style.display = 'none';
-                    closedMsg.style.display = 'block';
-                    closedMsg.innerHTML = '<i class="fas fa-lock"></i> ประกาศนี้ถูกปิดแล้ว';
-                    backBtn.style.display = 'block';
-                    
-                    // Admin สามารถเปิดปิดใหม่ได้ไหม? (ในที่นี้ให้ Admin เห็นปุ่มปิดไม่ได้แล้ว เพราะปิดไปแล้ว)
-                } else {
-                    // ถ้ายังเปิดอยู่
-                    backBtn.style.display = 'block';
-                    
-                    // ถ้าเป็น Admin ให้โชว์ปุ่มปิดกระทู้ได้
-                    if (myUsername === 'Admin') {
-                        manualCloseBtn.style.display = 'block';
-                    }
-                }
-                // ⛔ จบการทำงานสำหรับ Pinned Post ทันที ไม่ต้องไปทำ Logic กระทู้ปกติ
-                return; 
-            }
-            
-            currentPostAuthor = post.author; // เก็บชื่อเจ้าของกระทู้
-    
-    const callBtn = document.getElementById('btn-call-author');
-    // ถ้ามีปุ่ม และ ไม่ใช่กระทู้ตัวเอง -> ให้แสดงปุ่ม
-    if (callBtn && myUsername !== post.author) {
-        callBtn.style.display = 'inline-flex';
+    if (authorEl) {
+        authorEl.innerText = post.author;
+        authorEl.insertAdjacentHTML('afterend', authorStats);
     }
 
-            if (post.status === 'finished') {
-                const isParticipant = myUsername === post.author || myUsername === post.acceptedViewer || myUsername === 'Admin';
+    // --- 2. แสดงข้อมูลพื้นฐาน ---
+    document.getElementById('post-title').innerText = post.title;
+    document.getElementById('post-time').innerText = new Date(post.id).toLocaleString();
+    
+    const ratingDisplay = document.getElementById('post-author-rating');
+    const displayRating = post.authorRating || '0.00'; 
+    ratingDisplay.innerHTML = ` (⭐ ${displayRating} / 5.0)`;
 
-                if (!isParticipant) {
-                    contentDiv.style.display = 'none';
-                    imageContainer.style.display = 'none';
-                    mapDiv.style.display = 'none';
-                    list.style.display = 'none';
-                    commentForm.style.display = 'none';
-                    
-                    closedMsg.style.display = 'block';
-                    closedMsg.innerHTML = `
-                        <div style="background:#fff3cd; color:#856404; padding:20px; border:1px solid #ffeeba; border-radius:10px;">
-                            <h2>⛔ ปิดดีลแล้ว</h2>
-                            <p>จำกัดสิทธิ์เฉพาะผู้ตั้งกระทู้และผู้รับงาน (${post.acceptedViewer || '-'}) เท่านั้น</p>
-                        </div>
-                    `;
-                    backBtn.style.display = 'block';
-                } else {
-                    const statusAlert = document.createElement('div');
-                    statusAlert.id = 'status-alert';
-                    statusAlert.innerHTML = `
-                        <div style="background:#d4edda; color:#155724; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #c3e6cb; text-align:center;">
-                            <strong>✅ ปิดดีลสำเร็จ!</strong><br>
-                            งานนี้ถูกส่งมอบให้กับคุณ <strong>${post.acceptedViewer}</strong> แล้ว <br>
-                            เมื่อเสร็จสิ้นภารกิจ กรุณากดปุ่ม <strong>"จบงาน/แยกย้าย"</strong> ด้านบน
-                        </div>
-                    `;
-                    list.parentNode.insertBefore(statusAlert, list);
+    // --- 3. เตรียม Element หลัก ---
+    const contentDiv = document.getElementById('post-content');
+    const imageContainer = document.getElementById('post-image-container');
+    const mapContainer = document.getElementById('map-container');
+    const list = document.getElementById('comments-list');
+    const commentForm = document.getElementById('comment-form');
+    const closedMsg = document.getElementById('closed-msg');
+    
+    const backBtn = document.getElementById('back-btn');
+    const finishBtn = document.getElementById('final-finish-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const handoverBtn = document.getElementById('handover-btn');
+    const manualCloseBtn = document.getElementById('manual-close-btn');
+    const shareBtn = document.getElementById('share-map-btn');
+    const callBtn = document.getElementById('btn-call-author');
 
-                    backBtn.style.display = 'none';
-                    finishBtn.style.display = 'block';
-                }
-            } else if (post.isClosed) {
-                commentForm.style.display = 'none';
-                closedMsg.style.display = 'block';
-                
-                const closeMessage = post.status === 'closed_by_user' || post.status === 'rating_pending' || post.status === 'closed_permanently'
-                    ? '<i class="fas fa-lock"></i> กระทู้นี้ถูกปิดการใช้งานแล้ว'
-                    : '<i class="fas fa-lock"></i> กระทู้นี้ปิดรับความคิดเห็นแล้ว หรือหมดเวลา';
-                closedMsg.innerHTML = closeMessage;
-                
-                backBtn.style.display = 'block';
-                // ถ้าเป็นเจ้าของหรือ Admin ยังคงมีสิทธิ์ในการรีสตาร์ท (ถ้ายังไม่ปิดถาวร)
-                if (isOwnerOrAdmin && post.status !== 'closed_permanently') {
-                    restartBtn.style.display = 'block'; 
-                }
-            } else {
-                // 🟢 สถานะปกติ
-                backBtn.style.display = 'block';
-                
-                if (isOwnerOrAdmin) {
-                    restartBtn.style.display = 'block';
-                    handoverBtn.style.display = 'block';
-                    manualCloseBtn.style.display = 'block'; 
-                }
-            }
+    // Reset สถานะการแสดงผลพื้นฐาน
+    contentDiv.style.display = 'block';
+    imageContainer.style.display = 'block'; 
+    list.style.display = 'block';
+    commentForm.style.display = 'flex';
+    closedMsg.style.display = 'none';
+    
+    // ตั้งค่าตัวแปร Global
+    currentPostAuthor = post.author; 
+    const isOwner = myUsername === post.author;
+    const isOwnerOrAdmin = isOwner || isAdmin;
+
+    // --- 4. Logic การควบคุมแผนที่ (ย้ายขึ้นมาไว้ก่อน Early Return) ---
+    if (isOwnerOrAdmin) {
+        mapContainer.style.display = 'block';
+        if (shareBtn) shareBtn.style.display = 'inline-block';
+    } else {
+        mapContainer.style.display = 'none'; // ผู้เข้าชมทั่วไปโดนซ่อนก่อนเสมอ
+        if (shareBtn) shareBtn.style.display = 'none';
+    }
+
+    if (post.location) {
+        displayMap(post.location);
+    }
+
+    // --- 5. จัดการรูปภาพ ---
+    contentDiv.innerText = post.content;
+    if (post.imageUrl) {
+        imageContainer.innerHTML = `
+            <div style="text-align:center; margin-bottom: 20px;">
+                <img src="${post.imageUrl}" 
+                     onclick="openImageViewer('${post.imageUrl}')"
+                     style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer;">
+            </div>`;
+    } else {
+        imageContainer.innerHTML = '';
+        imageContainer.style.display = 'none';
+    }
+
+    // --- 6. แสดงความคิดเห็น ---
+    list.innerHTML = post.comments.map((c, index) => createCommentHTML(c, index)).join('');
+    
+    const oldAlert = document.getElementById('status-alert');
+    if (oldAlert) oldAlert.remove();
+
+    // --- 7. จัดการปุ่มโทร ---
+    if (callBtn) {
+        callBtn.style.display = (!isOwner) ? 'inline-flex' : 'none';
+    }
+
+    // ซ่อนปุ่ม Action ทั้งหมดก่อน แล้วค่อยเปิดตามเงื่อนไข
+    [finishBtn, restartBtn, handoverBtn, manualCloseBtn].forEach(btn => { if(btn) btn.style.display = 'none'; });
+
+    // --- 8. LOGIC พิเศษสำหรับกระทู้ปักหมุด (Pinned) ---
+    if (post.isPinned) {
+        if (post.isClosed) {
+            commentForm.style.display = 'none';
+            closedMsg.style.display = 'block';
+            closedMsg.innerHTML = '<i class="fas fa-lock"></i> ประกาศนี้ถูกปิดแล้ว';
+        } else if (isAdmin) {
+            manualCloseBtn.style.display = 'block';
         }
+        backBtn.style.display = 'block';
+        return; // จบการทำงานสำหรับกระทู้ปักหมุด
+    }
+
+    // --- 9. LOGIC สถานะกระทู้ปกติ ---
+    if (post.status === 'finished') {
+        const isParticipant = isOwnerOrAdmin || myUsername === post.acceptedViewer;
+
+        if (!isParticipant) {
+            // คนนอกไม่เห็นอะไรเลย
+            [contentDiv, imageContainer, mapContainer, list, commentForm].forEach(el => el.style.display = 'none');
+            closedMsg.style.display = 'block';
+            closedMsg.innerHTML = `
+                <div style="background:#fff3cd; color:#856404; padding:20px; border:1px solid #ffeeba; border-radius:10px;">
+                    <h2>⛔ ปิดดีลแล้ว</h2>
+                    <p>จำกัดสิทธิ์เฉพาะผู้เกี่ยวข้องเท่านั้น</p>
+                </div>`;
+            backBtn.style.display = 'block';
+        } else {
+            // เจ้าของ หรือ คนรับงาน เห็นสถานะจบงาน
+            const statusAlert = document.createElement('div');
+            statusAlert.id = 'status-alert';
+            statusAlert.innerHTML = `
+                <div style="background:#d4edda; color:#155724; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #c3e6cb; text-align:center;">
+                    <strong>✅ ปิดดีลสำเร็จ!</strong> ส่งมอบงานให้คุณ <strong>${post.acceptedViewer}</strong> แล้ว
+                </div>`;
+            list.parentNode.insertBefore(statusAlert, list);
+            finishBtn.style.display = 'block';
+        }
+    } else if (post.isClosed) {
+        commentForm.style.display = 'none';
+        closedMsg.style.display = 'block';
+        closedMsg.innerHTML = post.status === 'closed_permanently' 
+            ? '<i class="fas fa-lock"></i> กระทู้นี้ถูกปิดถาวรแล้ว' 
+            : '<i class="fas fa-lock"></i> กระทู้นี้ปิดรับความคิดเห็นแล้ว';
+        
+        if (isOwnerOrAdmin && post.status !== 'closed_permanently') {
+            restartBtn.style.display = 'block';
+        }
+    } else {
+        // สถานะเปิดปกติ
+        if (isOwnerOrAdmin) {
+            restartBtn.style.display = 'block';
+            handoverBtn.style.display = 'block';
+            manualCloseBtn.style.display = 'block';
+        }
+    }
+}
+		
+		
+		// 1. ฟังก์ชันเมื่อเจ้าของกดปุ่ม "อนุญาต"
+function shareMapToViewers() {
+    if (confirm("ต้องการเปิดการเข้าถึงแผนที่ให้ผู้เข้าชมทุกคนในขณะนี้ใช่ไหม?")) {
+        // ส่ง Event ไปยัง Server (ใช้ postId เพื่อระบุห้อง)
+        socket.emit('share-map-access', { postId: postId });
+        showNotification("เปิดการเข้าถึงแผนที่แล้ว", "fas fa-check-circle");
+    }
+}
+
+// 2. รับสัญญาณจากเจ้าของกระทู้ (สำหรับฝั่งผู้เข้าชม)
+socket.on('map-access-granted', (data) => {
+    const isOwner = myUsername === currentPostAuthor;
+    // ถ้าเราไม่ใช่เจ้าของ (ที่เป็นคนดูอยู่) ให้เปิดแผนที่ขึ้นมา
+    if (!isOwner) {
+        const mapContainer = document.getElementById('map-container');
+        if (mapContainer) {
+            mapContainer.style.display = 'block';
+            showNotification("เจ้าของกระทู้อนุญาตให้คุณดูแผนที่แล้ว", "fas fa-map-marked-alt", 5000);
+        }
+    }
+});
         
         // ปิดกระทู้ด้วยตนเอง ---
         async function manualClosePost() {
