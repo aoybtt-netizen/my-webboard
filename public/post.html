@@ -427,9 +427,9 @@
 
     <div id="map-content-wrapper">
         <iframe id="post-map-iframe" width="100%" height="300" style="border:0; border-radius: 10px;" allowfullscreen="" loading="lazy"></iframe>
-        <button id="start-nav-btn" onclick="startEmbeddedNavigation()" style="display:none; width: 100%; margin-top: 10px; background: #007bff; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-            🗺️ Google Map
-        </button>
+        <button id="start-nav-btn" onclick="openGoogleMapsApp()" style="display:none; width: 100%; margin-top: 10px; background: #007bff; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+    🗺️ Open On Google Maps (App)
+</button>
     </div>
 </div>
 
@@ -1227,7 +1227,7 @@ function sendFloatingComment() {
         // 3. ฟังก์ชันกดส่งคะแนน (Client)
         window.submitRating = function() {
             if (currentRating === 0) {
-                showNotification('กรุณาเลือกดาวอย่างน้อย 1 ดวง', 'fas fa-exclamation-circle', 2000);
+                showNotification('Please select Rating...', 'fas fa-exclamation-circle', 2000);
                 return;
             }
             const comment = "";
@@ -1256,9 +1256,40 @@ window.closeImageViewer = function() {
     document.getElementById('image-viewer-modal').classList.add('hidden');
 }
 
+window.openGoogleMapsApp = function() {
+    if (!currentDestination) {
+        showNotification('Destination coordinates not found.', 'fas fa-exclamation-triangle');
+        return;
+    }
+
+    const destLat = currentDestination.lat;
+    const destLng = currentDestination.lng;
+    
+    let googleMapsUrl = "";
+
+    // ตรวจสอบว่ามีพิกัดปัจจุบันของเราไหมเพื่อทำเส้นทางจาก "จุดที่อยู่" ไป "เป้าหมาย"
+    if (myCurrentLocation && myCurrentLocation.lat) {
+        const originLat = myCurrentLocation.lat;
+        const originLng = myCurrentLocation.lng;
+        // URL สำหรับนำทาง (Direction) จาก A ไป B
+        googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}&travelmode=driving`;
+    } else {
+        // ถ้าไม่มีพิกัดเรา ให้เปิดหมุดปลายทางเฉยๆ
+        googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`;
+    }
+
+    // สั่งเปิด URL
+    // บนมือถือ: จะเด้งเข้าแอป Google Maps ทันที (ถ้าติดตั้งไว้)
+    // บนคอม: จะเปิด Tab ใหม่เข้าหน้าเว็บ Google Maps
+    window.open(googleMapsUrl, '_blank');
+    
+    showNotification('Opening Google Maps...', 'fas fa-external-link-alt', 3000);
+}
+
+
         // 4. ฟังคำสั่ง "รออีกฝ่าย" (ลบ Logic การรอออกไป)
         socket.on('rating-waiting', (msg) => {
-            showNotification('✅ บันทึกคะแนนสำเร็จ', 'fas fa-check-circle', 3000);
+            showNotification('✅ Rating successfully recorded.', 'fas fa-check-circle', 3000);
         });
         
         // --- CORE LOGIC (unchanged for brevity) ---
