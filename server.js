@@ -2931,6 +2931,21 @@ socket.on('admin-action-verify', async (data, callback) => {
 });
 
 
+	socket.on('update-map-visibility', (data) => {
+    const mapContainer = document.getElementById('map-container');
+    
+    // ถ้าเราไม่ใช่เจ้าของกระทู้ ให้เปลี่ยนการแสดงผลตามที่เขาสั่งมา
+    if (myUsername !== currentPostAuthor) {
+        if (data.visible) {
+            mapContainer.style.display = 'block';
+        } else {
+            mapContainer.style.display = 'none';
+        }
+    }
+    // ถ้าเป็นเจ้าของกระทู้ ไม่ต้องทำอะไร (แผนที่โชว์ค้างไว้ตามความต้องการ)
+});
+
+
 	
 
 
