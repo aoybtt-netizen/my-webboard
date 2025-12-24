@@ -1050,12 +1050,16 @@ function toggleFloatingChat() {
 }
 
 function sendFloatingComment() {
-    const input = document.getElementById('floating-comment-input');
-    const content = input.value.trim();
+    const fInput = document.getElementById('floating-comment-input'); // ช่องในแชทลอย
+    const mainInput = document.getElementById('comment-input');     // ช่องหลักของหน้าเว็บ
+    
+    const content = fInput.value.trim();
     if (!content) return;
-    document.getElementById('comment-input').value = content;
+
+    // ย้ายข้อความไปที่ช่องหลักแล้วสั่งส่งผ่านฟังก์ชันเดิม
+    mainInput.value = content;
     sendComment(); 
-    input.value = '';
+    fInput.value = ''; // ล้างช่องพิมพ์ในแชทลอย
 }
 
         
@@ -1600,14 +1604,17 @@ socket.on('viewer-left-location', (data) => {
     // --- 9. LOGIC สถานะกระทู้ปกติ ---
     if (post.status === 'finished') {
         if (!isParticipant) {
-            // ❌ สำหรับคนนอก: ซ่อนเนื้อหาทั้งหมด
+            // สำหรับคนนอก: ซ่อนเนื้อหา
             [contentDiv, imageContainer, mapContainer, list, commentForm].forEach(el => { if(el) el.style.display = 'none'; });
             closedMsg.style.display = 'block';
             closedMsg.innerHTML = '<div style="background:#fff3cd; padding:20px; border-radius:10px; text-align:center;"><h2>⛔ ปิดดีลแล้ว</h2><p>จำกัดสิทธิ์เฉพาะผู้เกี่ยวข้องเท่านั้น</p></div>';
         } else {
-            // ✅ สำหรับเจ้าของงาน และ ผู้รับงาน: เปิดแชทต่อ
-            if(commentForm) commentForm.style.display = 'flex';
-            if(floatingInputArea) floatingInputArea.style.display = 'flex';
+            // ✅ สำหรับเจ้าของงาน และ ผู้รับงาน: ต้องแสดงช่องพิมพ์ทั้ง 2 จุด
+            if (commentForm) commentForm.style.display = 'flex';
+            
+            // ดึง Element แชทลอยขึ้นมาใหม่เพื่อให้แน่ใจว่าเข้าถึงได้
+            const fInputArea = document.getElementById('floating-chat-input-area');
+            if (fInputArea) fInputArea.style.display = 'flex';
             
             const statusAlert = document.getElementById('status-alert') || document.createElement('div');
             statusAlert.id = 'status-alert';
@@ -1617,7 +1624,7 @@ socket.on('viewer-left-location', (data) => {
                 </div>`;
             if (!document.getElementById('status-alert')) list.parentNode.insertBefore(statusAlert, list);
             
-            if(finishBtn) finishBtn.style.display = 'block';
+            if (finishBtn) finishBtn.style.display = 'block';
         }
     } else if (post.isClosed) {
         commentForm.style.display = 'none';
