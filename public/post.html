@@ -1099,36 +1099,30 @@ window.closeImageViewer = function() {
 
 
 	socket.on('toggle-map-visibility', (data) => {
-    // ส่งข้อมูลต่อไปให้ทุกคนที่ดูหน้ากระทู้นี้อยู่ (Broadcasting)
-    // ใช้ .to(data.postId) เพื่อให้มีผลเฉพาะในห้องกระทู้นั้นๆ
-    io.to(data.postId).emit('toggle-map-visibility', { visible: data.visible });
+    // ถ้าเราไม่ใช่เจ้าของกระทู้ ให้ทำตามที่เขาสั่ง
+    if (post && myUsername !== post.author) {
+        const mapContainer = document.getElementById('map-container');
+        mapContainer.style.display = data.visible ? 'block' : 'none';
+    }
 });
 
 
-	function sharePerspective() {
-    // 1. ดึง ID จาก URL (ตามโครงสร้างบรรทัดที่ 213-214 ในไฟล์ของคุณ)
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentPostId = urlParams.get('id');
+	let mapShow = false; // สถานะเริ่มต้นคือซ่อน
 
-    // 2. เช็คเงื่อนไขความพร้อมของข้อมูลก่อน
-    // ใช้ window.post เพื่อให้แน่ใจว่าเรียกตัวแปร Global
-    if (typeof post !== 'undefined' && post !== null && typeof myUsername !== 'undefined') {
+function sharePerspective() {
+    // 1. เช็คว่าโหลดข้อมูลเสร็จหรือยัง และเป็นเจ้าของไหม
+    if (post && myUsername === post.author) {
+        mapShow = !mapShow; // สลับ เปิด/ปิด
         
-        if (myUsername === post.author) {
-            // ถ้าเป็นเจ้าของกระทู้จริง ให้ส่ง Socket
-            isMapVisibleForViewers = !isMapVisibleForViewers;
-            
-            socket.emit('toggle-map-visibility', {
-                postId: currentPostId, 
-                visible: isMapVisibleForViewers
-            });
-
-            console.log("ส่งสถานะแผนที่:", isMapVisibleForViewers);
-        } else {
-            alert("คุณไม่ใช่เจ้าของกระทู้นี้");
-        }
+        // 2. ส่งสัญญาณไปบอกทุกคนในห้องนี้
+        socket.emit('toggle-map-visibility', { 
+            postId: postId, 
+            visible: mapShow 
+        });
+        
+        console.log("ส่งสัญญาณแล้ว: " + (mapShow ? "เปิด" : "ซ่อน"));
     } else {
-        console.error("ข้อมูลโพสต์ยังโหลดไม่เสร็จ หรือหาตัวแปร post ไม่เจอ");
+        alert("คุณไม่ใช่เจ้าของกระทู้ หรือข้อมูลยังโหลดไม่เสร็จ");
     }
 }
 
