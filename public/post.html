@@ -17,7 +17,6 @@
         /* --- GLOBAL STYLES --- */
         body { 
             font-family: 'Kanit', sans-serif; 
-            background-color: #e9ebee; 
             padding: 0; 
             margin: 0;
             display: none;
@@ -256,33 +255,16 @@
         }
 		
 		
-		#floating-chat-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    background-color: #007bff;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    cursor: grab;
-    z-index: 2500;
-    transition: transform 0.2s;
-}
+		
 #floating-chat-btn:active { cursor: grabbing; transform: scale(0.9); }
 
 /* หน้าต่างแชท */
 #floating-chat-window {
     position: fixed;
-    bottom: 90px;
-    right: 20px;
-    width: 300px;
-    height: 400px;
+    bottom: 20px; /* ให้ลอยจากด้านล่างเหมือนเดิม หรือจะปรับเป็น top: 50% ก็ได้ */
+    right: 50px; /* ขยับเข้ามาจากขอบขวาเพื่อให้ไม่ทับปุ่ม */
+    width: 320px;
+    height: 450px;
     background: white;
     border-radius: 15px;
     box-shadow: 0 5px 25px rgba(0,0,0,0.2);
@@ -290,7 +272,6 @@
     flex-direction: column;
     overflow: hidden;
     z-index: 2400;
-	touch-action: none;
 }
 
 #chat-window-header {
@@ -312,13 +293,6 @@
     flex-direction: column;
     gap: 10px;
 	touch-action: pan-y;
-}
-
-#floating-chat-input-area {
-    padding: 10px;
-    display: flex;
-    gap: 5px;
-    border-top: 1px solid #eee;
 }
 
 #floating-comment-input {
@@ -363,6 +337,37 @@
 
 #floating-chat-window.hidden {
     display: none !important;
+}
+
+#floating-chat-btn {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%); /* จัดให้อยู่กึ่งกลางแนวตั้งพอดี */
+    width: 35px; /* ความกว้างปุ่ม */
+    height: 90px; /* ความสูงปุ่ม */
+    background-color: #007bff;
+    color: white;
+    border-radius: 12px 0 0 12px; /* โค้งเฉพาะมุมฝั่งซ้าย */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.15);
+    cursor: pointer;
+    z-index: 2500;
+    transition: all 0.3s ease;
+}
+
+/* เอฟเฟกต์ตอนเอาเมาส์วาง หรือตอนกด (เฉพาะในคอม) */
+#floating-chat-btn:hover {
+    width: 45px; /* แง้มออกมานิดหน่อยเวลาเอาเมาส์วาง */
+    background-color: #0056b3;
+}
+
+/* ปรับไอคอนให้หมุนเล็กน้อยเพื่อความสวยงาม */
+#floating-chat-btn i {
+    transform: rotate(0deg);
 }
 
 
@@ -963,21 +968,21 @@ let chatBtn, chatWindow, floatingCallBtn;
 
 // ใช้ฟังก์ชันนี้เพื่อเริ่มทำงานระบบแชทหลังจากหน้าเว็บโหลดเสร็จ
 document.addEventListener('DOMContentLoaded', () => {
-    chatBtn = document.getElementById('floating-chat-btn');
-    chatWindow = document.getElementById('floating-chat-window');
-    floatingCallBtn = document.getElementById('btn-call-author');
+    const chatBtn = document.getElementById('floating-chat-btn');
+    const chatWindow = document.getElementById('floating-chat-window');
 
     if (chatBtn) {
-        chatBtn.addEventListener('mousedown', startDragging);
-        chatBtn.addEventListener('touchstart', startDragging, { passive: false });
+        // ใช้ onclick มาตรฐานเพื่อให้รองรับทั้งคอมและมือถือได้ทันทีโดยไม่ต้องกดค้าง
+        chatBtn.onclick = function() {
+            toggleFloatingChat();
+        };
     }
 
     if (chatWindow) {
-        // ป้องกันแชทปิดเมื่อกดพิมพ์หรือคลิกข้างใน
+        // ป้องกันแชทปิดเมื่อคลิกข้างในหน้าต่างแชท
         const stopProp = (e) => e.stopPropagation();
         chatWindow.addEventListener('mousedown', stopProp);
         chatWindow.addEventListener('touchstart', stopProp, { passive: true });
-        chatWindow.addEventListener('touchend', stopProp, { passive: true });
     }
 });
 
@@ -1033,12 +1038,18 @@ function stopDragging(e) {
 }
 
 function toggleFloatingChat() {
-    if (!chatWindow) return;
-    chatWindow.classList.toggle('hidden');
-    if (!chatWindow.classList.contains('hidden')) {
+    const windowEl = document.getElementById('floating-chat-window');
+    if (!windowEl) return;
+    
+    windowEl.classList.toggle('hidden');
+    
+    // ถ้าเปิดขึ้นมา ให้เลื่อนแชทไปล่างสุดและโฟกัสช่องพิมพ์
+    if (!windowEl.classList.contains('hidden')) {
         const msgDiv = document.getElementById('floating-chat-messages');
-        msgDiv.scrollTop = msgDiv.scrollHeight;
-        document.getElementById('floating-comment-input').focus();
+        if (msgDiv) msgDiv.scrollTop = msgDiv.scrollHeight;
+        
+        const chatInput = document.getElementById('floating-comment-input');
+        if (chatInput) chatInput.focus();
     }
 }
 
