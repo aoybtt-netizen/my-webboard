@@ -332,6 +332,26 @@
     border-radius: 50%;
     cursor: pointer;
 }
+
+#floating-chat-input-area {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* เว้นระยะระหว่างปุ่มโทร-ช่องพิมพ์-ปุ่มส่ง */
+    border-top: 1px solid #eee;
+    background: #fff;
+}
+
+#floating-comment-input {
+    flex-grow: 1;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 8px 15px;
+    font-family: 'Kanit';
+    font-size: 14px;
+    outline: none;
+}
+
     </style>
 </head>
 <body>
@@ -342,14 +362,23 @@
 
 <div id="floating-chat-window" class="hidden">
     <div id="chat-window-header">
-        <span><i class="fas fa-comment-alt"></i> แชทในกระทู้</span>
+        <span><i class="fas fa-comment-alt"></i> Chat Topic</span>
         <button onclick="toggleFloatingChat()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-times"></i></button>
     </div>
-    <div id="floating-chat-messages">
-        </div>
+    <div id="floating-chat-messages"></div>
+    
     <div id="floating-chat-input-area">
-        <input type="text" id="floating-comment-input" placeholder="พิมพ์ข้อความ...">
-        <button onclick="sendFloatingComment()"><i class="fas fa-paper-plane"></i></button>
+        <button id="btn-call-author" 
+                onclick="startCall(currentPostAuthor)" 
+                style="background: #2ecc71; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; display: none; justify-content: center; align-items: center;">
+            <i class="fas fa-phone-alt"></i>
+        </button>
+
+        <input type="text" id="floating-comment-input" placeholder="chat...">
+        
+        <button onclick="sendFloatingComment()" style="background: #007bff; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer;">
+            <i class="fas fa-paper-plane"></i>
+        </button>
     </div>
 </div>
 
@@ -445,11 +474,7 @@
 
         <input type="text" id="comment-input" placeholder="comment..." autocomplete="off">
         
-        <button id="btn-call-author" 
-        onclick="startCall(currentPostAuthor)" 
-        style="background: #2ecc71; color: white; border: none; padding: 10px 15px; border-radius: 20px; cursor: pointer; margin-right: 10px; font-weight: 600; display: none; align-items: center; gap: 5px;">
-    <i class="fas fa-phone-alt"></i> โทรหาเจ้าของกระทู้
-</button>
+        
 
         <button id="send-comment-btn" onclick="sendComment()" title="ส่งข้อความ">
             <i class="fas fa-paper-plane"></i>
@@ -954,27 +979,38 @@ function drag(e) {
     chatBtn.style.bottom = 'auto'; // ปลดล็อคค่า bottom เดิม
 }
 
-function stopDragging() {
+function stopDragging(e) {
     document.removeEventListener('mousemove', drag);
     document.removeEventListener('touchmove', drag);
+    document.removeEventListener('mouseup', stopDragging);
+    document.removeEventListener('touchend', stopDragging);
     
-    // ถ้าไม่มีการลาก (แค่คลิก) ให้เปิดหน้าต่างแชท
+    // ถ้าคลิกโดนปุ่มโทร หรือ ช่อง Input ไม่ต้องสั่ง Toggle
+    if (e.target.closest('#floating-chat-window')) return;
+
     if (!isDragging) {
         toggleFloatingChat();
     }
+    isDragging = false;
 }
 
 // --- ระบบเปิด/ปิดหน้าต่างแชท ---
 function toggleFloatingChat() {
     const windowEl = document.getElementById('floating-chat-window');
+    if (!windowEl) return;
+    
     windowEl.classList.toggle('hidden');
     
-    // ถ้าเปิดขึ้นมา ให้เลื่อนแชทไปล่างสุด
     if (!windowEl.classList.contains('hidden')) {
         const msgDiv = document.getElementById('floating-chat-messages');
         msgDiv.scrollTop = msgDiv.scrollHeight;
+        document.getElementById('floating-comment-input').focus(); // ให้ Focus ที่ช่องพิมพ์ทันที
     }
 }
+
+const chatWindow = document.getElementById('floating-chat-window');
+chatWindow.addEventListener('mousedown', (e) => e.stopPropagation());
+chatWindow.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
 
 // --- เชื่อมต่อกับระบบส่งคอมเมนต์เดิมของคุณ ---
 function sendFloatingComment() {
