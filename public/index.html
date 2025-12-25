@@ -1448,17 +1448,24 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
      
 
-		async function checkAndRedirectActiveJob(username) {
-            try {
-                const res = await fetch(`/api/check-active-job?username=${username}`);
-                const data = await res.json();
-                if (data.hasJob) {
-                    location.href = `/post.html?id=${data.postId}`;
-                }
-            } catch (err) {
-                console.error("Error checking active job:", err);
-            }
+	async function checkAndRedirectActiveJob(username) {
+    if (!username) return; // กัน Error กรณี username ว่าง
+
+    try {
+        const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(username)}`);
+        const data = await res.json();
+        
+        // ถ้ามีงานค้าง (status: finished)
+        if (data.hasJob && data.postId) {
+            console.log(`📌 พบงานค้างในกระทู้: ${data.title}`);
+            
+            // ใช้ replace แทน href เพื่อไม่ให้ผู้ใช้กด Back กลับมาหน้า index แล้วโดนดีดไปอีกรอบ (วนลูป)
+            window.location.replace(`/post.html?id=${data.postId}`);
         }
+    } catch (err) {
+        console.error("Error checking active job:", err);
+    }
+}
 
         function logout() {
             localStorage.removeItem('myUsername'); 

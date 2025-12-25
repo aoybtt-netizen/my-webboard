@@ -648,10 +648,14 @@ app.get('/api/member/transactions', async (req, res) => {
 app.get('/api/check-active-job', async (req, res) => {
     const username = req.query.username;
     if (!username) return res.json({ hasJob: false });
+
+    // หาโพสต์ที่สถานะเป็น 'finished' (คืองานที่กำลังทำอยู่)
+    // โดยไม่ต้องสนว่า isClosed เป็น true หรือ false (เพราะตอนรับงานมันถูกปิดไปแล้ว)
     const activeJob = await postsCollection.findOne({
-        status: 'finished', isClosed: { $ne: true }, 
+        status: 'finished', 
         $or: [{ author: username }, { acceptedViewer: username }]
     });
+
     if (activeJob) return res.json({ hasJob: true, postId: activeJob.id, title: activeJob.title });
     res.json({ hasJob: false });
 });
@@ -2095,6 +2099,24 @@ io.on('connection', (socket) => {
         }
         const occupiedPosts = Object.keys(postViewers).map(postId => ({ postId: parseInt(postId), isOccupied: true }));
         socket.emit('catch-up-post-status', occupiedPosts); 
+    });
+	
+	socket.on('check-my-active-job', async ({ username }) => {
+        if (!username) return;
+
+        const activeJob = await postsCollection.findOne({
+            status: 'finished',
+            $or: [{ author: username }, { acceptedViewer: username }]
+        });
+
+        if (activeJob) {
+            // ส่งกลับไปบอก Client เฉพาะคนนั้น
+            socket.emit('active-job-found', { 
+                postId: activeJob.id, 
+                status: activeJob.status,
+                title: activeJob.title
+            });
+        }
     });
 
     socket.on('join-post-room', async ({ postId, username, lang }) => {
