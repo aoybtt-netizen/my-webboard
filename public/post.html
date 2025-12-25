@@ -2057,7 +2057,7 @@ actionsEl.classList.remove('hidden');
         // --- FINISH JOB ---
 
     function requestFinishJob() {
-	if (myUsername === post.author)updateOwnerLocationManual();
+	if (myUsername === post.author){ updateOwnerLocationManual();}
     // 1. เช็คก่อนว่ากระทู้นี้ต้องตรวจสอบระยะทางหรือไม่
     const needsCheck = isProximityRequired || (currentPost && currentPost.requireProximity);
 
