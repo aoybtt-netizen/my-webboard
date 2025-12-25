@@ -373,6 +373,13 @@
 </head>
 <body>
 
+	<button id="btn-update-loc" class="hidden" onclick="updateOwnerLocationManual()" 
+    style="position: fixed; bottom: 90px; right: 20px; width: 60px; height: 60px; 
+           border-radius: 50%; background: #17a2b8; color: white; border: none; 
+           box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 1000; font-size: 24px; cursor: pointer;">
+    <i class="fas fa-map-marker-alt"></i>
+</button>
+
 	<div id="floating-chat-btn">
     <i class="fas fa-comments"></i>
 </div>
@@ -1158,6 +1165,12 @@ function sendFloatingComment() {
                 displayMap(post.location);
                 return; 
             }
+			
+			if (myUsername === post.author) {
+			document.getElementById('btn-update-loc').classList.remove('hidden');
+				} else {
+				document.getElementById('btn-update-loc').classList.add('hidden');
+			}
 
             // เช็คว่า Browser รองรับไหม
             if (!navigator.geolocation) {
@@ -1986,6 +1999,49 @@ actionsEl.classList.remove('hidden');
 	socket.on('update-owner-location', (loc) => {
     ownerLastLocation = loc;
 });
+
+	
+	function updateOwnerLocationManual() {
+    // แจ้งเตือนว่ากำลังทำงาน
+    showNotification('🛰️ กำลังอัปเดตพิกัด...', 'fas fa-satellite-dish', 1000);
+
+    // ดึงพิกัดใหม่แบบ High Accuracy
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const freshLoc = { 
+                lat: position.coords.latitude, 
+                lng: position.coords.longitude 
+            };
+
+            // 1. อัปเดตตัวแปรเราเอง
+            myCurrentLocation = freshLoc;
+            ownerLastLocation = freshLoc; // (เผื่อเราเป็นเจ้าของเอง)
+
+            // 2. ส่งไปบอก Server (Server จะกระจายให้ Viewer คนอื่นรู้)
+            socket.emit('update-viewer-location', {
+                postId: postId,
+                username: myUsername,
+                location: freshLoc
+            });
+
+            // 3. รีเฟรชแผนที่ (เพื่อให้เห็นว่าจุดเราขยับ)
+            if (typeof displayMapWithViewer === 'function' && currentPost) {
+                // ถ้ามี Viewer ดูอยู่แล้ว ให้คงพิกัด Viewer ไว้
+                // ถ้าไม่มี ให้ใช้พิกัดเก่า (หรือ null)
+                const viewerLoc = (typeof currentViewerLocation !== 'undefined') ? currentViewerLocation : null;
+                displayMapWithViewer(currentPost.location, viewerLoc); 
+                // หมายเหตุ: displayMapWithViewer ปกติจะวาด owner marker จาก myCurrentLocation อยู่แล้ว
+            }
+
+            showNotification('✅ พิกัดอัปเดตแล้ว', 'fas fa-check-circle', 2000);
+        },
+        (error) => {
+            alert("❌ ไม่สามารถดึงพิกัดได้ กรุณาเปิด GPS");
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+}
+
 
 
 	function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
