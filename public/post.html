@@ -521,15 +521,11 @@
         <h2 data-i18n-key="offer_modal_title">🔔 ได้รับข้อเสนอส่งมอบงาน</h2>
         <p data-i18n-key="offer_modal_desc">เจ้าของกระทู้ต้องการส่งมอบงาน/ปิดดีลนี้ให้กับคุณ</p>
         
-        <div style="margin-top:20px; display:flex; justify-content:center; gap:15px;">
-            <button class="restart-btn" style="display:block; background:#dc3545; padding:10px 20px;" onclick="replyOffer(false)" data-i18n-key="btn_reject">
-                ❌ ปฏิเสธ
-            </button>
-            <button class="send-btn" style="padding:10px 20px;" onclick="replyOffer(true)" data-i18n-key="btn_accept">
-                ✅ ยอมรับ
-            </button>
+        <div id="offer-condition-msg" style="display:none; background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin: 10px 0; font-weight: bold;">
+            <i class="fas fa-map-marker-alt"></i> เงื่อนไข: ต้องกดจบงานในระยะ 10 เมตร
         </div>
-    </div>
+        
+        </div>
 </div>
 
     <div id="finish-job-modal" class="modal-overlay hidden">
@@ -592,22 +588,20 @@
             </div>
 
             <div id="handover-actions" class="hidden" style="margin-top: 10px;">
-                <button id="send-handover-btn" class="send-btn" onclick="closeDealWithViewer()" 
-                        data-i18n-key="modal_handover_btn"
-                        style="
-                    width: auto; 
-                    background: #28a745; 
-                    color: white; 
-                    padding: 10px 30px; 
-                    border: none; 
-                    border-radius: 8px; 
-                    font-weight: bold;
-                    cursor: pointer;
-                    margin-bottom: 10px;
-                ">
-                    ส่งมอบงาน
-                </button>
-            </div>
+    
+    <div style="margin-bottom: 15px; background: #e9ecef; padding: 10px; border-radius: 8px; text-align: left;">
+        <label style="cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: bold; color: #333;">
+            <input type="checkbox" id="chk-require-proximity" style="transform: scale(1.5);">
+            🔒 บังคับจบงานในระยะ 10 เมตร
+        </label>
+        <div style="font-size: 0.8em; color: #666; margin-top: 5px; margin-left: 25px;">
+            ผู้รับงานต้องอยู่ใกล้ "จุดตั้งกระทู้" หรือ "ตัวคุณ" ไม่เกิน 10 ม. ถึงจะกดจบงานได้
+        </div>
+    </div>
+    <button id="send-handover-btn" class="send-btn" onclick="closeDealWithViewer()" ...>
+        ส่งมอบงาน
+    </button>
+</div>
 
             <button id="close-handover-modal" class="back-btn" 
                     onclick="document.getElementById('handover-modal').classList.add('hidden')" 
@@ -632,18 +626,20 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // --- GLOBAL SETUP (MOVED UP FOR SCOPE) ---
-        const socket = io();
-        let myCurrentLocation = null;
-        let currentPostAuthor = null;
-        
-        // WebRTC Voice Call Logic P2P ---
-        let localStream;
-        let peerConnection;
-        let currentCallUser = null; // คนที่เรากำลังคุยด้วย
-        const rtcConfig = {
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // ใช้ STUN ฟรีของ Google
-        };
+			// --- GLOBAL SETUP (MOVED UP FOR SCOPE) ---
+			const socket = io();
+			let myCurrentLocation = null;
+			let currentPostAuthor = null;
+			let isProximityRequired = false; // เก็บสถานะว่างานนี้ต้องใกล้กันไหม
+			let ownerLastLocation = null;   // เก็บพิกัดล่าสุดของเจ้าของกระทู้
+			
+			// WebRTC Voice Call Logic P2P ---
+			let localStream;
+			let peerConnection;
+			let currentCallUser = null; // คนที่เรากำลังคุยด้วย
+			const rtcConfig = {
+				iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // ใช้ STUN ฟรีของ Google
+			};
 
         // 1. ฟังก์ชันเริ่มโทรหา (ผูกกับปุ่มโทร)
         async function startCall(targetUsername) {
@@ -1123,6 +1119,7 @@ function sendFloatingComment() {
         socket.on('access-granted', ({ post, isAdmin }) => {
             // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
             currentPost = post; 
+			isProximityRequired = post.requireProximity || false;
             // ดึงภาษาเพื่อใช้แสดงข้อความ
             const lang = localStorage.getItem('preferredLanguage') || 'th';
             const t = postTranslations[lang] || postTranslations['th'];
@@ -1443,15 +1440,21 @@ window.openGoogleMapsApp = function() {
     showNotification('✅ กำลังคำนวณเส้นทาง...', 'fas fa-route', 4000);
 }
 
-socket.on('viewer-location-update', (data) => {
-    // อัปเดตเมื่อเป็นเจ้าของ/Admin และไม่ใช่ตัวเอง
-    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
+	socket.on('viewer-location-update', (data) => {
+    if (!currentPost) return;
 
+    // 1. ถ้าเราเป็นผู้รับงาน (Viewer) และคนที่อัปเดตพิกัดคือ เจ้าของกระทู้
+    if (myUsername === currentPost.acceptedViewer && data.viewer === currentPost.author) {
+        ownerLastLocation = data.location; // เก็บพิกัดเจ้าของไว้เช็คระยะ 10ม.
+    }
+
+    // 2. ส่วนการแสดงผลบนแผนที่ (Logic เดิมที่คุณมี)
+    const isOwnerOrAdmin = myUsername === currentPost.author || myUsername === 'Admin';
     if (isOwnerOrAdmin && data.viewer !== myUsername) {
          currentViewerLocation = data.location;
-         // เรียก re-render แผนที่ทันที
-         displayMapWithViewer(currentPost.location, currentViewerLocation); 
-         showNotification(`(${data.viewer}) Walk in`, 'fas fa-map-marker-alt', 3000);
+         if (typeof displayMapWithViewer === 'function') {
+             displayMapWithViewer(currentPost.location, currentViewerLocation); 
+         }
     }
 });
 
@@ -1861,98 +1864,140 @@ actionsEl.classList.remove('hidden');
             }
         }
         
-function closeDealWithViewer() {
-            // ดึง Element ที่แสดงชื่อผู้รับงาน
-            const viewerElement = document.getElementById('target-viewer-display');
-            
-            if (!viewerElement) {
-                return showNotification('System error: Recipient name not found. Please refresh the page and try again.', 'fas fa-bug', 5000);
-            }
+	function closeDealWithViewer() {
+    const viewerElement = document.getElementById('target-viewer-display');
+    if (!viewerElement) return;
 
-            // ดึงข้อความทั้งหมด (เช่น "Aoy ⭐ 4.31")
-            const fullText = viewerElement.textContent || ''; 
-            let viewer = fullText.trim();
+    let viewer = viewerElement.textContent.trim().split('⭐')[0].trim();
+    if (!viewer || viewer === '...' || viewer === '') return;
 
-            // ตัดส่วนคะแนนดาวออกไป (⭐ 4.31)
-            if (viewer.includes('⭐')) {
-                viewer = viewer.substring(0, viewer.indexOf('⭐')).trim();
-            }
+    // รับค่าจาก Checkbox
+    const requireProximity = document.getElementById('chk-require-proximity').checked;
 
-            // 1. ตรวจสอบชื่อผู้รับงาน
-            if (!viewer || viewer === '...' || viewer === '') {
-                return showNotification('❌ ไม่พบชื่อผู้รับงาน (ข้อมูลไม่สมบูรณ์)', 'fas fa-user-times', 3000);
-            }
+    socket.emit('offer-deal', { 
+        postId, 
+        targetViewer: viewer,
+        requireProximity: requireProximity // ส่งค่าไปด้วย
+    });
 
-            // 2. ดึงชุดคำแปลสำหรับ Notification
-            const lang = localStorage.getItem('preferredLanguage') || 'th';
-            const t = postTranslations[lang] || postTranslations['th']; 
-            
-            // ⭐ [แก้ไข] ตัด confirm() ออก และส่งคำขอทันที
-            socket.emit('offer-deal', { postId, targetViewer: viewer });
-            document.getElementById('handover-modal').classList.add('hidden');
-            
-            // 3. แสดง Notification ว่าส่งคำขอแล้ว
-            showNotification(t['notif_offer_sent'].replace('[VIEWER]', viewer), 'fas fa-hourglass-half');
-            
-            // หมายเหตุ: ข้อความแจ้งเตือนความสำเร็จ (Deal Result) จะถูกจัดการต่อที่ socket.on('deal-result')
-        }
+    document.getElementById('handover-modal').classList.add('hidden');
+    showNotification(`📤 ส่งคำขอปิดดีลให้ ${viewer} แล้ว (ระยะ 10ม: ${requireProximity ? 'Yes' : 'No'})`, 'fas fa-hourglass-half');
+}
 
         // --- SOCKET LISTENERS ---
 
-        socket.on('receive-offer', (data) => {
-            if (data.postId == postId) {
-                document.getElementById('offer-modal').classList.remove('hidden');
-            }
-        });
-
-        function replyOffer(accepted) {
-            const ownerName = document.getElementById('post-author').innerText;
-            socket.emit('reply-offer', { 
-                postId, 
-                accepted, 
-                viewer: myUsername, 
-                owner: ownerName 
-            });
-            document.getElementById('offer-modal').classList.add('hidden');
-        }
-
-        socket.on('deal-result', (data) => {
-            // ดึงชุดคำแปลตามภาษาที่เลือก
-            const lang = localStorage.getItem('preferredLanguage') || 'th';
-            const t = postTranslations[lang] || postTranslations['th'];
-            let message = '';
-            let icon = '';
-            const duration = 4000; 
-
-            // ⭐ [แก้ไขที่นี่] ดึงชื่อตั้งต้นที่ถูกแปลแล้ว
-            const fallbackViewerName = t['generic_viewer_name'];
-            
-            // ⭐ [แก้ไขที่นี่] ใช้ชื่อจาก Server หรือใช้ชื่อตั้งต้นที่แปลแล้ว
-            const viewerName = data.targetViewer || fallbackViewerName; 
-
-            // 1. ตรวจสอบว่าสำเร็จหรือไม่
-            if (data.success) {
-                message = t['notif_deal_accepted'].replace('[VIEWER]', viewerName);
-                icon = 'fas fa-check-circle';
-
-                location.reload(); 
-            } else {
-                // Deal REJECTED หรือข้อผิดพลาด: 
-                message = t['notif_deal_rejected'].replace('[VIEWER]', viewerName);
-                icon = 'fas fa-times-circle';
-            }
-            
-            showNotification(message, icon, duration);
-        });
+    socket.on('receive-offer', (data) => {
+    if (data.postId == postId) {
+        // เก็บค่าเงื่อนไขไว้ชั่วคราวเผื่อตอนกดรับ
+        window.pendingOfferProximity = data.requireProximity;
         
-        // --- FINISH JOB ---
+        const conditionMsg = document.getElementById('offer-condition-msg');
+        if (data.requireProximity) {
+            conditionMsg.style.display = 'block';
+        } else {
+            conditionMsg.style.display = 'none';
+        }
+        
+        document.getElementById('offer-modal').classList.remove('hidden');
+    }
+});
 
-        function requestFinishJob() {
-    // 1. ดึงภาษาและคำแปล
+    function replyOffer(accepted) {
+    const ownerName = document.getElementById('post-author').innerText;
+    
+    socket.emit('reply-offer', { 
+        postId, 
+        accepted, 
+        viewer: myUsername, 
+        owner: ownerName,
+        requireProximity: window.pendingOfferProximity // ส่งค่ากลับไปบันทึกที่ Server
+    });
+    
+    document.getElementById('offer-modal').classList.add('hidden');
+}
+
+        // --- แก้ไขใน post.html ---
+	socket.on('deal-result', (data) => {
     const lang = localStorage.getItem('preferredLanguage') || 'th';
     const t = postTranslations[lang] || postTranslations['th'];
+    let message = '';
+    let icon = '';
+    
+    const viewerName = data.targetViewer || t['generic_viewer_name'];
 
-    // 2. ใช้คำแปลใน confirm
+    if (data.success) {
+        message = t['notif_deal_accepted'].replace('[VIEWER]', viewerName);
+        icon = 'fas fa-check-circle';
+        
+        // แสดงการแจ้งเตือนก่อน แล้วค่อยโหลดหน้าใหม่
+        showNotification(message, icon, 3000);
+        setTimeout(() => {
+            location.reload(); // เมื่อโหลดใหม่ access-granted จะดึงค่า requireProximity จาก DB มาเอง
+        }, 1500);
+    } else {
+        message = t['notif_deal_rejected'].replace('[VIEWER]', viewerName);
+        icon = 'fas fa-times-circle';
+        showNotification(message, icon, 4000);
+    }
+});
+		
+		// 5. อัปเดตพิกัดเจ้าของ (รับจาก Server)
+	socket.on('update-owner-location', (loc) => {
+    ownerLastLocation = loc;
+});
+
+
+	function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // รัศมีโลก (กม.)
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // คืนค่าเป็นกิโลเมตร
+}
+        // --- FINISH JOB ---
+
+    function requestFinishJob() {
+    // ถ้ามีเงื่อนไขระยะทาง
+    if (isProximityRequired || (currentPost && currentPost.requireProximity)) {
+        
+        if (!myCurrentLocation) {
+            return showNotification('⛔ ไม่พบพิกัดของคุณ กรุณาเปิด GPS', 'fas fa-location-arrow');
+        }
+
+        // 1. เช็คระยะกับ "จุดตั้งกระทู้"
+        const distToPost = getDistanceFromLatLonInKm(
+            myCurrentLocation.lat, myCurrentLocation.lng, 
+            currentPost.location.lat, currentPost.location.lng
+        ) * 1000; // แปลงเป็นเมตร
+
+        // 2. เช็คระยะกับ "เจ้าของกระทู้" (ถ้ามีข้อมูล)
+        let distToOwner = Infinity;
+        if (ownerLastLocation) {
+            distToOwner = getDistanceFromLatLonInKm(
+                myCurrentLocation.lat, myCurrentLocation.lng,
+                ownerLastLocation.lat, ownerLastLocation.lng
+            ) * 1000; // แปลงเป็นเมตร
+        }
+
+        console.log(`Dist Post: ${distToPost.toFixed(1)}m, Dist Owner: ${distToOwner.toFixed(1)}m`);
+
+        // เงื่อนไข: ต้องใกล้จุดใดจุดหนึ่ง ไม่เกิน 10 เมตร
+        if (distToPost > 10 && distToOwner > 10) {
+            let msg = `⛔ คุณอยู่ไกลเกินไป!\n- ห่างจุดตั้งกระทู้: ${distToPost.toFixed(0)} ม.\n`;
+            if(ownerLastLocation) msg += `- ห่างเจ้าของ: ${distToOwner.toFixed(0)} ม.\n`;
+            msg += `(ต้องเข้าใกล้ในระยะ 10 เมตร)`;
+            
+            return alert(msg);
+        }
+    }
+
+    // ถ้าผ่านเงื่อนไข (หรือไม่มีเงื่อนไข) ให้ทำงานเดิม
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+    
     if(confirm(t['confirm_finish_request'])) {
         socket.emit('request-finish-job', { postId });
         showNotification(t['notif_wait_finish_confirm'], 'fas fa-hourglass-start', 3000); 

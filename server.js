@@ -2275,29 +2275,57 @@ io.on('connection', (socket) => {
 
     // --- Handover / Deals ---
     socket.on('offer-deal', (data) => {
-        const { postId, targetViewer } = data;
-        io.to(targetViewer).emit('receive-offer', { postId, owner: socket.username });
+    const { postId, targetViewer, requireProximity } = data; // [NEW] รับค่า boolean
+    io.to(targetViewer).emit('receive-offer', { 
+        postId, 
+        owner: socket.username, 
+        requireProximity: requireProximity // [NEW] ส่งต่อไปให้คนรับดู
     });
+});
 
     socket.on('reply-offer', async (data) => {
-        const { postId, accepted, viewer, owner } = data;
-        if (accepted) {
-            await postsCollection.updateOne(
-                { id: parseInt(postId) }, 
-                { $set: { isClosed: true, status: 'finished', acceptedViewer: viewer } }
-            );
-            const post = await postsCollection.findOne({ id: parseInt(postId) });
+        const { postId, accepted, viewer, owner, requireProximity } = data; 
+
+		if (accepted) {
+        await postsCollection.updateOne(
+            { id: parseInt(postId) }, 
+            { $set: { 
+                isClosed: true, 
+                status: 'finished', 
+                acceptedViewer: viewer,
+                requireProximity: requireProximity || false // บันทึกค่าลง DB
+            }}
+        );
+        
+			const post = await postsCollection.findOne({ id: parseInt(postId) });
             await transactionsCollection.insertOne({
                 id: Date.now(), type: 'HANDOVER', amount: 0, fromUser: owner, toUser: viewer,
                 note: `✅ ปิดดีล/ส่งงานสำเร็จ: กระทู้ ${post.title}`, timestamp: Date.now()
             });
             io.emit('post-list-update', { postId: post.id, status: 'finished' });
-            io.to(owner).emit('deal-result', { success: true, viewer, msg: `🎉 ${viewer} รับงานแล้ว!` });
-            io.to(viewer).emit('deal-result', { success: true, msg: `✅ ยอมรับงานแล้ว!` });
-        } else {
-            io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} ปฏิเสธ` });
+        
+        io.to(owner).emit('deal-result', { 
+            success: true, 
+            viewer, 
+            msg: `🎉 ${viewer} รับงานแล้ว!`,
+            requireProximity: requireProximity // ส่งกลับไปบอกเจ้าของด้วย
+        });
+
+        io.to(viewer).emit('deal-result', { 
+            success: true, 
+            msg: `✅ ยอมรับงานแล้ว!`, 
+            requireProximity: requireProximity // ส่งกลับไปบอกผู้รับงาน
+        });
+
+        // ส่งพิกัดล่าสุดของเจ้าของให้ผู้รับงานทันที
+        const ownerUser = await usersCollection.findOne({ username: owner });
+        if(ownerUser && ownerUser.lastLocation) {
+             io.to(viewer).emit('update-owner-location', ownerUser.lastLocation);
         }
-    });
+    } else {
+        io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} ปฏิเสธ` });
+    }
+});
 
     // --- Finish Job Logic ---
     socket.on('request-finish-job', async (data) => {
