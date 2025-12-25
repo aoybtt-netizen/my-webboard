@@ -21,8 +21,6 @@ let transactionsCollection;
 let topicsCollection;
 let messagesCollection;
 let zonesCollection;
-let postViewers = {};
-let postLocations = {};
 
 // [NEW] Cloudinary Imports
 const cloudinary = require('cloudinary').v2;
@@ -60,7 +58,8 @@ const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE
 let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 32.0 };
 const DEFAULT_CURRENCY = 'THB';
 
-// --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) --
+// --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) ---
+let postViewers = {}; 
 let viewerGeolocation = {};
 
 // --- Translations ---
@@ -2138,6 +2137,7 @@ io.on('connection', (socket) => {
         authorCompletedJobs: authorData.completedJobs || 0
     };
 
+
     // ดึงข้อมูล User คนที่กำลังเข้าร่วม (Viewer)
     const user = await usersCollection.findOne({ username: username });
     const myAdminLevel = user ? (user.adminLevel || 0) : 0;
@@ -2146,30 +2146,19 @@ io.on('connection', (socket) => {
     const isAdmin = (username === 'Admin') || (myAdminLevel >= 1);
     const isParticipant = isOwner || username === post.acceptedViewer;
 
-    // ฟังก์ชันช่วยส่งพิกัดคนอื่นให้เรา (ใช้ซ้ำในทุก Case)
-    const sendExistingLocationsToMe = () => {
-        if (postLocations[postId]) {
-            Object.keys(postLocations[postId]).forEach(existingUser => {
-                // ส่งพิกัดของคนอื่น (ที่ไม่ใช่ตัวเราเอง) มาให้เราเห็น
-                if (existingUser !== username) {
-                    socket.emit('viewer-location-update', {
-                        viewer: existingUser,
-                        location: postLocations[postId][existingUser]
-                    });
-                }
-            });
-        }
-    };
-
     // --- ตรวจสอบสิทธิ์การเข้าถึง ---
     
     // CASE A: เจ้าของ หรือ Admin เข้าได้เสมอ
     if (isOwner || isAdmin) {
         socket.join(`post-${postId}`);
+        // ✅ ส่ง postWithStats แทน post
         socket.emit('access-granted', { post: postWithStats, isAdmin });
         
-        // [เพิ่ม] ส่งพิกัดคนอื่นที่รออยู่แล้ว ให้เจ้าของเห็นทันที
-        sendExistingLocationsToMe();
+        if (viewerGeolocation[postId]) {
+            for (const [viewerName, loc] of Object.entries(viewerGeolocation[postId])) {
+                socket.emit('viewer-location-update', { viewer: viewerName, location: loc });
+            }
+        }
         return; 
     }
 
@@ -2178,9 +2167,6 @@ io.on('connection', (socket) => {
         if (isParticipant) {
             socket.join(`post-${postId}`);
             socket.emit('access-granted', { post: postWithStats, isAdmin: false });
-            
-            // [เพิ่ม] ส่งพิกัดให้ดูด้วย (เผื่อยังมีการดูตำแหน่งกันอยู่)
-            sendExistingLocationsToMe();
         } else {
             socket.emit('access-denied', translateServerMsg('closed_or_finished', lang));
         }
@@ -2188,16 +2174,11 @@ io.on('connection', (socket) => {
     }
 
     // CASE C: กรณีการเข้าชมปกติ (เช็คห้องเต็ม)
-    // หมายเหตุ: ใช้ postViewers ในการเช็คสิทธิ์ (Logic เดิมของคุณ)
-    const currentViewer = postViewers[postId]; // ตรวจสอบตัวแปร postViewers ด้านบนด้วยว่ามีประกาศไว้ไหม
-    
+    const currentViewer = postViewers[postId];
     if (!currentViewer || currentViewer === username) {
-        postViewers[postId] = username; // จองห้อง
+        postViewers[postId] = username;
         socket.join(`post-${postId}`);
         socket.emit('access-granted', { post: postWithStats, isAdmin: false });
-
-        // [เพิ่ม] ผู้รับงานเข้ามา ก็ต้องเห็นพิกัดเจ้าของ (ถ้าเจ้าของส่งไว้แล้ว)
-        sendExistingLocationsToMe();
     } else {
         socket.emit('access-denied', translateServerMsg('room_occupied', lang));
     }
@@ -2294,35 +2275,25 @@ io.on('connection', (socket) => {
 
     // --- Handover / Deals ---
     socket.on('offer-deal', (data) => {
-    // รับ timeLimit มาด้วย
-    const { postId, targetViewer, requireProximity, timeLimit } = data; 
-    
+    const { postId, targetViewer, requireProximity } = data; // [NEW] รับค่า boolean
     io.to(targetViewer).emit('receive-offer', { 
         postId, 
         owner: socket.username, 
-        requireProximity, 
-        timeLimit // ส่งต่อ
+        requireProximity: requireProximity // [NEW] ส่งต่อไปให้คนรับดู
     });
 });
 
     socket.on('reply-offer', async (data) => {
-        const { postId, accepted, viewer, owner, requireProximity, timeLimit } = data; 
+        const { postId, accepted, viewer, owner, requireProximity } = data; 
 
-    if (accepted) {
-        // คำนวณเวลาหมดอายุ (Deadline)
-        // timeLimit เป็นนาที -> แปลงเป็นมิลลิวินาที (* 60 * 1000)
-        const durationMs = (parseInt(timeLimit) || 30) * 60 * 1000;
-        const deadline = Date.now() + durationMs;
-
+		if (accepted) {
         await postsCollection.updateOne(
             { id: parseInt(postId) }, 
             { $set: { 
                 isClosed: true, 
                 status: 'finished', 
                 acceptedViewer: viewer,
-                requireProximity: requireProximity || false,
-                deadline: deadline, // [NEW] บันทึกเวลาหมดอายุ
-                timeLimit: timeLimit // [NEW] บันทึกระยะเวลาไว้ดูเล่น
+                requireProximity: requireProximity || false // บันทึกค่าลง DB
             }}
         );
         
@@ -2358,36 +2329,15 @@ io.on('connection', (socket) => {
 
     // --- Finish Job Logic ---
     socket.on('request-finish-job', async (data) => {
-    const { postId, location } = data; // รับ location (ถ้ามี) มาด้วย
-    
-    const post = await postsCollection.findOne({ id: parseInt(postId) });
-    if (!post) return;
-
-    const requester = socket.username;
-    
-    // (Optional) บันทึก Log ว่ากดจบงานที่พิกัดไหน
-    if (location) {
-        console.log(`📍 User ${requester} requested finish at:`, location);
-        // คุณอาจจะบันทึก updateOne ลงใน historyLog ของโพสต์ตรงนี้ก็ได้
-    }
-
-    // แจ้งเตือนอีกฝ่ายว่า "มีการขอจบงาน"
-    let target = '';
-    if (requester === post.author) target = post.acceptedViewer;
-    else if (requester === post.acceptedViewer) target = post.author;
-    
-    if (target) {
-        io.to(target).emit('receive-finish-request', { requester });
-        
-        // ส่ง Notification ส่วนตัวไปหาเป้าหมาย
-        const notifMsg = {
-            sender: 'System', target: target,
-            msg: `🏁 ${requester} ต้องการจบงาน/แยกย้าย (โปรดยืนยัน)`,
-            timestamp: Date.now(), isSystem: true
-        };
-        io.to(target).emit('private-message', notifMsg);
-    }
-});
+        const { postId } = data;
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (!post) return;
+        const requester = socket.username;
+        let target = '';
+        if (requester === post.author) target = post.acceptedViewer;
+        else if (requester === post.acceptedViewer) target = post.author;
+        if (target) io.to(target).emit('receive-finish-request', { requester });
+    });
 
     socket.on('confirm-finish-job', async ({ postId, accepted, requester }) => {
     if (accepted) {
@@ -2463,20 +2413,13 @@ io.on('connection', (socket) => {
 
     // --- Geolocation & Disconnect Logic ---
     socket.on('update-viewer-location', (data) => {
-    const { postId, username, location } = data;
-
-    // [FIX] บันทึกตำแหน่งล่าสุดลง Server Memory
-    if (!postViewers[postId]) {
-        postViewers[postId] = {};
-    }
-    postViewers[postId][username] = location;
-    
-    // ส่งต่อให้ทุกคนในห้องเหมือนเดิม
-    io.to(`post-${postId}`).emit('viewer-location-update', {
-        viewer: username,
-        location: location
+        const { postId, username, location } = data;
+        if (location && location.lat && location.lng) {
+            if (!viewerGeolocation[postId]) viewerGeolocation[postId] = {};
+            viewerGeolocation[postId][username] = location;
+            io.to(`post-${postId}`).emit('viewer-location-update', { viewer: username, location: location });
+        }
     });
-});
 
     socket.on('disconnect', () => {
         if (socket.viewingPostId && postViewers[socket.viewingPostId] === socket.username) {
@@ -3064,65 +3007,7 @@ socket.on('admin-action-verify', async (data, callback) => {
 
 
 
-// --- SYSTEM: Auto Cancel Expired Jobs ---
-async function checkExpiredJobs() {
-    const now = Date.now();
-    
-    // ค้นหากระทู้ที่สถานะ 'finished' (รับงานแล้ว) และเลยกำหนดเวลา (deadline < now)
-    const expiredPosts = await postsCollection.find({
-        status: 'finished',
-        deadline: { $lt: now }
-    }).toArray();
 
-    if (expiredPosts.length > 0) {
-        console.log(`⏰ Found ${expiredPosts.length} expired jobs. Cleaning up...`);
-
-        for (const post of expiredPosts) {
-            // 1. ปิดกระทู้ถาวร (หรือสถานะ expired)
-            await postsCollection.updateOne(
-                { id: post.id },
-                { $set: { 
-                    status: 'closed_permanently', // ปิดถาวร
-                    isClosed: true,
-                    expireReason: 'TIME_LIMIT_EXCEEDED' 
-                }}
-            );
-
-            // 2. ลบออกจาก Viewer List (คืนสถานะปกติ)
-            delete postViewers[post.id]; 
-
-            // 3. แจ้งเตือนเจ้าของ (Owner)
-            const ownerMsg = {
-                sender: 'System', target: post.author,
-                msg: `⏳ งาน "${post.title}" หมดเวลาแล้ว! ระบบปิดงานอัตโนมัติ`,
-                timestamp: now, isSystem: true
-            };
-            await messagesCollection.insertOne(ownerMsg);
-            io.to(post.author).emit('private-message', { ...ownerMsg, to: post.author });
-            // ดีดออกจากห้อง (ถ้าออนไลน์อยู่)
-            io.to(post.author).emit('force-leave', '⏳ งานหมดเวลาแล้ว (Time Limit Exceeded)');
-
-            // 4. แจ้งเตือนผู้รับงาน (Viewer)
-            if (post.acceptedViewer) {
-                const viewerMsg = {
-                    sender: 'System', target: post.acceptedViewer,
-                    msg: `⏳ งาน "${post.title}" หมดเวลาแล้ว! ระบบยกเลิกดีลอัตโนมัติ`,
-                    timestamp: now, isSystem: true
-                };
-                await messagesCollection.insertOne(viewerMsg);
-                io.to(post.acceptedViewer).emit('private-message', { ...viewerMsg, to: post.acceptedViewer });
-                // ดีดออกจากห้อง
-                io.to(post.acceptedViewer).emit('force-leave', '⏳ งานหมดเวลาแล้ว (Time Limit Exceeded)');
-            }
-            
-            // 5. อัปเดตหน้าลิสต์กระทู้
-            io.emit('post-list-update', { postId: post.id, status: 'closed_permanently' });
-        }
-    }
-}
-
-// ตั้งเวลาเช็คทุกๆ 60 วินาที (1 นาที)
-setInterval(checkExpiredJobs, 60000);
 	
 
 
