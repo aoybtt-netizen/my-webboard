@@ -2067,8 +2067,7 @@ actionsEl.classList.remove('hidden');
     const needsCheck = isProximityRequired || (currentPost && currentPost.requireProximity);
 
     if (needsCheck) {
-        // [เพิ่ม] ส่งสัญญาณไปกระตุ้นให้เจ้าของส่งพิกัดมา (เผื่อเขาออนไลน์อยู่)
-        // (ผลลัพธ์จะไม่มาทันทีในการกดครั้งนี้ แต่จะช่วยครั้งถัดไป)
+        // ส่งสัญญาณไปกระตุ้นให้เจ้าของส่งพิกัดมา
         socket.emit('ping-request-owner-loc', { postId });
 
         showNotification('🛰️ กำลังตรวจสอบพิกัด GPS ล่าสุดของคุณ...', 'fas fa-satellite-dish', 2000);
@@ -2079,7 +2078,6 @@ actionsEl.classList.remove('hidden');
                 const freshLat = position.coords.latitude;
                 const freshLng = position.coords.longitude;
                 
-                // อัปเดตพิกัดเรา
                 myCurrentLocation = { lat: freshLat, lng: freshLng };
 
                 // --- คำนวณระยะทาง ---
@@ -2092,21 +2090,23 @@ actionsEl.classList.remove('hidden');
 
                 // B. ระยะห่างเจ้าของกระทู้
                 let distToOwner = Infinity;
-                let ownerDistText = "ไม่พบพิกัด (N/A)"; // ข้อความสำหรับแสดงผล
 
-                // เช็คว่ามีพิกัดเจ้าของส่งมาหรือยัง
-                if (ownerLastLocation && ownerLastLocation.lat) {
+                if (myUsername === currentPost.author) {
+                    distToOwner = 0; // ถ้าเป็นเจ้าของเอง ให้ระยะเป็น 0 เสมอ
+                    ownerLastLocation = myCurrentLocation;
+                } else if (ownerLastLocation && ownerLastLocation.lat) {
                     distToOwner = getDistanceFromLatLonInKm(
                         freshLat, freshLng,
                         ownerLastLocation.lat, ownerLastLocation.lng
                     ) * 1000;
-                    ownerDistText = `${distToOwner.toFixed(0)} ม.`;
                 }
 
+                // ⭐ แก้ไขตรงนี้: กำหนดค่าให้ตัวแปรเดียว ไม่ประกาศ let ซ้ำ
+                let ownerDistText = (distToOwner === Infinity) ? "ไม่พบพิกัด (N/A)" : `${distToOwner.toFixed(0)} ม.`;
+                
                 console.log(`[GPS Check] Post: ${distToPost.toFixed(1)}m | Owner: ${ownerDistText}`);
 
                 // --- ตรวจสอบเงื่อนไข 50 เมตร ---
-                // ถ้า "ไกลจากจุดโพสต์" และ ("ไกลจากเจ้าของ" หรือ "หาเจ้าของไม่เจอ")
                 if (distToPost > 50 && distToOwner > 50) {
                     let msg = `⛔ ระยะทางไม่ถูกต้อง!\n(ต้องใกล้จุดใดจุดหนึ่งไม่เกิน 50 เมตร)\n\n`;
                     msg += `📍 ห่างจุดตั้งงาน: ${distToPost.toFixed(0)} ม.\n`;
@@ -2115,7 +2115,7 @@ actionsEl.classList.remove('hidden');
                     if (distToOwner === Infinity) {
                         msg += `\n⚠️ สาเหตุ: ระบบไม่ได้รับพิกัดจากเจ้าของงาน (เขาอาจปิดหน้าเว็บอยู่) \n👉 กรุณาไปที่ "จุดตั้งงาน" แทน`;
                     } else {
-                        msg += `\n(กรุณาขยับเข้าใกล้จุดใดจุดหนึ่ง)`;
+                        msg += `\n(กรุณาเข้าใกล้จุดใดจุดหนึ่ง)`;
                     }
                     
                     return alert(msg);
@@ -2130,7 +2130,6 @@ actionsEl.classList.remove('hidden');
             { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
     } else {
-        // กรณีไม่บังคับระยะทาง
         executeSocketFinish();
     }
 
@@ -2139,7 +2138,6 @@ actionsEl.classList.remove('hidden');
         const t = postTranslations[lang] || postTranslations['th'];
         
         if (confirm(t['confirm_finish_request'] || 'ยืนยันการจบงาน?')) {
-            // ส่งพิกัดเราไปด้วย เพื่อเก็บ Log
             socket.emit('request-finish-job', { 
                 postId, 
                 location: myCurrentLocation 
