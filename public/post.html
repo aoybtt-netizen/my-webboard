@@ -524,8 +524,16 @@
         <div id="offer-condition-msg" style="display:none; background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin: 10px 0; font-weight: bold;">
             <i class="fas fa-map-marker-alt"></i> เงื่อนไข: ต้องกดจบงานในระยะ 10 เมตร
         </div>
-        
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button onclick="replyOffer(false)" class="back-btn" style="flex: 1; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer;">
+                <i class="fas fa-times"></i> ปฏิเสธ
+            </button>
+            <button onclick="replyOffer(true)" class="send-btn" style="flex: 1; background: #28a745; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                <i class="fas fa-check"></i> ยอมรับงาน
+            </button>
         </div>
+    </div>
 </div>
 
     <div id="finish-job-modal" class="modal-overlay hidden">
