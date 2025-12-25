@@ -2057,6 +2057,7 @@ actionsEl.classList.remove('hidden');
         // --- FINISH JOB ---
 
     function requestFinishJob() {
+	if (myUsername === post.author)updateOwnerLocationManual();
     // 1. เช็คก่อนว่ากระทู้นี้ต้องตรวจสอบระยะทางหรือไม่
     const needsCheck = isProximityRequired || (currentPost && currentPost.requireProximity);
 
@@ -2092,7 +2093,7 @@ actionsEl.classList.remove('hidden');
 
                 console.log(`[Fresh GPS] Post: ${distToPost.toFixed(1)}m, Owner: ${distToOwner.toFixed(1)}m`);
 
-                // ⛔ ถ้าไกลเกิน 10 เมตรทั้งคู่ ให้หยุดการทำงาน
+                // ⛔ ถ้าไกลเกิน 50 เมตรทั้งคู่ ให้หยุดการทำงาน
                 if (distToPost > 50 && distToOwner > 50) {
                     let msg = `⛔ ระยะทางไม่ถูกต้อง!\nคุณต้องอยู่ใกล้ไม่เกิน 50 เมตร\n`;
                     msg += `- ห่างจุดตั้งกระทู้: ${distToPost.toFixed(0)} ม.\n`;
