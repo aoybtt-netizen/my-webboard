@@ -1973,11 +1973,12 @@ actionsEl.classList.remove('hidden');
 }
         // --- FINISH JOB ---
 
+//******
     function requestFinishJob() {
     const needsCheck = isProximityRequired || (currentPost && currentPost.requireProximity);
 
     if (needsCheck) {
-        showNotification('🛰️ กำลังตรวจสอบพิกัด GPS ล่าสุดของคุณ...', 'fas fa-satellite-dish', 2000);
+        showNotification('🛰️ กำลังตรวจสอบพิกัด GPS...', 'fas fa-satellite-dish', 2000);
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -1985,49 +1986,61 @@ actionsEl.classList.remove('hidden');
                 const freshLng = position.coords.longitude;
                 myCurrentLocation = { lat: freshLat, lng: freshLng };
 
-                // 🌟 หัวใจสำคัญ: อัปเดตพิกัดตัวเองขึ้น Server ทันทีไม่ว่าจะเป็นใคร
-                // เพื่อให้อีกฝ่ายเห็นตำแหน่งล่าสุดของเรา
+                const isOwner = (myUsername === currentPost.author);
+
+                // 1. อัปเดตพิกัดตัวเองส่งไปให้คนอื่นเห็นก่อน
                 socket.emit('update-live-location', {
                     postId: postId,
                     coords: myCurrentLocation,
-                    role: (myUsername === currentPost.author) ? 'owner' : 'worker'
+                    role: isOwner ? 'owner' : 'worker'
                 });
 
-                // ก. เช็คกับ "จุดตั้งกระทู้"
-                const distToPost = getDistanceFromLatLonInKm(
-                    freshLat, freshLng, 
-                    currentPost.location.lat, currentPost.location.lng
-                ) * 1000;
-
-                // ข. เช็คกับ "เจ้าของกระทู้"
-                let distToOwner = Infinity;
-				console.log("🔍 Current ownerLastLocation:", ownerLastLocation); // ใส่ดีบั๊กบรรทัดนี้
-
-				if (ownerLastLocation) {
-					distToOwner = getDistanceFromLatLonInKm(
-					freshLat, freshLng,
-					ownerLastLocation.lat, ownerLastLocation.lng
-					) * 1000;
-				}
-
-                console.log(`[Check] Post: ${distToPost.toFixed(1)}m, Owner: ${distToOwner.toFixed(1)}m`);
-
-                // ⛔ ถ้าอยู่ไกลเกิน 50 เมตร "ทั้งคู่"
-                if (distToPost > 50 && distToOwner > 50) {
-                    let msg = `⛔ ระยะทางไม่ถูกต้อง!\nคุณต้องอยู่ใกล้ไม่เกิน 50 เมตร\n`;
-                    msg += `- ห่างจุดตั้งกระทู้: ${distToPost.toFixed(0)} ม.\n`;
-                    if (ownerLastLocation) {
-                        msg += `- ห่างเจ้าของกระทู้: ${distToOwner.toFixed(0)} ม.\n`;
+                if (isOwner) {
+                    // --- กรณีคุณคือ "เจ้าของกระทู้" ---
+                    // ✅ เช็คแค่ระยะห่างระหว่าง "คุณ" กับ "ผู้รับงาน" (currentViewerLocation)
+                    let distToWorker = Infinity;
+                    
+                    if (currentViewerLocation) {
+                        distToWorker = getDistanceFromLatLonInKm(
+                            freshLat, freshLng,
+                            currentViewerLocation.lat, currentViewerLocation.lng
+                        ) * 1000;
                     }
-                    msg += `\n(กรุณาเข้าใกล้จุดใดจุดหนึ่ง)`;
-                    return alert(msg);
+
+                    console.log(`[Author Check] ระยะห่างจากผู้รับงาน: ${distToWorker.toFixed(1)} เมตร`);
+
+                    if (distToWorker > 50) {
+                        return alert(`⛔ ระยะห่างไม่ถูกต้อง!\nคุณต้องอยู่ใกล้ผู้รับงานไม่เกิน 50 เมตร\n(ปัจจุบันห่าง: ${distToWorker.toFixed(0)} ม.)`);
+                    }
+
+                } else {
+                    // --- กรณีคุณคือ "ผู้รับงาน" ---
+                    // ✅ เช็ค 2 เงื่อนไข: ใกล้จุดตั้งโพสต์ OR ใกล้ตัวเจ้าของ
+                    const distToPost = getDistanceFromLatLonInKm(
+                        freshLat, freshLng, 
+                        currentPost.location.lat, currentPost.location.lng
+                    ) * 1000;
+
+                    let distToOwner = Infinity;
+                    if (ownerLastLocation) {
+                        distToOwner = getDistanceFromLatLonInKm(
+                            freshLat, freshLng,
+                            ownerLastLocation.lat, ownerLastLocation.lng
+                        ) * 1000;
+                    }
+
+                    console.log(`[Worker Check] Post: ${distToPost.toFixed(1)}m, Owner: ${distToOwner.toFixed(1)}m`);
+
+                    if (distToPost > 50 && distToOwner > 50) {
+                        let msg = `⛔ ระยะทางไม่ถูกต้อง!\nคุณต้องอยู่ใกล้จุดนัดพบ หรือเจ้าของกระทู้ไม่เกิน 50 เมตร`;
+                        return alert(msg);
+                    }
                 }
 
+                // ✅ ผ่านเงื่อนไข ส่งคำขอจบงาน
                 executeSocketFinish();
             },
-            (error) => {
-                alert("❌ ไม่สามารถดึงพิกัด GPS ได้");
-            },
+            (error) => { alert("❌ ไม่สามารถดึงพิกัด GPS ได้"); },
             { enableHighAccuracy: true, timeout: 5000 }
         );
     } else {
