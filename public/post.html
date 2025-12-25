@@ -1968,47 +1968,74 @@ actionsEl.classList.remove('hidden');
         // --- FINISH JOB ---
 
     function requestFinishJob() {
-    // ถ้ามีเงื่อนไขระยะทาง
-    if (isProximityRequired || (currentPost && currentPost.requireProximity)) {
-        
-        if (!myCurrentLocation) {
-            return showNotification('⛔ ไม่พบพิกัดของคุณ กรุณาเปิด GPS', 'fas fa-location-arrow');
-        }
+    // 1. เช็คก่อนว่ากระทู้นี้ต้องตรวจสอบระยะทางหรือไม่
+    const needsCheck = isProximityRequired || (currentPost && currentPost.requireProximity);
 
-        // 1. เช็คระยะกับ "จุดตั้งกระทู้"
-        const distToPost = getDistanceFromLatLonInKm(
-            myCurrentLocation.lat, myCurrentLocation.lng, 
-            currentPost.location.lat, currentPost.location.lng
-        ) * 1000; // แปลงเป็นเมตร
+    if (needsCheck) {
+        // แจ้งเตือนผู้ใช้ว่ากำลังดึงพิกัดล่าสุด
+        showNotification('🛰️ กำลังตรวจสอบพิกัด GPS ล่าสุดของคุณ...', 'fas fa-satellite-dish', 2000);
 
-        // 2. เช็คระยะกับ "เจ้าของกระทู้" (ถ้ามีข้อมูล)
-        let distToOwner = Infinity;
-        if (ownerLastLocation) {
-            distToOwner = getDistanceFromLatLonInKm(
-                myCurrentLocation.lat, myCurrentLocation.lng,
-                ownerLastLocation.lat, ownerLastLocation.lng
-            ) * 1000; // แปลงเป็นเมตร
-        }
+        // 🚀 ดึงพิกัดใหม่สดๆ ทันทีที่กดปุ่ม
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const freshLat = position.coords.latitude;
+                const freshLng = position.coords.longitude;
+                
+                // อัปเดตพิกัดปัจจุบันเก็บไว้ในตัวแปรหลักด้วย
+                myCurrentLocation = { lat: freshLat, lng: freshLng };
 
-        console.log(`Dist Post: ${distToPost.toFixed(1)}m, Dist Owner: ${distToOwner.toFixed(1)}m`);
+                // --- เริ่มการคำนวณระยะทางจากพิกัดใหม่ที่เพิ่งดึงมา ---
+                
+                // ก. เช็คกับ "จุดตั้งกระทู้"
+                const distToPost = getDistanceFromLatLonInKm(
+                    freshLat, freshLng, 
+                    currentPost.location.lat, currentPost.location.lng
+                ) * 1000; // แปลงเป็นเมตร
 
-        // เงื่อนไข: ต้องใกล้จุดใดจุดหนึ่ง ไม่เกิน 10 เมตร
-        if (distToPost > 10 && distToOwner > 10) {
-            let msg = `⛔ คุณอยู่ไกลเกินไป!\n- ห่างจุดตั้งกระทู้: ${distToPost.toFixed(0)} ม.\n`;
-            if(ownerLastLocation) msg += `- ห่างเจ้าของ: ${distToOwner.toFixed(0)} ม.\n`;
-            msg += `(ต้องเข้าใกล้ในระยะ 10 เมตร)`;
-            
-            return alert(msg);
-        }
+                // ข. เช็คกับ "เจ้าของกระทู้" (ถ้ามีพิกัดล่าสุดของเจ้าของ)
+                let distToOwner = Infinity;
+                if (ownerLastLocation) {
+                    distToOwner = getDistanceFromLatLonInKm(
+                        freshLat, freshLng,
+                        ownerLastLocation.lat, ownerLastLocation.lng
+                    ) * 1000;
+                }
+
+                console.log(`[Fresh GPS] Post: ${distToPost.toFixed(1)}m, Owner: ${distToOwner.toFixed(1)}m`);
+
+                // ⛔ ถ้าไกลเกิน 10 เมตรทั้งคู่ ให้หยุดการทำงาน
+                if (distToPost > 10 && distToOwner > 10) {
+                    let msg = `⛔ ระยะทางไม่ถูกต้อง!\nคุณต้องอยู่ใกล้ไม่เกิน 10 เมตร\n`;
+                    msg += `- ห่างจุดตั้งกระทู้: ${distToPost.toFixed(0)} ม.\n`;
+                    if (ownerLastLocation) {
+                        msg += `- ห่างเจ้าของกระทู้: ${distToOwner.toFixed(0)} ม.\n`;
+                    }
+                    msg += `\n(กรุณาเข้าใกล้จุดใดจุดหนึ่ง)`;
+                    return alert(msg);
+                }
+
+                // ✅ ถ้าผ่านเงื่อนไขระยะทาง ให้เข้าสู่ขั้นตอนยืนยันเพื่อส่ง Socket
+                executeSocketFinish();
+            },
+            (error) => {
+                alert("❌ ไม่สามารถดึงพิกัด GPS ได้ กรุณาตรวจสอบว่าเปิดตำแหน่งหรือยัง");
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+    } else {
+        // กรณีงานนี้ไม่บังคับระยะทาง ให้ทำตามปกติเลย
+        executeSocketFinish();
     }
 
-    // ถ้าผ่านเงื่อนไข (หรือไม่มีเงื่อนไข) ให้ทำงานเดิม
-    const lang = localStorage.getItem('preferredLanguage') || 'th';
-    const t = postTranslations[lang] || postTranslations['th'];
-    
-    if(confirm(t['confirm_finish_request'])) {
-        socket.emit('request-finish-job', { postId });
-        showNotification(t['notif_wait_finish_confirm'], 'fas fa-hourglass-start', 3000); 
+    // ฟังก์ชันภายในเพื่อส่ง Socket (รวมไว้ในนี้ได้เลย)
+    function executeSocketFinish() {
+        const lang = localStorage.getItem('preferredLanguage') || 'th';
+        const t = postTranslations[lang] || postTranslations['th'];
+        
+        if (confirm(t['confirm_finish_request'] || 'ยืนยันการจบงาน?')) {
+            socket.emit('request-finish-job', { postId });
+            showNotification(t['notif_wait_finish_confirm'], 'fas fa-hourglass-start', 3000); 
+        }
     }
 }
 
