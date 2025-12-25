@@ -2339,37 +2339,35 @@ io.on('connection', (socket) => {
 
     // --- Finish Job Logic ---
     socket.on('request-finish-job', async (data) => {
-    const { postId, location } = data; // รับ location มาด้วย
+    const { postId, location } = data; // รับ location (ถ้ามี) มาด้วย
     
     const post = await postsCollection.findOne({ id: parseInt(postId) });
     if (!post) return;
 
     const requester = socket.username;
     
-    // [เพิ่ม] บันทึกพิกัดของคนที่กดขอจบงาน ลงใน Database (เช่น สร้าง field ใหม่ finishRequestLog)
+    // (Optional) บันทึก Log ว่ากดจบงานที่พิกัดไหน
     if (location) {
-        await postsCollection.updateOne(
-            { id: parseInt(postId) },
-            { 
-                $push: { 
-                    historyLog: {
-                        action: 'REQUEST_FINISH',
-                        by: requester,
-                        location: location,
-                        timestamp: Date.now()
-                    }
-                }
-            }
-        );
-        console.log(`📍 Recorded finish request location for ${requester}:`, location);
+        console.log(`📍 User ${requester} requested finish at:`, location);
+        // คุณอาจจะบันทึก updateOne ลงใน historyLog ของโพสต์ตรงนี้ก็ได้
     }
 
-    // ... (ส่วนแจ้งเตือนอีกฝ่ายเหมือนเดิม) ...
+    // แจ้งเตือนอีกฝ่ายว่า "มีการขอจบงาน"
     let target = '';
     if (requester === post.author) target = post.acceptedViewer;
     else if (requester === post.acceptedViewer) target = post.author;
     
-    if (target) io.to(target).emit('receive-finish-request', { requester });
+    if (target) {
+        io.to(target).emit('receive-finish-request', { requester });
+        
+        // ส่ง Notification ส่วนตัวไปหาเป้าหมาย
+        const notifMsg = {
+            sender: 'System', target: target,
+            msg: `🏁 ${requester} ต้องการจบงาน/แยกย้าย (โปรดยืนยัน)`,
+            timestamp: Date.now(), isSystem: true
+        };
+        io.to(target).emit('private-message', notifMsg);
+    }
 });
 
     socket.on('confirm-finish-job', async ({ postId, accepted, requester }) => {
@@ -2446,13 +2444,19 @@ io.on('connection', (socket) => {
 
     // --- Geolocation & Disconnect Logic ---
     socket.on('update-viewer-location', (data) => {
-        const { postId, username, location } = data;
-        if (location && location.lat && location.lng) {
-            if (!viewerGeolocation[postId]) viewerGeolocation[postId] = {};
-            viewerGeolocation[postId][username] = location;
-            io.to(`post-${postId}`).emit('viewer-location-update', { viewer: username, location: location });
-        }
+    const { postId, username, location } = data;
+    
+    // ส่งต่อให้ทุกคนในห้อง post-{id} (รวมถึงตัวคนส่งเองด้วยก็ได้ หรือใช้ socket.to เพื่อส่งให้คนอื่น)
+    // ใช้ io.to เพื่อความชัวร์ว่าทุกคนได้รับข้อมูลล่าสุด
+    io.to(`post-${postId}`).emit('viewer-location-update', {
+        viewer: username,
+        location: location
     });
+
+    // (Option) ถ้าอยากเก็บพิกัดล่าสุดไว้ในตัวแปร Server ชั่วคราวด้วย (เผื่อคนเพิ่งเข้ามา)
+    if (!postViewers[postId]) postViewers[postId] = {};
+    postViewers[postId][username] = location;
+});
 
     socket.on('disconnect', () => {
         if (socket.viewingPostId && postViewers[socket.viewingPostId] === socket.username) {
