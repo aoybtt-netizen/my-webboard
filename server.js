@@ -3005,6 +3005,31 @@ socket.on('admin-action-verify', async (data, callback) => {
     );
 });
 
+	
+	socket.on('update-live-location', async (data) => {
+    try {
+        const { postId, coords, role } = data;
+        if (!socket.username || !coords) return;
+
+        // 1. บันทึกลง Database ของ User คนนั้นๆ
+        await usersCollection.updateOne(
+            { username: socket.username },
+            { $set: { 
+                lastLocation: coords, // ใช้ชื่อเดียวกับตอน reply-offer
+                currentLocation: coords, 
+                locationTimestamp: Date.now() 
+            } }
+        );
+
+        // 2. ถ้าเป็นเจ้าของกระทู้ ให้ส่งพิกัดนี้ไปให้ "ผู้รับงาน" ที่เปิดหน้านั้นอยู่
+        if (role === 'owner') {
+            socket.to(postId).emit('update-owner-location', coords);
+        }
+    } catch (err) {
+        console.error("Location update error:", err);
+    }
+});
+
 
 
 
