@@ -21,6 +21,7 @@ let transactionsCollection;
 let topicsCollection;
 let messagesCollection;
 let zonesCollection;
+let postViewers = {};
 
 // [NEW] Cloudinary Imports
 const cloudinary = require('cloudinary').v2;
@@ -2137,7 +2138,6 @@ io.on('connection', (socket) => {
         authorCompletedJobs: authorData.completedJobs || 0
     };
 
-
     // ดึงข้อมูล User คนที่กำลังเข้าร่วม (Viewer)
     const user = await usersCollection.findOne({ username: username });
     const myAdminLevel = user ? (user.adminLevel || 0) : 0;
@@ -2146,19 +2146,30 @@ io.on('connection', (socket) => {
     const isAdmin = (username === 'Admin') || (myAdminLevel >= 1);
     const isParticipant = isOwner || username === post.acceptedViewer;
 
+    // ฟังก์ชันช่วยส่งพิกัดคนอื่นให้เรา (ใช้ซ้ำในทุก Case)
+    const sendExistingLocationsToMe = () => {
+        if (postLocations[postId]) {
+            Object.keys(postLocations[postId]).forEach(existingUser => {
+                // ส่งพิกัดของคนอื่น (ที่ไม่ใช่ตัวเราเอง) มาให้เราเห็น
+                if (existingUser !== username) {
+                    socket.emit('viewer-location-update', {
+                        viewer: existingUser,
+                        location: postLocations[postId][existingUser]
+                    });
+                }
+            });
+        }
+    };
+
     // --- ตรวจสอบสิทธิ์การเข้าถึง ---
     
     // CASE A: เจ้าของ หรือ Admin เข้าได้เสมอ
     if (isOwner || isAdmin) {
         socket.join(`post-${postId}`);
-        // ✅ ส่ง postWithStats แทน post
         socket.emit('access-granted', { post: postWithStats, isAdmin });
         
-        if (viewerGeolocation[postId]) {
-            for (const [viewerName, loc] of Object.entries(viewerGeolocation[postId])) {
-                socket.emit('viewer-location-update', { viewer: viewerName, location: loc });
-            }
-        }
+        // [เพิ่ม] ส่งพิกัดคนอื่นที่รออยู่แล้ว ให้เจ้าของเห็นทันที
+        sendExistingLocationsToMe();
         return; 
     }
 
@@ -2167,6 +2178,9 @@ io.on('connection', (socket) => {
         if (isParticipant) {
             socket.join(`post-${postId}`);
             socket.emit('access-granted', { post: postWithStats, isAdmin: false });
+            
+            // [เพิ่ม] ส่งพิกัดให้ดูด้วย (เผื่อยังมีการดูตำแหน่งกันอยู่)
+            sendExistingLocationsToMe();
         } else {
             socket.emit('access-denied', translateServerMsg('closed_or_finished', lang));
         }
@@ -2174,11 +2188,16 @@ io.on('connection', (socket) => {
     }
 
     // CASE C: กรณีการเข้าชมปกติ (เช็คห้องเต็ม)
-    const currentViewer = postViewers[postId];
+    // หมายเหตุ: ใช้ postViewers ในการเช็คสิทธิ์ (Logic เดิมของคุณ)
+    const currentViewer = postViewers[postId]; // ตรวจสอบตัวแปร postViewers ด้านบนด้วยว่ามีประกาศไว้ไหม
+    
     if (!currentViewer || currentViewer === username) {
-        postViewers[postId] = username;
+        postViewers[postId] = username; // จองห้อง
         socket.join(`post-${postId}`);
         socket.emit('access-granted', { post: postWithStats, isAdmin: false });
+
+        // [เพิ่ม] ผู้รับงานเข้ามา ก็ต้องเห็นพิกัดเจ้าของ (ถ้าเจ้าของส่งไว้แล้ว)
+        sendExistingLocationsToMe();
     } else {
         socket.emit('access-denied', translateServerMsg('room_occupied', lang));
     }
@@ -2445,17 +2464,18 @@ io.on('connection', (socket) => {
     // --- Geolocation & Disconnect Logic ---
     socket.on('update-viewer-location', (data) => {
     const { postId, username, location } = data;
+
+    // [FIX] บันทึกตำแหน่งล่าสุดลง Server Memory
+    if (!postViewers[postId]) {
+        postViewers[postId] = {};
+    }
+    postViewers[postId][username] = location;
     
-    // ส่งต่อให้ทุกคนในห้อง post-{id} (รวมถึงตัวคนส่งเองด้วยก็ได้ หรือใช้ socket.to เพื่อส่งให้คนอื่น)
-    // ใช้ io.to เพื่อความชัวร์ว่าทุกคนได้รับข้อมูลล่าสุด
+    // ส่งต่อให้ทุกคนในห้องเหมือนเดิม
     io.to(`post-${postId}`).emit('viewer-location-update', {
         viewer: username,
         location: location
     });
-
-    // (Option) ถ้าอยากเก็บพิกัดล่าสุดไว้ในตัวแปร Server ชั่วคราวด้วย (เผื่อคนเพิ่งเข้ามา)
-    if (!postViewers[postId]) postViewers[postId] = {};
-    postViewers[postId][username] = location;
 });
 
     socket.on('disconnect', () => {
