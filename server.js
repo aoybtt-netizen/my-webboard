@@ -2129,7 +2129,6 @@ io.on('connection', (socket) => {
     }
 
     const authorData = await getUserData(post.author);
-    
     const postWithStats = {
         ...post,
         authorRating: authorData.rating ? authorData.rating.toFixed(2) : '0.00',
@@ -2137,8 +2136,6 @@ io.on('connection', (socket) => {
         authorCompletedJobs: authorData.completedJobs || 0
     };
 
-
-    // ดึงข้อมูล User คนที่กำลังเข้าร่วม (Viewer)
     const user = await usersCollection.findOne({ username: username });
     const myAdminLevel = user ? (user.adminLevel || 0) : 0;
 
@@ -2147,11 +2144,10 @@ io.on('connection', (socket) => {
     const isParticipant = isOwner || username === post.acceptedViewer;
 
     // --- ตรวจสอบสิทธิ์การเข้าถึง ---
-    
-    // CASE A: เจ้าของ หรือ Admin เข้าได้เสมอ
+    const roomName = `post-${postId}`; // ตั้งชื่อ Room ให้เป็นมาตรฐานเดียวกัน
+
     if (isOwner || isAdmin) {
-        socket.join(`post-${postId}`);
-        // ✅ ส่ง postWithStats แทน post
+        socket.join(roomName);
         socket.emit('access-granted', { post: postWithStats, isAdmin });
         
         if (viewerGeolocation[postId]) {
@@ -2162,23 +2158,36 @@ io.on('connection', (socket) => {
         return; 
     }
 
-    // CASE B: กระทู้จบงาน หรือ ปิดแล้ว
     if (post.status === 'finished' || post.isClosed) {
         if (isParticipant) {
-            socket.join(`post-${postId}`);
+            socket.join(roomName);
             socket.emit('access-granted', { post: postWithStats, isAdmin: false });
+            
+            // 🌟 เพิ่มส่วนนี้: ส่งพิกัดเจ้าของให้ผู้รับงานทันทีที่เข้าห้อง (กรณีงานจบแล้วแต่อยากดูตำแหน่ง)
+            const ownerUser = await usersCollection.findOne({ username: post.author });
+            if (ownerUser && (ownerUser.lastLocation || ownerUser.currentLocation)) {
+                socket.emit('update-owner-location', ownerUser.lastLocation || ownerUser.currentLocation);
+            }
         } else {
             socket.emit('access-denied', translateServerMsg('closed_or_finished', lang));
         }
         return;
     }
 
-    // CASE C: กรณีการเข้าชมปกติ (เช็คห้องเต็ม)
     const currentViewer = postViewers[postId];
     if (!currentViewer || currentViewer === username) {
         postViewers[postId] = username;
-        socket.join(`post-${postId}`);
+        socket.join(roomName);
         socket.emit('access-granted', { post: postWithStats, isAdmin: false });
+
+        // 🌟 เพิ่มส่วนนี้: ส่งพิกัดเจ้าของให้ผู้รับงาน (Viewer) ทันทีที่เข้าห้องสำเร็จ
+        // เพื่อให้ ownerLastLocation ในเครื่อง Client ไม่เป็น null
+        const ownerUser = await usersCollection.findOne({ username: post.author });
+        if (ownerUser && (ownerUser.lastLocation || ownerUser.currentLocation)) {
+            socket.emit('update-owner-location', ownerUser.lastLocation || ownerUser.currentLocation);
+            console.log(`✅ Sent owner location to ${username} on join`);
+        }
+        
     } else {
         socket.emit('access-denied', translateServerMsg('room_occupied', lang));
     }

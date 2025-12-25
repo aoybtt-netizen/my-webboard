@@ -1956,8 +1956,8 @@ actionsEl.classList.remove('hidden');
 		
 		// 5. อัปเดตพิกัดเจ้าของ (รับจาก Server)
 	socket.on('update-owner-location', (coords) => {
-    console.log("📍 ได้รับพิกัดใหม่ของเจ้าของกระทู้:", coords);
-    ownerLastLocation = coords; // อัปเดตค่าเพื่อให้ฟังก์ชันเช็คระยะทำงานได้
+    console.log("📍 [Client] ได้รับพิกัดเจ้าของแล้ว:", coords);
+    ownerLastLocation = coords; // อัปเดตค่าเข้าตัวแปรหลัก
 });
 
 
@@ -2001,12 +2001,14 @@ actionsEl.classList.remove('hidden');
 
                 // ข. เช็คกับ "เจ้าของกระทู้"
                 let distToOwner = Infinity;
-                if (ownerLastLocation) {
-                    distToOwner = getDistanceFromLatLonInKm(
-                        freshLat, freshLng,
-                        ownerLastLocation.lat, ownerLastLocation.lng
-                    ) * 1000;
-                }
+				console.log("🔍 Current ownerLastLocation:", ownerLastLocation); // ใส่ดีบั๊กบรรทัดนี้
+
+				if (ownerLastLocation) {
+					distToOwner = getDistanceFromLatLonInKm(
+					freshLat, freshLng,
+					ownerLastLocation.lat, ownerLastLocation.lng
+					) * 1000;
+				}
 
                 console.log(`[Check] Post: ${distToPost.toFixed(1)}m, Owner: ${distToOwner.toFixed(1)}m`);
 
