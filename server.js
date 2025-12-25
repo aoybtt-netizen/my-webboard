@@ -2275,25 +2275,35 @@ io.on('connection', (socket) => {
 
     // --- Handover / Deals ---
     socket.on('offer-deal', (data) => {
-    const { postId, targetViewer, requireProximity } = data; // [NEW] รับค่า boolean
+    // รับ timeLimit มาด้วย
+    const { postId, targetViewer, requireProximity, timeLimit } = data; 
+    
     io.to(targetViewer).emit('receive-offer', { 
         postId, 
         owner: socket.username, 
-        requireProximity: requireProximity // [NEW] ส่งต่อไปให้คนรับดู
+        requireProximity, 
+        timeLimit // ส่งต่อ
     });
 });
 
     socket.on('reply-offer', async (data) => {
-        const { postId, accepted, viewer, owner, requireProximity } = data; 
+        const { postId, accepted, viewer, owner, requireProximity, timeLimit } = data; 
 
-		if (accepted) {
+    if (accepted) {
+        // คำนวณเวลาหมดอายุ (Deadline)
+        // timeLimit เป็นนาที -> แปลงเป็นมิลลิวินาที (* 60 * 1000)
+        const durationMs = (parseInt(timeLimit) || 30) * 60 * 1000;
+        const deadline = Date.now() + durationMs;
+
         await postsCollection.updateOne(
             { id: parseInt(postId) }, 
             { $set: { 
                 isClosed: true, 
                 status: 'finished', 
                 acceptedViewer: viewer,
-                requireProximity: requireProximity || false // บันทึกค่าลง DB
+                requireProximity: requireProximity || false,
+                deadline: deadline, // [NEW] บันทึกเวลาหมดอายุ
+                timeLimit: timeLimit // [NEW] บันทึกระยะเวลาไว้ดูเล่น
             }}
         );
         
@@ -3007,7 +3017,65 @@ socket.on('admin-action-verify', async (data, callback) => {
 
 
 
+// --- SYSTEM: Auto Cancel Expired Jobs ---
+async function checkExpiredJobs() {
+    const now = Date.now();
+    
+    // ค้นหากระทู้ที่สถานะ 'finished' (รับงานแล้ว) และเลยกำหนดเวลา (deadline < now)
+    const expiredPosts = await postsCollection.find({
+        status: 'finished',
+        deadline: { $lt: now }
+    }).toArray();
 
+    if (expiredPosts.length > 0) {
+        console.log(`⏰ Found ${expiredPosts.length} expired jobs. Cleaning up...`);
+
+        for (const post of expiredPosts) {
+            // 1. ปิดกระทู้ถาวร (หรือสถานะ expired)
+            await postsCollection.updateOne(
+                { id: post.id },
+                { $set: { 
+                    status: 'closed_permanently', // ปิดถาวร
+                    isClosed: true,
+                    expireReason: 'TIME_LIMIT_EXCEEDED' 
+                }}
+            );
+
+            // 2. ลบออกจาก Viewer List (คืนสถานะปกติ)
+            delete postViewers[post.id]; 
+
+            // 3. แจ้งเตือนเจ้าของ (Owner)
+            const ownerMsg = {
+                sender: 'System', target: post.author,
+                msg: `⏳ งาน "${post.title}" หมดเวลาแล้ว! ระบบปิดงานอัตโนมัติ`,
+                timestamp: now, isSystem: true
+            };
+            await messagesCollection.insertOne(ownerMsg);
+            io.to(post.author).emit('private-message', { ...ownerMsg, to: post.author });
+            // ดีดออกจากห้อง (ถ้าออนไลน์อยู่)
+            io.to(post.author).emit('force-leave', '⏳ งานหมดเวลาแล้ว (Time Limit Exceeded)');
+
+            // 4. แจ้งเตือนผู้รับงาน (Viewer)
+            if (post.acceptedViewer) {
+                const viewerMsg = {
+                    sender: 'System', target: post.acceptedViewer,
+                    msg: `⏳ งาน "${post.title}" หมดเวลาแล้ว! ระบบยกเลิกดีลอัตโนมัติ`,
+                    timestamp: now, isSystem: true
+                };
+                await messagesCollection.insertOne(viewerMsg);
+                io.to(post.acceptedViewer).emit('private-message', { ...viewerMsg, to: post.acceptedViewer });
+                // ดีดออกจากห้อง
+                io.to(post.acceptedViewer).emit('force-leave', '⏳ งานหมดเวลาแล้ว (Time Limit Exceeded)');
+            }
+            
+            // 5. อัปเดตหน้าลิสต์กระทู้
+            io.emit('post-list-update', { postId: post.id, status: 'closed_permanently' });
+        }
+    }
+}
+
+// ตั้งเวลาเช็คทุกๆ 60 วินาที (1 นาที)
+setInterval(checkExpiredJobs, 60000);
 	
 
 

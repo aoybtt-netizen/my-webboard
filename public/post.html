@@ -524,6 +524,10 @@
         <div id="offer-condition-msg" style="display:none; background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin: 10px 0; font-weight: bold;">
             <i class="fas fa-map-marker-alt"></i> Condition: The task must be completed within 50 meters.
         </div>
+		
+		<div id="offer-time-msg" style="background: #e2e3e5; color: #383d41; padding: 10px; border-radius: 5px; margin: 5px 0; font-weight: bold;">
+		⏳ TimeUp: <span id="offer-time-val">30 Min</span>
+		</div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button onclick="replyOffer(false)" class="back-btn" style="flex: 1; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer;">
@@ -605,6 +609,22 @@
         <div style="font-size: 0.8em; color: #666; margin-top: 5px; margin-left: 25px;">
             The person accepting the job must be within 50 meters of the "post location" or "you" to be able to complete the job.
         </div>
+		
+		<label style="font-weight: bold; color: #333; display: block; margin-bottom: 5px;">
+        ⏳ กำหนดเวลาส่งงาน (Time Limit):
+    </label>
+    <select id="select-time-limit" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+        <option value="30">30 นาที (ค่าเริ่มต้น)</option>
+        <option value="60">1 ชั่วโมง</option>
+        <option value="120">2 ชั่วโมง</option>
+        <option value="180">3 ชั่วโมง</option>
+        <option value="240">4 ชั่วโมง</option>
+        <option value="300">5 ชั่วโมง</option>
+        <option value="360">6 ชั่วโมง</option>
+    </select>
+    <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
+        *หากผู้รับงานไม่กดจบงานภายในเวลาที่กำหนด ระบบจะปิดงานอัตโนมัติ (ยกเลิกดีล)
+    </div>
     </div>
     <button id="send-handover-btn" class="send-btn" onclick="closeDealWithViewer()" ...>
         ส่งมอบงาน
@@ -1879,33 +1899,45 @@ actionsEl.classList.remove('hidden');
     let viewer = viewerElement.textContent.trim().split('⭐')[0].trim();
     if (!viewer || viewer === '...' || viewer === '') return;
 
-    // รับค่าจาก Checkbox
+    // รับค่า Checkbox ระยะทาง
     const requireProximity = document.getElementById('chk-require-proximity').checked;
+    
+    // [NEW] รับค่าเวลา (นาที)
+    const timeLimit = parseInt(document.getElementById('select-time-limit').value);
 
     socket.emit('offer-deal', { 
         postId, 
         targetViewer: viewer,
-        requireProximity: requireProximity // ส่งค่าไปด้วย
+        requireProximity: requireProximity,
+        timeLimit: timeLimit // [NEW] ส่งเวลาไปด้วย
     });
 
     document.getElementById('handover-modal').classList.add('hidden');
-    showNotification(`📤 ส่งคำขอปิดดีลให้ ${viewer} แล้ว (ระยะ 10ม: ${requireProximity ? 'Yes' : 'No'})`, 'fas fa-hourglass-half');
+    
+    // แปลงเวลาแสดงผลนิดหน่อย
+    const timeText = timeLimit >= 60 ? (timeLimit/60) + " ชม." : timeLimit + " นาที";
+    showNotification(`📤 ส่งดีลให้ ${viewer} (ระยะ: ${requireProximity?'Yes':'No'}, เวลา: ${timeText})`, 'fas fa-hourglass-half');
 }
 
         // --- SOCKET LISTENERS ---
 
     socket.on('receive-offer', (data) => {
     if (data.postId == postId) {
-        // เก็บค่าเงื่อนไขไว้ชั่วคราวเผื่อตอนกดรับ
         window.pendingOfferProximity = data.requireProximity;
         
+        // [NEW] เก็บค่าเวลาไว้ชั่วคราว
+        window.pendingTimeLimit = data.timeLimit; 
+
+        // แสดงเงื่อนไขระยะทาง
         const conditionMsg = document.getElementById('offer-condition-msg');
-        if (data.requireProximity) {
-            conditionMsg.style.display = 'block';
-        } else {
-            conditionMsg.style.display = 'none';
-        }
-        
+        if (data.requireProximity) conditionMsg.style.display = 'block';
+        else conditionMsg.style.display = 'none';
+
+        // [NEW] แสดงเงื่อนไขเวลา
+        const timeVal = document.getElementById('offer-time-val');
+        const minutes = parseInt(data.timeLimit);
+        timeVal.innerText = minutes >= 60 ? (minutes/60) + " ชั่วโมง" : minutes + " นาที";
+
         document.getElementById('offer-modal').classList.remove('hidden');
     }
 });
@@ -1918,7 +1950,8 @@ actionsEl.classList.remove('hidden');
         accepted, 
         viewer: myUsername, 
         owner: ownerName,
-        requireProximity: window.pendingOfferProximity // ส่งค่ากลับไปบันทึกที่ Server
+        requireProximity: window.pendingOfferProximity,
+        timeLimit: window.pendingTimeLimit // [NEW] ส่งเวลากลับไปให้ Server คำนวณ deadline
     });
     
     document.getElementById('offer-modal').classList.add('hidden');
