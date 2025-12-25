@@ -22,6 +22,7 @@ let topicsCollection;
 let messagesCollection;
 let zonesCollection;
 let postViewers = {};
+let postLocations = {};
 
 // [NEW] Cloudinary Imports
 const cloudinary = require('cloudinary').v2;
