@@ -59,8 +59,7 @@ const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE
 let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 32.0 };
 const DEFAULT_CURRENCY = 'THB';
 
-// --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) ---
-let postViewers = {}; 
+// --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) --
 let viewerGeolocation = {};
 
 // --- Translations ---
