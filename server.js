@@ -3018,12 +3018,8 @@ socket.on('admin-action-verify', async (data, callback) => {
 	socket.on('update-live-location', async (data) => {
     try {
         const { postId, coords, role } = data;
-        
-        // Debug 1: ดูว่ามีข้อมูลส่งมาถึง Server ไหม
-        console.log(`[Location Auth] User: ${socket.username}, Role: ${role}, PostID: ${postId}`);
 
         if (!socket.username || !coords) {
-            console.log(`⚠️ Missing data: username or coords is null`);
             return;
         }
 
@@ -3037,20 +3033,14 @@ socket.on('admin-action-verify', async (data, callback) => {
             } }
         );
         
-        // Debug 2: เช็คว่าบันทึกลง DB สำเร็จไหม
-        if (updateResult.modifiedCount > 0) {
-            console.log(`✅ DB Updated for ${socket.username}`);
-        }
 
         // 2. ถ้าเป็นเจ้าของกระทู้ ให้ส่งพิกัดนี้ไปให้คนอื่นในห้อง
         if (role === 'owner') {
-            console.log(`📡 Broadcasting Owner location to room: ${postId}`);
             
             // ใช้ io.to(postId) แทน socket.to(postId) เพื่อความชัวร์ในการส่ง
             // หรือตรวจสอบว่าผู้รับงานได้ join room ที่ชื่อเดียวกับ postId หรือยัง
             socket.to(postId.toString()).emit('update-owner-location', coords);
             
-            console.log(`➡️ Sent: Lat ${coords.lat}, Lng ${coords.lng}`);
         } else {
             console.log(`ℹ️ Role is ${role}, no broadcast needed to worker.`);
         }
