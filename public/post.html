@@ -1108,7 +1108,7 @@ function sendFloatingComment() {
         }
 
         if (!myUsername || !postId) {
-            showNotification('ไม่พบข้อมูลผู้ใช้หรือกระทู้ กรุณาเข้าสู่ระบบใหม่', 'fas fa-exclamation-triangle', 4000); 
+            showNotification('No user or thread information found. Please log in again.', 'fas fa-exclamation-triangle', 4000); 
             setTimeout(() => { location.href = '/'; }, 1000);
         }
 
@@ -1325,7 +1325,7 @@ window.openGoogleMapsApp = function() {
         // ใช้ URL มาตรฐานสำหรับการวาดเส้นทาง (Embed)
         initialMapUrl = `https://www.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&output=embed`;
         
-        viewerText = `<br><div style="color:#28a745; font-size:0.9em; margin-top:5px;">📏 ระยะห่างจากจุดหมาย: ${distanceKm} กม.</div>`;
+        viewerText = `<br><div style="color:#28a745; font-size:0.9em; margin-top:5px;">📏 Distance: ${distanceKm} km.</div>`;
         
         if (navButton) navButton.style.display = 'block';
 
@@ -1401,7 +1401,7 @@ window.openGoogleMapsApp = function() {
         viewerText = `<br>
                       <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
                           <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
-                              📏 ระยะห่างจากคุณ: ${distanceKm} กม.
+                              📏 Distance: ${distanceKm} Km.
                           </span>
                       </div>`;
     } else {
@@ -1412,14 +1412,14 @@ window.openGoogleMapsApp = function() {
     // อัปเดต Iframe
     mapIframe.src = mapUrl;
     
-    if (mapTitle) mapTitle.innerHTML = `📍 ตำแหน่งกระทู้${viewerText}`;
+    if (mapTitle) mapTitle.innerHTML = `📍 Post Location${viewerText}`;
     mapContainer.style.display = 'block'; 
     navButton.style.display = 'none';
 }
 
     window.startEmbeddedNavigation = function() {
     if (!currentDestination) {
-        showNotification('ไม่พบพิกัดปลายทาง', 'fas fa-exclamation-triangle');
+        showNotification('Destination coordinates not found.', 'fas fa-exclamation-triangle');
         return;
     }
 
