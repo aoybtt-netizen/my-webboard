@@ -2339,15 +2339,38 @@ io.on('connection', (socket) => {
 
     // --- Finish Job Logic ---
     socket.on('request-finish-job', async (data) => {
-        const { postId } = data;
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) return;
-        const requester = socket.username;
-        let target = '';
-        if (requester === post.author) target = post.acceptedViewer;
-        else if (requester === post.acceptedViewer) target = post.author;
-        if (target) io.to(target).emit('receive-finish-request', { requester });
-    });
+    const { postId, location } = data; // รับ location มาด้วย
+    
+    const post = await postsCollection.findOne({ id: parseInt(postId) });
+    if (!post) return;
+
+    const requester = socket.username;
+    
+    // [เพิ่ม] บันทึกพิกัดของคนที่กดขอจบงาน ลงใน Database (เช่น สร้าง field ใหม่ finishRequestLog)
+    if (location) {
+        await postsCollection.updateOne(
+            { id: parseInt(postId) },
+            { 
+                $push: { 
+                    historyLog: {
+                        action: 'REQUEST_FINISH',
+                        by: requester,
+                        location: location,
+                        timestamp: Date.now()
+                    }
+                }
+            }
+        );
+        console.log(`📍 Recorded finish request location for ${requester}:`, location);
+    }
+
+    // ... (ส่วนแจ้งเตือนอีกฝ่ายเหมือนเดิม) ...
+    let target = '';
+    if (requester === post.author) target = post.acceptedViewer;
+    else if (requester === post.acceptedViewer) target = post.author;
+    
+    if (target) io.to(target).emit('receive-finish-request', { requester });
+});
 
     socket.on('confirm-finish-job', async ({ postId, accepted, requester }) => {
     if (accepted) {

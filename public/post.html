@@ -2062,14 +2062,18 @@ actionsEl.classList.remove('hidden');
 
     // ฟังก์ชันภายในเพื่อส่ง Socket (รวมไว้ในนี้ได้เลย)
     function executeSocketFinish() {
-        const lang = localStorage.getItem('preferredLanguage') || 'th';
-        const t = postTranslations[lang] || postTranslations['th'];
-        
-        if (confirm(t['confirm_finish_request'] || 'ยืนยันการจบงาน?')) {
-            socket.emit('request-finish-job', { postId });
-            showNotification(t['notif_wait_finish_confirm'], 'fas fa-hourglass-start', 3000); 
-        }
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+    
+    if (confirm(t['confirm_finish_request'] || 'ยืนยันการจบงาน?')) {
+        // [แก้ตรงนี้] ส่ง myCurrentLocation ไปด้วย
+        socket.emit('request-finish-job', { 
+            postId, 
+            location: myCurrentLocation // ส่งพิกัดล่าสุดที่เพิ่งดึงมาได้
+        });
+        showNotification(t['notif_wait_finish_confirm'], 'fas fa-hourglass-start', 3000); 
     }
+}
 }
 
         socket.on('receive-finish-request', (data) => {
