@@ -2112,8 +2112,8 @@ actionsEl.classList.remove('hidden');
         confirmButtonColor: '#d33'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = '/'; // แนะนำ: ดีดกลับหน้าแรกเลย (เพราะงานจบแล้ว)
-            // หรือใช้ location.reload(); // ถ้าต้องการแค่รีโหลดหน้าเดิม
+			location.reload();
+            window.location.href = '/';
         }
     });
 });
