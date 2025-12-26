@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-	<script>
-	// เริ่มใช้งาน vConsole
-	var vConsole = new window.VConsole();
-	</script>
 	
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
@@ -2351,6 +2346,78 @@ function deg2rad(deg) {
     return deg * (Math.PI / 180);
 }
 
+function checkShowExtendButton() {
+    const btn = document.getElementById('btn-extend-time');
+    // โชว์เฉพาะถ้าสถานะเป็น finished และเราเป็นคนรับงาน (acceptedViewer)
+    if (currentPost && currentPost.status === 'finished' && myUsername === currentPost.acceptedViewer) {
+        if(btn) btn.style.display = 'block';
+    } else {
+        if(btn) btn.style.display = 'none';
+    }
+}
+
+function requestExtension() {
+    Swal.fire({
+        title: 'ขอขยายเวลาเพิ่ม',
+        text: 'เลือกจำนวนนาทีที่ต้องการขอเพิ่มจากเจ้าของงาน',
+        icon: 'question',
+        input: 'radio',
+        inputOptions: {
+            '10': '10 นาที',
+            '20': '20 นาที',
+            '30': '30 นาที'
+        },
+        inputValidator: (value) => {
+            if (!value) return 'กรุณาเลือกเวลา!';
+        },
+        showCancelButton: true,
+        confirmButtonText: 'ส่งคำขอ',
+        cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const minutes = parseInt(result.value);
+            // ส่งคำขอไปหา Server
+            socket.emit('request-extend-time', { postId, minutes });
+            Swal.fire('ส่งคำขอแล้ว', 'กรุณารอเจ้าของงานอนุมัติ...', 'info');
+        }
+    });
+}
+
+socket.on('receive-extension-request', (data) => {
+    const { minutes, requester } = data;
+    Swal.fire({
+        title: 'คำขอขยายเวลา!',
+        text: `คุณ ${requester} ขอเวลาเพิ่มอีก ${minutes} นาที`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'อนุมัติ (เพิ่มเวลา)',
+        cancelButtonText: 'ไม่อนุมัติ',
+        confirmButtonColor: '#27ae60',
+        cancelButtonColor: '#d33'
+    }).then((result) => {
+        // ส่งคำตอบกลับไป Server (True = อนุมัติ, False = ปฏิเสธ)
+        socket.emit('reply-extension-request', { 
+            postId, 
+            minutes, 
+            approved: result.isConfirmed 
+        });
+    });
+});
+
+
+socket.on('time-extended-success', (data) => {
+    const { newDeadline, addedMinutes } = data;
+    
+    Swal.fire('เพิ่มเวลาสำเร็จ!', `เพิ่มเวลาอีก ${addedMinutes} นาทีเรียบร้อยแล้ว`, 'success');
+    
+    // เริ่มนับถอยหลังใหม่ด้วย Deadline ใหม่
+    startCountdown(newDeadline); 
+});
+
+socket.on('extension-rejected', () => {
+    Swal.fire('คำขอถูกปฏิเสธ', 'เจ้าของงานไม่อนุมัติการขอเพิ่มเวลา', 'error');
+});
+
 
 // ปิด Picker เมื่อกดส่งข้อความ (แก้ในฟังก์ชัน sendComment เดิม)
     const originalSendComment = window.sendComment;
@@ -2436,9 +2503,27 @@ function deg2rad(deg) {
     <div style="display: flex; align-items: center; gap: 10px;">
         <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
         <div>
-            <div style="font-size: 0.8rem; opacity: 0.8;"></div>
+            <div style="font-size: 0.8rem; opacity: 0.8;">Time Left</div>
             <div id="timer-text" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;">00:00</div>
         </div>
+        
+        <button id="btn-extend-time" onclick="requestExtension()" 
+            style="
+                display: none; /* ซ่อนไว้ก่อน จะโชว์เฉพาะคนรับงาน */
+                background: #27ae60; 
+                border: none; 
+                color: white; 
+                width: 30px; 
+                height: 30px; 
+                border-radius: 50%; 
+                margin-left: 10px; 
+                cursor: pointer; 
+                font-weight: bold;
+                transition: transform 0.2s;
+            "
+            title="ขอขยายเวลา">
+            <i class="fas fa-plus"></i>
+        </button>
     </div>
 </div>
 

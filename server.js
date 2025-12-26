@@ -6,6 +6,7 @@ const { MongoClient } = require('mongodb'); // [NEW] MongoDB Driver
 const fs = require('fs'); // ใช้สำหรับ Multer check folder เท่านั้น
 const { ObjectId } = require('mongodb');
 const multer = require('multer');
+const activePostTimers = {};
 
 // --- [CONFIG] MongoDB Connection ---
 // ⭐ ใส่ Connection String ของคุณที่นี่ (หรือใช้ Environment Variable)
@@ -2349,53 +2350,123 @@ io.on('connection', (socket) => {
 
         // [NEW] ฟังก์ชันตั้งเวลาตัดจบอัตโนมัติ (Server-side Timeout)
         if (duration > 0) {
-    console.log(`⏳ Timer started for post ${postId}: ${duration/60000} mins`);
-    
-    setTimeout(async () => {
-    try {
-        console.log(`[Timer Debug] ⏰ Checking timeout for post: ${postId}`);
-        const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
-        
-        if (currentPost && currentPost.status === 'finished') {
-            console.log(`[Timer Debug] 🚀 Post is still 'finished'. Proceeding to close.`);
-
-            await postsCollection.updateOne(
-                { id: parseInt(postId) },
-                { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
-            );
-
-            // คืนสถานะ User (ข้ามส่วนนี้ไปก่อนถ้ายังไม่ชัวร์)
-            await usersCollection.updateMany(
-                { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
-                { $set: { status: 'idle' } }
-            );
-
-            // ⚠️ จุดสำคัญ: ลองส่ง 3 รูปแบบเพื่อให้มั่นใจว่าต้องถึงซักอัน
-            const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
+            console.log(`⏳ Timer started for post ${postId}: ${duration/60000} mins`);
             
-            // แบบที่ 1: ส่งเข้า Room (ต้อง join ห้องก่อนถึงจะได้รับ)
-            io.to(postId.toString()).emit('force-close-job', kickMsg); 
-            
-            // แบบที่ 2: ส่งหาเจ้าของกระทู้โดยตรง (ใช้ชื่อ Username)
-            io.to(currentPost.author).emit('force-close-job', kickMsg);
-            
-            // แบบที่ 3: ส่งหาคนรับงานโดยตรง (ใช้ชื่อ Username)
-            if (currentPost.acceptedViewer) {
-                io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
-            }
+            // 1. เคลียร์ Timer เก่าทิ้งก่อน (ถ้ามี)
+            if (activePostTimers[postId]) clearTimeout(activePostTimers[postId]);
 
-            console.log(`[Timer Debug] ✅ Force-close events emitted for post ${postId}`);
-        } else {
-            console.log(`[Timer Debug] ℹ️ Post ${postId} was already closed or status changed. No action taken.`);
-        }
-    } catch (err) {
-        console.error("[Timer Debug] ❌ Error in setTimeout:", err);
-    }
-}, duration);
+            // 2. เก็บ Timer ใหม่ใส่ตัวแปร activePostTimers
+            activePostTimers[postId] = setTimeout(async () => {
+                try {
+                    const targetId = parseInt(postId); // ใช้ตัวแปรใหม่ให้ชัวร์
+                    console.log(`[Timer Debug] ⏰ Checking timeout for post: ${targetId}`);
+                    const currentPost = await postsCollection.findOne({ id: targetId });
+                    
+                    if (currentPost && currentPost.status === 'finished') {
+                        console.log(`[Timer Debug] 🚀 Post is still 'finished'. Proceeding to close.`);
+
+                        await postsCollection.updateOne(
+                            { id: targetId },
+                            { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
+                        );
+
+                        await usersCollection.updateMany(
+                            { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
+                            { $set: { status: 'idle' } }
+                        );
+
+                        const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
+                        
+                        // ส่งแจ้งเตือน 3 ทาง
+                        io.to(targetId.toString()).emit('force-close-job', kickMsg); 
+                        io.to(currentPost.author).emit('force-close-job', kickMsg);
+                        if (currentPost.acceptedViewer) {
+                            io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
+                        }
+
+                        io.emit('post-list-update', { postId: targetId, status: 'closed_permanently' });
+                        console.log(`[Timer Debug] ✅ Force-close events emitted for post ${targetId}`);
+                    } else {
+                        console.log(`[Timer Debug] ℹ️ Post ${targetId} was already closed. No action taken.`);
+                    }
+                    
+                    // ลบออกจากรายการเมื่อทำงานเสร็จ
+                    delete activePostTimers[postId];
+
+                } catch (err) {
+                    console.error("[Timer Debug] ❌ Error in setTimeout:", err);
+                }
+            }, duration);
 }
 
     } else {
         io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} ปฏิเสธ` });
+    }
+});
+
+socket.on('request-extend-time', async (data) => {
+    const { postId, minutes } = data;
+    const post = await postsCollection.findOne({ id: parseInt(postId) });
+    
+    // เช็คสิทธิ์ว่าเป็นคนรับงานจริงไหม
+    if (post && post.acceptedViewer === socket.username) {
+        io.to(post.author).emit('receive-extension-request', { 
+            minutes, 
+            requester: socket.username 
+        });
+    }
+});
+
+socket.on('reply-extension-request', async (data) => {
+    const { postId, minutes, approved } = data;
+    const post = await postsCollection.findOne({ id: parseInt(postId) });
+
+    if (!post) return;
+
+    if (approved) {
+        // คำนวณ Deadline ใหม่ (ของเดิม + นาทีที่ขอเพิ่ม)
+        const addedMillis = minutes * 60000;
+        const newDeadline = (post.jobDeadline || Date.now()) + addedMillis;
+        
+        // เวลาที่เหลืออยู่จริง ณ ตอนนี้ (Time Remaining + Added Time)
+        const timeRemaining = newDeadline - Date.now();
+
+        // 1. อัปเดต DB
+        await postsCollection.updateOne(
+            { id: parseInt(postId) },
+            { $set: { jobDeadline: newDeadline } }
+        );
+
+        // 2. ⚠️ ยกเลิก Timer เก่า แล้วเริ่มนับใหม่ ⚠️
+        if (activePostTimers[postId]) {
+            clearTimeout(activePostTimers[postId]);
+            console.log(`🔄 Timer reset for post ${postId}. Added ${minutes} mins.`);
+        }
+
+        if (timeRemaining > 0) {
+            activePostTimers[postId] = setTimeout(async () => {
+                // --- ก๊อปปี้ Logic การหมดเวลาเดิมของคุณมาใส่ตรงนี้ (หรือแยกเป็นฟังก์ชันแล้วเรียกใช้) ---
+                // ... โค้ดปิดงาน, ปิดกระทู้, เตะคนออก ...
+                
+                const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
+                if (currentPost && currentPost.status === 'finished') {
+                     // ... Logic ปิดกระทู้เหมือนเดิม ...
+                     const kickMsg = { message: '⛔ หมดเวลาส่งงาน (หลังต่อเวลา)! ระบบได้ปิดกระทู้อัตโนมัติ' };
+                     io.to(postId.toString()).emit('force-close-job', kickMsg);
+                     // ...
+                }
+            }, timeRemaining);
+        }
+
+        // 3. แจ้งทุกคนในห้องให้ปรับเลขเวลาบนหน้าจอ
+        io.to(postId.toString()).emit('time-extended-success', { 
+            newDeadline, 
+            addedMinutes: minutes 
+        });
+
+    } else {
+        // ถ้าไม่อนุมัติ แจ้งกลับคนขอ
+        io.to(post.acceptedViewer).emit('extension-rejected');
     }
 });
 
