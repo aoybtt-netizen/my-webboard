@@ -1946,22 +1946,34 @@ actionsEl.classList.remove('hidden');
     function replyOffer(accepted) {
     const ownerName = document.getElementById('post-author').innerText;
     
-    // ดึงค่าเวลา (ถ้าหาไม่เจอให้เป็น 0)
+    // --- [FIX] เช็คให้ชัวร์ว่าตัวแปรมีอยู่จริงก่อนดึง value ---
+    let timeLimitVal = 0;
     const timeLimitSelect = document.getElementById('selectTimeLimit');
-    const timeLimitVal = timeLimitSelect ? timeLimitSelect.value : 0;
+    
+    if (timeLimitSelect) {
+        timeLimitVal = timeLimitSelect.value;
+    } else if (window.pendingTimeLimit) { 
+        // กรณีฝั่งคนรับงาน ให้ใช้ค่าที่ Server ส่งมาฝากไว้ใน window (ถ้าคุณมีเก็บไว้)
+        timeLimitVal = window.pendingTimeLimit;
+    }
 
     socket.emit('reply-offer', { 
         postId, 
         accepted, 
         viewer: myUsername, 
         owner: ownerName,
-        requireProximity: window.pendingOfferProximity, // [FIX] เติมจุลภาคตรงนี้
-        timeLimit: timeLimitVal // [NEW] ส่งค่าไป Server
+        requireProximity: window.pendingOfferProximity, 
+        timeLimit: timeLimitVal 
     });
     
-    // [FIX] เปลี่ยนชื่อ ID ให้ตรงกับใน HTML (handover-modal)
-    const modal = document.getElementById('handover-modal') || document.getElementById('offer-modal');
-    if (modal) modal.classList.add('hidden');
+    // --- [FIX] สั่งปิดทุก Modal ที่เป็นไปได้ ---
+    const offerModal = document.getElementById('offer-modal');
+    const handoverModal = document.getElementById('handover-modal');
+    
+    if (offerModal) offerModal.classList.add('hidden');
+    if (handoverModal) handoverModal.classList.add('hidden');
+
+    console.log("Sent reply-offer, accepted:", accepted);
 }
 
 
