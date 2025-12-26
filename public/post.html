@@ -2357,30 +2357,69 @@ function checkShowExtendButton() {
 }
 
 function requestExtension() {
-    Swal.fire({
-        title: 'ขอขยายเวลาเพิ่ม',
-        text: 'เลือกจำนวนนาทีที่ต้องการขอเพิ่มจากเจ้าของงาน',
-        icon: 'question',
-        input: 'radio',
-        inputOptions: {
-            '10': '10 นาที',
-            '20': '20 นาที',
-            '30': '30 นาที'
-        },
-        inputValidator: (value) => {
-            if (!value) return 'กรุณาเลือกเวลา!';
-        },
-        showCancelButton: true,
-        confirmButtonText: 'ส่งคำขอ',
-        cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const minutes = parseInt(result.value);
-            // ส่งคำขอไปหา Server
-            socket.emit('request-extend-time', { postId, minutes });
-            Swal.fire('ส่งคำขอแล้ว', 'กรุณารอเจ้าของงานอนุมัติ...', 'info');
+    console.log("🚀 [Debug] เริ่มทำงานฟังก์ชัน requestExtension");
+
+    try {
+        // 1. เช็คว่ามี SweetAlert หรือยัง
+        if (typeof Swal === 'undefined') {
+            console.error("❌ [Debug] Error: ไม่พบ Library 'Swal' (SweetAlert2)");
+            alert("Error: Swal library is missing!");
+            return;
         }
-    });
+
+        // 2. เช็คว่ามี Socket หรือยัง
+        if (typeof socket === 'undefined') {
+            console.error("❌ [Debug] Error: ไม่พบตัวแปร 'socket'");
+            alert("Error: Socket is missing!");
+            return;
+        }
+
+        // 3. เช็คว่ามี postId หรือยัง (สำคัญมาก)
+        if (typeof postId === 'undefined' || !postId) {
+            console.error("❌ [Debug] Error: ไม่พบตัวแปร 'postId'");
+            alert("Error: Post ID is missing!");
+            return;
+        }
+
+        console.log(`✅ [Debug] ตรวจสอบตัวแปรครบถ้วน (PostID: ${postId})`);
+
+        // เริ่มแสดง Popup
+        Swal.fire({
+            title: 'ขอขยายเวลาเพิ่ม',
+            text: 'เลือกจำนวนนาทีที่ต้องการขอเพิ่มจากเจ้าของงาน',
+            icon: 'question',
+            input: 'radio',
+            inputOptions: {
+                '10': '10 นาที',
+                '20': '20 นาที',
+                '30': '30 นาที'
+            },
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาเลือกเวลา!';
+            },
+            showCancelButton: true,
+            confirmButtonText: 'ส่งคำขอ',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            console.log("📝 [Debug] ผลลัพธ์จาก Popup:", result);
+            
+            if (result.isConfirmed) {
+                const minutes = parseInt(result.value);
+                console.log(`📤 [Debug] กำลังส่งคำขอขยายเวลา: ${minutes} นาที`);
+
+                // ส่งคำขอไปหา Server
+                socket.emit('request-extend-time', { postId, minutes });
+                
+                Swal.fire('ส่งคำขอแล้ว', 'กรุณารอเจ้าของงานอนุมัติ...', 'info');
+            } else {
+                console.log("❌ [Debug] ผู้ใช้กดยกเลิก");
+            }
+        });
+
+    } catch (err) {
+        console.error("💥 [Debug] เกิดข้อผิดพลาดร้ายแรง:", err);
+        alert("System Error: " + err.message);
+    }
 }
 
 socket.on('receive-extension-request', (data) => {
