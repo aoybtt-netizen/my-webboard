@@ -2084,32 +2084,56 @@ actionsEl.classList.remove('hidden');
 
 	// รับ Event เมื่อหมดเวลา (Server สั่งตัดจบ)
 	socket.on('force-close-job', (data) => {
-    // 1. หยุดตัวนับเวลา
-    if (typeof countdownInterval !== 'undefined') clearInterval(countdownInterval);
+    // --- [DEBUG] เริ่มต้น Debug ---
+    console.log("%c🔔 EVENT RECEIVED: force-close-job", "color: white; background: red; padding: 5px; font-weight: bold;");
+    console.log("📦 Received Data:", data);
 
-    // 2. ซ่อนแถบเวลา
+    // 1. หยุดตัวนับเวลา
+    if (typeof countdownInterval !== 'undefined') {
+        clearInterval(countdownInterval);
+        console.log("✅ [1] Countdown cleared");
+    }
+
+    // 2. ซ่อนแถบเวลาและปุ่มส่งงาน
     const timerBar = document.getElementById('countdown-bar');
-    if(timerBar) timerBar.style.display = 'none';
+    if(timerBar) {
+        timerBar.style.display = 'none';
+        console.log("✅ [2] Timer bar hidden");
+    } else {
+        console.warn("⚠️ [2] timer-bar not found");
+    }
+	
+    const finishBtn = document.getElementById('final-finish-btn');
+    if(finishBtn) {
+        finishBtn.style.display = 'none';
+        console.log("✅ [2] Finish button hidden");
+    }
     
-    // 3. [เพิ่ม] ซ่อน Modal ทุกอย่างที่อาจจะเปิดค้างอยู่ (สำคัญมาก ป้องกันการกดปุ่มต่อ)
+    // 3. ซ่อน Modal ทุกอย่าง
     const modalIds = ['handover-modal', 'offer-modal', 'call-modal'];
     modalIds.forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.classList.add('hidden');
+        if(el) {
+            el.classList.add('hidden');
+            console.log(`✅ [3] Modal hidden: ${id}`);
+        }
     });
 
-    // 4. แจ้งเตือนแบบบังคับ (กดปิดไม่ได้ ต้องกดปุ่มแดงเท่านั้น)
+    // 4. แจ้งเตือนแบบบังคับ
+    console.log("🚀 [4] Launching SweetAlert...");
+    
     Swal.fire({
-        icon: 'error', // เปลี่ยนเป็นสีแดง (Error) ให้ดูซีเรียส
+        icon: 'error',
         title: 'TimeUp!',
         text: data.message || 'งานนี้สิ้นสุดระยะเวลาแล้ว ระบบได้ปิดกระทู้อัตโนมัติ',
-        allowOutsideClick: false, // ห้ามคลิกข้างนอกเพื่อปิด
-        allowEscapeKey: false,    // ห้ามกด ESC
+        allowOutsideClick: false,
+        allowEscapeKey: false,
         confirmButtonText: 'กลับหน้าหลัก',
         confirmButtonColor: '#d33'
     }).then((result) => {
         if (result.isConfirmed) {
-			location.reload();
+            console.log("👋 [Final] User clicked confirm, redirecting to /");
+            // ใช้แค่ window.location.href ก็พอครับ ไม่ต้องใส่ reload() ซ้อนกัน
             window.location.href = '/';
         }
     });
