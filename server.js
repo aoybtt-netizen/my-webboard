@@ -2352,35 +2352,37 @@ io.on('connection', (socket) => {
     console.log(`⏳ Timer started for post ${postId}: ${duration/60000} mins`);
     
     setTimeout(async () => {
-        // ดึงข้อมูลล่าสุดมาเช็ค
-        const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
-        
-        // ต้องเช็คว่างานยังไม่จบ (status ต้องยังเป็น finished อยู่)
-        if (currentPost && currentPost.status === 'finished') {
-            console.log(`⏰ Time is up! Auto-closing post ${postId}`);
+    const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
+    
+    if (currentPost && currentPost.status === 'finished') {
+        console.log(`⏰ Time is up! Auto-closing post ${postId}`);
 
-            // 1. ปิดกระทู้ถาวร
-            await postsCollection.updateOne(
-                { id: parseInt(postId) },
-                { $set: { status: 'closed_timeout', isClosed: true } }
-            );
+        // 1. ปิดกระทู้ถาวร (ใช้ status ให้ตรงกับ API คอมเมนต์เพื่อบล็อกการแชท)
+        await postsCollection.updateOne(
+            { id: parseInt(postId) },
+            { $set: { 
+                status: 'closed_permanently', // เปลี่ยนจาก closed_timeout เป็นตัวนี้
+                isClosed: true,
+                closedAt: Date.now() 
+            } }
+        );
 
-            // 2. [สำคัญ] คืนสถานะผู้ใช้ทั้งคู่ให้เป็น idle (ว่าง)
-            if (currentPost.author) {
-                await usersCollection.updateOne({ username: currentPost.author }, { $set: { status: 'idle' } });
-            }
-            if (currentPost.acceptedViewer) {
-                await usersCollection.updateOne({ username: currentPost.acceptedViewer }, { $set: { status: 'idle' } });
-            }
-
-            // 3. เตะทั้งคู่และแจ้งเตือน
-            io.to(owner).emit('force-close-job', { message: '⛔ หมดเวลาส่งงาน! ระบบได้ยกเลิกงานนี้แล้ว' });
-            io.to(viewer).emit('force-close-job', { message: '⛔ หมดเวลาส่งงาน! ระบบได้ยกเลิกงานนี้แล้ว' });
-            
-            // ส่งอัปเดตไปหน้า List เพื่อเปลี่ยนสี/สถานะ
-            io.emit('post-list-update', { postId: parseInt(postId), status: 'closed_timeout' });
+        // 2. คืนสถานะผู้ใช้ทั้งคู่ให้เป็น idle
+        if (currentPost.author) {
+            await usersCollection.updateOne({ username: currentPost.author }, { $set: { status: 'idle' } });
         }
-    }, duration);
+        if (currentPost.acceptedViewer) {
+            await usersCollection.updateOne({ username: currentPost.acceptedViewer }, { $set: { status: 'idle' } });
+        }
+
+        // 3. เตะทุกคนที่อยู่ในห้องนี้ออก (ใช้ postId เป็นชื่อห้อง)
+        const timeoutMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้นี้อัตโนมัติและยกเลิกดีล' };
+        io.to(postId.toString()).emit('force-close-job', timeoutMsg); 
+        
+        // ส่งอัปเดตไปหน้า List
+        io.emit('post-list-update', { postId: parseInt(postId), status: 'closed_permanently' });
+    }
+}, duration);
 }
 
     } else {
