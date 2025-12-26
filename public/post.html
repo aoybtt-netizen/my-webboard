@@ -611,6 +611,25 @@
             The person accepting the job must be within 50 meters of the "post location" or "you" to be able to complete the job.
         </div>
     </div>
+	
+	<div style="margin-bottom: 15px; background: #e9ecef; padding: 10px; border-radius: 8px; text-align: left;">
+    <label style="font-weight: bold; color: #333; display: block; margin-bottom: 5px;">
+        ⏳ กำหนดเวลาส่งงาน (Time Limit):
+    </label>
+    <select id="select-time-limit" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+        <option value="30">30 นาที (ค่าเริ่มต้น)</option>
+        <option value="60">1 ชั่วโมง</option>
+        <option value="120">2 ชั่วโมง</option>
+        <option value="180">3 ชั่วโมง</option>
+        <option value="240">4 ชั่วโมง</option>
+        <option value="300">5 ชั่วโมง</option>
+        <option value="360">6 ชั่วโมง</option>
+    </select>
+    <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
+        *หากผู้รับงานไม่กดจบงานภายในเวลาที่กำหนด ระบบจะปิดงานอัตโนมัติ (ยกเลิกดีล)
+    </div>
+</div>
+
     <button id="send-handover-btn" class="send-btn" onclick="closeDealWithViewer()" ...>
         ส่งมอบงาน
     </button>
