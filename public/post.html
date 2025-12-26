@@ -2545,29 +2545,34 @@ socket.on('extension-rejected', () => {
             <div style="font-size: 0.8rem; opacity: 0.8;">Time Left</div>
             <div id="timer-text" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;">00:00</div>
         </div>
-        
-        <button id="btn-extend-time" 
-    onclick="console.log('Button Clicked!'); requestExtension();" 
-    style="
-        display: none; /* ⚠️ ถ้าทดสอบอยู่ อย่าลืมลบอันนี้ออก หรือใช้ JS สั่งโชว์ */
-		position: relative; /* หรือ fixed ถ้าอยู่นอก bar */
-        z-index: 3001 !important; /* ดันขึ้นหน้าสุด */
-        background: #27ae60; 
-        border: none; 
-        color: white; 
-        width: 30px; 
-        height: 30px; 
-        border-radius: 50%; 
-        margin-left: 10px; 
-        cursor: pointer; 
-        font-weight: bold;
-        transition: transform 0.2s;
-    "
-    title="ขอขยายเวลา">
-    <i class="fas fa-plus"></i>
-</button>
     </div>
 </div>
+
+	
+	<button id="btn-extend-time" 
+    onclick="console.log('🚀 Clicked Extend Button'); requestExtension();" 
+    style="
+        display: none; 
+        position: fixed; 
+        bottom: 80px;  /* ระดับความสูงเท่ากับแถบเวลา */
+        left: 20px;    /* ชิดขอบซ้าย */
+        z-index: 12000; /* อยู่เหนือทุกอย่าง */
+        background: #27ae60; 
+        color: white; 
+        border: none; 
+        width: 50px; 
+        height: 50px; 
+        border-radius: 50%; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        transition: all 0.3s ease;
+    "
+    title="ขอขยายเวลา">
+    <i class="fas fa-plus-circle" style="font-size: 24px;"></i>
+</button>
 
 
 	
