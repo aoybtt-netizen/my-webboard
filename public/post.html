@@ -529,6 +529,11 @@
         <div id="offer-condition-msg" style="display:none; background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin: 10px 0; font-weight: bold;">
             <i class="fas fa-map-marker-alt"></i> Condition: The task must be completed within 50 meters.
         </div>
+		
+		<div id="offer-time-display" style="background: #eef2f7; padding: 10px; border-radius: 8px; margin: 10px 0;">
+    <i class="fas fa-clock" style="color: #3498db;"></i> 
+    Time limit: <span id="display-time-limit" style="font-weight: bold; color: #e74c3c;">...</span>
+</div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button onclick="replyOffer(false)" class="back-btn" style="flex: 1; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer;">
@@ -1905,6 +1910,7 @@ actionsEl.classList.remove('hidden');
             }
         }
         
+	// [ใน post.html]
 	function closeDealWithViewer() {
     const viewerElement = document.getElementById('target-viewer-display');
     if (!viewerElement) return;
@@ -1912,26 +1918,44 @@ actionsEl.classList.remove('hidden');
     let viewer = viewerElement.textContent.trim().split('⭐')[0].trim();
     if (!viewer || viewer === '...' || viewer === '') return;
 
-    // รับค่าจาก Checkbox
+    // 1. รับค่าจาก Checkbox เดิม
     const requireProximity = document.getElementById('chk-require-proximity').checked;
+    
+    // 2. [NEW] ดึงค่าเวลาจาก selectTimeLimit ที่เราเพิ่มเข้าไป
+    const timeLimitSelect = document.getElementById('selectTimeLimit');
+    const timeLimitVal = timeLimitSelect ? timeLimitSelect.value : 0;
 
     socket.emit('offer-deal', { 
         postId, 
         targetViewer: viewer,
-        requireProximity: requireProximity // ส่งค่าไปด้วย
+        requireProximity: requireProximity,
+        timeLimit: timeLimitVal // [NEW] ส่งค่าเวลา (มิลลิวินาที) ไปด้วย
     });
 
     document.getElementById('handover-modal').classList.add('hidden');
-    showNotification(`📤 ส่งคำขอปิดดีลให้ ${viewer} แล้ว (ระยะ 10ม: ${requireProximity ? 'Yes' : 'No'})`, 'fas fa-hourglass-half');
+    showNotification(`📤 ส่งคำขอให้ ${viewer} แล้ว`, 'fas fa-hourglass-half');
 }
 
         // --- SOCKET LISTENERS ---
 
     socket.on('receive-offer', (data) => {
     if (data.postId == postId) {
-        // เก็บค่าเงื่อนไขไว้ชั่วคราวเผื่อตอนกดรับ
+        // 1. เก็บค่าเงื่อนไขไว้ชั่วคราว (ใช้ส่งกลับตอนกดยอมรับ)
         window.pendingOfferProximity = data.requireProximity;
+        window.pendingTimeLimit = data.timeLimit; // [NEW] เก็บเวลาไว้
+
+        // 2. [NEW] แสดงผลข้อความเวลาใน Modal
+        const timeDisplay = document.getElementById('display-time-limit'); // ต้องมี ID นี้ใน HTML
+        if (timeDisplay) {
+            let timeText = "ไม่จำกัดเวลา";
+            if (data.timeLimit && data.timeLimit > 0) {
+                const mins = parseInt(data.timeLimit) / 60000;
+                timeText = mins >= 60 ? (mins / 60) + " ชั่วโมง" : mins + " นาที";
+            }
+            timeDisplay.innerText = timeText;
+        }
         
+        // 3. แสดงเงื่อนไขระยะทาง (เดิม)
         const conditionMsg = document.getElementById('offer-condition-msg');
         if (data.requireProximity) {
             conditionMsg.style.display = 'block';
@@ -1939,6 +1963,7 @@ actionsEl.classList.remove('hidden');
             conditionMsg.style.display = 'none';
         }
         
+        // 4. เปิด Modal ให้เลือก Accept/Reject
         document.getElementById('offer-modal').classList.remove('hidden');
     }
 });
@@ -2079,7 +2104,7 @@ actionsEl.classList.remove('hidden');
 
         // --- FINISH JOB ---
 
-//******
+//***
     function requestFinishJob() {
     const needsCheck = isProximityRequired || (currentPost && currentPost.requireProximity);
 

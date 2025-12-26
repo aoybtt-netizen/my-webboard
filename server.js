@@ -2284,11 +2284,15 @@ io.on('connection', (socket) => {
 
     // --- Handover / Deals ---
     socket.on('offer-deal', (data) => {
-    const { postId, targetViewer, requireProximity } = data; // [NEW] รับค่า boolean
+    // 1. รับค่า timeLimit เพิ่มเข้ามา
+    const { postId, targetViewer, requireProximity, timeLimit } = data; 
+    
+    // 2. ส่งต่อข้อมูลไปให้ผู้รับงาน (receive-offer)
     io.to(targetViewer).emit('receive-offer', { 
         postId, 
         owner: socket.username, 
-        requireProximity: requireProximity // [NEW] ส่งต่อไปให้คนรับดู
+        requireProximity: requireProximity,
+        timeLimit: timeLimit // [NEW] ส่งเวลาต่อให้คนรับดูเพื่อตัดสินใจ
     });
 });
 
@@ -3051,7 +3055,7 @@ socket.on('admin-action-verify', async (data, callback) => {
     );
 });
 
-//******	
+//***
 	socket.on('update-live-location', async (data) => {
     try {
         const { postId, coords, role } = data;
