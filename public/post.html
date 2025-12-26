@@ -2573,7 +2573,7 @@ socket.on('extension-rejected', () => {
     " 
     onclick="requestFinishJob()" 
     data-i18n-key="btn_finish_job">
-    <i class="fas fa-flag-checkered"></i> Employ job
+    <i class="fas fa-hourglass-start"></i> Employ job
 </button>
 
 
@@ -2603,15 +2603,15 @@ socket.on('extension-rejected', () => {
     style="
         display: none; 
         position: fixed; 
-        bottom: 145px;  /* ระดับความสูงเท่ากับแถบเวลา */
+        bottom: 150px;  /* ระดับความสูงเท่ากับแถบเวลา */
         right: 20px;    /* ชิดขอบซ้าย */
-        z-index: 2000; /* อยู่เหนือทุกอย่าง */
-        background: #27ae60; 
+        z-index: 3000; /* อยู่เหนือทุกอย่าง */
+        background: #87bf47; 
         color: white; 
         border: none; 
 		padding: 12px 20px; 
 		border-radius: 30px; 
-        height: 50px; 
+        height: 30px; 
         box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
         cursor: pointer; 
         display: flex; 
@@ -2620,7 +2620,7 @@ socket.on('extension-rejected', () => {
         transition: all 0.3s ease;
     "
     title="Add time request.">
-    <i class="fas fa-user-clock"></i> Add time 
+    <i class="fas fa-hourglass-start"></i> Add time 
 </button>
 
 
