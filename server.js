@@ -2293,44 +2293,81 @@ io.on('connection', (socket) => {
 });
 
     socket.on('reply-offer', async (data) => {
-        const { postId, accepted, viewer, owner, requireProximity } = data; 
+    // 1. รับค่า timeLimit (มิลลิวินาที) เพิ่มเข้ามาจาก data
+    const { postId, accepted, viewer, owner, requireProximity, timeLimit } = data; 
 
-		if (accepted) {
+    if (accepted) {
+        // คำนวณเวลาสิ้นสุด (Deadline)
+        const duration = parseInt(timeLimit) || 0; // ถ้าไม่ส่งมา หรือเป็น 0 คือไม่จำกัดเวลา
+        const deadline = duration > 0 ? Date.now() + duration : null;
+
         await postsCollection.updateOne(
             { id: parseInt(postId) }, 
             { $set: { 
                 isClosed: true, 
                 status: 'finished', 
                 acceptedViewer: viewer,
-                requireProximity: requireProximity || false // บันทึกค่าลง DB
+                requireProximity: requireProximity || false,
+                jobDeadline: deadline // [NEW] บันทึกเวลาหมดอายุลง DB
             }}
         );
         
-			const post = await postsCollection.findOne({ id: parseInt(postId) });
-            await transactionsCollection.insertOne({
-                id: Date.now(), type: 'HANDOVER', amount: 0, fromUser: owner, toUser: viewer,
-                note: `✅ ปิดดีล/ส่งงานสำเร็จ: กระทู้ ${post.title}`, timestamp: Date.now()
-            });
-            io.emit('post-list-update', { postId: post.id, status: 'finished' });
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        await transactionsCollection.insertOne({
+            id: Date.now(), type: 'HANDOVER', amount: 0, fromUser: owner, toUser: viewer,
+            note: `✅ ปิดดีล/ส่งงานสำเร็จ: กระทู้ ${post.title}`, timestamp: Date.now()
+        });
         
+        io.emit('post-list-update', { postId: post.id, status: 'finished' });
+        
+        // ส่งข้อมูลกลับไปหา Owner (เพิ่ม jobDeadline)
         io.to(owner).emit('deal-result', { 
             success: true, 
             viewer, 
             msg: `🎉 ${viewer} รับงานแล้ว!`,
-            requireProximity: requireProximity // ส่งกลับไปบอกเจ้าของด้วย
+            requireProximity: requireProximity,
+            jobDeadline: deadline // [NEW] ส่งเวลาจบไปให้ owner
         });
 
+        // ส่งข้อมูลกลับไปหา Viewer (เพิ่ม jobDeadline)
         io.to(viewer).emit('deal-result', { 
             success: true, 
             msg: `✅ ยอมรับงานแล้ว!`, 
-            requireProximity: requireProximity // ส่งกลับไปบอกผู้รับงาน
+            requireProximity: requireProximity,
+            jobDeadline: deadline // [NEW] ส่งเวลาจบไปให้ viewer เริ่มนับถอยหลัง
         });
 
-        // ส่งพิกัดล่าสุดของเจ้าของให้ผู้รับงานทันที
+        // ส่งพิกัดล่าสุด
         const ownerUser = await usersCollection.findOne({ username: owner });
         if(ownerUser && ownerUser.lastLocation) {
              io.to(viewer).emit('update-owner-location', ownerUser.lastLocation);
         }
+
+        // [NEW] ฟังก์ชันตั้งเวลาตัดจบอัตโนมัติ (Server-side Timeout)
+        if (duration > 0) {
+            console.log(`⏳ Timer started for post ${postId}: ${duration/60000} mins`);
+            
+            setTimeout(async () => {
+                // ตรวจสอบว่างานยังเป็น finished อยู่หรือไม่ (ป้องกันกรณีจบงานด้วยมือไปก่อนแล้ว)
+                const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
+                if (currentPost && currentPost.status === 'finished') {
+                    
+                    // ปิดงานถาวร (เปลี่ยนสถานะเป็น closed_timeout หรือตามที่คุณต้องการ)
+                    await postsCollection.updateOne(
+                        { id: parseInt(postId) },
+                        { $set: { status: 'closed_timeout', isClosed: true } }
+                    );
+
+                    console.log(`⏰ Time is up! Auto-closing post ${postId}`);
+                    
+                    // แจ้งเตือนทั้งคู่ว่าหมดเวลา
+                    const timeoutMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
+                    io.to(owner).emit('force-close-job', timeoutMsg);
+                    io.to(viewer).emit('force-close-job', timeoutMsg);
+                }
+            }, duration);
+        }
+
     } else {
         io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} ปฏิเสธ` });
     }

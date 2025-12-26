@@ -612,22 +612,17 @@
         </div>
     </div>
 	
-	<div style="margin-bottom: 15px; background: #e9ecef; padding: 10px; border-radius: 8px; text-align: left;">
-    <label style="font-weight: bold; color: #333; display: block; margin-bottom: 5px;">
-        ⏳ กำหนดเวลาส่งงาน (Time Limit):
-    </label>
-    <select id="select-time-limit" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-        <option value="30">30 นาที (ค่าเริ่มต้น)</option>
-        <option value="60">1 ชั่วโมง</option>
-        <option value="120">2 ชั่วโมง</option>
-        <option value="180">3 ชั่วโมง</option>
-        <option value="240">4 ชั่วโมง</option>
-        <option value="300">5 ชั่วโมง</option>
-        <option value="360">6 ชั่วโมง</option>
+	<div style="margin-top: 10px; text-align: left; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+    <label style="font-weight: bold; color: #333;"><i class="fas fa-hourglass-start"></i> Time Limit</label>
+    <select id="selectTimeLimit" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+        <option value="1800000">30 นาที</option>
+        <option value="3600000">1 ชั่วโมง</option>
+        <option value="7200000">2 ชั่วโมง</option>
+		<option value="10800000">3 ชั่วโมง</option>
+		<option value="14400000">4 ชั่วโมง</option>
+		<option value="18000000">5 ชั่วโมง</option>
+		<option value="21600000">6 ชั่วโมง</option>
     </select>
-    <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
-        *หากผู้รับงานไม่กดจบงานภายในเวลาที่กำหนด ระบบจะปิดงานอัตโนมัติ (ยกเลิกดีล)
-    </div>
 </div>
 
     <button id="send-handover-btn" class="send-btn" onclick="closeDealWithViewer()" ...>
@@ -664,6 +659,7 @@
 			let currentPostAuthor = null;
 			let isProximityRequired = false; // เก็บสถานะว่างานนี้ต้องใกล้กันไหม
 			let ownerLastLocation = null;   // เก็บพิกัดล่าสุดของเจ้าของกระทู้
+			let countdownInterval = null;
 			
 			// WebRTC Voice Call Logic P2P ---
 			let localStream;
@@ -1149,78 +1145,91 @@ function sendFloatingComment() {
         });
 
         socket.on('access-granted', ({ post, isAdmin }) => {
-            // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
-            currentPost = post; 
-			isProximityRequired = post.requireProximity || false;
-            // ดึงภาษาเพื่อใช้แสดงข้อความ
-            const lang = localStorage.getItem('preferredLanguage') || 'th';
-            const t = postTranslations[lang] || postTranslations['th'];
-            if (myUsername === post.author || myUsername === 'Admin' || isAdmin) { 
-				myCurrentLocation = null;
-				document.body.style.display = 'block';
-				renderPost(post, isAdmin);
-                displayMap(post.location);
-                return; 
+    // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
+    currentPost = post; 
+    isProximityRequired = post.requireProximity || false;
+    
+    // ดึงภาษาเพื่อใช้แสดงข้อความ
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+
+    // --- จุดที่ 1: สำหรับเจ้าของโพสต์ หรือ Admin (ไม่ต้องเช็ค GPS) ---
+    if (myUsername === post.author || myUsername === 'Admin' || isAdmin) { 
+        myCurrentLocation = null;
+        document.body.style.display = 'block';
+        renderPost(post, isAdmin);
+        displayMap(post.location);
+
+        // [NEW] เริ่มนับถอยหลัง (ถ้ามี)
+        if (post.jobDeadline && post.status === 'finished') {
+            startCountdown(post.jobDeadline);
+        }
+        return; 
+    }
+
+    // เช็คว่า Browser รองรับไหม
+    if (!navigator.geolocation) {
+        showNotification(t['error_geo_unsupported'], 'fas fa-map-marker-slash', 4000);
+        setTimeout(() => { location.href = '/'; }, 3000);
+        return;
+    }
+
+    // แจ้งเตือนว่ากำลังตรวจสอบ
+    showNotification(t['checking_location'], 'fas fa-satellite-dish', 2000);
+
+    // 🚀 ขอพิกัดก่อนแสดงผล (บังคับ)
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            // --- ส่วนทำงานสำเร็จ (Success Callback) ---
+            const location = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+
+            myCurrentLocation = location; // จำตำแหน่งตัวเอง
+            savePostLocationAsPrimary(myCurrentLocation);
+            
+            // 🎉 แสดงเนื้อหาเว็บ
+            document.body.style.display = 'block';
+            renderPost(post, false);
+
+            // ส่งพิกัดไปให้ Server
+            socket.emit('update-viewer-location', { 
+                postId: postId, 
+                username: myUsername, 
+                location: location
+            });
+            
+            // โหลดแผนที่
+            displayMap(post.location);
+
+            // --- จุดที่ 2: สำหรับผู้รับงาน/คนทั่วไป (ที่ผ่านการเช็ค GPS แล้ว) ---
+            // [NEW] แก้ไขชื่อตัวแปรจาก data.post เป็น post
+            if (post.jobDeadline && post.status === 'finished') {
+                startCountdown(post.jobDeadline);
             }
+        }, 
+        (error) => {
+            // ❌ กรณีล้มเหลว
+            console.warn('Geolocation blocked:', error.message);
+            
+            let msgKey = 'error_geo_required';
+            if (error.code === 1) msgKey = 'error_geo_denied';
 
-            // เช็คว่า Browser รองรับไหม
-            if (!navigator.geolocation) {
-                showNotification(t['error_geo_unsupported'], 'fas fa-map-marker-slash', 4000);
-                setTimeout(() => { location.href = '/'; }, 3000);
-                return;
-            }
+            document.body.style.display = 'block';
+            document.querySelector('.container').style.display = 'none'; 
 
-            // แจ้งเตือนว่ากำลังตรวจสอบ (เผื่อเน็ตช้าหรือ GPS ช้า)
-            showNotification(t['checking_location'], 'fas fa-satellite-dish', 2000);
-
-            // 🚀 ขอพิกัดก่อนแสดงผล (บังคับ)
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const location = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-
-                    myCurrentLocation = location; // จำตำแหน่งตัวเอง
-                    savePostLocationAsPrimary(myCurrentLocation);
-                    // 🎉 แสดงเนื้อหาเว็บ
-                    document.body.style.display = 'block';
-                    renderPost(post, false);
-
-                    // ส่งพิกัดไปให้ Server
-                    socket.emit('update-viewer-location', { 
-                        postId: postId, 
-                        username: myUsername, 
-                        location: location
-                    });
-                    
-                    // โหลดแผนที่
-                    displayMap(post.location);
-                }, 
-                (error) => {
-                    // ❌ กรณีล้มเหลว: ปฏิเสธ หรือ Error
-                    console.warn('Geolocation blocked:', error.message);
-                    
-                    // เลือกข้อความแจ้งเตือนตามเคส
-                    let msgKey = 'error_geo_required';
-                    if (error.code === 1) msgKey = 'error_geo_denied'; // 1 = Permission Denied
-
-                    // แสดงหน้าเว็บเปล่าๆ เพื่อให้เห็น Notification (แต่ซ่อนเนื้อหาข้างใน)
-                    document.body.style.display = 'block';
-                    document.querySelector('.container').style.display = 'none'; 
-
-                    showNotification(t[msgKey], 'fas fa-user-lock', 4000);
-                    
-                    // ดีดกลับหน้าแรก
-                    setTimeout(() => { location.href = '/'; }, 3500);
-                },
-                {
-                    enableHighAccuracy: true, // ขอความแม่นยำสูง
-                    timeout: 10000,           // รอได้สูงสุด 10 วินาที
-                    maximumAge: 0             // ไม่ใช้ค่าเก่าที่ Cache ไว้
-                }
-            );
-        });
+            showNotification(t[msgKey], 'fas fa-user-lock', 4000);
+            
+            setTimeout(() => { location.href = '/'; }, 3500);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    ); // ปิดวงเล็บ navigator.geolocation
+});
 
         socket.on('access-denied', (reason) => {
             // ✅ ต้องสั่งให้แสดงหน้าเว็บก่อน ไม่งั้นมองไม่เห็นการแจ้งเตือน
@@ -1937,35 +1946,44 @@ actionsEl.classList.remove('hidden');
     function replyOffer(accepted) {
     const ownerName = document.getElementById('post-author').innerText;
     
+	const timeLimitVal = document.getElementById('selectTimeLimit') ? document.getElementById('selectTimeLimit').value : 0;
     socket.emit('reply-offer', { 
         postId, 
         accepted, 
         viewer: myUsername, 
         owner: ownerName,
         requireProximity: window.pendingOfferProximity // ส่งค่ากลับไปบันทึกที่ Server
+		timeLimit: timeLimitVal
     });
     
     document.getElementById('offer-modal').classList.add('hidden');
 }
 
-        // --- แก้ไขใน post.html ---
+
 	socket.on('deal-result', (data) => {
     const lang = localStorage.getItem('preferredLanguage') || 'th';
     const t = postTranslations[lang] || postTranslations['th'];
     let message = '';
     let icon = '';
     
-    const viewerName = data.targetViewer || t['generic_viewer_name'];
+    // (เพิ่ม data.viewer เผื่อไว้กรณี Server ส่งมาชื่อนี้)
+    const viewerName = data.viewer || data.targetViewer || t['generic_viewer_name'];
 
     if (data.success) {
         message = t['notif_deal_accepted'].replace('[VIEWER]', viewerName);
         icon = 'fas fa-check-circle';
         
+        // [NEW] เริ่มนับถอยหลังทันที (แสดงผลชั่วคราวก่อนรีโหลด)
+        if (data.jobDeadline) {
+            startCountdown(data.jobDeadline);
+        }
+        
         // แสดงการแจ้งเตือนก่อน แล้วค่อยโหลดหน้าใหม่
         showNotification(message, icon, 3000);
         setTimeout(() => {
-            location.reload(); // เมื่อโหลดใหม่ access-granted จะดึงค่า requireProximity จาก DB มาเอง
+            location.reload(); // เมื่อโหลดใหม่ ต้องมั่นใจว่า event access-granted ดึงเวลามาด้วย
         }, 1500);
+
     } else {
         message = t['notif_deal_rejected'].replace('[VIEWER]', viewerName);
         icon = 'fas fa-times-circle';
@@ -1989,6 +2007,59 @@ actionsEl.classList.remove('hidden');
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // คืนค่าเป็นกิโลเมตร
 }
+
+
+	// ฟังก์ชันเริ่มนับถอยหลัง
+	function startCountdown(deadline) {
+    const timerBar = document.getElementById('countdown-bar'); // ต้องมี Element นี้ใน HTML (ตามขั้นตอนก่อนหน้า)
+    const timerText = document.getElementById('timer-text');
+    
+    if (timerBar) timerBar.style.display = 'block';
+
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    countdownInterval = setInterval(() => {
+        const now = Date.now();
+        const diff = deadline - now;
+
+        if (diff <= 0) {
+            clearInterval(countdownInterval);
+            if(timerText) timerText.innerText = "หมดเวลา";
+            return;
+        }
+
+        // แปลงเป็น ชม:นาที:วินาที
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+        const timeString = 
+            (h > 0 ? h + ":" : "") + 
+            (m < 10 ? "0" + m : m) + ":" + 
+            (s < 10 ? "0" + s : s);
+
+        if(timerText) timerText.innerText = timeString;
+    }, 1000);
+}
+
+	// รับ Event เมื่อหมดเวลา (Server สั่งตัดจบ)
+	socket.on('force-close-job', (data) => {
+    clearInterval(countdownInterval);
+    const timerBar = document.getElementById('countdown-bar');
+    if(timerBar) timerBar.style.display = 'none';
+    
+    // แจ้งเตือนและรีโหลด
+    Swal.fire({
+        icon: 'warning',
+        title: 'หมดเวลา!',
+        text: data.message || 'งานนี้สิ้นสุดระยะเวลาแล้ว',
+        confirmButtonText: 'ตกลง'
+    }).then(() => {
+        location.reload();
+    });
+});
+
+
         // --- FINISH JOB ---
 
 //******
@@ -2241,6 +2312,17 @@ function deg2rad(deg) {
     </button>
     
     <audio id="remote-audio" autoplay></audio>
+</div>
+
+
+	<div id="countdown-bar" style="display: none; position: fixed; bottom: 80px; right: 20px; background: linear-gradient(135deg, #2c3e50, #000000); color: #fff; padding: 10px 20px; border-radius: 50px; z-index: 9999; box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-family: 'Kanit', sans-serif;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
+        <div>
+            <div style="font-size: 0.8rem; opacity: 0.8;">เหลือเวลาส่งงาน</div>
+            <div id="timer-text" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;">00:00</div>
+        </div>
+    </div>
 </div>
 
 
