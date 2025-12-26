@@ -1946,17 +1946,22 @@ actionsEl.classList.remove('hidden');
     function replyOffer(accepted) {
     const ownerName = document.getElementById('post-author').innerText;
     
-	const timeLimitVal = document.getElementById('selectTimeLimit') ? document.getElementById('selectTimeLimit').value : 0;
+    // ดึงค่าเวลา (ถ้าหาไม่เจอให้เป็น 0)
+    const timeLimitSelect = document.getElementById('selectTimeLimit');
+    const timeLimitVal = timeLimitSelect ? timeLimitSelect.value : 0;
+
     socket.emit('reply-offer', { 
         postId, 
         accepted, 
         viewer: myUsername, 
         owner: ownerName,
-        requireProximity: window.pendingOfferProximity // ส่งค่ากลับไปบันทึกที่ Server
-		timeLimit: timeLimitVal
+        requireProximity: window.pendingOfferProximity, // [FIX] เติมจุลภาคตรงนี้
+        timeLimit: timeLimitVal // [NEW] ส่งค่าไป Server
     });
     
-    document.getElementById('offer-modal').classList.add('hidden');
+    // [FIX] เปลี่ยนชื่อ ID ให้ตรงกับใน HTML (handover-modal)
+    const modal = document.getElementById('handover-modal') || document.getElementById('offer-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 
