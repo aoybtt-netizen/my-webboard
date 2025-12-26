@@ -444,10 +444,7 @@
                 <i class="fas fa-lock"></i> Closed
             </button>
             
-            <button id="final-finish-btn" class="send-btn" style="background:#6f42c1; display:none;" onclick="requestFinishJob()" 
-                data-i18n-key="btn_finish_job">
-                <i class="fas fa-flag-checkered"></i> Employ job
-            </button>
+            
 
             <button id="handover-btn" class="restart-btn" style="background:#007bff; display:none;" onclick="openHandoverModal()" 
                 data-i18n-key="btn_handover" 
@@ -2381,11 +2378,34 @@ function deg2rad(deg) {
 </div>
 
 
+	<button id="final-finish-btn" class="send-btn" 
+    style="
+        display: none; 
+        position: fixed; 
+        bottom: 145px; /* อยู่เหนือแถบเวลา (แถบเวลาอยู่ที่ 80px) */
+        right: 20px; 
+        background: #6f42c1; 
+        color: white; 
+        border: none; 
+        padding: 12px 20px; 
+        border-radius: 30px; 
+        z-index: 10000; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+        font-family: 'Kanit', sans-serif;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    " 
+    onclick="requestFinishJob()" 
+    data-i18n-key="btn_finish_job">
+    <i class="fas fa-flag-checkered"></i> Employ job
+</button>
+
+
 	<div id="countdown-bar" style="display: none; position: fixed; bottom: 80px; right: 20px; background: linear-gradient(135deg, #2c3e50, #000000); color: #fff; padding: 10px 20px; border-radius: 50px; z-index: 9999; box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-family: 'Kanit', sans-serif;">
     <div style="display: flex; align-items: center; gap: 10px;">
         <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
         <div>
-            <div style="font-size: 0.8rem; opacity: 0.8;">Time Limit</div>
+            <div style="font-size: 0.8rem; opacity: 0.8;"></div>
             <div id="timer-text" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;">00:00</div>
         </div>
     </div>
