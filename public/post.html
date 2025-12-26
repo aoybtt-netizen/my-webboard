@@ -2546,23 +2546,24 @@ socket.on('extension-rejected', () => {
             <div id="timer-text" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;">00:00</div>
         </div>
         
-        <button id="btn-extend-time" onclick="requestExtension()" 
-            style="
-                display: none; /* ซ่อนไว้ก่อน จะโชว์เฉพาะคนรับงาน */
-                background: #27ae60; 
-                border: none; 
-                color: white; 
-                width: 30px; 
-                height: 30px; 
-                border-radius: 50%; 
-                margin-left: 10px; 
-                cursor: pointer; 
-                font-weight: bold;
-                transition: transform 0.2s;
-            "
-            title="ขอขยายเวลา">
-            <i class="fas fa-plus"></i>
-        </button>
+        <button id="btn-extend-time" 
+    onclick="console.log('Button Clicked!'); requestExtension();" 
+    style="
+        display: none; /* ⚠️ ถ้าทดสอบอยู่ อย่าลืมลบอันนี้ออก หรือใช้ JS สั่งโชว์ */
+        background: #27ae60; 
+        border: none; 
+        color: white; 
+        width: 30px; 
+        height: 30px; 
+        border-radius: 50%; 
+        margin-left: 10px; 
+        cursor: pointer; 
+        font-weight: bold;
+        transition: transform 0.2s;
+    "
+    title="ขอขยายเวลา">
+    <i class="fas fa-plus"></i>
+</button>
     </div>
 </div>
 
