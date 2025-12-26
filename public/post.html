@@ -2105,13 +2105,6 @@ actionsEl.classList.remove('hidden');
 
 
 
-    // 2. เรียก 1 ครั้งทันทีเพื่อให้เลขเปลี่ยนปุ๊บ (ไม่ต้องรอ Delay 1 วินาที)
-    updateDisplay();
-
-    // 3. เริ่มนับถอยหลังใหม่
-    countdownInterval = setInterval(updateDisplay, 1000);
-}
-
 
 
 	// รับ Event เมื่อหมดเวลา (Server สั่งตัดจบ)
