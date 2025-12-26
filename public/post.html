@@ -1948,10 +1948,10 @@ actionsEl.classList.remove('hidden');
         // 2. [NEW] แสดงผลข้อความเวลาใน Modal
         const timeDisplay = document.getElementById('display-time-limit'); // ต้องมี ID นี้ใน HTML
         if (timeDisplay) {
-            let timeText = "ไม่จำกัดเวลา";
+            let timeText = "No Limit";
             if (data.timeLimit && data.timeLimit > 0) {
                 const mins = parseInt(data.timeLimit) / 60000;
-                timeText = mins >= 60 ? (mins / 60) + " ชั่วโมง" : mins + " นาที";
+                timeText = mins >= 60 ? (mins / 60) + " H" : mins + " m";
             }
             timeDisplay.innerText = timeText;
         }
@@ -2087,18 +2087,34 @@ actionsEl.classList.remove('hidden');
 
 	// รับ Event เมื่อหมดเวลา (Server สั่งตัดจบ)
 	socket.on('force-close-job', (data) => {
-    clearInterval(countdownInterval);
+    // 1. หยุดตัวนับเวลา
+    if (typeof countdownInterval !== 'undefined') clearInterval(countdownInterval);
+
+    // 2. ซ่อนแถบเวลา
     const timerBar = document.getElementById('countdown-bar');
     if(timerBar) timerBar.style.display = 'none';
     
-    // แจ้งเตือนและรีโหลด
+    // 3. [เพิ่ม] ซ่อน Modal ทุกอย่างที่อาจจะเปิดค้างอยู่ (สำคัญมาก ป้องกันการกดปุ่มต่อ)
+    const modalIds = ['handover-modal', 'offer-modal', 'call-modal'];
+    modalIds.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
+
+    // 4. แจ้งเตือนแบบบังคับ (กดปิดไม่ได้ ต้องกดปุ่มแดงเท่านั้น)
     Swal.fire({
-        icon: 'warning',
+        icon: 'error', // เปลี่ยนเป็นสีแดง (Error) ให้ดูซีเรียส
         title: 'หมดเวลา!',
-        text: data.message || 'งานนี้สิ้นสุดระยะเวลาแล้ว',
-        confirmButtonText: 'ตกลง'
-    }).then(() => {
-        location.reload();
+        text: data.message || 'งานนี้สิ้นสุดระยะเวลาแล้ว ระบบได้ปิดกระทู้อัตโนมัติ',
+        allowOutsideClick: false, // ห้ามคลิกข้างนอกเพื่อปิด
+        allowEscapeKey: false,    // ห้ามกด ESC
+        confirmButtonText: 'กลับหน้าหลัก',
+        confirmButtonColor: '#d33'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = '/'; // แนะนำ: ดีดกลับหน้าแรกเลย (เพราะงานจบแล้ว)
+            // หรือใช้ location.reload(); // ถ้าต้องการแค่รีโหลดหน้าเดิม
+        }
     });
 });
 
@@ -2178,12 +2194,18 @@ actionsEl.classList.remove('hidden');
     }
 
     function executeSocketFinish() {
-        const lang = localStorage.getItem('preferredLanguage') || 'th';
-        const t = postTranslations[lang] || postTranslations['th'];
-        if (confirm(t['confirm_finish_request'] || 'ยืนยันการจบงาน?')) {
-            socket.emit('request-finish-job', { postId });
-        }
+    // [NEW] 1. เช็คเวลาก่อนเลย ถ้าหมดเวลาแล้วห้ามส่ง
+    const timerText = document.getElementById('timer-text');
+    if (timerText && timerText.innerText === "หมดเวลา") {
+        return Swal.fire('หมดเวลา!', 'ไม่สามารถส่งงานได้เนื่องจากหมดเวลาแล้ว', 'error');
     }
+
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = postTranslations[lang] || postTranslations['th'];
+    if (confirm(t['confirm_finish_request'] || 'ยืนยันการจบงาน?')) {
+        socket.emit('request-finish-job', { postId });
+    }
+}
 }
 
         socket.on('receive-finish-request', (data) => {

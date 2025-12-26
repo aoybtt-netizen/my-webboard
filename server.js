@@ -2349,28 +2349,39 @@ io.on('connection', (socket) => {
 
         // [NEW] ฟังก์ชันตั้งเวลาตัดจบอัตโนมัติ (Server-side Timeout)
         if (duration > 0) {
-            console.log(`⏳ Timer started for post ${postId}: ${duration/60000} mins`);
-            
-            setTimeout(async () => {
-                // ตรวจสอบว่างานยังเป็น finished อยู่หรือไม่ (ป้องกันกรณีจบงานด้วยมือไปก่อนแล้ว)
-                const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
-                if (currentPost && currentPost.status === 'finished') {
-                    
-                    // ปิดงานถาวร (เปลี่ยนสถานะเป็น closed_timeout หรือตามที่คุณต้องการ)
-                    await postsCollection.updateOne(
-                        { id: parseInt(postId) },
-                        { $set: { status: 'closed_timeout', isClosed: true } }
-                    );
+    console.log(`⏳ Timer started for post ${postId}: ${duration/60000} mins`);
+    
+    setTimeout(async () => {
+        // ดึงข้อมูลล่าสุดมาเช็ค
+        const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
+        
+        // ต้องเช็คว่างานยังไม่จบ (status ต้องยังเป็น finished อยู่)
+        if (currentPost && currentPost.status === 'finished') {
+            console.log(`⏰ Time is up! Auto-closing post ${postId}`);
 
-                    console.log(`⏰ Time is up! Auto-closing post ${postId}`);
-                    
-                    // แจ้งเตือนทั้งคู่ว่าหมดเวลา
-                    const timeoutMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
-                    io.to(owner).emit('force-close-job', timeoutMsg);
-                    io.to(viewer).emit('force-close-job', timeoutMsg);
-                }
-            }, duration);
+            // 1. ปิดกระทู้ถาวร
+            await postsCollection.updateOne(
+                { id: parseInt(postId) },
+                { $set: { status: 'closed_timeout', isClosed: true } }
+            );
+
+            // 2. [สำคัญ] คืนสถานะผู้ใช้ทั้งคู่ให้เป็น idle (ว่าง)
+            if (currentPost.author) {
+                await usersCollection.updateOne({ username: currentPost.author }, { $set: { status: 'idle' } });
+            }
+            if (currentPost.acceptedViewer) {
+                await usersCollection.updateOne({ username: currentPost.acceptedViewer }, { $set: { status: 'idle' } });
+            }
+
+            // 3. เตะทั้งคู่และแจ้งเตือน
+            io.to(owner).emit('force-close-job', { message: '⛔ หมดเวลาส่งงาน! ระบบได้ยกเลิกงานนี้แล้ว' });
+            io.to(viewer).emit('force-close-job', { message: '⛔ หมดเวลาส่งงาน! ระบบได้ยกเลิกงานนี้แล้ว' });
+            
+            // ส่งอัปเดตไปหน้า List เพื่อเปลี่ยนสี/สถานะ
+            io.emit('post-list-update', { postId: parseInt(postId), status: 'closed_timeout' });
         }
+    }, duration);
+}
 
     } else {
         io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} ปฏิเสธ` });
@@ -2379,15 +2390,25 @@ io.on('connection', (socket) => {
 
     // --- Finish Job Logic ---
     socket.on('request-finish-job', async (data) => {
-        const { postId } = data;
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) return;
-        const requester = socket.username;
-        let target = '';
-        if (requester === post.author) target = post.acceptedViewer;
-        else if (requester === post.acceptedViewer) target = post.author;
-        if (target) io.to(target).emit('receive-finish-request', { requester });
-    });
+    const { postId } = data;
+    const post = await postsCollection.findOne({ id: parseInt(postId) });
+    if (!post) return;
+
+    // --- [NEW] เพิ่มการตรวจสอบเวลาตรงนี้ ---
+    if (post.jobDeadline && Date.now() > post.jobDeadline) {
+         // ถ้าเวลาปัจจุบัน เกินเวลา Deadline
+         socket.emit('force-close-job', { message: '❌ ไม่สามารถจบงานได้ เนื่องจากหมดเวลาแล้ว!' });
+         return; // หยุดการทำงานทันที (ไม่ส่ง receive-finish-request ไปหาอีกฝั่ง)
+    }
+    // -------------------------------------
+
+    const requester = socket.username;
+    let target = '';
+    if (requester === post.author) target = post.acceptedViewer;
+    else if (requester === post.acceptedViewer) target = post.author;
+    
+    if (target) io.to(target).emit('receive-finish-request', { requester });
+});
 
     socket.on('confirm-finish-job', async ({ postId, accepted, requester }) => {
     if (accepted) {
