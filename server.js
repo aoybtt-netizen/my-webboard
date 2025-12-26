@@ -2352,35 +2352,44 @@ io.on('connection', (socket) => {
     console.log(`⏳ Timer started for post ${postId}: ${duration/60000} mins`);
     
     setTimeout(async () => {
-    const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
-    
-    if (currentPost && currentPost.status === 'finished') {
-        console.log(`⏰ Time is up! Auto-closing post ${postId}`);
-
-        // 1. ปิดกระทู้ถาวร (ใช้ status ให้ตรงกับ API คอมเมนต์เพื่อบล็อกการแชท)
-        await postsCollection.updateOne(
-            { id: parseInt(postId) },
-            { $set: { 
-                status: 'closed_permanently', // เปลี่ยนจาก closed_timeout เป็นตัวนี้
-                isClosed: true,
-                closedAt: Date.now() 
-            } }
-        );
-
-        // 2. คืนสถานะผู้ใช้ทั้งคู่ให้เป็น idle
-        if (currentPost.author) {
-            await usersCollection.updateOne({ username: currentPost.author }, { $set: { status: 'idle' } });
-        }
-        if (currentPost.acceptedViewer) {
-            await usersCollection.updateOne({ username: currentPost.acceptedViewer }, { $set: { status: 'idle' } });
-        }
-
-        // 3. เตะทุกคนที่อยู่ในห้องนี้ออก (ใช้ postId เป็นชื่อห้อง)
-        const timeoutMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้นี้อัตโนมัติและยกเลิกดีล' };
-        io.to(postId.toString()).emit('force-close-job', timeoutMsg); 
+    try {
+        console.log(`[Timer Debug] ⏰ Checking timeout for post: ${postId}`);
+        const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
         
-        // ส่งอัปเดตไปหน้า List
-        io.emit('post-list-update', { postId: parseInt(postId), status: 'closed_permanently' });
+        if (currentPost && currentPost.status === 'finished') {
+            console.log(`[Timer Debug] 🚀 Post is still 'finished'. Proceeding to close.`);
+
+            await postsCollection.updateOne(
+                { id: parseInt(postId) },
+                { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
+            );
+
+            // คืนสถานะ User (ข้ามส่วนนี้ไปก่อนถ้ายังไม่ชัวร์)
+            await usersCollection.updateMany(
+                { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
+                { $set: { status: 'idle' } }
+            );
+
+            // ⚠️ จุดสำคัญ: ลองส่ง 3 รูปแบบเพื่อให้มั่นใจว่าต้องถึงซักอัน
+            const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
+            
+            // แบบที่ 1: ส่งเข้า Room (ต้อง join ห้องก่อนถึงจะได้รับ)
+            io.to(postId.toString()).emit('force-close-job', kickMsg); 
+            
+            // แบบที่ 2: ส่งหาเจ้าของกระทู้โดยตรง (ใช้ชื่อ Username)
+            io.to(currentPost.author).emit('force-close-job', kickMsg);
+            
+            // แบบที่ 3: ส่งหาคนรับงานโดยตรง (ใช้ชื่อ Username)
+            if (currentPost.acceptedViewer) {
+                io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
+            }
+
+            console.log(`[Timer Debug] ✅ Force-close events emitted for post ${postId}`);
+        } else {
+            console.log(`[Timer Debug] ℹ️ Post ${postId} was already closed or status changed. No action taken.`);
+        }
+    } catch (err) {
+        console.error("[Timer Debug] ❌ Error in setTimeout:", err);
     }
 }, duration);
 }
