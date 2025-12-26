@@ -1811,7 +1811,7 @@ socket.on('map-access-granted', (data) => {
                 try {
                     const d = await res.json();
                     showNotification(d.error, 'fas fa-times-circle', 4000); 
-                    if (d.error.includes('ปิด') || d.error.includes('หมดเวลา') || 
+                    if (d.error.includes('ปิด') || d.error.includes('TimeUp') || 
 						d.error.includes('closed') || d.error.includes('finished')) {
 							location.reload();
 						}
@@ -2067,7 +2067,7 @@ actionsEl.classList.remove('hidden');
 
         if (diff <= 0) {
             clearInterval(countdownInterval);
-            if(timerText) timerText.innerText = "หมดเวลา";
+            if(timerText) timerText.innerText = "TimeUp";
             return;
         }
 
@@ -2104,7 +2104,7 @@ actionsEl.classList.remove('hidden');
     // 4. แจ้งเตือนแบบบังคับ (กดปิดไม่ได้ ต้องกดปุ่มแดงเท่านั้น)
     Swal.fire({
         icon: 'error', // เปลี่ยนเป็นสีแดง (Error) ให้ดูซีเรียส
-        title: 'หมดเวลา!',
+        title: 'TimeUp!',
         text: data.message || 'งานนี้สิ้นสุดระยะเวลาแล้ว ระบบได้ปิดกระทู้อัตโนมัติ',
         allowOutsideClick: false, // ห้ามคลิกข้างนอกเพื่อปิด
         allowEscapeKey: false,    // ห้ามกด ESC
@@ -2196,8 +2196,9 @@ actionsEl.classList.remove('hidden');
     function executeSocketFinish() {
     // [NEW] 1. เช็คเวลาก่อนเลย ถ้าหมดเวลาแล้วห้ามส่ง
     const timerText = document.getElementById('timer-text');
-    if (timerText && timerText.innerText === "หมดเวลา") {
-        return Swal.fire('หมดเวลา!', 'ไม่สามารถส่งงานได้เนื่องจากหมดเวลาแล้ว', 'error');
+    if (timerText && timerText.innerText === "TimeUp") {
+		location.reload();
+		window.location.href = '/';
     }
 
     const lang = localStorage.getItem('preferredLanguage') || 'th';
@@ -2365,15 +2366,15 @@ function deg2rad(deg) {
     
     <div id="incoming-actions" class="hidden">
         <button onclick="acceptCall()" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; margin-right: 5px;">
-            <i class="fas fa-phone"></i> รับสาย
+            <i class="fas fa-phone"></i> Accept
         </button>
         <button onclick="endCall()" style="background: #c0392b; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer;">
-            <i class="fas fa-phone-slash"></i> ปฏิเสธ
+            <i class="fas fa-phone-slash"></i> Reject
         </button>
     </div>
 
     <button id="btn-hangup" onclick="endCall()" style="background: #c0392b; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; margin-top: 10px;">
-        <i class="fas fa-phone-slash"></i> วางสาย
+        <i class="fas fa-phone-slash"></i> End.
     </button>
     
     <audio id="remote-audio" autoplay></audio>
@@ -2384,7 +2385,7 @@ function deg2rad(deg) {
     <div style="display: flex; align-items: center; gap: 10px;">
         <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
         <div>
-            <div style="font-size: 0.8rem; opacity: 0.8;">เหลือเวลาส่งงาน</div>
+            <div style="font-size: 0.8rem; opacity: 0.8;">Time Limit</div>
             <div id="timer-text" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;">00:00</div>
         </div>
     </div>
