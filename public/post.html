@@ -2045,36 +2045,63 @@ actionsEl.classList.remove('hidden');
 
 	// ฟังก์ชันเริ่มนับถอยหลัง
 	function startCountdown(deadline) {
-    const timerBar = document.getElementById('countdown-bar'); // ต้องมี Element นี้ใน HTML (ตามขั้นตอนก่อนหน้า)
+    const timerBar = document.getElementById('countdown-bar');
     const timerText = document.getElementById('timer-text');
     
+    // โชว์บาร์เวลา
     if (timerBar) timerBar.style.display = 'block';
 
+    // 1. เคลียร์ Interval เก่าทิ้งก่อน
     if (countdownInterval) clearInterval(countdownInterval);
 
-    countdownInterval = setInterval(() => {
+    // --- เอา updateDisplay มานิยามข้างในนี้ เพื่อให้มันรู้จัก 'deadline' ---
+    const updateDisplay = () => {
         const now = Date.now();
         const diff = deadline - now;
 
+        // ถ้าหมดเวลา
         if (diff <= 0) {
             clearInterval(countdownInterval);
-            if(timerText) timerText.innerText = "TimeUp";
+            if(timerText) {
+                timerText.innerText = "00:00";
+                timerText.style.color = "#e74c3c"; // สีแดงตอนจบ
+            }
             return;
         }
 
-        // แปลงเป็น ชม:นาที:วินาที
-        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        // คำนวณ นาที:วินาที (Logic เดิมของคุณ)
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        
+        // อัปเดตข้อความ
+        if(timerText) {
+            // แสดงผลแบบ mm:ss
+            timerText.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            // เปลี่ยนสีเป็นสีแดงถ้าเหลือน้อยกว่า 5 นาที
+            if(mins < 5) timerText.style.color = "#e74c3c"; 
+            else timerText.style.color = "#f1c40f"; 
+        }
+    };
 
-        const timeString = 
-            (h > 0 ? h + ":" : "") + 
-            (m < 10 ? "0" + m : m) + ":" + 
-            (s < 10 ? "0" + s : s);
+    // 2. เรียก 1 ครั้งทันที (เพื่อให้เลขเปลี่ยนปุ๊บ ไม่ต้องรอ 1 วิ)
+    updateDisplay();
 
-        if(timerText) timerText.innerText = timeString;
-    }, 1000);
+    // 3. เริ่มวนลูป
+    countdownInterval = setInterval(updateDisplay, 1000);
 }
+
+
+
+
+    // 2. เรียก 1 ครั้งทันทีเพื่อให้เลขเปลี่ยนปุ๊บ (ไม่ต้องรอ Delay 1 วินาที)
+    updateDisplay();
+
+    // 3. เริ่มนับถอยหลังใหม่
+    countdownInterval = setInterval(updateDisplay, 1000);
+}
+
+
 
 	// รับ Event เมื่อหมดเวลา (Server สั่งตัดจบ)
 	socket.on('force-close-job', (data) => {
@@ -2448,7 +2475,13 @@ socket.on('receive-extension-request', (data) => {
 socket.on('time-extended-success', (data) => {
     const { newDeadline, addedMinutes } = data;
     
-    Swal.fire('Add time success!', `Add time ${addedMinutes} m`, 'success');
+    Swal.fire({
+        icon: 'success', // เพิ่ม icon ให้สวยงาม
+        title: 'Add time success!', 
+        text: `Add time ${addedMinutes} m`,
+        timer: 2000,
+        showConfirmButton: false
+    });
     
     // เริ่มนับถอยหลังใหม่ด้วย Deadline ใหม่
     startCountdown(newDeadline); 
@@ -2567,14 +2600,13 @@ socket.on('extension-rejected', () => {
         display: none; 
         position: fixed; 
         bottom: 145px;  /* ระดับความสูงเท่ากับแถบเวลา */
-        left: 20px;    /* ชิดขอบซ้าย */
-        z-index: 12000; /* อยู่เหนือทุกอย่าง */
+        right: 20px;    /* ชิดขอบซ้าย */
+        z-index: 2000; /* อยู่เหนือทุกอย่าง */
         background: #27ae60; 
         color: white; 
         border: none; 
         width: 50px; 
         height: 50px; 
-        border-radius: 50%; 
         box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
         cursor: pointer; 
         display: flex; 
@@ -2583,7 +2615,7 @@ socket.on('extension-rejected', () => {
         transition: all 0.3s ease;
     "
     title="Add time request.">
-    <i class="fas fa-flag-checkered"></i> Add time 
+    <i class="fas fa-user-clock"></i> Add time 
 </button>
 
 
