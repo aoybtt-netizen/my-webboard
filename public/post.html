@@ -2538,7 +2538,7 @@ socket.on('extension-rejected', () => {
 </button>
 
 
-	<div id="countdown-bar" style="display: none; position: fixed; bottom: 80px; right: 20px; background: linear-gradient(135deg, #2c3e50, #000000); color: #fff; padding: 10px 20px; border-radius: 50px; z-index: 9999; box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-family: 'Kanit', sans-serif;">
+	<div id="countdown-bar" style="display: none; position: fixed; bottom: 80px; right: 20px; background: linear-gradient(135deg, #2c3e50, #000000); color: #fff; padding: 10px 20px; border-radius: 50px; z-index: 3000; box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-family: 'Kanit', sans-serif;">
     <div style="display: flex; align-items: center; gap: 10px;">
         <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
         <div>
@@ -2550,6 +2550,8 @@ socket.on('extension-rejected', () => {
     onclick="console.log('Button Clicked!'); requestExtension();" 
     style="
         display: none; /* ⚠️ ถ้าทดสอบอยู่ อย่าลืมลบอันนี้ออก หรือใช้ JS สั่งโชว์ */
+		position: relative; /* หรือ fixed ถ้าอยู่นอก bar */
+        z-index: 3001 !important; /* ดันขึ้นหน้าสุด */
         background: #27ae60; 
         border: none; 
         color: white; 
