@@ -2095,13 +2095,7 @@ actionsEl.classList.remove('hidden');
     }
 
     // 2. ซ่อนแถบเวลาและปุ่มส่งงาน
-    const timerBar = document.getElementById('countdown-bar');
-    if(timerBar) {
-        timerBar.style.display = 'none';
-        console.log("✅ [2] Timer bar hidden");
-    } else {
-        console.warn("⚠️ [2] timer-bar not found");
-    }
+    
 	
     const finishBtn = document.getElementById('final-finish-btn');
     if(finishBtn) {
@@ -2116,6 +2110,7 @@ actionsEl.classList.remove('hidden');
         if(el) {
             el.classList.add('hidden');
             console.log(`✅ [3] Modal hidden: ${id}`);
+			location.reload();
         }
     });
 
