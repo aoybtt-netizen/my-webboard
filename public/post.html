@@ -2386,21 +2386,21 @@ function requestExtension() {
 
         // เริ่มแสดง Popup
         Swal.fire({
-            title: 'ขอขยายเวลาเพิ่ม',
-            text: 'เลือกจำนวนนาทีที่ต้องการขอเพิ่มจากเจ้าของงาน',
+            title: 'Add time request',
+            text: 'select request time',
             icon: 'question',
             input: 'radio',
             inputOptions: {
-                '10': '10 นาที',
-                '20': '20 นาที',
-                '30': '30 นาที'
+                '10': '10 m',
+                '20': '20 m',
+                '30': '30 m'
             },
             inputValidator: (value) => {
-                if (!value) return 'กรุณาเลือกเวลา!';
+                if (!value) return 'Please select time!';
             },
             showCancelButton: true,
-            confirmButtonText: 'ส่งคำขอ',
-            cancelButtonText: 'ยกเลิก'
+            confirmButtonText: 'Send request',
+            cancelButtonText: 'Cancle'
         }).then((result) => {
             console.log("📝 [Debug] ผลลัพธ์จาก Popup:", result);
             
@@ -2411,7 +2411,7 @@ function requestExtension() {
                 // ส่งคำขอไปหา Server
                 socket.emit('request-extend-time', { postId, minutes });
                 
-                Swal.fire('ส่งคำขอแล้ว', 'กรุณารอเจ้าของงานอนุมัติ...', 'info');
+                Swal.fire('Request time Send...', 'Waiting Accept...', 'info');
             } else {
                 console.log("❌ [Debug] ผู้ใช้กดยกเลิก");
             }
@@ -2426,12 +2426,12 @@ function requestExtension() {
 socket.on('receive-extension-request', (data) => {
     const { minutes, requester } = data;
     Swal.fire({
-        title: 'คำขอขยายเวลา!',
-        text: `คุณ ${requester} ขอเวลาเพิ่มอีก ${minutes} นาที`,
+        title: 'Add time request!',
+        text: `${requester} Add time request ${minutes} m`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'อนุมัติ (เพิ่มเวลา)',
-        cancelButtonText: 'ไม่อนุมัติ',
+        confirmButtonText: 'Accept (Add time)',
+        cancelButtonText: 'Reject',
         confirmButtonColor: '#27ae60',
         cancelButtonColor: '#d33'
     }).then((result) => {
@@ -2448,14 +2448,14 @@ socket.on('receive-extension-request', (data) => {
 socket.on('time-extended-success', (data) => {
     const { newDeadline, addedMinutes } = data;
     
-    Swal.fire('เพิ่มเวลาสำเร็จ!', `เพิ่มเวลาอีก ${addedMinutes} นาทีเรียบร้อยแล้ว`, 'success');
+    Swal.fire('Add time success!', `Add time ${addedMinutes} m`, 'success');
     
     // เริ่มนับถอยหลังใหม่ด้วย Deadline ใหม่
     startCountdown(newDeadline); 
 });
 
 socket.on('extension-rejected', () => {
-    Swal.fire('คำขอถูกปฏิเสธ', 'เจ้าของงานไม่อนุมัติการขอเพิ่มเวลา', 'error');
+    Swal.fire('The request was rejected.', 'The client did not approve the request for an extension of time.', 'error');
 });
 
 
@@ -2472,7 +2472,7 @@ socket.on('extension-rejected', () => {
     </script>
     
     <div id="call-modal" class="hidden" style="position: fixed; bottom: 20px; right: 20px; width: 300px; background: #2c3e50; color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 3200; text-align: center;">
-    <h3 id="call-status" style="margin: 0 0 10px 0;">📞 กำลังโทร...</h3>
+    <h3 id="call-status" style="margin: 0 0 10px 0;">📞 Calling..</h3>
     <p id="call-partner" style="font-size: 0.9em; color: #bdc3c7;">...</p>
     
     <div id="incoming-actions" class="hidden">
@@ -2520,8 +2520,9 @@ socket.on('extension-rejected', () => {
     style="
         display: none; 
         position: fixed; 
-        bottom: 145px; /* อยู่เหนือแถบเวลา (แถบเวลาอยู่ที่ 80px) */
-        right: 20px; 
+        bottom: 90px; /* อยู่เหนือแถบเวลา (แถบเวลาอยู่ที่ 80px) */
+        left: 20px; 
+        height: 45px;      /* กำหนดความสูงปุ่ม */
         background: #6f42c1; 
         color: white; 
         border: none; 
@@ -2539,11 +2540,21 @@ socket.on('extension-rejected', () => {
 </button>
 
 
-	<div id="countdown-bar" style="display: none; position: fixed; bottom: 80px; right: 20px; background: linear-gradient(135deg, #2c3e50, #000000); color: #fff; padding: 10px 20px; border-radius: 50px; z-index: 3000; box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-family: 'Kanit', sans-serif;">
+	<div id="countdown-bar" style="display: none; 
+		position: fixed; 
+		bottom: 80px; 
+		right: 20px; background: 
+		linear-gradient(135deg, #2c3e50, #000000); 
+		color: #fff; 
+		padding: 10px 20px; 
+		border-radius: 50px; 
+		z-index: 3000; 
+		box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+		font-family: 'Kanit', sans-serif;">
     <div style="display: flex; align-items: center; gap: 10px;">
         <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
         <div>
-            <div style="font-size: 0.8rem; opacity: 0.8;">Time Left</div>
+            <div style="font-size: 0.8rem; opacity: 0.8;"></div>
             <div id="timer-text" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;">00:00</div>
         </div>
     </div>
@@ -2551,11 +2562,11 @@ socket.on('extension-rejected', () => {
 
 	
 	<button id="btn-extend-time" 
-    onclick="console.log('🚀 Clicked Extend Button'); requestExtension();" 
+	onclick="requestExtension()"
     style="
         display: none; 
         position: fixed; 
-        bottom: 80px;  /* ระดับความสูงเท่ากับแถบเวลา */
+        bottom: 145px;  /* ระดับความสูงเท่ากับแถบเวลา */
         left: 20px;    /* ชิดขอบซ้าย */
         z-index: 12000; /* อยู่เหนือทุกอย่าง */
         background: #27ae60; 
@@ -2571,8 +2582,8 @@ socket.on('extension-rejected', () => {
         justify-content: center;
         transition: all 0.3s ease;
     "
-    title="ขอขยายเวลา">
-    <i class="fas fa-plus-circle" style="font-size: 24px;"></i>
+    title="Add time request.">
+    <i class="fas fa-flag-checkered"></i> Add time 
 </button>
 
 

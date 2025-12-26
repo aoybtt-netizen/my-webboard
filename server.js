@@ -2444,21 +2444,55 @@ socket.on('reply-extension-request', async (data) => {
         }
 
         if (timeRemaining > 0) {
+            // ตั้ง Timer ใหม่ (ระเบิดเวลาลูกใหม่)
             activePostTimers[postId] = setTimeout(async () => {
-                // --- ก๊อปปี้ Logic การหมดเวลาเดิมของคุณมาใส่ตรงนี้ (หรือแยกเป็นฟังก์ชันแล้วเรียกใช้) ---
-                // ... โค้ดปิดงาน, ปิดกระทู้, เตะคนออก ...
-                
-                const currentPost = await postsCollection.findOne({ id: parseInt(postId) });
-                if (currentPost && currentPost.status === 'finished') {
-                     // ... Logic ปิดกระทู้เหมือนเดิม ...
-                     const kickMsg = { message: '⛔ หมดเวลาส่งงาน (หลังต่อเวลา)! ระบบได้ปิดกระทู้อัตโนมัติ' };
-                     io.to(postId.toString()).emit('force-close-job', kickMsg);
-                     // ...
+                try {
+                    const targetId = parseInt(postId);
+                    console.log(`[Ext-Timer Debug] ⏰ Extended time is up for post: ${targetId}`);
+                    
+                    const currentPost = await postsCollection.findOne({ id: targetId });
+                    
+                    // เช็คว่างานยังไม่จบ (ยังเป็น finished อยู่)
+                    if (currentPost && currentPost.status === 'finished') {
+                        console.log(`[Ext-Timer Debug] 🚀 Post is still 'finished'. Closing now.`);
+
+                        // A. ปิดกระทู้ถาวร
+                        await postsCollection.updateOne(
+                            { id: targetId },
+                            { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
+                        );
+
+                        // B. คืนสถานะผู้ใช้
+                        await usersCollection.updateMany(
+                            { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
+                            { $set: { status: 'idle' } }
+                        );
+
+                        const kickMsg = { message: '⛔ หมดเวลาส่งงาน (หลังต่อเวลา)! ระบบได้ปิดกระทู้อัตโนมัติ' };
+
+                        // C. ส่งคำสั่งเตะ 3 ทาง (เพื่อความชัวร์)
+                        io.to(targetId.toString()).emit('force-close-job', kickMsg); 
+                        io.to(currentPost.author).emit('force-close-job', kickMsg);
+                        if (currentPost.acceptedViewer) {
+                            io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
+                        }
+
+                        // D. อัปเดตหน้า Lobby
+                        io.emit('post-list-update', { postId: targetId, status: 'closed_permanently' });
+                        
+                        console.log(`[Ext-Timer Debug] ✅ Force-close events emitted for post ${targetId}`);
+                    }
+                    
+                    // ลบ Timer ออกจาก List
+                    delete activePostTimers[postId];
+
+                } catch (err) {
+                    console.error("[Ext-Timer Debug] ❌ Error in Extended Timeout:", err);
                 }
             }, timeRemaining);
         }
 
-        // 3. แจ้งทุกคนในห้องให้ปรับเลขเวลาบนหน้าจอ
+        // 3. แจ้งทุกคนในห้องให้ปรับเลขเวลาบนหน้าจอ (ส่ง Deadline ใหม่ไปให้ Client เริ่มนับ)
         io.to(postId.toString()).emit('time-extended-success', { 
             newDeadline, 
             addedMinutes: minutes 
@@ -2466,7 +2500,9 @@ socket.on('reply-extension-request', async (data) => {
 
     } else {
         // ถ้าไม่อนุมัติ แจ้งกลับคนขอ
-        io.to(post.acceptedViewer).emit('extension-rejected');
+        if (post.acceptedViewer) {
+            io.to(post.acceptedViewer).emit('extension-rejected');
+        }
     }
 });
 
