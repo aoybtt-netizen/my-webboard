@@ -405,7 +405,7 @@
     <div class="container">
         <div id="map-container" style="margin-top: 20px; display:none;">
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h3 id="map-title" style="margin: 0; border: none; padding: 0;"></h3>
+        
         
         <div style="display: flex; gap: 8px;">
             <button id="share-map-btn" onclick="shareMapToViewers()" 
@@ -1334,7 +1334,7 @@ window.openGoogleMapsApp = function() {
     const mapContainer = document.getElementById('map-container');
     const mapIframe = document.getElementById('post-map-iframe');
     const navButton = document.getElementById('start-nav-btn');
-    const mapTitle = document.getElementById('map-title');
+    //const mapTitle = document.getElementById('map-title');
     
     if (!mapIframe || !location) return;
 
@@ -1372,7 +1372,7 @@ window.openGoogleMapsApp = function() {
     }
 
     mapIframe.src = initialMapUrl;
-    if (mapTitle) mapTitle.innerHTML = ` ${viewerText}`;
+    //if (mapTitle) mapTitle.innerHTML = ` ${viewerText}`;
 }
 
 	// ฟังก์ชันสำหรับ Show/Hide แผนที่
@@ -1406,7 +1406,7 @@ window.openGoogleMapsApp = function() {
     const mapContainer = document.getElementById('map-container');
     const mapIframe = document.getElementById('post-map-iframe');
     const navButton = document.getElementById('start-nav-btn'); 
-    const mapTitle = document.getElementById('map-title'); 
+    //const mapTitle = document.getElementById('map-title'); 
     
     if (!postLocation || !postLocation.lat || !postLocation.lng) {
         mapContainer.style.display = 'none'; 
@@ -1447,7 +1447,7 @@ window.openGoogleMapsApp = function() {
     // อัปเดต Iframe
     mapIframe.src = mapUrl;
     
-    if (mapTitle) mapTitle.innerHTML = `${viewerText}`;
+    //if (mapTitle) mapTitle.innerHTML = `📍 Post Location${viewerText}`;
     mapContainer.style.display = 'block'; 
     navButton.style.display = 'none';
 }
