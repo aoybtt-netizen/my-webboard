@@ -286,10 +286,7 @@
     <div id="announcement-text" class="marquee-content-css"></div>
 </div>
 	
-		<div id="filter-container" style="text-align: center; margin: 15px 0; padding: 5px 0; background: rgba(255,255,255,0.8); border-radius: 8px;">
-    <span id="filter-status" style="font-weight:600; color:#007bff; margin-right: 10px; font-size: 0.8em;"></span>
-        <button id="geo-filter-btn" class="sidebar-btn" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #6a9edb; color: white; font-weight: bold;" onclick="setDistanceFilter()" data-i18n-key="btn_checkin">📍 เช็คอิน / กรองระยะทาง</button>
-</div>
+		
 
             <div id="post-list">
                 </div>
@@ -5390,6 +5387,21 @@ function openUserDetail(targetUsername) {
         <button onclick="document.getElementById('admin-review-modal').classList.add('hidden')" style="width: 100%; margin-top: 10px; background: none; border: none; color: #666; cursor: pointer;">Close</button>
     </div>
 </div>
+
+
+
+	
+	<div id="filter-container" style="margin-bottom: 12px; width: 100%;">
+    <button id="geo-filter-btn" class="sidebar-btn" 
+            style="width: 100%; padding: 10px; font-size: 0.9em; background-color: #6a9edb; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer;" 
+            onclick="setDistanceFilter()">
+        <span style="font-size: 1.2em;">📶</span> 
+        <span id="filter-status-text" data-i18n-key="btn_checkin">เช็คอิน / กรองระยะทาง</span>
+    </button>
+</div>
+
+<button class="sidebar-btn" style="width: 100%;">สร้างกระทู้</button>
+
 
 
 	<button class="sticky-create-btn" onclick="openCreateModal()" title="Create New Post">
