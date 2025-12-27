@@ -236,7 +236,7 @@
     top: 50%;
     right: 0; /* ติดขอบขวา */
     transform: translateY(-50%);
-    z-index: 2000;
+    z-index: 3000;
     
     display: flex;
     flex-direction: column; 
@@ -267,31 +267,6 @@
     
     /* เอฟเฟกต์ยื่นออกมาจากขอบ */
     transition: all 0.3s ease;
-}
-
-/* 3. ตัวปุ่ม (ชั้น 10) */
-.sticky-filter-btn {
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #6a9edb, #3498db);
-    color: white;
-    border: none;
-    
-    /* ทรงเดียวกับปุ่มสร้างกระทู้ของคุณ */
-    border-top-left-radius: 25px;
-    border-bottom-left-radius: 25px;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    
-    box-shadow: -2px 4px 10px rgba(0,0,0,0.15);
-    font-size: 20px;
-    cursor: pointer;
-    pointer-events: auto;
-    
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: width 0.3s;
 }
 
 
