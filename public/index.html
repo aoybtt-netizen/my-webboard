@@ -185,6 +185,52 @@
 }
 
 
+
+/* สไตล์สำหรับปุ่มกรองระยะทาง (เลียนแบบปุ่มสร้างกระทู้) */
+.sticky-filter-btn {
+    position: fixed;
+    top: calc(50% - 80px); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+    right: 0;
+    transform: translateY(-50%);
+    
+    width: 50px;
+    height: 60px;
+    
+    /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
+    background: linear-gradient(135deg, #3498db, #85c1e9);
+    color: white;
+    border: none;
+    
+    /* ขอบมนด้านซ้าย */
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    
+    box-shadow: -4px 4px 15px rgba(0,0,0,0.2);
+    z-index: 2000;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 24px;
+}
+
+.sticky-filter-btn:hover {
+    width: 60px; /* ยื่นออกมาเมื่อเอาเมาส์ชี้ */
+    padding-right: 10px;
+    background: linear-gradient(135deg, #2980b9, #3498db);
+}
+
+.sticky-filter-btn:active {
+    transform: translateY(-50%) scale(0.9);
+}
+
+
+
+
     </style>
 </head>
 <body>
@@ -5392,12 +5438,8 @@ function openUserDetail(targetUsername) {
 </div>
 
 
-	<button id="geo-filter-btn" class="sidebar-btn" 
-        style="width: 100%; margin-bottom: 10px; padding: 10px; font-size: 0.9em; background-color: #6a9edb; color: white; font-weight: bold; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" 
-        onclick="setDistanceFilter()" 
-        data-i18n-key="btn_checkin">
-    <span>📶</span> 
-    <span>เช็คอิน / กรองระยะทาง</span>
+	<button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
+    📶
 </button>
 
 
