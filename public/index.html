@@ -188,25 +188,34 @@
 
 /* สไตล์สำหรับปุ่มกรองระยะทาง (เลียนแบบปุ่มสร้างกระทู้) */
 .sticky-filter-btn {
+    position: fixed;
+    top: calc(50% - 80px); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+    right: 0;
+    transform: translateY(-50%);
+    
     width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #6a9edb, #3498db);
+    height: 60px;
+    
+    /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
+    background: linear-gradient(135deg, #3498db, #85c1e9);
     color: white;
     border: none;
     
-    /* รูปทรงแคปซูล */
-    border-top-left-radius: 25px;
-    border-bottom-left-radius: 25px;
+    /* ขอบมนด้านซ้าย */
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
     
-    box-shadow: -2px 4px 12px rgba(0,0,0,0.15);
-    cursor: pointer;
-    font-size: 20px;
+    box-shadow: -4px 4px 15px rgba(0,0,0,0.2);
+    z-index: 2000;
     
     display: flex;
     align-items: center;
     justify-content: center;
-    pointer-events: auto; /* เปิดให้คลิกปุ่มได้ */
-    transition: width 0.3s;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 24px;
 }
 
 .sticky-filter-btn:hover {
@@ -217,22 +226,6 @@
 
 .sticky-filter-btn:active {
     transform: translateY(-50%) scale(0.9);
-}
-
-#filter-container {
-    background: rgba(255, 255, 255, 0.95); /* พื้นหลังขาวทึบขึ้นหน่อยเพื่อให้อ่านง่าย */
-    padding: 5px 10px;
-    border-radius: 8px;
-    margin-bottom: 5px;     /* เว้นระยะห่างจากปุ่ม */
-    margin-right: 5px;      /* เว้นจากขอบขวาเล็กน้อย */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    
-    /* ปรับขนาดตัวอักษร */
-    text-align: right;
-    pointer-events: auto;
-    
-    /* ซ่อนไว้ก่อนถ้ายังไม่มีข้อความ (Optional) */
-    /*display: none;*/
 }
 
 
@@ -5445,17 +5438,9 @@ function openUserDetail(targetUsername) {
 </div>
 
 
-	<div class="sticky-wrapper">
-    
-    <div id="filter-container">
-        <span id="filter-status" style="font-weight:600; color:#007bff; font-size: 0.8em;"></span>
-    </div>
-
-    <button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()">
-        <i class="fas fa-route"></i>
-    </button>
-    
-</div>
+	<button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
+    <i class="fas fa-route"></i>
+</button>
 
 
 	<button class="sticky-create-btn" onclick="openCreateModal()" title="Create New Post">
