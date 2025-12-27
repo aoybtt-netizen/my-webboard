@@ -245,7 +245,7 @@
 }
 
 /* 2. ตัวป้ายข้อความ: เว้นระยะห่างจากปุ่มนิดนึง */
-#filter-container {
+#filter-showds {
 	position: fixed;
     right: 0;
     top: 28%;         
@@ -826,7 +826,7 @@ async function saveZoneRefFromAdmin(targetAdmin) {
 
     // --- ✨ [ส่วนที่ 1: โชว์ตัวเลขทันทีที่กรอกเสร็จ] ✨ ---
     const statusElem = document.getElementById('filter-status');
-    const containerElem = document.getElementById('filter-container');
+    const containerElem = document.getElementById('filter-showds');
     const kmText = currentLang === 'th' ? 'กม.' : 'km';
 
     if (statusElem && containerElem) {
@@ -5477,7 +5477,7 @@ function openUserDetail(targetUsername) {
 </div>
 
 
-	<div id="filter-container">
+	<div id="filter-showds">
     <span id="filter-status"></span>
 </div>
 
