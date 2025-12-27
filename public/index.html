@@ -1030,7 +1030,7 @@ async function updateZoneBackground(lat, lng) {
         'admin_error_topic': 'เกิดข้อผิดพลาด: ',
         'confirm_delete_post': 'คุณแน่ใจหรือไม่ที่จะลบกระทู้นี้?',
 
-        'btn_checkin': '📍 เช็คระยะทาง',
+        //'btn_checkin': '📍 เช็คระยะทาง',
         'status_all': '(แสดงทั้งหมด)',
         'prompt_distance': 'ระบุระยะทางรอบตัวคุณที่ต้องการเห็นกระทู้ (กิโลเมตร):',
         'alert_invalid_num': 'กรุณาระบุตัวเลขที่ถูกต้อง',
@@ -1197,7 +1197,7 @@ async function updateZoneBackground(lat, lng) {
         'confirm_delete_post': 'Are you sure you want to delete this post?',
 
         // ส่วนระบบเช็คอิน
-        'btn_checkin': '📍 Set Distance Filter',
+        //'btn_checkin': '📍 Set Distance Filter',
         'status_all': '(Show All)',
         'prompt_distance': 'Enter distance radius (km):',
         'alert_invalid_num': 'Please enter a valid number.',
@@ -1394,8 +1394,8 @@ if (homeBtn) {
             const DEFAULT_DISTANCE_KM = 10;
             filterMaxDistance = DEFAULT_DISTANCE_KM;
             
-            const kmText = currentLang === 'th' ? 'กม.)' : 'km)'; 
-            const statusPrefix = t['status_dist_prefix'] || '(ระยะ';
+            const kmText = currentLang === 'th' ? 'km.)' : 'km)'; 
+            const statusPrefix = t['status_dist_prefix'] || '';
 
             if (statusElem) {
                 statusElem.innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
