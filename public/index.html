@@ -230,6 +230,44 @@
 
 
 
+/* 1. กล่องรวม: จัดให้เรียงจาก บนลงล่าง (Column) */
+.sticky-wrapper {
+    position: fixed;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 2000;
+    
+    display: flex;
+    flex-direction: column; /* สำคัญ! ให้ป้ายอยู่บน ปุ่มอยู่ล่าง */
+    align-items: center;    /* จัดกึ่งกลางให้ตรงกัน */
+    pointer-events: none;
+}
+
+/* 2. ตัวป้ายข้อความ: เว้นระยะห่างจากปุ่มนิดนึง */
+#filter-container {
+    background: #ff4757;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 15px;
+    
+    /* สำคัญ! ดันพื้นล่างให้ห่างจากปุ่ม 5px (เหมือนยกลอยขึ้นไป) */
+    margin-bottom: 8px; 
+    margin-right: 5px; /* ขยับซ้ายนิดนึงไม่ให้ชิดขอบจอเกินไป */
+    
+    font-size: 0.8em;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    
+    display: none; /* ซ่อนไว้ก่อน JS จะสั่งเปิดเอง */
+    pointer-events: auto;
+}
+
+
+
+
+
+
 
     </style>
 </head>
@@ -5427,7 +5465,9 @@ function openUserDetail(targetUsername) {
 
 	<div class="sticky-wrapper">
     
-    <div id="filter-container"></div>
+    <div id="filter-container">
+        <span id="filter-status"></span> 
+    </div>
 
     <button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
         <i class="fas fa-route"></i>
