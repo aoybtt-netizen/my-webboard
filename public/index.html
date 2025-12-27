@@ -132,6 +132,59 @@
 	padding-right: 20px;
 }
 
+
+	.sticky-create-btn {
+    position: fixed;
+    top: 50%;             /* อยู่กึ่งกลางแนวตั้ง */
+    right: 0;             /* ชิดขอบขวา */
+    transform: translateY(-50%); /* จัดกึ่งกลางให้เป๊ะ */
+    
+    width: 50px;          /* ความกว้าง */
+    height: 60px;         /* ความสูง (ให้ดูเหมือนลิ้นชัก) */
+    
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe); /* สีม่วงพาสเทล ดูเด่นแต่สบายตา */
+    color: white;
+    border: none;
+    
+    /* เทคนิคทำขอบมนเฉพาะด้านซ้าย (ให้ดูเหมือนโดนดูด) */
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    
+    box-shadow: -4px 4px 15px rgba(0,0,0,0.2); /* เงาปัดไปทางซ้าย */
+    z-index: 2000;        /* อยู่เหนือแผนที่ แต่ต่ำกว่า Modal */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* เด้งดึ๋งเวลา Hover */
+    font-size: 24px;
+}
+
+/* เอฟเฟกต์ตอนกดหรือเอาเมาส์ชี้ */
+.sticky-create-btn:hover {
+    width: 60px; /* ยื่นออกมามากขึ้น */
+    padding-right: 10px;
+    background: linear-gradient(135deg, #5f27cd, #6c5ce7);
+}
+
+.sticky-create-btn:active {
+    transform: translateY(-50%) scale(0.9); /* ยุบลงนิดนึงตอนกด */
+}
+
+/* (Optional) ถ้าอยากให้มีชีพจรเต้นเรียกร้องความสนใจ */
+@keyframes pulse-purple {
+    0% { box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(108, 92, 231, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(108, 92, 231, 0); }
+}
+.sticky-create-btn {
+    animation: pulse-purple 2s infinite;
+}
+
+
     </style>
 </head>
 <body>
@@ -5337,6 +5390,11 @@ function openUserDetail(targetUsername) {
         <button onclick="document.getElementById('admin-review-modal').classList.add('hidden')" style="width: 100%; margin-top: 10px; background: none; border: none; color: #666; cursor: pointer;">Close</button>
     </div>
 </div>
+
+
+	<button class="sticky-create-btn" onclick="openCreateModal()" title="Create New Post">
+    <i class="fas fa-plus"></i>
+</button>
 
 
 
