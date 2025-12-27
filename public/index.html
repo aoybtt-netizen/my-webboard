@@ -230,47 +230,7 @@
 
 
 
-/* 1. กล่องรวม: จัดให้เรียงจาก บนลงล่าง (Column) */
-.sticky-wrapper {
-    position: fixed;
-    top: 50%;
-    right: 0;
-    transform: translateY(-50%);
-    z-index: 2000;
-    
-    display: flex;
-    flex-direction: column; /* สำคัญ! ให้ป้ายอยู่บน ปุ่มอยู่ล่าง */
-    align-items: center;    /* จัดกึ่งกลางให้ตรงกัน */
-    pointer-events: none;
-}
 
-/* 2. ตัวป้ายข้อความ: เว้นระยะห่างจากปุ่มนิดนึง */
-#filter-container {
-	position: fixed;
-    right: 0;
-    background: #ff4757;
-    color: white;
-    padding: 4px 10px;
-    border-radius: 15px;
-    
-    /* สำคัญ! ดันพื้นล่างให้ห่างจากปุ่ม 5px (เหมือนยกลอยขึ้นไป) */
-    margin-bottom: 8px; 
-    margin-right: 5px; /* ขยับซ้ายนิดนึงไม่ให้ชิดขอบจอเกินไป */
-    
-    font-size: 0.8em;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    
-   /* display: none;  ซ่อนไว้ก่อน JS จะสั่งเปิดเอง 
-    pointer-events: auto;*/
-	
-	display: none; 
-    bottom: 80px; /* อยู่เหนือแถบเวลา (แถบเวลาอยู่ที่ 80px) */
-    height: 45px;
-    border: none; 
-    z-index: 2000; 
-    font-family: 'Kanit', sans-serif;
-}
 
 
 
@@ -5475,6 +5435,31 @@ function openUserDetail(targetUsername) {
 	<div id="filter-container">
     <span id="filter-status"></span>
 </div>
+
+
+	<div id="filter-container" style="display: none; 
+		position: fixed; 
+		bottom: 80px; 
+		right: 5px; background: 
+		linear-gradient(135deg, #2c3e50, #000000); 
+		color: #fff; 
+		padding: 10px 20px; 
+		border-radius: 50px; 
+		z-index: 3000; 
+		box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+		font-family: 'Kanit', sans-serif;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
+        <div>
+            <div style="font-size: 0.8rem; opacity: 0.8;"></div>
+            <div id="filter-status" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;"></div>
+        </div>
+    </div>
+</div>
+
+
+
+
 
 <button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
     <i class="fas fa-route"></i>
