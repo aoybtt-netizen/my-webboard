@@ -256,7 +256,7 @@
     padding-top: 0;
     padding-bottom: 0;
     
-    background: linear-gradient(135deg, #3498db, #85c1e9);
+    background: transparent;
     color: white;
     border: none;
     
@@ -872,7 +872,7 @@ async function saveZoneRefFromAdmin(targetAdmin) {
             
             // กรณี Error ให้แจ้งเตือนที่ป้ายด้วย
             if (statusElem) {
-                 containerElem.style.background = "#000000"; // สีแดง
+                 containerElem.style.background = "#00bcd4"; // สีแดง #000000
                  statusElem.innerText = `❌ Error`;
             }
         },
