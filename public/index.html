@@ -566,29 +566,7 @@
 		
 		let userSearchTimeout = null;
 		
-		// ควบคุมสถานะปุ่มและแสดงเวลานับถอยหลัง
-		function updateFilterButtonState() {
-			const btn = document.getElementById('geo-filter-btn');
-			if (!btn) return;
-
-			const now = Date.now();
-			const remainingTime = lastFilterTime + FILTER_COOLDOWN_MS - now;
-    
-			// ถ้ายังอยู่ในช่วง Cooldown
-			if (remainingTime > 0) {
-			const seconds = Math.ceil(remainingTime / 1000);
-			btn.disabled = true;
-			btn.innerText = `${seconds}s`; // แสดงเวลานับถอยหลัง
-			// ตรวจสอบสถานะปุ่มใหม่ใน 1 วินาที
-			setTimeout(updateFilterButtonState, 1000); 
-			} else {
-			// เมื่อ Cooldown จบ
-			btn.disabled = false;
-			// คืนข้อความปุ่มกลับตามภาษาที่เลือก
-			const originalText = translations[currentLang]['btn_checkin'];
-			btn.innerText = originalText;
-		}
-	}
+		
 		
 		function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             const R = 6371; // รัศมีโลก (กม.)
@@ -778,7 +756,6 @@ async function saveZoneRefFromAdmin(targetAdmin) {
 
     // [UPDATE TIMESTAMP] บันทึกเวลาที่กด
     lastFilterTime = now;
-    updateFilterButtonState(); // เริ่มนับถอยหลังทันที
 
     const t = translations[currentLang];
     // 1. ถามระยะทาง
@@ -1527,7 +1504,6 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
     loadPosts(); 
     
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
-    updateFilterButtonState();
 }
     
     // บันทึกสกุลเงินที่ผู้ใช้เลือก
