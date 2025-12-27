@@ -747,19 +747,23 @@ async function saveZoneRefFromAdmin(targetAdmin) {
     function setDistanceFilter() {
     const now = Date.now();
     
-    // [COOLDOWN CHECK] ตรวจสอบว่าคลิกเร็วเกินไปหรือไม่
+    // [COOLDOWN CHECK]
     if (now - lastFilterTime < FILTER_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((FILTER_COOLDOWN_MS - (now - lastFilterTime)) / 1000);
         alert(`❌ กรุณารอ ${remainingSeconds} วินาที ก่อนกดซ้ำ`);
         return;
     }
 
-    // [UPDATE TIMESTAMP] บันทึกเวลาที่กด
+    // [UPDATE TIMESTAMP]
     lastFilterTime = now;
 
     const t = translations[currentLang];
+    
     // 1. ถามระยะทาง
-    const input = prompt(t.prompt_distance, "50");
+    // ใส่ค่า Default เป็น 10 เพื่อความสะดวก
+    const input = prompt(t.prompt_distance, "10"); 
+    
+    // ถ้ากดยกเลิก ไม่ต้องทำอะไร
     if (input === null) return;
     
     const dist = parseFloat(input);
@@ -768,46 +772,56 @@ async function saveZoneRefFromAdmin(targetAdmin) {
         return;
     }
 
+    // --- ✨ [ส่วนที่ 1: โชว์ตัวเลขทันทีที่กรอกเสร็จ] ✨ ---
+    const statusElem = document.getElementById('filter-status');
+    const containerElem = document.getElementById('filter-container');
+    const kmText = currentLang === 'th' ? 'กม.' : 'km';
+
+    if (statusElem && containerElem) {
+        // แสดงกล่องขึ้นมา
+        containerElem.style.display = 'block'; 
+        // ใส่ข้อความ: เช่น "กำลังค้นหา 10 กม..."
+        statusElem.innerText = `⏳ ${dist} ${kmText}`; 
+    }
+    // -----------------------------------------------------
+
     // 2. ขอพิกัด GPS
     if (!navigator.geolocation) {
         alert(t.error_geo_not_supported);
         return;
     }
-
-    const statusElem = document.getElementById('filter-status');
-    if (statusElem) {
-        statusElem.innerText = t.status_locating;
-        statusElem.removeAttribute('data-i18n-key');
-    }
-    
+   
     navigator.geolocation.getCurrentPosition(
         (position) => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
-            const tempLocation = { lat, lng, name: `Filtered Location` }; // ใช้ชื่อชั่วคราว
+            const tempLocation = { lat, lng, name: `Filtered Location` };
             
             userPrimaryLocation = tempLocation;
             localStorage.setItem('userPrimaryLocation', JSON.stringify(tempLocation));
             
-            filterLocation = tempLocation; // ใช้สำหรับการกรอง
+            filterLocation = tempLocation;
             filterMaxDistance = dist;
             
-            // อัปเดตหน้าจอ
-            const kmText = currentLang === 'th' ? 'กม.' : 'km';
+            // --- ✨ [ส่วนที่ 2: อัปเดตเมื่อเจอพิกัดแล้ว] ✨ ---
             if (statusElem) {
-                statusElem.innerText = `${t.status_dist_prefix} ${dist} ${kmText})`;
-                statusElem.style.color = "#dc3545";
+                // เปลี่ยนเป็นสีเขียวหรือข้อความยืนยัน
+                containerElem.style.background = "#2ed573"; // เปลี่ยนป้ายเป็นสีเขียว
+                statusElem.innerText = `✅ ${dist} ${kmText}`; // โชว์ตัวเลขที่ใส่มา
             }
-            
-            // โหลดประกาศและกระทู้ใหม่ตามพิกัด/ฟิลเตอร์
+            // ------------------------------------------------
+
             fetchAndRenderAnnouncement(tempLocation);
             loadPosts(); 
         },
         (error) => {
             console.error(error);
             alert(`${t.error_geo_failed}: ${error.message}`);
+            
+            // กรณี Error ให้แจ้งเตือนที่ป้ายด้วย
             if (statusElem) {
-                statusElem.innerText = `(${t.error_geo_failed})`;
+                 containerElem.style.background = "#ff4757"; // สีแดง
+                 statusElem.innerText = `❌ Error`;
             }
         },
         { enableHighAccuracy: true }
@@ -5411,9 +5425,15 @@ function openUserDetail(targetUsername) {
 </div>
 
 
-	<button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
-    <i class="fas fa-route"></i>
-</button>
+	<div class="sticky-wrapper">
+    
+    <div id="filter-container"></div>
+
+    <button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
+        <i class="fas fa-route"></i>
+    </button>
+    
+</div>
 
 
 	<button class="sticky-create-btn" onclick="openCreateModal()" title="Create New Post">
