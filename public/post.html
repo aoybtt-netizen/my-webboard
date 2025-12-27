@@ -1963,34 +1963,34 @@ actionsEl.classList.remove('hidden');
     function replyOffer(accepted) {
     const ownerName = document.getElementById('post-author').innerText;
     
-    // --- [FIX] เช็คให้ชัวร์ว่าตัวแปรมีอยู่จริงก่อนดึง value ---
+    // 1. ดึงค่าเวลา (Logic: ถ้ามี Select ให้เอาค่ามา, ถ้าไม่มีให้เอาค่าที่ฝากไว้ในตัวแปร Global)
     let timeLimitVal = 0;
     const timeLimitSelect = document.getElementById('selectTimeLimit');
-    
-    if (timeLimitSelect) {
-        timeLimitVal = timeLimitSelect.value;
-    } else if (window.pendingTimeLimit) { 
-        // กรณีฝั่งคนรับงาน ให้ใช้ค่าที่ Server ส่งมาฝากไว้ใน window (ถ้าคุณมีเก็บไว้)
-        timeLimitVal = window.pendingTimeLimit;
+
+    if (timeLimitSelect && timeLimitSelect.offsetParent !== null) { 
+        // เช็คว่า Element มีอยู่จริงและ "มองเห็นอยู่" (ไม่ได้ถูกซ่อน)
+        timeLimitVal = parseInt(timeLimitSelect.value);
+    } else if (typeof window.pendingTimeLimit !== 'undefined') {
+        // ดึงจากตัวแปรที่เราเก็บไว้ตอน receive-offer
+        timeLimitVal = parseInt(window.pendingTimeLimit);
     }
+
+    console.log("⏱️ Sending timeLimit:", timeLimitVal); // Debug ดูค่าก่อนส่ง
 
     socket.emit('reply-offer', { 
         postId, 
         accepted, 
         viewer: myUsername, 
         owner: ownerName,
-        requireProximity: window.pendingOfferProximity, 
-        timeLimit: timeLimitVal 
+        requireProximity: window.pendingOfferProximity || false, 
+        timeLimit: timeLimitVal // ส่งค่าที่แปลงเป็น Int แล้ว
     });
     
-    // --- [FIX] สั่งปิดทุก Modal ที่เป็นไปได้ ---
+    // สั่งปิด Modal ทั้งหมด
     const offerModal = document.getElementById('offer-modal');
     const handoverModal = document.getElementById('handover-modal');
-    
     if (offerModal) offerModal.classList.add('hidden');
     if (handoverModal) handoverModal.classList.add('hidden');
-
-    console.log("Sent reply-offer, accepted:", accepted);
 }
 
 

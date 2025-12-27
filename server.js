@@ -304,6 +304,61 @@ async function isUserBanned(username) {
     return user ? user.isBanned : false;
 }
 
+
+async function processJobTimeout(postId, io) {
+    try {
+        const targetId = parseInt(postId);
+        console.log(`[Timeout Handler] ⏳ Processing timeout for Post ID: ${targetId}`);
+
+        const currentPost = await postsCollection.findOne({ id: targetId });
+
+        // เช็คว่าสถานะยังเป็น finished อยู่ (ยังไม่มีใครกดจบงานไปก่อน)
+        if (currentPost && currentPost.status === 'finished') {
+            console.log(`[Timeout Handler] 🚀 Closing post ${targetId} due to timeout...`);
+
+            // A. ปิดกระทู้ถาวร
+            await postsCollection.updateOne(
+                { id: targetId },
+                { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
+            );
+
+            // B. คืนสถานะผู้ใช้ทั้งคู่ให้เป็น idle (ว่างงาน)
+            await usersCollection.updateMany(
+                { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
+                { $set: { status: 'idle' } }
+            );
+
+            // C. ส่งคำสั่งเตะ (Kick)
+            const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
+            
+            // ส่งเข้าห้อง (Room)
+            io.to(targetId.toString()).emit('force-close-job', kickMsg);
+            
+            // ส่งรายตัว (Backup)
+            io.to(currentPost.author).emit('force-close-job', kickMsg);
+            if (currentPost.acceptedViewer) {
+                io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
+            }
+
+            // D. อัปเดตหน้า Lobby
+            io.emit('post-list-update', { postId: targetId, status: 'closed_permanently' });
+
+            console.log(`[Timeout Handler] ✅ Post ${targetId} closed successfully.`);
+        } else {
+            console.log(`[Timeout Handler] ℹ️ Post ${targetId} is already closed or status changed.`);
+        }
+
+        // ลบ Timer ออกจากหน่วยความจำ
+        if (activePostTimers[postId]) {
+            delete activePostTimers[postId];
+        }
+
+    } catch (err) {
+        console.error(`[Timeout Handler] ❌ Error processing timeout for ${postId}:`, err);
+    }
+}
+
+
 async function fetchLiveExchangeRates() {
     console.log('⏳ กำลังดึงอัตราแลกเปลี่ยนออนไลน์...');
     try {
@@ -2311,8 +2366,8 @@ io.on('connection', (socket) => {
             { $set: { 
                 isClosed: true, 
                 status: 'finished', 
-                acceptedViewer: viewer,
-                requireProximity: requireProximity || false,
+                acceptedViewer: viewer, 
+                requireProximity: requireProximity || false, 
                 jobDeadline: deadline // [NEW] บันทึกเวลาหมดอายุลง DB
             }}
         );
@@ -2325,21 +2380,21 @@ io.on('connection', (socket) => {
         
         io.emit('post-list-update', { postId: post.id, status: 'finished' });
         
-        // ส่งข้อมูลกลับไปหา Owner (เพิ่ม jobDeadline)
+        // ส่งข้อมูลกลับไปหา Owner
         io.to(owner).emit('deal-result', { 
             success: true, 
             viewer, 
             msg: `🎉 ${viewer} รับงานแล้ว!`,
             requireProximity: requireProximity,
-            jobDeadline: deadline // [NEW] ส่งเวลาจบไปให้ owner
+            jobDeadline: deadline 
         });
 
-        // ส่งข้อมูลกลับไปหา Viewer (เพิ่ม jobDeadline)
+        // ส่งข้อมูลกลับไปหา Viewer
         io.to(viewer).emit('deal-result', { 
             success: true, 
             msg: `✅ ยอมรับงานแล้ว!`, 
             requireProximity: requireProximity,
-            jobDeadline: deadline // [NEW] ส่งเวลาจบไปให้ viewer เริ่มนับถอยหลัง
+            jobDeadline: deadline 
         });
 
         // ส่งพิกัดล่าสุด
@@ -2355,54 +2410,17 @@ io.on('connection', (socket) => {
             // 1. เคลียร์ Timer เก่าทิ้งก่อน (ถ้ามี)
             if (activePostTimers[postId]) clearTimeout(activePostTimers[postId]);
 
-            // 2. เก็บ Timer ใหม่ใส่ตัวแปร activePostTimers
-            activePostTimers[postId] = setTimeout(async () => {
-                try {
-                    const targetId = parseInt(postId); // ใช้ตัวแปรใหม่ให้ชัวร์
-                    console.log(`[Timer Debug] ⏰ Checking timeout for post: ${targetId}`);
-                    const currentPost = await postsCollection.findOne({ id: targetId });
-                    
-                    if (currentPost && currentPost.status === 'finished') {
-                        console.log(`[Timer Debug] 🚀 Post is still 'finished'. Proceeding to close.`);
-
-                        await postsCollection.updateOne(
-                            { id: targetId },
-                            { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
-                        );
-
-                        await usersCollection.updateMany(
-                            { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
-                            { $set: { status: 'idle' } }
-                        );
-
-                        const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
-                        
-                        // ส่งแจ้งเตือน 3 ทาง
-                        io.to(targetId.toString()).emit('force-close-job', kickMsg); 
-                        io.to(currentPost.author).emit('force-close-job', kickMsg);
-                        if (currentPost.acceptedViewer) {
-                            io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
-                        }
-
-                        io.emit('post-list-update', { postId: targetId, status: 'closed_permanently' });
-                        console.log(`[Timer Debug] ✅ Force-close events emitted for post ${targetId}`);
-                    } else {
-                        console.log(`[Timer Debug] ℹ️ Post ${targetId} was already closed. No action taken.`);
-                    }
-                    
-                    // ลบออกจากรายการเมื่อทำงานเสร็จ
-                    delete activePostTimers[postId];
-
-                } catch (err) {
-                    console.error("[Timer Debug] ❌ Error in setTimeout:", err);
-                }
+            // 2. ตั้ง Timer ใหม่ โดยเรียกใช้ฟังก์ชันกลาง processJobTimeout
+            activePostTimers[postId] = setTimeout(() => {
+                processJobTimeout(postId, io); // <--- เรียกใช้ตรงนี้
             }, duration);
-}
+        }
 
     } else {
         io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} ปฏิเสธ` });
     }
 });
+
 
 socket.on('request-extend-time', async (data) => {
     const { postId, minutes } = data;
@@ -2431,68 +2449,28 @@ socket.on('reply-extension-request', async (data) => {
         // เวลาที่เหลืออยู่จริง ณ ตอนนี้ (Time Remaining + Added Time)
         const timeRemaining = newDeadline - Date.now();
 
+        console.log(`[Extension] Post ${postId} extended by ${minutes}m. New remaining: ${timeRemaining/1000}s`);
+
         // 1. อัปเดต DB
         await postsCollection.updateOne(
             { id: parseInt(postId) },
             { $set: { jobDeadline: newDeadline } }
         );
 
-        // 2. ⚠️ ยกเลิก Timer เก่า แล้วเริ่มนับใหม่ ⚠️
+        // 2. ⚠️ ยกเลิก Timer เก่าก่อนเสมอ ⚠️
         if (activePostTimers[postId]) {
             clearTimeout(activePostTimers[postId]);
-            console.log(`🔄 Timer reset for post ${postId}. Added ${minutes} mins.`);
+            console.log(`🔄 Timer reset for post ${postId}.`);
         }
 
+        // 3. ตั้ง Timer ใหม่ถ้าเวลายังเหลือ (เรียกใช้ฟังก์ชันกลาง processJobTimeout)
         if (timeRemaining > 0) {
-            // ตั้ง Timer ใหม่ (ระเบิดเวลาลูกใหม่)
-            activePostTimers[postId] = setTimeout(async () => {
-                try {
-                    const targetId = parseInt(postId);
-                    console.log(`[Ext-Timer Debug] ⏰ Extended time is up for post: ${targetId}`);
-                    
-                    const currentPost = await postsCollection.findOne({ id: targetId });
-                    
-                    // เช็คว่างานยังไม่จบ (ยังเป็น finished อยู่)
-                    if (currentPost && currentPost.status === 'finished') {
-                        console.log(`[Ext-Timer Debug] 🚀 Post is still 'finished'. Closing now.`);
-
-                        // A. ปิดกระทู้ถาวร
-                        await postsCollection.updateOne(
-                            { id: targetId },
-                            { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
-                        );
-
-                        // B. คืนสถานะผู้ใช้
-                        await usersCollection.updateMany(
-                            { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
-                            { $set: { status: 'idle' } }
-                        );
-
-                        const kickMsg = { message: '⛔ หมดเวลาส่งงาน (หลังต่อเวลา)! ระบบได้ปิดกระทู้อัตโนมัติ' };
-
-                        // C. ส่งคำสั่งเตะ 3 ทาง (เพื่อความชัวร์)
-                        io.to(targetId.toString()).emit('force-close-job', kickMsg); 
-                        io.to(currentPost.author).emit('force-close-job', kickMsg);
-                        if (currentPost.acceptedViewer) {
-                            io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
-                        }
-
-                        // D. อัปเดตหน้า Lobby
-                        io.emit('post-list-update', { postId: targetId, status: 'closed_permanently' });
-                        
-                        console.log(`[Ext-Timer Debug] ✅ Force-close events emitted for post ${targetId}`);
-                    }
-                    
-                    // ลบ Timer ออกจาก List
-                    delete activePostTimers[postId];
-
-                } catch (err) {
-                    console.error("[Ext-Timer Debug] ❌ Error in Extended Timeout:", err);
-                }
+            activePostTimers[postId] = setTimeout(() => {
+                processJobTimeout(postId, io); // <--- เรียกใช้ตัวเดิม! มั่นใจได้ว่าปิดงานแน่นอน
             }, timeRemaining);
         }
 
-        // 3. แจ้งทุกคนในห้องให้ปรับเลขเวลาบนหน้าจอ (ส่ง Deadline ใหม่ไปให้ Client เริ่มนับ)
+        // 4. แจ้งทุกคนในห้องให้ปรับเลขเวลาบนหน้าจอ
         io.to(postId.toString()).emit('time-extended-success', { 
             newDeadline, 
             addedMinutes: minutes 
