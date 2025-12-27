@@ -857,7 +857,7 @@ async function saveZoneRefFromAdmin(targetAdmin) {
             if (statusElem) {
                 // เปลี่ยนเป็นสีเขียวหรือข้อความยืนยัน
                 containerElem.style.background = "#2ed573"; // เปลี่ยนป้ายเป็นสีเขียว
-                statusElem.innerText = `✅ ${dist} ${kmText}`; // โชว์ตัวเลขที่ใส่มา
+                statusElem.innerText = ` ${dist} ${kmText}`; // โชว์ตัวเลขที่ใส่มา
             }
             // ------------------------------------------------
 
@@ -1030,12 +1030,12 @@ async function updateZoneBackground(lat, lng) {
         'admin_error_topic': 'เกิดข้อผิดพลาด: ',
         'confirm_delete_post': 'คุณแน่ใจหรือไม่ที่จะลบกระทู้นี้?',
 
-        //'btn_checkin': '📍 เช็คระยะทาง',
+        'btn_checkin': '📍 เช็คระยะทาง',
         'status_all': '(แสดงทั้งหมด)',
         'prompt_distance': 'ระบุระยะทางรอบตัวคุณที่ต้องการเห็นกระทู้ (กิโลเมตร):',
         'alert_invalid_num': 'กรุณาระบุตัวเลขที่ถูกต้อง',
         'status_locating': 'กำลังค้นหาตำแหน่ง...',
-        'status_dist_prefix': '(ระยะ',
+        //'status_dist_prefix': '(ระยะ',
         'msg_no_post_range': '❌ ไม่พบกระทู้ในระยะ',
         'btn_show_all': 'แสดงทั้งหมด',
         'error_geo_not_supported': 'Browser นี้ไม่รองรับการระบุตำแหน่ง',
@@ -1197,12 +1197,12 @@ async function updateZoneBackground(lat, lng) {
         'confirm_delete_post': 'Are you sure you want to delete this post?',
 
         // ส่วนระบบเช็คอิน
-        //'btn_checkin': '📍 Set Distance Filter',
+        'btn_checkin': '📍 Set Distance Filter',
         'status_all': '(Show All)',
         'prompt_distance': 'Enter distance radius (km):',
         'alert_invalid_num': 'Please enter a valid number.',
         'status_locating': 'Locating...',
-        'status_dist_prefix': '(Radius',
+        //'status_dist_prefix': '(Radius',
         'msg_no_post_range': '❌ No posts found within',
         'btn_show_all': 'Show All',
         'error_geo_not_supported': 'Browser does not support Geolocation',
@@ -1395,7 +1395,7 @@ if (homeBtn) {
             filterMaxDistance = DEFAULT_DISTANCE_KM;
             
             const kmText = currentLang === 'th' ? 'km.)' : 'km)'; 
-            const statusPrefix = t['status_dist_prefix'] || '';
+            //const statusPrefix = t['status_dist_prefix'] || '';
 
             if (statusElem) {
                 statusElem.innerText = ` ${t['geo_display_name'] || 'ตำแหน่งหลัก'} ${statusPrefix} ${DEFAULT_DISTANCE_KM} ${kmText}`;
