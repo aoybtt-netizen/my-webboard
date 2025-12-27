@@ -1141,7 +1141,7 @@ function sendFloatingComment() {
             
         });
 
-        socket.on('access-granted', ({ post, isAdmin }) => {
+    socket.on('access-granted', ({ post, isAdmin }) => {
     // ยังไม่แสดงผลทันที ให้เก็บข้อมูลไว้ก่อน
     currentPost = post; 
     isProximityRequired = post.requireProximity || false;
@@ -1161,6 +1161,10 @@ function sendFloatingComment() {
         if (post.jobDeadline && post.status === 'finished') {
             startCountdown(post.jobDeadline);
         }
+
+        // 🚀 [NEW] เช็คปุ่มขอเพิ่มเวลา (เผื่อเจ้าของมาดู หรือเป็น Admin)
+        updateExtendButtonVisibility(); 
+
         return; 
     }
 
@@ -1201,15 +1205,16 @@ function sendFloatingComment() {
             displayMap(post.location);
 
             // --- จุดที่ 2: สำหรับผู้รับงาน/คนทั่วไป (ที่ผ่านการเช็ค GPS แล้ว) ---
-            // [NEW] แก้ไขชื่อตัวแปรจาก data.post เป็น post
             if (post.jobDeadline && post.status === 'finished') {
                 startCountdown(post.jobDeadline);
             }
+
+            // 🚀 [NEW] เช็คปุ่มขอเพิ่มเวลา (จุดสำคัญ: ผู้รับงานจะเห็นปุ่มตรงนี้)
+            updateExtendButtonVisibility();
         }, 
         (error) => {
-            // ❌ กรณีล้มเหลว
+            // ... (Error handling เดิมของคุณ) ...
             console.warn('Geolocation blocked:', error.message);
-            
             let msgKey = 'error_geo_required';
             if (error.code === 1) msgKey = 'error_geo_denied';
 
@@ -1217,7 +1222,6 @@ function sendFloatingComment() {
             document.querySelector('.container').style.display = 'none'; 
 
             showNotification(t[msgKey], 'fas fa-user-lock', 4000);
-            
             setTimeout(() => { location.href = '/'; }, 3500);
         },
         {
@@ -1225,7 +1229,7 @@ function sendFloatingComment() {
             timeout: 10000,
             maximumAge: 0
         }
-    ); // ปิดวงเล็บ navigator.geolocation
+    ); 
 });
 
         socket.on('access-denied', (reason) => {
@@ -2000,22 +2004,30 @@ actionsEl.classList.remove('hidden');
     let message = '';
     let icon = '';
     
-    // (เพิ่ม data.viewer เผื่อไว้กรณี Server ส่งมาชื่อนี้)
     const viewerName = data.viewer || data.targetViewer || t['generic_viewer_name'];
 
     if (data.success) {
         message = t['notif_deal_accepted'].replace('[VIEWER]', viewerName);
         icon = 'fas fa-check-circle';
         
-        // [NEW] เริ่มนับถอยหลังทันที (แสดงผลชั่วคราวก่อนรีโหลด)
+        // [NEW] เริ่มนับถอยหลังทันที
         if (data.jobDeadline) {
             startCountdown(data.jobDeadline);
+
+            // 🚀 [NEW] อัปเดตสถานะโพสต์ในตัวแปรชั่วคราว เพื่อให้ปุ่มรู้ว่างานเริ่มแล้ว
+            if (typeof currentPost !== 'undefined') {
+                currentPost.status = 'finished';
+                currentPost.acceptedViewer = viewerName; // ใช้ชื่อคนที่รับงาน
+            }
+
+            // 🚀 [NEW] สั่งเช็คปุ่มทันที (ปุ่มจะเด้งขึ้นมาเลยไม่ต้องรอรีโหลด)
+            updateExtendButtonVisibility();
         }
         
         // แสดงการแจ้งเตือนก่อน แล้วค่อยโหลดหน้าใหม่
         showNotification(message, icon, 3000);
         setTimeout(() => {
-            location.reload(); // เมื่อโหลดใหม่ ต้องมั่นใจว่า event access-granted ดึงเวลามาด้วย
+            location.reload(); 
         }, 1500);
 
     } else {
@@ -2102,6 +2114,23 @@ actionsEl.classList.remove('hidden');
     countdownInterval = setInterval(updateDisplay, 1000);
 }
 
+
+function updateExtendButtonVisibility() {
+    const btn = document.getElementById('btn-extend-time');
+    
+    // ถ้ายังโหลดไม่เสร็จ หรือไม่มีปุ่ม ให้ข้าม
+    if (!btn || typeof currentPost === 'undefined' || !currentPost) return;
+
+    // เงื่อนไข: เป็นคนรับงาน AND งานสถานะ finished
+    const isWorker = (myUsername === currentPost.acceptedViewer);
+    const isJobRunning = (currentPost.status === 'finished');
+
+    if (isWorker && isJobRunning) {
+        btn.style.display = 'flex'; 
+    } else {
+        btn.style.display = 'none';
+    }
+}
 
 
 
