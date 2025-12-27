@@ -2471,10 +2471,23 @@ socket.on('reply-extension-request', async (data) => {
         }
 
         // 4. แจ้งทุกคนในห้องให้ปรับเลขเวลาบนหน้าจอ
-        io.to(postId.toString()).emit('time-extended-success', { 
+        const updateMsg = { 
             newDeadline, 
             addedMinutes: minutes 
-        });
+        };
+
+        // ทางที่ 1: ส่งเข้าห้อง (เผื่อคนอื่นดูอยู่)
+        io.to(postId.toString()).emit('time-extended-success', updateMsg);
+
+        // ทางที่ 2: ส่งหาเจ้าของงานโดยตรง (User ID)
+        io.to(post.author).emit('time-extended-success', updateMsg);
+
+        // ทางที่ 3: ส่งหาคนรับงานโดยตรง (User ID)
+        if (post.acceptedViewer) {
+            io.to(post.acceptedViewer).emit('time-extended-success', updateMsg);
+        }
+
+        console.log(`📡 Broadcasted time extension to Post:${postId}, Owner:${post.author}, Viewer:${post.acceptedViewer}`);
 
     } else {
         // ถ้าไม่อนุมัติ แจ้งกลับคนขอ
