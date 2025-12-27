@@ -230,7 +230,50 @@
 
 
 
+/* 1. กล่องรวม: จัดให้เรียงจาก บนลงล่าง (Column) */
+.sticky-wrapper {
+    position: fixed;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 2000;
+    
+    display: flex;
+    flex-direction: column; /* สำคัญ! ให้ป้ายอยู่บน ปุ่มอยู่ล่าง */
+    align-items: center;    /* จัดกึ่งกลางให้ตรงกัน */
+    pointer-events: none;
+}
 
+/* 2. ตัวป้ายข้อความ: เว้นระยะห่างจากปุ่มนิดนึง */
+#filter-container {
+	position: fixed;
+    right: 0;
+    top: 20%;         
+    
+    width: 50px;
+    height: 25px;
+    
+    /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
+    background: linear-gradient(135deg, #3498db, #85c1e9);
+    color: white;
+    border: none;
+    
+    /* ขอบมนด้านซ้าย */
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    
+    box-shadow: -4px 4px 15px rgba(0,0,0,0.2);
+    z-index: 2000;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 24px;
+}
 
 
 
@@ -5435,31 +5478,6 @@ function openUserDetail(targetUsername) {
 	<div id="filter-container">
     <span id="filter-status"></span>
 </div>
-
-
-	<div id="filter-container" style="display: none; 
-		position: fixed; 
-		bottom: 80px; 
-		right: 5px; background: 
-		linear-gradient(135deg, #2c3e50, #000000); 
-		color: #fff; 
-		padding: 10px 20px; 
-		border-radius: 50px; 
-		z-index: 3000; 
-		box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
-		font-family: 'Kanit', sans-serif;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <i class="fas fa-clock fa-spin" style="color: #f1c40f;"></i>
-        <div>
-            <div style="font-size: 0.8rem; opacity: 0.8;"></div>
-            <div id="filter-status" style="font-size: 1.2rem; font-weight: bold; color: #f1c40f;"></div>
-        </div>
-    </div>
-</div>
-
-
-
-
 
 <button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
     <i class="fas fa-route"></i>
