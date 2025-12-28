@@ -1531,27 +1531,7 @@ window.openGoogleMapsApp = function() {
         // ใช้ URL มาตรฐานสำหรับการวาดเส้นทาง (Embed)
         initialMapUrl = `https://www.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&output=embed`;
         
-        viewerText = `<br><div position: fixed;
-				top: 0px;
-				right: 50%px;
-    
-				width: 200px;
-				height: 30px;
-				color: white;
-				border: none;
-    
-				border-top-left-radius: 0px;
-				border-bottom-left-radius: 5px;
-				border-top-right-radius: 0;
-				border-bottom-right-radius: 5px;
-  
-				background: rgba(255, 255, 255, 0.15);
-				backdrop-filter: blur(5px);
-				box-shadow: none; 
-				border: 1px solid rgba(255, 255, 255, 0.3);
-  
-				color:#28a745;
-				font-size:0.9em;">📏 Distance: ${distanceKm} km.</div>`;
+        viewerText = `<br><div style="color:#28a745; font-size:0.9em; margin-top:5px;">📏 Distance: ${distanceKm} km.</div>`;
         
         if (navButton) navButton.style.display = 'block';
 
@@ -1625,8 +1605,27 @@ window.openGoogleMapsApp = function() {
         mapUrl = `https://maps.google.com/maps?saddr=${v_lat},${v_lng}&daddr=${p_lat},${p_lng}&output=embed&t=m&z=14`;
         
         viewerText = `<br>
-                      <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
-                          <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
+                      <div style="position: fixed;
+  top: 0px;
+  right: 50%px;
+    
+  width: 200px;
+  height: 30px;
+  color: white;
+  border: none;
+    
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 5px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 5px;
+  
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(5px);
+  box-shadow: none; 
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  
+  color:#28a745;
+  font-size:0.9em;">
                               📏 Distance: ${distanceKm} Km.
                           </span>
                       </div>`;
