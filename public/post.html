@@ -1605,27 +1605,8 @@ window.openGoogleMapsApp = function() {
         mapUrl = `https://maps.google.com/maps?saddr=${v_lat},${v_lng}&daddr=${p_lat},${p_lng}&output=embed&t=m&z=14`;
         
         viewerText = `<br>
-                      <div style="position: fixed;
-  top: 0px;
-  right: 50%px;
-    
-  width: 200px;
-  height: 30px;
-  color: white;
-  border: none;
-    
-  border-top-left-radius: 0px;
-  border-bottom-left-radius: 5px;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 5px;
-  
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(5px);
-  box-shadow: none; 
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  
-  color:#28a745;
-  font-size:0.9em;">
+                      <div style="background:#e9f7ef; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #28a745; font-size: 0.9rem;">
+                          <span style="color:#d63384; font-weight:bold; font-size:1.1em;">
                               📏 Distance: ${distanceKm} Km.
                           </span>
                       </div>`;
