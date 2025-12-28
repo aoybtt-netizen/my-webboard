@@ -367,42 +367,12 @@
 
 
 
-.close-post2-btn {
-  position: fixed;
-  bottom: calc(20%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
-  left: 0;
-  transform: translateY(-50%);
 
-  width: 60px;
-  height: 40px;
-
-  /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
-  background: linear-gradient(135deg, #3498db, #85c1e9);
-  color: white;
-  border: none;
-
-  /* ขอบมนด้านซ้าย */
-  border-top-right-radius: 30px;
-  border-bottom-right-radius: 30px;
-  border-top-left-radius: 0px;
-  border-bottom-left-radius: 0px;
-
-  /*box-shadow: -4px 4px 15px rgba(0, 0, 0, 0.2);*/
-  z-index: 2000;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  font-size: 24px;
-  animation: rdis-sig 3s infinite;
-}
 
 
 	.sticky-handover-btn {
   position: fixed;
-  top: calc(40%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+  bottom: calc(50%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
   left: 0;
   transform: translateY(-50%);
 
@@ -474,6 +444,38 @@
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   font-size: 24px;
+}
+
+	.close-post2-btn {
+  position: fixed;
+  bottom: calc(30%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+  left: 0;
+  transform: translateY(-50%);
+
+  width: 60px;
+  height: 40px;
+
+  /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
+  background: linear-gradient(135deg, #3498db, #85c1e9);
+  color: white;
+  border: none;
+
+  /* ขอบมนด้านซ้าย */
+  border-top-right-radius: 30px;
+  border-bottom-right-radius: 30px;
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+
+  /*box-shadow: -4px 4px 15px rgba(0, 0, 0, 0.2);*/
+  z-index: 2000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-size: 24px;
+  animation: rdis-sig 3s infinite;
 }
 
 
@@ -556,7 +558,7 @@
                 <i class="fas fa-handshake"></i>
             </button>
             
-            <button id="restart-btn" class="sticky-kick-btn" onclick="restartPost()" 
+            <button id="restart-btn" class="sticky-kick-btn" onclick="restartPost()" >
                 <i class="fas fa-redo"></i>
             </button>
         </div>
