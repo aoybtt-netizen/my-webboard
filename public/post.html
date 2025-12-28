@@ -1280,14 +1280,13 @@ function sendLocationInChat() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
-            // ✅ แก้ใหม่: ใช้ลิงก์ Google Maps ของจริง + ใส่รหัสลับ (&share=yes)
-            // สังเกตเครื่องหมาย $ หน้าปีกกา ต้องมีนะครับ
+            // ✅ แก้ไข: ใส่ $ หน้า {lat} ให้ครบ และใช้ URL มาตรฐาน Google Maps
             const mapLink = `https://www.google.com/maps?q=${lat},${lng}&share=yes`;
             
             input.value = mapLink; 
             sendFloatingComment(); 
 
-            // ปลดล็อก
+            // ปลดล็อกช่องพิมพ์
             input.disabled = false;
             input.placeholder = originalPlaceholder;
         },
@@ -1304,25 +1303,20 @@ function sendLocationInChat() {
 	function formatMessageOnlyMaps(text) {
     if (!text) return "";
 
-    // 1. แปลงอักขระพิเศษ (เพื่อความปลอดภัย)
+    // 1. ตรวจสอบก่อนว่ามี "รหัสลับ" ของเราไหม (ตรวจสอบก่อนแปลงค่า &)
+    if (text.includes("&share=yes")) {
+        return `<a href="${text}" target="_blank" style="display: inline-block; background: #ff4757; color: white; padding: 5px 12px; border-radius: 15px; text-decoration: none; font-weight: bold; font-size: 0.85em; margin-top: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <i class="fas fa-map-marker-alt"></i> เปิดแผนที่ (Google Maps)
+                </a>`;
+    }
+
+    // 2. ถ้าไม่ใช่ทางเราแชร์ ก็แปลงตัวอักษรพิเศษเพื่อความปลอดภัยตามปกติ
     let safeText = text.replace(/&/g, "&amp;")
                        .replace(/</g, "&lt;")
                        .replace(/>/g, "&gt;")
                        .replace(/"/g, "&quot;")
                        .replace(/'/g, "&#039;");
 
-    // 2. ✅ แก้ใหม่: ตรวจสอบหารหัสลับ "&share=yes" 
-    // ถ้าเจอคำนี้ แสดงว่าเป็น Location ที่เราส่งเอง -> แปลงเป็นปุ่ม
-    if (safeText.includes("&share=yes")) {
-        // ถอดรหัสลับออกตอนแสดงผล (เพื่อให้ลิงก์สะอาด) แต่วางลิงก์เต็มใน href ได้เลย
-        // (Google Maps ไม่สนใจ parameter แปลกปลอม มันจะเปิดแผนที่ได้ปกติครับ)
-        
-        return `<a href="${safeText}" target="_blank" style="display: inline-block; background: #ff4757; color: white; padding: 5px 10px; border-radius: 15px; text-decoration: none; font-weight: bold; font-size: 0.9em; margin-top: 2px;">
-                    <i class="fas fa-map-marker-alt"></i> เปิดแผนที่ (Google Maps)
-                </a>`;
-    }
-
-    // 3. ถ้าเป็นลิงก์อื่น (YouTube, หรือ Maps ที่ก๊อปมาเองจะไม่มี &share=yes) -> เป็นข้อความธรรมดา
     return safeText;
 }
 
