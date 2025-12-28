@@ -1,12 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-	<script>
-	// เริ่มใช้งาน vConsole
-	var vConsole = new window.VConsole();
-	</script>
-	
 	
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
@@ -565,37 +559,27 @@
     </div>
     <div id="floating-chat-messages"></div>
     
-    <div id="floating-chat-input-area" style="display: flex; align-items: flex-end; padding: 10px;">
-        <div style="display: flex; flex-direction: column; gap: 5px; margin-right: 8px; align-items: center;">
-            <div style="display: flex; gap: 5px;">
-                <button type="button" onclick="sendLocationInChat()" 
-                        style="background: #ff4757; color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center;" 
-                        title="แชร์ตำแหน่ง">
-                    <i class="fas fa-map-marker-alt" style="font-size: 12px;"></i>
-                </button>
-                <button type="button" onclick="document.getElementById('chat-image-input').click()" 
-                        style="background: #f1c40f; color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center;" 
-                        title="เลือกรูปภาพ">
-                    <i class="fas fa-plus" style="font-size: 12px;"></i>
-                </button>
-            </div>
-            
-            <button id="btn-call-author-chat" onclick="startCall(currentPostAuthor)" 
-                    style="background: #2ecc71; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center;" 
-                    title="โทรหาเจ้าของโพสต์">
-                <i class="fas fa-phone-alt"></i>
-            </button>
-        </div>
+    <div id="floating-chat-input-area">
+    <button id="btn-call-author-chat" 
+            onclick="startCall(currentPostAuthor)" 
+            style="background: #2ecc71; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-right: 5px;"
+            title="โทรหาเจ้าของโพสต์">
+        <i class="fas fa-phone-alt"></i>
+    </button>
 
-        <input type="file" id="chat-image-input" accept="image/*" style="display: none;" onchange="handleChatImageSelect(this)">
+    <button type="button" 
+            onclick="sendLocationInChat()"
+            style="background: #ff4757; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-right: 5px;"
+            title="แชร์ตำแหน่งปัจจุบัน">
+        <i class="fas fa-map-marker-alt"></i>
+    </button>
 
-        <input type="text" id="floating-comment-input" placeholder="พิมพ์ข้อความ..." style="flex: 1; height: 40px; border-radius: 20px; border: 1px solid #ddd; padding: 0 15px; margin-bottom: 2px;">
-        
-        <button type="button" onclick="sendFloatingComment()" 
-                style="background: #007bff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; flex-shrink: 0; margin-left: 5px;">
-            <i class="fas fa-paper-plane"></i>
-        </button>
-    </div>
+    <input type="text" id="floating-comment-input" placeholder="comment...">
+    
+    <button type="button" onclick="sendFloatingComment()" style="background: #007bff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; flex-shrink: 0; margin-left: 5px;">
+        <i class="fas fa-paper-plane"></i>
+    </button>
+</div>
 </div>
 
 
@@ -1541,100 +1525,6 @@ window.openImageViewer = function(src) {
 // ฟังก์ชันปิดรูปภาพ
 window.closeImageViewer = function() {
     document.getElementById('image-viewer-modal').classList.add('hidden');
-}
-
-// ฟังก์ชันสำหรับเลือกรูปภาพและบีบอัดก่อนส่ง
-function handleChatImageSelect(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    // แสดงสถานะกำลังโหลด
-    const chatInput = document.getElementById('floating-comment-input');
-    const originalPlaceholder = chatInput.placeholder;
-    chatInput.placeholder = "⌛ กำลังย่อขนาดรูปภาพ...";
-    chatInput.disabled = true;
-
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = function(event) {
-        const img = new Image();
-        img.src = event.target.result;
-        img.onload = function() {
-            // ตั้งค่าบีบอัด
-            const maxWidth = 800; // ความกว้างสูงสุด
-            const quality = 0.6;   // คุณภาพ (0.6 = 60%)
-            
-            let width = img.width;
-            let height = img.height;
-
-            // คำนวณสัดส่วนรูปภาพ
-            if (width > maxWidth) {
-                height = (height * maxWidth) / width;
-                width = maxWidth;
-            }
-
-            // ใช้ Canvas ในการวาดรูปใหม่ (บีบอัด)
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-
-            // แปลงเป็น Base64 ที่บีบอัดแล้ว
-            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
-            
-            // ส่งรูปภาพไปยังแชททันที
-            sendImageMessage(compressedDataUrl);
-
-            // รีเซ็ตสถานะ
-            chatInput.disabled = false;
-            chatInput.placeholder = originalPlaceholder;
-            input.value = ""; // ล้างค่า input เพื่อให้เลือกรูปเดิมซ้ำได้
-        };
-    };
-}
-
-// ฟังก์ชันส่งข้อความตัวอักษรจากแชทลอย
-async function sendFloatingComment() {
-    const input = document.getElementById('floating-comment-input');
-    const content = input.value.trim();
-    if (!content) return;
-
-    try {
-        const response = await fetch(`/api/posts/${postId}/comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: content }) // ส่งแค่ content ไป server จะจัดการชื่อคนส่งเอง
-        });
-
-        if (response.ok) {
-            input.value = ''; // ล้างช่องพิมพ์เมื่อส่งสำเร็จ
-        }
-    } catch (err) {
-        console.error("ส่งข้อความล้มเหลว:", err);
-    }
-}
-
-// ฟังก์ชันส่งรูปภาพจากแชทลอย
-async function sendImageMessage(base64Data) {
-    if (!base64Data) return;
-
-    try {
-        const response = await fetch(`/api/posts/${postId}/comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                content: "", // ส่งเป็นค่าว่างกรณีส่งแค่รูป
-                imageUrl: base64Data 
-            })
-        });
-
-        if (!response.ok) {
-            alert("ไม่สามารถส่งรูปภาพได้");
-        }
-    } catch (err) {
-        console.error("ส่งรูปภาพล้มเหลว:", err);
-    }
 }
 
 window.openGoogleMapsApp = function() {
@@ -2668,40 +2558,33 @@ function updateExtendButtonVisibility() {
     }, 2000);
 });
 
-    socket.on('new-comment', (data) => {
+    socket.on('new-comment', (data) => { 
     if (data.postId == postId) {
-        // --- 1. อัปเดตรายการคอมเมนต์หลัก (ด้านล่างโพสต์) ---
-        const mainList = document.getElementById('comments-list');
-        if (mainList) {
-            // ใช้ฟังก์ชันสร้าง HTML เดิมของคุณ (เช่น createCommentHTML)
-            mainList.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, mainList.children.length));
-            mainList.scrollTop = mainList.scrollHeight;
+        // 1. อัปเดตรายการคอมเมนต์หลัก
+        const list = document.getElementById('comments-list');
+        if (list) {
+            list.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, list.children.length));
+            list.scrollTop = list.scrollHeight;
         }
 
-        // --- 2. อัปเดตในหน้าต่างแชทลอย (Floating Chat) ---
+        // 2. อัปเดตในหน้าต่างแชทลอย
         const floatingList = document.getElementById('floating-chat-messages');
         if (floatingList) {
-            const imageHtml = data.comment.imageUrl ? 
-                `<div style="margin-top:5px;">
-                    <img src="${data.comment.imageUrl}" 
-                         style="max-width:100%; border-radius:8px; cursor:pointer;" 
-                         onclick="openImageViewer('${data.comment.imageUrl}')">
-                </div>` : '';
-
-            // ใช้ฟังก์ชันตรวจสอบ Map ที่เราทำกันก่อนหน้านี้
+            const hasImage = data.comment.imageUrl ? ' <i class="fas fa-image"></i>' : '';
+            
+            // เรียกใช้ฟังก์ชันแปลงข้อความ
             const displayContent = formatMessageOnlyMaps(data.comment.content); 
 
             const html = `
                 <div style="background:white; padding:8px; border-radius:10px; font-size:0.85em; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom:5px;">
                     <strong style="color:#007bff;">${data.comment.author}:</strong> 
-                    <div>${displayContent}</div>
-                    ${imageHtml}
+                    <span>${displayContent}${hasImage}</span>
                 </div>`;
             
             floatingList.insertAdjacentHTML('beforeend', html);
             floatingList.scrollTop = floatingList.scrollHeight;
         }
-    }
+    } 
 });
 
         function goBack() {
