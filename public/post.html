@@ -2059,68 +2059,123 @@ function compressImage(file, quality = 0.7, maxWidth = 1200) {
 
 
 
-        async function sendComment() {
-    const input = document.getElementById('comment-input');
+// ฟังก์ชันช่วยย่อรูปภาพ
+function compressImage(file, quality = 0.7, maxWidth = 1024) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+                // คำนวณขนาดใหม่
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // แปลงกลับเป็นไฟล์ (ใช้นามสกุลเดิม หรือบังคับ .jpg)
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error('Canvas is empty'));
+                        return;
+                    }
+                    const newFile = new File([blob], file.name, {
+                        type: "image/jpeg",
+                        lastModified: Date.now(),
+                    });
+                    resolve(newFile);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+}
+
+
+
+
+    async function sendComment() { 
+    const contentInput = document.getElementById('comment-input');
+    const content = contentInput.value.trim();
     const fileInput = document.getElementById('comment-image');
-    const fileNameDisplay = document.getElementById('file-name-display');
-    const content = input.value.trim();
+    const imageFile = fileInput.files[0];
 
-    // ตรวจสอบว่ามีข้อความหรือรูปภาพไหม
-    if (!content && fileInput.files.length === 0) return;
+    // Check ว่างเปล่า
+    if(!content && !imageFile) {
+        showNotification("Please enter text or select an image.", 'fas fa-exclamation-circle', 2000);
+        return;
+    }
+    
+    // ล็อกปุ่มหรือช่องพิมพ์ระหว่างส่ง
+    contentInput.disabled = true;
+    if(fileInput) fileInput.disabled = true; // ล็อกปุ่มเลือกรูปด้วย
 
-    // เปลี่ยนปุ่มเป็นสถานะ "กำลังส่ง..."
-    const sendBtn = document.getElementById('send-comment-btn');
-    const originalBtnContent = sendBtn.innerHTML;
-    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    sendBtn.disabled = true;
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('author', myUsername);
 
-    try {
-        const formData = new FormData();
-        formData.append('postId', postId); // ตรวจสอบว่าตัวแปร postId มีค่าอยู่แล้ว
-        formData.append('content', content);
-
-        // --- ส่วนที่เพิ่ม: การบีบอัดรูปภาพ ---
-        if (fileInput.files.length > 0) {
-            const originalFile = fileInput.files[0];
-            
-            // เช็คว่าเป็นรูปภาพหรือไม่ (ถ้าใช่ให้บีบอัด)
-            if (originalFile.type.startsWith('image/')) {
-                // เรียกใช้ฟังก์ชันบีบอัด (รอจนเสร็จด้วย await)
-                const compressedFile = await compressImage(originalFile, 0.5, 1024); // คุณภาพ 50%, กว้างไม่เกิน 1024px
+    // --- 🟢 ส่วนที่เพิ่ม: การบีบอัดรูปภาพ ---
+    if (imageFile) {
+        // เช็คว่าเป็นรูปภาพหรือไม่
+        if (imageFile.type.startsWith('image/')) {
+            try {
+                // บีบอัดรูป (Quality 0.7, Width Max 1024px)
+                const compressedFile = await compressImage(imageFile, 0.7, 1024);
                 formData.append('image', compressedFile);
-            } else {
-                // ถ้าไม่ใช่รูป (เช่น PDF) ให้ส่งไฟล์เดิม
-                formData.append('image', originalFile);
+            } catch (error) {
+                console.error("Compression failed, sending original file:", error);
+                formData.append('image', imageFile); // ถ้าบีบอัดพลาด ให้ส่งไฟล์เดิม
             }
+        } else {
+            // ถ้าไม่ใช่รูป (เช่น PDF, Video) ส่งไฟล์เดิม
+            formData.append('image', imageFile);
         }
-        // ------------------------------------
+    }
+    // ----------------------------------------
 
-        const res = await fetch('/api/comment', { // ⚠️ ตรวจสอบ URL API ของคุณให้ถูกต้อง
-            method: 'POST',
-            body: formData
-        });
+    // ยิง API (URL เดิมของคุณ)
+    const res = await fetch(`/api/posts/${postId}/comments`, { 
+        method: 'POST',
+        body: formData 
+    });
+    
+    // ปลดล็อก
+    contentInput.disabled = false;
+    if(fileInput) fileInput.disabled = false;
 
-        const d = await res.json();
-
-        if (res.ok) {
-            input.value = '';
-            fileInput.value = ''; // ล้างไฟล์ออกจาก input
+    if (res.status === 200) {
+        // เคลียร์ค่า
+        contentInput.value = '';
+        fileInput.value = '';
+        const fileNameDisplay = document.getElementById('file-name-display');
+        if(fileNameDisplay) {
             fileNameDisplay.innerText = '';
             fileNameDisplay.style.display = 'none';
-            
-            // อัปเดตคอมเมนต์ใหม่ทันที (ถ้ามีฟังก์ชันโหลดคอมเมนต์)
-            // loadComments(); หรือ appendComment(d.newComment);
-        } else {
-            alert(d.error || 'เกิดข้อผิดพลาดในการส่ง');
         }
-
-    } catch (err) {
-        console.error(err);
-        alert('เชื่อมต่อล้มเหลว กรุณาลองใหม่');
-    } finally {
-        // คืนค่าปุ่มกลับสู่ปกติ
-        sendBtn.innerHTML = originalBtnContent;
-        sendBtn.disabled = false;
+        
+        // (Optional) ถ้าคุณมีฟังก์ชันโหลดคอมเมนต์ใหม่ ให้เรียกตรงนี้
+        // loadComments(); 
+    } else {
+        // จัดการ Error (ตามโค้ดเดิมของคุณ)
+        try {
+            const d = await res.json();
+            showNotification(d.error, 'fas fa-times-circle', 4000); 
+            if (d.error && (d.error.includes('ปิด') || d.error.includes('TimeUp') || 
+                d.error.includes('closed') || d.error.includes('finished'))) {
+                location.reload();
+            }
+        } catch (e) {
+            showNotification(`❌ เกิดข้อผิดพลาดในการส่งข้อมูล: ${res.status}`, 'fas fa-times-circle', 5000); 
+        }
     }
 }
         
