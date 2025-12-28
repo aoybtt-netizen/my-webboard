@@ -1277,23 +1277,15 @@ function sendLocationInChat() {
     input.placeholder = "📍 กำลังดึงพิกัด GPS...";
     input.disabled = true; // ล็อกช่องพิมพ์ชั่วคราว
 
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            
-            // สร้างลิงก์ Google Maps
-            const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-            
-            // ยัดลิงก์ใส่ช่อง Input แล้วสั่งกดส่งทันที
-            input.value = `📍 ตำแหน่งของฉัน: ${mapLink}`;
-            
-            // ปลดล็อกช่องพิมพ์
-            input.disabled = false;
-            input.placeholder = originalPlaceholder;
-            
-            // เรียกฟังก์ชันส่งข้อความเดิมของคุณ
-            sendFloatingComment(); 
+    navigator.geolocation.getCurrentPosition((position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        // ใช้ลิงก์มาตรฐานนี้ครับ (เพื่อให้ function ดักจับได้)
+        const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
+        
+        input.value = mapLink; 
+        sendFloatingComment(); 
         },
         (error) => {
             console.error(error);
@@ -1305,18 +1297,26 @@ function sendLocationInChat() {
     );
 }
 
-	function makeTextClickable(text) {
-    // 1. ป้องกันโค้ดอันตราย (XSS) โดยการแปลงตัวอักษรพิเศษก่อน
+	function formatMessageOnlyMaps(text) {
+    if (!text) return "";
+
+    // 1. แปลงอักขระพิเศษเป็นตัวหนังสือธรรมดาก่อน (เพื่อความปลอดภัย)
     let safeText = text.replace(/&/g, "&amp;")
                        .replace(/</g, "&lt;")
                        .replace(/>/g, "&gt;")
                        .replace(/"/g, "&quot;")
                        .replace(/'/g, "&#039;");
 
-    // 2. ตรวจหาลิงก์ (http, https) แล้วแปลงเป็น tag <a>
-    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-    
-    return safeText.replace(urlPattern, '<a href="$1" target="_blank" style="color: #007bff; text-decoration: underline;">$1</a>');
+    // 2. ตรวจสอบว่ามีคำว่า "maps.google.com" อยู่ในข้อความไหม
+    // ถ้ามี -> แปลงเป็นลิงก์ให้กดได้
+    if (safeText.includes("maps.google.com") || safeText.includes("googleusercontent.com")) {
+        return `<a href="${safeText}" target="_blank" style="color: #ff4757; text-decoration: underline; font-weight: bold;">
+                    <i class="fas fa-map-marker-alt"></i> เปิดแผนที่ (Google Maps)
+                </a>`;
+    }
+
+    // 3. ถ้าเป็นลิงก์อื่น (YouTube, Facebook ฯลฯ) -> คืนค่าเป็นตัวหนังสือธรรมดา (กดไม่ได้)
+    return safeText;
 }
 
         
@@ -2573,12 +2573,12 @@ function updateExtendButtonVisibility() {
             const hasImage = data.comment.imageUrl ? ' <i class="fas fa-image"></i>' : '';
             
             // ✅ เรียกใช้ฟังก์ชัน makeTextClickable ครอบข้อความไว้
-            const messageContent = makeTextClickable(data.comment.content); 
+            const displayContent = formatMessageOnlyMaps(data.comment.content); 
 
             const html = `
                 <div style="background:white; padding:8px; border-radius:10px; font-size:0.85em; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom:5px;">
                     <strong style="color:#007bff;">${data.comment.author}:</strong> 
-                    <span>${messageContent}${hasImage}</span>
+                    <span>${displayContent}${hasImage}</span>
                 </div>`;
             
             floatingList.insertAdjacentHTML('beforeend', html);
