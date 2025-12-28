@@ -400,6 +400,84 @@
 }
 
 
+	.sticky-handover-btn {
+  position: fixed;
+  top: calc(40%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+  left: 0;
+  transform: translateY(-50%);
+
+  width: 70px;
+  height: 60px;
+
+  /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
+  background: linear-gradient(135deg, #1391e6, #7baccc);
+  color: rgb(255, 254, 254);
+  border: none;
+
+  /* ขอบมนด้านซ้าย */
+  border-top-right-radius: 30px;
+  border-bottom-right-radius: 30px;
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+
+  /*box-shadow: -4px 4px 15px rgba(0, 0, 0, 0.2);*/
+  z-index: 2600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-size: 24px;
+  animation: hndo-sig 2s infinite;
+}
+
+@keyframes hndo-sig {
+  0% {
+    box-shadow: 0 0 0 0 rgba(39, 142, 211, 2.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(108, 92, 231, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+  }
+}
+
+
+.sticky-kick-btn {
+  position: fixed;
+  bottom: calc(20%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+  left: 0;
+  transform: translateY(-50%);
+
+  width: 60px;
+  height: 60px;
+
+  /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
+  background: linear-gradient(135deg, #dd1b1b, #d65d5d);
+  color: rgb(255, 254, 254);
+  border: none;
+
+  /* ขอบมนด้านซ้าย */
+  border-top-right-radius: 30px;
+  border-bottom-right-radius: 30px;
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+
+  /*box-shadow: -4px 4px 15px rgba(0, 0, 0, 0.2);*/
+  z-index: 2600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-size: 24px;
+}
+
+
+
 
 
 
@@ -474,15 +552,11 @@
             
             
 
-            <button id="handover-btn" class="restart-btn" style="background:#007bff; display:none;" onclick="openHandoverModal()" 
-                data-i18n-key="btn_handover" 
-                data-i18n-title="title_handover">
-                <i class="fas fa-check-circle"></i> Send Job
+            <button id="handover-btn" class="sticky-handover-btn" onclick="openHandoverModal()" >
+                <i class="fas fa-handshake"></i>
             </button>
             
-            <button id="restart-btn" class="restart-btn" onclick="restartPost()" 
-                data-i18n-key="btn_kick" 
-                data-i18n-title="title_kick">
+            <button id="restart-btn" class="sticky-kick-btn" onclick="restartPost()" 
                 <i class="fas fa-redo"></i> Kick
             </button>
         </div>
