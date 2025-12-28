@@ -2018,52 +2018,111 @@ socket.on('map-access-granted', (data) => {
     }
 }
 
-        async function sendComment() { 
-            const content = document.getElementById('comment-input').value.trim();
-            const imageFile = document.getElementById('comment-image').files[0];
 
-            if(!content && !imageFile) {
-                showNotification("Please enter text or select an image.", 'fas fa-exclamation-circle', 2000);
-                return;
-            }
-            
-            document.getElementById('comment-input').disabled = true;
-
-            const formData = new FormData();
-            formData.append('content', content);
-            formData.append('author', myUsername);
-            if (imageFile) {
-                formData.append('image', imageFile);
-            }
-
-            const res = await fetch(`/api/posts/${postId}/comments`, { 
-                method: 'POST',
-                body: formData 
-            });
-            
-            document.getElementById('comment-input').disabled = false;
-
-            if (res.status === 200) {
-                document.getElementById('comment-input').value = '';
-                document.getElementById('comment-image').value = '';
-                const fileNameDisplay = document.getElementById('file-name-display');
-                fileNameDisplay.innerText = '';
-                fileNameDisplay.style.display = 'none';
-            } else {
-                // ✅ [FIXED] จัดการ Error และป้องกัน SyntaxError
-                try {
-                    const d = await res.json();
-                    showNotification(d.error, 'fas fa-times-circle', 4000); 
-                    if (d.error.includes('ปิด') || d.error.includes('TimeUp') || 
-						d.error.includes('closed') || d.error.includes('finished')) {
-							location.reload();
-						}
-                } catch (e) {
-                     // ถ้าไม่ใช่ JSON (เช่น Server ตอบ 404 HTML)
-                     showNotification(`❌ เกิดข้อผิดพลาดในการส่งข้อมูล: ${res.status}`, 'fas fa-times-circle', 5000); 
+// ฟังก์ชันช่วยย่อรูปภาพ (ใช้ Canvas)
+function compressImage(file, quality = 0.7, maxWidth = 1200) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                // คำนวณขนาดใหม่ (ถ้าภาพใหญ่เกิน maxWidth ให้ย่อลงตามสัดส่วน)
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
                 }
+
+                // สร้าง Canvas เพื่อวาดรูปใหม่
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // แปลงกลับเป็นไฟล์ Blob (ประเภท JPEG)
+                canvas.toBlob((blob) => {
+                    // ส่งคืน Blob กลับไป (ตั้งชื่อไฟล์เหมือนเดิมเปลี่ยนแค่นามสกุลเป็น .jpg)
+                    const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                        type: "image/jpeg",
+                        lastModified: Date.now(),
+                    });
+                    resolve(newFile);
+                }, 'image/jpeg', quality); // quality: 0.7 คือคุณภาพ 70%
+            };
+        };
+    });
+}
+
+
+
+        async function sendComment() {
+    const input = document.getElementById('comment-input');
+    const fileInput = document.getElementById('comment-image');
+    const fileNameDisplay = document.getElementById('file-name-display');
+    const content = input.value.trim();
+
+    // ตรวจสอบว่ามีข้อความหรือรูปภาพไหม
+    if (!content && fileInput.files.length === 0) return;
+
+    // เปลี่ยนปุ่มเป็นสถานะ "กำลังส่ง..."
+    const sendBtn = document.getElementById('send-comment-btn');
+    const originalBtnContent = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    sendBtn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('postId', postId); // ตรวจสอบว่าตัวแปร postId มีค่าอยู่แล้ว
+        formData.append('content', content);
+
+        // --- ส่วนที่เพิ่ม: การบีบอัดรูปภาพ ---
+        if (fileInput.files.length > 0) {
+            const originalFile = fileInput.files[0];
+            
+            // เช็คว่าเป็นรูปภาพหรือไม่ (ถ้าใช่ให้บีบอัด)
+            if (originalFile.type.startsWith('image/')) {
+                // เรียกใช้ฟังก์ชันบีบอัด (รอจนเสร็จด้วย await)
+                const compressedFile = await compressImage(originalFile, 0.5, 1024); // คุณภาพ 50%, กว้างไม่เกิน 1024px
+                formData.append('image', compressedFile);
+            } else {
+                // ถ้าไม่ใช่รูป (เช่น PDF) ให้ส่งไฟล์เดิม
+                formData.append('image', originalFile);
             }
         }
+        // ------------------------------------
+
+        const res = await fetch('/api/comment', { // ⚠️ ตรวจสอบ URL API ของคุณให้ถูกต้อง
+            method: 'POST',
+            body: formData
+        });
+
+        const d = await res.json();
+
+        if (res.ok) {
+            input.value = '';
+            fileInput.value = ''; // ล้างไฟล์ออกจาก input
+            fileNameDisplay.innerText = '';
+            fileNameDisplay.style.display = 'none';
+            
+            // อัปเดตคอมเมนต์ใหม่ทันที (ถ้ามีฟังก์ชันโหลดคอมเมนต์)
+            // loadComments(); หรือ appendComment(d.newComment);
+        } else {
+            alert(d.error || 'เกิดข้อผิดพลาดในการส่ง');
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert('เชื่อมต่อล้มเหลว กรุณาลองใหม่');
+    } finally {
+        // คืนค่าปุ่มกลับสู่ปกติ
+        sendBtn.innerHTML = originalBtnContent;
+        sendBtn.disabled = false;
+    }
+}
         
         async function openHandoverModal() {
             document.getElementById('handover-modal').classList.remove('hidden');
