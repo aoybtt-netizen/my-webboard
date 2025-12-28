@@ -563,13 +563,20 @@
     <button id="btn-call-author-chat" 
             onclick="startCall(currentPostAuthor)" 
             style="background: #2ecc71; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-right: 5px;"
-            title="Call the owner">
+            title="โทรหาเจ้าของโพสต์">
         <i class="fas fa-phone-alt"></i>
+    </button>
+
+    <button type="button" 
+            onclick="sendLocationInChat()"
+            style="background: #ff4757; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-right: 5px;"
+            title="แชร์ตำแหน่งปัจจุบัน">
+        <i class="fas fa-map-marker-alt"></i>
     </button>
 
     <input type="text" id="floating-comment-input" placeholder="comment...">
     
-    <button type="button" onclick="sendFloatingComment()" style="background: #007bff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; flex-shrink: 0;">
+    <button type="button" onclick="sendFloatingComment()" style="background: #007bff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; flex-shrink: 0; margin-left: 5px;">
         <i class="fas fa-paper-plane"></i>
     </button>
 </div>
@@ -1253,6 +1260,49 @@ function sendFloatingComment() {
         }
     }
     fInput.value = ''; // ล้างช่องพิมพ์ในหน้าต่างแชท
+}
+
+
+function sendLocationInChat() {
+    // ตรวจสอบว่า Browser รองรับ GPS ไหม
+    if (!navigator.geolocation) {
+        alert("เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง");
+        return;
+    }
+
+    const input = document.getElementById('floating-comment-input');
+    const originalPlaceholder = input.placeholder;
+
+    // เปลี่ยน Placeholder เพื่อบอกว่ากำลังทำงาน
+    input.placeholder = "📍 กำลังดึงพิกัด GPS...";
+    input.disabled = true; // ล็อกช่องพิมพ์ชั่วคราว
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // สร้างลิงก์ Google Maps
+            const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
+            
+            // ยัดลิงก์ใส่ช่อง Input แล้วสั่งกดส่งทันที
+            input.value = `📍 ตำแหน่งของฉัน: ${mapLink}`;
+            
+            // ปลดล็อกช่องพิมพ์
+            input.disabled = false;
+            input.placeholder = originalPlaceholder;
+            
+            // เรียกฟังก์ชันส่งข้อความเดิมของคุณ
+            sendFloatingComment(); 
+        },
+        (error) => {
+            console.error(error);
+            alert("ไม่สามารถดึงตำแหน่งได้: " + error.message);
+            input.disabled = false;
+            input.placeholder = originalPlaceholder;
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+    );
 }
 
         
