@@ -575,7 +575,7 @@
                 </button>
                 <button type="button" onclick="document.getElementById('chat-image-input').click()" 
                         style="background: #f1c40f; color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center;" 
-                        title="ส่งรูปภาพ">
+                        title="เลือกรูปภาพ">
                     <i class="fas fa-plus" style="font-size: 12px;"></i>
                 </button>
             </div>
@@ -1594,31 +1594,47 @@ function handleChatImageSelect(input) {
     };
 }
 
-// ฟังก์ชันส่งรูปเข้าแชท (ต้องปรับตามระบบหลังบ้านของคุณ)
-function sendImageMessage(base64Data) {
-    // ตรวจสอบว่ามีข้อมูลรูปภาพไหม
+// ฟังก์ชันส่งข้อความตัวอักษรจากแชทลอย
+async function sendFloatingComment() {
+    const input = document.getElementById('floating-comment-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    try {
+        const response = await fetch(`/api/posts/${postId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content }) // ส่งแค่ content ไป server จะจัดการชื่อคนส่งเอง
+        });
+
+        if (response.ok) {
+            input.value = ''; // ล้างช่องพิมพ์เมื่อส่งสำเร็จ
+        }
+    } catch (err) {
+        console.error("ส่งข้อความล้มเหลว:", err);
+    }
+}
+
+// ฟังก์ชันส่งรูปภาพจากแชทลอย
+async function sendImageMessage(base64Data) {
     if (!base64Data) return;
 
-    const data = {
-        postId: postId,
-        comment: {
-            author: myUsername, // ตรวจสอบว่าตัวแปรชื่อผู้ใช้ของคุณชื่ออะไร (เช่น currentUser หรือ myUsername)
-            content: "", // ส่งเป็นค่าว่างเพราะเราเน้นรูป
-            imageUrl: base64Data
+    try {
+        const response = await fetch(`/api/posts/${postId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                content: "", // ส่งเป็นค่าว่างกรณีส่งแค่รูป
+                imageUrl: base64Data 
+            })
+        });
+
+        if (!response.ok) {
+            alert("ไม่สามารถส่งรูปภาพได้");
         }
-    };
-    
-    // 1. ส่งผ่าน Socket เพื่อให้คนอื่นเห็นทันที
-    socket.emit('new-comment', data);
-    
-    // 2. (ถ้ามี) ส่งไปเก็บใน Database ผ่าน API ของคุณ
-    /*
-    fetch('/api/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    */
+    } catch (err) {
+        console.error("ส่งรูปภาพล้มเหลว:", err);
+    }
 }
 
 window.openGoogleMapsApp = function() {
@@ -2652,11 +2668,19 @@ function updateExtendButtonVisibility() {
     }, 2000);
 });
 
-    socket.on('new-comment', (data) => { 
+    socket.on('new-comment', (data) => {
     if (data.postId == postId) {
+        // --- 1. อัปเดตรายการคอมเมนต์หลัก (ด้านล่างโพสต์) ---
+        const mainList = document.getElementById('comments-list');
+        if (mainList) {
+            // ใช้ฟังก์ชันสร้าง HTML เดิมของคุณ (เช่น createCommentHTML)
+            mainList.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, mainList.children.length));
+            mainList.scrollTop = mainList.scrollHeight;
+        }
+
+        // --- 2. อัปเดตในหน้าต่างแชทลอย (Floating Chat) ---
         const floatingList = document.getElementById('floating-chat-messages');
         if (floatingList) {
-            // ✅ 1. ตรวจสอบว่าใน data มี imageUrl ส่งมาไหม ถ้ามีให้สร้างแท็กรูป
             const imageHtml = data.comment.imageUrl ? 
                 `<div style="margin-top:5px;">
                     <img src="${data.comment.imageUrl}" 
@@ -2664,18 +2688,20 @@ function updateExtendButtonVisibility() {
                          onclick="openImageViewer('${data.comment.imageUrl}')">
                 </div>` : '';
 
+            // ใช้ฟังก์ชันตรวจสอบ Map ที่เราทำกันก่อนหน้านี้
             const displayContent = formatMessageOnlyMaps(data.comment.content); 
 
             const html = `
                 <div style="background:white; padding:8px; border-radius:10px; font-size:0.85em; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom:5px;">
                     <strong style="color:#007bff;">${data.comment.author}:</strong> 
                     <div>${displayContent}</div>
-                    ${imageHtml}  </div>`;
+                    ${imageHtml}
+                </div>`;
             
             floatingList.insertAdjacentHTML('beforeend', html);
             floatingList.scrollTop = floatingList.scrollHeight;
         }
-    } 
+    }
 });
 
         function goBack() {
