@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+	<script>
+	// เริ่มใช้งาน vConsole
+	var vConsole = new window.VConsole();
+	</script>
+	
 	
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
@@ -1575,7 +1581,7 @@ function handleChatImageSelect(input) {
             ctx.drawImage(img, 0, 0, width, height);
 
             // แปลงเป็น Base64 ที่บีบอัดแล้ว
-            const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
             
             // ส่งรูปภาพไปยังแชททันที
             sendImageMessage(compressedDataUrl);
@@ -1590,21 +1596,29 @@ function handleChatImageSelect(input) {
 
 // ฟังก์ชันส่งรูปเข้าแชท (ต้องปรับตามระบบหลังบ้านของคุณ)
 function sendImageMessage(base64Data) {
-    // สมมติว่าระบบของคุณใช้ socket.emit ในการส่งข้อความ
-    // และมีการเช็ค imageUrl ใน data.comment
+    // ตรวจสอบว่ามีข้อมูลรูปภาพไหม
+    if (!base64Data) return;
+
     const data = {
         postId: postId,
         comment: {
-            author: myUsername,
-            content: "ส่งรูปภาพ",
-            imageUrl: base64Data // ส่งรูปที่บีบอัดแล้วไป
+            author: myUsername, // ตรวจสอบว่าตัวแปรชื่อผู้ใช้ของคุณชื่ออะไร (เช่น currentUser หรือ myUsername)
+            content: "", // ส่งเป็นค่าว่างเพราะเราเน้นรูป
+            imageUrl: base64Data
         }
     };
     
+    // 1. ส่งผ่าน Socket เพื่อให้คนอื่นเห็นทันที
     socket.emit('new-comment', data);
     
-    // ถ้าคุณมีการบันทึกลง Database ผ่าน API ก็เรียกใช้ตรงนี้ได้เช่นกัน
-    // saveCommentToDB(data); 
+    // 2. (ถ้ามี) ส่งไปเก็บใน Database ผ่าน API ของคุณ
+    /*
+    fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    */
 }
 
 window.openGoogleMapsApp = function() {
@@ -2640,26 +2654,23 @@ function updateExtendButtonVisibility() {
 
     socket.on('new-comment', (data) => { 
     if (data.postId == postId) {
-        // 1. อัปเดตรายการคอมเมนต์หลัก
-        const list = document.getElementById('comments-list');
-        if (list) {
-            list.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, list.children.length));
-            list.scrollTop = list.scrollHeight;
-        }
-
-        // 2. อัปเดตในหน้าต่างแชทลอย
         const floatingList = document.getElementById('floating-chat-messages');
         if (floatingList) {
-            const hasImage = data.comment.imageUrl ? ' <i class="fas fa-image"></i>' : '';
-            
-            // เรียกใช้ฟังก์ชันแปลงข้อความ
+            // ✅ 1. ตรวจสอบว่าใน data มี imageUrl ส่งมาไหม ถ้ามีให้สร้างแท็กรูป
+            const imageHtml = data.comment.imageUrl ? 
+                `<div style="margin-top:5px;">
+                    <img src="${data.comment.imageUrl}" 
+                         style="max-width:100%; border-radius:8px; cursor:pointer;" 
+                         onclick="openImageViewer('${data.comment.imageUrl}')">
+                </div>` : '';
+
             const displayContent = formatMessageOnlyMaps(data.comment.content); 
 
             const html = `
                 <div style="background:white; padding:8px; border-radius:10px; font-size:0.85em; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom:5px;">
                     <strong style="color:#007bff;">${data.comment.author}:</strong> 
-                    <span>${displayContent}${hasImage}</span>
-                </div>`;
+                    <div>${displayContent}</div>
+                    ${imageHtml}  </div>`;
             
             floatingList.insertAdjacentHTML('beforeend', html);
             floatingList.scrollTop = floatingList.scrollHeight;
