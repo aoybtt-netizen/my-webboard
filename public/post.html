@@ -2629,23 +2629,18 @@ function requestExtension() {
             confirmButtonText: 'Send request',
             cancelButtonText: 'Cancle'
         }).then((result) => {
-            console.log("📝 [Debug] ผลลัพธ์จาก Popup:", result);
             
             if (result.isConfirmed) {
                 const minutes = parseInt(result.value);
-                console.log(`📤 [Debug] กำลังส่งคำขอขยายเวลา: ${minutes} นาที`);
 
                 // ส่งคำขอไปหา Server
                 socket.emit('request-extend-time', { postId, minutes });
                 
                 Swal.fire('Request time Send...', 'Waiting Accept...', 'info');
-            } else {
-                console.log("❌ [Debug] ผู้ใช้กดยกเลิก");
             }
         });
 
     } catch (err) {
-        console.error("💥 [Debug] เกิดข้อผิดพลาดร้ายแรง:", err);
         alert("System Error: " + err.message);
     }
 }
