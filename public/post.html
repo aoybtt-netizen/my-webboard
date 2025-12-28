@@ -1305,6 +1305,20 @@ function sendLocationInChat() {
     );
 }
 
+	function makeTextClickable(text) {
+    // 1. ป้องกันโค้ดอันตราย (XSS) โดยการแปลงตัวอักษรพิเศษก่อน
+    let safeText = text.replace(/&/g, "&amp;")
+                       .replace(/</g, "&lt;")
+                       .replace(/>/g, "&gt;")
+                       .replace(/"/g, "&quot;")
+                       .replace(/'/g, "&#039;");
+
+    // 2. ตรวจหาลิงก์ (http, https) แล้วแปลงเป็น tag <a>
+    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    
+    return safeText.replace(urlPattern, '<a href="$1" target="_blank" style="color: #007bff; text-decoration: underline;">$1</a>');
+}
+
         
         // Emoji Logic for Comments
     function toggleEmoji() {
@@ -2543,25 +2557,28 @@ function updateExtendButtonVisibility() {
     }, 2000);
 });
 
-        socket.on('new-comment', (data) => { 
+    socket.on('new-comment', (data) => { 
     if (data.postId == postId) {
         // 1. อัปเดตรายการคอมเมนต์หลัก (หน้าเว็บปกติ)
         const list = document.getElementById('comments-list');
         if (list) {
+            // หมายเหตุ: ตรง createCommentHTML คุณอาจต้องไปแก้ข้างในฟังก์ชันนั้นด้วยถ้าอยากให้หน้าหลักกดลิงก์ได้เหมือนกัน
             list.insertAdjacentHTML('beforeend', createCommentHTML(data.comment, list.children.length));
             list.scrollTop = list.scrollHeight;
         }
 
-        // 2. อัปเดตในหน้าต่างแชทลอย (Floating Chat)
+        // 2. อัปเดตในหน้าต่างแชทลอย (Floating Chat) <-- แก้ตรงนี้ครับ
         const floatingList = document.getElementById('floating-chat-messages');
         if (floatingList) {
-            // ตรวจสอบว่ามีรูปภาพแนบมาด้วยหรือไม่ ถ้ามีให้โชว์ไอคอนหรือข้อความบอก
             const hasImage = data.comment.imageUrl ? ' <i class="fas fa-image"></i>' : '';
             
+            // ✅ เรียกใช้ฟังก์ชัน makeTextClickable ครอบข้อความไว้
+            const messageContent = makeTextClickable(data.comment.content); 
+
             const html = `
                 <div style="background:white; padding:8px; border-radius:10px; font-size:0.85em; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom:5px;">
                     <strong style="color:#007bff;">${data.comment.author}:</strong> 
-                    <span>${data.comment.content}${hasImage}</span>
+                    <span>${messageContent}${hasImage}</span>
                 </div>`;
             
             floatingList.insertAdjacentHTML('beforeend', html);
