@@ -506,11 +506,11 @@
 
 .share-lopost-btn {
   position: fixed;
-  top: calc(30%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+  top: calc(15%); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
   left: 0;
   transform: translateY(-50%);
 
-  width: 50px;
+  width: 70px;
   height: 40px;
 
   background: #2baf2b;
@@ -1531,7 +1531,27 @@ window.openGoogleMapsApp = function() {
         // ใช้ URL มาตรฐานสำหรับการวาดเส้นทาง (Embed)
         initialMapUrl = `https://www.google.com/maps?saddr=${myLat},${myLng}&daddr=${lat},${lng}&output=embed`;
         
-        viewerText = `<br><div style="color:#28a745; font-size:0.9em; margin-top:5px;">📏 Distance: ${distanceKm} km.</div>`;
+        viewerText = `<br><div position: fixed;
+				top: 0px;
+				right: 50%px;
+    
+				width: 200px;
+				height: 30px;
+				color: white;
+				border: none;
+    
+				border-top-left-radius: 0px;
+				border-bottom-left-radius: 5px;
+				border-top-right-radius: 0;
+				border-bottom-right-radius: 5px;
+  
+				background: rgba(255, 255, 255, 0.15);
+				backdrop-filter: blur(5px);
+				box-shadow: none; 
+				border: 1px solid rgba(255, 255, 255, 0.3);
+  
+				color:#28a745;
+				font-size:0.9em;">📏 Distance: ${distanceKm} km.</div>`;
         
         if (navButton) navButton.style.display = 'block';
 
