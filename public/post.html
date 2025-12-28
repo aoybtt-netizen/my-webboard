@@ -480,6 +480,64 @@
 
 
 
+.send-box-btn {
+  position: relative;
+  width: 120px;
+  height: 45px;
+  overflow: hidden;
+  border: none;
+  background-color: #0099CC;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+  cursor: pointer;
+  border-bottom-right-radius: 15px;
+  border-top-right-radius: 15px;
+  box-shadow: 0 0 10px rgb(104, 134, 218);
+}
+
+.send-box-btn::before {
+  content: "";
+  position: absolute;
+  width: 15px;
+  height: 200px;
+  margin-top: -92px;
+  background: linear-gradient(#81d4fa,#81d4fa);
+  animation: amm 5s linear infinite;
+}
+
+@keyframes amm {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.text-button {
+  position: relative;
+  font-size: 1.2rem;
+  font-weight: bold;
+  z-index: 1;
+}
+
+.send-box-btn::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  background-color: #0099CC;
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+  border-top-right-radius: 15px;
+  border-bottom-right-radius: 15px;
+}
+
+
+
+
+
 
 
 
@@ -638,7 +696,7 @@
             <button onclick="replyOffer(false)" class="back-btn" style="flex: 1; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer;">
                 <i class="fas fa-times"></i> reject
             </button>
-            <button onclick="replyOffer(true)" class="send-btn" style="flex: 1; background: #28a745; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+            <button onclick="replyOffer(true)" class="send-box-btn" style="flex: 1; background: #28a745; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold;">
                 <i class="fas fa-check"></i> Accept the job.
             </button>
         </div>
@@ -659,7 +717,7 @@
             <button class="restart-btn" style="display:block; background:#dc3545; padding:10px 20px;" onclick="replyFinishJob(false)" data-i18n-key="btn_not_yet">
                 ❌ reject
             </button>
-            <button class="send-btn" style="padding:10px 20px;" onclick="replyFinishJob(true)" data-i18n-key="btn_confirm_finish">
+            <button class="send-box-btn" style="padding:10px 20px;" onclick="replyFinishJob(true)" data-i18n-key="btn_confirm_finish">
                 ✅ Comfirm finished
             </button>
         </div>
@@ -685,7 +743,7 @@
             <strong id="selected-rating" style="font-size:1.5em; color:#ffc107;">0</strong> / 5
         </p>
         
-        <button class="send-btn" style="width:100%; margin-top:20px;" onclick="submitRating()" data-i18n-key="btn_submit_rating">
+        <button class="send-box-btn" style="width:100%; margin-top:20px;" onclick="submitRating()" data-i18n-key="btn_submit_rating">
             Confirm rating
         </button>
     </div>
@@ -730,7 +788,7 @@
     </select>
 </div>
 
-    <button id="send-handover-btn" class="send-btn" onclick="closeDealWithViewer()">
+    <button id="send-handover-btn" class="send-box-btn" onclick="closeDealWithViewer()">
     ส่งมอบงาน
 </button>
 </div>
@@ -2690,7 +2748,7 @@ socket.on('extension-rejected', () => {
 </button>
 
 
-	<button id="final-finish-btn" class="send-btn" 
+	<button id="final-finish-btn" class="send-box-btn" 
     style="
         display: none; 
         position: fixed; 
