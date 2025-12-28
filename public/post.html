@@ -2797,15 +2797,26 @@ socket.on('extension-rejected', () => {
 	<button id="btn-extend-time" 
 	onclick="requestExtension()"
     style="
-		box-shadow: none;  
+		background: transparent; /* ล่องหน 100% */
+		box-shadow: none;        /* แนะนำให้ลบเงาออกด้วยเพื่อให้ดูเนียน */
+        display: none; 
         position: fixed; 
-		bottom: 100px; 
-		right: 5px; background: 
-		padding: 10px 20px; 
-		width: 50px;
-        height: 25px; 
-		border-radius: 50px; 
-		z-index: 3000;  ">
+        bottom: 150px;  /* ระดับความสูงเท่ากับแถบเวลา */
+        right: 5px;    /* ชิดขอบซ้าย */
+        z-index: 3000; /* อยู่เหนือทุกอย่าง */
+        color: white; 
+        border: none; 
+		padding: 12px 20px; 
+		border-radius: 30px; 
+        height: 30px; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+		font-family: 'Kanit', sans-serif;
+        transition: all 0.3s ease;
+    "
+    title="Add time request.">
     <i class="fas fa-hourglass-start"></i> 
 </button>
 
