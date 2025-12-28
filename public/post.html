@@ -1264,7 +1264,6 @@ function sendFloatingComment() {
 
 
 function sendLocationInChat() {
-    // ตรวจสอบ GPS
     if (!navigator.geolocation) {
         alert("เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง");
         return;
@@ -1281,13 +1280,14 @@ function sendLocationInChat() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
-            // ✅ แก้ไข: เติม $ หน้า {lat} ให้ถูกต้อง
-            const mapLink = `https://www.google.com/maps?q=$${lat},${lng}`;
+            // ✅ แก้ใหม่: ใช้ลิงก์ Google Maps ของจริง + ใส่รหัสลับ (&share=yes)
+            // สังเกตเครื่องหมาย $ หน้าปีกกา ต้องมีนะครับ
+            const mapLink = `https://www.google.com/maps?q=${lat},${lng}&share=yes`;
             
             input.value = mapLink; 
             sendFloatingComment(); 
 
-            // ✅ เพิ่มเติม: ต้องปลดล็อกช่องพิมพ์หลังส่งเสร็จด้วย ไม่งั้นจะค้าง
+            // ปลดล็อก
             input.disabled = false;
             input.placeholder = originalPlaceholder;
         },
@@ -1304,22 +1304,25 @@ function sendLocationInChat() {
 	function formatMessageOnlyMaps(text) {
     if (!text) return "";
 
-    // 1. แปลงอักขระพิเศษ (แก้ Syntax Error ตรง " ให้แล้ว)
+    // 1. แปลงอักขระพิเศษ (เพื่อความปลอดภัย)
     let safeText = text.replace(/&/g, "&amp;")
                        .replace(/</g, "&lt;")
                        .replace(/>/g, "&gt;")
                        .replace(/"/g, "&quot;")
                        .replace(/'/g, "&#039;");
 
-    // 2. ตรวจสอบลิงก์
-    // ปรับเงื่อนไขให้กว้างขึ้นนิดนึง เผื่อเลขข้างหลังเปลี่ยน จะได้ยังทำงานได้
-    if (safeText.includes("maps.google.com") && safeText.includes("googleusercontent.com")) {
-        return `<a href="${safeText}" target="_blank" style="color: #ff4757; text-decoration: underline; font-weight: bold;">
+    // 2. ✅ แก้ใหม่: ตรวจสอบหารหัสลับ "&share=yes" 
+    // ถ้าเจอคำนี้ แสดงว่าเป็น Location ที่เราส่งเอง -> แปลงเป็นปุ่ม
+    if (safeText.includes("&share=yes")) {
+        // ถอดรหัสลับออกตอนแสดงผล (เพื่อให้ลิงก์สะอาด) แต่วางลิงก์เต็มใน href ได้เลย
+        // (Google Maps ไม่สนใจ parameter แปลกปลอม มันจะเปิดแผนที่ได้ปกติครับ)
+        
+        return `<a href="${safeText}" target="_blank" style="display: inline-block; background: #ff4757; color: white; padding: 5px 10px; border-radius: 15px; text-decoration: none; font-weight: bold; font-size: 0.9em; margin-top: 2px;">
                     <i class="fas fa-map-marker-alt"></i> เปิดแผนที่ (Google Maps)
                 </a>`;
     }
 
-    // 3. ถ้าเป็นลิงก์อื่น -> คืนค่าเป็นตัวหนังสือธรรมดา
+    // 3. ถ้าเป็นลิงก์อื่น (YouTube, หรือ Maps ที่ก๊อปมาเองจะไม่มี &share=yes) -> เป็นข้อความธรรมดา
     return safeText;
 }
 
