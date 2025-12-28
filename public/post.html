@@ -778,7 +778,6 @@
 	<div style="margin-top: 10px; text-align: left; padding: 10px; background: #f8f9fa; border-radius: 8px;">
     <label style="font-weight: bold; color: #333;"><i class="fas fa-hourglass-start"></i> Time Limit</label>
     <select id="selectTimeLimit" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
-		<option value="180000">3 นาที</option>
         <option value="1800000">30 Min</option>
         <option value="3600000">1 H</option>
         <option value="7200000">2 H</option>
@@ -2585,7 +2584,6 @@ function checkShowExtendButton() {
 }
 
 function requestExtension() {
-    console.log("🚀 [Debug] เริ่มทำงานฟังก์ชัน requestExtension");
 
     try {
         // 1. เช็คว่ามี SweetAlert หรือยัง
@@ -2609,7 +2607,6 @@ function requestExtension() {
             return;
         }
 
-        console.log(`✅ [Debug] ตรวจสอบตัวแปรครบถ้วน (PostID: ${postId})`);
 
         // เริ่มแสดง Popup
         Swal.fire({
