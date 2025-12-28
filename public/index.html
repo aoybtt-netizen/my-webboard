@@ -216,6 +216,7 @@
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     font-size: 24px;
+	animation: rdis-sig 3s infinite;
 }
 
 .sticky-filter-btn:hover {
@@ -226,6 +227,12 @@
 
 .sticky-filter-btn:active {
     transform: translateY(-50%) scale(0.9);
+}
+
+@keyframes rdis-sig {
+    0% { box-shadow: 0 0 0 0 rgba(39, 142, 211, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(108, 92, 231, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(108, 92, 231, 0); }
 }
 
 
