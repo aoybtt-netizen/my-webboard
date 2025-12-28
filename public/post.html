@@ -2797,18 +2797,18 @@ socket.on('extension-rejected', () => {
 	<button id="btn-extend-time" 
 	onclick="requestExtension()"
     style="
-		background: transparent; /* ล่องหน 100% */
-		box-shadow: none;        /* แนะนำให้ลบเงาออกด้วยเพื่อให้ดูเนียน */
         display: none; 
         position: fixed; 
         bottom: 150px;  /* ระดับความสูงเท่ากับแถบเวลา */
         right: 5px;    /* ชิดขอบซ้าย */
         z-index: 3000; /* อยู่เหนือทุกอย่าง */
+        background: #87bf47; 
         color: white; 
         border: none; 
 		padding: 12px 20px; 
 		border-radius: 30px; 
         height: 30px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
         cursor: pointer; 
         display: flex; 
         align-items: center; 
