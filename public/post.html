@@ -663,9 +663,7 @@
             <i class="fas fa-plus"></i>
         </button>
         
-        <button id="emoji-btn" onclick="toggleEmoji()" style="width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; background: #fff; font-size: 1.2em; margin-right: 5px;">
-            😊
-        </button>
+   
 
         <input type="file" id="comment-image" name="image" accept="image/*" class="hidden"> 
 
@@ -677,9 +675,6 @@
 		<i class="fas fa-paper-plane"></i>
 		</button>
 
-        <div id="comment-emoji-picker" style="display: none; position: absolute; bottom: 60px; left: 10px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 8px;">
-            <emoji-picker id="picker-comment"></emoji-picker>
-        </div>
     </div>
 </div>
 
@@ -1330,20 +1325,7 @@ function sendLocationInChat() {
 }
 
         
-        // Emoji Logic for Comments
-    function toggleEmoji() {
-        const picker = document.getElementById('comment-emoji-picker');
-        picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
-    }
-
-    // เมื่อกดเลือก Emoji
-    document.querySelector('#picker-comment').addEventListener('emoji-click', event => {
-        const input = document.getElementById('comment-input');
-        
-        // แทรก Emoji ต่อท้ายข้อความเดิม (เนื่องจาก input type=text ไม่รองรับ selectionStart ง่ายๆ เหมือน textarea ในบาง browser มือถือ แต่ใช้วิธีต่อท้ายง่ายสุด)
-        input.value += event.detail.unicode;
-        input.focus();
-    });
+   
 
     
         
@@ -2877,8 +2859,6 @@ socket.on('extension-rejected', () => {
 // ปิด Picker เมื่อกดส่งข้อความ (แก้ในฟังก์ชัน sendComment เดิม)
     const originalSendComment = window.sendComment;
     window.sendComment = async function() {
-        // ปิด Emoji picker
-        document.getElementById('comment-emoji-picker').style.display = 'none';
         
         // เรียกฟังก์ชันเดิม
         await originalSendComment(); // เนื่องจากคุณประกาศ window.sendComment = sendComment ไว้ท้ายไฟล์เดิม
