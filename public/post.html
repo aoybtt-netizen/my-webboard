@@ -594,9 +594,11 @@
 
         <input type="text" id="floating-comment-input" placeholder="comment..." style="flex-grow: 1; height: 40px; border-radius: 20px; border: 1px solid #ddd; padding: 0 15px; outline: none;">
         
-        <button type="button" onclick="sendFloatingComment()" style="background: #007bff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; flex-shrink: 0;">
-            <i class="fas fa-paper-plane"></i>
-        </button>
+        <button type="button" 
+        onclick="sendFloatingComment(event)" 
+        style="background: #007bff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; flex-shrink: 0;">
+    <i class="fas fa-paper-plane"></i>
+</button>
     </div>
 </div>
 
@@ -1286,7 +1288,9 @@ function handleImageUpload(input) {
 }
 
 // 2. ฟังก์ชันส่งคอมเมนต์จากแชทลอย
-function sendFloatingComment() {
+async function sendFloatingComment(event) {
+    if (event) event.preventDefault(); // ✅ ป้องกันหน้าจอรี่เฟรชจากการ Submit Form
+
     const fInput = document.getElementById('floating-comment-input');
     const fCameraInput = document.getElementById('chat-camera-input');
     
@@ -1296,35 +1300,47 @@ function sendFloatingComment() {
     const content = fInput.value.trim();
     const hasImage = fCameraInput.files && fCameraInput.files[0];
 
-    // ✅ แก้ไข: ถ้าไม่มีทั้งข้อความและรูป ถึงจะ return (ถ้ามีอย่างใดอย่างหนึ่งให้ส่งได้)
     if (!content && !hasImage) return;
 
-    // 1. ย้ายข้อความไปที่ช่องหลัก
-    if (mainInput) {
-        mainInput.value = content;
-    }
+    console.log("Starting send process..."); // ไว้เช็คใน Console
 
-    // 2. ย้ายไฟล์รูปไปที่ช่องหลัก (ใช้ DataTransfer)
-    if (mainCameraInput && hasImage) {
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(fCameraInput.files[0]);
-        mainCameraInput.files = dataTransfer.files;
-    }
+    try {
+        // 1. ย้ายข้อความไปที่ช่องหลัก
+        if (mainInput) {
+            mainInput.value = content;
+        } else {
+            console.error("หา id 'comment-input' ไม่เจอ");
+        }
 
-    // 3. เรียกฟังก์ชันส่งหลัก (ซึ่งคุณทำระบบบีบอัดรูปไว้ในนี้แล้ว)
-    if (typeof window.sendComment === 'function') {
-        window.sendComment();
-    }
+        // 2. ย้ายไฟล์รูปไปที่ช่องหลัก
+        if (mainCameraInput && hasImage) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(fCameraInput.files[0]);
+            mainCameraInput.files = dataTransfer.files;
+            console.log("Image transferred to main input");
+        }
 
-    // 4. ล้างค่าในหน้าต่างแชทลอย
-    fInput.value = '';
-    fCameraInput.value = '';
-    
-    // คืนค่าปุ่มกล้องเป็นสีเดิม
-    const camBtn = document.getElementById('chat-camera-btn');
-    if (camBtn) {
-        camBtn.style.backgroundColor = '#f39c12';
-        camBtn.innerHTML = '<i class="fas fa-camera"></i>';
+        // 3. เรียกฟังก์ชันส่งหลัก
+        if (typeof window.sendComment === 'function') {
+            console.log("Calling window.sendComment()");
+            await window.sendComment(); // ✅ ใส่ await เพื่อให้มั่นใจว่าส่งเสร็จก่อนทำขั้นตอนถัดไป
+        } else {
+            alert("ระบบส่งข้อความหลัก (sendComment) มีปัญหา กรุณาติดต่อผู้ดูแล");
+            return;
+        }
+
+        // 4. ล้างค่าในหน้าต่างแชทลอย (ทำเฉพาะเมื่อส่งสำเร็จ)
+        fInput.value = '';
+        fCameraInput.value = '';
+        const camBtn = document.getElementById('chat-camera-btn');
+        if (camBtn) {
+            camBtn.style.backgroundColor = '#f39c12';
+            camBtn.innerHTML = '<i class="fas fa-camera"></i>';
+        }
+
+    } catch (err) {
+        console.error("เกิดข้อผิดพลาดใน sendFloatingComment:", err);
+        alert("เกิดข้อผิดพลาด: " + err.message);
     }
 }
 
