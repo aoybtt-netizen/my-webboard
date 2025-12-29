@@ -2568,14 +2568,12 @@ async function showMyClosedPosts(page = 1) {
                     displayText = `${dist.toFixed(1)} km`; 
                 }
 
-                const mapsLink = `https://www.google.com/maps?q=${post.location.lat},${post.location.lng}`;
-                
                 locationHtml = `
-                    <a href="${mapsLink}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none; color:#007bff; font-size:0.85em; margin-left:10px;" 
-                        title="สถานที่: ${post.location.name}">
-                        📍 ${displayText} 
-                    </a>
-                `;
+						<span onclick="event.stopPropagation()" style="color:#666; font-size:0.85em; margin-left:10px; cursor:default;" 
+						title="สถานที่: ${post.location.name}">
+						📍 ${displayText} 
+						</span>
+					`;
             }
 
             // ✅ แทรก winnerHtml ลงใน title
