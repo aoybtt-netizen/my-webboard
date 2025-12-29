@@ -2078,6 +2078,10 @@ function compressImage(file, quality = 0.7, maxWidth = 1024) {
 
 
     async function sendComment() { 
+    // 1. อ้างอิงปุ่มส่ง และเช็คว่าติด Cooldown อยู่หรือไม่
+    const sendBtn = document.getElementById('send-comment-btn');
+    if (sendBtn && sendBtn.disabled) return; 
+
     const contentInput = document.getElementById('comment-input');
     const content = contentInput.value.trim();
     const fileInput = document.getElementById('comment-image');
@@ -2089,67 +2093,80 @@ function compressImage(file, quality = 0.7, maxWidth = 1024) {
         return;
     }
     
-    // ล็อกปุ่มหรือช่องพิมพ์ระหว่างส่ง
+    // 2. ล็อกปุ่มทันที และล็อกช่องพิมพ์
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5'; // ทำให้ปุ่มดูจางลง
+        sendBtn.style.cursor = 'not-allowed';
+    }
     contentInput.disabled = true;
-    if(fileInput) fileInput.disabled = true; // ล็อกปุ่มเลือกรูปด้วย
+    if(fileInput) fileInput.disabled = true;
 
     const formData = new FormData();
     formData.append('content', content);
     formData.append('author', myUsername);
 
-    // --- 🟢 ส่วนที่เพิ่ม: การบีบอัดรูปภาพ ---
+    // --- ส่วนการบีบอัดรูปภาพ (เดิมของคุณ) ---
     if (imageFile) {
-        // เช็คว่าเป็นรูปภาพหรือไม่
         if (imageFile.type.startsWith('image/')) {
             try {
-                // บีบอัดรูป (Quality 0.7, Width Max 1024px)
                 const compressedFile = await compressImage(imageFile, 0.7, 1024);
                 formData.append('image', compressedFile);
             } catch (error) {
                 console.error("Compression failed, sending original file:", error);
-                formData.append('image', imageFile); // ถ้าบีบอัดพลาด ให้ส่งไฟล์เดิม
+                formData.append('image', imageFile);
             }
         } else {
-            // ถ้าไม่ใช่รูป (เช่น PDF, Video) ส่งไฟล์เดิม
             formData.append('image', imageFile);
         }
     }
-    // ----------------------------------------
 
-    // ยิง API (URL เดิมของคุณ)
-    const res = await fetch(`/api/posts/${postId}/comments`, { 
-        method: 'POST',
-        body: formData 
-    });
-    
-    // ปลดล็อก
-    contentInput.disabled = false;
-    if(fileInput) fileInput.disabled = false;
-
-    if (res.status === 200) {
-        // เคลียร์ค่า
-        contentInput.value = '';
-        fileInput.value = '';
-        const fileNameDisplay = document.getElementById('file-name-display');
-        if(fileNameDisplay) {
-            fileNameDisplay.innerText = '';
-            fileNameDisplay.style.display = 'none';
-        }
+    try {
+        // ยิง API
+        const res = await fetch(`/api/posts/${postId}/comments`, { 
+            method: 'POST',
+            body: formData 
+        });
         
-        // (Optional) ถ้าคุณมีฟังก์ชันโหลดคอมเมนต์ใหม่ ให้เรียกตรงนี้
-        // loadComments(); 
-    } else {
-        // จัดการ Error (ตามโค้ดเดิมของคุณ)
-        try {
-            const d = await res.json();
-            showNotification(d.error, 'fas fa-times-circle', 4000); 
-            if (d.error && (d.error.includes('ปิด') || d.error.includes('TimeUp') || 
-                d.error.includes('closed') || d.error.includes('finished'))) {
-                location.reload();
+        // ปลดล็อกช่องอินพุตตามปกติ
+        contentInput.disabled = false;
+        if(fileInput) fileInput.disabled = false;
+
+        if (res.status === 200) {
+            // เคลียร์ค่า
+            contentInput.value = '';
+            fileInput.value = '';
+            const fileNameDisplay = document.getElementById('file-name-display');
+            if(fileNameDisplay) {
+                fileNameDisplay.innerText = '';
+                fileNameDisplay.style.display = 'none';
             }
-        } catch (e) {
-            showNotification(`❌ เกิดข้อผิดพลาดในการส่งข้อมูล: ${res.status}`, 'fas fa-times-circle', 5000); 
+        } else {
+            // จัดการ Error
+            try {
+                const d = await res.json();
+                showNotification(d.error, 'fas fa-times-circle', 4000); 
+                if (d.error && (d.error.includes('ปิด') || d.error.includes('TimeUp') || 
+                    d.error.includes('closed') || d.error.includes('finished'))) {
+                    location.reload();
+                }
+            } catch (e) {
+                showNotification(`❌ เกิดข้อผิดพลาดในการส่งข้อมูล: ${res.status}`, 'fas fa-times-circle', 5000); 
+            }
         }
+    } catch (error) {
+        console.error("Fetch error:", error);
+        contentInput.disabled = false;
+        if(fileInput) fileInput.disabled = false;
+    } finally {
+        // 3. เริ่มนับถอยหลัง 5 วินาที แล้วค่อยคืนค่าปุ่มให้กดได้ใหม่
+        setTimeout(() => {
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = '1';
+                sendBtn.style.cursor = 'pointer';
+            }
+        }, 5000); // 5000 มิลลิวินาที = 5 วินาที
     }
 }
         
