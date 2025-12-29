@@ -577,7 +577,13 @@
         <i class="fas fa-map-marker-alt"></i>
     </button>
 
-    
+    <button type="button" 
+            id="chat-camera-btn"
+            onclick="document.getElementById('chat-camera-input').click()"
+            style="background: #f39c12; color: white; border: none; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 10px;"
+            title="ถ่ายรูป">
+        <i class="fas fa-camera"></i>
+    </button>
     <input type="file" id="chat-camera-input" style="display: none;" accept="image/*" capture="environment" onchange="handleChatImageSelect(this)">
 </div>
 
@@ -588,7 +594,11 @@
 
         <input type="text" id="floating-comment-input" placeholder="comment..." style="flex-grow: 1; height: 40px; border-radius: 20px; border: 1px solid #ddd; padding: 0 15px; outline: none;">
         
-        
+        <button type="button" 
+        onclick="sendFloatingComment(event)" 
+        style="background: #007bff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; flex-shrink: 0;">
+    <i class="fas fa-paper-plane"></i>
+</button>
     </div>
 </div>
 
@@ -1255,7 +1265,84 @@ function toggleFloatingChat() {
 }
 
 
+function handleChatImageSelect(input) {
+    const btn = document.getElementById('chat-camera-btn');
+    if (input.files && input.files[0]) {
+        // เปลี่ยนปุ่มเป็นสีเขียวเพื่อให้รู้ว่าถ่ายรูปติดแล้ว
+        btn.style.backgroundColor = '#2ecc71';
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+    } else {
+        btn.style.backgroundColor = '#f39c12';
+        btn.innerHTML = '<i class="fas fa-camera"></i>';
+    }
+}
 
+// 1. ฟังก์ชันจัดการเมื่อถ่ายรูปเสร็จ (ใส่สีให้ปุ่มเพื่อให้รู้ว่ามีรูปค้างอยู่)
+function handleImageUpload(input) {
+    const file = input.files[0];
+    const camBtn = input.previousElementSibling;
+    if (file) {
+        camBtn.style.backgroundColor = '#2ecc71'; // เปลี่ยนเป็นสีเขียวเมื่อมีรูป
+        camBtn.innerHTML = '<i class="fas fa-check"></i>'; // เปลี่ยนไอคอนเป็นติ๊กถูก
+    }
+}
+
+// 2. ฟังก์ชันส่งคอมเมนต์จากแชทลอย
+async function sendFloatingComment(event) {
+    if (event) event.preventDefault(); // ✅ ป้องกันหน้าจอรี่เฟรชจากการ Submit Form
+
+    const fInput = document.getElementById('floating-comment-input');
+    const fCameraInput = document.getElementById('chat-camera-input');
+    
+    const mainInput = document.getElementById('comment-input');
+    const mainCameraInput = document.getElementById('comment-image');
+    
+    const content = fInput.value.trim();
+    const hasImage = fCameraInput.files && fCameraInput.files[0];
+
+    if (!content && !hasImage) return;
+
+    console.log("Starting send process..."); // ไว้เช็คใน Console
+
+    try {
+        // 1. ย้ายข้อความไปที่ช่องหลัก
+        if (mainInput) {
+            mainInput.value = content;
+        } else {
+            console.error("หา id 'comment-input' ไม่เจอ");
+        }
+
+        // 2. ย้ายไฟล์รูปไปที่ช่องหลัก
+        if (mainCameraInput && hasImage) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(fCameraInput.files[0]);
+            mainCameraInput.files = dataTransfer.files;
+            console.log("Image transferred to main input");
+        }
+
+        // 3. เรียกฟังก์ชันส่งหลัก
+        if (typeof window.sendComment === 'function') {
+            console.log("Calling window.sendComment()");
+            await window.sendComment(); // ✅ ใส่ await เพื่อให้มั่นใจว่าส่งเสร็จก่อนทำขั้นตอนถัดไป
+        } else {
+            alert("ระบบส่งข้อความหลัก (sendComment) มีปัญหา กรุณาติดต่อผู้ดูแล");
+            return;
+        }
+
+        // 4. ล้างค่าในหน้าต่างแชทลอย (ทำเฉพาะเมื่อส่งสำเร็จ)
+        fInput.value = '';
+        fCameraInput.value = '';
+        const camBtn = document.getElementById('chat-camera-btn');
+        if (camBtn) {
+            camBtn.style.backgroundColor = '#f39c12';
+            camBtn.innerHTML = '<i class="fas fa-camera"></i>';
+        }
+
+    } catch (err) {
+        console.error("เกิดข้อผิดพลาดใน sendFloatingComment:", err);
+        alert("เกิดข้อผิดพลาด: " + err.message);
+    }
+}
 
 
 function sendLocationInChat() {
