@@ -3926,63 +3926,83 @@ function openAdminPinnedModal() {
 	
 
 	async function createPost() {
+    // --- 1. อ้างอิงปุ่มโพสต์ และเช็คว่าติด Cooldown อยู่หรือไม่ ---
+    const createBtn = document.querySelector('.create-btn'); 
+    if (createBtn && createBtn.disabled) return;
+
     const titleInput = document.getElementById('title-input');
     const content = document.getElementById('content').value.trim();
     const imageFile = document.getElementById('post-image').files[0];
     const category = document.getElementById('category-select').value;
 	
 	if (myUsername !== 'Admin' && !currentLocationData) {
-            alert("⛔ กรุณากด '📍 ระบุตำแหน่งปัจจุบัน' ก่อนสร้างกระทู้");
-            // เลื่อนหน้าจอไปหาปุ่มเช็คอิน
-            document.getElementById('geo-btn').scrollIntoView({ behavior: 'smooth' });
-            // เพิ่ม Effect ให้ปุ่มเด่นขึ้นชั่วคราว
-            document.getElementById('geo-btn').style.border = "2px solid red";
-            setTimeout(() => document.getElementById('geo-btn').style.border = "1px solid #28a745", 2000);
-            return;
-        }
+        alert("⛔ กรุณากด '📍 ระบุตำแหน่งปัจจุบัน' ก่อนสร้างกระทู้");
+        document.getElementById('geo-btn').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('geo-btn').style.border = "2px solid red";
+        setTimeout(() => document.getElementById('geo-btn').style.border = "1px solid #28a745", 2000);
+        return;
+    }
     
     let titleVal = "";
     
-    // เช็ค Logic การส่ง Title
     if (myUsername === 'Admin') {
-        // Admin ต้องเอาค่าจาก Input
         titleVal = titleInput.value.trim();
         if (!titleVal) return alert("Admin กรุณาระบุชื่อกระทู้พิเศษ");
     } else {
-        // User ทั่วไป ส่งค่าว่างไป (Server จะจัดการตั้งชื่อตามหมวดหมู่เอง)
         titleVal = ""; 
         if (!content) return alert("กรุณาใส่รายละเอียดกระทู้");
     }
 
-    const formData = new FormData();
-    formData.append('title', titleVal);
-    formData.append('category', category);
-    formData.append('content', content);
-    formData.append('author', myUsername);
+    // --- 2. ล็อกปุ่มทันทีเพื่อป้องกันการกดย้ำ ---
+    if (createBtn) {
+        createBtn.disabled = true;
+        createBtn.style.opacity = '0.5';
+        createBtn.style.cursor = 'not-allowed';
+    }
 
-    if (imageFile) formData.append('image', imageFile); 
-    if (currentLocationData) formData.append('location', JSON.stringify(currentLocationData));
-	if (typeof myZoneId !== 'undefined' && myZoneId) {
-    formData.append('zoneId', myZoneId); 
-	}
-    const res = await fetch('/api/posts', {
-        method: 'POST',
-        body: formData 
-    }); 
+    try {
+        const formData = new FormData();
+        formData.append('title', titleVal);
+        formData.append('category', category);
+        formData.append('content', content);
+        formData.append('author', myUsername);
 
-    if (res.status !== 200) { 
-        const d = await res.json(); 
-        alert(d.error); 
-    } else { 
-        closeCreateModal(); 
-        titleInput.value = ''; 
-        document.getElementById('content').value = ''; 
-        document.getElementById('post-image').value = '';
-        
-        currentView = 'home';
-        loadPosts(); 
-        showNotification('✅ สร้างกระทู้สำเร็จ!', 'fas fa-check-circle', 3000);
-    } 
+        if (imageFile) formData.append('image', imageFile); 
+        if (currentLocationData) formData.append('location', JSON.stringify(currentLocationData));
+        if (typeof myZoneId !== 'undefined' && myZoneId) {
+            formData.append('zoneId', myZoneId); 
+        }
+
+        const res = await fetch('/api/posts', {
+            method: 'POST',
+            body: formData 
+        }); 
+
+        if (res.status !== 200) { 
+            const d = await res.json(); 
+            alert(d.error); 
+        } else { 
+            closeCreateModal(); 
+            titleInput.value = ''; 
+            document.getElementById('content').value = ''; 
+            document.getElementById('post-image').value = '';
+            
+            currentView = 'home';
+            loadPosts(); 
+            showNotification('✅ สร้างกระทู้สำเร็จ!', 'fas fa-check-circle', 3000);
+        } 
+    } catch (error) {
+        console.error("Create post error:", error);
+    } finally {
+        // --- 3. เริ่มนับถอยหลัง 15 วินาที แล้วค่อยคืนค่าปุ่ม ---
+        setTimeout(() => {
+            if (createBtn) {
+                createBtn.disabled = false;
+                createBtn.style.opacity = '1';
+                createBtn.style.cursor = 'pointer';
+            }
+        }, 15000); // 15000 มิลลิวินาที = 15 วินาที
+    }
 }
 
         socket.on('new-post', loadPosts); 
