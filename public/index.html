@@ -661,6 +661,9 @@
 		
 		let userSearchTimeout = null;
 		
+		let tempGoogleData = null; // เก็บข้อมูล Google ไว้รอตั้งชื่อ
+		let tempUsername = null;   // เก็บชื่อยูสเซอร์เก่าไว้รอตั้งรหัส
+		
 		
 		
 		function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
@@ -685,20 +688,18 @@
 function onGoogleLoginSuccess(response) {
     fetch('/api/auth/google', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: response.credential })
     })
     .then(res => res.json())
     .then(data => {
-        if (data.success) {
-            if (data.isNewUser) {
-                // ถ้าเป็นคนใหม่จาก Google ให้ไปตั้งชื่อก่อน
-                tempGoogleData = data.googleData; 
-                document.getElementById('google-setup-modal').classList.remove('hidden');
-            } else {
-                localStorage.setItem('myUsername', data.user.username);
-                startApp(data.user.username);
-            }
+        if (data.isNewUser) {
+            // เป็นคนใหม่จาก Google ให้เก็บข้อมูลไว้แล้วเปิดหน้าตั้งชื่อ
+            tempGoogleData = data.googleData;
+            document.getElementById('google-setup-modal').classList.remove('hidden');
+        } else if (data.success) {
+            localStorage.setItem('myUsername', data.user.username);
+            startApp(data.user.username);
         }
     });
 }
@@ -1506,32 +1507,75 @@ document.getElementById('private-chat-input')?.addEventListener('keypress', func
     if (e.key === 'Enter') sendPrivateMessage();
 });
 
-    // 1. Login แบบปกติ (ชื่อ + รหัส)
-async function login() {
-    const name = document.getElementById('username-input').value.trim();
-    const pwd = document.getElementById('password-input').value; // เพิ่มช่องนี้ใน HTML ด้วย
 
-    if (!name || !pwd) return alert("กรุณากรอกชื่อและรหัสผ่าน");
+// --- 1. สำหรับยูสเซอร์เก่า: บันทึกรหัสผ่านครั้งแรก ---
+async function submitNewPassword() {
+    const password = document.getElementById('new-password-input').value;
+    const username = document.getElementById('username-input').value.trim();
 
-    const res = await fetch('/api/auth/login', {
+    if (password.length < 4) return alert("รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร");
+
+    const res = await fetch('/api/auth/set-password', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: name, password: pwd })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+        alert("ตั้งรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบอีกครั้ง");
+        document.getElementById('set-password-modal').classList.add('hidden');
+        location.reload();
+    } else {
+        alert(data.error);
+    }
+}
+
+// --- 2. สำหรับยูสเซอร์ Google ใหม่: ตั้งชื่อสมาชิกครั้งแรก ---
+async function submitGoogleSetup() {
+    const username = document.getElementById('google-username-input').value.trim();
+    if (!username) return alert("กรุณาตั้งชื่อสมาชิก");
+
+    const res = await fetch('/api/auth/google-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            username: username, 
+            googleData: tempGoogleData 
+        })
     });
     const data = await res.json();
 
     if (data.success) {
         localStorage.setItem('myUsername', data.user.username);
         startApp(data.user.username);
-    } else if (data.needPasswordSetup || data.isNewUser) {
-        // ถ้าเป็นคนเก่าที่ไม่มีรหัส หรือคนใหม่ซิงๆ ให้ถามยืนยันการใช้รหัสนี้
-        const confirmMsg = data.needPasswordSetup ? 
-            "พบชื่อคุณในระบบแต่ยังไม่มีรหัสผ่าน ยืนยันจะใช้รหัสนี้เป็นรหัสประจำตัวหรือไม่?" : 
-            "ไม่พบชื่อนี้ในระบบ ยืนยันจะสมัครสมาชิกใหม่ด้วยชื่อและรหัสนี้หรือไม่?";
-            
-        if (confirm(confirmMsg)) {
-            saveNewAccount(name, pwd);
-        }
+        document.getElementById('google-setup-modal').classList.add('hidden');
+    } else {
+        alert(data.error); // แจ้งเตือนถ้าชื่อซ้ำ
+    }
+}
+
+
+    // 1. Login แบบปกติ (ชื่อ + รหัส)
+async function login() {
+    const username = document.getElementById('username-input').value.trim();
+    const password = document.getElementById('password-input').value;
+
+    if (!username || !password) return alert("กรุณากรอกทั้งชื่อและรหัสผ่าน");
+
+    const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+        localStorage.setItem('myUsername', data.user.username);
+        startApp(data.user.username);
+    } else if (data.needPasswordSetup) {
+        // ยูสเซอร์เก่าแต่ยังไม่มีรหัส
+        document.getElementById('set-password-modal').classList.remove('hidden');
     } else {
         alert(data.error);
     }

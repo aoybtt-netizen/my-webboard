@@ -116,110 +116,62 @@ function translateServerMsg(key, lang = 'th') {
 app.post('/api/auth/google', async (req, res) => {
     const { token } = req.body;
     try {
-        const ticket = await googleClient.verifyIdToken({
-            idToken: token,
-            audience: CLIENT_ID,
-        });
+        const ticket = await googleClient.verifyIdToken({ idToken: token, audience: CLIENT_ID });
         const payload = ticket.getPayload();
         const { sub, email, name, picture } = payload;
 
-        // 1. ค้นหา User จาก Google ID หรือ Email
-        let user = await usersCollection.findOne({ 
-            $or: [{ googleId: sub }, { email: email }] 
-        });
+        let user = await usersCollection.findOne({ $or: [{ googleId: sub }, { email: email }] });
 
         if (!user) {
-            // [แผนใหม่] ถ้าไม่เจอ User เลย แสดงว่าเป็นคนใหม่
-            // ส่งข้อมูล Google กลับไปให้หน้าบ้าน เพื่อให้หน้าบ้านเปิด Modal ตั้งชื่อ
-            return res.json({ 
-                success: true, 
-                isNewUser: true, 
-                googleData: { sub, email, name, picture } 
-            });
+            // ยังไม่มีในระบบ ให้ส่งข้อมูลไปให้หน้าบ้านตั้งชื่อก่อน
+            return res.json({ success: true, isNewUser: true, googleData: { sub, email, picture } });
         }
 
-        // 2. ถ้าเจอ User แล้ว แต่ยังไม่ได้ผูก Google ID (กรณี User เก่าที่สมัครด้วยชื่อ)
-        if (!user.googleId) {
-            await usersCollection.updateOne(
-                { _id: user._id }, 
-                { $set: { googleId: sub, avatar: picture } }
-            );
-            user.googleId = sub;
-        }
-
-        // 3. Login สำเร็จ (ส่งข้อมูลเหมือนเดิม)
-        res.json({ 
-            success: true, 
-            isNewUser: false,
-            user: { _id: user._id, username: user.username, avatar: user.avatar, coins: user.coins } 
-        });
-
-    } catch (error) {
-        console.error("Google Auth Error:", error);
-        res.status(400).json({ success: false, error: 'การยืนยันตัวตนผิดพลาด' });
-    }
+        // ถ้ามีแล้ว (หรือผูกบัญชีแล้ว) ก็ Login เลย
+        res.json({ success: true, isNewUser: false, user });
+    } catch (e) { res.status(400).json({ success: false }); }
 });
 
 
-//API สำหรับ "สมัครสมาชิกใหม่จาก Google" (ตั้งชื่อห้ามซ้ำ)
-
+// API สำหรับ Google ตั้งชื่อสมาชิกใหม่ (เช็คชื่อซ้ำ)
 app.post('/api/auth/google-register', async (req, res) => {
-    const { username, googleData } = req.body; // googleData ส่งมาจากหน้าบ้าน
+    const { username, googleData } = req.body;
 
-    try {
-        // ตรวจสอบว่าชื่อซ้ำไหม
-        const existingUser = await usersCollection.findOne({ username: username });
-        if (existingUser) {
-            return res.json({ success: false, error: 'ชื่อสมาชิกนี้มีผู้ใช้งานแล้ว' });
-        }
+    // เช็คว่าชื่อซ้ำไหม
+    const exists = await usersCollection.findOne({ username: username });
+    if (exists) return res.json({ success: false, error: 'ชื่อนี้มีผู้ใช้แล้ว กรุณาใช้ชื่ออื่น' });
 
-        // สร้าง User ใหม่
-        const newUser = {
-            username: username,
-            email: googleData.email,
-            googleId: googleData.sub,
-            avatar: googleData.picture,
-            coins: 0,
-            adminLevel: 0,
-            createdAt: Date.now()
-            // รหัสผ่านไม่ต้องมีก็ได้เพราะ Login ผ่าน Google ตลอด
-        };
-
-        const result = await usersCollection.insertOne(newUser);
-        res.json({ success: true, user: { ...newUser, _id: result.insertedId } });
-        
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดในการลงทะเบียน' });
-    }
+    const newUser = {
+        username: username,
+        googleId: googleData.sub,
+        email: googleData.email,
+        avatar: googleData.picture,
+        coins: 0,
+        adminLevel: 0,
+        createdAt: Date.now()
+    };
+    await usersCollection.insertOne(newUser);
+    res.json({ success: true, user: newUser });
 });
 
 
 //API สำหรับ "Login แบบปกติ" (ชื่อ + รหัสผ่าน)
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
+    const user = await usersCollection.findOne({ username });
 
-    try {
-        const user = await usersCollection.findOne({ username });
+    if (!user) return res.json({ success: false, error: 'ไม่พบผู้ใช้งาน' });
 
-        if (!user) {
-            return res.json({ success: false, error: 'ไม่พบชื่อผู้ใช้งานนี้' });
-        }
+    // ถ้าเป็นยูสเก่าที่ยังไม่มีรหัสผ่าน
+    if (!user.password) {
+        return res.json({ success: false, needPasswordSetup: true });
+    }
 
-        // กรณี User เก่าที่ยังไม่มีรหัสผ่าน (password field ยังไม่มีใน DB)
-        if (!user.password) {
-            return res.json({ success: true, needPasswordSetup: true });
-        }
-
-        // ตรวจสอบรหัสผ่าน (ใช้ bcrypt)
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.json({ success: false, error: 'รหัสผ่านไม่ถูกต้อง' });
-        }
-
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (isMatch) {
         res.json({ success: true, user });
-
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาด' });
+    } else {
+        res.json({ success: false, error: 'รหัสผ่านไม่ถูกต้อง' });
     }
 });
 
@@ -227,67 +179,15 @@ app.post('/api/auth/login', async (req, res) => {
 // API สำหรับลงทะเบียนรหัสผ่าน (ใช้ทั้งคนใหม่และคนเก่าที่ยังไม่มีรหัส)
 app.post('/api/auth/set-password', async (req, res) => {
     const { username, password } = req.body;
-
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10); // เข้ารหัสลับ 10 รอบ
-        
-        const user = await usersCollection.findOne({ username });
-
-        if (user) {
-            // --- กรณี User เก่า: อัปเดตรหัสผ่านเพิ่มเข้าไป ---
-            if (user.password) {
-                return res.json({ success: false, error: 'บัญชีนี้มีการตั้งรหัสผ่านไว้แล้ว' });
-            }
-            await usersCollection.updateOne(
-                { _id: user._id },
-                { $set: { password: hashedPassword } }
-            );
-            return res.json({ success: true, message: 'บันทึกรหัสผ่านใหม่เรียบร้อย' });
-        } else {
-            // --- กรณี User ใหม่: สร้างบัญชีใหม่พร้อมรหัสผ่าน ---
-            const newUser = {
-                username: username,
-                password: hashedPassword,
-                coins: 0,
-                adminLevel: 0,
-                createdAt: Date.now()
-            };
-            await usersCollection.insertOne(newUser);
-            return res.json({ success: true, message: 'ลงทะเบียนสมาชิกใหม่เรียบร้อย' });
-        }
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์' });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    await usersCollection.updateOne(
+        { username: username },
+        { $set: { password: hashedPassword } }
+    );
+    res.json({ success: true });
 });
 
-
-app.post('/api/auth/login', async (req, res) => {
-    const { username, password } = req.body;
-
-    try {
-        const user = await usersCollection.findOne({ username });
-
-        if (!user) {
-            // ถ้าไม่เจอชื่อนี้เลย ให้หน้าบ้านถามว่า "จะสมัครใหม่ด้วยชื่อนี้ไหม?"
-            return res.json({ success: false, isNewUser: true });
-        }
-
-        if (!user.password) {
-            // เจอชื่อแต่ไม่มีรหัส (User เก่า) -> ส่งไปหน้าตั้งรหัสผ่าน
-            return res.json({ success: false, needPasswordSetup: true });
-        }
-
-        // เช็ครหัสผ่าน
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (isMatch) {
-            res.json({ success: true, user: { username: user.username, _id: user._id } });
-        } else {
-            res.json({ success: false, error: 'รหัสผ่านไม่ถูกต้อง' });
-        }
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Login Error' });
-    }
-});
 
 // ==========================================
 // Helper Functions for MongoDB
