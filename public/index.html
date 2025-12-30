@@ -2906,7 +2906,7 @@ async function fetchAndRenderAllZones() {
 		// ฟังก์ชันสำหรับเปิดหน้าต่างแสดงโซนที่ Admin L1/L2 รับผิดชอบ
 	async function openAssignedZoneMap() {
     if (myAdminLevel < 1 || myAdminLevel >= 3) return; 
-	if (myAdminLevel === 2) closeZoneChoiceModal();
+    if (myAdminLevel === 2) closeZoneChoiceModal();
 
     document.getElementById('assigned-zone-map-modal').classList.remove('hidden');
     const listDisplay = document.getElementById('assigned-zone-list-display');
@@ -2921,24 +2921,28 @@ async function fetchAndRenderAllZones() {
         const data = await res.json();
 
         if (data.zones && data.zones.length > 0) {
-            
             listDisplay.innerHTML = data.zones.map(zone => {
                 const lat = parseFloat(zone.lat).toFixed(4);
                 const lng = parseFloat(zone.lng).toFixed(4);
                 const name = zone.name || `Zone ID: ${zone.id}`;
                 const mapLink = `https://www.google.com/maps?q=${zone.lat},${zone.lng}`;
                 
-                // ตรวจสอบค่าธรรมเนียมปัจจุบัน
-                // ถ้า zoneFee เป็น null/undefined ให้แสดงว่า "ใช้ค่ากลาง"
                 const currentFeeVal = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? zone.zoneFee : '';
                 const placeholder = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? '' : 'ค่ากลาง';
                 
-                // ตรวจสอบว่ามีรูปพื้นหลังหรือไม่
+                // ⭐ [NEW] ตรวจสอบสถานะฟรีของโซนนี้
+                const isFreeChecked = zone.isFree === true ? 'checked' : '';
+                const freeZoneHtml = `
+                    <div style="margin-top: 10px; background: #e8f5e9; padding: 10px; border-radius: 5px; border: 1px dashed #28a745; display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="is-free-input-${zone.id}" ${isFreeChecked} style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="is-free-input-${zone.id}" style="font-size: 0.9em; font-weight: bold; color: #155724; cursor: pointer;">✨ เปิดใช้งานโซนโพสต์ฟรี (Zone Free)</label>
+                    </div>
+                `;
+
                 const bgPreview = zone.bgImage 
                     ? `<div style="margin-top:5px;"><img src="${zone.bgImage}" style="max-height:100px; border-radius:5px; border:1px solid #ddd;"></div>` 
                     : '<div style="margin-top:5px; color:gray; font-size:0.8em;">(ยังไม่มีรูปพื้นหลัง)</div>';
 
-                // --- ส่วน UI ตั้งชื่อโซน ---
                 const currentName = name.includes('Zone ID:') ? '' : name;
                 const nameInputHtml = `
                     <div style="flex-basis: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #007bff; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
@@ -2950,16 +2954,13 @@ async function fetchAndRenderAllZones() {
                     </div>
                 `;
 
-                // --- [NEW] ส่วน UI อัปโหลดรูปพื้นหลัง ---
                 const bgUploadHtml = `
                     <div style="margin-top: 10px; background: #fff3cd; padding: 10px; border-radius: 5px; border: 1px solid #ffc107;">
                         <label style="font-size: 0.9em; font-weight: bold; display:block;">🖼️ รูปพื้นหลังโซน:</label>
                         ${bgPreview}
                         <div style="display:flex; gap:5px; margin-top:5px;">
                             <input type="file" id="bg-file-${zone.id}" accept="image/*" style="font-size:0.8em; width:100%;">
-                            <button class="sidebar-btn create-btn" onclick="uploadZoneBg('${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom:0;">
-                                อัปโหลด
-                            </button>
+                            <button class="sidebar-btn create-btn" onclick="uploadZoneBg('${zone.id}')" style="padding: 5px 10px; font-size: 0.8em; width: auto; margin-bottom:0;">อัปโหลด</button>
                         </div>
                     </div>
                 `;
@@ -2970,11 +2971,10 @@ async function fetchAndRenderAllZones() {
                             <span style="font-weight: bold;">🗺️ ${name}</span>
                             <a href="${mapLink}" target="_blank" style="color:#007bff; text-decoration:none;">📍 ${lat}, ${lng}</a>
                         </div>
-                        
                         ${nameInputHtml}
                         ${bgUploadHtml}
                         
-                        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-top: 10px;">
+                        ${freeZoneHtml} <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-top: 10px;">
                             <label style="font-size: 0.9em; white-space: nowrap;">Zone fee(USD):</label>
                             <input type="number" id="fee-input-${zone.id}" value="${currentFeeVal}" placeholder="${placeholder}" 
                                         style="width: 80px; padding: 5px; margin-bottom: 0;">     
@@ -2986,7 +2986,6 @@ async function fetchAndRenderAllZones() {
                     </div>
                 `;
             }).join('');
-
         } else {
             listDisplay.innerHTML = `<p style="text-align:center; color:#e0a800;">${t['assigned_no_zones']}</p>`;
         }
@@ -3045,8 +3044,8 @@ async function saveZoneFee(zoneId) {
     const input = document.getElementById(`fee-input-${zoneId}`);
     const feeValue = input.value.trim();
     
-    // ถ้าค่าว่าง = Reset เป็นค่ากลาง
-    // ถ้ามีค่า = ตั้งค่าใหม่
+    // ⭐ [NEW] ดึงค่าจาก Checkbox ของโซนนี้
+    const isFree = document.getElementById(`is-free-input-${zoneId}`).checked;
     
     try {
         const res = await fetch('/api/admin/set-zone-fee', {
@@ -3055,6 +3054,7 @@ async function saveZoneFee(zoneId) {
             body: JSON.stringify({ 
                 zoneId: zoneId, 
                 fee: feeValue === '' ? null : feeValue, 
+                isFree: isFree, // ⭐ ส่งค่าสถานะฟรีไปด้วย
                 requestBy: myUsername 
             })
         });
@@ -3062,9 +3062,8 @@ async function saveZoneFee(zoneId) {
         const data = await res.json();
         
         if (data.success) {
-            alert('✅ บันทึกค่าธรรมเนียมโซนเรียบร้อย');
-            // รีเฟรชหน้า list เพื่อแสดงผล placeholder หรือค่าใหม่ให้ถูกต้อง
-            openAssignedZoneMap();
+            alert('✅ บันทึกค่าธรรมเนียมและสถานะโซนเรียบร้อย');
+            openAssignedZoneMap(); // รีเฟรชรายการ
         } else {
             alert(`❌ Error: ${data.error}`);
         }

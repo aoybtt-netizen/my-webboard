@@ -739,9 +739,10 @@ app.post('/api/admin/set-cost', async (req, res) => {
 
 // 7.1
 app.post('/api/admin/set-zone-fee', async (req, res) => {
-    const { zoneId, fee, requestBy } = req.body;
+    // 1. รับค่า isFree เพิ่มมาจาก req.body
+    const { zoneId, fee, isFree, requestBy } = req.body;
     
-    // ตรวจสอบคนเรียก
+    // ตรวจสอบคนเรียก (เหมือนเดิม)
     const requester = await getUserData(requestBy);
     if (!requester || requester.adminLevel < 1) {
         return res.status(403).json({ error: 'Permission denied.' });
@@ -752,20 +753,34 @@ app.post('/api/admin/set-zone-fee', async (req, res) => {
 
     if (!zone) return res.status(404).json({ error: 'Zone not found' });
 
-    // ตรวจสอบสิทธิ์: ต้องเป็นเจ้าของโซน หรือเป็น Admin L3
+    // ตรวจสอบสิทธิ์ (เหมือนเดิม)
     if (requester.adminLevel < 3 && zone.assignedAdmin !== requestBy) {
         return res.status(403).json({ error: 'คุณไม่ใช่ผู้ดูแลโซนนี้' });
     }
 
-    // ถ้า fee เป็น null หรือค่าว่าง คือการ Reset ไปใช้ค่ากลาง
+    // จัดการเรื่องค่าธรรมเนียม (เหมือนเดิม)
     let newFee = (fee === '' || fee === null) ? null : parseFloat(fee);
     if (newFee !== null && (isNaN(newFee) || newFee < 0)) {
         return res.status(400).json({ error: 'Invalid fee amount' });
     }
 
-    await zonesCollection.updateOne({ id: zoneIdInt }, { $set: { zoneFee: newFee } });
+    // ⭐ ส่วนที่เพิ่มเข้ามา: บันทึกทั้งค่าธรรมเนียม และ สถานะโซนฟรี
+    // เราใช้ $set เพื่อเพิ่มหรืออัปเดตฟิลด์ isFree ลงไปใน zonesCollection
+    await zonesCollection.updateOne(
+        { id: zoneIdInt }, 
+        { 
+            $set: { 
+                zoneFee: newFee,
+                isFree: isFree === true // บันทึกเป็น true หรือ false
+            } 
+        }
+    );
     
-    res.json({ success: true, newFee: newFee });
+    res.json({ 
+        success: true, 
+        newFee: newFee,
+        isFree: isFree === true 
+    });
 });
 
 // 7.2 API สำหรับ Admin Level 1/2 เพื่อตั้งชื่อโซนของตนเอง
