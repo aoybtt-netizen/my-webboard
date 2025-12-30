@@ -419,7 +419,7 @@
         </div>
 
         <div id="g_id_onload"
-             data-client_id="YOUR_GOOGLE_CLIENT_ID"
+             data-client_id="588474601862-hjtk1iu27cer2114si2947divbvd8v4c.apps.googleusercontent.com"
              data-callback="onGoogleLoginSuccess">
         </div>
         <div class="g_id_signin" 
@@ -662,6 +662,45 @@
         function deg2rad(deg) {
             return deg * (Math.PI / 180);
         }
+		
+		
+	// ฟังก์ชันที่จะทำงานเมื่อ Google ยืนยันตัวตนสำเร็จ
+function onGoogleLoginSuccess(response) {
+    const credential = response.credential; // นี่คือ ID Token จาก Google
+
+    // ส่ง Token ไปที่ Server ของเรา
+    fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token: credential })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // เมื่อ Login สำเร็จ ให้เก็บข้อมูล User และเข้าสู่ระบบ
+            console.log("Login Success:", data.user);
+            
+            // ตัวอย่าง: เก็บข้อมูลลง localStorage และซ่อน Modal
+            localStorage.setItem('user', JSON.stringify(data.user));
+            currentUser = data.user;
+            
+            document.getElementById('login-modal').classList.add('hidden');
+            updateUI(); // ฟังก์ชันอัปเดตหน้าจอของคุณ
+            
+            // ทำการเชื่อมต่อ Socket หรืออื่นๆ ต่อไป
+            initSocket(data.user); 
+        } else {
+            alert('การยืนยันตัวตนผิดพลาด: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error("Auth Error:", err);
+        alert('ไม่สามารถติดต่อ Server ได้');
+    });
+}
+
 		
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
