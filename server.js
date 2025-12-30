@@ -277,12 +277,14 @@ async function getPostCostByLocation(location) {
     const globalConfig = await configCollection.findOne({ id: 'main_config' });
     const globalSystemFee = globalConfig ? (globalConfig.systemFee || 5) : 5;
     const globalDefaultAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
+    const isGlobalFree = globalConfig ? (globalConfig.isFree === true) : false;
 
     const responsibleData = await findResponsibleAdmin(location);
     
-    let finalAdminFee = globalDefaultAdminFee;
+    // ⭐ เช็คสถานะฟรีรายโซน
+    const isZoneFree = responsibleData.zoneData ? (responsibleData.zoneData.isFree === true) : false;
     
-    // เช็คค่าธรรมเนียมของโซน
+    let finalAdminFee = globalDefaultAdminFee;
     if (responsibleData.zoneData && responsibleData.zoneData.zoneFee !== undefined && responsibleData.zoneData.zoneFee !== null) {
         finalAdminFee = parseFloat(responsibleData.zoneData.zoneFee);
     }
@@ -292,8 +294,10 @@ async function getPostCostByLocation(location) {
     return {
         totalCost: totalCost,
         systemFee: globalSystemFee,
-        adminFee: finalAdminFee, // ค่านี้จะถูกส่งไปแสดงผลเป็น Admin Fee
-        feeReceiver: responsibleData.username
+        adminFee: finalAdminFee,
+        feeReceiver: responsibleData.username,
+        // ⭐ ส่งค่าสรุปไปให้หน้าบ้านด้วย
+        isFree: isGlobalFree || isZoneFree 
     };
 }
 
@@ -1313,17 +1317,23 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     let finalTitle = (author === 'Admin' && title) ? title.trim() : topicName;
 
     // ==================================================================
-    // ส่วนคำนวณค่าธรรมเนียม (ดึงค่า IsFree เพิ่มเข้ามา)
+    // ส่วนคำนวณค่าธรรมเนียม (เช็คทั้งค่ากลาง และค่ารายโซน)
     // ==================================================================
     const globalConfig = await configCollection.findOne({ id: 'main_config' });
     const globalSystemFee = globalConfig ? (globalConfig.systemFee || 5) : 5;
     const globalDefaultAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
     
-    // ⭐ เช็คว่าแอดมินเปิดโหมด "โพสต์ฟรี" หรือไม่
-    const isFreeZone = globalConfig ? (globalConfig.isFree === true) : false;
+    // เช็คค่าฟรีจากส่วนกลาง
+    const isGlobalFree = globalConfig ? (globalConfig.isFree === true) : false;
 
     const responsibleData = await findResponsibleAdmin(location ? JSON.parse(location) : null);
     const feeReceiver = responsibleData.username;
+
+    // ⭐ [เพิ่มใหม่] เช็คค่าฟรีจากโซนพื้นที่นั้นๆ
+    const isZoneFree = responsibleData.zoneData ? (responsibleData.zoneData.isFree === true) : false;
+
+    // ⭐ [สรุปผล] ถ้าฟรีอย่างใดอย่างหนึ่ง ให้ถือว่าโพสต์ฟรี (Final Free Status)
+    const isFreePostFinal = isGlobalFree || isZoneFree;
 
     let finalAdminFee = globalDefaultAdminFee;
     let feeNote = `Default Fee`;
@@ -1339,10 +1349,10 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
     // ==================================================================
-    // ส่วนการจัดการเงิน (Logic ใหม่: ถ้าฟรี ให้ข้ามการหักเงิน)
+    // ส่วนการจัดการเงิน (ใช้ isFreePostFinal ในการตัดสินใจ)
     // ==================================================================
     if (author !== 'Admin') {
-        if (!isFreeZone) { // 👈 ถ้าไม่ใช่โซนฟรี ถึงจะทำข้างล่างนี้
+        if (!isFreePostFinal) { // 👈 ใช้ตัวแปรสรุปสุดท้าย
             if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ (Total Cost: ' + totalCost + ' USD)' });
             
             await updateUser(author, { coins: user.coins - totalCost });
@@ -1373,7 +1383,6 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
             }
             io.to('Admin').emit('admin-new-transaction');
         } 
-        // ถ้าเป็นโซนฟรี ระบบจะไม่ทำอะไรเลยในส่วนนี้ (เงินไม่ลด)
     }
     
     // สร้าง Post ลง Database
@@ -1382,20 +1391,20 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
         isClosed: false, isPinned: (author === 'Admin'),
         zoneId: postZoneId,
-        isFreePost: isFreeZone // 👈 เก็บสถานะไว้ดูว่ากระทู้นี้โพสต์ฟรีหรือไม่
+        isFreePost: isFreePostFinal // 👈 เก็บสถานะสรุปสุดท้าย
     };
 
     await postsCollection.insertOne(newPost);
     await usersCollection.updateOne({ username: author }, { $inc: { totalPosts: 1 } });
     
     if (author !== 'Admin') {
-        // ⭐ ปรับข้อความแจ้งเตือนตามสถานะฟรี/ไม่ฟรี
-        let msgText = isFreeZone ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCost} USD`;
+        // แจ้งเตือนตามสถานะสรุป
+        let msgText = isFreePostFinal ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCost} USD`;
         const notifMsg = { 
             sender: 'System', 
             target: author, 
             msgKey: 'SYS_FEE', 
-            msgData: { topicName: topicName, cost: isFreeZone ? 0 : totalCost }, 
+            msgData: { topicName: topicName, cost: isFreePostFinal ? 0 : totalCost }, 
             msg: msgText, 
             timestamp: Date.now() + 2 
         };
