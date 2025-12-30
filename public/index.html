@@ -1762,6 +1762,8 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 }
 
         function logout() {
+			document.getElementById('geo-filter-btn').classList.add('hidden');
+			document.getElementById('sticky-create-btn').classList.add('hidden');
             localStorage.removeItem('myUsername'); 
             location.reload();
         }
