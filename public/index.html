@@ -5237,7 +5237,7 @@ function openUserDetail(targetUsername) {
     </div>
 </div>
 
-		<div id="set-cost-modal" class="modal-overlay hidden">
+	<div id="set-cost-modal" class="modal-overlay hidden">
     <div class="modal-box">
         <h2 data-i18n-key="admin_set_cost_title">🏷️ ตั้งค่าธรรมเนียมกระทู้</h2>
         
@@ -5247,6 +5247,14 @@ function openUserDetail(targetUsername) {
         <label for="admin-fee-input" style="font-weight: bold;" data-i18n-key="label_admin_fee">ค่าธรรมเนียมผู้ดูแล (เข้า Admin L1/L2):</label>
         <input type="number" step="0.01" id="admin-fee-input" placeholder="USD" required>
         
+        <div style="margin: 15px 0; background: #f0fdf4; padding: 12px; border-radius: 8px; border: 1px dashed #22c55e;">
+            <label style="display: flex; align-items: center; cursor: pointer; gap: 10px; margin: 0;">
+                <input type="checkbox" id="is-free-zone-input" style="width: 20px; height: 20px; cursor: pointer;">
+                <span style="font-weight: bold; color: #166534;">✅ เปิดใช้งาน "โซนโพสต์ฟรี"</span>
+            </label>
+            <small style="color: #4ade80; display: block; margin-top: 5px;">* หากเลือก กระทู้ในโซนนี้จะไม่ถูกหักเงิน</small>
+        </div>
+
         <div style="font-size:0.9em; margin-bottom: 15px;">
             <span data-i18n-key="total_fee_display">รวมค่าธรรมเนียมทั้งหมด:</span> <b id="total-fee-display">0.00 USD</b>
         </div>
@@ -5255,15 +5263,6 @@ function openUserDetail(targetUsername) {
             <button class="sidebar-btn" onclick="document.getElementById('set-cost-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
             <button class="sidebar-btn create-btn" onclick="savePostCost()" style="width:auto;" data-i18n-key="btn_save">บันทึก</button>
         </div>
-		
-		<div style="margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px dashed #ced4da;">
-    <label style="display: flex; align-items: center; cursor: pointer; gap: 10px;">
-        <input type="checkbox" id="is-free-zone-input" style="width: 20px; height: 20px;">
-        <span style="font-weight: bold; color: #28a745;">✅ เปิดใช้งาน "โซนโพสต์ฟรี"</span>
-    </label>
-    <small style="color: gray; display: block; margin-top: 5px;">* หากเลือก กระทู้ในโซนนี้จะไม่ถูกหักเงิน</small>
-</div>
-
     </div>
 </div>
 
