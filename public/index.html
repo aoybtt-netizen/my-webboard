@@ -407,12 +407,16 @@
 </div>
 </div>
 
+
+
     <div id="login-modal" class="modal-overlay">
     <div class="modal-box" style="text-align:center;">
         <h2 data-i18n-key="login_title">ยินดีต้อนรับ</h2>
         
-        <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus data-i18n-key="login_placeholder" style="margin-bottom: 10px;">
-        <button class="sidebar-btn create-btn" onclick="login()" data-i18n-key="login_btn" style="width: 100%;">เข้าสู่ระบบ</button>
+        <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus style="margin-bottom: 10px;">
+        <input type="password" id="password-input" placeholder="รหัสผ่าน..." style="margin-bottom: 10px;">
+        
+        <button class="sidebar-btn create-btn" onclick="login()" style="width: 100%;">เข้าสู่ระบบ / สมัครสมาชิก</button>
 
         <div style="margin: 25px 0; border-top: 1px solid #eee; position: relative;">
             <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #999; font-size: 0.85em;">หรือใช้บัญชี Google</span>
@@ -422,17 +426,29 @@
              data-client_id="588474601862-hjtk1iu27cer2114si2947divbvd8v4c.apps.googleusercontent.com"
              data-callback="onGoogleLoginSuccess">
         </div>
-        <div class="g_id_signin" 
-             data-type="standard" 
-             data-size="large" 
-             data-theme="outline" 
-             data-text="signin_with" 
-             data-shape="rectangular" 
-             data-logo_alignment="left"
-             style="display: flex; justify-content: center;">
-        </div>
+        <div class="g_id_signin" data-type="standard" data-shape="rectangular"></div>
     </div>
 </div>
+
+<div id="set-password-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>🔒 กำหนดรหัสผ่านของคุณ</h3>
+        <p>เนื่องจากเป็นครั้งแรกที่คุณใช้รหัสผ่าน กรุณากำหนดรหัสเพื่อความปลอดภัย</p>
+        <input type="password" id="new-password-input" placeholder="กำหนดรหัสผ่านใหม่...">
+        <button class="sidebar-btn create-btn" onclick="submitNewPassword()">ยืนยันรหัสผ่าน</button>
+    </div>
+</div>
+
+<div id="google-setup-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>👤 ตั้งชื่อสมาชิกของคุณ</h3>
+        <p>ยินดีต้อนรับจาก Google! กรุณาตั้งชื่อเล่นที่ต้องการ (ห้ามซ้ำ)</p>
+        <input type="text" id="google-username-input" placeholder="ชื่อเล่นที่ต้องการ...">
+        <button class="sidebar-btn create-btn" onclick="submitGoogleSetup()">เริ่มใช้งาน</button>
+    </div>
+</div>
+
+
 
     <div id="create-modal" class="modal-overlay hidden">
     <div class="modal-box">
@@ -664,40 +680,26 @@
         }
 		
 		
-	// ฟังก์ชันที่จะทำงานเมื่อ Google ยืนยันตัวตนสำเร็จ
-function onGoogleLoginSuccess(response) {
-    const credential = response.credential; // นี่คือ ID Token จาก Google
 
-    // ส่ง Token ไปที่ Server ของเรา
+// 2. Login แบบ Google
+function onGoogleLoginSuccess(response) {
     fetch('/api/auth/google', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ token: credential })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ token: response.credential })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // เมื่อ Login สำเร็จ ให้เก็บข้อมูล User และเข้าสู่ระบบ
-            console.log("Login Success:", data.user);
-            
-            // ตัวอย่าง: เก็บข้อมูลลง localStorage และซ่อน Modal
-            localStorage.setItem('user', JSON.stringify(data.user));
-            currentUser = data.user;
-            
-            document.getElementById('login-modal').classList.add('hidden');
-            updateUI(); // ฟังก์ชันอัปเดตหน้าจอของคุณ
-            
-            // ทำการเชื่อมต่อ Socket หรืออื่นๆ ต่อไป
-            initSocket(data.user); 
-        } else {
-            alert('การยืนยันตัวตนผิดพลาด: ' + data.error);
+            if (data.isNewUser) {
+                // ถ้าเป็นคนใหม่จาก Google ให้ไปตั้งชื่อก่อน
+                tempGoogleData = data.googleData; 
+                document.getElementById('google-setup-modal').classList.remove('hidden');
+            } else {
+                localStorage.setItem('myUsername', data.user.username);
+                startApp(data.user.username);
+            }
         }
-    })
-    .catch(err => {
-        console.error("Auth Error:", err);
-        alert('ไม่สามารถติดต่อ Server ได้');
     });
 }
 
@@ -1504,12 +1506,52 @@ document.getElementById('private-chat-input')?.addEventListener('keypress', func
     if (e.key === 'Enter') sendPrivateMessage();
 });
 
-        function login() {
-            const name = document.getElementById('username-input').value.trim();
-            if(!name) return;
-            localStorage.setItem('myUsername', name);
-            startApp(name);
+    // 1. Login แบบปกติ (ชื่อ + รหัส)
+async function login() {
+    const name = document.getElementById('username-input').value.trim();
+    const pwd = document.getElementById('password-input').value; // เพิ่มช่องนี้ใน HTML ด้วย
+
+    if (!name || !pwd) return alert("กรุณากรอกชื่อและรหัสผ่าน");
+
+    const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username: name, password: pwd })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+        localStorage.setItem('myUsername', data.user.username);
+        startApp(data.user.username);
+    } else if (data.needPasswordSetup || data.isNewUser) {
+        // ถ้าเป็นคนเก่าที่ไม่มีรหัส หรือคนใหม่ซิงๆ ให้ถามยืนยันการใช้รหัสนี้
+        const confirmMsg = data.needPasswordSetup ? 
+            "พบชื่อคุณในระบบแต่ยังไม่มีรหัสผ่าน ยืนยันจะใช้รหัสนี้เป็นรหัสประจำตัวหรือไม่?" : 
+            "ไม่พบชื่อนี้ในระบบ ยืนยันจะสมัครสมาชิกใหม่ด้วยชื่อและรหัสนี้หรือไม่?";
+            
+        if (confirm(confirmMsg)) {
+            saveNewAccount(name, pwd);
         }
+    } else {
+        alert(data.error);
+    }
+}
+
+
+async function saveNewAccount(name, pwd) {
+    const res = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username: name, password: pwd })
+    });
+    const data = await res.json();
+    if (data.success) {
+        alert("บันทึกข้อมูลเรียบร้อย!");
+        login(); // ลอง Login อีกรอบด้วยข้อมูลใหม่
+    } else {
+        alert(data.error);
+    }
+}
 		
 		
 		// Announcement Functions ---
