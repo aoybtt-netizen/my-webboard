@@ -719,18 +719,18 @@ app.get('/api/check-active-job', async (req, res) => {
 // 7. Set Cost
 app.post('/api/admin/set-cost', async (req, res) => {
     const requester = await getUserData(req.body.requestBy);
-	// ต้องเป็น Admin Level 3 เท่านั้นในการกำหนดค่าธรรมเนียมหลัก
-	if (requester.adminLevel < 3) return res.status(403).json({ error: 'Admin Level 3 only' });
+    if (requester.adminLevel < 3) return res.status(403).json({ error: 'Admin Level 3 only' });
     
-    // รับค่า SystemFee และ AdminFee
     const systemFee = parseFloat(req.body.systemFee);
     const adminFee = parseFloat(req.body.adminFee);
+    const isFree = req.body.isFree === true; // รับค่า boolean
     
     if (isNaN(systemFee) || isNaN(adminFee) || systemFee < 0 || adminFee < 0) {
         return res.status(400).json({ error: 'Invalid fee values.' });
     }
     
-    const newConfig = { systemFee, adminFee };
+    // บันทึกทั้งค่าธรรมเนียมและสถานะฟรี
+    const newConfig = { systemFee, adminFee, isFree };
     
     await configCollection.updateOne({ id: 'main_config' }, { $set: newConfig });
     io.emit('config-update', newConfig);
@@ -1279,7 +1279,7 @@ app.post('/api/posts/:id/handover', async (req, res) => {
 app.post('/api/posts', upload.single('image'), async (req, res) => {
     const { author, category, content, location, title } = req.body;
 
-    // 1. ตรวจสอบเงื่อนไขพื้นฐาน (เหมือนเดิม)
+    // 1. ตรวจสอบเงื่อนไขพื้นฐาน (รักษาของเดิมไว้ทั้งหมด)
     if (author !== 'Admin') {
         if (!location || location === 'null' || location === 'undefined') {
             return res.status(400).json({ error: '⛔ กรุณาระบุตำแหน่ง (เช็คอิน) ก่อนสร้างกระทู้' });
@@ -1298,23 +1298,21 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     let finalTitle = (author === 'Admin' && title) ? title.trim() : topicName;
 
     // ==================================================================
-    // ส่วนคำนวณค่าธรรมเนียม (Hybrid: System + Zone)
+    // ส่วนคำนวณค่าธรรมเนียม (ดึงค่า IsFree เพิ่มเข้ามา)
     // ==================================================================
-    
-    // A. ดึงค่าธรรมเนียมกลาง (System Fee & Default Admin Fee)
     const globalConfig = await configCollection.findOne({ id: 'main_config' });
     const globalSystemFee = globalConfig ? (globalConfig.systemFee || 5) : 5;
     const globalDefaultAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
+    
+    // ⭐ เช็คว่าแอดมินเปิดโหมด "โพสต์ฟรี" หรือไม่
+    const isFreeZone = globalConfig ? (globalConfig.isFree === true) : false;
 
-    // B. หาโซนและแอดมินผู้รับผิดชอบก่อน (เพื่อดูว่าโซนนั้นมีราคาพิเศษไหม)
     const responsibleData = await findResponsibleAdmin(location ? JSON.parse(location) : null);
-    const feeReceiver = responsibleData.username; // คนที่จะได้รับเงิน
+    const feeReceiver = responsibleData.username;
 
-    // C. ตัดสินใจว่าจะใช้ Admin Fee เท่าไหร่
-    let finalAdminFee = globalDefaultAdminFee; // เริ่มต้นที่ค่ากลาง
-    let feeNote = `Default Fee`; // สำหรับบันทึกใน Transaction
+    let finalAdminFee = globalDefaultAdminFee;
+    let feeNote = `Default Fee`;
 
-    // เช็คว่าเจอโซน และโซนนั้นตั้งค่าราคาไว้ไหม (ไม่เป็น null)
     if (responsibleData.zoneData && responsibleData.zoneData.zoneFee !== undefined && responsibleData.zoneData.zoneFee !== null) {
         finalAdminFee = parseFloat(responsibleData.zoneData.zoneFee);
         feeNote = `Zone Fee (${responsibleData.zoneName})`;
@@ -1322,74 +1320,77 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         feeNote = `Default Fee (${responsibleData.zoneName})`;
     }
 
-    // D. รวมยอดที่ต้องจ่าย
     const totalCost = globalSystemFee + finalAdminFee;
-    //ดึง Zone ID จาก responsibleData เพื่อบันทึกลงกระทู้
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
     // ==================================================================
-    // สิ้นสุดการคำนวณ
+    // ส่วนการจัดการเงิน (Logic ใหม่: ถ้าฟรี ให้ข้ามการหักเงิน)
     // ==================================================================
-
     if (author !== 'Admin') {
-        if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ (Total Cost: ' + totalCost + ' USD)' });
-        
-        // 1. หักเงินจากผู้สร้างกระทู้ (Total Cost)
-        await updateUser(author, { coins: user.coins - totalCost });
-        
-        // 2. จัดการ System Fee (เข้า Admin L3)
-        if (globalSystemFee > 0) {
-            const adminUser = await getUserData('Admin');
-            await updateUser('Admin', { coins: adminUser.coins + globalSystemFee });
-            await transactionsCollection.insertOne({
-                id: Date.now(), type: 'POST_REVENUE', amount: globalSystemFee, fromUser: author, toUser: 'Admin',
-                note: `ค่าธรรมเนียมระบบ: ${topicName}`, postTitle: topicName, timestamp: Date.now()
-            });
-        }
-        
-        // 3. จัดการ Admin Fee (เข้า Admin เจ้าของโซน หรือ Admin กลาง ตามที่คำนวณได้)
-        if (finalAdminFee > 0) {
-            const receiverUser = await getUserData(feeReceiver);
-            await updateUser(feeReceiver, { coins: receiverUser.coins + finalAdminFee });
-            await transactionsCollection.insertOne({
-                id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, fromUser: author, toUser: feeReceiver,
-                note: `ค่าดูแล: ${feeNote}`, postTitle: topicName, timestamp: Date.now() + 1
-            });
-        }
-        
-        // 4. แจ้งเตือนอัปเดตยอดเงิน
-        const newAdmin = await getUserData('Admin');
-        io.emit('balance-update', { user: 'Admin', coins: newAdmin.coins });
-        if (feeReceiver !== 'Admin') {
-            const newReceiver = await getUserData(feeReceiver);
-            io.emit('balance-update', { user: feeReceiver, coins: newReceiver.coins });
-        }
-        io.to('Admin').emit('admin-new-transaction');
+        if (!isFreeZone) { // 👈 ถ้าไม่ใช่โซนฟรี ถึงจะทำข้างล่างนี้
+            if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ (Total Cost: ' + totalCost + ' USD)' });
+            
+            await updateUser(author, { coins: user.coins - totalCost });
+            
+            if (globalSystemFee > 0) {
+                const adminUser = await getUserData('Admin');
+                await updateUser('Admin', { coins: adminUser.coins + globalSystemFee });
+                await transactionsCollection.insertOne({
+                    id: Date.now(), type: 'POST_REVENUE', amount: globalSystemFee, fromUser: author, toUser: 'Admin',
+                    note: `ค่าธรรมเนียมระบบ: ${topicName}`, postTitle: topicName, timestamp: Date.now()
+                });
+            }
+            
+            if (finalAdminFee > 0) {
+                const receiverUser = await getUserData(feeReceiver);
+                await updateUser(feeReceiver, { coins: receiverUser.coins + finalAdminFee });
+                await transactionsCollection.insertOne({
+                    id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, fromUser: author, toUser: feeReceiver,
+                    note: `ค่าดูแล: ${feeNote}`, postTitle: topicName, timestamp: Date.now() + 1
+                });
+            }
+            
+            const newAdmin = await getUserData('Admin');
+            io.emit('balance-update', { user: 'Admin', coins: newAdmin.coins });
+            if (feeReceiver !== 'Admin') {
+                const newReceiver = await getUserData(feeReceiver);
+                io.emit('balance-update', { user: feeReceiver, coins: newReceiver.coins });
+            }
+            io.to('Admin').emit('admin-new-transaction');
+        } 
+        // ถ้าเป็นโซนฟรี ระบบจะไม่ทำอะไรเลยในส่วนนี้ (เงินไม่ลด)
     }
     
-    // สร้าง Post ลง Database (เหมือนเดิม)
+    // สร้าง Post ลง Database
     const newPost = { 
         id: Date.now(), title: finalTitle, topicId: category, content, author,
         location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
         isClosed: false, isPinned: (author === 'Admin'),
-        zoneId: postZoneId
+        zoneId: postZoneId,
+        isFreePost: isFreeZone // 👈 เก็บสถานะไว้ดูว่ากระทู้นี้โพสต์ฟรีหรือไม่
     };
-	await postsCollection.insertOne(newPost);
-    await usersCollection.updateOne(
-    { username: author },
-    { $inc: { totalPosts: 1 } } // $inc คือการบวกค่าเพิ่มไป 1
-		);
-	
+
+    await postsCollection.insertOne(newPost);
+    await usersCollection.updateOne({ username: author }, { $inc: { totalPosts: 1 } });
     
     if (author !== 'Admin') {
-        // แจ้งเตือน user ว่าโดนหักเงินเท่าไหร่
-        const notifMsg = { sender: 'System', target: author, msgKey: 'SYS_FEE', msgData: { topicName: topicName, cost: totalCost }, msg: `💸 หักค่าธรรมเนียม ${totalCost} USD`, timestamp: Date.now() + 2 };
+        // ⭐ ปรับข้อความแจ้งเตือนตามสถานะฟรี/ไม่ฟรี
+        let msgText = isFreeZone ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCost} USD`;
+        const notifMsg = { 
+            sender: 'System', 
+            target: author, 
+            msgKey: 'SYS_FEE', 
+            msgData: { topicName: topicName, cost: isFreeZone ? 0 : totalCost }, 
+            msg: msgText, 
+            timestamp: Date.now() + 2 
+        };
         await messagesCollection.insertOne(notifMsg);
         io.to(author).emit('private-message', { ...notifMsg, to: author });
         
         const updatedUser = await getUserData(author);
         io.emit('balance-update', { user: author, coins: updatedUser.coins });
     }
+
     io.emit('new-post', newPost); 
     res.json({ success: true, post: newPost });
 });

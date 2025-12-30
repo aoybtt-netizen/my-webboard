@@ -595,7 +595,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.49 (GoExDeli)</div>
+    <div class="version-display">v: 3.8.50 (GoExDeli)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -3797,7 +3797,7 @@ function openAdminPinnedModal() {
 
         function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); } 
         
-        function getLocation(isPrimaryCheckin = false) {
+    function getLocation(isPrimaryCheckin = false) {
     const btn = document.getElementById('geo-btn');
     const display = document.getElementById('location-display');
     const t = translations[currentLang]; // ตัวย่อสำหรับข้อความแปล
@@ -4064,6 +4064,9 @@ async function savePostCost() {
     
     const systemFee = parseFloat(document.getElementById('system-fee-input').value);
     const adminFee = parseFloat(document.getElementById('admin-fee-input').value);
+    // ดึงค่าว่าติ๊ก "ฟรี" ไว้หรือไม่
+    const isFree = document.getElementById('is-free-zone-input').checked; 
+    
     const t = translations[currentLang];
     
     if (isNaN(systemFee) || isNaN(adminFee) || systemFee < 0 || adminFee < 0) {
@@ -4074,7 +4077,12 @@ async function savePostCost() {
     const res = await fetch('/api/admin/set-cost', {
         method:'POST', 
         headers:{'Content-Type':'application/json'}, 
-        body:JSON.stringify({ systemFee, adminFee, requestBy: myUsername })
+        body:JSON.stringify({ 
+            systemFee, 
+            adminFee, 
+            isFree, // ส่งค่านี้ไปที่ Server
+            requestBy: myUsername 
+        })
     });
     
     if (res.status === 200) {
@@ -4299,13 +4307,11 @@ window.savePostCost = savePostCost;
 	
 	async function refreshModalPostCost(locationData) {
     let locationQuery = '';
-    // ถ้ามีพิกัด ให้แปลงเป็น JSON string เพื่อส่งไปที่ Server
     if (locationData && locationData.lat && locationData.lng) {
         locationQuery = `&location=${encodeURIComponent(JSON.stringify(locationData))}`;
     }
 
     try {
-        // เรียก API user-info พร้อมส่งพิกัด (ถ้ามี)
         const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}`);
         const data = await response.json();
         
@@ -4314,17 +4320,26 @@ window.savePostCost = savePostCost;
             return;
         }
 
+        const modalCostDisplay = document.getElementById('modal-cost-display');
+        const modalCostRow = document.getElementById('modal-cost-row'); // อ้างอิงแถวเพื่อเปลี่ยนสี
+
+        // ⭐ NEW LOGIC: เช็คว่าโซนนี้ฟรีหรือไม่จาก API
+        if (data.postCost.isFree === true) {
+            if (modalCostDisplay) {
+                modalCostDisplay.innerHTML = `<b style="color: #28a745; font-size: 1.2em;">FREE! (โซนนี้โพสต์ฟรี)</b>`;
+                if (modalCostRow) modalCostRow.style.color = "#28a745"; // เปลี่ยนแถวเป็นสีเขียว
+            }
+            return; // จบการทำงาน ไม่ต้องคำนวณอัตราแลกเปลี่ยนต่อ
+        }
+
+        // --- ส่วนเดิมของคุณ (รักษาไว้เพื่อไม่ให้กระทบระบบเงิน) ---
+        if (modalCostRow) modalCostRow.style.color = "#e67e22"; // คืนค่าสีส้มปกติถ้าไม่ฟรี
         const postCostUSD = data.postCost.totalCost;
-        // ⭐ FIX: เช็คว่ามีค่า systemFee และ adminFee ก่อนเรียก toFixed
         const systemFee = data.postCost.systemFee !== undefined ? data.postCost.systemFee : 0;
         const adminFee = data.postCost.adminFee !== undefined ? data.postCost.adminFee : 0;
         
-        const modalCostDisplay = document.getElementById('modal-cost-display');
-
-        // Logic คำนวณอัตราแลกเปลี่ยน (คัดลอกจาก updateUserInfo มา)
         let impliedRate = 1;
         const balanceUSD = parseFloat(data.coins);
-        // แปลงค่าเงินที่แปลงแล้วเป็นตัวเลข (ลบลูกน้ำออกเผื่อมี)
         const balanceConverted = parseFloat(String(data.convertedCoins).replace(/,/g, ''));
 
         if (balanceUSD > 0) {
@@ -4339,7 +4354,6 @@ window.savePostCost = savePostCost;
             maximumFractionDigits: 2
         });
 
-        // อัปเดตการแสดงผลใน Modal
         if (modalCostDisplay) {
             modalCostDisplay.innerHTML = 
                 `${postCostUSD.toFixed(2)} USD 
@@ -4351,7 +4365,6 @@ window.savePostCost = savePostCost;
         console.error('Failed to update post cost display:', e);
     }
 }
-window.refreshModalPostCost = refreshModalPostCost; // Expose globally
 
     socket.on('private-history', (history) => {
         const box = document.getElementById('private-chat-messages');
@@ -5242,6 +5255,15 @@ function openUserDetail(targetUsername) {
             <button class="sidebar-btn" onclick="document.getElementById('set-cost-modal').classList.add('hidden')" style="width:auto;" data-i18n-key="cancel_btn">ยกเลิก</button>
             <button class="sidebar-btn create-btn" onclick="savePostCost()" style="width:auto;" data-i18n-key="btn_save">บันทึก</button>
         </div>
+		
+		<div style="margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px dashed #ced4da;">
+    <label style="display: flex; align-items: center; cursor: pointer; gap: 10px;">
+        <input type="checkbox" id="is-free-zone-input" style="width: 20px; height: 20px;">
+        <span style="font-weight: bold; color: #28a745;">✅ เปิดใช้งาน "โซนโพสต์ฟรี"</span>
+    </label>
+    <small style="color: gray; display: block; margin-top: 5px;">* หากเลือก กระทู้ในโซนนี้จะไม่ถูกหักเงิน</small>
+</div>
+
     </div>
 </div>
 
