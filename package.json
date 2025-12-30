@@ -13,7 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "cloudinary": "^2.5.1",
+    "cloudinary": "^1.41.3",
     "dotenv": "^16.4.7", 
     "express": "^4.21.2",
     "google-auth-library": "^9.15.0",
