@@ -7,6 +7,7 @@
 	var vConsole = new window.VConsole();
 	</script>
 	
+	<script src="https://accounts.google.com/gsi/client" async defer></script>
 	<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -407,12 +408,31 @@
 </div>
 
     <div id="login-modal" class="modal-overlay">
-        <div class="modal-box" style="text-align:center;">
-            <h2 data-i18n-key="login_title">ยินดีต้อนรับ</h2>
-            <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus data-i18n-key="login_placeholder">
-            <button class="sidebar-btn create-btn" onclick="login()" data-i18n-key="login_btn">เข้าสู่ระบบ</button>
+    <div class="modal-box" style="text-align:center;">
+        <h2 data-i18n-key="login_title">ยินดีต้อนรับ</h2>
+        
+        <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus data-i18n-key="login_placeholder" style="margin-bottom: 10px;">
+        <button class="sidebar-btn create-btn" onclick="login()" data-i18n-key="login_btn" style="width: 100%;">เข้าสู่ระบบ</button>
+
+        <div style="margin: 25px 0; border-top: 1px solid #eee; position: relative;">
+            <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #999; font-size: 0.85em;">หรือใช้บัญชี Google</span>
+        </div>
+
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID"
+             data-callback="onGoogleLoginSuccess">
+        </div>
+        <div class="g_id_signin" 
+             data-type="standard" 
+             data-size="large" 
+             data-theme="outline" 
+             data-text="signin_with" 
+             data-shape="rectangular" 
+             data-logo_alignment="left"
+             style="display: flex; justify-content: center;">
         </div>
     </div>
+</div>
 
     <div id="create-modal" class="modal-overlay hidden">
     <div class="modal-box">
@@ -595,7 +615,7 @@
     </div>
 </div>
     
-    <div class="version-display">v: 3.8.50 (GoExDeli)</div>
+    <div class="version-display">Alpha: 0.1.0 (GedGoZone)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>

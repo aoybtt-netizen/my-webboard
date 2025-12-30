@@ -8,6 +8,47 @@ const { ObjectId } = require('mongodb');
 const multer = require('multer');
 const activePostTimers = {};
 
+const { OAuth2Client } = require('google-auth-library');
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const googleClient = new OAuth2Client(CLIENT_ID);
+
+// Endpoint สำหรับรับข้อมูลการ Login จาก Google
+app.post('/api/auth/google', async (req, res) => {
+    const { token } = req.body;
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken: token,
+            audience: CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const { sub, email, name, picture } = payload;
+
+        // ค้นหา User ในระบบ ถ้าไม่มีให้สร้างใหม่
+        let user = await usersCollection.findOne({ $or: [{ googleId: sub }, { email: email }] });
+
+        if (!user) {
+            user = {
+                username: name,
+                email: email,
+                googleId: sub,
+                avatar: picture,
+                coins: 0, // เริ่มต้น 0 coins
+                adminLevel: 0,
+                createdAt: Date.now()
+            };
+            await usersCollection.insertOne(user);
+        } else if (!user.googleId) {
+            // ถ้าเคยสมัครปกติไว้แล้ว แต่ใช้อีเมลเดียวกับ Google ให้ผูกบัญชีกัน
+            await usersCollection.updateOne({ _id: user._id }, { $set: { googleId: sub, avatar: picture } });
+        }
+
+        res.json({ success: true, user });
+    } catch (error) {
+        console.error("Google Auth Error:", error);
+        res.status(400).json({ success: false, error: 'การยืนยันตัวตนผิดพลาด' });
+    }
+});
+
 // --- [CONFIG] MongoDB Connection ---
 // ⭐ ใส่ Connection String ของคุณที่นี่ (หรือใช้ Environment Variable)
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/webboard_db';
