@@ -1,4 +1,4 @@
-require('dotenv').config(); // [เพิ่ม] เพื่อให้ใช้ process.env ได้
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,26 +7,108 @@ const { MongoClient, ObjectId } = require('mongodb');
 const fs = require('fs');
 const multer = require('multer');
 
+// --- Google Auth Imports ---
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const googleClient = new OAuth2Client(CLIENT_ID);
 
+// --- Cloudinary Imports ---
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// --- App & Server Setup (ประกาศครั้งเดียวตรงนี้) ---
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// [แก้ไข/เพิ่ม] ต้องมีบรรทัดนี้เพื่อให้รับข้อมูล JSON จากหน้าบ้านได้
+// --- Middleware (ต้องประกาศก่อน Route เสมอ) ---
 app.use(express.json()); 
-app.use(express.static('public')); // สำหรับไฟล์ HTML/JS หน้าบ้าน
+app.use(express.static(path.join(__dirname, 'public')));
 
-// --- ส่วนการเชื่อมต่อ MongoDB ---
-let db, usersCollection;
-const uri = process.env.MONGO_URI || "mongodb://localhost:27017"; 
+// --- Global Database Variables ---
+let db;
+let usersCollection, postsCollection, configCollection, transactionsCollection;
+let topicsCollection, messagesCollection, zonesCollection;
+
+const uri = process.env.MONGO_URI || "mongodb://localhost:27017/webboard_db"; 
 const client = new MongoClient(uri);
 
-// ----------------------------
-
+// --- Global Logic Variables ---
 const activePostTimers = {};
+
+// --- Cloudinary Config ---
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'drz6osqnq',
+    api_key: process.env.CLOUDINARY_API_KEY || '234168627819814',
+    api_secret: process.env.CLOUDINARY_API_SECRET || '5rGH8Tj3SxHIdree1j3obeZLIZw'
+});
+
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'webboard_uploads',
+        allowed_formats: ['jpg', 'png', 'jpeg', 'gif'],
+    },
+});
+
+const upload = multer({ storage: storage });
+
+// --- Live Exchange Rate & Data ---
+const LIVE_API_KEY = '1f39c37f85-b1b3f2287e-t6oki5'; 
+const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE_API_KEY}`; 
+let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 32.0 };
+const DEFAULT_CURRENCY = 'THB';
+let postViewers = {}; 
+let viewerGeolocation = {};
+
+// --- Translations ---
+const serverTranslations = {
+    'th': {
+        'post_not_found': 'ไม่พบกระทู้',
+        'closed_or_finished': '⛔ กระทู้นี้ปิดรับงาน/เสร็จสิ้นแล้ว',
+        'room_occupied': '⚠️ มีผู้ใช้งานอื่นกำลังดูกระทู้นี้อยู่ กรุณารอสักครู่...',
+        'deduct_perm_denied': '⛔ ปฏิเสธการเข้าถึง: ต้องการ Admin Level 1 ขึ้นไป',
+        'deduct_invalid_amt': '⛔ จำนวนเหรียญไม่ถูกต้อง',
+        'deduct_user_not_found': '⛔ ไม่พบผู้ใช้งาน',
+        'deduct_insufficient': '⛔ เป้าหมายมีเหรียญไม่เพียงพอ',
+        'deduct_hierarchy_err': '⛔ ไม่สามารถดึงเหรียญจากผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
+        'deduct_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
+        'deduct_zone_mismatch': '⛔ ไม่อนุญาตให้ดึงเหรียญข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})',
+        'ban_perm_denied': '⛔ ปฏิเสธการเข้าถึง: ต้องการ Admin Level 1 ขึ้นไป',
+        'ban_cannot_admin': '⛔ ไม่สามารถแบนบัญชี Admin หลักได้',
+        'ban_user_not_found': '⛔ ไม่พบผู้ใช้งาน',
+        'ban_hierarchy_err': '⛔ ไม่สามารถแบน/ปลดแบน ผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
+        'ban_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
+        'ban_zone_mismatch': '⛔ ไม่อนุญาตให้แบนข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})',
+    },
+    'en': {
+        'post_not_found': 'Post not found',
+        'closed_or_finished': '⛔ This post is closed/finished.',
+        'room_occupied': '⚠️ This post is currently occupied. Please wait...',
+        'deduct_perm_denied': '⛔ Permission denied: Admin Level 1+ required',
+        'deduct_invalid_amt': '⛔ Invalid coin amount',
+        'deduct_user_not_found': '⛔ User not found',
+        'deduct_insufficient': '⛔ Target user has insufficient coins',
+        'deduct_hierarchy_err': '⛔ Cannot deduct coins from user with equal or higher level (Level {level})',
+        'deduct_zone_missing': '⛔ Cannot verify zone (Missing location data)',
+        'deduct_zone_mismatch': '⛔ Cross-zone deduction is not allowed (You: {zoneA} / Target: {zoneB})',
+        'ban_perm_denied': '⛔ Permission denied: Admin Level 1+ required',
+        'ban_cannot_admin': '⛔ Cannot ban main Admin account',
+        'ban_user_not_found': '⛔ User not found',
+        'ban_hierarchy_err': '⛔ Cannot ban/unban user with equal or higher level (Level {level})',
+        'ban_zone_missing': '⛔ Cannot verify zone (Missing location data)',
+        'ban_zone_mismatch': '⛔ Cross-zone ban is not allowed (You: {zoneA} / Target: {zoneB})',
+    }
+};
+
+function translateServerMsg(key, lang = 'th') {
+    const translation = serverTranslations[lang] || serverTranslations['th'];
+    return translation[key] || serverTranslations['th'][key] || key;
+}
+
+// ==========================================
+// ROUTES
+// ==========================================
 
 // Endpoint สำหรับรับข้อมูลการ Login จาก Google
 app.post('/api/auth/google', async (req, res) => {
@@ -72,7 +154,7 @@ app.post('/api/auth/google', async (req, res) => {
             user.avatar = picture;
         }
 
-        // ส่งข้อมูลกลับ (แนะนำให้เลือกส่งแค่ข้อมูลที่จำเป็น)
+        // ส่งข้อมูลกลับ
         res.json({ 
             success: true, 
             user: {
@@ -88,106 +170,6 @@ app.post('/api/auth/google', async (req, res) => {
         res.status(400).json({ success: false, error: 'การยืนยันตัวตนผิดพลาด' });
     }
 });
-
-// --- [CONFIG] MongoDB Connection ---
-// ⭐ ใส่ Connection String ของคุณที่นี่ (หรือใช้ Environment Variable)
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/webboard_db';
-const client = new MongoClient(MONGODB_URI);
-
-// --- ตัวแปรสำหรับเก็บ Collection ของ MongoDB ---
-let db;
-let postsCollection;
-let usersCollection;
-let configCollection;
-let transactionsCollection;
-let topicsCollection;
-let messagesCollection;
-let zonesCollection;
-
-// [NEW] Cloudinary Imports
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-
-// [CONFIG] Cloudinary (ใส่ค่าของคุณที่นี่)
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'drz6osqnq',
-    api_key: process.env.CLOUDINARY_API_KEY || '234168627819814',
-    api_secret: process.env.CLOUDINARY_API_SECRET || '5rGH8Tj3SxHIdree1j3obeZLIZw'
-});
-
-// [SETUP] Multer Storage for Cloudinary
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'webboard_uploads', // ชื่อโฟลเดอร์ที่จะไปโผล่ใน Cloudinary
-        allowed_formats: ['jpg', 'png', 'jpeg', 'gif'], // นามสกุลที่ยอมรับ
-    },
-});
-
-const upload = multer({ storage: storage });
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-
-// --- Live Exchange Rate ---
-const LIVE_API_KEY = '1f39c37f85-b1b3f2287e-t6oki5'; 
-//const LIVE_API_URL = `https://v6.exchangerate-api.com/v6/{LIVE_API_KEY}/latest/USD`; 
-const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE_API_KEY}`; 
-let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 32.0 };
-const DEFAULT_CURRENCY = 'THB';
-
-// --- In-Memory Data (ข้อมูลชั่วคราว ไม่ต้องลง DB) ---
-let postViewers = {}; 
-let viewerGeolocation = {};
-
-// --- Translations ---
-const serverTranslations = {
-    'th': {
-        'post_not_found': 'ไม่พบกระทู้',
-        'closed_or_finished': '⛔ กระทู้นี้ปิดรับงาน/เสร็จสิ้นแล้ว',
-        'room_occupied': '⚠️ มีผู้ใช้งานอื่นกำลังดูกระทู้นี้อยู่ กรุณารอสักครู่...',
-		'deduct_perm_denied': '⛔ ปฏิเสธการเข้าถึง: ต้องการ Admin Level 1 ขึ้นไป',
-        'deduct_invalid_amt': '⛔ จำนวนเหรียญไม่ถูกต้อง',
-        'deduct_user_not_found': '⛔ ไม่พบผู้ใช้งาน',
-        'deduct_insufficient': '⛔ เป้าหมายมีเหรียญไม่เพียงพอ',
-        'deduct_hierarchy_err': '⛔ ไม่สามารถดึงเหรียญจากผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
-        'deduct_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
-        'deduct_zone_mismatch': '⛔ ไม่อนุญาตให้ดึงเหรียญข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})',
-		'ban_perm_denied': '⛔ ปฏิเสธการเข้าถึง: ต้องการ Admin Level 1 ขึ้นไป',
-        'ban_cannot_admin': '⛔ ไม่สามารถแบนบัญชี Admin หลักได้',
-        'ban_user_not_found': '⛔ ไม่พบผู้ใช้งาน',
-        'ban_hierarchy_err': '⛔ ไม่สามารถแบน/ปลดแบน ผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
-        'ban_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
-        'ban_zone_mismatch': '⛔ ไม่อนุญาตให้แบนข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})',
-    },
-    'en': {
-        'post_not_found': 'Post not found',
-        'closed_or_finished': '⛔ This post is closed/finished.',
-        'room_occupied': '⚠️ This post is currently occupied. Please wait...',
-		'deduct_perm_denied': '⛔ Permission denied: Admin Level 1+ required',
-        'deduct_invalid_amt': '⛔ Invalid coin amount',
-        'deduct_user_not_found': '⛔ User not found',
-        'deduct_insufficient': '⛔ Target user has insufficient coins',
-        'deduct_hierarchy_err': '⛔ Cannot deduct coins from user with equal or higher level (Level {level})',
-        'deduct_zone_missing': '⛔ Cannot verify zone (Missing location data)',
-        'deduct_zone_mismatch': '⛔ Cross-zone deduction is not allowed (You: {zoneA} / Target: {zoneB})',
-		'ban_perm_denied': '⛔ Permission denied: Admin Level 1+ required',
-        'ban_cannot_admin': '⛔ Cannot ban main Admin account',
-        'ban_user_not_found': '⛔ User not found',
-        'ban_hierarchy_err': '⛔ Cannot ban/unban user with equal or higher level (Level {level})',
-        'ban_zone_missing': '⛔ Cannot verify zone (Missing location data)',
-        'ban_zone_mismatch': '⛔ Cross-zone ban is not allowed (You: {zoneA} / Target: {zoneB})',
-    }
-};
-
-function translateServerMsg(key, lang = 'th') {
-    const translation = serverTranslations[lang] || serverTranslations['th'];
-    return translation[key] || serverTranslations['th'][key] || key;
-}
 
 // ==========================================
 // Helper Functions for MongoDB
@@ -207,7 +189,7 @@ async function connectDB() {
         transactionsCollection = db.collection('transactions');
         topicsCollection = db.collection('topics');
         messagesCollection = db.collection('messages');
-		zonesCollection = db.collection('zones');
+        zonesCollection = db.collection('zones');
 
         await seedInitialData(); // สร้างข้อมูลเริ่มต้นถ้ายังไม่มี
 
@@ -252,6 +234,9 @@ async function seedInitialData() {
         await usersCollection.updateOne({ username: 'Admin' }, { $set: { adminLevel: 3 } });
     }
 }
+
+// เริ่มต้นเชื่อมต่อ DB
+connectDB();
 
 async function getUserData(username) {
     let user = await usersCollection.findOne({ username: username });
