@@ -30,7 +30,8 @@ let db;
 let usersCollection, postsCollection, configCollection, transactionsCollection;
 let topicsCollection, messagesCollection, zonesCollection;
 
-const uri = process.env.MONGO_URI || "mongodb://localhost:27017/webboard_db"; 
+//const uri = process.env.MONGO_URI || "mongodb://localhost:27017/webboard_db"; 
+const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
 
 // --- Global Logic Variables ---
