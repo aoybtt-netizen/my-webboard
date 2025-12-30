@@ -631,7 +631,7 @@
     </div>
 </div>
     
-    <div class="version-display">Alpha: 0.1.0 (GedGoZone)</div>
+    <div class="version-display">Alpha: 0.1.1 (GedGoZone)</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1688,6 +1688,10 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
         async function startApp(name) {
     myUsername = name;
+	
+	document.getElementById('geo-filter-btn').classList.remove('hidden');
+    document.getElementById('sticky-create-btn').classList.remove('hidden');
+	
 	const userDisplay = document.getElementById('user-display');
     if(userDisplay) userDisplay.innerText = name;
 
@@ -5671,12 +5675,11 @@ function openUserDetail(targetUsername) {
     <span id="filter-status"></span>
 </div>
 
-<button id="geo-filter-btn" class="sticky-filter-btn" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
+<button id="geo-filter-btn" class="sticky-filter-btn hidden" onclick="setDistanceFilter()" title="เช็คอิน / กรองระยะทาง">
     <i class="fas fa-route"></i>
 </button>
 
-
-	<button class="sticky-create-btn" onclick="openCreateModal()" title="Create New Post">
+<button id="sticky-create-btn" class="sticky-create-btn hidden" onclick="openCreateModal()" title="Create New Post">
     <i class="fas fa-plus"></i>
 </button>
 
