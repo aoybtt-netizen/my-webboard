@@ -236,7 +236,7 @@ async function seedInitialData() {
 }
 
 // เริ่มต้นเชื่อมต่อ DB
-//connectDB();
+connectDB();
 
 async function getUserData(username) {
     let user = await usersCollection.findOne({ username: username });
@@ -3327,10 +3327,11 @@ fetchLiveExchangeRates();
 setInterval(fetchLiveExchangeRates, 7200000);
 
 const PORT = process.env.PORT || 3000;
-connectDB().then(() => {
-    server.listen(PORT, () => {
-        console.log(`🚀 Server running with MongoDB on port ${PORT}`);
-    });
+server.listen(PORT, () => {
+    console.log(`
+    *******************************************
+    ✅ Server is running on port ${PORT}
+    🌍 URL: http://localhost:${PORT}
+    *******************************************
+    `);
 });
-
-
