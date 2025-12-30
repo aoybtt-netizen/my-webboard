@@ -1,20 +1,41 @@
+require('dotenv').config(); // [เพิ่ม] เพื่อให้ใช้ process.env ได้
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const { MongoClient } = require('mongodb'); // [NEW] MongoDB Driver
-const fs = require('fs'); // ใช้สำหรับ Multer check folder เท่านั้น
-const { ObjectId } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb'); 
+const fs = require('fs');
 const multer = require('multer');
-const activePostTimers = {};
 
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const googleClient = new OAuth2Client(CLIENT_ID);
 
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// [แก้ไข/เพิ่ม] ต้องมีบรรทัดนี้เพื่อให้รับข้อมูล JSON จากหน้าบ้านได้
+app.use(express.json()); 
+app.use(express.static('public')); // สำหรับไฟล์ HTML/JS หน้าบ้าน
+
+// --- ส่วนการเชื่อมต่อ MongoDB ---
+let db, usersCollection;
+const uri = process.env.MONGO_URI || "mongodb://localhost:27017"; 
+const client = new MongoClient(uri);
+
+// ----------------------------
+
+const activePostTimers = {};
+
 // Endpoint สำหรับรับข้อมูลการ Login จาก Google
 app.post('/api/auth/google', async (req, res) => {
     const { token } = req.body;
+    
+    if (!token) {
+        return res.status(400).json({ success: false, error: 'ไม่พบ Token' });
+    }
+
     try {
         const ticket = await googleClient.verifyIdToken({
             idToken: token,
@@ -23,26 +44,45 @@ app.post('/api/auth/google', async (req, res) => {
         const payload = ticket.getPayload();
         const { sub, email, name, picture } = payload;
 
-        // ค้นหา User ในระบบ ถ้าไม่มีให้สร้างใหม่
-        let user = await usersCollection.findOne({ $or: [{ googleId: sub }, { email: email }] });
+        // ค้นหา User ในระบบ
+        let user = await usersCollection.findOne({ 
+            $or: [{ googleId: sub }, { email: email }] 
+        });
 
         if (!user) {
-            user = {
+            // สร้าง User ใหม่
+            const newUser = {
                 username: name,
                 email: email,
                 googleId: sub,
                 avatar: picture,
-                coins: 0, // เริ่มต้น 0 coins
+                coins: 0,
                 adminLevel: 0,
                 createdAt: Date.now()
             };
-            await usersCollection.insertOne(user);
+            const result = await usersCollection.insertOne(newUser);
+            user = { ...newUser, _id: result.insertedId };
         } else if (!user.googleId) {
-            // ถ้าเคยสมัครปกติไว้แล้ว แต่ใช้อีเมลเดียวกับ Google ให้ผูกบัญชีกัน
-            await usersCollection.updateOne({ _id: user._id }, { $set: { googleId: sub, avatar: picture } });
+            // ผูกบัญชี Google กับอีเมลเดิมที่มีอยู่แล้ว
+            await usersCollection.updateOne(
+                { _id: user._id }, 
+                { $set: { googleId: sub, avatar: picture } }
+            );
+            user.googleId = sub;
+            user.avatar = picture;
         }
 
-        res.json({ success: true, user });
+        // ส่งข้อมูลกลับ (แนะนำให้เลือกส่งแค่ข้อมูลที่จำเป็น)
+        res.json({ 
+            success: true, 
+            user: {
+                _id: user._id,
+                username: user.username,
+                avatar: user.avatar,
+                coins: user.coins
+            } 
+        });
+
     } catch (error) {
         console.error("Google Auth Error:", error);
         res.status(400).json({ success: false, error: 'การยืนยันตัวตนผิดพลาด' });
