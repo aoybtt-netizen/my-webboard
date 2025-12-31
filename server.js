@@ -1396,8 +1396,9 @@ app.post('/api/posts/:id/handover', async (req, res) => {
 
 // 15. Create Post (เวอร์ชันรองรับ Merchant โดยเฉพาะ)
 app.post('/api/posts', upload.single('image'), async (req, res) => {
-    // 🚩 รับค่าที่ส่งมาจากหน้า Merchant เพิ่มเติม
-    const { author, category, content, location, title, budget, stops, isMerchantTask } = req.body;
+    // 🚩 รับค่าที่ส่งมาจากหน้า Merchant
+    const { author, category, content, location, title, budget, stops } = req.body;
+    const isMerchantTask = req.body.isMerchantTask === 'true' || req.body.isMerchantTask === true;
 
     // 1. ตรวจสอบเงื่อนไขพื้นฐาน (รักษาของเดิมไว้ทั้งหมด)
     if (author !== 'Admin') {
@@ -1416,12 +1417,9 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const topicObj = await topicsCollection.findOne({ id: category });
     const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป"; 
     
-    // กำหนดชื่อหัวข้อ
     let finalTitle = (author === 'Admin' && title) ? title.trim() : (title || topicName);
 
-    // ==================================================================
-    // ส่วนคำนวณค่าธรรมเนียม (รักษาของเดิมไว้ทั้งหมด)
-    // ==================================================================
+    // --- ส่วนคำนวณค่าธรรมเนียม (รักษาของเดิมไว้ทั้งหมด) ---
     const globalConfig = await configCollection.findOne({ id: 'main_config' });
     const globalSystemFee = globalConfig ? (globalConfig.systemFee || 5) : 5;
     const globalDefaultAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
@@ -1444,9 +1442,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const totalCost = globalSystemFee + finalAdminFee;
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
-    // ==================================================================
-    // ส่วนการจัดการเงิน (รักษาของเดิมไว้ทั้งหมด)
-    // ==================================================================
+    // --- ส่วนการจัดการเงิน (รักษาของเดิมไว้ทั้งหมด) ---
     if (author !== 'Admin' && !isFreePostFinal) {
         if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ' });
         await updateUser(author, { coins: user.coins - totalCost });
@@ -1477,26 +1473,26 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     }
 
     // ==================================================================
-    // 🚩 เตรียมข้อมูล Merchant (ไม่โชว์ชื่อคนโพสต์ แต่โชว์ชื่อร้าน)
+    // 🚩 เตรียมข้อมูล Merchant (แก้ไขการดึงชื่อร้านและพิกัด)
     // ==================================================================
     let parsedStops = stops ? (typeof stops === 'string' ? JSON.parse(stops) : stops) : null;
-    let storeName = "";
-    let storeCoords = null;
+    let storeName = author; // กันพลาดให้เป็นชื่อคนโพสต์ไว้ก่อน
+    let storeCoords = location ? JSON.parse(location) : null;
 
     if (isMerchantTask && parsedStops && parsedStops.length > 0) {
-        // ดึงชื่อจากจุด Pickup (จุดแรก) มาเป็นชื่อร้าน
-        storeName = parsedStops[0].label; 
+        // ใช้ชื่อจากจุดรับงาน (Pickup) เป็นชื่อร้าน
+        storeName = parsedStops[0].label || author; 
+        // ใช้พิกัดร้านที่ปักไว้เป็นพิกัดหลักของโพสต์
         storeCoords = { lat: parsedStops[0].lat, lng: parsedStops[0].lng };
     }
 
-    // สร้าง Post ลง Database
     const newPost = { 
         id: Date.now(), 
         title: finalTitle, 
         topicId: category, 
         content, 
-        author, // เก็บไว้หลังบ้านเพื่อตัด Coin
-        location: storeCoords || (location ? JSON.parse(location) : null), // ใช้พิกัดร้านโชว์แทน
+        author, 
+        location: storeCoords, 
         imageUrl: imageUrl, 
         comments: [], 
         isClosed: false, 
@@ -1504,9 +1500,9 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         zoneId: postZoneId,
         isFreePost: isFreePostFinal,
 
-        // 🚩 ข้อมูลสำหรับการโชว์หน้ากระทู้ Merchant
-        isMerchantTask: isMerchantTask === 'true' || isMerchantTask === true,
-        storeName: storeName, // ชื่อร้านที่จะไปโชว์แทนชื่อเจ้าของ
+        // 🚩 ข้อมูลสำหรับการแสดงผล
+        isMerchantTask: isMerchantTask,
+        storeName: storeName, // ชื่อร้านค้า (ไม่โชว์ชื่อคนโพสต์)
         budget: budget,
         stops: parsedStops
     };
@@ -1514,7 +1510,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     await postsCollection.insertOne(newPost);
     await usersCollection.updateOne({ username: author }, { $inc: { totalPosts: 1 } });
     
-    // (ส่วนแจ้งเตือน Notifications และ Socket.io รักษาไว้ตามเดิม)
+    // (ส่วนการแจ้งเตือนรักษาไว้เหมือนเดิม)
     if (author !== 'Admin') {
         let msgText = isFreePostFinal ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCost} USD`;
         const notifMsg = { 
