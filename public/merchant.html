@@ -366,32 +366,36 @@ async function loadSavedLocations() {
 
 // ฟังก์ชันบันทึกข้อมูลลงสมุดที่อยู่
 async function confirmMapLocation() {
-    const name = document.getElementById('map-loc-name').value.trim();
-    const voice = document.getElementById('map-loc-voice').value.trim();
+        const name = document.getElementById('map-loc-name').value.trim();
+        const voice = document.getElementById('map-loc-voice').value.trim();
 
-    if (!name || !selectedLat) return alert("กรุณากรอกชื่อและปักหมุด");
+        if (!name || !selectedLat) return alert("กรุณากรอกชื่อและปักหมุด");
 
-    const res = await fetch('/api/merchant/locations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            username: myUsername,
-            label: name,
-            voiceKeyword: voice || name,
-            lat: selectedLat,
-            lng: selectedLng
-        })
-    });
+        // ส่งข้อมูลไปที่ Server (API ที่เราเพิ่งสร้างใน server.js)
+        const res = await fetch('/api/merchant/locations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: myUsername, // ตรวจสอบว่ามีตัวแปร myUsername เก็บค่าไว้แล้ว
+                label: name,
+                voiceKeyword: voice || name,
+                lat: selectedLat,
+                lng: selectedLng
+            })
+        });
 
-    const data = await res.json();
-    if (data.success) {
-        mySavedLocations.push(data.location); // เพิ่มเข้าตัวแปร local
-        alert("บันทึกลงฐานข้อมูลเรียบร้อย!");
-        closeMapModal();
-    } else {
-        alert("บันทึกล้มเหลว: " + data.error);
+        const data = await res.json();
+        if (data.success) {
+            mySavedLocations.push(data.location); // อัปเดตรายการในเครื่องทันทีไม่ต้องโหลดใหม่
+            alert("บันทึกลงฐานข้อมูลเรียบร้อย!");
+            closeMapModal(); // ปิดหน้าต่างแผนที่
+            
+            // ถ้าหน้าต่าง "จัดการรายการทั้งหมด" เปิดอยู่ ให้วาดรายการใหม่ด้วย
+            if (typeof renderManageList === 'function') renderManageList();
+        } else {
+            alert("บันทึกล้มเหลว: " + data.error);
+        }
     }
-}
 
 function closeMapModal() {
     document.getElementById('map-modal').classList.add('hidden');
@@ -580,57 +584,63 @@ if (SpeechRecognition) {
 }
 
 // --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
+// ฟังก์ชันวิเคราะห์คำพูดและสร้างออเดอร์
 function processVoiceOrder(speechText) {
-    // 1. แยกส่วนประกอบด้วยคำว่า "ต่อด้วย"
+    // 1. แยกส่วนประกอบด้วยคำว่า "ต่อด้วย" (เช่น: ส่งเอกสาร ต่อด้วย ลาดพร้าว ต่อด้วย 50)
     const parts = speechText.split("ต่อด้วย").map(p => p.trim());
     
     if (parts.length < 2) {
-        alert("คำสั่งไม่ชัดเจน กรุณาใช้คำว่า 'ต่อด้วย' แยกแต่ละส่วน");
+        alert("คำสั่งไม่ชัดเจน (ตัวอย่าง: ส่งเอกสาร ต่อด้วย [ชื่อที่บันทึกไว้] ต่อด้วย [ราคา])");
         return;
     }
 
-    // 2. ระบุประเภทงาน (ดูจากส่วนแรก)
+    // 2. ตั้งประเภทงานอัตโนมัติ (ดูจากคำแรก)
     if (parts[0].includes("เอกสาร")) {
         document.getElementById('task-category').value = "รับส่งเอกสาร";
-    } else if (parts[0].includes("อาหาร")) {
+    } else if (parts[0].includes("อาหาร") || parts[0].includes("สินค้า")) {
         document.getElementById('task-category').value = "รับส่งอาหารสินค้าทั่วไป";
     }
 
-    // ล้างจุดเดิมก่อนเริ่มสร้างใหม่
+    // ล้างจุดเดิมออกก่อนเพื่อความแม่นยำ
     document.getElementById('stops-container').innerHTML = "";
     stopCount = 0;
 
-    // 3. วนลูปหาจุดพิกัดในสมุดบันทึก (ส่วนกลางของประโยค)
-    // เราจะวนหาคำสั่งยกเว้นส่วนแรก (ประเภท) และส่วนสุดท้าย (ราคา)
-    for (let i = 1; i < parts.length; i++) {
-    const part = parts[i];
-    
-    // ค้นหาจาก voiceKeyword ในสมุดบันทึก
-    const matchedLoc = mySavedLocations.find(loc => 
-        (loc.voiceKeyword && loc.voiceKeyword === part) || loc.label.includes(part)
-    );
+    // 3. วนลูปตรวจสอบคำสั่งในส่วนที่เหลือ
+    parts.forEach((part, index) => {
+        if (index === 0) return; // ข้ามส่วนประเภทงานไป
+
+        // ตรวจสอบว่าเป็น "ราคา" หรือไม่ (ถ้าเป็นตัวเลขล้วน)
+        const isPrice = /^\d+$/.test(part.replace("บาท", "").trim());
+
+        if (isPrice) {
+            document.getElementById('task-budget').value = part.replace("บาท", "").trim();
+        } else {
+            // --- หัวใจสำคัญ: ค้นหาจากฐานข้อมูลที่โหลดมา (mySavedLocations) ---
+            const matchedLoc = mySavedLocations.find(loc => 
+                (loc.voiceKeyword && loc.voiceKeyword === part) || 
+                (loc.label === part)
+            );
 
             if (matchedLoc) {
-                // ถ้าเจอพิกัดที่บันทึกไว้ ให้เพิ่มจุดโดยอัตโนมัติ
+                // ถ้าเจอคำสั่งเสียงที่ตรงกัน -> ดึงพิกัดมาสร้างจุดเช็คอินทันที
                 addNewStop();
                 const id = stopCount;
                 document.getElementById(`label-${id}`).value = matchedLoc.label;
                 document.getElementById(`lat-${id}`).value = matchedLoc.lat;
                 document.getElementById(`lng-${id}`).value = matchedLoc.lng;
-                document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงจากเสียง/สมุดบันทึก";
+                document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงพิกัดจากคำสั่งเสียงสำเร็จ";
                 document.getElementById(`loc-status-${id}`).style.color = "#28a745";
             } else {
-                // ถ้าไม่เจอพิกัด ให้เพิ่มจุดเปล่าๆ ไว้ให้กรอกเพิ่ม
+                // ถ้าไม่เจอพิกัด ให้สร้างจุดว่างไว้และแจ้งเตือน
                 addNewStop();
                 document.getElementById(`label-${stopCount}`).value = part;
-                document.getElementById(`loc-status-${stopCount}`).innerText = "❌ ไม่พบพิกัดในสมุด (กรุณาปักหมุดเอง)";
-                document.getElementById(`loc-status-${stopCount}`).style.color = "#dc3545";
+                document.getElementById(`loc-status-${stopCount}`).innerText = "❓ ไม่พบพิกัดนี้ในสมุดบันทึก";
+                document.getElementById(`loc-status-${stopCount}`).style.color = "#e67e22";
             }
-    }
-    
+        }
+    });
 
-    // 4. อัปเดตหัวข้ออัตโนมัติ (เช่น รับส่งเอกสาร 2 จุด)
-    reorderStops(); 
+    reorderStops(); // อัปเดตหัวข้อและลำดับ
 }
 
 
