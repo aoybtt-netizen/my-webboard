@@ -422,6 +422,8 @@ async function confirmMapLocation() {
         document.getElementById(`lat-${id}`).value = selectedLat;
         document.getElementById(`lng-${id}`).value = selectedLng;
         
+		document.getElementById(`coords-display-${id}`).innerText = `พิกัด: ${selectedLat.toFixed(5)}, ${selectedLng.toFixed(5)}`;
+		
         const statusEl = document.getElementById(`loc-status-${id}`);
         statusEl.innerText = "✅ ปักหมุดจากแผนที่เรียบร้อย";
         statusEl.style.color = "#28a745";
@@ -475,13 +477,9 @@ function closeMapModal() {
     function addNewStop() {
     stopCount++;
     const container = document.getElementById('stops-container');
-    
-    // ตรวจสอบว่าเป็นจุดแรกหรือไม่
     const isPickup = (document.querySelectorAll('.stop-item').length === 0);
-    
-    // กำหนดสีตามประเภทจุด
     const themeColor = isPickup ? "#27ae60" : "#11998e";
-    const bgColor = isPickup ? "#f0fff4" : "#f0f7f7"; // สีเขียวอ่อน vs สีฟ้าอ่อน
+    const bgColor = isPickup ? "#f0fff4" : "#f0f7f7";
     const labelTitle = isPickup ? "🟢 จุดรับงาน (Pickup)" : "📍 จุดส่งงาน (Drop-off)";
 
     const stopHtml = `
@@ -490,32 +488,29 @@ function closeMapModal() {
                 <i class="fas fa-times-circle"></i>
             </span>
             
-            <label style="color: ${themeColor}; font-weight: bold; display: block; margin-bottom: 10px; font-size: 1em;">
+            <label style="color: ${themeColor}; font-weight: bold; display: block; margin-bottom: 5px; font-size: 1em;">
                 ${labelTitle} <span class="stop-display-number"></span>
             </label>
 
-            <input type="text" placeholder="ระบุชื่อสถานที่ หรือรอ AI เติมให้..." class="stop-label" id="label-${stopCount}" 
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box;">
+            <input type="text" placeholder="ระบุชื่อสถานที่..." class="stop-label" id="label-${stopCount}" 
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            
+            <div id="coords-display-${stopCount}" style="font-size: 0.7em; color: #999; margin: 4px 0 10px 2px;">
+                พิกัด: ยังไม่ได้ระบุ
+            </div>
             
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button class="btn-add-stop" style="border: 1px solid #666; color: #666; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
                     onclick="openStopMap(${stopCount})">
                     <i class="fas fa-map-marker-alt"></i> เลือกบนแผนที่
                 </button>
-
                 <button class="btn-add-stop" style="border: 1px solid #f39c12; color: #f39c12; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
                     onclick="showSavedLocationsModal(${stopCount})">
-                    <i class="fas fa-bookmark"></i> จากที่บันทึกไว้
-                </button>
-
-                <button id="save-btn-${stopCount}" class="btn-add-stop hidden" 
-                    style="border: 1px solid #28a745; color: #28a745; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
-                    onclick="saveToMyBook(${stopCount})">
-                    <i class="fas fa-save"></i> บันทึกลงสมุด
+                    <i class="fas fa-bookmark"></i> จากสมุดที่อยู่
                 </button>
             </div>
 
-            <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: #777; margin-top: 8px; font-style: italic;">ยังไม่ได้กำหนดพิกัด</div>
+            <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: #777; margin-top: 8px; font-style: italic;">สถานะ: รอพิกัด</div>
             <input type="hidden" class="stop-lat" id="lat-${stopCount}">
             <input type="hidden" class="stop-lng" id="lng-${stopCount}">
         </div>
@@ -596,15 +591,19 @@ function reorderStops() {
     }
 
     function selectLocation(index) {
-        const selected = mySavedLocations[index];
-        const id = currentTargetStopId;
-        document.getElementById(`label-${id}`).value = selected.label;
-        document.getElementById(`lat-${id}`).value = selected.lat;
-        document.getElementById(`lng-${id}`).value = selected.lng;
-        document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงข้อมูลจากสมุดที่อยู่เรียบร้อย";
-        document.getElementById(`loc-status-${id}`).style.color = "#28a745";
-        closeSavedModal();
-    }
+    const selected = mySavedLocations[index];
+    const id = currentTargetStopId;
+    document.getElementById(`label-${id}`).value = selected.label;
+    document.getElementById(`lat-${id}`).value = selected.lat;
+    document.getElementById(`lng-${id}`).value = selected.lng;
+    
+    // 🚩 อัปเดตตัวหนังสือพิกัด
+    document.getElementById(`coords-display-${id}`).innerText = `พิกัด: ${parseFloat(selected.lat).toFixed(5)}, ${parseFloat(selected.lng).toFixed(5)}`;
+    
+    document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงข้อมูลสำเร็จ";
+    document.getElementById(`loc-status-${id}`).style.color = "#28a745";
+    closeSavedModal();
+}
 
     function closeSavedModal() {
         document.getElementById('saved-locations-modal').classList.add('hidden');
@@ -794,52 +793,58 @@ function showVoiceSummaryModal() {
 
 
 function confirmVoiceSummary() {
-    const data = lastVoiceAnalysis;
-    if (!data) return;
+        const data = lastVoiceAnalysis;
+        if (!data) return;
 
-    // 1. เติมประเภทงานและงบประมาณ
-    document.getElementById('task-category').value = data.category;
-    document.getElementById('task-budget').value = data.budget;
+        // 1. เติมประเภทงานและงบประมาณ
+        document.getElementById('task-category').value = data.category;
+        document.getElementById('task-budget').value = data.budget;
 
-    // 2. ล้างจุดเก่าทั้งหมดออกก่อน
-    document.getElementById('stops-container').innerHTML = "";
-    stopCount = 0; // รีเซ็ตตัวนับ ID ใหม่
+        // 2. ล้างจุดเก่าทั้งหมดออกก่อน
+        document.getElementById('stops-container').innerHTML = "";
+        stopCount = 0; // รีเซ็ตตัวนับ ID ใหม่
 
-    // 3. เริ่มสร้างจุดใหม่ตามที่ AI ตรวจพบ
-    if (data.stops && data.stops.length > 0) {
-        data.stops.forEach((stop, index) => {
-            addNewStop(); // สร้างกล่องจุดเช็คอินใหม่ (stopCount จะเพิ่มขึ้นทีละ 1 ในนี้)
-            
-            const currentId = stopCount; // ID ของกล่องที่เพิ่งสร้างเสร็จ
-            
-            // เติมข้อมูลลงใน Input ของกล่องนั้นๆ
-            document.getElementById(`label-${currentId}`).value = stop.label;
-            document.getElementById(`lat-${currentId}`).value = stop.lat;
-            document.getElementById(`lng-${currentId}`).value = stop.lng;
-            
-            // เปลี่ยนข้อความสถานะ
-            const statusLabel = document.getElementById(`loc-status-${currentId}`);
-            if (index === 0) {
-                statusLabel.innerText = "✅ จุดรับงาน (AI)";
-                statusLabel.style.color = "#27ae60";
-            } else {
-                statusLabel.innerText = `✅ จุดส่งงานที่ ${index} (AI)`;
-                statusLabel.style.color = "#11998e";
-            }
-        });
-    } else {
-        // กรณี AI ไม่เจอจุดเลย ให้เพิ่มจุดว่างไว้ 1 จุดเป็นจุดรับ
-        addNewStop();
+        // 3. เริ่มสร้างจุดใหม่ตามที่ AI ตรวจพบ
+        if (data.stops && data.stops.length > 0) {
+            data.stops.forEach((stop, index) => {
+                addNewStop(); // สร้างกล่องจุดเช็คอินใหม่
+                
+                const currentId = stopCount; // ID ของกล่องที่เพิ่งสร้างเสร็จ
+                
+                // เติมข้อมูลลงใน Input
+                document.getElementById(`label-${currentId}`).value = stop.label;
+                document.getElementById(`lat-${currentId}`).value = stop.lat;
+                document.getElementById(`lng-${currentId}`).value = stop.lng;
+                
+                // 🚩 เพิ่มบรรทัดนี้: เพื่อให้เลขพิกัดตัวเทาๆ แสดงผลด้วย (ตามที่เราตกลงกันล่าสุด)
+                const coordsDisplay = document.getElementById(`coords-display-${currentId}`);
+                if (coordsDisplay) {
+                    coordsDisplay.innerText = `พิกัด: ${parseFloat(stop.lat).toFixed(5)}, ${parseFloat(stop.lng).toFixed(5)}`;
+                }
+                
+                // เปลี่ยนข้อความสถานะ
+                const statusLabel = document.getElementById(`loc-status-${currentId}`);
+                if (index === 0) {
+                    statusLabel.innerText = "✅ จุดรับงาน (AI)";
+                    statusLabel.style.color = "#27ae60";
+                } else {
+                    statusLabel.innerText = `✅ จุดส่งงานที่ ${index} (AI)`;
+                    statusLabel.style.color = "#11998e";
+                }
+            });
+        } else {
+            // กรณี AI ไม่เจอจุดเลย ให้เพิ่มจุดว่างไว้ 1 จุดเป็นจุดรับ
+            addNewStop();
+        }
+
+        // 4. สั่งจัดลำดับใหม่และคำนวณจำนวนจุดส่ง
+        reorderStops(); 
+        
+        // 5. ปิด Modal สรุป
+        closeVoiceSummary();
+        
+        console.log("✅ ข้อมูลจาก AI ถูกกรอกลงฟอร์มเรียบร้อย");
     }
-
-    // 4. สั่งจัดลำดับใหม่และคำนวณจำนวนจุดส่ง
-    reorderStops(); 
-    
-    // 5. ปิด Modal สรุป
-    closeVoiceSummary();
-    
-    console.log("✅ ข้อมูลจาก AI ถูกกรอกลงฟอร์มเรียบร้อย");
-}
 
 function closeVoiceSummary() {
     document.getElementById('voice-summary-modal').classList.add('hidden');
