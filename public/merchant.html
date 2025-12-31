@@ -367,22 +367,21 @@ async function loadSavedLocations() {
 // ฟังก์ชันบันทึกข้อมูลลงสมุดที่อยู่
 async function confirmMapLocation() {
         const name = document.getElementById('map-loc-name').value.trim();
-        const voice = document.getElementById('map-loc-voice').value.trim();
+    const voice = document.getElementById('map-loc-voice').value.trim(); // <--- ตัวนี้ดึงจากช่องที่เราเพิ่มปุ่มไมค์
 
-        if (!name || !selectedLat) return alert("กรุณากรอกชื่อและปักหมุด");
+    if (!name || !selectedLat) return alert("กรุณากรอกชื่อและปักหมุด");
 
-        // ส่งข้อมูลไปที่ Server (API ที่เราเพิ่งสร้างใน server.js)
-        const res = await fetch('/api/merchant/locations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: myUsername, // ตรวจสอบว่ามีตัวแปร myUsername เก็บค่าไว้แล้ว
-                label: name,
-                voiceKeyword: voice || name,
-                lat: selectedLat,
-                lng: selectedLng
-            })
-        });
+    const res = await fetch('/api/merchant/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: myUsername,
+            label: name,
+            voiceKeyword: voice || name, // ถ้าไม่ตั้งเสียง ให้ใช้ชื่อเป็นคำสั่งแทน
+            lat: selectedLat,
+            lng: selectedLng
+        })
+    });
 
         const data = await res.json();
         if (data.success) {
@@ -644,6 +643,33 @@ function processVoiceOrder(speechText) {
 }
 
 
+// ฟังก์ชันใช้เสียงกรอก Keyword ในหน้าปักหมุด
+function startVoiceForKeyword() {
+    if (!SpeechRecognition) return alert("เบราว์เซอร์นี้ไม่รองรับการสั่งงานด้วยเสียง");
+    
+    const voiceRec = new SpeechRecognition();
+    voiceRec.lang = 'th-TH';
+    
+    const btn = event.currentTarget;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    voiceRec.start();
+    
+    voiceRec.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        document.getElementById('map-loc-voice').value = text.replace(/\s+/g, ''); // ลบช่องว่างออก
+        btn.innerHTML = originalContent;
+    };
+    
+    voiceRec.onerror = () => {
+        btn.innerHTML = originalContent;
+        alert("กรุณาลองพูดใหม่อีกครั้ง");
+    };
+}
+
+
+
 
 // 1. ฟังก์ชันเปิด Modal และแสดงรายการ
 function openManageLocationsModal() {
@@ -722,30 +748,36 @@ function closeManageModal() {
 	<div id="map-modal" class="modal-overlay hidden" style="z-index: 8000;">
     <div class="modal-box" style="max-width: 500px; padding: 0; overflow: hidden;">
         <div style="background: #11998e; color: white; padding: 15px; text-align: center;">
-            <h3 style="margin: 0;">📍 ปักหมุดพิกัดใหม่</h3>
+            <h3 style="margin: 0;">📍 ปักหมุดและตั้งคำสั่งเสียง</h3>
         </div>
         
         <div id="map-container" style="height: 250px; width: 100%;"></div>
 
-        <div style="padding: 20px; padding-bottom: 30px;"> <label><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด</label>
-    <input type="text" id="map-loc-name" placeholder="...">
+        <div style="padding: 20px; padding-bottom: 30px;"> 
+            <label><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)</label>
+            <input type="text" id="map-loc-name" placeholder="ระบุชื่อสถานที่...">
 
-    <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword)</label>
-    <input type="text" id="map-loc-voice" placeholder="...">
-    
-    <p id="map-coords-display" style="font-size: 0.8em; color: #888; margin-bottom: 15px;">
-        พิกัด: ...
-    </p>
+            <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword สำหรับสั่งงาน)</label>
+            <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+                <input type="text" id="map-loc-voice" placeholder="พูดหรือพิมพ์คำสั้นๆ เช่น ลาดพร้าว" style="margin-bottom: 0;">
+                <button onclick="startVoiceForKeyword()" style="background: #f39c12; color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer;">
+                    <i class="fas fa-microphone"></i>
+                </button>
+            </div>
+            
+            <p id="map-coords-display" style="font-size: 0.8em; color: #888; margin-bottom: 15px;">
+                พิกัด: กรุณาเลือกจุดบนแผนที่
+            </p>
 
-    <div style="display: flex; gap: 10px;">
-        <button class="btn-submit" onclick="confirmMapLocation()" style="flex: 2; border-radius: 8px;">
-            บันทึกลงสมุด
-        </button>
-        <button class="btn-submit" onclick="closeMapModal()" style="flex: 1; background: #999; border-radius: 8px;">
-            ยกเลิก
-        </button>
-    </div>
-</div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-submit" onclick="confirmMapLocation()" style="flex: 2; border-radius: 8px;">
+                    บันทึกลงสมุด
+                </button>
+                <button class="btn-submit" onclick="closeMapModal()" style="flex: 1; background: #999; border-radius: 8px;">
+                    ยกเลิก
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
