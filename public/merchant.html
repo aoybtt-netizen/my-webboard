@@ -210,6 +210,24 @@
     color: #333;
 }
 
+
+#sum-stops {
+    max-height: 200px; /* จำกัดความสูงของรายการจุดส่ง */
+    overflow-y: auto;  /* ถ้าเกินให้เลื่อนขึ้นลงได้ */
+    padding-right: 5px;
+    margin-bottom: 15px;
+}
+
+/* ปรับแต่ง Scrollbar ให้ดูสวยขึ้น */
+#sum-stops::-webkit-scrollbar {
+    width: 5px;
+}
+#sum-stops::-webkit-scrollbar-thumb {
+    background: #11998e;
+    border-radius: 10px;
+}
+
+
     </style>
 </head>
 <body>
@@ -619,68 +637,72 @@ if (SpeechRecognition) {
 // --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
 // ฟังก์ชันวิเคราะห์คำพูดและสร้างออเดอร์
 function processVoiceOrder(speechText) {
-    console.log("AI กำลังวิเคราะห์:", speechText);
-
-    // 1. วิเคราะห์ประเภทงาน
-    let category = "รับส่งอาหารสินค้าทั่วไป";
-    if (speechText.includes("เอกสาร")) category = "รับส่งเอกสาร";
-
-    // 2. วิเคราะห์งบประมาณ
+    // 1. วิเคราะห์ราคา (หาตัวเลขที่อยู่ท้ายประโยค หรือใกล้คำว่า บาท)
     let budget = "0";
-    const priceMatch = speechText.match(/\d+/);
-    if (priceMatch) {
-    budget = priceMatch[0];
-} else {
-    budget = "0"; // หรือใส่ค่าว่างไว้ให้ร้านค้าเติมเอง
-}
+    const numbers = speechText.match(/\d+/g); // หาตัวเลขทั้งหมดในประโยค
+    if (numbers) {
+        budget = numbers[numbers.length - 1]; // เอาตัวเลขตัวสุดท้ายที่พูดเป็นราคา
+    }
 
-    // 3. วิเคราะห์พิกัดจาก Keyword
+    // 2. วิเคราะห์พิกัด (สแกนหาคำสั่งเสียงที่บันทึกไว้)
     let foundStops = [];
+    
+    // สร้างสำเนาประโยคเพื่อใช้ตัดคำที่หาเจอแล้วออก ป้องกันการเจอซ้ำที่จุดเดิม
+    let tempSpeech = speechText;
+
+    // ค้นหาทุก Keyword ที่มีอยู่ในประโยค
     mySavedLocations.forEach(loc => {
         const keyword = loc.voiceKeyword || loc.label;
-        if (speechText.includes(keyword)) {
-            foundStops.push({ ...loc, indexInSpeech: speechText.indexOf(keyword) });
+        if (tempSpeech.includes(keyword)) {
+            // ค้นหาตำแหน่งทั้งหมดที่คำนี้ปรากฏ (กรณีพูดชื่อเดิมหลายครั้ง)
+            let index = speechText.indexOf(keyword);
+            while (index !== -1) {
+                foundStops.push({
+                    ...loc,
+                    indexInSpeech: index
+                });
+                index = speechText.indexOf(keyword, index + 1);
+            }
         }
     });
+
+    // เรียงลำดับตามที่พูดจริง
     foundStops.sort((a, b) => a.indexInSpeech - b.indexInSpeech);
 
-    // 4. สร้างหัวข้อกระทู้อัตโนมัติ
-    const finalTitle = `${category} ${foundStops.length || 1} จุด`;
-
-    // 5. เก็บข้อมูลลงตัวแปรชั่วคราว
+    // 3. เตรียมข้อมูลสรุป
+    let category = speechText.includes("เอกสาร") ? "รับส่งเอกสาร" : "รับส่งอาหารสินค้าทั่วไป";
+    
     lastVoiceAnalysis = {
         category: category,
-        title: finalTitle,
+        title: `${category} ${foundStops.length} จุด`,
         stops: foundStops,
         budget: budget
     };
 
-    // 6. แสดงหน้าต่างสรุป
     showVoiceSummaryModal();
 }
 
 
 // ฟังก์ชันใช้เสียงกรอก Keyword ในหน้าปักหมุด
-function startVoiceForKeyword() {
-    if (!SpeechRecognition) return alert("เบราว์เซอร์นี้ไม่รองรับการสั่งงานด้วยเสียง");
+function startVoiceForKeyword(btn) { // รับค่า btn มาโดยตรง
+    if (!SpeechRecognition) return alert("เบราว์เซอร์นี้ไม่รองรับเสียง");
     
     const voiceRec = new SpeechRecognition();
     voiceRec.lang = 'th-TH';
     
-    const btn = event.currentTarget;
     const originalContent = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; // เริ่มหมุน
     
     voiceRec.start();
     
     voiceRec.onresult = (event) => {
         const text = event.results[0][0].transcript;
-        document.getElementById('map-loc-voice').value = text.replace(/\s+/g, ''); // ลบช่องว่างออก
-        btn.innerHTML = originalContent;
+        document.getElementById('map-loc-voice').value = text.replace(/\s+/g, '');
+        btn.innerHTML = originalContent; // หยุดหมุนเมื่อได้ผลลัพธ์
     };
     
     voiceRec.onerror = () => {
-        btn.innerHTML = originalContent;
+        btn.innerHTML = originalContent; // หยุดหมุนเมื่อ Error
         alert("กรุณาลองพูดใหม่อีกครั้ง");
     };
 }
@@ -895,7 +917,7 @@ function closeManageModal() {
             <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword สำหรับสั่งงาน)</label>
             <div style="display: flex; gap: 5px; margin-bottom: 15px;">
                 <input type="text" id="map-loc-voice" placeholder="พูดหรือพิมพ์คำสั้นๆ เช่น ลาดพร้าว" style="margin-bottom: 0;">
-                <button onclick="startVoiceForKeyword()" style="background: #f39c12; color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer;">
+                <button onclick="startVoiceForKeyword(this)" style="background: #f39c12; color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer;">
                     <i class="fas fa-microphone"></i>
                 </button>
             </div>
