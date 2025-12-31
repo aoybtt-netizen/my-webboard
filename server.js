@@ -235,7 +235,7 @@ async function connectDB() {
 }
 
 // เรียกใช้งานฟังก์ชันเชื่อมต่อ
-connectDB();
+//connectDB();
 
 async function seedInitialData() {
     // 1. Config
