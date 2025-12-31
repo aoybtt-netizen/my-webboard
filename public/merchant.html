@@ -282,7 +282,7 @@
 	let merchantMap;
 	let currentMarker;
 	let selectedLat, selectedLng;
-	
+	let editingLocationId = null;
 	
 	
 // ฟังก์ชันดึงข้อมูลจาก Server เมื่อโหลดหน้าจอ
@@ -366,35 +366,43 @@ async function loadSavedLocations() {
 
 // ฟังก์ชันบันทึกข้อมูลลงสมุดที่อยู่
 async function confirmMapLocation() {
-        const name = document.getElementById('map-loc-name').value.trim();
-    const voice = document.getElementById('map-loc-voice').value.trim(); // <--- ตัวนี้ดึงจากช่องที่เราเพิ่มปุ่มไมค์
+    const name = document.getElementById('map-loc-name').value.trim();
+    const voice = document.getElementById('map-loc-voice').value.trim();
 
     if (!name || !selectedLat) return alert("กรุณากรอกชื่อและปักหมุด");
 
-    const res = await fetch('/api/merchant/locations', {
-        method: 'POST',
+    const payload = {
+        username: myUsername,
+        label: name,
+        voiceKeyword: voice || name,
+        lat: selectedLat,
+        lng: selectedLng
+    };
+
+    let url = '/api/merchant/locations';
+    let method = 'POST';
+
+    // ถ้ามีการแก้ไข ให้เปลี่ยน URL และ Method
+    if (editingLocationId) {
+        url = `/api/merchant/locations/${editingLocationId}`;
+        method = 'PUT';
+    }
+
+    const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            username: myUsername,
-            label: name,
-            voiceKeyword: voice || name, // ถ้าไม่ตั้งเสียง ให้ใช้ชื่อเป็นคำสั่งแทน
-            lat: selectedLat,
-            lng: selectedLng
-        })
+        body: JSON.stringify(payload)
     });
 
-        const data = await res.json();
-        if (data.success) {
-            mySavedLocations.push(data.location); // อัปเดตรายการในเครื่องทันทีไม่ต้องโหลดใหม่
-            alert("บันทึกลงฐานข้อมูลเรียบร้อย!");
-            closeMapModal(); // ปิดหน้าต่างแผนที่
-            
-            // ถ้าหน้าต่าง "จัดการรายการทั้งหมด" เปิดอยู่ ให้วาดรายการใหม่ด้วย
-            if (typeof renderManageList === 'function') renderManageList();
-        } else {
-            alert("บันทึกล้มเหลว: " + data.error);
-        }
+    const data = await res.json();
+    if (data.success) {
+        alert("บันทึกข้อมูลสำเร็จ!");
+        editingLocationId = null; // ล้างค่าสถานะ
+        document.querySelector('#map-modal .btn-submit').innerText = "บันทึกลงสมุด";
+        await loadSavedLocations(); // โหลดข้อมูลใหม่จาก Server
+        closeMapModal();
     }
+}
 
 function closeMapModal() {
     document.getElementById('map-modal').classList.add('hidden');
@@ -585,61 +593,67 @@ if (SpeechRecognition) {
 // --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
 // ฟังก์ชันวิเคราะห์คำพูดและสร้างออเดอร์
 function processVoiceOrder(speechText) {
-    // 1. แยกส่วนประกอบด้วยคำว่า "ต่อด้วย" (เช่น: ส่งเอกสาร ต่อด้วย ลาดพร้าว ต่อด้วย 50)
-    const parts = speechText.split("ต่อด้วย").map(p => p.trim());
+    console.log("AI กำลังวิเคราะห์ประโยค:", speechText);
+
+    // 1. วิเคราะห์ประเภทงาน (Category)
+    let category = "รับส่งอาหารสินค้าทั่วไป"; // ค่าเริ่มต้น
+    if (speechText.includes("เอกสาร")) {
+        category = "รับส่งเอกสาร";
+    }
+    document.getElementById('task-category').value = category;
+
+    // 2. วิเคราะห์งบประมาณ (Price) 
+    // ใช้ Regex ค้นหาตัวเลขในประโยค (เช่น "ราคา 50" หรือ "100 บาท")
+    let budget = "";
+    const priceMatch = speechText.match(/\d+/); // หาตัวเลขชุดแรกที่เจอ
+    if (priceMatch) {
+        budget = priceMatch[0];
+        document.getElementById('task-budget').value = budget;
+    }
+
+    // 3. วิเคราะห์พิกัด (Locations)
+    // เราจะวนลูปเช็คว่าในประโยคที่พูด มี "คำสั่งเสียง" ที่เราบันทึกไว้ใน mySavedLocations หรือไม่
+    let foundStops = [];
     
-    if (parts.length < 2) {
-        alert("คำสั่งไม่ชัดเจน (ตัวอย่าง: ส่งเอกสาร ต่อด้วย [ชื่อที่บันทึกไว้] ต่อด้วย [ราคา])");
-        return;
-    }
-
-    // 2. ตั้งประเภทงานอัตโนมัติ (ดูจากคำแรก)
-    if (parts[0].includes("เอกสาร")) {
-        document.getElementById('task-category').value = "รับส่งเอกสาร";
-    } else if (parts[0].includes("อาหาร") || parts[0].includes("สินค้า")) {
-        document.getElementById('task-category').value = "รับส่งอาหารสินค้าทั่วไป";
-    }
-
-    // ล้างจุดเดิมออกก่อนเพื่อความแม่นยำ
-    document.getElementById('stops-container').innerHTML = "";
-    stopCount = 0;
-
-    // 3. วนลูปตรวจสอบคำสั่งในส่วนที่เหลือ
-    parts.forEach((part, index) => {
-        if (index === 0) return; // ข้ามส่วนประเภทงานไป
-
-        // ตรวจสอบว่าเป็น "ราคา" หรือไม่ (ถ้าเป็นตัวเลขล้วน)
-        const isPrice = /^\d+$/.test(part.replace("บาท", "").trim());
-
-        if (isPrice) {
-            document.getElementById('task-budget').value = part.replace("บาท", "").trim();
-        } else {
-            // --- หัวใจสำคัญ: ค้นหาจากฐานข้อมูลที่โหลดมา (mySavedLocations) ---
-            const matchedLoc = mySavedLocations.find(loc => 
-                (loc.voiceKeyword && loc.voiceKeyword === part) || 
-                (loc.label === part)
-            );
-
-            if (matchedLoc) {
-                // ถ้าเจอคำสั่งเสียงที่ตรงกัน -> ดึงพิกัดมาสร้างจุดเช็คอินทันที
-                addNewStop();
-                const id = stopCount;
-                document.getElementById(`label-${id}`).value = matchedLoc.label;
-                document.getElementById(`lat-${id}`).value = matchedLoc.lat;
-                document.getElementById(`lng-${id}`).value = matchedLoc.lng;
-                document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงพิกัดจากคำสั่งเสียงสำเร็จ";
-                document.getElementById(`loc-status-${id}`).style.color = "#28a745";
-            } else {
-                // ถ้าไม่เจอพิกัด ให้สร้างจุดว่างไว้และแจ้งเตือน
-                addNewStop();
-                document.getElementById(`label-${stopCount}`).value = part;
-                document.getElementById(`loc-status-${stopCount}`).innerText = "❓ ไม่พบพิกัดนี้ในสมุดบันทึก";
-                document.getElementById(`loc-status-${stopCount}`).style.color = "#e67e22";
-            }
+    mySavedLocations.forEach(loc => {
+        // เช็คทั้งคำสั่งเสียง (voiceKeyword) และชื่อเรียก (label)
+        const keyword = loc.voiceKeyword || loc.label;
+        if (speechText.includes(keyword)) {
+            // เก็บตำแหน่งที่เจอในประโยคไว้ด้วย เพื่อเอามาเรียงลำดับ 1, 2, 3 ตามที่พูด
+            foundStops.push({
+                ...loc,
+                indexInSpeech: speechText.indexOf(keyword)
+            });
         }
     });
 
-    reorderStops(); // อัปเดตหัวข้อและลำดับ
+    // เรียงลำดับจุดเช็คอินตามลำดับที่พูดก่อน-หลัง
+    foundStops.sort((a, b) => a.indexInSpeech - b.indexInSpeech);
+
+    // 4. อัปเดตจุดเช็คอินในหน้าจอ
+    document.getElementById('stops-container').innerHTML = "";
+    stopCount = 0;
+
+    if (foundStops.length > 0) {
+        foundStops.forEach(stop => {
+            addNewStop();
+            const id = stopCount;
+            document.getElementById(`label-${id}`).value = stop.label;
+            document.getElementById(`lat-${id}`).value = stop.lat;
+            document.getElementById(`lng-${id}`).value = stop.lng;
+            document.getElementById(`loc-status-${id}`).innerText = "✅ AI ตรวจพบพิกัด";
+            document.getElementById(`loc-status-${id}`).style.color = "#28a745";
+        });
+    } else {
+        // ถ้าไม่พบคำที่บันทึกไว้เลย ให้เพิ่มจุดว่างไว้ 1 จุดเป็นพื้นฐาน
+        addNewStop();
+    }
+
+    reorderStops(); // อัปเดตหัวข้อ Preview
+    
+    // แจ้งเตือนสถานะเบื้องต้น
+    const statusMsg = `วิเคราะห์เสร็จสิ้น: พบ ${foundStops.length} จุด, ราคา ${budget || 'ไม่ได้ระบุ'} บาท`;
+    console.log(statusMsg);
 }
 
 
@@ -684,24 +698,19 @@ function renderManageList() {
     container.innerHTML = "";
 
     if (mySavedLocations.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center; padding: 30px; color: #999;">
-                <i class="fas fa-map-marked-alt style="font-size: 3em; opacity: 0.3;"></i>
-                <p>ยังไม่มีข้อมูลพิกัดที่บันทึกไว้</p>
-            </div>`;
+        container.innerHTML = `<div style="text-align:center; padding: 20px; color: #999;">ไม่มีข้อมูล</div>`;
         return;
     }
 
     mySavedLocations.forEach((loc, index) => {
         container.innerHTML += `
-            <div class="manage-item">
+            <div class="manage-item" style="cursor: pointer;" onclick="editLocation(${index})">
                 <div class="manage-info">
                     <strong style="color: #11998e;">${loc.label}</strong><br>
-                    <small style="color: #666;"><i class="fas fa-microphone"></i> คำสั่งเสียง: "${loc.voiceKeyword || 'ไม่ได้ตั้งไว้'}"</small><br>
-                    <small style="font-size: 0.75em; color: #999;">พิกัด: ${parseFloat(loc.lat).toFixed(4)}, ${parseFloat(loc.lng).toFixed(4)}</small>
+                    <small><i class="fas fa-microphone"></i> "${loc.voiceKeyword || loc.label}"</small>
                 </div>
                 <div class="manage-actions">
-                    <button class="btn-delete" title="ลบพิกัดนี้" onclick="deleteLocation(${index})">
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteLocation(${index})">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -725,7 +734,32 @@ async function deleteLocation(index) {
     }
 }
 
-// 4. ฟังก์ชันปิด Modal
+function editLocation(index) {
+    const loc = mySavedLocations[index];
+    editingLocationId = loc._id; // เก็บ ID ไว้ใช้อัปเดต
+
+    // 1. ปิดหน้าต่างลิสต์ เปิดหน้าต่างแผนที่
+    closeManageModal();
+    document.getElementById('map-modal').classList.remove('hidden');
+
+    // 2. ใส่ข้อมูลเดิมลงในช่องกรอก
+    document.getElementById('map-loc-name').value = loc.label;
+    document.getElementById('map-loc-voice').value = loc.voiceKeyword || loc.label;
+
+    // 3. ตั้งค่าแผนที่ไปยังจุดเดิม
+    if (!merchantMap) {
+        initMap(); // เรียกฟังก์ชันสร้างแผนที่ (ถ้ายังไม่มี)
+    }
+    
+    const latlng = [loc.lat, loc.lng];
+    merchantMap.setView(latlng, 17);
+    updateMarker(loc.lat, loc.lng);
+
+    // เปลี่ยนชื่อปุ่มบันทึกให้เห็นชัดๆ
+    document.querySelector('#map-modal .btn-submit').innerText = "บันทึกการแก้ไข";
+}
+
+//  ฟังก์ชันปิด Modal
 function closeManageModal() {
     document.getElementById('manage-locations-modal').classList.add('hidden');
 }
