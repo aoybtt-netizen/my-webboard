@@ -103,6 +103,47 @@
     z-index: 6500;
 }
 
+
+
+
+/* ส่วนพื้นหลังดำจางๆ ที่คลุมทั้งจอ */
+.modal-overlay {
+    position: fixed; /* ตรึงไว้กับที่ */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); /* สีดำโปร่งแสง */
+    display: flex;
+    justify-content: center; /* จัดกึ่งกลางแนวนอน */
+    align-items: center;     /* จัดกึ่งกลางแนวตั้ง */
+    z-index: 9999;          /* ให้อยู่บนสุดเสมอ */
+}
+
+/* ส่วนกล่องเนื้อหาภายใน Modal */
+.modal-box {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;      /* ไม่ให้สูงเกินหน้าจอ */
+    overflow-y: auto;     /* ถ้าเนื้อหายาวให้เลื่อนได้ในกล่อง */
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+    position: relative;
+    animation: modalFadeIn 0.3s ease-out; /* เพิ่ม Animation ตอนโผล่มา */
+}
+
+/* Animation ให้หน้าต่างเด้งขึ้นมาสวยๆ */
+@keyframes modalFadeIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.hidden {
+    display: none !important;
+}
+
     </style>
 </head>
 <body>
