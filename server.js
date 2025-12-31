@@ -8,8 +8,6 @@ const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcrypt');
 
-
-
 // --- Google Auth Imports ---
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -19,24 +17,21 @@ const googleClient = new OAuth2Client(CLIENT_ID);
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// --- App & Server Setup (ประกาศครั้งเดียวตรงนี้) ---
+// --- App & Server Setup ---
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- Middleware (ต้องประกาศก่อน Route เสมอ) ---
+// --- Middleware ---
 app.use(express.json()); 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Global Database Variables ---
-let usersCollection, postsCollection, configCollection, transactionsCollection;
-let topicsCollection, messagesCollection, zonesCollection;
+// --- Global Database Variables (ปรับให้เหลือชุดเดียว) ---
 let db;
-let merchantLocationsCollection, postsCollection, usersCollection, configCollection;
-let transactionsCollection, topicsCollection, messagesCollection, zonesCollection;
+let usersCollection, postsCollection, configCollection, transactionsCollection;
+let topicsCollection, messagesCollection, zonesCollection, merchantLocationsCollection;
 
-//const uri = process.env.MONGO_URI || "mongodb://localhost:27017/webboard_db"; 
-const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
+const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://your_connection_string";
 const client = new MongoClient(uri);
 
 // --- Global Logic Variables ---
@@ -115,6 +110,12 @@ function translateServerMsg(key, lang = 'th') {
 // ==========================================
 // ROUTES
 // ==========================================
+app.use((req, res, next) => {
+    if (!usersCollection) {
+        return res.status(503).send("ระบบกำลังเริ่มต้น กรุณารอสักครู่...");
+    }
+    next();
+});
 
 // Endpoint สำหรับรับข้อมูลการ Login จาก Google
 app.post('/api/auth/google', async (req, res) => {
@@ -202,9 +203,9 @@ async function connectDB() {
         await client.connect();
         console.log("✅ Connected successfully to MongoDB");
         
-        db = client.db(); // ใช้ชื่อ DB จาก Connection String
+        db = client.db(); 
 
-        // 2. กำหนดค่าให้ Collection ต่างๆ (ควรทำตรงนี้ที่เดียว)
+        // กำหนดค่าให้ Collection ต่างๆ (ทำที่เดียวให้ครบ)
         merchantLocationsCollection = db.collection('merchant_locations');
         postsCollection = db.collection('posts');
         usersCollection = db.collection('users');
@@ -214,14 +215,25 @@ async function connectDB() {
         messagesCollection = db.collection('messages');
         zonesCollection = db.collection('zones');
 
-        await seedInitialData(); // สร้างข้อมูลเริ่มต้นถ้ายังไม่มี
+        // ตรวจสอบฟังก์ชัน seedInitialData ว่ามีนิยามไว้ที่อื่นในไฟล์ไหม
+        if (typeof seedInitialData === 'function') {
+            await seedInitialData();
+        }
+        
         console.log("📦 All Collections Initialized");
+
+        // แนะนำ: ให้ Server เริ่มฟัง (Listen) หลังจาก DB เชื่อมต่อสำเร็จแล้วเท่านั้น
+        const PORT = process.env.PORT || 3000;
+        server.listen(PORT, () => {
+            console.log(`🚀 Server is running on http://localhost:${PORT}`);
+        });
 
     } catch (err) {
         console.error("❌ MongoDB Connection Error:", err);
         process.exit(1);
     }
 }
+
 // เรียกใช้งานฟังก์ชันเชื่อมต่อ
 connectDB();
 
