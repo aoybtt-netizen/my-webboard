@@ -49,6 +49,56 @@
             box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
         }
         .hidden { display: none; }
+		
+		
+		
+		/* Sidebar สไลด์ฝั่งซ้าย */
+.merchant-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px; /* ซ่อนไว้ฝั่งซ้าย */
+    width: 280px;
+    height: 100%;
+    background: white;
+    z-index: 7000;
+    transition: 0.3s;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+.merchant-sidebar.active {
+    left: 0;
+}
+.sidebar-header {
+    background: #11998e;
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sidebar-menu {
+    padding: 10px;
+}
+.menu-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 1.05em;
+}
+.menu-item:hover {
+    background: #f9f9f9;
+    color: #11998e;
+}
+.sidebar-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 6500;
+}
+
     </style>
 </head>
 <body>
@@ -59,6 +109,40 @@
         </div>
         <h2 style="margin: 0; display: inline-block;">สร้างงานร้านค้า</h2>
     </div>
+	
+	
+	<div class="header">
+    <div style="float: left; cursor: pointer;" onclick="toggleMerchantSidebar()">
+        <i class="fas fa-bars"></i>
+    </div>
+    <h2 style="margin: 0; display: inline-block;">GedGo Merchant</h2>
+    <div style="float: right; cursor: pointer;" onclick="window.location.href='index.html'">
+        <i class="fas fa-home"></i>
+    </div>
+</div>
+
+<div id="merchant-sidebar" class="merchant-sidebar">
+    <div class="sidebar-header">
+        <h3>จัดการพิกัด</h3>
+        <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
+    </div>
+    <div class="sidebar-menu">
+        <div class="menu-item" onclick="openSaveStoreModal()">
+            <i class="fas fa-store"></i> บันทึกพิกัดร้าน (Base)
+        </div>
+        <div class="menu-item" onclick="openAddLocationModal()">
+            <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
+        </div>
+        <hr>
+        <div class="menu-item" style="color: #888;" onclick="alert('กำลังพัฒนาระบบจัดการรายการบันทึก')">
+            <i class="fas fa-list"></i> รายการที่บันทึกไว้ทั้งหมด
+        </div>
+    </div>
+</div>
+
+<div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="toggleMerchantSidebar()"></div>
+
+
 
     <div class="container">
         <div class="card">
@@ -112,6 +196,57 @@
     let stopCount = 0;
     let mySavedLocations = [];
     let currentTargetStopId = null;
+	
+	
+	
+	// ฟังก์ชัน เปิด/ปิด Sidebar
+function toggleMerchantSidebar() {
+    const sidebar = document.getElementById('merchant-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('hidden');
+}
+
+// ฟังก์ชันบันทึกพิกัดร้าน (บันทึกแค่จุดเดียวเป็นฐาน)
+function openSaveStoreModal() {
+    toggleMerchantSidebar(); // ปิดเมนูก่อน
+    if (confirm("คุณต้องการบันทึกพิกัดปัจจุบันของคุณเป็น 'พิกัดร้าน' ใช่หรือไม่?")) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const storeLoc = {
+                label: "📍 พิกัดร้านของฉัน",
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
+            };
+            // ตรวจสอบว่ามีชื่อร้านในสมุดอยู่แล้วหรือยัง ถ้ายังให้บันทึกเพิ่ม
+            if (!mySavedLocations.find(l => l.label === storeLoc.label)) {
+                mySavedLocations.unshift(storeLoc); // เอาไว้บนสุด
+                alert("บันทึกพิกัดร้านเรียบร้อยแล้ว!");
+            } else {
+                alert("คุณมีพิกัดร้านเดิมอยู่แล้ว");
+            }
+        });
+    }
+}
+
+// ฟังก์ชันเปิด Modal เพิ่มพิกัดส่งงานใหม่
+function openAddLocationModal() {
+    toggleMerchantSidebar();
+    const locName = prompt("กรุณาใส่ชื่อเรียกพิกัดนี้ (เช่น บ้านลูกค้า A / สาขาบางนา):");
+    if (!locName) return;
+
+    alert("กรุณายืนยันตำแหน่งที่คุณต้องการบันทึก...");
+    navigator.geolocation.getCurrentPosition((pos) => {
+        const newLoc = {
+            label: locName,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+        };
+        mySavedLocations.push(newLoc);
+        alert(`บันทึกพิกัด "${locName}" ลงในสมุดเรียบร้อย!`);
+    }, () => {
+        alert("ไม่สามารถดึงตำแหน่งได้ กรุณาลองใหม่");
+    });
+}
 
     // 1. ฟังก์ชันเพิ่มจุดเช็คอิน (ใช้ตัวนี้ตัวเดียว)
     function addNewStop() {
