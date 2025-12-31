@@ -637,41 +637,48 @@ if (SpeechRecognition) {
 // --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
 // ฟังก์ชันวิเคราะห์คำพูดและสร้างออเดอร์
 function processVoiceOrder(speechText) {
-    // 1. วิเคราะห์ราคา (หาตัวเลขที่อยู่ท้ายประโยค หรือใกล้คำว่า บาท)
-    let budget = "0";
-    const numbers = speechText.match(/\d+/g); // หาตัวเลขทั้งหมดในประโยค
-    if (numbers) {
-        budget = numbers[numbers.length - 1]; // เอาตัวเลขตัวสุดท้ายที่พูดเป็นราคา
+    console.log("AI กำลังวิเคราะห์ประโยคจริง:", speechText);
+    
+    // ล้างค่าเก่าก่อนวิเคราะห์ใหม่
+    lastVoiceAnalysis = null;
+
+    // 1. วิเคราะห์ประเภทงาน (Category) - เช็คคีย์เวิร์ด
+    let category = "รับส่งอาหารสินค้าทั่วไป"; 
+    if (speechText.includes("เอกสาร") || speechText.includes("ส่งจดหมาย")) {
+        category = "รับส่งเอกสาร";
     }
 
-    // 2. วิเคราะห์พิกัด (สแกนหาคำสั่งเสียงที่บันทึกไว้)
+    // 2. วิเคราะห์งบประมาณ (Price) 
+    // ปรับใหม่: ให้เอา "ตัวเลขชุดสุดท้าย" ที่พูด เพราะมักจะเป็นราคา
+    let budget = "0";
+    const allNumbers = speechText.match(/\d+/g); // ดึงตัวเลขทั้งหมดออกมาเป็น Array
+    if (allNumbers && allNumbers.length > 0) {
+        budget = allNumbers[allNumbers.length - 1]; // เลือกตัวเลขตัวสุดท้าย
+    }
+
+    // 3. วิเคราะห์พิกัด (Locations)
     let foundStops = [];
     
-    // สร้างสำเนาประโยคเพื่อใช้ตัดคำที่หาเจอแล้วออก ป้องกันการเจอซ้ำที่จุดเดิม
-    let tempSpeech = speechText;
+    // ลบช่องว่างในประโยคที่พูดออกชั่วคราวเพื่อให้หาคีย์เวิร์ดง่ายขึ้น
+    const cleanSpeech = speechText.replace(/\s+/g, '');
 
-    // ค้นหาทุก Keyword ที่มีอยู่ในประโยค
     mySavedLocations.forEach(loc => {
-        const keyword = loc.voiceKeyword || loc.label;
-        if (tempSpeech.includes(keyword)) {
-            // ค้นหาตำแหน่งทั้งหมดที่คำนี้ปรากฏ (กรณีพูดชื่อเดิมหลายครั้ง)
-            let index = speechText.indexOf(keyword);
-            while (index !== -1) {
-                foundStops.push({
-                    ...loc,
-                    indexInSpeech: index
-                });
-                index = speechText.indexOf(keyword, index + 1);
-            }
+        const keyword = (loc.voiceKeyword || loc.label).replace(/\s+/g, '');
+        
+        // ถ้าในประโยคที่พูด มีคีย์เวิร์ดนี้อยู่
+        if (cleanSpeech.includes(keyword)) {
+            // หาตำแหน่งจริงในประโยคต้นฉบับเพื่อเอามาเรียงลำดับ 1, 2, 3
+            foundStops.push({
+                ...loc,
+                indexInSpeech: cleanSpeech.indexOf(keyword)
+            });
         }
     });
 
-    // เรียงลำดับตามที่พูดจริง
+    // เรียงลำดับพิกัดตามลำดับคำพูด (ใครพูดก่อนอยู่จุดแรก)
     foundStops.sort((a, b) => a.indexInSpeech - b.indexInSpeech);
 
-    // 3. เตรียมข้อมูลสรุป
-    let category = speechText.includes("เอกสาร") ? "รับส่งเอกสาร" : "รับส่งอาหารสินค้าทั่วไป";
-    
+    // 4. สรุปข้อมูลลง Object สำหรับ Modal
     lastVoiceAnalysis = {
         category: category,
         title: `${category} ${foundStops.length} จุด`,
@@ -679,6 +686,7 @@ function processVoiceOrder(speechText) {
         budget: budget
     };
 
+    // 5. สั่งแสดงหน้าจอสรุปผล
     showVoiceSummaryModal();
 }
 
@@ -711,33 +719,32 @@ function startVoiceForKeyword(btn) { // รับค่า btn มาโดย�
 
 function showVoiceSummaryModal() {
     const data = lastVoiceAnalysis;
-    if(!data) return;
+    if (!data) return;
 
+    // แสดงหัวข้อและราคา
     document.getElementById('sum-title').innerText = data.title;
-    document.getElementById('sum-budget').innerText = data.budget.toLocaleString(); // ใส่คอมมาให้สวยงาม
+    document.getElementById('sum-budget').innerText = Number(data.budget).toLocaleString();
 
+    // แสดงรายการจุดส่ง
     const stopsContainer = document.getElementById('sum-stops');
-    stopsContainer.innerHTML = ""; // ล้างข้อมูลเก่า
+    stopsContainer.innerHTML = ""; // ล้างค่าเดิม
 
-    if (data.stops && data.stops.length > 0) {
+    if (data.stops.length > 0) {
         data.stops.forEach((s, i) => {
             stopsContainer.innerHTML += `
-                <div class="summary-item">
-                    <div style="background: #11998e; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+                    <div style="background: #11998e; color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
                         ${i + 1}
                     </div>
-                    <div class="summary-value">${s.label}</div>
+                    <div style="font-weight: bold; color: #333;">${s.label}</div>
                 </div>
             `;
         });
     } else {
-        stopsContainer.innerHTML = `
-            <div style="text-align: center; padding: 15px; background: #fff1f1; color: #d9534f; border-radius: 10px; border: 1px solid #f5c6cb;">
-                <i class="fas fa-exclamation-triangle"></i> ไม่พบรายชื่อสถานที่ในประโยค
-            </div>
-        `;
+        stopsContainer.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 10px;">❌ ไม่พบพิกัดที่บันทึกไว้ในคำพูด</div>`;
     }
 
+    // แสดง Modal
     document.getElementById('voice-summary-modal').classList.remove('hidden');
 }
 
