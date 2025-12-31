@@ -180,6 +180,36 @@
     transform: scale(1.1);
 }
 
+
+
+/* ตกแต่งรายการจุดเช็คอินในหน้าสรุป */
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: white;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #eee;
+}
+.summary-item i {
+    color: #11998e;
+    font-size: 1.1em;
+}
+.summary-label {
+    font-size: 0.85em;
+    color: #888;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.summary-value {
+    font-weight: 600;
+    color: #333;
+}
+
     </style>
 </head>
 <body>
@@ -598,7 +628,11 @@ function processVoiceOrder(speechText) {
     // 2. วิเคราะห์งบประมาณ
     let budget = "0";
     const priceMatch = speechText.match(/\d+/);
-    if (priceMatch) budget = priceMatch[0];
+    if (priceMatch) {
+    budget = priceMatch[0];
+} else {
+    budget = "0"; // หรือใส่ค่าว่างไว้ให้ร้านค้าเติมเอง
+}
 
     // 3. วิเคราะห์พิกัดจาก Keyword
     let foundStops = [];
@@ -655,16 +689,31 @@ function startVoiceForKeyword() {
 
 function showVoiceSummaryModal() {
     const data = lastVoiceAnalysis;
+    if(!data) return;
+
     document.getElementById('sum-title').innerText = data.title;
-    document.getElementById('sum-budget').innerText = data.budget;
+    document.getElementById('sum-budget').innerText = data.budget.toLocaleString(); // ใส่คอมมาให้สวยงาม
 
     const stopsContainer = document.getElementById('sum-stops');
-    if (data.stops.length > 0) {
-        stopsContainer.innerHTML = data.stops.map((s, i) => 
-            `<div style="margin-bottom: 5px;"><i class="fas fa-map-marker-alt" style="color:#11998e;"></i> ${i+1}. ${s.label}</div>`
-        ).join('');
+    stopsContainer.innerHTML = ""; // ล้างข้อมูลเก่า
+
+    if (data.stops && data.stops.length > 0) {
+        data.stops.forEach((s, i) => {
+            stopsContainer.innerHTML += `
+                <div class="summary-item">
+                    <div style="background: #11998e; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
+                        ${i + 1}
+                    </div>
+                    <div class="summary-value">${s.label}</div>
+                </div>
+            `;
+        });
     } else {
-        stopsContainer.innerHTML = `<span style="color:red;">ไม่พบพิกัดในประโยค</span>`;
+        stopsContainer.innerHTML = `
+            <div style="text-align: center; padding: 15px; background: #fff1f1; color: #d9534f; border-radius: 10px; border: 1px solid #f5c6cb;">
+                <i class="fas fa-exclamation-triangle"></i> ไม่พบรายชื่อสถานที่ในประโยค
+            </div>
+        `;
     }
 
     document.getElementById('voice-summary-modal').classList.remove('hidden');
@@ -888,39 +937,39 @@ function closeManageModal() {
 
 
 
-		<div id="voice-summary-modal" class="modal-overlay hidden" style="z-index: 9000;">
-    <div class="modal-box" style="max-width: 450px;">
-        <div style="background: #f39c12; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
-            <h3 style="margin: 0;"><i class="fas fa-robot"></i> AI สรุปข้อมูลงาน</h3>
+		<div id="voice-summary-modal" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="modal-box" style="max-width: 450px; background: #fdfdfd;">
+        <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; text-align: center;">
+            <i class="fas fa-robot" style="font-size: 2em; margin-bottom: 10px;"></i>
+            <h3 style="margin: 0; font-weight: 600;">AI วิเคราะห์คำสั่งเสียงสำเร็จ</h3>
+            <p style="margin: 5px 0 0 0; font-size: 0.85em; opacity: 0.9;">ตรวจสอบความถูกต้องก่อนเริ่มสร้างงาน</p>
         </div>
 
-        <div id="summary-content" style="text-align: left; line-height: 1.6;">
-            <div style="margin-bottom: 15px;">
-                <label style="color: #11998e; font-size: 0.9em;">ชื่อกระทู้ที่จะโพสต์:</label>
-                <div id="sum-title" style="font-weight: bold; font-size: 1.1em; background: #f9f9f9; padding: 10px; border-radius: 8px;">-</div>
+        <div style="padding: 20px;">
+            <div class="summary-label"><i class="fas fa-file-signature"></i> ประเภทงานและหัวข้อ</div>
+            <div id="sum-title" style="background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 10px; font-weight: bold; color: #11998e; margin-bottom: 20px;">
+                -
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label style="color: #11998e; font-size: 0.9em;">จุดเช็คอินที่ตรวจพบ:</label>
-                <div id="sum-stops" style="background: #f9f9f9; padding: 10px; border-radius: 8px;">
-                    </div>
-            </div>
+            <div class="summary-label"><i class="fas fa-map-marked-alt"></i> ลำดับจุดส่งงานที่พบ</div>
+            <div id="sum-stops" style="margin-bottom: 20px;">
+                </div>
 
-            <div style="margin-bottom: 20px;">
-                <label style="color: #11998e; font-size: 0.9em;">งบประมาณจ้างงาน:</label>
-                <div style="font-size: 1.3em; color: #e67e22; font-weight: bold;">
-                    ฿ <span id="sum-budget">0</span>
+            <div style="background: #fff4e5; padding: 15px; border-radius: 12px; border: 1px dashed #f39c12; text-align: center; margin-bottom: 25px;">
+                <div class="summary-label" style="justify-content: center;"><i class="fas fa-coins"></i> งบประมาณจ้างงาน (บาท)</div>
+                <div style="font-size: 2em; color: #e67e22; font-weight: bold;">
+                    <small style="font-size: 0.5em; vertical-align: middle;">฿</small> <span id="sum-budget">0</span>
                 </div>
             </div>
-        </div>
 
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-submit" onclick="confirmVoiceSummary()" style="flex: 2;">
-                ถูกต้อง (กรอกข้อมูล)
-            </button>
-            <button class="btn-submit" onclick="closeVoiceSummary()" style="flex: 1; background: #999;">
-                ยกเลิก
-            </button>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn-submit" onclick="confirmVoiceSummary()" style="flex: 2; height: 55px; box-shadow: 0 4px 12px rgba(17,153,142,0.2);">
+                    ยืนยันข้อมูลนี้
+                </button>
+                <button class="btn-submit" onclick="closeVoiceSummary()" style="flex: 1; background: #eee; color: #666; height: 55px;">
+                    แก้ไขใหม่
+                </button>
+            </div>
         </div>
     </div>
 </div>
