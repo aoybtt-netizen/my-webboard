@@ -62,15 +62,25 @@
 
     <div class="container">
         <div class="card">
-            <label>หัวข้อโฆษณา/งาน</label>
-            <input type="text" id="task-title" placeholder="เช่น ส่งเอกสาร 3 จุด และรับเช็คกลับ">
-            
-            <label>รายละเอียดเพิ่มเติม</label>
-            <textarea id="task-desc" rows="3" placeholder="ระบุสิ่งที่ผู้รับงานต้องทำอย่างละเอียด..."></textarea>
-            
-            <label>งบประมาณจ้างงาน (USD)</label>
-            <input type="number" id="task-budget" placeholder="0.00">
+    <label>ประเภทงานที่ต้องการจ้าง</label>
+    <select id="task-category" onchange="updateTitlePreview()">
+        <option value="รับส่งเอกสาร">📄 รับส่งเอกสาร</option>
+        <option value="รับส่งอาหารสินค้าทั่วไป">🍱 รับส่งอาหารสินค้าทั่วไป</option>
+    </select>
+
+    <div style="background: #e9f7ef; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #11998e;">
+        <small style="color: #666;">หัวข้อที่จะแสดงบนหน้าหลัก:</small>
+        <div id="title-preview" style="font-weight: bold; color: #11998e; font-size: 1.1em;">
+            รับส่งเอกสาร 0 จุด
         </div>
+    </div>
+    
+    <label>รายละเอียดเพิ่มเติม (เช่น ป้ายทะเบียนรถ, เบอร์โทรติดต่อ)</label>
+    <textarea id="task-desc" rows="3" placeholder="ระบุสิ่งที่ผู้รับงานต้องทำอย่างละเอียด..."></textarea>
+    
+    <label>งบประมาณจ้างงาน (USD)</label>
+    <input type="number" id="task-budget" placeholder="0.00">
+</div>
 
         <div class="card">
             <label>📍 ลำดับการเช็คอินและจุดส่งงาน</label>
@@ -88,32 +98,58 @@
 
     <script>
         let stopCount = 0;
+		
+		
+// ฟังก์ชันอัปเดตการแสดงผลหัวข้อ (Preview)
+function updateTitlePreview() {
+    const category = document.getElementById('task-category').value;
+    const currentStops = document.querySelectorAll('.stop-item').length;
+    const previewEl = document.getElementById('title-preview');
+    
+    // สร้างหัวข้ออัตโนมัติ: ประเภทงาน + จำนวนจุด + "จุด"
+    const finalTitle = `${category} ${currentStops} จุด`;
+    previewEl.innerText = finalTitle;
+    
+    return finalTitle;
+}
+
 
         // ฟังก์ชันเพิ่มจุดเช็คอินใหม่
-        function addNewStop() {
-            stopCount++;
-            const container = document.getElementById('stops-container');
-            const stopHtml = `
-                <div class="stop-item" id="stop-${stopCount}">
-                    <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times"></i></span>
-                    <label>จุดที่ ${stopCount}</label>
-                    <input type="text" placeholder="ชื่อสถานที่ (เช่น ร้านข้าวแกงป้าแดง)" class="stop-label">
-                    <button class="btn-add-stop" style="border-color: #666; color: #666; font-size: 0.8em;" onclick="getStopLocation(${stopCount})">
-                        <i class="fas fa-map-marker-alt"></i> บันทึกพิกัดปัจจุบันเป็นจุดเช็คอิน
-                    </button>
-                    <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: gray;">ยังไม่ได้กำหนดพิกัด</div>
-                    <input type="hidden" class="stop-lat" id="lat-${stopCount}">
-                    <input type="hidden" class="stop-lng" id="lng-${stopCount}">
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', stopHtml);
-        }
+function addNewStop() {
+    stopCount++;
+    const container = document.getElementById('stops-container');
+    const stopHtml = `
+        <div class="stop-item" id="stop-${stopCount}">
+            <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times"></i></span>
+            <label>จุดที่ <span class="stop-number"></span></label>
+            <input type="text" placeholder="ชื่อสถานที่ (เช่น บริษัท A / บ้านลูกค้า)" class="stop-label">
+            <button class="btn-add-stop" style="border-color: #666; color: #666; font-size: 0.8em;" onclick="getStopLocation(${stopCount})">
+                <i class="fas fa-map-marker-alt"></i> บันทึกพิกัดปัจจุบัน
+            </button>
+            <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: gray;">ยังไม่ได้กำหนดพิกัด</div>
+            <input type="hidden" class="stop-lat" id="lat-${stopCount}">
+            <input type="hidden" class="stop-lng" id="lng-${stopCount}">
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', stopHtml);
+    reorderStops(); // อัปเดตเลขลำดับและ Preview
+}
 
         // ฟังก์ชันลบจุดเช็คอิน
-        function removeStop(id) {
-            const el = document.getElementById(`stop-${id}`);
-            el.remove();
-        }
+function removeStop(id) {
+    const el = document.getElementById(`stop-${id}`);
+    el.remove();
+    reorderStops(); // อัปเดตเลขลำดับและ Preview
+}
+
+// ฟังก์ชันจัดลำดับเลขจุดใหม่ 1, 2, 3...
+function reorderStops() {
+    const stops = document.querySelectorAll('.stop-item');
+    stops.forEach((stop, index) => {
+        stop.querySelector('.stop-number').innerText = index + 1;
+    });
+    updateTitlePreview();
+}
 
         // ฟังก์ชันดึงตำแหน่งปัจจุบันมาใส่ในจุดนั้นๆ
         function getStopLocation(id) {
@@ -133,33 +169,40 @@
             }
         }
 
-        // ฟังก์ชันรวบรวมข้อมูลและส่งไปหลังบ้าน
-        function postMerchantTask() {
-            const stops = [];
-            const stopElements = document.querySelectorAll('.stop-item');
-            
-            stopElements.forEach((el, index) => {
-                stops.push({
-                    step: index + 1,
-                    label: el.querySelector('.stop-label').value,
-                    lat: el.querySelector('.stop-lat').value,
-                    lng: el.querySelector('.stop-lng').value,
-                    status: 'pending'
-                });
-            });
+// ฟังก์ชันรวบรวมข้อมูลและส่งไปหลังบ้าน
+function postMerchantTask() {
+    const finalTitle = updateTitlePreview(); // ดึงหัวข้อที่ระบบสร้างให้
+    const stops = [];
+    const stopElements = document.querySelectorAll('.stop-item');
+    
+    if (stopElements.length === 0) {
+        alert("กรุณาเพิ่มจุดเช็คอินอย่างน้อย 1 จุด");
+        return;
+    }
 
-            const taskData = {
-                title: document.getElementById('task-title').value,
-                desc: document.getElementById('task-desc').value,
-                budget: document.getElementById('task-budget').value,
-                stops: stops,
-                type: 'merchant'
-            };
+    stopElements.forEach((el, index) => {
+        stops.push({
+            step: index + 1,
+            label: el.querySelector('.stop-label').value || `จุดที่ ${index+1}`,
+            lat: el.querySelector('.stop-lat').value,
+            lng: el.querySelector('.stop-lng').value,
+            status: 'pending'
+        });
+    });
 
-            console.log("ส่งข้อมูลงานร้านค้า:", taskData);
-            alert("เตรียมส่งข้อมูลงานเข้าระบบ...");
-            // ตรงนี้ค่อยเพิ่ม fetch ยิงไปที่ API หลังบ้านครับ
-        }
+    const taskData = {
+        title: finalTitle, // ใช้หัวข้ออัตโนมัติ
+        desc: document.getElementById('task-desc').value,
+        budget: document.getElementById('task-budget').value,
+        stops: stops,
+        type: 'merchant',
+        isMerchantTask: true,
+        currentStopIndex: 0
+    };
+
+    console.log("ส่งข้อมูลงานร้านค้า:", taskData);
+    // Fetch ไปยัง API...
+}
     </script>
 </body>
 </html>
