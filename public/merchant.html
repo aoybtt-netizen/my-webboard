@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGoZone - Merchant Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            margin: 0; background-color: #f0f2f5; 
+            padding-bottom: 50px;
+        }
+        .header {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            padding: 20px; color: white; text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .container { max-width: 600px; margin: 20px auto; padding: 0 15px; }
+        .card {
+            background: white; padding: 20px; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+        }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input, textarea, select {
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;
+        }
+        .stop-item {
+            background: #f8f9fa; padding: 15px; border-radius: 10px;
+            border-left: 5px solid #11998e; margin-bottom: 10px;
+            position: relative;
+        }
+        .remove-stop {
+            position: absolute; top: 10px; right: 10px;
+            color: #dc3545; cursor: pointer;
+        }
+        .btn-add-stop {
+            background: white; border: 2px dashed #11998e;
+            color: #11998e; width: 100%; padding: 10px;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .btn-submit {
+            background: #11998e; color: white; border: none;
+            width: 100%; padding: 15px; border-radius: 30px;
+            font-size: 1.1em; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="float: left; cursor: pointer;" onclick="window.location.href='index.html'">
+            <i class="fas fa-chevron-left"></i> กลับ
+        </div>
+        <h2 style="margin: 0; display: inline-block;">สร้างงานร้านค้า</h2>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <label>หัวข้อโฆษณา/งาน</label>
+            <input type="text" id="task-title" placeholder="เช่น ส่งเอกสาร 3 จุด และรับเช็คกลับ">
+            
+            <label>รายละเอียดเพิ่มเติม</label>
+            <textarea id="task-desc" rows="3" placeholder="ระบุสิ่งที่ผู้รับงานต้องทำอย่างละเอียด..."></textarea>
+            
+            <label>งบประมาณจ้างงาน (USD)</label>
+            <input type="number" id="task-budget" placeholder="0.00">
+        </div>
+
+        <div class="card">
+            <label>📍 ลำดับการเช็คอินและจุดส่งงาน</label>
+            <div id="stops-container">
+                </div>
+            <button class="btn-add-stop" onclick="addNewStop()">
+                <i class="fas fa-plus-circle"></i> เพิ่มจุดเช็คอิน / จุดส่งงาน
+            </button>
+        </div>
+
+        <button class="btn-submit" onclick="postMerchantTask()">
+            <i class="fas fa-paper-plane"></i> โพสต์งานเข้าระบบ
+        </button>
+    </div>
+
+    <script>
+        let stopCount = 0;
+
+        // ฟังก์ชันเพิ่มจุดเช็คอินใหม่
+        function addNewStop() {
+            stopCount++;
+            const container = document.getElementById('stops-container');
+            const stopHtml = `
+                <div class="stop-item" id="stop-${stopCount}">
+                    <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times"></i></span>
+                    <label>จุดที่ ${stopCount}</label>
+                    <input type="text" placeholder="ชื่อสถานที่ (เช่น ร้านข้าวแกงป้าแดง)" class="stop-label">
+                    <button class="btn-add-stop" style="border-color: #666; color: #666; font-size: 0.8em;" onclick="getStopLocation(${stopCount})">
+                        <i class="fas fa-map-marker-alt"></i> บันทึกพิกัดปัจจุบันเป็นจุดเช็คอิน
+                    </button>
+                    <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: gray;">ยังไม่ได้กำหนดพิกัด</div>
+                    <input type="hidden" class="stop-lat" id="lat-${stopCount}">
+                    <input type="hidden" class="stop-lng" id="lng-${stopCount}">
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', stopHtml);
+        }
+
+        // ฟังก์ชันลบจุดเช็คอิน
+        function removeStop(id) {
+            const el = document.getElementById(`stop-${id}`);
+            el.remove();
+        }
+
+        // ฟังก์ชันดึงตำแหน่งปัจจุบันมาใส่ในจุดนั้นๆ
+        function getStopLocation(id) {
+            const status = document.getElementById(`loc-status-${id}`);
+            status.innerText = "⏳ กำลังดึงพิกัด...";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    document.getElementById(`lat-${id}`).value = position.coords.latitude;
+                    document.getElementById(`lng-${id}`).value = position.coords.longitude;
+                    status.innerText = "✅ บันทึกพิกัดเรียบร้อย";
+                    status.style.color = "#28a745";
+                }, () => {
+                    alert("ไม่สามารถเข้าถึงตำแหน่งได้");
+                    status.innerText = "❌ เกิดข้อผิดพลาด";
+                });
+            }
+        }
+
+        // ฟังก์ชันรวบรวมข้อมูลและส่งไปหลังบ้าน
+        function postMerchantTask() {
+            const stops = [];
+            const stopElements = document.querySelectorAll('.stop-item');
+            
+            stopElements.forEach((el, index) => {
+                stops.push({
+                    step: index + 1,
+                    label: el.querySelector('.stop-label').value,
+                    lat: el.querySelector('.stop-lat').value,
+                    lng: el.querySelector('.stop-lng').value,
+                    status: 'pending'
+                });
+            });
+
+            const taskData = {
+                title: document.getElementById('task-title').value,
+                desc: document.getElementById('task-desc').value,
+                budget: document.getElementById('task-budget').value,
+                stops: stops,
+                type: 'merchant'
+            };
+
+            console.log("ส่งข้อมูลงานร้านค้า:", taskData);
+            alert("เตรียมส่งข้อมูลงานเข้าระบบ...");
+            // ตรงนี้ค่อยเพิ่ม fetch ยิงไปที่ API หลังบ้านครับ
+        }
+    </script>
+</body>
+</html>
