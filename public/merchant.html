@@ -82,6 +82,18 @@
     <input type="number" id="task-budget" placeholder="0.00">
 </div>
 
+
+	<div class="card" style="text-align: center; background: #fffbf0; border: 1px solid #f39c12;">
+    <label><i class="fas fa-microphone"></i> สั่งงานด้วยเสียง (AI Assistant)</label>
+    <button class="btn-add-stop" style="background: #f39c12; color: white; border: none; padding: 15px;" id="voice-btn" onclick="startVoiceCommand()">
+        <i class="fas fa-play"></i> แตะเพื่อเริ่มพูดสั่งงาน
+    </button>
+    <p id="voice-status" style="font-size: 0.85em; color: #666; margin-top: 10px;">
+        ตัวอย่าง: "ส่งเอกสาร ต่อด้วย ลาดพร้าว ต่อด้วย 50 บาท"
+    </p>
+</div>
+
+
         <div class="card">
             <label>📍 ลำดับการเช็คอินและจุดส่งงาน</label>
             <div id="stops-container">
@@ -248,6 +260,99 @@
         console.log("ส่งข้อมูลงานร้านค้า:", taskData);
         alert("ส่งข้อมูลสำเร็จ (ตรวจสอบ Console)");
     }
+	
+	
+	
+	// ตรวจสอบเบราว์เซอร์ว่ารองรับเสียงไหม
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'th-TH'; // ภาษาไทย
+    recognition.interimResults = false;
+
+    function startVoiceCommand() {
+        recognition.start();
+        document.getElementById('voice-btn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังฟัง...';
+        document.getElementById('voice-btn').style.background = "#e67e22";
+    }
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        console.log("ข้อความที่ได้รับ:", text);
+        processVoiceOrder(text); // ส่งไปประมวลผล
+        resetVoiceBtn();
+    };
+
+    recognition.onerror = () => {
+        alert("เกิดข้อผิดพลาดในการรับเสียง หรือไม่มีการอนุญาตใช้ไมค์");
+        resetVoiceBtn();
+    };
+
+    function resetVoiceBtn() {
+        document.getElementById('voice-btn').innerHTML = '<i class="fas fa-play"></i> แตะเพื่อเริ่มพูดสั่งงาน';
+        document.getElementById('voice-btn').style.background = "#f39c12";
+    }
+}
+
+// --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
+function processVoiceOrder(speechText) {
+    // 1. แยกส่วนประกอบด้วยคำว่า "ต่อด้วย"
+    const parts = speechText.split("ต่อด้วย").map(p => p.trim());
+    
+    if (parts.length < 2) {
+        alert("คำสั่งไม่ชัดเจน กรุณาใช้คำว่า 'ต่อด้วย' แยกแต่ละส่วน");
+        return;
+    }
+
+    // 2. ระบุประเภทงาน (ดูจากส่วนแรก)
+    if (parts[0].includes("เอกสาร")) {
+        document.getElementById('task-category').value = "รับส่งเอกสาร";
+    } else if (parts[0].includes("อาหาร")) {
+        document.getElementById('task-category').value = "รับส่งอาหารสินค้าทั่วไป";
+    }
+
+    // ล้างจุดเดิมก่อนเริ่มสร้างใหม่
+    document.getElementById('stops-container').innerHTML = "";
+    stopCount = 0;
+
+    // 3. วนลูปหาจุดพิกัดในสมุดบันทึก (ส่วนกลางของประโยค)
+    // เราจะวนหาคำสั่งยกเว้นส่วนแรก (ประเภท) และส่วนสุดท้าย (ราคา)
+    for (let i = 1; i < parts.length; i++) {
+        const part = parts[i];
+
+        // ตรวจสอบว่าเป็นตัวเลข (ราคา) หรือไม่
+        const isPrice = /^\d+$/.test(part.replace("บาท", "").trim());
+
+        if (isPrice) {
+            // ถ้าเป็นราคา ให้ใส่ในช่องงบประมาณ
+            const price = part.replace("บาท", "").trim();
+            document.getElementById('task-budget').value = price;
+        } else {
+            // ถ้าไม่ใช่ราคา แสดงว่าเป็นชื่อสถานที่ -> ค้นใน mySavedLocations
+            const matchedLoc = mySavedLocations.find(loc => loc.label.includes(part));
+
+            if (matchedLoc) {
+                // ถ้าเจอพิกัดที่บันทึกไว้ ให้เพิ่มจุดโดยอัตโนมัติ
+                addNewStop();
+                const id = stopCount;
+                document.getElementById(`label-${id}`).value = matchedLoc.label;
+                document.getElementById(`lat-${id}`).value = matchedLoc.lat;
+                document.getElementById(`lng-${id}`).value = matchedLoc.lng;
+                document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงจากเสียง/สมุดบันทึก";
+                document.getElementById(`loc-status-${id}`).style.color = "#28a745";
+            } else {
+                // ถ้าไม่เจอพิกัด ให้เพิ่มจุดเปล่าๆ ไว้ให้กรอกเพิ่ม
+                addNewStop();
+                document.getElementById(`label-${stopCount}`).value = part;
+                document.getElementById(`loc-status-${stopCount}`).innerText = "❌ ไม่พบพิกัดในสมุด (กรุณาปักหมุดเอง)";
+                document.getElementById(`loc-status-${stopCount}`).style.color = "#dc3545";
+            }
+        }
+    }
+
+    // 4. อัปเดตหัวข้ออัตโนมัติ (เช่น รับส่งเอกสาร 2 จุด)
+    reorderStops(); 
+}
 </script>
 	
 	
