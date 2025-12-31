@@ -106,32 +106,34 @@
 
 
 
-/* ส่วนพื้นหลังดำจางๆ ที่คลุมทั้งจอ */
+/* ส่วนพื้นหลัง */
 .modal-overlay {
-    position: fixed; /* ตรึงไว้กับที่ */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6); /* สีดำโปร่งแสง */
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
-    justify-content: center; /* จัดกึ่งกลางแนวนอน */
-    align-items: center;     /* จัดกึ่งกลางแนวตั้ง */
-    z-index: 9999;          /* ให้อยู่บนสุดเสมอ */
+    justify-content: center;
+    align-items: flex-start; /* เปลี่ยนจาก center เป็น flex-start เพื่อให้เริ่มจากด้านบน */
+    padding-top: 20px;       /* เพิ่มช่องว่างด้านบนนิดหน่อย */
+    z-index: 9999;
+    overflow-y: auto;        /* ให้ตัว Overlay เลื่อนขึ้นลงได้ถ้า Modal ยาว */
 }
 
-/* ส่วนกล่องเนื้อหาภายใน Modal */
+/* ตัวกล่องหน้าต่าง */
 .modal-box {
     background: white;
-    padding: 20px;
     border-radius: 15px;
-    width: 90%;
+    width: 95%;
     max-width: 500px;
-    max-height: 85vh;      /* ไม่ให้สูงเกินหน้าจอ */
-    overflow-y: auto;     /* ถ้าเนื้อหายาวให้เลื่อนได้ในกล่อง */
-    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+    margin-bottom: 20px;    /* เว้นระยะล่างจอ */
+    box-shadow: 0 5px 25px rgba(0,0,0,0.3);
     position: relative;
-    animation: modalFadeIn 0.3s ease-out; /* เพิ่ม Animation ตอนโผล่มา */
+    overflow: hidden;       /* ป้องกันเนื้อหาทะลักมุมมน */
+    display: flex;
+    flex-direction: column;
 }
 
 /* Animation ให้หน้าต่างเด้งขึ้นมาสวยๆ */
@@ -589,26 +591,25 @@ function processVoiceOrder(speechText) {
         
         <div id="map-container" style="height: 250px; width: 100%;"></div>
 
-        <div style="padding: 20px;">
-            <label><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด</label>
-            <input type="text" id="map-loc-name" placeholder="เช่น บ้านลูกค้า A / สาขาลาดพร้าว">
+        <div style="padding: 20px; padding-bottom: 30px;"> <label><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด</label>
+    <input type="text" id="map-loc-name" placeholder="...">
 
-            <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword)</label>
-            <input type="text" id="map-loc-voice" placeholder="เช่น ลาดพร้าว (เมื่อพูดคำนี้ ระบบจะดึงพิกัดนี้)">
-            
-            <p id="map-coords-display" style="font-size: 0.8em; color: #888; margin-bottom: 15px;">
-                พิกัด: กรุณาเลือกจุดบนแผนที่
-            </p>
+    <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword)</label>
+    <input type="text" id="map-loc-voice" placeholder="...">
+    
+    <p id="map-coords-display" style="font-size: 0.8em; color: #888; margin-bottom: 15px;">
+        พิกัด: ...
+    </p>
 
-            <div style="display: flex; gap: 10px;">
-                <button class="btn-submit" onclick="confirmMapLocation()" style="flex: 2; border-radius: 8px;">
-                    บันทึกลงสมุด
-                </button>
-                <button class="btn-submit" onclick="closeMapModal()" style="flex: 1; background: #999; border-radius: 8px;">
-                    ยกเลิก
-                </button>
-            </div>
-        </div>
+    <div style="display: flex; gap: 10px;">
+        <button class="btn-submit" onclick="confirmMapLocation()" style="flex: 2; border-radius: 8px;">
+            บันทึกลงสมุด
+        </button>
+        <button class="btn-submit" onclick="closeMapModal()" style="flex: 1; background: #999; border-radius: 8px;">
+            ยกเลิก
+        </button>
+    </div>
+</div>
     </div>
 </div>
 
