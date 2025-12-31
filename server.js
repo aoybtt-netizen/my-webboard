@@ -200,6 +200,9 @@ app.post('/api/auth/set-password', async (req, res) => {
 
 async function connectDB() {
     try {
+        // ตรวจสอบว่าถ้าเชื่อมต่ออยู่แล้วไม่ต้องเชื่อมซ้ำ
+        if (db) return; 
+
         await client.connect();
         console.log("✅ Connected successfully to MongoDB");
         
@@ -215,22 +218,15 @@ async function connectDB() {
         messagesCollection = db.collection('messages');
         zonesCollection = db.collection('zones');
 
-        // ตรวจสอบฟังก์ชัน seedInitialData ว่ามีนิยามไว้ที่อื่นในไฟล์ไหม
         if (typeof seedInitialData === 'function') {
             await seedInitialData();
         }
         
         console.log("📦 All Collections Initialized");
 
-        // แนะนำ: ให้ Server เริ่มฟัง (Listen) หลังจาก DB เชื่อมต่อสำเร็จแล้วเท่านั้น
-        const PORT = process.env.PORT || 3000;
-        server.listen(PORT, () => {
-            console.log(`🚀 Server is running on http://localhost:${PORT}`);
-        });
-
     } catch (err) {
         console.error("❌ MongoDB Connection Error:", err);
-        process.exit(1);
+        // ไม่ต้องใส่ process.exit(1) เพื่อให้ Server ยังคงรันต่อได้แม้ DB จะติดขัดชั่วคราว
     }
 }
 
@@ -3416,11 +3412,11 @@ fetchLiveExchangeRates();
 setInterval(fetchLiveExchangeRates, 7200000);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`
-    *******************************************
-    ✅ Server is running on port ${PORT}
-    🌍 URL: http://localhost:${PORT}
-    *******************************************
-    `);
+
+// 1. สั่งให้ Server เริ่มทำงาน (Listen) เพียงที่เดียวตรงนี้
+server.listen(PORT, async () => {
+    console.log(`🚀 GedGoZone Server is running on http://localhost:${PORT}`);
+    
+    // 2. เมื่อ Server รันแล้ว ค่อยสั่งเชื่อมต่อ Database
+    await connectDB();
 });
