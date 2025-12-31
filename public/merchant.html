@@ -500,21 +500,23 @@ function reorderStops() {
     const stops = document.querySelectorAll('.stop-item');
     stops.forEach((stop, index) => {
         const isPickup = (index === 0);
-        const displayNum = stop.querySelector('.stop-display-number');
+        const displayNum = stop.querySelector('.stop-number');
         const label = stop.querySelector('label');
         
         if (isPickup) {
-            displayNum.innerText = ""; // จุดรับไม่ต้องมีเลขลำดับ
+            if (displayNum) displayNum.innerText = ""; 
             label.innerHTML = "🟢 จุดรับงาน (Pickup)";
-            stop.style.borderLeftColor = "#27ae60";
             label.style.color = "#27ae60";
+            stop.style.borderLeftColor = "#27ae60";
         } else {
-            displayNum.innerText = index; // จุดส่งเริ่มนับ 1, 2, 3...
+            if (displayNum) displayNum.innerText = index; // จุดส่งที่ 1, 2, 3...
             label.innerHTML = `📍 จุดส่งงานที่ ${index}`;
-            stop.style.borderLeftColor = "#11998e";
             label.style.color = "#11998e";
+            stop.style.borderLeftColor = "#11998e";
         }
     });
+
+    // อัปเดตหัวข้อ Preview ด้านบน
     updateTitlePreview();
 }
 
@@ -525,16 +527,15 @@ function reorderStops() {
 
     function updateTitlePreview() {
     const category = document.getElementById('task-category').value;
-    const totalItems = document.querySelectorAll('.stop-item').length;
+    const totalStops = document.querySelectorAll('.stop-item').length;
     
-    // จำนวนจุดส่ง = จำนวนทั้งหมด - 1 (จุดรับ)
-    const deliveryStops = totalItems > 0 ? totalItems - 1 : 0;
+    // จำนวนจุดส่ง = ทั้งหมด ลบ จุดรับออก 1
+    const deliveryStops = totalStops > 1 ? totalStops - 1 : 0;
     
     const previewEl = document.getElementById('title-preview');
-    const finalTitle = `${category} (ส่ง ${deliveryStops} จุด)`;
-    
-    previewEl.innerText = finalTitle;
-    return finalTitle;
+    if (previewEl) {
+        previewEl.innerText = `${category} (ส่ง ${deliveryStops} จุด)`;
+    }
 }
 
     // 3. ระบบสมุดที่อยู่ (Saved Locations)
@@ -782,30 +783,48 @@ function confirmVoiceSummary() {
     const data = lastVoiceAnalysis;
     if (!data) return;
 
-    // กรอกประเภทงานและงบประมาณ
+    // 1. เติมประเภทงานและงบประมาณ
     document.getElementById('task-category').value = data.category;
     document.getElementById('task-budget').value = data.budget;
 
-    // ล้างและสร้างจุดเช็คอินใหม่
+    // 2. ล้างจุดเก่าทั้งหมดออกก่อน
     document.getElementById('stops-container').innerHTML = "";
-    stopCount = 0;
+    stopCount = 0; // รีเซ็ตตัวนับ ID ใหม่
 
-    if (data.stops.length > 0) {
-        data.stops.forEach(stop => {
-            addNewStop();
-            const id = stopCount;
-            document.getElementById(`label-${id}`).value = stop.label;
-            document.getElementById(`lat-${id}`).value = stop.lat;
-            document.getElementById(`lng-${id}`).value = stop.lng;
-            document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงข้อมูลโดย AI";
-            document.getElementById(`loc-status-${id}`).style.color = "#28a745";
+    // 3. เริ่มสร้างจุดใหม่ตามที่ AI ตรวจพบ
+    if (data.stops && data.stops.length > 0) {
+        data.stops.forEach((stop, index) => {
+            addNewStop(); // สร้างกล่องจุดเช็คอินใหม่ (stopCount จะเพิ่มขึ้นทีละ 1 ในนี้)
+            
+            const currentId = stopCount; // ID ของกล่องที่เพิ่งสร้างเสร็จ
+            
+            // เติมข้อมูลลงใน Input ของกล่องนั้นๆ
+            document.getElementById(`label-${currentId}`).value = stop.label;
+            document.getElementById(`lat-${currentId}`).value = stop.lat;
+            document.getElementById(`lng-${currentId}`).value = stop.lng;
+            
+            // เปลี่ยนข้อความสถานะ
+            const statusLabel = document.getElementById(`loc-status-${currentId}`);
+            if (index === 0) {
+                statusLabel.innerText = "✅ จุดรับงาน (AI)";
+                statusLabel.style.color = "#27ae60";
+            } else {
+                statusLabel.innerText = `✅ จุดส่งงานที่ ${index} (AI)`;
+                statusLabel.style.color = "#11998e";
+            }
         });
     } else {
-        addNewStop(); // ถ้าไม่เจอเลยให้เปิดจุดว่างไว้ 1 จุด
+        // กรณี AI ไม่เจอจุดเลย ให้เพิ่มจุดว่างไว้ 1 จุดเป็นจุดรับ
+        addNewStop();
     }
 
-    reorderStops(); // อัปเดต UI ทั้งหมด
+    // 4. สั่งจัดลำดับใหม่และคำนวณจำนวนจุดส่ง
+    reorderStops(); 
+    
+    // 5. ปิด Modal สรุป
     closeVoiceSummary();
+    
+    console.log("✅ ข้อมูลจาก AI ถูกกรอกลงฟอร์มเรียบร้อย");
 }
 
 function closeVoiceSummary() {
