@@ -8,7 +8,7 @@ const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcrypt');
 
-const merchantLocationsCollection = db.collection('merchant_locations');
+
 
 // --- Google Auth Imports ---
 const { OAuth2Client } = require('google-auth-library');
@@ -29,9 +29,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Global Database Variables ---
-let db;
 let usersCollection, postsCollection, configCollection, transactionsCollection;
 let topicsCollection, messagesCollection, zonesCollection;
+let db;
+let merchantLocationsCollection, postsCollection, usersCollection, configCollection;
+let transactionsCollection, topicsCollection, messagesCollection, zonesCollection;
 
 //const uri = process.env.MONGO_URI || "mongodb://localhost:27017/webboard_db"; 
 const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
@@ -201,8 +203,9 @@ async function connectDB() {
         console.log("✅ Connected successfully to MongoDB");
         
         db = client.db(); // ใช้ชื่อ DB จาก Connection String
-        
-        // กำหนด Collection
+
+        // 2. กำหนดค่าให้ Collection ต่างๆ (ควรทำตรงนี้ที่เดียว)
+        merchantLocationsCollection = db.collection('merchant_locations');
         postsCollection = db.collection('posts');
         usersCollection = db.collection('users');
         configCollection = db.collection('config');
@@ -212,12 +215,15 @@ async function connectDB() {
         zonesCollection = db.collection('zones');
 
         await seedInitialData(); // สร้างข้อมูลเริ่มต้นถ้ายังไม่มี
+        console.log("📦 All Collections Initialized");
 
     } catch (err) {
         console.error("❌ MongoDB Connection Error:", err);
         process.exit(1);
     }
 }
+// เรียกใช้งานฟังก์ชันเชื่อมต่อ
+connectDB();
 
 async function seedInitialData() {
     // 1. Config
