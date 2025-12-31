@@ -601,34 +601,75 @@ function reorderStops() {
 
 
     // 4. ส่งข้อมูลงาน
-    function postMerchantTask() {
-        const finalTitle = updateTitlePreview();
-        const stops = [];
-        const stopElements = document.querySelectorAll('.stop-item');
-        if (stopElements.length === 0) return alert("กรุณาเพิ่มจุดเช็คอินอย่างน้อย 1 จุด");
+    async function postMerchantTask() {
+    const finalTitle = updateTitlePreview();
+    const stops = [];
+    const stopElements = document.querySelectorAll('.stop-item');
 
-        stopElements.forEach((el, index) => {
-    const id = el.id.split('-')[1];
-    stops.push({
-        step: index + 1,
-        label: document.getElementById(`label-${id}`).value,
-        phone: document.getElementById(`phone-${id}`).value, // 🚩 เก็บเบอร์โทรลงใน Data งาน
-        lat: document.getElementById(`lat-${id}`).value,
-        lng: document.getElementById(`lng-${id}`).value,
-        status: 'pending'
+    if (stopElements.length === 0) return alert("❌ กรุณาเพิ่มจุดรับ-ส่งงานอย่างน้อย 1 จุด");
+
+    // 1. รวบรวมข้อมูลทุกจุด (รวมเบอร์โทรและพิกัด)
+    let hasError = false;
+    stopElements.forEach((el, index) => {
+        const id = el.id.split('-')[1];
+        const label = document.getElementById(`label-${id}`).value;
+        const phone = document.getElementById(`phone-${id}`).value;
+        const lat = document.getElementById(`lat-${id}`).value;
+        const lng = document.getElementById(`lng-${id}`).value;
+
+        if (!lat || !lng) {
+            hasError = true;
+            return;
+        }
+
+        stops.push({
+            step: index + 1,
+            label: label || (index === 0 ? "จุดรับงาน" : `จุดส่งที่ ${index}`),
+            phone: phone,
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
+            status: 'pending'
+        });
     });
-});
 
-        const taskData = {
-            title: finalTitle,
-            desc: document.getElementById('task-desc').value,
-            budget: document.getElementById('task-budget').value,
-            stops: stops,
-            isMerchantTask: true
-        };
-        console.log("ส่งข้อมูลงานร้านค้า:", taskData);
-        alert("ส่งข้อมูลสำเร็จ (ตรวจสอบ Console)");
+    if (hasError) return alert("❌ กรุณาปักหมุดพิกัดให้ครบทุกจุดก่อนโพสต์งาน");
+
+    // 2. เตรียมข้อมูลส่งไป Server (ใช้ FormData เพราะ Server รองรับ upload.single)
+    const formData = new FormData();
+    formData.append('author', myUsername);
+    formData.append('category', 'task'); // หรือ ID ของหมวดหมู่งานจ้างในระบบคุณ
+    formData.append('title', finalTitle);
+    formData.append('content', document.getElementById('task-desc').value);
+    formData.append('budget', document.getElementById('task-budget').value || 0);
+    formData.append('isMerchantTask', true);
+    
+    // ส่งข้อมูล stops เป็น String JSON
+    formData.append('stops', JSON.stringify(stops));
+
+    // ส่งพิกัดร้าน (จุดรับงานแรก) เป็นพิกัดหลักของโพสต์เพื่อให้ระบบคำนวณโซน/ค่าธรรมเนียม
+    const mainLocation = { lat: stops[0].lat, lng: stops[0].lng };
+    formData.append('location', JSON.stringify(mainLocation));
+
+    try {
+        const res = await fetch('/api/posts', {
+            method: 'POST',
+            body: formData
+            // ไม่ต้องใส่ Header Content-Type เพราะ FormData จัดการให้เอง
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            alert("🚀 โพสต์งานเข้าระบบเรียบร้อยแล้ว!");
+            window.location.href = 'index.html'; // ส่งกลับหน้าหลักเพื่อดูงาน
+        } else {
+            alert("❌ เกิดข้อผิดพลาด: " + data.error);
+        }
+    } catch (error) {
+        console.error("Post Error:", error);
+        alert("❌ ไม่สามารถเชื่อมต่อกับ Server ได้");
     }
+}
 	
 	
 	
