@@ -31,7 +31,7 @@ let db;
 let usersCollection, postsCollection, configCollection, transactionsCollection;
 let topicsCollection, messagesCollection, zonesCollection, merchantLocationsCollection;
 
-const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://your_connection_string";
+const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
 
 // --- Global Logic Variables ---
