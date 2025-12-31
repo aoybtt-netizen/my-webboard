@@ -314,33 +314,28 @@ function openSaveStoreModal() {
 
 // ฟังก์ชันเปิด Modal เพิ่มพิกัดส่งงานใหม่
 function openAddLocationModal() {
-    toggleMerchantSidebar(); // ปิด Sidebar ก่อน
-    document.getElementById('map-modal').classList.remove('hidden');
+    toggleMerchantSidebar(); 
+    editingLocationId = null; // 🚩 สำคัญ: ล้างค่า ID การแก้ไข
     
-    // ตั้งค่าเริ่มต้นของแผนที่ (ถ้ายังไม่มีแผนที่ให้สร้างใหม่)
-    if (!merchantMap) {
-        merchantMap = L.map('map-container').setView([13.7563, 100.5018], 13); // เริ่มที่ กทม.
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(merchantMap);
+    document.getElementById('map-modal').classList.remove('hidden');
+    document.querySelector('#map-modal h3').innerText = "📍 ปักหมุดพิกัดใหม่";
+    document.querySelector('#map-modal .btn-submit').innerText = "บันทึกลงสมุด";
 
-        // เมื่อคลิกบนแผนที่ ให้ย้ายหมุด
-        merchantMap.on('click', function(e) {
-            updateMarker(e.latlng.lat, e.latlng.lng);
-        });
-    }
+    // เรียกใช้ฟังก์ชันสร้างแผนที่
+    initMap();
 
-    // พยายามดึงพิกัดปัจจุบันของผู้ใช้เพื่อเริ่มแผนที่ที่จุดนั้น
+    // ล้างข้อมูลในฟอร์ม
+    document.getElementById('map-loc-name').value = "";
+    document.getElementById('map-loc-voice').value = "";
+
+    // พยายามดึงพิกัดปัจจุบัน
     navigator.geolocation.getCurrentPosition((pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         merchantMap.setView([lat, lng], 16);
         updateMarker(lat, lng);
+        merchantMap.invalidateSize(); // รีเฟรชขนาดแผนที่ให้เต็มกรอบ
     });
-
-    // ล้างข้อมูลเก่าในฟอร์ม
-    document.getElementById('map-loc-name').value = "";
-    document.getElementById('map-loc-voice').value = "";
 }
 
 
@@ -736,28 +731,57 @@ async function deleteLocation(index) {
 
 function editLocation(index) {
     const loc = mySavedLocations[index];
-    editingLocationId = loc._id; // เก็บ ID ไว้ใช้อัปเดต
-
-    // 1. ปิดหน้าต่างลิสต์ เปิดหน้าต่างแผนที่
+    if (!loc) return;
+    
+    editingLocationId = loc._id; // 🚩 เก็บ ID ไว้ใช้อ้างอิงตอน PUT (อัปเดต)
+    
+    // ปิดหน้าต่างลิสต์ และเปิดหน้าต่างแผนที่
     closeManageModal();
     document.getElementById('map-modal').classList.remove('hidden');
-
-    // 2. ใส่ข้อมูลเดิมลงในช่องกรอก
-    document.getElementById('map-loc-name').value = loc.label;
-    document.getElementById('map-loc-voice').value = loc.voiceKeyword || loc.label;
-
-    // 3. ตั้งค่าแผนที่ไปยังจุดเดิม
-    if (!merchantMap) {
-        initMap(); // เรียกฟังก์ชันสร้างแผนที่ (ถ้ายังไม่มี)
-    }
     
-    const latlng = [loc.lat, loc.lng];
-    merchantMap.setView(latlng, 17);
-    updateMarker(loc.lat, loc.lng);
-
-    // เปลี่ยนชื่อปุ่มบันทึกให้เห็นชัดๆ
+    // เปลี่ยนหัวข้อและชื่อปุ่ม
+    document.querySelector('#map-modal h3').innerText = "✏️ แก้ไขพิกัด";
     document.querySelector('#map-modal .btn-submit').innerText = "บันทึกการแก้ไข";
+
+    // เรียกใช้ฟังก์ชันสร้างแผนที่
+    initMap();
+
+    // ใส่ข้อมูลเดิมลงในช่องกรอก
+    document.getElementById('map-loc-name').value = loc.label;
+    document.getElementById('map-loc-voice').value = loc.voiceKeyword || "";
+
+    // ตั้งค่าแผนที่ไปยังจุดเดิมที่บันทึกไว้
+    const lat = parseFloat(loc.lat);
+    const lng = parseFloat(loc.lng);
+    
+    merchantMap.setView([lat, lng], 17);
+    updateMarker(lat, lng);
+    
+    // บังคับให้แผนที่วาดใหม่ให้ตรงกับขนาด Modal
+    setTimeout(() => {
+        merchantMap.invalidateSize();
+    }, 300);
 }
+
+// ฟังก์ชันสร้างแผนที่เริ่มต้น (เรียกใช้ครั้งเดียวตอนเปิด Modal ครั้งแรก)
+function initMap() {
+    if (merchantMap) return; // ถ้ามีแผนที่อยู่แล้วไม่ต้องสร้างซ้ำ
+
+    // สร้างแผนที่ไปที่กึ่งกลางไทยเป็นค่าเริ่มต้น
+    merchantMap = L.map('map-container').setView([13.7563, 100.5018], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(merchantMap);
+
+    // เมื่อคลิกที่แผนที่ ให้ย้ายหมุดและเก็บค่าพิกัด
+    merchantMap.on('click', function(e) {
+        updateMarker(e.latlng.lat, e.latlng.lng);
+    });
+    
+    console.log("🗺️ Map Initialized");
+}
+
 
 //  ฟังก์ชันปิด Modal
 function closeManageModal() {
