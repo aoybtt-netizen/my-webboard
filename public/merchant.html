@@ -98,6 +98,46 @@
 
     <script>
         let stopCount = 0;
+		let mySavedLocations = [];
+		let currentTargetStopId = null;
+		
+		
+function addNewStop() {
+        stopCount++;
+        const container = document.getElementById('stops-container');
+        const stopHtml = `
+            <div class="stop-item" id="stop-${stopCount}">
+                <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times"></i></span>
+                <label>จุดที่ <span class="stop-number"></span></label>
+                
+                <div style="margin-bottom: 10px;">
+                    <button class="btn-add-stop" style="border-color: #f39c12; color: #f39c12; width: auto; padding: 5px 15px; font-size: 0.85em;" 
+                        onclick="showSavedLocationsModal(${stopCount})">
+                        <i class="fas fa-bookmark"></i> เลือกจากที่บันทึกไว้
+                    </button>
+                </div>
+
+                <input type="text" placeholder="ชื่อสถานที่ (เช่น บ้านลูกค้า / สาขา 1)" class="stop-label" id="label-${stopCount}">
+                
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-add-stop" style="border-color: #666; color: #666; font-size: 0.8em; flex: 1;" onclick="getStopLocation(${stopCount})">
+                        <i class="fas fa-map-marker-alt"></i> บันทึกพิกัดปัจจุบัน
+                    </button>
+                    <button id="save-btn-${stopCount}" class="btn-add-stop hidden" 
+                        style="border-color: #28a745; color: #28a745; font-size: 0.8em; flex: 1;" onclick="saveToMyBook(${stopCount})">
+                        <i class="fas fa-save"></i> บันทึกจุดนี้ลงสมุด
+                    </button>
+                </div>
+
+                <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: gray;">ยังไม่ได้กำหนดพิกัด</div>
+                <input type="hidden" class="stop-lat" id="lat-${stopCount}">
+                <input type="hidden" class="stop-lng" id="lng-${stopCount}">
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', stopHtml);
+        reorderStops();
+    }
+	
 		
 		
 // ฟังก์ชันอัปเดตการแสดงผลหัวข้อ (Preview)
@@ -151,23 +191,81 @@ function reorderStops() {
     updateTitlePreview();
 }
 
-        // ฟังก์ชันดึงตำแหน่งปัจจุบันมาใส่ในจุดนั้นๆ
-        function getStopLocation(id) {
-            const status = document.getElementById(`loc-status-${id}`);
-            status.innerText = "⏳ กำลังดึงพิกัด...";
+    // 1. ฟังก์ชันบันทึกจุดปัจจุบันลงในสมุด (ฝั่ง Client ชั่วคราว)
+function saveToMyBook(id) {
+    const label = document.getElementById(`label-${id}`).value;
+    const lat = document.getElementById(`lat-${id}`).value;
+    const lng = document.getElementById(`lng-${id}`).value;
+
+    if (!label || !lat) return alert("กรุณาระบุชื่อสถานที่และบันทึกพิกัดก่อน");
+
+    const newLocation = { label, lat, lng };
+    mySavedLocations.push(newLocation);
+    
+    // ในอนาคตต้องยิง fetch('/api/merchant/save-location') เพื่อลง DB
+    alert("บันทึกลงสมุดที่อยู่เรียบร้อย!");
+    console.log("Saved Locations:", mySavedLocations);
+}
+
+// 2. เปิดหน้าต่างเลือกที่อยู่
+function showSavedLocationsModal(stopId) {
+    currentTargetStopId = stopId;
+    const listContent = document.getElementById('saved-list-content');
+    listContent.innerHTML = "";
+
+    if (mySavedLocations.length === 0) {
+        listContent.innerHTML = "<p style='text-align:center; color:#999;'>ยังไม่มีข้อมูลที่บันทึกไว้</p>";
+    } else {
+        mySavedLocations.forEach((loc, index) => {
+            listContent.innerHTML += `
+                <div onclick="selectLocation(${index})" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
+                    <i class="fas fa-map-pin" style="color:#f39c12;"></i> <b>${loc.label}</b><br>
+                    <small style="color:#888;">พิกัด: ${parseFloat(loc.lat).toFixed(4)}, ${parseFloat(loc.lng).toFixed(4)}</small>
+                </div>
+            `;
+        });
+    }
+    document.getElementById('saved-locations-modal').classList.remove('hidden');
+}
+
+// 3. เมื่อเลือกที่อยู่จากรายการ
+function selectLocation(index) {
+    const selected = mySavedLocations[index];
+    const id = currentTargetStopId;
+
+    document.getElementById(`label-${id}`).value = selected.label;
+    document.getElementById(`lat-${id}`).value = selected.lat;
+    document.getElementById(`lng-${id}`).value = selected.lng;
+    
+    document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงข้อมูลจากสมุดที่อยู่เรียบร้อย";
+    document.getElementById(`loc-status-${id}`).style.color = "#28a745";
+    
+    closeSavedModal();
+}
+
+function closeSavedModal() {
+    document.getElementById('saved-locations-modal').classList.add('hidden');
+}
+
+// แก้ไขฟังก์ชัน getStopLocation เดิมให้โชว์ปุ่มบันทึกลงสมุดด้วย
+function getStopLocation(id) {
+    const status = document.getElementById(`loc-status-${id}`);
+    status.innerText = "⏳ กำลังดึงพิกัด...";
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            document.getElementById(`lat-${id}`).value = position.coords.latitude;
+            document.getElementById(`lng-${id}`).value = position.coords.longitude;
+            status.innerText = "✅ บันทึกพิกัดเรียบร้อย";
+            status.style.color = "#28a745";
             
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    document.getElementById(`lat-${id}`).value = position.coords.latitude;
-                    document.getElementById(`lng-${id}`).value = position.coords.longitude;
-                    status.innerText = "✅ บันทึกพิกัดเรียบร้อย";
-                    status.style.color = "#28a745";
-                }, () => {
-                    alert("ไม่สามารถเข้าถึงตำแหน่งได้");
-                    status.innerText = "❌ เกิดข้อผิดพลาด";
-                });
-            }
-        }
+            // แสดงปุ่ม "บันทึกลงสมุด" เมื่อมีพิกัดแล้ว
+            document.getElementById(`save-btn-${id}`).classList.remove('hidden');
+        }, () => {
+            alert("ไม่สามารถเข้าถึงตำแหน่งได้");
+        });
+    }
+}
 
 // ฟังก์ชันรวบรวมข้อมูลและส่งไปหลังบ้าน
 function postMerchantTask() {
@@ -204,5 +302,17 @@ function postMerchantTask() {
     // Fetch ไปยัง API...
 }
     </script>
+	
+	
+	<div id="saved-locations-modal" class="modal-overlay hidden" style="z-index: 6000;">
+    <div class="modal-box" style="max-width: 400px;">
+        <h3>🔖 สมุดที่อยู่ของคุณ</h3>
+        <div id="saved-list-content" style="max-height: 300px; overflow-y: auto; text-align: left;">
+            </div>
+        <button class="sidebar-btn" onclick="closeSavedModal()" style="margin-top: 15px; background: #eee;">ปิด</button>
+    </div>
+</div>
+
+
 </body>
 </html>
