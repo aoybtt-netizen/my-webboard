@@ -283,6 +283,7 @@
 	let currentMarker;
 	let selectedLat, selectedLng;
 	let editingLocationId = null;
+	let lastVoiceAnalysis = null;
 	
 	
 // ฟังก์ชันดึงข้อมูลจาก Server เมื่อโหลดหน้าจอ
@@ -588,67 +589,40 @@ if (SpeechRecognition) {
 // --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
 // ฟังก์ชันวิเคราะห์คำพูดและสร้างออเดอร์
 function processVoiceOrder(speechText) {
-    console.log("AI กำลังวิเคราะห์ประโยค:", speechText);
+    console.log("AI กำลังวิเคราะห์:", speechText);
 
-    // 1. วิเคราะห์ประเภทงาน (Category)
-    let category = "รับส่งอาหารสินค้าทั่วไป"; // ค่าเริ่มต้น
-    if (speechText.includes("เอกสาร")) {
-        category = "รับส่งเอกสาร";
-    }
-    document.getElementById('task-category').value = category;
+    // 1. วิเคราะห์ประเภทงาน
+    let category = "รับส่งอาหารสินค้าทั่วไป";
+    if (speechText.includes("เอกสาร")) category = "รับส่งเอกสาร";
 
-    // 2. วิเคราะห์งบประมาณ (Price) 
-    // ใช้ Regex ค้นหาตัวเลขในประโยค (เช่น "ราคา 50" หรือ "100 บาท")
-    let budget = "";
-    const priceMatch = speechText.match(/\d+/); // หาตัวเลขชุดแรกที่เจอ
-    if (priceMatch) {
-        budget = priceMatch[0];
-        document.getElementById('task-budget').value = budget;
-    }
+    // 2. วิเคราะห์งบประมาณ
+    let budget = "0";
+    const priceMatch = speechText.match(/\d+/);
+    if (priceMatch) budget = priceMatch[0];
 
-    // 3. วิเคราะห์พิกัด (Locations)
-    // เราจะวนลูปเช็คว่าในประโยคที่พูด มี "คำสั่งเสียง" ที่เราบันทึกไว้ใน mySavedLocations หรือไม่
+    // 3. วิเคราะห์พิกัดจาก Keyword
     let foundStops = [];
-    
     mySavedLocations.forEach(loc => {
-        // เช็คทั้งคำสั่งเสียง (voiceKeyword) และชื่อเรียก (label)
         const keyword = loc.voiceKeyword || loc.label;
         if (speechText.includes(keyword)) {
-            // เก็บตำแหน่งที่เจอในประโยคไว้ด้วย เพื่อเอามาเรียงลำดับ 1, 2, 3 ตามที่พูด
-            foundStops.push({
-                ...loc,
-                indexInSpeech: speechText.indexOf(keyword)
-            });
+            foundStops.push({ ...loc, indexInSpeech: speechText.indexOf(keyword) });
         }
     });
-
-    // เรียงลำดับจุดเช็คอินตามลำดับที่พูดก่อน-หลัง
     foundStops.sort((a, b) => a.indexInSpeech - b.indexInSpeech);
 
-    // 4. อัปเดตจุดเช็คอินในหน้าจอ
-    document.getElementById('stops-container').innerHTML = "";
-    stopCount = 0;
+    // 4. สร้างหัวข้อกระทู้อัตโนมัติ
+    const finalTitle = `${category} ${foundStops.length || 1} จุด`;
 
-    if (foundStops.length > 0) {
-        foundStops.forEach(stop => {
-            addNewStop();
-            const id = stopCount;
-            document.getElementById(`label-${id}`).value = stop.label;
-            document.getElementById(`lat-${id}`).value = stop.lat;
-            document.getElementById(`lng-${id}`).value = stop.lng;
-            document.getElementById(`loc-status-${id}`).innerText = "✅ AI ตรวจพบพิกัด";
-            document.getElementById(`loc-status-${id}`).style.color = "#28a745";
-        });
-    } else {
-        // ถ้าไม่พบคำที่บันทึกไว้เลย ให้เพิ่มจุดว่างไว้ 1 จุดเป็นพื้นฐาน
-        addNewStop();
-    }
+    // 5. เก็บข้อมูลลงตัวแปรชั่วคราว
+    lastVoiceAnalysis = {
+        category: category,
+        title: finalTitle,
+        stops: foundStops,
+        budget: budget
+    };
 
-    reorderStops(); // อัปเดตหัวข้อ Preview
-    
-    // แจ้งเตือนสถานะเบื้องต้น
-    const statusMsg = `วิเคราะห์เสร็จสิ้น: พบ ${foundStops.length} จุด, ราคา ${budget || 'ไม่ได้ระบุ'} บาท`;
-    console.log(statusMsg);
+    // 6. แสดงหน้าต่างสรุป
+    showVoiceSummaryModal();
 }
 
 
@@ -675,6 +649,60 @@ function startVoiceForKeyword() {
         btn.innerHTML = originalContent;
         alert("กรุณาลองพูดใหม่อีกครั้ง");
     };
+}
+
+
+
+function showVoiceSummaryModal() {
+    const data = lastVoiceAnalysis;
+    document.getElementById('sum-title').innerText = data.title;
+    document.getElementById('sum-budget').innerText = data.budget;
+
+    const stopsContainer = document.getElementById('sum-stops');
+    if (data.stops.length > 0) {
+        stopsContainer.innerHTML = data.stops.map((s, i) => 
+            `<div style="margin-bottom: 5px;"><i class="fas fa-map-marker-alt" style="color:#11998e;"></i> ${i+1}. ${s.label}</div>`
+        ).join('');
+    } else {
+        stopsContainer.innerHTML = `<span style="color:red;">ไม่พบพิกัดในประโยค</span>`;
+    }
+
+    document.getElementById('voice-summary-modal').classList.remove('hidden');
+}
+
+
+function confirmVoiceSummary() {
+    const data = lastVoiceAnalysis;
+    if (!data) return;
+
+    // กรอกประเภทงานและงบประมาณ
+    document.getElementById('task-category').value = data.category;
+    document.getElementById('task-budget').value = data.budget;
+
+    // ล้างและสร้างจุดเช็คอินใหม่
+    document.getElementById('stops-container').innerHTML = "";
+    stopCount = 0;
+
+    if (data.stops.length > 0) {
+        data.stops.forEach(stop => {
+            addNewStop();
+            const id = stopCount;
+            document.getElementById(`label-${id}`).value = stop.label;
+            document.getElementById(`lat-${id}`).value = stop.lat;
+            document.getElementById(`lng-${id}`).value = stop.lng;
+            document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงข้อมูลโดย AI";
+            document.getElementById(`loc-status-${id}`).style.color = "#28a745";
+        });
+    } else {
+        addNewStop(); // ถ้าไม่เจอเลยให้เปิดจุดว่างไว้ 1 จุด
+    }
+
+    reorderStops(); // อัปเดต UI ทั้งหมด
+    closeVoiceSummary();
+}
+
+function closeVoiceSummary() {
+    document.getElementById('voice-summary-modal').classList.add('hidden');
 }
 
 
@@ -856,6 +884,49 @@ function closeManageModal() {
         </button>
     </div>
 </div>
+
+
+
+
+		<div id="voice-summary-modal" class="modal-overlay hidden" style="z-index: 9000;">
+    <div class="modal-box" style="max-width: 450px;">
+        <div style="background: #f39c12; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
+            <h3 style="margin: 0;"><i class="fas fa-robot"></i> AI สรุปข้อมูลงาน</h3>
+        </div>
+
+        <div id="summary-content" style="text-align: left; line-height: 1.6;">
+            <div style="margin-bottom: 15px;">
+                <label style="color: #11998e; font-size: 0.9em;">ชื่อกระทู้ที่จะโพสต์:</label>
+                <div id="sum-title" style="font-weight: bold; font-size: 1.1em; background: #f9f9f9; padding: 10px; border-radius: 8px;">-</div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="color: #11998e; font-size: 0.9em;">จุดเช็คอินที่ตรวจพบ:</label>
+                <div id="sum-stops" style="background: #f9f9f9; padding: 10px; border-radius: 8px;">
+                    </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: #11998e; font-size: 0.9em;">งบประมาณจ้างงาน:</label>
+                <div style="font-size: 1.3em; color: #e67e22; font-weight: bold;">
+                    ฿ <span id="sum-budget">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-submit" onclick="confirmVoiceSummary()" style="flex: 2;">
+                ถูกต้อง (กรอกข้อมูล)
+            </button>
+            <button class="btn-submit" onclick="closeVoiceSummary()" style="flex: 1; background: #999;">
+                ยกเลิก
+            </button>
+        </div>
+    </div>
+</div>
+
+
+
 
 
 
