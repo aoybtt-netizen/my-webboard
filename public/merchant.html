@@ -273,6 +273,9 @@
     </div>
 
     <script>
+	
+	const myUsername = localStorage.getItem('myUsername');
+	
     let stopCount = 0;
     let mySavedLocations = [];
     let currentTargetStopId = null;
@@ -280,6 +283,17 @@
 	let currentMarker;
 	let selectedLat, selectedLng;
 	
+	
+	
+// ฟังก์ชันดึงข้อมูลจาก Server เมื่อโหลดหน้าจอ
+window.onload = async function() {
+    if (!myUsername) {
+        alert("กรุณาเข้าสู่ระบบก่อนใช้งานหน้าพาร์ทเนอร์");
+        window.location.href = 'index.html';
+        return;
+    }
+    await loadSavedLocations();
+};
 	
 	
 	// ฟังก์ชัน เปิด/ปิด Sidebar
@@ -339,28 +353,44 @@ function updateMarker(lat, lng) {
     document.getElementById('map-coords-display').innerText = `พิกัด: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
+
+async function loadSavedLocations() {
+    const res = await fetch(`/api/merchant/locations?username=${myUsername}`);
+    const data = await res.json();
+    if (data.success) {
+        mySavedLocations = data.locations;
+        console.log("โหลดพิกัดสำเร็จ:", mySavedLocations);
+    }
+}
+
+
 // ฟังก์ชันบันทึกข้อมูลลงสมุดที่อยู่
-function confirmMapLocation() {
+async function confirmMapLocation() {
     const name = document.getElementById('map-loc-name').value.trim();
     const voice = document.getElementById('map-loc-voice').value.trim();
 
-    if (!name || !selectedLat) {
-        alert("กรุณาตั้งชื่อและเลือกพิกัดบนแผนที่");
-        return;
+    if (!name || !selectedLat) return alert("กรุณากรอกชื่อและปักหมุด");
+
+    const res = await fetch('/api/merchant/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: myUsername,
+            label: name,
+            voiceKeyword: voice || name,
+            lat: selectedLat,
+            lng: selectedLng
+        })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+        mySavedLocations.push(data.location); // เพิ่มเข้าตัวแปร local
+        alert("บันทึกลงฐานข้อมูลเรียบร้อย!");
+        closeMapModal();
+    } else {
+        alert("บันทึกล้มเหลว: " + data.error);
     }
-
-    const newLoc = {
-        label: name,
-        voiceKeyword: voice || name, // ถ้าไม่ตั้งเสียง ให้ใช้ชื่อเรียกเป็นคำสั่งเสียง
-        lat: selectedLat,
-        lng: selectedLng
-    };
-
-    // บันทึกลงสมุดที่อยู่
-    mySavedLocations.push(newLoc);
-    
-    alert(`บันทึกพิกัด "${name}" เรียบร้อย! คุณสามารถสั่งงานด้วยเสียงว่า "${newLoc.voiceKeyword}" ได้ทันที`);
-    closeMapModal();
 }
 
 function closeMapModal() {
@@ -644,14 +674,18 @@ function renderManageList() {
 }
 
 // 3. ฟังก์ชันลบพิกัด
-function deleteLocation(index) {
-    const locName = mySavedLocations[index].label;
-    if (confirm(`คุณต้องการลบพิกัด "${locName}" ใช่หรือไม่?`)) {
-        mySavedLocations.splice(index, 1); // ลบออกจาก Array
-        renderManageList(); // วาดรายการใหม่
-        
-        // หากต้องการบันทึกลง LocalStorage ทันที (เผื่อรีเฟรชหน้าแล้วไม่หาย)
-        // localStorage.setItem('mySavedLocations', JSON.stringify(mySavedLocations));
+async function deleteLocation(index) {
+    const loc = mySavedLocations[index];
+    if (confirm(`ต้องการลบ "${loc.label}" หรือไม่?`)) {
+        const res = await fetch(`/api/merchant/locations/${loc._id}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+            mySavedLocations.splice(index, 1);
+            renderManageList();
+            alert("ลบข้อมูลเรียบร้อย");
+        }
     }
 }
 

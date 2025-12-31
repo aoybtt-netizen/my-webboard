@@ -8,6 +8,8 @@ const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcrypt');
 
+const merchantLocationsCollection = db.collection('merchant_locations');
+
 // --- Google Auth Imports ---
 const { OAuth2Client } = require('google-auth-library');
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -2249,6 +2251,57 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 
     res.json({ success: true, message: `✅ กำหนดพิกัดให้ ${targetUser} เรียบร้อย\n📍 ${addressName || ''}` });
 });
+
+
+//ส่วนของร้านค้าาาาา
+
+// 2. API: ดึงพิกัดทั้งหมดของร้านค้า
+app.get('/api/merchant/locations', async (req, res) => {
+    const username = req.query.username; // รับชื่อจาก Query String
+    if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้' });
+
+    try {
+        const locations = await merchantLocationsCollection.find({ owner: username }).toArray();
+        res.json({ success: true, locations });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Database Error' });
+    }
+});
+
+// 3. API: บันทึกพิกัดใหม่
+app.post('/api/merchant/locations', async (req, res) => {
+    const { username, label, voiceKeyword, lat, lng } = req.body;
+
+    try {
+        const newLocation = {
+            owner: username,
+            label,
+            voiceKeyword,
+            lat,
+            lng,
+            createdAt: Date.now()
+        };
+        const result = await merchantLocationsCollection.insertOne(newLocation);
+        res.json({ success: true, location: { ...newLocation, _id: result.insertedId } });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'ไม่สามารถบันทึกได้' });
+    }
+});
+
+// 4. API: ลบพิกัด
+app.delete('/api/merchant/locations/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await merchantLocationsCollection.deleteOne({ _id: new ObjectId(id) });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'ลบข้อมูลล้มเหลว' });
+    }
+});
+
+
+
+
 
 // ==========================================
 // Socket.io Logic
