@@ -287,18 +287,17 @@
 /* สไตล์ปุ่มโอกาสเจ้าของโซน (ติดขอบจอด้านล่าง) */
 .sticky-bottom-btn {
     position: fixed;
-    bottom: -5px; /* จมลงไปในขอบจอนิดนึงให้ดูเหมือนโดนดูด */
+    bottom: -5px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 2500;
     
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     color: white;
+    font-size: 20px;
     font-weight: bold;
     border: none;
-    padding: 12px 25px;
-    
-    /* ทำขอบมนแค่ด้านบน ด้านล่างให้เหลี่ยมเพื่อเนียนไปกับขอบจอ */
+    padding: 20px 45px;
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     border-bottom-left-radius: 0;
@@ -311,7 +310,6 @@
     white-space: nowrap;
 }
 
-/* เอฟเฟกต์ตอน Hover ให้เด้งขึ้นมานิดนึง */
 .sticky-bottom-btn:hover {
     bottom: 0px;
     padding-bottom: 15px;
