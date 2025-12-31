@@ -439,13 +439,15 @@ async function confirmMapLocation() {
     if (!name) return alert("กรุณากรอกชื่อสถานที่");
 
     // ... (ส่วน Fetch ไปที่ /api/merchant/locations เดิมของคุณ) ...
-    const payload = {
-        username: myUsername,
-        label: name,
-        voiceKeyword: voice || name,
-        lat: selectedLat,
-        lng: selectedLng
-    };
+    const phone = document.getElementById('map-loc-phone').value.trim();
+	const payload = {
+    username: myUsername,
+    label: name,
+    phone: phone, // 🚩 ส่งเบอร์โทรไปด้วย
+    voiceKeyword: voice || name,
+    lat: selectedLat,
+    lng: selectedLng
+};
 
     let url = '/api/merchant/locations';
     let method = 'POST';
@@ -483,36 +485,26 @@ function closeMapModal() {
     const labelTitle = isPickup ? "🟢 จุดรับงาน (Pickup)" : "📍 จุดส่งงาน (Drop-off)";
 
     const stopHtml = `
-        <div class="stop-item" id="stop-${stopCount}" style="border-left: 6px solid ${themeColor}; background-color: ${bgColor}; padding: 15px; border-radius: 12px; margin-bottom: 12px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-            <span class="remove-stop" onclick="removeStop(${stopCount})" style="position: absolute; top: 10px; right: 12px; color: #ccc; cursor: pointer;">
-                <i class="fas fa-times-circle"></i>
-            </span>
+        <div class="stop-item" id="stop-${stopCount}" style="border-left: 6px solid ${themeColor}; background-color: ${bgColor}; padding: 15px; border-radius: 12px; margin-bottom: 12px; position: relative;">
+            <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times-circle"></i></span>
             
-            <label style="color: ${themeColor}; font-weight: bold; display: block; margin-bottom: 5px; font-size: 1em;">
-                ${labelTitle} <span class="stop-display-number"></span>
-            </label>
+            <label style="color: ${themeColor}; font-weight: bold;">${labelTitle} <span class="stop-display-number"></span></label>
 
-            <input type="text" placeholder="ระบุชื่อสถานที่..." class="stop-label" id="label-${stopCount}" 
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            <input type="text" placeholder="ชื่อสถานที่..." class="stop-label" id="label-${stopCount}" 
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px;">
             
-            <div id="coords-display-${stopCount}" style="font-size: 0.7em; color: #999; margin: 4px 0 10px 2px;">
-                พิกัด: ยังไม่ได้ระบุ
-            </div>
+            <input type="tel" placeholder="เบอร์โทรติดต่อ (ระบุหรือไม่ก็ได้)..." id="phone-${stopCount}" 
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 5px;">
+
+            <div id="coords-display-${stopCount}" style="font-size: 0.7em; color: #999; margin-bottom: 10px;">พิกัด: ยังไม่ได้ระบุ</div>
             
-            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button class="btn-add-stop" style="border: 1px solid #666; color: #666; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
-                    onclick="openStopMap(${stopCount})">
-                    <i class="fas fa-map-marker-alt"></i> เลือกบนแผนที่
-                </button>
-                <button class="btn-add-stop" style="border: 1px solid #f39c12; color: #f39c12; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
-                    onclick="showSavedLocationsModal(${stopCount})">
-                    <i class="fas fa-bookmark"></i> จากสมุดที่อยู่
-                </button>
+            <div style="display: flex; gap: 6px;">
+                <button class="btn-add-stop" onclick="openStopMap(${stopCount})"><i class="fas fa-map"></i> เลือกบนแผนที่</button>
+                <button class="btn-add-stop" onclick="showSavedLocationsModal(${stopCount})"><i class="fas fa-bookmark"></i> จากสมุดที่อยู่</button>
             </div>
 
-            <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: #777; margin-top: 8px; font-style: italic;">สถานะ: รอพิกัด</div>
-            <input type="hidden" class="stop-lat" id="lat-${stopCount}">
-            <input type="hidden" class="stop-lng" id="lng-${stopCount}">
+            <input type="hidden" id="lat-${stopCount}">
+            <input type="hidden" id="lng-${stopCount}">
         </div>
     `;
     container.insertAdjacentHTML('beforeend', stopHtml);
@@ -594,14 +586,12 @@ function reorderStops() {
     const selected = mySavedLocations[index];
     const id = currentTargetStopId;
     document.getElementById(`label-${id}`).value = selected.label;
+    document.getElementById(`phone-${id}`).value = selected.phone || ""; // 🚩 ใส่เบอร์โทรให้อัตโนมัติ
     document.getElementById(`lat-${id}`).value = selected.lat;
     document.getElementById(`lng-${id}`).value = selected.lng;
     
-    // 🚩 อัปเดตตัวหนังสือพิกัด
+    // อัปเดตพิกัดตัวเทาๆ
     document.getElementById(`coords-display-${id}`).innerText = `พิกัด: ${parseFloat(selected.lat).toFixed(5)}, ${parseFloat(selected.lng).toFixed(5)}`;
-    
-    document.getElementById(`loc-status-${id}`).innerText = "✅ ดึงข้อมูลสำเร็จ";
-    document.getElementById(`loc-status-${id}`).style.color = "#28a745";
     closeSavedModal();
 }
 
@@ -618,15 +608,16 @@ function reorderStops() {
         if (stopElements.length === 0) return alert("กรุณาเพิ่มจุดเช็คอินอย่างน้อย 1 จุด");
 
         stopElements.forEach((el, index) => {
-            const id = el.id.split('-')[1];
-            stops.push({
-                step: index + 1,
-                label: document.getElementById(`label-${id}`).value || `จุดที่ ${index+1}`,
-                lat: document.getElementById(`lat-${id}`).value,
-                lng: document.getElementById(`lng-${id}`).value,
-                status: 'pending'
-            });
-        });
+    const id = el.id.split('-')[1];
+    stops.push({
+        step: index + 1,
+        label: document.getElementById(`label-${id}`).value,
+        phone: document.getElementById(`phone-${id}`).value, // 🚩 เก็บเบอร์โทรลงใน Data งาน
+        lat: document.getElementById(`lat-${id}`).value,
+        lng: document.getElementById(`lng-${id}`).value,
+        status: 'pending'
+    });
+});
 
         const taskData = {
             title: finalTitle,
@@ -1006,6 +997,9 @@ function closeManageModal() {
             <div id="map-extra-info">
                 <label><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)</label>
                 <input type="text" id="map-loc-name" placeholder="ระบุชื่อสถานที่...">
+				
+				<label><i class="fas fa-phone"></i> เบอร์โทรศัพท์ (ถ้ามี)</label>
+				<input type="tel" id="map-loc-phone" placeholder="เช่น 081-234-5678">
 
                 <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword สำหรับสั่งงาน)</label>
                 <div style="display: flex; gap: 5px; margin-bottom: 15px;">

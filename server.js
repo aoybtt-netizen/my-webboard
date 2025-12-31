@@ -1394,9 +1394,10 @@ app.post('/api/posts/:id/handover', async (req, res) => {
     res.json({ success: true });
 });
 
-// 15. Create Post
+// 15. Create Post (เวอร์ชันรองรับ Merchant โดยเฉพาะ)
 app.post('/api/posts', upload.single('image'), async (req, res) => {
-    const { author, category, content, location, title } = req.body;
+    // 🚩 รับค่าที่ส่งมาจากหน้า Merchant เพิ่มเติม
+    const { author, category, content, location, title, budget, stops, isMerchantTask } = req.body;
 
     // 1. ตรวจสอบเงื่อนไขพื้นฐาน (รักษาของเดิมไว้ทั้งหมด)
     if (author !== 'Admin') {
@@ -1414,30 +1415,25 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const user = await getUserData(author);
     const topicObj = await topicsCollection.findOne({ id: category });
     const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป"; 
-    let finalTitle = (author === 'Admin' && title) ? title.trim() : topicName;
+    
+    // กำหนดชื่อหัวข้อ
+    let finalTitle = (author === 'Admin' && title) ? title.trim() : (title || topicName);
 
     // ==================================================================
-    // ส่วนคำนวณค่าธรรมเนียม (เช็คทั้งค่ากลาง และค่ารายโซน)
+    // ส่วนคำนวณค่าธรรมเนียม (รักษาของเดิมไว้ทั้งหมด)
     // ==================================================================
     const globalConfig = await configCollection.findOne({ id: 'main_config' });
     const globalSystemFee = globalConfig ? (globalConfig.systemFee || 5) : 5;
     const globalDefaultAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
-    
-    // เช็คค่าฟรีจากส่วนกลาง
     const isGlobalFree = globalConfig ? (globalConfig.isFree === true) : false;
 
     const responsibleData = await findResponsibleAdmin(location ? JSON.parse(location) : null);
     const feeReceiver = responsibleData.username;
-
-    // ⭐ [เพิ่มใหม่] เช็คค่าฟรีจากโซนพื้นที่นั้นๆ
     const isZoneFree = responsibleData.zoneData ? (responsibleData.zoneData.isFree === true) : false;
-
-    // ⭐ [สรุปผล] ถ้าฟรีอย่างใดอย่างหนึ่ง ให้ถือว่าโพสต์ฟรี (Final Free Status)
     const isFreePostFinal = isGlobalFree || isZoneFree;
 
     let finalAdminFee = globalDefaultAdminFee;
     let feeNote = `Default Fee`;
-
     if (responsibleData.zoneData && responsibleData.zoneData.zoneFee !== undefined && responsibleData.zoneData.zoneFee !== null) {
         finalAdminFee = parseFloat(responsibleData.zoneData.zoneFee);
         feeNote = `Zone Fee (${responsibleData.zoneName})`;
@@ -1449,68 +1445,85 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
     // ==================================================================
-    // ส่วนการจัดการเงิน (ใช้ isFreePostFinal ในการตัดสินใจ)
+    // ส่วนการจัดการเงิน (รักษาของเดิมไว้ทั้งหมด)
     // ==================================================================
-    if (author !== 'Admin') {
-        if (!isFreePostFinal) { // 👈 ใช้ตัวแปรสรุปสุดท้าย
-            if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ (Total Cost: ' + totalCost + ' USD)' });
-            
-            await updateUser(author, { coins: user.coins - totalCost });
-            
-            if (globalSystemFee > 0) {
-                const adminUser = await getUserData('Admin');
-                await updateUser('Admin', { coins: adminUser.coins + globalSystemFee });
-                await transactionsCollection.insertOne({
-                    id: Date.now(), type: 'POST_REVENUE', amount: globalSystemFee, fromUser: author, toUser: 'Admin',
-                    note: `ค่าธรรมเนียมระบบ: ${topicName}`, postTitle: topicName, timestamp: Date.now()
-                });
-            }
-            
-            if (finalAdminFee > 0) {
-                const receiverUser = await getUserData(feeReceiver);
-                await updateUser(feeReceiver, { coins: receiverUser.coins + finalAdminFee });
-                await transactionsCollection.insertOne({
-                    id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, fromUser: author, toUser: feeReceiver,
-                    note: `ค่าดูแล: ${feeNote}`, postTitle: topicName, timestamp: Date.now() + 1
-                });
-            }
-            
-            const newAdmin = await getUserData('Admin');
-            io.emit('balance-update', { user: 'Admin', coins: newAdmin.coins });
-            if (feeReceiver !== 'Admin') {
-                const newReceiver = await getUserData(feeReceiver);
-                io.emit('balance-update', { user: feeReceiver, coins: newReceiver.coins });
-            }
-            io.to('Admin').emit('admin-new-transaction');
-        } 
+    if (author !== 'Admin' && !isFreePostFinal) {
+        if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ' });
+        await updateUser(author, { coins: user.coins - totalCost });
+        
+        if (globalSystemFee > 0) {
+            const adminUser = await getUserData('Admin');
+            await updateUser('Admin', { coins: adminUser.coins + globalSystemFee });
+            await transactionsCollection.insertOne({
+                id: Date.now(), type: 'POST_REVENUE', amount: globalSystemFee, fromUser: author, toUser: 'Admin',
+                note: `ค่าธรรมเนียมระบบ: ${topicName}`, postTitle: topicName, timestamp: Date.now()
+            });
+        }
+        if (finalAdminFee > 0) {
+            const receiverUser = await getUserData(feeReceiver);
+            await updateUser(feeReceiver, { coins: receiverUser.coins + finalAdminFee });
+            await transactionsCollection.insertOne({
+                id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, fromUser: author, toUser: feeReceiver,
+                note: `ค่าดูแล: ${feeNote}`, postTitle: topicName, timestamp: Date.now() + 1
+            });
+        }
+        const newAdmin = await getUserData('Admin');
+        io.emit('balance-update', { user: 'Admin', coins: newAdmin.coins });
+        if (feeReceiver !== 'Admin') {
+            const newReceiver = await getUserData(feeReceiver);
+            io.emit('balance-update', { user: feeReceiver, coins: newReceiver.coins });
+        }
+        io.to('Admin').emit('admin-new-transaction');
     }
-    
+
+    // ==================================================================
+    // 🚩 เตรียมข้อมูล Merchant (ไม่โชว์ชื่อคนโพสต์ แต่โชว์ชื่อร้าน)
+    // ==================================================================
+    let parsedStops = stops ? (typeof stops === 'string' ? JSON.parse(stops) : stops) : null;
+    let storeName = "";
+    let storeCoords = null;
+
+    if (isMerchantTask && parsedStops && parsedStops.length > 0) {
+        // ดึงชื่อจากจุด Pickup (จุดแรก) มาเป็นชื่อร้าน
+        storeName = parsedStops[0].label; 
+        storeCoords = { lat: parsedStops[0].lat, lng: parsedStops[0].lng };
+    }
+
     // สร้าง Post ลง Database
     const newPost = { 
-        id: Date.now(), title: finalTitle, topicId: category, content, author,
-        location: location ? JSON.parse(location) : null, imageUrl: imageUrl, comments: [], 
-        isClosed: false, isPinned: (author === 'Admin'),
+        id: Date.now(), 
+        title: finalTitle, 
+        topicId: category, 
+        content, 
+        author, // เก็บไว้หลังบ้านเพื่อตัด Coin
+        location: storeCoords || (location ? JSON.parse(location) : null), // ใช้พิกัดร้านโชว์แทน
+        imageUrl: imageUrl, 
+        comments: [], 
+        isClosed: false, 
+        isPinned: (author === 'Admin'),
         zoneId: postZoneId,
-        isFreePost: isFreePostFinal // 👈 เก็บสถานะสรุปสุดท้าย
+        isFreePost: isFreePostFinal,
+
+        // 🚩 ข้อมูลสำหรับการโชว์หน้ากระทู้ Merchant
+        isMerchantTask: isMerchantTask === 'true' || isMerchantTask === true,
+        storeName: storeName, // ชื่อร้านที่จะไปโชว์แทนชื่อเจ้าของ
+        budget: budget,
+        stops: parsedStops
     };
 
     await postsCollection.insertOne(newPost);
     await usersCollection.updateOne({ username: author }, { $inc: { totalPosts: 1 } });
     
+    // (ส่วนแจ้งเตือน Notifications และ Socket.io รักษาไว้ตามเดิม)
     if (author !== 'Admin') {
-        // แจ้งเตือนตามสถานะสรุป
         let msgText = isFreePostFinal ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCost} USD`;
         const notifMsg = { 
-            sender: 'System', 
-            target: author, 
-            msgKey: 'SYS_FEE', 
+            sender: 'System', target: author, msgKey: 'SYS_FEE', 
             msgData: { topicName: topicName, cost: isFreePostFinal ? 0 : totalCost }, 
-            msg: msgText, 
-            timestamp: Date.now() + 2 
+            msg: msgText, timestamp: Date.now() + 2 
         };
         await messagesCollection.insertOne(notifMsg);
         io.to(author).emit('private-message', { ...notifMsg, to: author });
-        
         const updatedUser = await getUserData(author);
         io.emit('balance-update', { user: author, coins: updatedUser.coins });
     }
@@ -2284,12 +2297,13 @@ app.get('/api/merchant/locations', async (req, res) => {
 
 // 3. API: บันทึกพิกัดใหม่
 app.post('/api/merchant/locations', async (req, res) => {
-    const { username, label, voiceKeyword, lat, lng } = req.body;
+    const { username, label, voiceKeyword, lat, lng, phone } = req.body;
 
     try {
         const newLocation = {
             owner: username,
             label,
+            phone: phone || "",
             voiceKeyword,
             lat,
             lng,
@@ -2316,13 +2330,14 @@ app.delete('/api/merchant/locations/:id', async (req, res) => {
 // API: แก้ไขข้อมูลพิกัดที่บันทึกไว้
 app.put('/api/merchant/locations/:id', async (req, res) => {
     try {
-        const { label, voiceKeyword, lat, lng } = req.body;
+        const { label, voiceKeyword, lat, lng, phone } = req.body;
         await merchantLocationsCollection.updateOne(
             { _id: new ObjectId(req.params.id) },
             { 
                 $set: { 
                     label, 
                     voiceKeyword, 
+                    phone: phone || "",
                     lat: parseFloat(lat), 
                     lng: parseFloat(lng),
                     updatedAt: Date.now() 
