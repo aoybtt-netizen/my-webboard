@@ -6,6 +6,10 @@
     <title>GedGoZone - Merchant Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+	
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         body { 
             font-family: 'Kanit', sans-serif; 
@@ -103,12 +107,7 @@
 </head>
 <body>
 
-    <div class="header">
-        <div style="float: left; cursor: pointer;" onclick="window.location.href='index.html'">
-            <i class="fas fa-chevron-left"></i> กลับ
-        </div>
-        <h2 style="margin: 0; display: inline-block;">สร้างงานร้านค้า</h2>
-    </div>
+    
 	
 	
 	<div class="header">
@@ -120,6 +119,10 @@
         <i class="fas fa-home"></i>
     </div>
 </div>
+
+
+
+	
 
 <div id="merchant-sidebar" class="merchant-sidebar">
     <div class="sidebar-header">
@@ -196,6 +199,9 @@
     let stopCount = 0;
     let mySavedLocations = [];
     let currentTargetStopId = null;
+	let merchantMap;
+	let currentMarker;
+	let selectedLat, selectedLng;
 	
 	
 	
@@ -209,44 +215,81 @@ function toggleMerchantSidebar() {
 
 // ฟังก์ชันบันทึกพิกัดร้าน (บันทึกแค่จุดเดียวเป็นฐาน)
 function openSaveStoreModal() {
-    toggleMerchantSidebar(); // ปิดเมนูก่อน
-    if (confirm("คุณต้องการบันทึกพิกัดปัจจุบันของคุณเป็น 'พิกัดร้าน' ใช่หรือไม่?")) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-            const storeLoc = {
-                label: "📍 พิกัดร้านของฉัน",
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude
-            };
-            // ตรวจสอบว่ามีชื่อร้านในสมุดอยู่แล้วหรือยัง ถ้ายังให้บันทึกเพิ่ม
-            if (!mySavedLocations.find(l => l.label === storeLoc.label)) {
-                mySavedLocations.unshift(storeLoc); // เอาไว้บนสุด
-                alert("บันทึกพิกัดร้านเรียบร้อยแล้ว!");
-            } else {
-                alert("คุณมีพิกัดร้านเดิมอยู่แล้ว");
-            }
-        });
-    }
+    toggleMerchantSidebar();
+    openAddLocationModal();
+    document.getElementById('map-loc-name').value = "พิกัดร้านของฉัน";
+    document.getElementById('map-loc-voice').value = "ร้าน";
 }
 
 // ฟังก์ชันเปิด Modal เพิ่มพิกัดส่งงานใหม่
 function openAddLocationModal() {
-    toggleMerchantSidebar();
-    const locName = prompt("กรุณาใส่ชื่อเรียกพิกัดนี้ (เช่น บ้านลูกค้า A / สาขาบางนา):");
-    if (!locName) return;
+    toggleMerchantSidebar(); // ปิด Sidebar ก่อน
+    document.getElementById('map-modal').classList.remove('hidden');
+    
+    // ตั้งค่าเริ่มต้นของแผนที่ (ถ้ายังไม่มีแผนที่ให้สร้างใหม่)
+    if (!merchantMap) {
+        merchantMap = L.map('map-container').setView([13.7563, 100.5018], 13); // เริ่มที่ กทม.
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(merchantMap);
 
-    alert("กรุณายืนยันตำแหน่งที่คุณต้องการบันทึก...");
+        // เมื่อคลิกบนแผนที่ ให้ย้ายหมุด
+        merchantMap.on('click', function(e) {
+            updateMarker(e.latlng.lat, e.latlng.lng);
+        });
+    }
+
+    // พยายามดึงพิกัดปัจจุบันของผู้ใช้เพื่อเริ่มแผนที่ที่จุดนั้น
     navigator.geolocation.getCurrentPosition((pos) => {
-        const newLoc = {
-            label: locName,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-        };
-        mySavedLocations.push(newLoc);
-        alert(`บันทึกพิกัด "${locName}" ลงในสมุดเรียบร้อย!`);
-    }, () => {
-        alert("ไม่สามารถดึงตำแหน่งได้ กรุณาลองใหม่");
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        merchantMap.setView([lat, lng], 16);
+        updateMarker(lat, lng);
     });
+
+    // ล้างข้อมูลเก่าในฟอร์ม
+    document.getElementById('map-loc-name').value = "";
+    document.getElementById('map-loc-voice').value = "";
 }
+
+
+// ฟังก์ชันย้ายหมุดและเก็บค่าพิกัด
+function updateMarker(lat, lng) {
+    selectedLat = lat;
+    selectedLng = lng;
+    if (currentMarker) merchantMap.removeLayer(currentMarker);
+    currentMarker = L.marker([lat, lng], { draggable: true }).addTo(merchantMap);
+    document.getElementById('map-coords-display').innerText = `พิกัด: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+// ฟังก์ชันบันทึกข้อมูลลงสมุดที่อยู่
+function confirmMapLocation() {
+    const name = document.getElementById('map-loc-name').value.trim();
+    const voice = document.getElementById('map-loc-voice').value.trim();
+
+    if (!name || !selectedLat) {
+        alert("กรุณาตั้งชื่อและเลือกพิกัดบนแผนที่");
+        return;
+    }
+
+    const newLoc = {
+        label: name,
+        voiceKeyword: voice || name, // ถ้าไม่ตั้งเสียง ให้ใช้ชื่อเรียกเป็นคำสั่งเสียง
+        lat: selectedLat,
+        lng: selectedLng
+    };
+
+    // บันทึกลงสมุดที่อยู่
+    mySavedLocations.push(newLoc);
+    
+    alert(`บันทึกพิกัด "${name}" เรียบร้อย! คุณสามารถสั่งงานด้วยเสียงว่า "${newLoc.voiceKeyword}" ได้ทันที`);
+    closeMapModal();
+}
+
+function closeMapModal() {
+    document.getElementById('map-modal').classList.add('hidden');
+}
+
 
     // 1. ฟังก์ชันเพิ่มจุดเช็คอิน (ใช้ตัวนี้ตัวเดียว)
     function addNewStop() {
@@ -453,18 +496,12 @@ function processVoiceOrder(speechText) {
     // 3. วนลูปหาจุดพิกัดในสมุดบันทึก (ส่วนกลางของประโยค)
     // เราจะวนหาคำสั่งยกเว้นส่วนแรก (ประเภท) และส่วนสุดท้าย (ราคา)
     for (let i = 1; i < parts.length; i++) {
-        const part = parts[i];
-
-        // ตรวจสอบว่าเป็นตัวเลข (ราคา) หรือไม่
-        const isPrice = /^\d+$/.test(part.replace("บาท", "").trim());
-
-        if (isPrice) {
-            // ถ้าเป็นราคา ให้ใส่ในช่องงบประมาณ
-            const price = part.replace("บาท", "").trim();
-            document.getElementById('task-budget').value = price;
-        } else {
-            // ถ้าไม่ใช่ราคา แสดงว่าเป็นชื่อสถานที่ -> ค้นใน mySavedLocations
-            const matchedLoc = mySavedLocations.find(loc => loc.label.includes(part));
+    const part = parts[i];
+    
+    // ค้นหาจาก voiceKeyword ในสมุดบันทึก
+    const matchedLoc = mySavedLocations.find(loc => 
+        (loc.voiceKeyword && loc.voiceKeyword === part) || loc.label.includes(part)
+    );
 
             if (matchedLoc) {
                 // ถ้าเจอพิกัดที่บันทึกไว้ ให้เพิ่มจุดโดยอัตโนมัติ
@@ -482,8 +519,8 @@ function processVoiceOrder(speechText) {
                 document.getElementById(`loc-status-${stopCount}`).innerText = "❌ ไม่พบพิกัดในสมุด (กรุณาปักหมุดเอง)";
                 document.getElementById(`loc-status-${stopCount}`).style.color = "#dc3545";
             }
-        }
     }
+    
 
     // 4. อัปเดตหัวข้ออัตโนมัติ (เช่น รับส่งเอกสาร 2 จุด)
     reorderStops(); 
@@ -499,6 +536,43 @@ function processVoiceOrder(speechText) {
         <button class="sidebar-btn" onclick="closeSavedModal()" style="margin-top: 15px; background: #eee;">ปิด</button>
     </div>
 </div>
+
+
+
+
+	<div id="map-modal" class="modal-overlay hidden" style="z-index: 8000;">
+    <div class="modal-box" style="max-width: 500px; padding: 0; overflow: hidden;">
+        <div style="background: #11998e; color: white; padding: 15px; text-align: center;">
+            <h3 style="margin: 0;">📍 ปักหมุดพิกัดใหม่</h3>
+        </div>
+        
+        <div id="map-container" style="height: 250px; width: 100%;"></div>
+
+        <div style="padding: 20px;">
+            <label><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด</label>
+            <input type="text" id="map-loc-name" placeholder="เช่น บ้านลูกค้า A / สาขาลาดพร้าว">
+
+            <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword)</label>
+            <input type="text" id="map-loc-voice" placeholder="เช่น ลาดพร้าว (เมื่อพูดคำนี้ ระบบจะดึงพิกัดนี้)">
+            
+            <p id="map-coords-display" style="font-size: 0.8em; color: #888; margin-bottom: 15px;">
+                พิกัด: กรุณาเลือกจุดบนแผนที่
+            </p>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-submit" onclick="confirmMapLocation()" style="flex: 2; border-radius: 8px;">
+                    บันทึกลงสมุด
+                </button>
+                <button class="btn-submit" onclick="closeMapModal()" style="flex: 1; background: #999; border-radius: 8px;">
+                    ยกเลิก
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
 
 
 </body>
