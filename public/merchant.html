@@ -301,7 +301,7 @@
         <i class="fas fa-play"></i> แตะเพื่อเริ่มพูดสั่งงาน
     </button>
     <p id="voice-status" style="font-size: 0.85em; color: #666; margin-top: 10px;">
-        ตัวอย่าง: "ส่งเอกสาร ต่อด้วย ลาดพร้าว ต่อด้วย 50 บาท"
+        ตัวอย่าง: "ส่งเอกสาร ลาดพร้าว 50 บาท"
     </p>
 </div>
 
@@ -455,49 +455,68 @@ function closeMapModal() {
 
     // 1. ฟังก์ชันเพิ่มจุดเช็คอิน (ใช้ตัวนี้ตัวเดียว)
     function addNewStop() {
-        stopCount++;
-        const container = document.getElementById('stops-container');
-        const stopHtml = `
-            <div class="stop-item" id="stop-${stopCount}">
-                <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times"></i></span>
-                <label>จุดที่ <span class="stop-number"></span></label>
-                
-                <div style="margin-bottom: 10px;">
-                    <button class="btn-add-stop" style="border-color: #f39c12; color: #f39c12; width: auto; padding: 5px 15px; font-size: 0.85em;" 
-                        onclick="showSavedLocationsModal(${stopCount})">
-                        <i class="fas fa-bookmark"></i> เลือกจากที่บันทึกไว้
-                    </button>
-                </div>
+    stopCount++;
+    const container = document.getElementById('stops-container');
+    
+    // ตรวจสอบว่าเป็นจุดแรกหรือไม่
+    const isPickup = (document.querySelectorAll('.stop-item').length === 0);
+    const themeColor = isPickup ? "#27ae60" : "#11998e";
+    const labelTitle = isPickup ? "🟢 จุดรับงาน (Pickup)" : "📍 จุดส่งงาน (Drop-off)";
 
-                <input type="text" placeholder="ชื่อสถานที่ (เช่น บ้านลูกค้า / สาขา 1)" class="stop-label" id="label-${stopCount}">
-                
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn-add-stop" style="border-color: #666; color: #666; font-size: 0.8em; flex: 1;" onclick="getStopLocation(${stopCount})">
-                        <i class="fas fa-map-marker-alt"></i> บันทึกพิกัดปัจจุบัน
-                    </button>
-                    <button id="save-btn-${stopCount}" class="btn-add-stop hidden" 
-                        style="border-color: #28a745; color: #28a745; font-size: 0.8em; flex: 1;" onclick="saveToMyBook(${stopCount})">
-                        <i class="fas fa-save"></i> บันทึกจุดนี้ลงสมุด
-                    </button>
-                </div>
-
-                <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: gray;">ยังไม่ได้กำหนดพิกัด</div>
-                <input type="hidden" class="stop-lat" id="lat-${stopCount}">
-                <input type="hidden" class="stop-lng" id="lng-${stopCount}">
+    const stopHtml = `
+        <div class="stop-item" id="stop-${stopCount}" style="border-left-color: ${themeColor}">
+            <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times"></i></span>
+            <label style="color: ${themeColor}">${labelTitle} <span class="stop-display-number"></span></label>
+            
+            <div style="margin-bottom: 10px;">
+                <button class="btn-add-stop" style="border-color: #f39c12; color: #f39c12; width: auto; padding: 5px 15px; font-size: 0.85em;" 
+                    onclick="showSavedLocationsModal(${stopCount})">
+                    <i class="fas fa-bookmark"></i> เลือกจากที่บันทึกไว้
+                </button>
             </div>
-        `;
-        container.insertAdjacentHTML('beforeend', stopHtml);
-        reorderStops();
-    }
 
-    // 2. ฟังก์ชันจัดการลำดับและชื่อหัวข้อ
-    function reorderStops() {
-        const stops = document.querySelectorAll('.stop-item');
-        stops.forEach((stop, index) => {
-            stop.querySelector('.stop-number').innerText = index + 1;
-        });
-        updateTitlePreview();
-    }
+            <input type="text" placeholder="ชื่อสถานที่..." class="stop-label" id="label-${stopCount}">
+            
+            <div style="display: flex; gap: 5px;">
+                <button class="btn-add-stop" style="border-color: #666; color: #666; font-size: 0.8em; flex: 1;" onclick="getStopLocation(${stopCount})">
+                    <i class="fas fa-map-marker-alt"></i> พิกัดปัจจุบัน
+                </button>
+                <button id="save-btn-${stopCount}" class="btn-add-stop hidden" 
+                    style="border-color: #28a745; color: #28a745; font-size: 0.8em; flex: 1;" onclick="saveToMyBook(${stopCount})">
+                    <i class="fas fa-save"></i> บันทึกลงสมุด
+                </button>
+            </div>
+
+            <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: gray;">ยังไม่ได้กำหนดพิกัด</div>
+            <input type="hidden" class="stop-lat" id="lat-${stopCount}">
+            <input type="hidden" class="stop-lng" id="lng-${stopCount}">
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', stopHtml);
+    reorderStops();
+}
+
+function reorderStops() {
+    const stops = document.querySelectorAll('.stop-item');
+    stops.forEach((stop, index) => {
+        const isPickup = (index === 0);
+        const displayNum = stop.querySelector('.stop-display-number');
+        const label = stop.querySelector('label');
+        
+        if (isPickup) {
+            displayNum.innerText = ""; // จุดรับไม่ต้องมีเลขลำดับ
+            label.innerHTML = "🟢 จุดรับงาน (Pickup)";
+            stop.style.borderLeftColor = "#27ae60";
+            label.style.color = "#27ae60";
+        } else {
+            displayNum.innerText = index; // จุดส่งเริ่มนับ 1, 2, 3...
+            label.innerHTML = `📍 จุดส่งงานที่ ${index}`;
+            stop.style.borderLeftColor = "#11998e";
+            label.style.color = "#11998e";
+        }
+    });
+    updateTitlePreview();
+}
 
     function removeStop(id) {
         document.getElementById(`stop-${id}`).remove();
@@ -505,13 +524,18 @@ function closeMapModal() {
     }
 
     function updateTitlePreview() {
-        const category = document.getElementById('task-category').value;
-        const currentStops = document.querySelectorAll('.stop-item').length;
-        const previewEl = document.getElementById('title-preview');
-        const finalTitle = `${category} ${currentStops} จุด`;
-        previewEl.innerText = finalTitle;
-        return finalTitle;
-    }
+    const category = document.getElementById('task-category').value;
+    const totalItems = document.querySelectorAll('.stop-item').length;
+    
+    // จำนวนจุดส่ง = จำนวนทั้งหมด - 1 (จุดรับ)
+    const deliveryStops = totalItems > 0 ? totalItems - 1 : 0;
+    
+    const previewEl = document.getElementById('title-preview');
+    const finalTitle = `${category} (ส่ง ${deliveryStops} จุด)`;
+    
+    previewEl.innerText = finalTitle;
+    return finalTitle;
+}
 
     // 3. ระบบสมุดที่อยู่ (Saved Locations)
     function saveToMyBook(id) {
@@ -721,30 +745,35 @@ function showVoiceSummaryModal() {
     const data = lastVoiceAnalysis;
     if (!data) return;
 
-    // แสดงหัวข้อและราคา
     document.getElementById('sum-title').innerText = data.title;
     document.getElementById('sum-budget').innerText = Number(data.budget).toLocaleString();
 
-    // แสดงรายการจุดส่ง
     const stopsContainer = document.getElementById('sum-stops');
-    stopsContainer.innerHTML = ""; // ล้างค่าเดิม
+    stopsContainer.innerHTML = "";
 
     if (data.stops.length > 0) {
         data.stops.forEach((s, i) => {
+            const isPickup = (i === 0);
+            const icon = isPickup ? "fa-store" : "fa-box";
+            const color = isPickup ? "#27ae60" : "#11998e";
+            const typeText = isPickup ? "ต้นทาง/จุดรับ" : `จุดส่งที่ ${i}`;
+
             stopsContainer.innerHTML += `
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                    <div style="background: #11998e; color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
-                        ${i + 1}
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 12px; background: white; border-radius: 10px; border: 1px solid ${isPickup ? color : '#eee'};">
+                    <div style="background: ${color}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9em;">
+                        <i class="fas ${icon}"></i>
                     </div>
-                    <div style="font-weight: bold; color: #333;">${s.label}</div>
+                    <div>
+                        <div style="font-size: 0.75em; color: ${color}; font-weight: bold;">${typeText}</div>
+                        <div style="font-weight: bold; color: #333;">${s.label}</div>
+                    </div>
                 </div>
             `;
         });
     } else {
-        stopsContainer.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 10px;">❌ ไม่พบพิกัดที่บันทึกไว้ในคำพูด</div>`;
+        stopsContainer.innerHTML = `<div style="color: red; text-align: center;">ไม่พบพิกัด</div>`;
     }
 
-    // แสดง Modal
     document.getElementById('voice-summary-modal').classList.remove('hidden');
 }
 
