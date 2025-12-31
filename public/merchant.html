@@ -478,35 +478,44 @@ function closeMapModal() {
     
     // ตรวจสอบว่าเป็นจุดแรกหรือไม่
     const isPickup = (document.querySelectorAll('.stop-item').length === 0);
+    
+    // กำหนดสีตามประเภทจุด
     const themeColor = isPickup ? "#27ae60" : "#11998e";
+    const bgColor = isPickup ? "#f0fff4" : "#f0f7f7"; // สีเขียวอ่อน vs สีฟ้าอ่อน
     const labelTitle = isPickup ? "🟢 จุดรับงาน (Pickup)" : "📍 จุดส่งงาน (Drop-off)";
 
     const stopHtml = `
-        <div class="stop-item" id="stop-${stopCount}" style="border-left-color: ${themeColor}">
-            <span class="remove-stop" onclick="removeStop(${stopCount})"><i class="fas fa-times"></i></span>
-            <label style="color: ${themeColor}">${labelTitle} <span class="stop-display-number"></span></label>
+        <div class="stop-item" id="stop-${stopCount}" style="border-left: 6px solid ${themeColor}; background-color: ${bgColor}; padding: 15px; border-radius: 12px; margin-bottom: 12px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <span class="remove-stop" onclick="removeStop(${stopCount})" style="position: absolute; top: 10px; right: 12px; color: #ccc; cursor: pointer;">
+                <i class="fas fa-times-circle"></i>
+            </span>
             
-            <div style="margin-bottom: 10px;">
-                <button class="btn-add-stop" style="border-color: #f39c12; color: #f39c12; width: auto; padding: 5px 15px; font-size: 0.85em;" 
-                    onclick="showSavedLocationsModal(${stopCount})">
-                    <i class="fas fa-bookmark"></i> เลือกจากที่บันทึกไว้
-                </button>
-            </div>
+            <label style="color: ${themeColor}; font-weight: bold; display: block; margin-bottom: 10px; font-size: 1em;">
+                ${labelTitle} <span class="stop-display-number"></span>
+            </label>
 
-            <input type="text" placeholder="ชื่อสถานที่..." class="stop-label" id="label-${stopCount}">
+            <input type="text" placeholder="ระบุชื่อสถานที่ หรือรอ AI เติมให้..." class="stop-label" id="label-${stopCount}" 
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box;">
             
-            <div style="display: flex; gap: 5px;">
-                <button class="btn-add-stop" style="border-color: #666; color: #666; font-size: 0.8em; flex: 1;" 
-    onclick="openStopMap(${stopCount})">
-    <i class="fas fa-map"></i> เลือกบนแผนที่
-</button>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button class="btn-add-stop" style="border: 1px solid #666; color: #666; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
+                    onclick="openStopMap(${stopCount})">
+                    <i class="fas fa-map-marker-alt"></i> เลือกบนแผนที่
+                </button>
+
+                <button class="btn-add-stop" style="border: 1px solid #f39c12; color: #f39c12; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
+                    onclick="showSavedLocationsModal(${stopCount})">
+                    <i class="fas fa-bookmark"></i> จากที่บันทึกไว้
+                </button>
+
                 <button id="save-btn-${stopCount}" class="btn-add-stop hidden" 
-                    style="border-color: #28a745; color: #28a745; font-size: 0.8em; flex: 1;" onclick="saveToMyBook(${stopCount})">
+                    style="border: 1px solid #28a745; color: #28a745; font-size: 0.8em; flex: 1; padding: 8px; border-radius: 8px; background: white; cursor: pointer;" 
+                    onclick="saveToMyBook(${stopCount})">
                     <i class="fas fa-save"></i> บันทึกลงสมุด
                 </button>
             </div>
 
-            <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: gray;">ยังไม่ได้กำหนดพิกัด</div>
+            <div id="loc-status-${stopCount}" style="font-size: 0.8em; color: #777; margin-top: 8px; font-style: italic;">ยังไม่ได้กำหนดพิกัด</div>
             <input type="hidden" class="stop-lat" id="lat-${stopCount}">
             <input type="hidden" class="stop-lng" id="lng-${stopCount}">
         </div>
