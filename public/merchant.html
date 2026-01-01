@@ -607,15 +607,17 @@ function reorderStops() {
     currentTargetStopId = stopId;
     const listContent = document.getElementById('saved-list-content');
     listContent.innerHTML = "";
-	const selectableLocations = mySavedLocations.filter(loc => loc.isStore !== true);
-    // 🚩 กรองเอา "พิกัดร้านของฉัน" ออก ไม่ให้เลือกเป็นจุดส่งงาน
-    const selectableLocations = mySavedLocations.filter(loc => loc.label.trim() !== "พิกัดร้านของฉัน");
+
+    // 🚩 แก้ไข: ประกาศตัวแปรแค่ครั้งเดียว และกรองเอาพิกัดร้านออก
+    // เราจะกรองทั้งจาก Flag 'isStore' และจากชื่อ 'พิกัดร้านของฉัน' เพื่อความชัวร์
+    const selectableLocations = mySavedLocations.filter(loc => 
+        loc.isStore !== true && loc.label.trim() !== "พิกัดร้านของฉัน"
+    );
 
     if (selectableLocations.length === 0) {
         listContent.innerHTML = "<p style='text-align:center; color:#999;'>ยังไม่มีข้อมูลที่บันทึกไว้</p>";
     } else {
         selectableLocations.forEach((loc) => {
-            // หา index จริงใน Array ใหญ่เพื่อส่งให้ selectLocation
             const originalIndex = mySavedLocations.findIndex(l => l._id === loc._id);
             listContent.innerHTML += `
                 <div onclick="selectLocation(${originalIndex})" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;">
@@ -987,20 +989,19 @@ function openManageLocationsModal() {
 function renderManageList() {
     const container = document.getElementById('manage-list-container');
     container.innerHTML = "";
-	const filteredList = mySavedLocations.filter(loc => loc.isStore !== true);
 
-    // 🚩 2. กรองเอา "พิกัดร้านของฉัน" ออก ไม่ต้องโชว์ในรายการจัดการทั่วไป
-    const filteredList = mySavedLocations.filter(loc => loc.label !== "พิกัดร้านของฉัน");
+    // 🚩 กรองเอาเฉพาะพิกัดลูกค้า (ไม่ใช่พิกัดร้าน) มาแสดงในหน้ารวม
+    const filteredList = mySavedLocations.filter(loc => 
+        loc.isStore !== true && loc.label.trim() !== "พิกัดร้านของฉัน"
+    );
 
     if (filteredList.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 20px; color: #999;">ไม่มีพิกัดส่งงานที่บันทึกไว้</div>`;
         return;
     }
 
-    filteredList.forEach((loc, index) => {
-        // ใช้ชื่อเดิมที่หาจาก mySavedLocations เพื่อลบข้อมูลให้ถูกตัว
+    filteredList.forEach((loc) => {
         const actualIndex = mySavedLocations.findIndex(l => l._id === loc._id);
-        
         container.innerHTML += `
             <div class="manage-item" style="cursor: pointer;" onclick="editLocation(${actualIndex})">
                 <div class="manage-info">
