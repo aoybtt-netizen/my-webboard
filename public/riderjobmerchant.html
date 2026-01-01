@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGoZone - รายละเอียดงานขนส่ง</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: 'Kanit', sans-serif; margin: 0; background-color: #f4f7f6; padding-bottom: 80px; }
+        .header { background: #11998e; color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; }
+        .container { max-width: 600px; margin: auto; padding: 15px; }
+        
+        /* สไตล์การ์ดข้อมูลร้าน */
+        .merchant-card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; border-top: 5px solid #f39c12; }
+        .budget-badge { background: #fff4e5; color: #e67e22; padding: 8px 15px; border-radius: 20px; font-weight: bold; font-size: 1.2em; display: inline-block; }
+
+        /* ระบบ Timeline จุดส่งงาน */
+        .timeline { position: relative; padding-left: 30px; margin-top: 20px; }
+        .timeline::before { content: ''; position: absolute; left: 10px; top: 10px; bottom: 10px; width: 2px; background: #ddd; }
+        .stop-point { position: relative; background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #eee; }
+        .stop-point::after { content: ''; position: absolute; left: -25px; top: 20px; width: 12px; height: 12px; border-radius: 50%; background: #11998e; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        .stop-point.pickup::after { background: #27ae60; }
+        
+        .btn-action { width: 100%; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .btn-call { background: #e8f5e9; color: #2e7d32; }
+        .btn-nav { background: #e3f2fd; color: #1565c0; }
+        
+        /* ปุ่มรับงานด้านล่าง */
+        .footer-action { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); display: flex; gap: 10px; }
+        .btn-accept { flex: 2; background: #11998e; color: white; font-size: 1.1em; border-radius: 30px; }
+        .btn-back { flex: 1; background: #eee; color: #666; border-radius: 30px; }
+        
+        .status-tag { float: right; font-size: 0.8em; padding: 4px 10px; border-radius: 12px; }
+        .status-pending { background: #eee; color: #888; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <i class="fas fa-chevron-left" style="float: left; cursor: pointer;" onclick="history.back()"></i>
+        <b>รายละเอียดงานร้านค้า</b>
+    </div>
+
+    <div class="container" id="job-details">
+        <div style="text-align: center; padding: 50px;">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color: #11998e;"></i>
+            <p>กำลังโหลดข้อมูลงาน...</p>
+        </div>
+    </div>
+
+    <div class="footer-action" id="footer-btns">
+        <button class="btn-action btn-back" onclick="history.back()">กลับ</button>
+        <button class="btn-action btn-accept" onclick="acceptJob()">กดรับงานนี้</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const jobId = urlParams.get('view_id');
+        const myUsername = localStorage.getItem('myUsername');
+
+        async function loadJobDetails() {
+            try {
+                const res = await fetch(`/api/posts/${jobId}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderJob(data.post);
+                } else {
+                    alert("ไม่พบข้อมูลงานนี้");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+
+        function renderJob(post) {
+            const container = document.getElementById('job-details');
+            
+            let stopsHtml = '';
+            post.stops.forEach((stop, index) => {
+                const isPickup = (index === 0);
+                stopsHtml += `
+                    <div class="stop-point ${isPickup ? 'pickup' : ''}">
+                        <div class="status-tag status-pending">${stop.status === 'pending' ? 'รอดำเนินการ' : 'เสร็จสิ้น'}</div>
+                        <b style="color: ${isPickup ? '#27ae60' : '#11998e'};">
+                            ${isPickup ? '🟢 จุดรับงาน' : `📍 จุดส่งงานที่ ${index}`}
+                        </b>
+                        <div style="margin-top: 5px; font-size: 1.1em;">${stop.label}</div>
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn-action btn-call" onclick="window.location.href='tel:${stop.phone}'">
+                                <i class="fas fa-phone"></i> โทรหา
+                            </button>
+                            <button class="btn-action btn-nav" onclick="openNav(${stop.lat}, ${stop.lng})">
+                                <i class="fas fa-directions"></i> นำทาง
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="merchant-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <small style="color: #888;">ผู้จ้างงาน:</small><br>
+                            <b style="font-size: 1.2em;"><i class="fas fa-store"></i> ${post.storeName || post.author}</b>
+                        </div>
+                        <div class="budget-badge">฿ ${post.budget}</div>
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+                    <small style="color: #888;">รายละเอียดงาน:</small>
+                    <div style="margin-top: 5px;">${post.content || 'ไม่มีรายละเอียดเพิ่มเติม'}</div>
+                </div>
+
+                <div class="timeline">
+                    ${stopsHtml}
+                </div>
+            `;
+        }
+
+        function openNav(lat, lng) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+        }
+
+        async function acceptJob() {
+            if(!confirm("คุณต้องการรับงานนี้ใช่หรือไม่?")) return;
+            
+            // Logic การส่ง API ไปบันทึกว่า Rider คนไหนรับงาน (เดี๋ยวเราค่อยทำต่อ)
+            alert("กำลังพัฒนาระบบบันทึกสถานะการรับงาน...");
+        }
+
+        window.onload = loadJobDetails;
+    </script>
+</body>
+</html>
