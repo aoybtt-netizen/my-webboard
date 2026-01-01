@@ -2708,42 +2708,43 @@ async function showMyClosedPosts(page = 1) {
         : '';
 
     let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
-    
     let winnerHtml = post.acceptedViewer ? ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>` : '';
 
     let baseStyle = '';
     let icon = '';
     
+    // การจัดการสีและการแสดงผล
     if (post.isPinned) {
         baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; 
         icon = '📌'; 
-    }
-
-    if (post.status === 'finished' || post.status === 'closed_permanently') {
+    } else if (post.status === 'finished' || post.status === 'closed_permanently') {
         baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
         icon = '🔒'; 
     } else if (post.isClosed) {
         baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
         icon = '🔒';
     } else if (!post.isPinned) {
-        // 🚩 ถ้าเป็นงานร้านค้า ใช้สีเขียวอ่อนที่ต่างออกไปนิดหน่อย (ทางเลือก)
-        baseStyle = post.isMerchantTask ? 'background:#e8f5e9; color:#1b5e20; border-left:5px solid #4caf50;' : 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
+        // 🚩 ปรับสีสำหรับงานร้านค้าให้ดูเด่นขึ้น (สีเขียวสว่าง)
+        baseStyle = post.isMerchantTask 
+            ? 'background:#e8f5e9; color:#1b5e20; border-left:5px solid #4caf50; border-bottom: 2px solid #c8e6c9;' 
+            : 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
         icon = post.isMerchantTask ? '📦' : '✅'; 
     }
 
-    // 🚩 เปลี่ยนการลิงก์: ถ้าเป็นงานร้านค้า ให้ส่งไป merchant.html
+    // 🚩 แก้ไขการ Redirect: ส่ง Rider ไปที่หน้า riderjobmerchant.html
     let action = '';
     if (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) {
         action = "alert('⛔ กระทู้นี้ถูกปิดแล้ว')";
     } else {
         if (post.isMerchantTask) {
-            action = `location.href='merchant.html?view_id=${post.id}'`;
+            // 🚩 เปลี่ยนจาก merchant.html เป็น riderjobmerchant.html สำหรับคนรับงาน
+            action = `location.href='riderjobmerchant.html?view_id=${post.id}'`;
         } else {
             action = `location.href='post.html?id=${post.id}'`;
         }
     }
 
-    // 🚩 กำหนดชื่อผู้แสดงผล: ถ้าเป็น Merchant ใช้ storeName ถ้าไม่ใช้ author
+    // กำหนดชื่อผู้แสดงผล: ร้านค้า หรือ ผู้โพสต์ทั่วไป
     const displayName = post.isMerchantTask ? (post.storeName || post.author) : post.author;
 
     let locationHtml = '';
@@ -2765,18 +2766,26 @@ async function showMyClosedPosts(page = 1) {
         `;
     }
 
+    // 🚩 เพิ่มส่วนแสดงงบประมาณ (Budget) ให้ Rider เห็นทันทีที่หน้าแรก
+    let budgetHtml = post.isMerchantTask ? `<b style="color:#e67e22; margin-left:10px;">฿${post.budget}</b>` : '';
+
     list.insertAdjacentHTML('beforeend', `
-        <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle}">
-            <div style="flex-grow: 1;"> <b>${icon} ${post.title}${winnerHtml}</b>
-                <br>
-                <small>
-                    <i class="fas ${post.isMerchantTask ? 'fa-store' : 'fa-user'}"></i> ${displayName} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
-                </small>
-                ${locationHtml}
-                ${occupiedText}
+        <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle} padding:15px; margin-bottom:10px; border-radius:12px; display:flex; justify-content:space-between; cursor:pointer;">
+            <div style="flex-grow: 1;"> 
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <b>${icon} ${post.title}${winnerHtml}</b>
+                    ${budgetHtml}
+                </div>
+                <div style="margin-top:5px;">
+                    <small>
+                        <i class="fas ${post.isMerchantTask ? 'fa-store' : 'fa-user'}" style="width:16px;"></i> ${displayName} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
+                    </small>
+                    ${locationHtml}
+                    ${occupiedText}
+                </div>
             </div>
             
-            <div style="display:flex; align-items:center;">
+            <div style="display:flex; align-items:center; margin-left:10px;">
                 ${deleteBtn}
             </div>
         </div>

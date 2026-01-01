@@ -1307,11 +1307,10 @@ app.get('/api/posts', async (req, res) => {
 app.get('/api/posts/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-
         const post = await postsCollection.findOne({ id: id });
         
         if (!post) {
-            return res.status(404).json({ error: 'ไม่พบกระทู้' });
+            return res.status(404).json({ success: false, error: 'ไม่พบกระทู้' });
         }
 
         // --- ระบบปิดกระทู้อัตโนมัติ (1 ชม.) ---
@@ -1322,21 +1321,26 @@ app.get('/api/posts/:id', async (req, res) => {
 
         // --- ดึงข้อมูลสถิติเจ้าของกระทู้ ---
         const author = await getUserData(post.author);
-        
 
         // --- เตรียมข้อมูลส่งกลับ (Response) ---
+        // 🚩 ปรับปรุง: กระจายค่า post และเติมสถิติเข้าไป
         const responseData = { 
             ...post, 
             authorRating: author.rating ? author.rating.toFixed(2) : '0.00',
-            authorTotalPosts: author.totalPosts || 0,     // ส่งไปชื่อนี้ตรงกับ post.html
-            authorCompletedJobs: author.completedJobs || 0 // ส่งไปชื่อนี้ตรงกับ post.html
+            authorTotalPosts: author.totalPosts || 0,
+            authorCompletedJobs: author.completedJobs || 0
         };
 
-        res.json(responseData);
+        // 🚩 จุดสำคัญ: ส่งกลับในรูปแบบ { success: true, post: ... } 
+        // เพื่อให้ตรงกับที่หน้า riderjobmerchant.html และ post.html รอรับอยู่
+        res.json({
+            success: true,
+            post: responseData
+        });
 
     } catch (err) {
         console.error("🔥 [Error] API /api/posts/:id Failed:", err);
-        res.status(500).json({ error: 'Server Error' });
+        res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
 
