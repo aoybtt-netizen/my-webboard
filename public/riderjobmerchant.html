@@ -36,6 +36,39 @@
         
         .status-tag { float: right; font-size: 0.8em; padding: 4px 10px; border-radius: 12px; }
         .status-pending { background: #eee; color: #888; }
+		
+		
+		
+		
+	.card-map-toggle {
+    margin-bottom: 20px;
+    background: white;
+    padding: 10px;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.btn-toggle-map {
+    width: 100%;
+    padding: 12px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Kanit', sans-serif;
+    font-weight: bold;
+    color: #11998e;
+}
+.map-legend {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    font-size: 0.85em;
+    color: #666;
+}
+.hidden { display: none !important; }
+
+
+
     </style>
 </head>
 <body>
@@ -44,6 +77,22 @@
         <i class="fas fa-chevron-left" style="float: left; cursor: pointer;" onclick="history.back()"></i>
         <b>รายละเอียดงานร้านค้า</b>
     </div>
+	
+	
+	<div class="card-map-toggle">
+    <button class="btn-toggle-map" onclick="toggleRouteMap()">
+        <i class="fas fa-map-marked-alt"></i> <span id="map-btn-text">แสดงแผนที่เส้นทาง</span>
+    </button>
+    <div id="map-wrapper" class="hidden">
+        <div id="route-map" style="height: 350px; width: 100%; border-radius: 12px; margin-top: 10px;"></div>
+        <div class="map-legend">
+            <span><i class="fas fa-motorcycle" style="color: #3498db;"></i> คุณ</span>
+            <span><i class="fas fa-store" style="color: #27ae60;"></i> ร้านค้า</span>
+            <span><i class="fas fa-box" style="color: #11998e;"></i> จุดส่ง</span>
+        </div>
+    </div>
+</div>
+
 
     <div class="container" id="job-details">
         <div style="text-align: center; padding: 50px;">
@@ -58,24 +107,111 @@
     </div>
 
     <script>
+	
+		let routeMap = null;
+		let currentPostData = null;
+
         const urlParams = new URLSearchParams(window.location.search);
         const jobId = urlParams.get('view_id');
         const myUsername = localStorage.getItem('myUsername');
 
-        async function loadJobDetails() {
-            try {
-                const res = await fetch(`/api/posts/${jobId}`);
-                const data = await res.json();
-                
-                if (data.success) {
-                    renderJob(data.post);
-                } else {
-                    alert("ไม่พบข้อมูลงานนี้");
-                }
-            } catch (error) {
-                console.error("Error:", error);
-            }
+    async function loadJobDetails() {
+    try {
+        const res = await fetch(`/api/posts/${jobId}`);
+        const data = await res.json();
+        if (data.success) {
+            currentPostData = data.post; // 🚩 เก็บข้อมูลไว้
+            renderJob(data.post);
         }
+    } catch (error) { console.error(error); }
+}
+
+
+	function toggleRouteMap() {
+    const wrapper = document.getElementById('map-wrapper');
+    const btnText = document.getElementById('map-btn-text');
+    
+    if (wrapper.classList.contains('hidden')) {
+        wrapper.classList.remove('hidden');
+        btnText.innerText = "ซ่อนแผนที่เส้นทาง";
+        initRouteMap(); // เรียกวาดแผนที่
+    } else {
+        wrapper.classList.add('hidden');
+        btnText.innerText = "แสดงแผนที่เส้นทาง";
+    }
+}
+
+function initRouteMap() {
+    if (!currentPostData || !currentPostData.stops) return;
+
+    // 1. สร้างแผนที่ถ้ายังไม่มี
+    if (!routeMap) {
+        routeMap = L.map('route-map');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(routeMap);
+    }
+
+    // 2. ดึงตำแหน่งปัจจุบันของ Rider
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const riderLat = position.coords.latitude;
+            const riderLng = position.coords.longitude;
+            
+            drawPathOnMap(riderLat, riderLng);
+        }, () => {
+            // กรณี Rider ไม่เปิด GPS ให้เริ่มวาดจากจุดรับงานเลย
+            drawPathOnMap(null, null);
+        });
+    }
+}
+
+function drawPathOnMap(riderLat, riderLng) {
+    // ล้าง Layer เก่าออกก่อนวาดใหม่
+    routeMap.eachLayer((layer) => {
+        if (!!layer.toGeoJSON) routeMap.removeLayer(layer);
+    });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(routeMap);
+
+    const points = [];
+    const markers = [];
+
+    // เพิ่มตำแหน่ง Rider (ถ้ามี)
+    if (riderLat && riderLng) {
+        const riderPos = [riderLat, riderLng];
+        points.push(riderPos);
+        markers.push(L.marker(riderPos, { 
+            icon: L.divIcon({ html: '<i class="fas fa-motorcycle fa-2x" style="color:#3498db;"></i>', className: 'custom-div-icon' }) 
+        }).bindPopup("ตำแหน่งของคุณ"));
+    }
+
+    // เพิ่มจุดรับ-ส่งงาน (Stops) ทั้งหมด
+    currentPostData.stops.forEach((stop, index) => {
+        const pos = [stop.lat, stop.lng];
+        points.push(pos);
+        
+        const isPickup = (index === 0);
+        const iconColor = isPickup ? "#27ae60" : "#11998e";
+        const iconShape = isPickup ? "fa-store" : "fa-box";
+        
+        markers.push(L.marker(pos, {
+            icon: L.divIcon({ 
+                html: `<i class="fas ${iconShape} fa-2x" style="color:${iconColor};"></i>`, 
+                className: 'custom-div-icon' 
+            })
+        }).bindPopup(isPickup ? "🏠 จุดรับงาน" : `📍 จุดส่งที่ ${index}`));
+    });
+
+    // วาดเส้นเชื่อมโยง (Polyline)
+    const polyline = L.polyline(points, { color: '#11998e', weight: 4, dashArray: '10, 10', opacity: 0.7 }).addTo(routeMap);
+    
+    // เพิ่ม Marker ลงแผนที่
+    markers.forEach(m => m.addTo(routeMap));
+
+    // ปรับมุมมองให้เห็นครบทุกจุด
+    routeMap.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+}
+
+
+
 
         function renderJob(post) {
             const container = document.getElementById('job-details');
