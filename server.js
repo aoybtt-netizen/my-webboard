@@ -1412,9 +1412,16 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     }
     if (await isUserBanned(author)) return res.status(403).json({ error: '⛔ คุณถูกระงับสิทธิ์การสร้างกระทู้' });
     if (author !== 'Admin') {
-        const activePost = await postsCollection.findOne({ author: author, isClosed: false });
-        if (activePost) return res.status(400).json({ error: `⛔ คุณมีกระทู้เปิดอยู่ (ID: ${activePost.id})` });
-    }
+    const activePost = await postsCollection.findOne({ author: author, isClosed: false });
+
+    if (activePost) {
+        if (isMerchantTask !== true) {
+            return res.status(400).json({ 
+                error: `⛔ คุณมีกระทู้เปิดอยู่แล้ว 1 กระทู้ กรุณาปิดกระทู้เก่าก่อนสร้างใหม่` 
+				});
+			}
+		}
+	}
     
     const imageUrl = req.file ? req.file.path : null;
     const user = await getUserData(author);
