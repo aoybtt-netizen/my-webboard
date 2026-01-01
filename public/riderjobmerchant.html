@@ -219,25 +219,30 @@ function drawPathOnMap(riderLat, riderLng) {
             let stopsHtml = '';
             post.stops.forEach((stop, index) => {
                 const isPickup = (index === 0);
-                stopsHtml += `
-                    <div class="stop-point ${isPickup ? 'pickup' : ''}">
-                        <div class="status-tag status-pending">${stop.status === 'pending' ? 'รอดำเนินการ' : 'เสร็จสิ้น'}</div>
-                        <b style="color: ${isPickup ? '#27ae60' : '#11998e'};">
-                            ${isPickup ? '🟢 จุดรับงาน' : `📍 จุดส่งงานที่ ${index}`}
-                        </b>
-                        <div style="margin-top: 5px; font-size: 1.1em;">${stop.label}</div>
-                        
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button class="btn-action btn-call" onclick="window.location.href='tel:${stop.phone}'">
-                                <i class="fas fa-phone"></i> โทรหา
-                            </button>
-                            <button class="btn-action btn-nav" onclick="openNav(${stop.lat}, ${stop.lng})">
-                                <i class="fas fa-directions"></i> นำทาง
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+                const phoneText = stop.phone ? ` <span style="font-size: 0.85em; color: #11998e; font-weight: normal;">(📞 ${stop.phone})</span>` : '';
+
+    stopsHtml += `
+        <div class="stop-point ${isPickup ? 'pickup' : ''}">
+            <div class="status-tag status-pending">${stop.status === 'pending' ? 'รอดำเนินการ' : 'เสร็จสิ้น'}</div>
+            <b style="color: ${isPickup ? '#27ae60' : '#11998e'};">
+                ${isPickup ? '🟢 จุดรับงาน' : `📍 จุดส่งงานที่ ${index}`}
+            </b>
+            
+            <div style="margin-top: 5px; font-size: 1.1em; font-weight: 600;">
+                ${stop.label}${phoneText}
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn-action btn-call" onclick="window.location.href='tel:${stop.phone}'">
+                    <i class="fas fa-phone"></i> โทรหา
+                </button>
+                <button class="btn-action btn-nav" onclick="openNav(${stop.lat}, ${stop.lng})">
+                    <i class="fas fa-directions"></i> นำทาง
+                </button>
+            </div>
+        </div>
+    `;
+});
 
             container.innerHTML = `
                 <div class="merchant-card">
