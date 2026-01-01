@@ -367,32 +367,35 @@ function toggleMerchantSidebar() {
 function openSaveStoreModal() {
     toggleMerchantSidebar();
     
-    // 🔍 1. ค้นหาว่าในรายการที่บันทึกไว้ มี "พิกัดร้านของฉัน" อยู่หรือยัง
-    const existingStore = mySavedLocations.find(loc => loc.label === "พิกัดร้านของฉัน");
+    // 🚩 ค้นหาโดยตัดช่องว่างออกเพื่อให้เจอแน่นอน
+    const storeLabel = "พิกัดร้านของฉัน";
+    const existingStore = mySavedLocations.find(loc => loc.label.trim() === storeLabel);
     
     if (existingStore) {
-        editingLocationId = existingStore._id; // ถ้ามีแล้ว ให้ใช้ ID เดิม (เข้าโหมดอัปเดต)
-        // ตั้งค่าแผนที่ไปที่จุดเดิม
+        editingLocationId = existingStore._id; // ใช้ ID เดิมเพื่อ PUT (Update)
         selectedLat = parseFloat(existingStore.lat);
         selectedLng = parseFloat(existingStore.lng);
     } else {
-        editingLocationId = null; // ถ้ายังไม่มีเลย ให้สร้างใหม่ครั้งแรก
+        editingLocationId = null; // ไม่เจอให้ POST (Create)
     }
 
     mapMode = 'book';
     document.getElementById('map-modal').classList.remove('hidden');
     document.getElementById('map-extra-info').classList.remove('hidden');
     
-    // ล็อคชื่อไว้ให้ตรงกัน
-    document.getElementById('map-loc-name').value = "พิกัดร้านของฉัน";
+    // ตั้งค่าและล็อคช่องชื่อ (ReadOnly) เพื่อป้องกันคนไปกดลบชื่อร้านออกแล้วบันทึกใหม่
+    const nameInput = document.getElementById('map-loc-name');
+    nameInput.value = storeLabel;
+    nameInput.readOnly = true; // 🚩 ล็อคไว้ไม่ให้เปลี่ยนชื่อร้าน
+    nameInput.style.background = "#f0f0f0";
+
     document.getElementById('map-loc-voice').value = "ร้าน";
     
     document.querySelector('#map-modal h3').innerText = "🏠 บันทึกพิกัดร้าน (Base)";
-    document.querySelector('#map-modal .btn-submit:first-child').innerText = existingStore ? "อัปเดตพิกัดร้าน" : "บันทึกพิกัดร้าน";
+    document.querySelector('#map-modal .btn-submit:first-child').innerText = existingStore ? "อัปเดตพิกัดร้านเดิม" : "บันทึกพิกัดร้านใหม่";
     
     initMap();
     
-    // ถ้ามีพิกัดเดิม ให้เลื่อนแผนที่ไปหา
     if (existingStore && merchantMap) {
         merchantMap.setView([selectedLat, selectedLng], 17);
         updateMarker(selectedLat, selectedLng);
@@ -419,8 +422,15 @@ function openAddLocationModal() {
     mapMode = 'book';
     
     document.getElementById('map-modal').classList.remove('hidden');
-    document.getElementById('map-extra-info').classList.remove('hidden'); // แสดงช่องกรอกชื่อ
+    document.getElementById('map-extra-info').classList.remove('hidden');
     
+    // 🚩 ปลดล็อคให้พิมพ์ชื่อได้ตามปกติ
+    const nameInput = document.getElementById('map-loc-name');
+    nameInput.value = "";
+    nameInput.readOnly = false;
+    nameInput.style.background = "white";
+
+    document.getElementById('map-loc-voice').value = "";
     document.querySelector('#map-modal h3').innerText = "📍 ปักหมุดพิกัดใหม่";
     document.querySelector('#map-modal .btn-submit:first-child').innerText = "บันทึกลงสมุด";
     
@@ -608,22 +618,28 @@ function reorderStops() {
     }
 
     function showSavedLocationsModal(stopId) {
-        currentTargetStopId = stopId;
-        const listContent = document.getElementById('saved-list-content');
-        listContent.innerHTML = "";
-        if (mySavedLocations.length === 0) {
-            listContent.innerHTML = "<p style='text-align:center; color:#999;'>ยังไม่มีข้อมูลที่บันทึกไว้</p>";
-        } else {
-            mySavedLocations.forEach((loc, index) => {
-                listContent.innerHTML += `
-                    <div onclick="selectLocation(${index})" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
-                        <i class="fas fa-map-pin" style="color:#f39c12;"></i> <b>${loc.label}</b><br>
-                        <small style="color:#888;">พิกัด: ${parseFloat(loc.lat).toFixed(4)}, ${parseFloat(loc.lng).toFixed(4)}</small>
-                    </div>`;
-            });
-        }
-        document.getElementById('saved-locations-modal').classList.remove('hidden');
+    currentTargetStopId = stopId;
+    const listContent = document.getElementById('saved-list-content');
+    listContent.innerHTML = "";
+
+    // 🚩 กรองเอา "พิกัดร้านของฉัน" ออก ไม่ให้เลือกเป็นจุดส่งงาน
+    const selectableLocations = mySavedLocations.filter(loc => loc.label.trim() !== "พิกัดร้านของฉัน");
+
+    if (selectableLocations.length === 0) {
+        listContent.innerHTML = "<p style='text-align:center; color:#999;'>ยังไม่มีข้อมูลที่บันทึกไว้</p>";
+    } else {
+        selectableLocations.forEach((loc) => {
+            // หา index จริงใน Array ใหญ่เพื่อส่งให้ selectLocation
+            const originalIndex = mySavedLocations.findIndex(l => l._id === loc._id);
+            listContent.innerHTML += `
+                <div onclick="selectLocation(${originalIndex})" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;">
+                    <i class="fas fa-map-pin" style="color:#f39c12;"></i> <b>${loc.label}</b><br>
+                    <small style="color:#888;">พิกัด: ${parseFloat(loc.lat).toFixed(4)}, ${parseFloat(loc.lng).toFixed(4)}</small>
+                </div>`;
+        });
     }
+    document.getElementById('saved-locations-modal').classList.remove('hidden');
+}
 
     function selectLocation(index) {
     const selected = mySavedLocations[index];
