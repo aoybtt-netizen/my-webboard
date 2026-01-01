@@ -723,20 +723,25 @@ function reorderStops() {
     const listContent = document.getElementById('saved-list-content');
     listContent.innerHTML = "";
 
-    // 🚩 แก้ไข: ประกาศตัวแปรแค่ครั้งเดียว และกรองเอาพิกัดร้านออก
-    // เราจะกรองทั้งจาก Flag 'isStore' และจากชื่อ 'พิกัดร้านของฉัน' เพื่อความชัวร์
-    const selectableLocations = mySavedLocations.filter(loc => 
-        loc.isStore !== true && loc.label.trim() !== "พิกัดร้านของฉัน"
-    );
+    // 🚩 แก้ไข: อนุญาตให้แสดงทุกพิกัด รวมถึงพิกัดร้านค้าด้วย
+    // (เดิมมีการ loc.isStore !== true ทำให้ร้านค้าถูกซ่อนไว้)
+    const selectableLocations = mySavedLocations; 
 
     if (selectableLocations.length === 0) {
         listContent.innerHTML = "<p style='text-align:center; color:#999;'>ยังไม่มีข้อมูลที่บันทึกไว้</p>";
     } else {
         selectableLocations.forEach((loc) => {
             const originalIndex = mySavedLocations.findIndex(l => l._id === loc._id);
+            
+            // 🚩 เพิ่มไอคอนแยกประเภท (ร้านค้าใช้ไอคอนบ้าน / ลูกค้าใช้หมุด)
+            const iconClass = loc.isStore ? 'fa-store' : 'fa-map-pin';
+            const iconColor = loc.isStore ? '#11998e' : '#f39c12';
+            const storeTag = loc.isStore ? ' <span style="font-size:0.7em; background:#e8f5e9; color:#11998e; padding:2px 6px; border-radius:10px; font-weight:normal;">(ร้านค้า)</span>' : '';
+
             listContent.innerHTML += `
                 <div onclick="selectLocation(${originalIndex})" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;">
-                    <i class="fas fa-map-pin" style="color:#f39c12;"></i> <b>${loc.label}</b><br>
+                    <i class="fas ${iconClass}" style="color:${iconColor}; width: 20px;"></i> 
+                    <b>${loc.label}</b> ${storeTag}<br>
                     <small style="color:#888;">พิกัด: ${parseFloat(loc.lat).toFixed(4)}, ${parseFloat(loc.lng).toFixed(4)}</small>
                 </div>`;
         });
