@@ -420,7 +420,6 @@ async function loadActiveMerchantTasks() {
                 const progressPercent = (completedStops / totalStops) * 100;
                 const canConfirm = (completedStops === totalStops);
                 // 1. ดึงชื่อจุดส่งแรกมาเป็นคำใบ้ (ถ้ามี)
-				const firstDropOff = post.stops && post.stops.length > 1 ? post.stops[1].label : "ไม่ระบุ";
 
 				// 2. แปลงเวลาจาก post.id (Timestamp)
 				const postTime = new Date(post.id).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
@@ -447,10 +446,6 @@ async function loadActiveMerchantTasks() {
                 <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
             </div>
             <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
-        </div>
-
-        <div style="margin: 10px 0; padding: 8px 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.9em; color: #555;">
-            <i class="fas fa-map-marker-alt" style="color: #e74c3c;"></i> จุดส่งแรก: <b>${firstDropOff}</b>
         </div>
         
         <div style="font-size: 0.85em; color: #666; margin-bottom: 10px;">
