@@ -2291,9 +2291,10 @@ app.get('/api/merchant/locations', async (req, res) => {
     }
 });
 
-// 3. API: บันทึกพิกัดใหม่
+// 3. API: บันทึกพิกัดใหม่ (ปรับปรุง)
 app.post('/api/merchant/locations', async (req, res) => {
-    const { username, label, voiceKeyword, lat, lng, phone } = req.body;
+    // 🚩 รับ isStore เพิ่มเข้ามา
+    const { username, label, voiceKeyword, lat, lng, phone, isStore } = req.body;
 
     try {
         const newLocation = {
@@ -2303,6 +2304,7 @@ app.post('/api/merchant/locations', async (req, res) => {
             voiceKeyword,
             lat,
             lng,
+            isStore: isStore === true, // 🚩 บันทึกสถานะว่าเป็นร้านค้าหรือไม่
             createdAt: Date.now()
         };
         const result = await merchantLocationsCollection.insertOne(newLocation);
@@ -2312,14 +2314,27 @@ app.post('/api/merchant/locations', async (req, res) => {
     }
 });
 
-// 4. API: ลบพิกัด
-app.delete('/api/merchant/locations/:id', async (req, res) => {
-    const { id } = req.params;
+// API: แก้ไขข้อมูลพิกัด (ปรับปรุง)
+app.put('/api/merchant/locations/:id', async (req, res) => {
     try {
-        await merchantLocationsCollection.deleteOne({ _id: new ObjectId(id) });
+        const { label, voiceKeyword, lat, lng, phone, isStore } = req.body;
+        await merchantLocationsCollection.updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { 
+                $set: { 
+                    label, 
+                    voiceKeyword, 
+                    phone: phone || "",
+                    lat: parseFloat(lat), 
+                    lng: parseFloat(lng),
+                    isStore: isStore === true, // 🚩 อัปเดตสถานะด้วย
+                    updatedAt: Date.now() 
+                } 
+            }
+        );
         res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'ลบข้อมูลล้มเหลว' });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: 'ไม่สามารถอัปเดตข้อมูลได้' }); 
     }
 });
 
