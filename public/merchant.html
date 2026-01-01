@@ -280,6 +280,32 @@
 }
 
 
+
+.right-sidebar {
+    position: fixed;
+    top: 0; right: -320px; /* ซ่อนไว้ฝั่งขวา */
+    width: 320px; height: 100%;
+    background: white; z-index: 9000;
+    transition: 0.3s; box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    display: flex; flex-direction: column;
+}
+.right-sidebar.active { right: 0; }
+
+.tab-menu { display: flex; background: #eee; }
+.tab-item { 
+    flex: 1; text-align: center; padding: 15px; 
+    cursor: pointer; color: #888; border-bottom: 3px solid transparent; 
+}
+.tab-item.active { 
+    color: #11998e; border-bottom: 3px solid #11998e; background: white; 
+}
+
+.tab-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
+.chat-msg { margin-bottom: 10px; padding: 8px 12px; border-radius: 15px; max-width: 80%; font-size: 0.9em; }
+.msg-me { background: #11998e; color: white; align-self: flex-end; margin-left: auto; }
+.msg-them { background: #eee; color: #333; }
+
+
     </style>
 </head>
 <body>
@@ -377,6 +403,8 @@
 	let lastVoiceAnalysis = null;
 	let mapMode = 'book';
 	
+	let activeTaskInSidebar = null;
+	
 	
 
 	
@@ -438,7 +466,7 @@ async function loadActiveMerchantTasks() {
 					const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
                 // 5. ประกอบร่าง HTML ใหม่ที่มีข้อมูลช่วยจำ
 				finalHtml += `
-    <div class="active-task-card" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+    <div  class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle}  padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
@@ -1243,6 +1271,101 @@ function closeManageModal() {
     document.getElementById('manage-locations-modal').classList.add('hidden');
 }
 
+
+
+
+	async function openRightSidebar(postId) {
+    const res = await fetch(`/api/posts/${postId}`);
+    const data = await res.json();
+    if (!data.success) return;
+
+    activeTaskInSidebar = data.post;
+    document.getElementById('sidebar-task-title').innerText = `งาน: ${activeTaskInSidebar.title}`;
+    
+    // โหลดรายละเอียดงานใน Tab Details
+    renderSidebarDetails();
+    
+    // โหลดแชท
+    loadSidebarChat(postId);
+
+    document.getElementById('right-sidebar').classList.add('active');
+    document.getElementById('right-sidebar-overlay').classList.remove('hidden');
+    switchTab('notif'); // เริ่มที่หน้าแจ้งเตือน
+}
+
+function closeRightSidebar() {
+    document.getElementById('right-sidebar').classList.remove('active');
+    document.getElementById('right-sidebar-overlay').classList.add('hidden');
+    activeTaskInSidebar = null;
+}
+
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+    
+    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    // หา Tab Item ที่ตรงกับ tabName เพื่อใส่ class active (ตัวอย่างเช่น index)
+    const tabs = ['notif', 'details', 'chat'];
+    document.querySelectorAll('.tab-item')[tabs.indexOf(tabName)].classList.add('active');
+}
+
+function renderSidebarDetails() {
+    const container = document.getElementById('sidebar-details-content');
+    let html = '';
+    activeTaskInSidebar.stops.forEach((stop, i) => {
+        const isDone = stop.status === 'success';
+        html += `
+            <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; opacity: ${isDone ? 0.5 : 1}">
+                <i class="fas ${isDone ? 'fa-check-circle' : 'fa-circle'}" style="color: ${isDone ? '#27ae60' : '#ccc'}"></i>
+                <div>
+                    <div style="font-weight: bold; font-size: 0.9em;">${i === 0 ? '🏠 รับของ' : '📍 จุดส่งที่ '+i}</div>
+                    <div style="font-size: 0.85em;">${stop.label}</div>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+// ระบบแชท (ใช้ Logic เดียวกับ post.html)
+async function loadSidebarChat(postId) {
+    const chatBox = document.getElementById('chat-box');
+    chatBox.innerHTML = '<small style="color:#999">กำลังโหลดข้อความ...</small>';
+    
+    const res = await fetch(`/api/posts/${postId}/comments`); // สมมติใช้ API เดิมของระบบแชท
+    const comments = await res.json();
+    
+    chatBox.innerHTML = '';
+    comments.forEach(msg => {
+        const isMe = msg.author === myUsername;
+        chatBox.innerHTML += `
+            <div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}">
+                ${msg.text}
+            </div>
+        `;
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+async function sendSidebarChat() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text || !activeTaskInSidebar) return;
+
+    // ส่งข้อมูลไป Server
+    const res = await fetch(`/api/posts/${activeTaskInSidebar.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author: myUsername, text: text })
+    });
+
+    if (res.ok) {
+        input.value = '';
+        loadSidebarChat(activeTaskInSidebar.id);
+    }
+}
+
+
 </script>
 	
 	
@@ -1356,6 +1479,47 @@ function closeManageModal() {
         </div>
     </div>
 </div>
+
+
+
+
+
+
+	<div id="right-sidebar" class="right-sidebar">
+    <div class="sidebar-header" style="background: #11998e;">
+        <span onclick="closeRightSidebar()" style="cursor:pointer;"><i class="fas fa-times"></i></span>
+        <h3 id="sidebar-task-title" style="margin: 0; font-size: 1.1em;">จัดการงาน</h3>
+    </div>
+    
+    <div class="tab-menu">
+        <div class="tab-item active" onclick="switchTab('notif')"><i class="fas fa-bell"></i></div>
+        <div class="tab-item" onclick="switchTab('details')"><i class="fas fa-info-circle"></i></div>
+        <div class="tab-item" onclick="switchTab('chat')"><i class="fas fa-comments"></i></div>
+    </div>
+
+    <div id="tab-notif" class="tab-content">
+        <h4><i class="fas fa-bell"></i> แจ้งเตือนสถานะ</h4>
+        <div id="notif-list"></div>
+    </div>
+
+    <div id="tab-details" class="tab-content hidden">
+        <h4><i class="fas fa-list-ol"></i> ลำดับการส่งงาน</h4>
+        <div id="sidebar-details-content"></div>
+    </div>
+
+    <div id="tab-chat" class="tab-content hidden" style="display: flex; flex-direction: column; height: 100%;">
+        <h4><i class="fas fa-comments"></i> แชทกับไรเดอร์</h4>
+        <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; margin-bottom: 10px;">
+            </div>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." style="margin-bottom: 0;">
+            <button onclick="sendSidebarChat()" style="width: 50px; background: #11998e; color: white; border: none; border-radius: 8px;">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+<div id="right-sidebar-overlay" class="sidebar-overlay hidden" onclick="closeRightSidebar()"></div>
 
 
 
