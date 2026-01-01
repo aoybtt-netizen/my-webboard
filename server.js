@@ -2539,6 +2539,41 @@ app.post('/api/posts/:id/rate', async (req, res) => {
     }
 });
 
+// API: Rider ส่งคำขอรับงาน
+app.post('/api/posts/:id/apply', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { riderName } = req.body;
+    try {
+        // บันทึกชื่อ Rider ลงในฟิลด์ pendingRider เพื่อรอร้านค้าตัดสินใจ
+        await postsCollection.updateOne(
+            { id: postId },
+            { $set: { pendingRider: riderName, applyTimestamp: Date.now() } }
+        );
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// API: ร้านค้ากดยืนยันรับ Rider คนนี้
+app.post('/api/posts/:id/approve-rider', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    try {
+        const post = await postsCollection.findOne({ id: postId });
+        if (!post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
+
+        await postsCollection.updateOne(
+            { id: postId },
+            { 
+                $set: { 
+                    acceptedBy: post.pendingRider, 
+                    pendingRider: null, // ล้างค่ารอคอย
+                    status: 'in_progress' // เปลี่ยนสถานะงาน
+                } 
+            }
+        );
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
 
 
 

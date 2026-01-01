@@ -439,59 +439,70 @@ async function loadActiveMerchantTasks() {
         const data = await res.json();
 
         if (data.success && data.posts.length > 0) {
-            let finalHtml = ''; // ใช้ตัวแปรพักข้อมูลไว้ก่อนนำไปแสดงผล
+            let finalHtml = ''; 
 
             data.posts.forEach(post => {
-                // 1. คำนวณค่าต่างๆ เตรียมไว้ก่อน
+                // 1. คำนวณค่าต่างๆ
                 const totalStops = post.stops.length;
                 const completedStops = post.stops.filter(s => s.status === 'success').length;
                 const progressPercent = (completedStops / totalStops) * 100;
                 const canConfirm = (completedStops === totalStops);
-                // 1. ดึงชื่อจุดส่งแรกมาเป็นคำใบ้ (ถ้ามี)
+                const postTime = new Date(post.id).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                const refCode = post.id.toString().slice(-4);
 
-				// 2. แปลงเวลาจาก post.id (Timestamp)
-				const postTime = new Date(post.id).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                // 2. [ส่วนที่เพิ่มใหม่] Logic การตัดสินใจเลือกแสดงปุ่ม Action
+                let actionBtnHtml = '';
+                
+                if (post.acceptedBy) {
+                    // กรณีที่ 1: มีคนรับงานแล้ว
+                    if (canConfirm) {
+                        actionBtnHtml = '<button onclick="event.stopPropagation(); confirmAndRate(\'' + post.id + '\', \'' + post.acceptedBy + '\')" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">✅ จบงาน & ให้คะแนน</button>';
+                    } else {
+                        actionBtnHtml = '<small style="color: #11998e; font-weight: bold;">🛵 ไรเดอร์กำลังดำเนินการ...</small>';
+                    }
+                } else if (post.pendingRider) {
+                    // กรณีที่ 2: มีไรเดอร์กดของาน (รอร้านค้ากดอนุมัติ)
+                    // ใช้ event.stopPropagation() เพื่อไม่ให้มันไปเปิด Sidebar เมื่อกดปุ่ม
+                    actionBtnHtml = `
+                        <div style="text-align:right;">
+                            <small style="display:block; margin-bottom:5px; color:#f39c12;">Rider <b>${post.pendingRider}</b> ของานนี้</small>
+                            <button onclick="event.stopPropagation(); approveRider('${post.id}')" style="background: #f39c12; color: white; border: none; padding: 6px 15px; border-radius: 15px; font-size: 0.8em; cursor: pointer; font-weight:bold;">ตกลงให้งาน</button>
+                        </div>`;
+                } else {
+                    // กรณีที่ 3: ยังไม่มีใครกดรับงาน
+                    actionBtnHtml = '<small style="color: #999;">⌛ รอไรเดอร์รับงาน...</small>';
+                }
 
-				// 3. เอาเลขท้าย 4 ตัวของ ID มาทำเป็น Ref Code
-				const refCode = post.id.toString().slice(-4);
+                const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
 
-				// 4. แยกส่วนปุ่ม Action (เหมือนเดิมที่คุณมี)
-				let actionBtnHtml = '';
-					if (canConfirm) {
-						actionBtnHtml = '<button onclick="confirmAndRate(\'' + post.id + '\', \'' + post.acceptedBy + '\')" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">✅ จบงาน & ให้คะแนน</button>';
-					} else {
-						actionBtnHtml = '<small style="color: #f39c12; font-weight: bold;">🛵 กำลังวิ่งงาน...</small>';
-					}
-
-					const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
-                // 5. ประกอบร่าง HTML ใหม่ที่มีข้อมูลช่วยจำ
-				finalHtml += `
-    <div  class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle}  padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
-                <small style="color: #999; margin-left: 5px;">เมื่อ ${postTime}</small>
-                <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
-            </div>
-            <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
-        </div>
-        
-        <div style="font-size: 0.85em; color: #666; margin-bottom: 10px;">
-            👤 Rider: <span style="color: #11998e; font-weight: 600;">${post.acceptedBy || 'รอคนรับงาน...'}</span>
-        </div>
-        
-        <div class="task-progress-bar" style="height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 5px;">
-            <div class="progress-fill" style="width: ${progressPercent}%; height: 100%; background: #11998e; transition: 0.5s;"></div>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-            <small style="color: #888; font-weight: bold;">
-                ความคืบหน้า: ${completedStops}/${totalStops} จุด
-            </small>
-            ${actionBtnHtml}
-        </div>
-    </div>
-`;
+                // 3. ประกอบร่าง HTML
+                finalHtml += `
+                    <div class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
+                                <small style="color: #999; margin-left: 5px;">เมื่อ ${postTime}</small>
+                                <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
+                            </div>
+                            <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
+                        </div>
+                        
+                        <div style="font-size: 0.85em; color: #666; margin: 10px 0;">
+                            👤 ผู้รับงาน: <span style="color: #11998e; font-weight: 600;">${post.acceptedBy || 'ยังไม่มี'}</span>
+                        </div>
+                        
+                        <div class="task-progress-bar" style="height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 5px;">
+                            <div class="progress-fill" style="width: ${progressPercent}%; height: 100%; background: #11998e; transition: 0.5s;"></div>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                            <small style="color: #888; font-weight: bold;">
+                                คืบหน้า: ${completedStops}/${totalStops} จุด
+                            </small>
+                            ${actionBtnHtml}
+                        </div>
+                    </div>
+                `;
             });
 
             listContainer.innerHTML = finalHtml;
@@ -1363,6 +1374,20 @@ async function sendSidebarChat() {
         input.value = '';
         loadSidebarChat(activeTaskInSidebar.id);
     }
+}
+
+
+async function approveRider(postId) {
+    if (!confirm("คุณต้องการตกลงให้ Rider คนนี้รับงานใช่หรือไม่?")) return;
+    
+    try {
+        const res = await fetch(`/api/posts/${postId}/approve-rider`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert("✅ มอบหมายงานสำเร็จ!");
+            loadActiveMerchantTasks(); // โหลดรายการใหม่
+        }
+    } catch (e) { alert("Error"); }
 }
 
 

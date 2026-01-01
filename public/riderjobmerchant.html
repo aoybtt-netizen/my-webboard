@@ -525,11 +525,37 @@ async function handleCheckIn(index, targetLat, targetLng) {
         }
 
         async function acceptJob() {
-            if(!confirm("คุณต้องการรับงานนี้ใช่หรือไม่?")) return;
-            
-            // Logic การส่ง API ไปบันทึกว่า Rider คนไหนรับงาน (เดี๋ยวเราค่อยทำต่อ)
-            alert("กำลังพัฒนาระบบบันทึกสถานะการรับงาน...");
+    if (!myUsername) return alert("กรุณาเข้าสู่ระบบก่อน");
+    if (!confirm("คุณต้องการส่งคำขอรับงานนี้ไปที่ร้านค้าใช่หรือไม่?")) return;
+
+    const btn = document.querySelector('.btn-accept');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังส่งคำขอ...';
+
+    try {
+        const res = await fetch(`/api/posts/${jobId}/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ riderName: myUsername })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            alert("🚀 ส่งคำขอสำเร็จ! กรุณารอร้านค้ากดยืนยัน");
+            location.reload(); // โหลดใหม่เพื่อแสดงสถานะ "รอการตอบรับ"
+        } else {
+            alert("❌ " + data.error);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
+    } catch (e) {
+        alert("เชื่อมต่อ Server ไม่ได้");
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
 		
 		
 	// เพิ่มฟังก์ชันแสดงหน้าให้คะแนนร้านค้า
