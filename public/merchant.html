@@ -335,8 +335,8 @@
 
             <label>ประเภทงาน</label>
             <select id="task-category" onchange="updateTitlePreview()">
-                <option value="รับส่งอาหารสินค้าทั่วไป">รับส่งอาหาร/สินค้าทั่วไป</option>
-                <option value="รับส่งเอกสาร">รับส่งเอกสาร</option>
+                <option value="ส่งอาหารสินค้าทั่วไป">ส่งอาหาร/สินค้าทั่วไป</option>
+                <option value="ส่งเอกสาร">รับส่งเอกสาร</option>
                 <option value="ส่งพัสดุ/ของชิ้นใหญ่">ส่งพัสดุ/ของชิ้นใหญ่</option>
             </select>
 
@@ -419,38 +419,56 @@ async function loadActiveMerchantTasks() {
                 const completedStops = post.stops.filter(s => s.status === 'success').length;
                 const progressPercent = (completedStops / totalStops) * 100;
                 const canConfirm = (completedStops === totalStops);
-                
-                // 2. แยกปุ่ม Action ออกมาเป็นตัวแปร (แก้ปัญหา Editor สับสนเรื่อง Backtick ซ้อน)
-                let actionBtnHtml = '';
-                if (canConfirm) {
-                    actionBtnHtml = '<button onclick="confirmAndRate(\'' + post.id + '\', \'' + post.acceptedBy + '\')" style="background: #27ae60; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-size: 0.8em; cursor: pointer;">ยืนยันจบงาน & ให้คะแนน</button>';
-                } else {
-                    actionBtnHtml = '<small style="color: #f39c12; font-weight: bold;">กำลังดำเนินการ...</small>';
-                }
+                // 1. ดึงชื่อจุดส่งแรกมาเป็นคำใบ้ (ถ้ามี)
+				const firstDropOff = post.stops && post.stops.length > 1 ? post.stops[1].label : "ไม่ระบุ";
 
-                // 3. เตรียมสไตล์เส้นขอบ
-                const borderStyle = canConfirm ? 'border-left-color: #27ae60;' : '';
+				// 2. แปลงเวลาจาก post.id (Timestamp)
+				const postTime = new Date(post.id).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 
-                // 4. ประกอบร่าง HTML (คราวนี้จะไม่สับสนแล้ว)
-                finalHtml += `
-                    <div class="active-task-card" style="${borderStyle}">
-                        <div style="display: flex; justify-content: space-between;">
-                            <b style="color: #333;">${post.title}</b>
-                            <b style="color: #e67e22;">฿${post.budget}</b>
-                        </div>
-                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-                            🛵 ผู้รับงาน: ${post.acceptedBy || 'ยังไม่มีคนรับงาน'}
-                        </div>
-                        
-                        <div class="task-progress-bar">
-                            <div class="progress-fill" style="width: ${progressPercent}%"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <small style="color: #888;">เช็คอินสำเร็จ: ${completedStops}/${totalStops} จุด</small>
-                            ${actionBtnHtml}
-                        </div>
-                    </div>
-                `;
+				// 3. เอาเลขท้าย 4 ตัวของ ID มาทำเป็น Ref Code
+				const refCode = post.id.toString().slice(-4);
+
+				// 4. แยกส่วนปุ่ม Action (เหมือนเดิมที่คุณมี)
+				let actionBtnHtml = '';
+					if (canConfirm) {
+						actionBtnHtml = '<button onclick="confirmAndRate(\'' + post.id + '\', \'' + post.acceptedBy + '\')" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">✅ จบงาน & ให้คะแนน</button>';
+					} else {
+						actionBtnHtml = '<small style="color: #f39c12; font-weight: bold;">🛵 กำลังวิ่งงาน...</small>';
+					}
+
+					const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
+                // 5. ประกอบร่าง HTML ใหม่ที่มีข้อมูลช่วยจำ
+				finalHtml += `
+    <div class="active-task-card" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
+                <small style="color: #999; margin-left: 5px;">เมื่อ ${postTime}</small>
+                <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
+            </div>
+            <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
+        </div>
+
+        <div style="margin: 10px 0; padding: 8px 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.9em; color: #555;">
+            <i class="fas fa-map-marker-alt" style="color: #e74c3c;"></i> จุดส่งแรก: <b>${firstDropOff}</b>
+        </div>
+        
+        <div style="font-size: 0.85em; color: #666; margin-bottom: 10px;">
+            👤 Rider: <span style="color: #11998e; font-weight: 600;">${post.acceptedBy || 'รอคนรับงาน...'}</span>
+        </div>
+        
+        <div class="task-progress-bar" style="height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 5px;">
+            <div class="progress-fill" style="width: ${progressPercent}%; height: 100%; background: #11998e; transition: 0.5s;"></div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <small style="color: #888; font-weight: bold;">
+                ความคืบหน้า: ${completedStops}/${totalStops} จุด
+            </small>
+            ${actionBtnHtml}
+        </div>
+    </div>
+`;
             });
 
             listContainer.innerHTML = finalHtml;
@@ -919,9 +937,9 @@ function processVoiceOrder(speechText) {
     lastVoiceAnalysis = null;
 
     // 1. วิเคราะห์ประเภทงาน (Category) - เช็คคีย์เวิร์ด
-    let category = "รับส่งอาหารสินค้าทั่วไป"; 
+    let category = "ส่งอาหารสินค้าทั่วไป"; 
     if (speechText.includes("เอกสาร") || speechText.includes("ส่งจดหมาย")) {
-        category = "รับส่งเอกสาร";
+        category = "ส่งเอกสาร";
     }
 
     // 2. วิเคราะห์งบประมาณ (Price) 
