@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+
+	
+	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+	<script>
+	// เริ่มใช้งาน vConsole
+	var vConsole = new window.VConsole();
+	</script>
+	
+	
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GedGoZone - Merchant Center</title>
@@ -826,7 +835,6 @@ function showVoiceSummaryModal() {
 
 
 function confirmVoiceSummary() {
-		document.getElementById('voice-summary-modal').classList.add('hidden');
         const data = lastVoiceAnalysis;
         if (!data) return;
 
@@ -878,6 +886,8 @@ function confirmVoiceSummary() {
         closeVoiceSummary();
         
         console.log("✅ ข้อมูลจาก AI ถูกกรอกลงฟอร์มเรียบร้อย");
+		
+		document.getElementById('voice-summary-modal').classList.add('hidden');
     }
 
 function closeVoiceSummary() {
