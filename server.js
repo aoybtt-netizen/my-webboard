@@ -2366,6 +2366,46 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
 });
 
 
+//ใรเดอร์รับงานร้านค้า
+
+// API: ไรเดอร์เช็คอินพิกัดรายจุด
+app.post('/api/posts/:id/checkin', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { stopIndex, riderName, lat, lng } = req.body;
+
+    try {
+        const post = await postsCollection.findOne({ id: postId });
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงานนี้' });
+
+        // ตรวจสอบว่ามีข้อมูล stops หรือไม่
+        if (!post.stops || !post.stops[stopIndex]) {
+            return res.status(400).json({ success: false, error: 'ไม่พบข้อมูลจุดเช็คอิน' });
+        }
+
+        // อัปเดตข้อมูลใน Array stops ตาม Index ที่ส่งมา
+        const updateKey = `stops.${stopIndex}.status`;
+        const timeKey = `stops.${stopIndex}.completedAt`;
+        const riderCoordKey = `stops.${stopIndex}.checkInLocation`;
+
+        await postsCollection.updateOne(
+            { id: postId },
+            { 
+                $set: { 
+                    [updateKey]: 'success', // เปลี่ยนสถานะเป็นสำเร็จ
+                    [timeKey]: Date.now(),    // บันทึกเวลาที่เช็คอิน
+                    [riderCoordKey]: { lat, lng } // บันทึกพิกัดจริงที่ไรเดอร์กดเช็คอิน
+                } 
+            }
+        );
+
+        res.json({ success: true, message: 'บันทึกการเช็คอินเรียบร้อย' });
+    } catch (error) {
+        console.error("Check-in Error:", error);
+        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดที่ Server' });
+    }
+});
+
+
 
 
 
