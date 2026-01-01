@@ -1908,32 +1908,45 @@ app.get('/api/my-active-count', async (req, res) => {
     res.json({ count });
 });
 
-// 23. Add Comment
+// 23. Add Comment (เวอร์ชันปรับปรุงให้รองรับหน้า Merchant)
 app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => {
     const postId = parseInt(req.params.id);
-    const { content, author } = req.body;
+    // 🚩 ปรับตรงนี้: รับได้ทั้ง content (แบบเก่า) และ text (แบบใหม่จาก Merchant)
+    const { content, text, author } = req.body;
+    const finalContent = content || text; // เลือกใช้อันที่มีค่า
+
     const imageUrl = req.file ? req.file.path : null; 
 
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'No posts found' });
 
-    // 🟢 แก้ไขเงื่อนไขตรงนี้ครับ
+    if (!finalContent && !imageUrl) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
+
     const isOwner = (author === post.author);
     const isAcceptedViewer = (author === post.acceptedViewer);
+    const isAcceptedBy = (author === post.acceptedBy); // 🚩 เพิ่มเช็คคนรับงานขนส่ง
     const isAdmin = (author === 'Admin');
 
-    // ถ้ากระทู้ปิดถาวร (closed_permanently) บล็อกทุกคน ยกเว้น Admin
     if (post.status === 'closed_permanently' && !isAdmin) {
         return res.status(403).json({ error: '⛔ กระทู้นี้ปิดถาวรแล้ว' });
     }
 
-    // ถ้ากระทู้แค่ isClosed (เช่น ช่วงส่งมอบงาน)
-    // อนุญาตให้ Admin, เจ้าของ, และคนรับงาน แชทได้ปกติ
-    if (post.isClosed && !isOwner && !isAcceptedViewer && !isAdmin) {
+    // ปรับเงื่อนไขให้ครอบคลุม Rider ที่รับงานด้วย (acceptedBy)
+    if (post.isClosed && !isOwner && !isAcceptedViewer && !isAcceptedBy && !isAdmin && post.status !== 'finished') {
         return res.status(403).json({ error: '⛔ เฉพาะผู้เกี่ยวข้องที่ส่งข้อความได้' });
     }
 
-    const newComment = { id: Date.now(), author, content, imageUrl, timestamp: Date.now() };
+    // 🚩 ใช้ชื่อฟิลด์ 'text' ให้ตรงกับระบบใหม่ หรือจะใช้ 'content' ก็ได้แต่ต้องแก้ให้ตรงกัน
+    // ในที่นี้ผมใช้ 'text' เพื่อให้เข้ากับโค้ด Merchant ที่เราเขียนไปก่อนหน้านี้ครับ
+    const newComment = { 
+        id: Date.now(), 
+        author, 
+        text: finalContent, // เก็บลงฟิลด์ text
+        content: finalContent, // เก็บลง content ด้วยเพื่อรองรับหน้า index เดิม (กันเหนียว)
+        imageUrl, 
+        timestamp: Date.now() 
+    };
+
     await postsCollection.updateOne({ id: postId }, { $push: { comments: newComment } });
     
     io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
@@ -2411,6 +2424,46 @@ app.get('/api/merchant/tasks', async (req, res) => {
     }
 });
 
+	// API: ดึงข้อความแชท/คอมเมนต์ ของโพสต์นั้นๆ
+app.get('/api/posts/:id/comments', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    try {
+        const post = await postsCollection.findOne({ id: postId });
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบโพสต์' });
+        
+        // ส่งคอมเมนต์ออกไป ถ้าไม่มีให้ส่งอาเรย์ว่าง
+        res.json(post.comments || []);
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Database Error' });
+    }
+});
+
+// API: ส่งข้อความแชท/คอมเมนต์ เข้าไปในโพสต์
+app.post('/api/posts/:id/comments', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { author, text } = req.body;
+
+    if (!text) return res.status(400).json({ error: 'กรุณาพิมพ์ข้อความ' });
+
+    try {
+        const newComment = {
+            id: Date.now(),
+            author: author,
+            text: text,
+            timestamp: Date.now()
+        };
+
+        // ใช้ $push เพื่อเพิ่มคอมเมนต์เข้าไปใน Array ในฐานข้อมูล
+        await postsCollection.updateOne(
+            { id: postId },
+            { $push: { comments: newComment } }
+        );
+
+        res.json({ success: true, comment: newComment });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Database Error' });
+    }
+});
 
 //ใรเดอร์รับงานร้านค้า
 
