@@ -324,9 +324,9 @@
             </button>
         </div>
 
-        <button class="btn-submit" onclick="postMerchantTask()">
-            <i class="fas fa-paper-plane"></i> โพสต์งานเข้าระบบ
-        </button>
+        <button id="submit-btn" class="btn-submit" onclick="postMerchantTask()">
+    <i class="fas fa-paper-plane"></i> โพสต์งานเข้าระบบ
+</button>
     </div>
 
     <script>
@@ -366,9 +366,37 @@ function toggleMerchantSidebar() {
 // ฟังก์ชันบันทึกพิกัดร้าน (บันทึกแค่จุดเดียวเป็นฐาน)
 function openSaveStoreModal() {
     toggleMerchantSidebar();
-    openAddLocationModal();
+    
+    // 🔍 1. ค้นหาว่าในรายการที่บันทึกไว้ มี "พิกัดร้านของฉัน" อยู่หรือยัง
+    const existingStore = mySavedLocations.find(loc => loc.label === "พิกัดร้านของฉัน");
+    
+    if (existingStore) {
+        editingLocationId = existingStore._id; // ถ้ามีแล้ว ให้ใช้ ID เดิม (เข้าโหมดอัปเดต)
+        // ตั้งค่าแผนที่ไปที่จุดเดิม
+        selectedLat = parseFloat(existingStore.lat);
+        selectedLng = parseFloat(existingStore.lng);
+    } else {
+        editingLocationId = null; // ถ้ายังไม่มีเลย ให้สร้างใหม่ครั้งแรก
+    }
+
+    mapMode = 'book';
+    document.getElementById('map-modal').classList.remove('hidden');
+    document.getElementById('map-extra-info').classList.remove('hidden');
+    
+    // ล็อคชื่อไว้ให้ตรงกัน
     document.getElementById('map-loc-name').value = "พิกัดร้านของฉัน";
     document.getElementById('map-loc-voice').value = "ร้าน";
+    
+    document.querySelector('#map-modal h3').innerText = "🏠 บันทึกพิกัดร้าน (Base)";
+    document.querySelector('#map-modal .btn-submit:first-child').innerText = existingStore ? "อัปเดตพิกัดร้าน" : "บันทึกพิกัดร้าน";
+    
+    initMap();
+    
+    // ถ้ามีพิกัดเดิม ให้เลื่อนแผนที่ไปหา
+    if (existingStore && merchantMap) {
+        merchantMap.setView([selectedLat, selectedLng], 17);
+        updateMarker(selectedLat, selectedLng);
+    }
 }
 
 function openStopMap(id) {
@@ -617,13 +645,43 @@ function reorderStops() {
 
     // 4. ส่งข้อมูลงาน
     async function postMerchantTask() {
+    const btn = document.getElementById('submit-btn');
+    
+    // 🚩 1. เริ่มระบบล็อคปุ่มและหน่วงเวลา 10 วินาที
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+    btn.style.cursor = "not-allowed";
+    
+    let timeLeft = 10;
+    const originalContent = btn.innerHTML; // เก็บข้อความเดิมไว้ (ไอคอน + ข้อความ)
+    
+    const timer = setInterval(() => {
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.style.cursor = "pointer";
+            btn.innerHTML = originalContent; // คืนค่าปุ่มเดิม
+        } else {
+            btn.innerHTML = `<i class="fas fa-hourglass-half"></i> รอสักครู่ (${timeLeft}s)`;
+            timeLeft--;
+        }
+    }, 1000);
+
+    // --- เริ่มต้น Logic เดิมของคุณ ---
     const finalTitle = updateTitlePreview();
     const stops = [];
     const stopElements = document.querySelectorAll('.stop-item');
 
-    if (stopElements.length === 0) return alert("❌ กรุณาเพิ่มจุดรับ-ส่งงานอย่างน้อย 1 จุด");
+    if (stopElements.length === 0) {
+        // หาก error ให้ยกเลิกการนับถอยหลังและเปิดปุ่มทันที
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.innerHTML = originalContent;
+        return alert("❌ กรุณาเพิ่มจุดรับ-ส่งงานอย่างน้อย 1 จุด");
+    }
 
-    // 1. รวบรวมข้อมูลทุกจุด (รวมเบอร์โทรและพิกัด)
     let hasError = false;
     stopElements.forEach((el, index) => {
         const id = el.id.split('-')[1];
@@ -647,21 +705,22 @@ function reorderStops() {
         });
     });
 
-    if (hasError) return alert("❌ กรุณาปักหมุดพิกัดให้ครบทุกจุดก่อนโพสต์งาน");
+    if (hasError) {
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.innerHTML = originalContent;
+        return alert("❌ กรุณาปักหมุดพิกัดให้ครบทุกจุดก่อนโพสต์งาน");
+    }
 
-    // 2. เตรียมข้อมูลส่งไป Server (ใช้ FormData เพราะ Server รองรับ upload.single)
     const formData = new FormData();
     formData.append('author', myUsername);
-    formData.append('category', 'task'); // หรือ ID ของหมวดหมู่งานจ้างในระบบคุณ
+    formData.append('category', 'task');
     formData.append('title', finalTitle);
     formData.append('content', document.getElementById('task-desc').value);
     formData.append('budget', document.getElementById('task-budget').value || 0);
     formData.append('isMerchantTask', true);
-    
-    // ส่งข้อมูล stops เป็น String JSON
     formData.append('stops', JSON.stringify(stops));
-
-    // ส่งพิกัดร้าน (จุดรับงานแรก) เป็นพิกัดหลักของโพสต์เพื่อให้ระบบคำนวณโซน/ค่าธรรมเนียม
     const mainLocation = { lat: stops[0].lat, lng: stops[0].lng };
     formData.append('location', JSON.stringify(mainLocation));
 
@@ -669,20 +728,28 @@ function reorderStops() {
         const res = await fetch('/api/posts', {
             method: 'POST',
             body: formData
-            // ไม่ต้องใส่ Header Content-Type เพราะ FormData จัดการให้เอง
         });
 
         const data = await res.json();
 
         if (data.success) {
             alert("🚀 โพสต์งานเข้าระบบเรียบร้อยแล้ว!");
-            window.location.href = 'index.html'; // ส่งกลับหน้าหลักเพื่อดูงาน
+            window.location.href = 'index.html'; 
         } else {
             alert("❌ เกิดข้อผิดพลาด: " + data.error);
+            // กรณี error จาก server ให้เปิดปุ่มให้กดใหม่ได้
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.innerHTML = originalContent;
         }
     } catch (error) {
         console.error("Post Error:", error);
         alert("❌ ไม่สามารถเชื่อมต่อกับ Server ได้");
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.innerHTML = originalContent;
     }
 }
 	
@@ -919,20 +986,26 @@ function renderManageList() {
     const container = document.getElementById('manage-list-container');
     container.innerHTML = "";
 
-    if (mySavedLocations.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 20px; color: #999;">ไม่มีข้อมูล</div>`;
+    // 🚩 2. กรองเอา "พิกัดร้านของฉัน" ออก ไม่ต้องโชว์ในรายการจัดการทั่วไป
+    const filteredList = mySavedLocations.filter(loc => loc.label !== "พิกัดร้านของฉัน");
+
+    if (filteredList.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 20px; color: #999;">ไม่มีพิกัดส่งงานที่บันทึกไว้</div>`;
         return;
     }
 
-    mySavedLocations.forEach((loc, index) => {
+    filteredList.forEach((loc, index) => {
+        // ใช้ชื่อเดิมที่หาจาก mySavedLocations เพื่อลบข้อมูลให้ถูกตัว
+        const actualIndex = mySavedLocations.findIndex(l => l._id === loc._id);
+        
         container.innerHTML += `
-            <div class="manage-item" style="cursor: pointer;" onclick="editLocation(${index})">
+            <div class="manage-item" style="cursor: pointer;" onclick="editLocation(${actualIndex})">
                 <div class="manage-info">
                     <strong style="color: #11998e;">${loc.label}</strong><br>
-                    <small><i class="fas fa-microphone"></i> "${loc.voiceKeyword || loc.label}"</small>
+                    <small><i class="fas fa-phone"></i> ${loc.phone || 'ไม่มีเบอร์'}</small>
                 </div>
                 <div class="manage-actions">
-                    <button class="btn-delete" onclick="event.stopPropagation(); deleteLocation(${index})">
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteLocation(${actualIndex})">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
