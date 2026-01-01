@@ -385,6 +385,7 @@ function openSaveStoreModal() {
     
     document.getElementById('map-modal').classList.remove('hidden');
     document.getElementById('map-extra-info').classList.remove('hidden');
+	document.getElementById('map-label-name').innerHTML = '<i class="fas fa-store"></i> ใส่ชื่อร้านหรือบริษัทของคุณ';
     
     // ปลดล็อคให้ตั้งชื่อร้านเองได้
     const nameInput = document.getElementById('map-loc-name');
@@ -419,9 +420,11 @@ function openAddLocationModal() {
     toggleMerchantSidebar(); 
     editingLocationId = null;
     mapMode = 'book';
+	isStoreMode = false;
     
     document.getElementById('map-modal').classList.remove('hidden');
     document.getElementById('map-extra-info').classList.remove('hidden');
+	document.getElementById('map-label-name').innerHTML = '<i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)';
     
     // 🚩 ปลดล็อคให้พิมพ์ชื่อได้ตามปกติ
     const nameInput = document.getElementById('map-loc-name');
@@ -1135,7 +1138,7 @@ function closeManageModal() {
 
         <div style="padding: 20px; padding-bottom: 30px;"> 
             <div id="map-extra-info">
-                <label><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)</label>
+                <label id="map-label-name"><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)</label>
                 <input type="text" id="map-loc-name" placeholder="ระบุชื่อสถานที่...">
 				
 				<label><i class="fas fa-phone"></i> เบอร์โทรศัพท์ (ถ้ามี)</label>
