@@ -524,7 +524,9 @@ function reorderStops() {
     const stops = document.querySelectorAll('.stop-item');
     stops.forEach((stop, index) => {
         const isPickup = (index === 0);
-        const displayNum = stop.querySelector('.stop-number');
+        
+        // 🚩 แก้ไข: เปลี่ยนจาก .stop-number เป็น .stop-display-number ให้ตรงกับ HTML
+        const displayNum = stop.querySelector('.stop-display-number'); 
         const label = stop.querySelector('label');
         
         if (isPickup) {
@@ -552,12 +554,19 @@ function reorderStops() {
     function updateTitlePreview() {
     const category = document.getElementById('task-category').value;
     const totalStops = document.querySelectorAll('.stop-item').length;
-    const deliveryStops = totalStops > 1 ? totalStops - 1 : 0; 
-    const finalTitle = `${category} (ส่ง ${deliveryStops} จุด)`;    
+    
+    // จำนวนจุดส่ง = ทั้งหมด ลบ จุดรับออก 1
+    const deliveryStops = totalStops > 1 ? totalStops - 1 : 0;
+    
+    // 🚩 แก้ไข: สร้างตัวแปร finalTitle เพื่อเก็บข้อความ
+    const finalTitle = `${category} (ส่ง ${deliveryStops} จุด)`;
+    
     const previewEl = document.getElementById('title-preview');
     if (previewEl) {
         previewEl.innerText = finalTitle;
     }
+    
+    // ตอนนี้จะ return ได้แล้วเพราะเราสร้างตัวแปรไว้ด้านบนแล้ว
     return finalTitle; 
 }
 
