@@ -2366,19 +2366,40 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
 });
 
 
-// API: ดึงงานที่ยังไม่จบของร้านค้า (Merchant)
+// API: ดึงงานของร้านค้า (Merchant) เฉพาะที่ยังไม่จบกระบวนการ
 app.get('/api/merchant/tasks', async (req, res) => {
     const username = req.query.username;
+    if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้' });
+
     try {
-        // ค้นหางานที่ author ตรงกัน และ isClosed เป็น false (งานที่ยังทำไม่จบหรือรอร้านกดยืนยัน)
+        // 1. ดึงงานทั้งหมดของร้านที่ยังไม่ได้กดยืนยันจบงาน (closed_by_merchant)
         const posts = await postsCollection.find({ 
             author: username, 
             isMerchantTask: true,
-            status: { $ne: 'closed_by_merchant' } // งานที่ร้านยังไม่ได้กดปิดถาวร
+            status: { $ne: 'closed_by_merchant' } 
         }).sort({ id: -1 }).toArray();
+
+        const now = Date.now();
+        const oneHour = 3600000;
+
+        // 2. กรองงานที่จะแสดงผลในหน้า Active Tasks
+        const activeTasks = posts.filter(post => {
+            // เงื่อนไข A: ถ้า Rider ส่งครบทุกจุดแล้ว (status: 'finished') -> ต้องโชว์เพื่อให้ร้านกดยืนยัน
+            if (post.status === 'finished') return true;
+
+            // เงื่อนไข B: เช็คเรื่องเวลาหมด (1 ชม.)
+            const isExpired = (now - post.id > oneHour) && !post.isPinned;
+            
+            // ถ้างานถูกปิด (isClosed) หรือ หมดเวลาแล้ว -> ไม่ต้องโชว์ในหน้า Active
+            if (post.isClosed || isExpired) return false;
+
+            // นอกเหนือจากนั้นคือสถานะ pending หรือ in_progress ที่ยังไม่หมดเวลา -> ให้โชว์
+            return true;
+        });
         
-        res.json({ success: true, posts });
+        res.json({ success: true, posts: activeTasks });
     } catch (error) {
+        console.error("Fetch Merchant Tasks Error:", error);
         res.status(500).json({ success: false, error: 'Database Error' });
     }
 });
