@@ -69,6 +69,28 @@
 
 
 
+	.btn-checkin {
+    background: #27ae60;
+    color: white;
+    margin-top: 10px;
+    width: 100%;
+}
+.btn-checkin:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+.btn-checkin.active {
+    background: #27ae60;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+
+
     </style>
 </head>
 <body>
@@ -213,17 +235,32 @@ function drawPathOnMap(riderLat, riderLng) {
 
 
 
-        function renderJob(post) {
-            const container = document.getElementById('job-details');
-            
-            let stopsHtml = '';
-            post.stops.forEach((stop, index) => {
-                const isPickup = (index === 0);
-                const phoneText = stop.phone ? ` <span style="font-size: 0.85em; color: #11998e; font-weight: normal;">(📞 ${stop.phone})</span>` : '';
+    function renderJob(post) {
+    const container = document.getElementById('job-details');
+    currentPostData = post; // เก็บข้อมูลไว้สำหรับแผนที่และคำนวณระยะทาง
 
-    stopsHtml += `
-        <div class="stop-point ${isPickup ? 'pickup' : ''}">
-            <div class="status-tag status-pending">${stop.status === 'pending' ? 'รอดำเนินการ' : 'เสร็จสิ้น'}</div>
+    // 🚩 1. ค้นหาคิวปัจจุบัน: จุดแรกที่สถานะยังเป็น 'pending'
+    const nextPendingIndex = post.stops.findIndex(s => s.status === 'pending');
+
+    let stopsHtml = '';
+    post.stops.forEach((stop, index) => {
+        const isPickup = (index === 0);
+        const isDone = stop.status === 'success'; // เช็คสถานะสำเร็จ
+        const isCurrentTarget = (index === nextPendingIndex); // คิวปัจจุบันที่ต้องทำ
+
+        // ลิงก์เบอร์โทรท้ายชื่อจุด
+        const phoneText = stop.phone ? 
+            ` <a href="tel:${stop.phone}" onclick="event.stopPropagation();" style="font-size: 0.85em; color: #007bff; text-decoration: underline; font-weight: normal;">(📞 ${stop.phone})</a>` 
+            : '';
+
+        stopsHtml += `
+        <div class="stop-point ${isPickup ? 'pickup' : ''}" style="${isDone ? 'opacity: 0.7; border-left-color: #ccc;' : ''}">
+            <div class="status-tag ${isDone ? 'status-success' : 'status-pending'}" 
+                 style="background: ${isDone ? '#27ae60' : (isCurrentTarget ? '#f39c12' : '#eee')}; 
+                        color: ${isDone || isCurrentTarget ? 'white' : '#888'};">
+                ${isDone ? '✅ เสร็จสิ้น' : (isCurrentTarget ? '⭐ เป้าหมายปัจจุบัน' : '🔒 รอตามลำดับ')}
+            </div>
+
             <b style="color: ${isPickup ? '#27ae60' : '#11998e'};">
                 ${isPickup ? '🟢 จุดรับงาน' : `📍 จุดส่งงานที่ ${index}`}
             </b>
@@ -240,29 +277,128 @@ function drawPathOnMap(riderLat, riderLng) {
                     <i class="fas fa-directions"></i> นำทาง
                 </button>
             </div>
+
+            ${!isDone ? `
+                <button class="btn-checkin" 
+                    ${!isCurrentTarget ? 'disabled' : ''} 
+                    style="width:100%; margin-top:10px; padding:12px; border-radius:8px; border:none; color:white; font-weight:bold; 
+                           background: ${isCurrentTarget ? '#27ae60' : '#ccc'}; 
+                           cursor: ${isCurrentTarget ? 'pointer' : 'not-allowed'};"
+                    onclick="handleCheckIn(${index}, ${stop.lat}, ${stop.lng})">
+                    <i class="fas fa-map-marker-alt"></i> ${isCurrentTarget ? 'เช็คอินยืนยันตำแหน่ง' : 'กรุณาทำตามลำดับ'}
+                </button>
+            ` : ''}
+        </div>
+        `;
+    });
+
+    // 🚩 2. นำข้อมูลทั้งหมดมาแสดงใน container
+    container.innerHTML = `
+        <div class="merchant-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <small style="color: #888;">ผู้จ้างงาน:</small><br>
+                    <b style="font-size: 1.2em;"><i class="fas fa-store"></i> ${post.storeName || post.author}</b>
+                </div>
+                <div class="budget-badge">฿ ${post.budget}</div>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+            <small style="color: #888;">รายละเอียดงาน:</small>
+            <div style="margin-top: 5px;">${post.content || 'ไม่มีรายละเอียดเพิ่มเติม'}</div>
+        </div>
+
+        <div class="timeline">
+            ${stopsHtml}
         </div>
     `;
-});
+}
+		
+		
+	// ฟังก์ชันคำนวณระยะทางระหว่าง 2 จุด (หน่วยเป็นเมตร)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // รัศมีโลกหน่วยเป็นเมตร
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
 
-            container.innerHTML = `
-                <div class="merchant-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <small style="color: #888;">ผู้จ้างงาน:</small><br>
-                            <b style="font-size: 1.2em;"><i class="fas fa-store"></i> ${post.storeName || post.author}</b>
-                        </div>
-                        <div class="budget-badge">฿ ${post.budget}</div>
-                    </div>
-                    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-                    <small style="color: #888;">รายละเอียดงาน:</small>
-                    <div style="margin-top: 5px;">${post.content || 'ไม่มีรายละเอียดเพิ่มเติม'}</div>
-                </div>
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-                <div class="timeline">
-                    ${stopsHtml}
-                </div>
-            `;
+    return R * c; 
+}
+
+// ฟังก์ชันหลักในการจัดการการเช็คอิน
+async function handleCheckIn(index, targetLat, targetLng) {
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบพิกัด...';
+
+    if (!navigator.geolocation) {
+        alert("เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง");
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const riderLat = position.coords.latitude;
+        const riderLng = position.coords.longitude;
+
+        // 1. คำนวณระยะทาง
+        const distance = calculateDistance(riderLat, riderLng, targetLat, targetLng);
+
+        // 2. ตรวจสอบรัศมี 100 เมตร
+        if (distance > 100) {
+            alert(`❌ คุณอยู่ห่างจากจุดเป้าหมายเกินไป (${Math.round(distance)} เมตร)\nกรุณาเข้าใกล้จุดหมายในรัศมี 100 เมตรก่อนเช็คอิน`);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
         }
+
+        // 3. ยืนยันการเช็คอิน
+        if (confirm(`✅ ยืนยันการเช็คอินที่จุดนี้? (ระยะห่างปัจจุบัน ${Math.round(distance)} เมตร)`)) {
+            // ส่งข้อมูลไปยัง Server (สมมติใช้ Endpoint นี้)
+            try {
+                const res = await fetch(`/api/posts/${jobId}/checkin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        stopIndex: index,
+                        riderName: myUsername,
+                        lat: riderLat,
+                        lng: riderLng
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("เช็คอินสำเร็จ!");
+                    location.reload(); // โหลดข้อมูลใหม่เพื่ออัปเดตสถานะ Timeline
+                } else {
+                    alert("ผิดพลาด: " + data.error);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } catch (e) {
+                alert("ไม่สามารถเชื่อมต่อ Server ได้");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }, (error) => {
+        alert("ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาเปิด GPS");
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }, { enableHighAccuracy: true });
+}
+
 
         function openNav(lat, lng) {
             window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
