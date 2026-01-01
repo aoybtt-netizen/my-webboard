@@ -237,96 +237,130 @@
 }
 
 
+
+/* ปุ่มสร้างงานใหม่ */
+.add-job-card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    border: 2px dashed #11998e;
+    color: #11998e;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 10px;
+}
+.add-job-card:hover {
+    background: #e8f5e9;
+    transform: translateY(-2px);
+}
+
+/* การ์ดงานที่กำลังทำ */
+.active-task-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border-left: 5px solid #f39c12; /* สีส้มสำหรับงาน In Progress */
+}
+.task-progress-bar {
+    height: 8px;
+    background: #eee;
+    border-radius: 10px;
+    margin: 10px 0;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: #11998e;
+    transition: 0.5s;
+}
+
+
     </style>
 </head>
 <body>
-
-    
-	
-	
-	<div class="header">
-    <div style="float: left; cursor: pointer;" onclick="toggleMerchantSidebar()">
-        <i class="fas fa-bars"></i>
-    </div>
-    <h2 style="margin: 0; display: inline-block;">GedGo Merchant</h2>
-    <div style="float: right; cursor: pointer;" onclick="window.location.href='index.html'">
-        <i class="fas fa-home"></i>
-    </div>
-</div>
-
-
-
-	
-
-<div id="merchant-sidebar" class="merchant-sidebar">
-    <div class="sidebar-header">
-        <h3>จัดการพิกัด</h3>
-        <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
-    </div>
-    <div class="sidebar-menu">
-        <div class="menu-item" onclick="openSaveStoreModal()">
-            <i class="fas fa-store"></i> บันทึกพิกัดร้าน (Base)
+    <div class="header">
+        <div style="float: left; cursor: pointer;" onclick="toggleMerchantSidebar()">
+            <i class="fas fa-bars"></i>
         </div>
-        <div class="menu-item" onclick="openAddLocationModal()">
-            <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
+        <h2 style="margin: 0; display: inline-block;">GedGo Merchant</h2>
+        <div style="float: right; cursor: pointer;" onclick="window.location.href='index.html'">
+            <i class="fas fa-home"></i>
         </div>
-        <hr>
-        <div class="menu-item" onclick="openManageLocationsModal()">
-    <i class="fas fa-list"></i> รายการที่บันทึกไว้ทั้งหมด
-</div>
     </div>
-</div>
 
-<div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="toggleMerchantSidebar()"></div>
+    <div id="merchant-sidebar" class="merchant-sidebar">
+        <div class="sidebar-header">
+            <h3>จัดการพิกัด</h3>
+            <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-item" onclick="openSaveStoreModal()">
+                <i class="fas fa-store"></i> บันทึกพิกัดร้าน (Base)
+            </div>
+            <div class="menu-item" onclick="openAddLocationModal()">
+                <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
+            </div>
+            <hr>
+            <div class="menu-item" onclick="openManageLocationsModal()">
+                <i class="fas fa-list"></i> รายการที่บันทึกไว้ทั้งหมด
+            </div>
+        </div>
+    </div>
+    <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="toggleMerchantSidebar()"></div>
 
+    <div class="container" style="margin-bottom: 0;">
+        <div class="add-job-card" onclick="toggleTaskForm()">
+            <i class="fas fa-plus-circle"></i> สร้างงานจ้างขนส่งใหม่
+        </div>
+    </div>
 
+    <div class="container" id="active-tasks-container">
+        <h4 style="color: #666; margin-left: 10px;"><i class="fas fa-clock"></i> งานที่กำลังดำเนินการ</h4>
+        <div id="active-tasks-list">
+            </div>
+    </div>
 
-    <div class="container">
+    <div class="container hidden" id="task-form-container">
         <div class="card">
-    <label>ประเภทงานที่ต้องการจ้าง</label>
-    <select id="task-category" onchange="updateTitlePreview()">
-        <option value="รับส่งเอกสาร">📄 รับส่งเอกสาร</option>
-        <option value="รับส่งอาหารสินค้าทั่วไป">🍱 รับส่งอาหารสินค้าทั่วไป</option>
-    </select>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: #11998e;">📝 รายละเอียดงานใหม่</h3>
+                <span onclick="toggleTaskForm()" style="cursor:pointer; font-size: 1.5em; color: #999;">&times;</span>
+            </div>
+            <hr>
 
-    <div style="background: #e9f7ef; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #11998e;">
-        <small style="color: #666;">หัวข้อที่จะแสดงบนหน้าหลัก:</small>
-        <div id="title-preview" style="font-weight: bold; color: #11998e; font-size: 1.1em;">
-            รับส่งเอกสาร 0 จุด
-        </div>
-    </div>
-    
-    <label>รายละเอียดเพิ่มเติม (เช่น ป้ายทะเบียนรถ, เบอร์โทรติดต่อ)</label>
-    <textarea id="task-desc" rows="3" placeholder="ระบุสิ่งที่ผู้รับงานต้องทำอย่างละเอียด..."></textarea>
-    
-    <label>งบประมาณจ้างงาน (USD)</label>
-    <input type="number" id="task-budget" placeholder="0.00">
-</div>
+            <label>ประเภทงาน</label>
+            <select id="task-category" onchange="updateTitlePreview()">
+                <option value="รับส่งอาหารสินค้าทั่วไป">รับส่งอาหาร/สินค้าทั่วไป</option>
+                <option value="รับส่งเอกสาร">รับส่งเอกสาร</option>
+                <option value="ส่งพัสดุ/ของชิ้นใหญ่">ส่งพัสดุ/ของชิ้นใหญ่</option>
+            </select>
 
+            <label>รายละเอียดเพิ่มเติม (เช่น จำนวนกล่อง, ขนาด)</label>
+            <textarea id="task-desc" placeholder="ระบุรายละเอียดเพื่อให้ไรเดอร์ประเมินงาน..." rows="3"></textarea>
 
-	<div class="card" style="text-align: center; background: #fffbf0; border: 1px solid #f39c12;">
-    <label><i class="fas fa-microphone"></i> สั่งงานด้วยเสียง (AI Assistant)</label>
-    <button class="btn-add-stop" style="background: #f39c12; color: white; border: none; padding: 15px;" id="voice-btn" onclick="startVoiceCommand()">
-        <i class="fas fa-play"></i> แตะเพื่อเริ่มพูดสั่งงาน
-    </button>
-    <p id="voice-status" style="font-size: 0.85em; color: #666; margin-top: 10px;">
-        ตัวอย่าง: "ส่งเอกสาร ลาดพร้าว 50 บาท"
-    </p>
-</div>
+            <label>งบประมาณจ้างงาน (บาท)</label>
+            <input type="number" id="task-budget" placeholder="ระบุยอดเงินที่คุณต้องการจ้าง..." oninput="updateTitlePreview()">
 
-
-        <div class="card">
-            <label>📍 ลำดับการเช็คอินและจุดส่งงาน</label>
             <div id="stops-container">
                 </div>
+
             <button class="btn-add-stop" onclick="addNewStop()">
-                <i class="fas fa-plus-circle"></i> เพิ่มจุดเช็คอิน / จุดส่งงาน
+                <i class="fas fa-plus"></i> เพิ่มจุดรับ-ส่งงาน
+            </button>
+
+            <button id="voice-btn" class="btn-submit" style="background: #f39c12; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);" onclick="startVoiceCommand()">
+                <i class="fas fa-play"></i> แตะเพื่อเริ่มพูดสั่งงาน
+            </button>
+
+            <button id="submit-btn" class="btn-submit" onclick="postMerchantTask()">
+                <i class="fas fa-paper-plane"></i> โพสต์งานจ้าง (ส่ง <span id="title-preview">-</span>)
             </button>
         </div>
-
-        <button id="submit-btn" class="btn-submit" onclick="postMerchantTask()">
-    <i class="fas fa-paper-plane"></i> โพสต์งานเข้าระบบ
-</button>
     </div>
 
     <script>
@@ -344,15 +378,7 @@
 	let mapMode = 'book';
 	
 	
-// ฟังก์ชันดึงข้อมูลจาก Server เมื่อโหลดหน้าจอ
-window.onload = async function() {
-    if (!myUsername) {
-        alert("กรุณาเข้าสู่ระบบก่อนใช้งานหน้าพาร์ทเนอร์");
-        window.location.href = 'index.html';
-        return;
-    }
-    await loadSavedLocations();
-};
+
 	
 	
 	// ฟังก์ชัน เปิด/ปิด Sidebar
@@ -362,6 +388,92 @@ function toggleMerchantSidebar() {
     sidebar.classList.toggle('active');
     overlay.classList.toggle('hidden');
 }
+
+
+// ฟังก์ชัน เปิด/ปิด ฟอร์มสร้างงาน
+function toggleTaskForm() {
+    const form = document.getElementById('task-form-container');
+    const activeList = document.getElementById('active-tasks-container');
+    form.classList.toggle('hidden');
+    // ถ้าเปิดฟอร์ม ให้ดันรายการงานลงไป หรือซ่อนไว้
+    if(!form.classList.contains('hidden')) {
+        window.scrollTo({ top: form.offsetTop, behavior: 'smooth' });
+    }
+}
+
+// ฟังก์ชันโหลดงานที่ร้านค้ากดยังไม่จบ
+async function loadActiveMerchantTasks() {
+    const listContainer = document.getElementById('active-tasks-list');
+    listContainer.innerHTML = '<p style="text-align:center; color:#999;">กำลังตรวจสอบสถานะงาน...</p>';
+
+    try {
+        const res = await fetch(`/api/merchant/tasks?username=${myUsername}`);
+        const data = await res.json();
+
+        if (data.success && data.posts.length > 0) {
+            let finalHtml = ''; // ใช้ตัวแปรพักข้อมูลไว้ก่อนนำไปแสดงผล
+
+            data.posts.forEach(post => {
+                // 1. คำนวณค่าต่างๆ เตรียมไว้ก่อน
+                const totalStops = post.stops.length;
+                const completedStops = post.stops.filter(s => s.status === 'success').length;
+                const progressPercent = (completedStops / totalStops) * 100;
+                const canConfirm = (completedStops === totalStops);
+                
+                // 2. แยกปุ่ม Action ออกมาเป็นตัวแปร (แก้ปัญหา Editor สับสนเรื่อง Backtick ซ้อน)
+                let actionBtnHtml = '';
+                if (canConfirm) {
+                    actionBtnHtml = '<button onclick="confirmAndRate(\'' + post.id + '\', \'' + post.acceptedBy + '\')" style="background: #27ae60; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-size: 0.8em; cursor: pointer;">ยืนยันจบงาน & ให้คะแนน</button>';
+                } else {
+                    actionBtnHtml = '<small style="color: #f39c12; font-weight: bold;">กำลังดำเนินการ...</small>';
+                }
+
+                // 3. เตรียมสไตล์เส้นขอบ
+                const borderStyle = canConfirm ? 'border-left-color: #27ae60;' : '';
+
+                // 4. ประกอบร่าง HTML (คราวนี้จะไม่สับสนแล้ว)
+                finalHtml += `
+                    <div class="active-task-card" style="${borderStyle}">
+                        <div style="display: flex; justify-content: space-between;">
+                            <b style="color: #333;">${post.title}</b>
+                            <b style="color: #e67e22;">฿${post.budget}</b>
+                        </div>
+                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                            🛵 ผู้รับงาน: ${post.acceptedBy || 'ยังไม่มีคนรับงาน'}
+                        </div>
+                        
+                        <div class="task-progress-bar">
+                            <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <small style="color: #888;">เช็คอินสำเร็จ: ${completedStops}/${totalStops} จุด</small>
+                            ${actionBtnHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            listContainer.innerHTML = finalHtml;
+        } else {
+            listContainer.innerHTML = '<div style="text-align:center; padding: 30px; color: #999;">ไม่มีงานที่กำลังดำเนินการอยู่</div>';
+        }
+    } catch (e) {
+        console.error(e);
+        listContainer.innerHTML = '<p style="color:red; text-align:center;">ไม่สามารถโหลดข้อมูลได้</p>';
+    }
+}
+
+// เรียกใช้งานตอนโหลดหน้า
+window.onload = async function() {
+    if (!myUsername) {
+        alert("กรุณาเข้าสู่ระบบก่อนใช้งานหน้าพาร์ทเนอร์");
+        window.location.href = 'index.html';
+        return;
+    }
+    await loadSavedLocations();        // โหลดสมุดที่อยู่
+    await loadActiveMerchantTasks();  // โหลดงานที่ค้างอยู่
+};
+
 
 // ฟังก์ชันบันทึกพิกัดร้าน (บันทึกแค่จุดเดียวเป็นฐาน)
 function openSaveStoreModal() {

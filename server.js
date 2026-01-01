@@ -2366,9 +2366,27 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
 });
 
 
+// API: ดึงงานที่ยังไม่จบของร้านค้า (Merchant)
+app.get('/api/merchant/tasks', async (req, res) => {
+    const username = req.query.username;
+    try {
+        // ค้นหางานที่ author ตรงกัน และ isClosed เป็น false (งานที่ยังทำไม่จบหรือรอร้านกดยืนยัน)
+        const posts = await postsCollection.find({ 
+            author: username, 
+            isMerchantTask: true,
+            status: { $ne: 'closed_by_merchant' } // งานที่ร้านยังไม่ได้กดปิดถาวร
+        }).sort({ id: -1 }).toArray();
+        
+        res.json({ success: true, posts });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Database Error' });
+    }
+});
+
+
 //ใรเดอร์รับงานร้านค้า
 
-// API: ไรเดอร์เช็คอินพิกัดรายจุด
+// API: ไรเดอร์เช็คอินพิกัดรายจุด และปิดงานอัตโนมัติ
 app.post('/api/posts/:id/checkin', async (req, res) => {
     const postId = parseInt(req.params.id);
     const { stopIndex, riderName, lat, lng } = req.body;
@@ -2377,33 +2395,71 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
         const post = await postsCollection.findOne({ id: postId });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงานนี้' });
 
-        // ตรวจสอบว่ามีข้อมูล stops หรือไม่
-        if (!post.stops || !post.stops[stopIndex]) {
-            return res.status(400).json({ success: false, error: 'ไม่พบข้อมูลจุดเช็คอิน' });
-        }
-
-        // อัปเดตข้อมูลใน Array stops ตาม Index ที่ส่งมา
         const updateKey = `stops.${stopIndex}.status`;
         const timeKey = `stops.${stopIndex}.completedAt`;
         const riderCoordKey = `stops.${stopIndex}.checkInLocation`;
 
+        // 1. อัปเดตสถานะจุดที่เช็คอิน
         await postsCollection.updateOne(
             { id: postId },
             { 
                 $set: { 
-                    [updateKey]: 'success', // เปลี่ยนสถานะเป็นสำเร็จ
-                    [timeKey]: Date.now(),    // บันทึกเวลาที่เช็คอิน
-                    [riderCoordKey]: { lat, lng } // บันทึกพิกัดจริงที่ไรเดอร์กดเช็คอิน
+                    [updateKey]: 'success',
+                    [timeKey]: Date.now(),
+                    [riderCoordKey]: { lat, lng }
                 } 
             }
         );
 
-        res.json({ success: true, message: 'บันทึกการเช็คอินเรียบร้อย' });
+        // 2. ตรวจสอบว่าเช็คอินครบทุกจุดหรือยัง
+        const updatedPost = await postsCollection.findOne({ id: postId });
+        const allDone = updatedPost.stops.every(s => s.status === 'success');
+
+        if (allDone) {
+            // หากครบทุกจุด ให้ปิดงานอัตโนมัติ
+            await postsCollection.updateOne(
+                { id: postId },
+                { $set: { isClosed: true, status: 'finished', finishedAt: Date.now() } }
+            );
+            return res.json({ success: true, isFinished: true, message: '🎉 งานเสร็จสมบูรณ์! ขอบคุณที่ร่วมงานกับเรา' });
+        }
+
+        res.json({ success: true, isFinished: false, message: 'บันทึกการเช็คอินเรียบร้อย' });
     } catch (error) {
-        console.error("Check-in Error:", error);
-        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดที่ Server' });
+        res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
+
+
+// API: ให้คะแนนเรตติ้ง (ใช้ได้ทั้งร้านค้าให้ไรเดอร์ และไรเดอร์ให้ร้านค้า)
+app.post('/api/posts/:id/rate', async (req, res) => {
+    const { targetUser, rating, comment, role } = req.body; // role: 'merchant' หรือ 'rider'
+
+    try {
+        const user = await usersCollection.findOne({ username: targetUser });
+        if (!user) return res.status(404).json({ success: false, error: 'ไม่พบผู้ใช้' });
+
+        // คำนวณคะแนนเฉลี่ยใหม่
+        const currentRating = user.rating || 0;
+        const totalReviews = user.totalReviews || 0;
+        const newRating = ((currentRating * totalReviews) + parseFloat(rating)) / (totalReviews + 1);
+
+        await usersCollection.updateOne(
+            { username: targetUser },
+            { 
+                $set: { rating: newRating },
+                $inc: { totalReviews: 1 }
+            }
+        );
+
+        res.json({ success: true, message: 'บันทึกคะแนนเรียบร้อย' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Rating Error' });
+    }
+});
+
+
+
 
 
 

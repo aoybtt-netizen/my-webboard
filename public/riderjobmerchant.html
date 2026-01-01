@@ -418,6 +418,53 @@ async function handleCheckIn(index, targetLat, targetLng) {
             // Logic การส่ง API ไปบันทึกว่า Rider คนไหนรับงาน (เดี๋ยวเราค่อยทำต่อ)
             alert("กำลังพัฒนาระบบบันทึกสถานะการรับงาน...");
         }
+		
+		
+	// เพิ่มฟังก์ชันแสดงหน้าให้คะแนนร้านค้า
+function showRatingModal(merchantName) {
+    const ratingHtml = `
+        <div id="rating-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center;">
+            <div style="background:white; padding:25px; border-radius:15px; width:90%; max-width:400px; text-align:center;">
+                <h3>🌟 ให้คะแนนร้านค้า</h3>
+                <p>คุณมีความพึงพอใจต่อ <b>${merchantName}</b> อย่างไร?</p>
+                <div style="font-size: 2em; margin: 20px 0; color: #f1c40f;">
+                    <i class="far fa-star star" onclick="setRating(1)"></i>
+                    <i class="far fa-star star" onclick="setRating(2)"></i>
+                    <i class="far fa-star star" onclick="setRating(3)"></i>
+                    <i class="far fa-star star" onclick="setRating(4)"></i>
+                    <i class="far fa-star star" onclick="setRating(5)"></i>
+                </div>
+                <button onclick="submitRating('${merchantName}')" class="btn-submit" style="background:#11998e; color:white; border:none; padding:15px; width:100%; border-radius:30px; font-weight:bold;">ส่งคะแนน</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', ratingHtml);
+}
+
+let selectedRating = 0;
+function setRating(n) {
+    selectedRating = n;
+    const stars = document.querySelectorAll('.star');
+    stars.forEach((s, i) => {
+        if (i < n) { s.classList.replace('far', 'fas'); }
+        else { s.classList.replace('fas', 'far'); }
+    });
+}
+
+async function submitRating(merchantName) {
+    if (selectedRating === 0) return alert("กรุณาเลือกคะแนน");
+    const res = await fetch(`/api/posts/${jobId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUser: merchantName, rating: selectedRating, role: 'rider' })
+    });
+    const data = await res.json();
+    if (data.success) {
+        alert("ขอบคุณสำหรับคะแนนครับ!");
+        location.href = 'index.html'; // กลับหน้าหลัก
+    }
+}
+
 
         window.onload = loadJobDetails;
     </script>
