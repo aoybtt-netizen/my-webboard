@@ -1417,7 +1417,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const topicObj = await topicsCollection.findOne({ id: category });
     const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป"; 
     
-    let finalTitle = (author === 'Admin' && title) ? title.trim() : (title || topicName);
+	let finalTitle = (author === 'Admin' && title) ? title.trim() : (title && title !== "undefined" ? title : topicName);
 
     // --- ส่วนคำนวณค่าธรรมเนียม (รักษาของเดิมไว้ทั้งหมด) ---
     const globalConfig = await configCollection.findOne({ id: 'main_config' });
