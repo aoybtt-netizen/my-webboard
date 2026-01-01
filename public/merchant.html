@@ -552,15 +552,13 @@ function reorderStops() {
     function updateTitlePreview() {
     const category = document.getElementById('task-category').value;
     const totalStops = document.querySelectorAll('.stop-item').length;
-    
-    // จำนวนจุดส่ง = ทั้งหมด ลบ จุดรับออก 1
-    const deliveryStops = totalStops > 1 ? totalStops - 1 : 0;
-    
+    const deliveryStops = totalStops > 1 ? totalStops - 1 : 0; 
+    const finalTitle = `${category} (ส่ง ${deliveryStops} จุด)`;    
     const previewEl = document.getElementById('title-preview');
     if (previewEl) {
-        previewEl.innerText = `${category} (ส่ง ${deliveryStops} จุด)`;
+        previewEl.innerText = finalTitle;
     }
-	return finalTitle;
+    return finalTitle; 
 }
 
     // 3. ระบบสมุดที่อยู่ (Saved Locations)
