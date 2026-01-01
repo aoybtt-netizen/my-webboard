@@ -555,19 +555,17 @@ function reorderStops() {
     const category = document.getElementById('task-category').value;
     const totalStops = document.querySelectorAll('.stop-item').length;
     
-    // จำนวนจุดส่ง = ทั้งหมด ลบ จุดรับออก 1
     const deliveryStops = totalStops > 1 ? totalStops - 1 : 0;
     
-    // 🚩 แก้ไข: สร้างตัวแปร finalTitle เพื่อเก็บข้อความ
+    // 🚩 ประกาศตัวแปรเก็บข้อความหัวข้อ
     const finalTitle = `${category} (ส่ง ${deliveryStops} จุด)`;
     
     const previewEl = document.getElementById('title-preview');
     if (previewEl) {
         previewEl.innerText = finalTitle;
     }
-    
-    // ตอนนี้จะ return ได้แล้วเพราะเราสร้างตัวแปรไว้ด้านบนแล้ว
-    return finalTitle; 
+
+    return finalTitle; // ตอนนี้จะใช้งานได้แล้ว
 }
 
     // 3. ระบบสมุดที่อยู่ (Saved Locations)
@@ -842,60 +840,65 @@ function showVoiceSummaryModal() {
 
 
 function confirmVoiceSummary() {
-        const data = lastVoiceAnalysis;
-        if (!data) return;
+    const data = lastVoiceAnalysis;
+    if (!data) return;
 
-        // 1. เติมประเภทงานและงบประมาณ
-        document.getElementById('task-category').value = data.category;
-        document.getElementById('task-budget').value = data.budget;
+    // 1. เติมประเภทงานและงบประมาณ
+    document.getElementById('task-category').value = data.category;
+    document.getElementById('task-budget').value = data.budget;
 
-        // 2. ล้างจุดเก่าทั้งหมดออกก่อน
-        document.getElementById('stops-container').innerHTML = "";
-        stopCount = 0; // รีเซ็ตตัวนับ ID ใหม่
+    // 2. ล้างจุดเก่าทั้งหมดออกก่อน
+    const container = document.getElementById('stops-container');
+    container.innerHTML = "";
+    stopCount = 0; 
 
-        // 3. เริ่มสร้างจุดใหม่ตามที่ AI ตรวจพบ
-        if (data.stops && data.stops.length > 0) {
-            data.stops.forEach((stop, index) => {
-                addNewStop(); // สร้างกล่องจุดเช็คอินใหม่
-                
-                const currentId = stopCount; // ID ของกล่องที่เพิ่งสร้างเสร็จ
-                
-                // เติมข้อมูลลงใน Input
-                document.getElementById(`label-${currentId}`).value = stop.label;
-                document.getElementById(`lat-${currentId}`).value = stop.lat;
-                document.getElementById(`lng-${currentId}`).value = stop.lng;
-                
-                // 🚩 เพิ่มบรรทัดนี้: เพื่อให้เลขพิกัดตัวเทาๆ แสดงผลด้วย (ตามที่เราตกลงกันล่าสุด)
+    // 3. เริ่มสร้างจุดใหม่ตามที่ AI ตรวจพบ
+    if (data.stops && data.stops.length > 0) {
+        data.stops.forEach((stop, index) => {
+            addNewStop(); // เพิ่มกล่อง HTML
+            
+            const currentId = stopCount; 
+            
+            // 🚩 ใช้ setTimeout เพื่อรอให้ DOM พร้อมก่อนเข้าถึง Element
+            setTimeout(() => {
+                const labelInput = document.getElementById(`label-${currentId}`);
+                const latInput = document.getElementById(`lat-${currentId}`);
+                const lngInput = document.getElementById(`lng-${currentId}`);
+                const phoneInput = document.getElementById(`phone-${currentId}`);
+                const statusLabel = document.getElementById(`loc-status-${currentId}`);
                 const coordsDisplay = document.getElementById(`coords-display-${currentId}`);
+
+                // เติมข้อมูล (ตรวจสอบว่ามี Element จริงก่อนตั้งค่า)
+                if (labelInput) labelInput.value = stop.label;
+                if (latInput) latInput.value = stop.lat;
+                if (lngInput) lngInput.value = stop.lng;
+                if (phoneInput) phoneInput.value = stop.phone || "";
+
                 if (coordsDisplay) {
                     coordsDisplay.innerText = `พิกัด: ${parseFloat(stop.lat).toFixed(5)}, ${parseFloat(stop.lng).toFixed(5)}`;
                 }
                 
-                // เปลี่ยนข้อความสถานะ
-                const statusLabel = document.getElementById(`loc-status-${currentId}`);
-                if (index === 0) {
-                    statusLabel.innerText = "✅ จุดรับงาน (AI)";
-                    statusLabel.style.color = "#27ae60";
-                } else {
-                    statusLabel.innerText = `✅ จุดส่งงานที่ ${index} (AI)`;
-                    statusLabel.style.color = "#11998e";
+                if (statusLabel) {
+                    if (index === 0) {
+                        statusLabel.innerText = "✅ จุดรับงาน (AI)";
+                        statusLabel.style.color = "#27ae60";
+                    } else {
+                        statusLabel.innerText = `✅ จุดส่งงานที่ ${index} (AI)`;
+                        statusLabel.style.color = "#11998e";
+                    }
                 }
-            });
-        } else {
-            // กรณี AI ไม่เจอจุดเลย ให้เพิ่มจุดว่างไว้ 1 จุดเป็นจุดรับ
-            addNewStop();
-        }
-
-        // 4. สั่งจัดลำดับใหม่และคำนวณจำนวนจุดส่ง
-        reorderStops(); 
-        
-        // 5. ปิด Modal สรุป
-        closeVoiceSummary();
-        
-        console.log("✅ ข้อมูลจาก AI ถูกกรอกลงฟอร์มเรียบร้อย");
-		
-		document.getElementById('voice-summary-modal').classList.add('hidden');
+            }, 0);
+        });
+    } else {
+        addNewStop();
     }
+
+    // 4. สั่งจัดลำดับใหม่ (เรียกครั้งเดียวหลังจบ Loop)
+    setTimeout(() => reorderStops(), 50); 
+    
+    closeVoiceSummary();
+    console.log("✅ ข้อมูลจาก AI ถูกกรอกลงฟอร์มเรียบร้อย");
+}
 
 function closeVoiceSummary() {
     document.getElementById('voice-summary-modal').classList.add('hidden');
