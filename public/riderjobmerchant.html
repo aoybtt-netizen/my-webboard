@@ -237,7 +237,7 @@ function drawPathOnMap(riderLat, riderLng) {
 
     function renderJob(post) {
     const container = document.getElementById('job-details');
-    currentPostData = post; // เก็บข้อมูลไว้สำหรับแผนที่และคำนวณระยะทาง
+    currentPostData = post; 
 
     // 🚩 1. ค้นหาคิวปัจจุบัน: จุดแรกที่สถานะยังเป็น 'pending'
     const nextPendingIndex = post.stops.findIndex(s => s.status === 'pending');
@@ -245,14 +245,31 @@ function drawPathOnMap(riderLat, riderLng) {
     let stopsHtml = '';
     post.stops.forEach((stop, index) => {
         const isPickup = (index === 0);
-        const isDone = stop.status === 'success'; // เช็คสถานะสำเร็จ
-        const isCurrentTarget = (index === nextPendingIndex); // คิวปัจจุบันที่ต้องทำ
+        const isDone = stop.status === 'success'; 
+        const isCurrentTarget = (index === nextPendingIndex); 
 
-        // ลิงก์เบอร์โทรท้ายชื่อจุด
+        // --- ส่วนที่ 1: เตรียมข้อความเบอร์โทร ---
         const phoneText = stop.phone ? 
             ` <a href="tel:${stop.phone}" onclick="event.stopPropagation();" style="font-size: 0.85em; color: #007bff; text-decoration: underline; font-weight: normal;">(📞 ${stop.phone})</a>` 
             : '';
 
+        // --- ส่วนที่ 2: แยก Logic ปุ่มเช็คอินออกมาข้างนอก (แก้ปัญหา Editor สีเพี้ยน) ---
+        let checkinBtnHtml = '';
+        if (!isDone) {
+            const btnColor = isCurrentTarget ? '#27ae60' : '#ccc';
+            const btnCursor = isCurrentTarget ? 'pointer' : 'not-allowed';
+            const btnText = isCurrentTarget ? 'เช็คอินยืนยันตำแหน่ง' : 'กรุณาทำตามลำดับ';
+            const isDisabled = !isCurrentTarget ? 'disabled' : '';
+
+            checkinBtnHtml = `
+                <button class="btn-checkin" ${isDisabled} 
+                    style="width:100%; margin-top:10px; padding:12px; border-radius:8px; border:none; color:white; font-weight:bold; background:${btnColor}; cursor:${btnCursor};"
+                    onclick="handleCheckIn(${index}, ${stop.lat}, ${stop.lng})">
+                    <i class="fas fa-map-marker-alt"></i> ${btnText}
+                </button>`;
+        }
+
+        // --- ส่วนที่ 3: ประกอบร่าง HTML ของแต่ละ Stop ---
         stopsHtml += `
         <div class="stop-point ${isPickup ? 'pickup' : ''}" style="${isDone ? 'opacity: 0.7; border-left-color: #ccc;' : ''}">
             <div class="status-tag ${isDone ? 'status-success' : 'status-pending'}" 
@@ -278,21 +295,12 @@ function drawPathOnMap(riderLat, riderLng) {
                 </button>
             </div>
 
-            ${!isDone ? `
-                <button class="btn-checkin" 
-                    ${!isCurrentTarget ? 'disabled' : ''} 
-                    style="width:100%; margin-top:10px; padding:12px; border-radius:8px; border:none; color:white; font-weight:bold; 
-                           background: ${isCurrentTarget ? '#27ae60' : '#ccc'}; 
-                           cursor: ${isCurrentTarget ? 'pointer' : 'not-allowed'};"
-                    onclick="handleCheckIn(${index}, ${stop.lat}, ${stop.lng})">
-                    <i class="fas fa-map-marker-alt"></i> ${isCurrentTarget ? 'เช็คอินยืนยันตำแหน่ง' : 'กรุณาทำตามลำดับ'}
-                </button>
-            ` : ''}
+            ${checkinBtnHtml}
         </div>
         `;
     });
 
-    // 🚩 2. นำข้อมูลทั้งหมดมาแสดงใน container
+    // 🚩 2. แสดงผลทั้งหมดลงในหน้าจอ
     container.innerHTML = `
         <div class="merchant-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
