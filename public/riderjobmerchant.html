@@ -352,99 +352,96 @@ function drawPathOnMap(riderLat, riderLng) {
     const container = document.getElementById('job-details');
     currentPostData = post; 
 
-    // 🚩 1. ค้นหาคิวปัจจุบัน
+    // ดึงชื่อผู้ใช้ปัจจุบันมาเช็ค (ตัวพิมพ์เล็กทั้งหมดเพื่อกันพลาด)
+    const myUsername = (localStorage.getItem('username') || "").toLowerCase();
+    const acceptedRider = (post.acceptedBy || "").toLowerCase();
+    const pendingRider = (post.pendingRider || "").toLowerCase();
+
+    // 1. เช็คว่าทำครบทุกจุดหรือยัง
+    const allStopsDone = post.stops.every(s => s.status === 'success');
     const nextPendingIndex = post.stops.findIndex(s => s.status === 'pending');
 
+    // 2. สร้าง HTML ของลำดับงาน (Stops)
     let stopsHtml = '';
     post.stops.forEach((stop, index) => {
         const isPickup = (index === 0);
         const isDone = stop.status === 'success'; 
         const isCurrentTarget = (index === nextPendingIndex); 
 
-        const phoneText = stop.phone ? ` <a href="tel:${stop.phone}" ...>(📞 ${stop.phone})</a>` : '';
+        const phoneText = stop.phone ? ` <a href="tel:${stop.phone}" onclick="event.stopPropagation();" style="font-size: 0.85em; color: #007bff; text-decoration: underline;">(📞 ${stop.phone})</a>` : '';
 
         let checkinBtnHtml = '';
-        if (!isDone) {
+        // ปุ่มเช็คอินจะโชว์เฉพาะเมื่อเรา "เป็นเจ้าของงานนี้แล้ว" และ "ยังทำไม่เสร็จ"
+        if (acceptedRider === myUsername && !isDone) {
             const btnColor = isCurrentTarget ? '#27ae60' : '#ccc';
-            const btnCursor = isCurrentTarget ? 'pointer' : 'not-allowed';
-            const btnText = isCurrentTarget ? 'เช็คอินยืนยันตำแหน่ง' : 'กรุณาทำตามลำดับ';
-            const isDisabled = !isCurrentTarget ? 'disabled' : '';
-
             checkinBtnHtml = `
-                <button class="btn-checkin" ${isDisabled} 
-                    style="width:100%; margin-top:10px; padding:12px; border-radius:8px; border:none; color:white; font-weight:bold; background:${btnColor}; cursor:${btnCursor};"
+                <button class="btn-checkin" ${!isCurrentTarget ? 'disabled' : ''} 
+                    style="width:100%; margin-top:10px; padding:12px; border-radius:8px; border:none; color:white; font-weight:bold; background:${btnColor};"
                     onclick="handleCheckIn(${index}, ${stop.lat}, ${stop.lng})">
-                    <i class="fas fa-map-marker-alt"></i> ${btnText}
+                    <i class="fas fa-map-marker-alt"></i> ${isCurrentTarget ? 'เช็คอินยืนยันตำแหน่ง' : 'กรุณาทำตามลำดับ'}
                 </button>`;
         }
 
         stopsHtml += `
-        <div class="stop-point ${isPickup ? 'pickup' : ''}" style="${isDone ? 'opacity: 0.7; border-left-color: #ccc;' : ''}">
-            <div class="status-tag ${isDone ? 'status-success' : 'status-pending'}" 
-                 style="background: ${isDone ? '#27ae60' : (isCurrentTarget ? '#f39c12' : '#eee')}; color: white;">
+        <div class="stop-point ${isPickup ? 'pickup' : ''}" style="${isDone ? 'opacity: 0.7;' : ''}">
+            <div class="status-tag" style="background: ${isDone ? '#27ae60' : (isCurrentTarget ? '#f39c12' : '#eee')}; color: white;">
                 ${isDone ? '✅ เสร็จสิ้น' : (isCurrentTarget ? '⭐ เป้าหมายปัจจุบัน' : '🔒 รอตามลำดับ')}
             </div>
-            <b style="color: ${isPickup ? '#27ae60' : '#11998e'};">${isPickup ? '🟢 จุดรับงาน' : `📍 จุดส่งงานที่ ${index}`}</b>
-            <div style="margin-top: 5px; font-size: 1.1em; font-weight: 600;">${stop.label}${phoneText}</div>
+            <b>${isPickup ? '🟢 จุดรับงาน' : `📍 จุดส่งงานที่ ${index}`}</b>
+            <div style="margin-top: 5px; font-weight: 600;">${stop.label}${phoneText}</div>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button class="btn-action btn-call" onclick="window.location.href='tel:${stop.phone}'"><i class="fas fa-phone"></i> โทรหา</button>
-                <button class="btn-action btn-nav" onclick="openNav(${stop.lat}, ${stop.lng})"><i class="fas fa-directions"></i> นำทาง</button>
+                <button class="btn-action" onclick="window.location.href='tel:${stop.phone}'">โทร</button>
+                <button class="btn-action" onclick="openNav(${stop.lat}, ${stop.lng})">นำทาง</button>
             </div>
             ${checkinBtnHtml}
         </div>`;
     });
-	
-	const allStopsDone = post.stops.every(s => s.status === 'success');
-let actionSectionHtml = '';
-const myUsername = localStorage.getItem('username');
 
-if (post.acceptedBy === myUsername) {
-    // ตรวจสอบสถานะว่า "ส่งงานไปหรือยัง" (delivered) หรือ "จบงานถาวรหรือยัง" (finished)
-    if (post.status === 'delivered') {
-        actionSectionHtml = `
-            <div style="background: #f39c12; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-top: 20px;">
-                <i class="fas fa-hourglass-half"></i> ส่งงานแล้ว! รอร้านค้าตรวจสอบและให้คะแนน...
-            </div>`;
-    } else if (post.status === 'finished') {
-        actionSectionHtml = `
-            <div style="background: #27ae60; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-top: 20px;">
-                <i class="fas fa-check-double"></i> งานสำเร็จเรียบร้อยแล้ว
-            </div>`;
-    } else if (allStopsDone) {
-        // ✅ เมื่อทำครบทุกจุด และสถานะยังไม่เป็น delivered/finished
-        // แสดง UI ให้ดาวร้านค้าก่อนกดส่งงาน
-        actionSectionHtml = `
-            <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 20px; border: 2px solid #27ae60;">
-                <h3 style="text-align: center; color: #27ae60; margin: 0 0 10px 0;">🎉 มาถึงจุดหมายครบแล้ว!</h3>
-                <p style="text-align: center; color: #666; font-size: 0.9em; margin-bottom: 15px;">กรุณาให้คะแนนร้านค้าเพื่อยืนยันการส่งงาน</p>
-                
-                <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; font-size: 2em;">
-                    <span onclick="setRate(1)" class="star-btn" id="star1" style="cursor:pointer; color:#f1c40f;">★</span>
-                    <span onclick="setRate(2)" class="star-btn" id="star2" style="cursor:pointer; color:#f1c40f;">★</span>
-                    <span onclick="setRate(3)" class="star-btn" id="star3" style="cursor:pointer; color:#f1c40f;">★</span>
-                    <span onclick="setRate(4)" class="star-btn" id="star4" style="cursor:pointer; color:#f1c40f;">★</span>
-                    <span onclick="setRate(5)" class="star-btn" id="star5" style="cursor:pointer; color:#f1c40f;">★</span>
-                </div>
+    // 3. เตรียมส่วนปุ่ม Action ด้านล่าง (หัวใจสำคัญที่ต้องแก้)
+    let actionSectionHtml = '';
 
-                <button onclick="submitJobWithRating('${post.id}')" 
-                    style="width: 100%; background: #27ae60; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.1em; font-weight: bold; cursor: pointer;">
-                    ยืนยันการส่งงาน & ให้คะแนน
-                </button>
-            </div>
-        `;
+    if (acceptedRider === myUsername) {
+        // --- 🚩 เป็นเจ้าของงานแล้ว ---
+        if (post.status === 'delivered') {
+            actionSectionHtml = `<div style="background:#f39c12; color:white; padding:15px; border-radius:12px; text-align:center; margin-top:20px;">⌛ ส่งงานแล้ว! รอร้านค้าตรวจสอบ...</div>`;
+        } else if (allStopsDone) {
+            // ✅ ทำครบทุกจุดแล้ว โชว์ปุ่มส่งงาน + ให้คะแนน
+            actionSectionHtml = `
+                <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 20px; border: 2px solid #27ae60;">
+                    <h3 style="text-align: center; color: #27ae60;">🎉 ทำครบทุกจุดแล้ว!</h3>
+                    <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; font-size: 2em;">
+                        <span onclick="setRate(1)" class="star-btn" id="star1" style="cursor:pointer; color:#f1c40f;">★</span>
+                        <span onclick="setRate(2)" class="star-btn" id="star2" style="cursor:pointer; color:#f1c40f;">★</span>
+                        <span onclick="setRate(3)" class="star-btn" id="star3" style="cursor:pointer; color:#f1c40f;">★</span>
+                        <span onclick="setRate(4)" class="star-btn" id="star4" style="cursor:pointer; color:#f1c40f;">★</span>
+                        <span onclick="setRate(5)" class="star-btn" id="star5" style="cursor:pointer; color:#f1c40f;">★</span>
+                    </div>
+                    <button onclick="submitJobWithRating('${post.id}')" style="width: 100%; background: #27ae60; color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer;">
+                        ยืนยันส่งงาน & ให้คะแนนร้าน
+                    </button>
+                </div>`;
+        } else {
+            // 🔒 ยังทำไม่ครบ
+            actionSectionHtml = `<div style="background: #11998e; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-top: 20px;">🚲 คุณกำลังดำเนินการงานนี้อยู่</div>`;
+        }
+    } else if (pendingRider === myUsername) {
+        // --- ⌛ รอร้านค้าอนุมัติ ---
+        actionSectionHtml = `<div style="background: #f39c12; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-top: 20px;">⏳ ส่งคำขอแล้ว... รอร้านค้าอนุมัติ</div>`;
+    } else if (!post.acceptedBy && !post.pendingRider) {
+        // --- 🟢 งานยังว่าง (โชว์ปุ่มรับงาน) ---
+        actionSectionHtml = `
+            <button onclick="requestJob('${post.id}')" style="width: 100%; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.1em; font-weight: bold; margin-top: 20px; cursor: pointer;">
+                กดรับงานนี้ (฿${post.budget})
+            </button>`;
     } else {
-        // 🔒 ยังทำไม่ครบ
-        actionSectionHtml = `
-            <div style="background: #11998e; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-top: 20px;">
-                <i class="fas fa-motorcycle"></i> คุณกำลังดำเนินการงานนี้อยู่
-            </div>`;
+        // --- 🔴 งานมีคนอื่นรับไปแล้ว ---
+        actionSectionHtml = `<div style="background: #e74c3c; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-top: 20px;">❌ งานนี้มีผู้ดำเนินการแล้ว</div>`;
     }
-}
 
-    // 🚩 2. แสดงผลทั้งหมดลงในหน้าจอ (รวมเป็นชุดเดียว)
+    // 4. แสดงผลลงใน Container
     container.innerHTML = `
         <div class="merchant-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between;">
                 <div>
                     <small style="color: #888;">ผู้จ้างงาน:</small><br>
                     <b style="font-size: 1.2em;"><i class="fas fa-store"></i> ${post.storeName || post.author}</b>
@@ -453,17 +450,33 @@ if (post.acceptedBy === myUsername) {
             </div>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
             <small style="color: #888;">รายละเอียดงาน:</small>
-            <div style="margin-top: 5px;">${post.content || 'ไม่มีรายละเอียดเพิ่มเติม'}</div>
+            <div>${post.content || 'ไม่มีรายละเอียดเพิ่มเติม'}</div>
         </div>
 
-        <div class="timeline">
-            ${stopsHtml}
-        </div>
-
-        <div id="job-action-area">
-            ${actionSectionHtml}
-        </div>
+        <div class="timeline">${stopsHtml}</div>
+        <div id="job-action-area">${actionSectionHtml}</div>
     `;
+}
+
+
+async function requestJob(postId) {
+    if (!confirm("ยืนยันการกดรับงานนี้?")) return;
+    try {
+        const res = await fetch(`/api/posts/${postId}/request-job`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ riderName: localStorage.getItem('username') })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("✅ ส่งคำขอเรียบร้อย! รอร้านค้ากดตกลงครับ");
+            loadJobDetails(); // รีเฟรชหน้าจอเพื่อเปลี่ยนปุ่มเป็น "รออนุมัติ"
+        } else {
+            alert("ขออภัย: " + data.error);
+        }
+    } catch (e) {
+        alert("ติดต่อเซิร์ฟเวอร์ไม่ได้");
+    }
 }
 
 

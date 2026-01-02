@@ -2685,15 +2685,9 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
         const riderName = post.pendingRider;
 
         await postsCollection.updateOne(
-            { id: postId },
-            { 
-                $set: { 
-                    acceptedBy: riderName, 
-                    pendingRider: null, 
-                    status: 'in_progress' 
-                } 
-            }
-        );
+    { id: postId },
+    { $set: { acceptedBy: post.pendingRider, pendingRider: null, status: 'in_progress' } }
+);
 
         // 📣 ส่งสัญญาณบอกทุกคนในห้องงานนี้ (โดยเฉพาะไรเดอร์คนนั้น)
         io.to(`post-${postId}`).emit('rider-status-result', { 
