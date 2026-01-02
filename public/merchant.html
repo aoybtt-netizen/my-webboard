@@ -600,8 +600,11 @@ async function loadActiveMerchantTasks() {
                 
                 if (post.acceptedBy) {
                     if (canConfirm) {
-                        actionBtnHtml = '<button onclick="event.stopPropagation(); confirmAndRate(\'' + post.id + '\', \'' + post.acceptedBy + '\')" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">✅ จบงาน & ให้คะแนน</button>';
-                    } else {
+                        actionBtnHtml = `<button onclick="event.stopPropagation(); confirmAndRate('${post.id}', '${post.acceptedBy}')" 
+							style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">
+						✅ จบงาน & ให้คะแนน
+						</button>`;
+					} else {
                         actionBtnHtml = '<small style="color: #11998e; font-weight: bold;">🛵 ไรเดอร์กำลังดำเนินการ...</small>';
                     }
                 } else if (post.pendingRider) {
