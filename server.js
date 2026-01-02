@@ -402,20 +402,7 @@ async function getPostCostByLocation(location) {
 }
 
 
-// ฟังก์ชันกดปุ่มรีเซ็ตสถานะ
-function resetUserJobStatus(targetUsername) {
-    if (!confirm(`ยืนยันการรีเซ็ตสถานะงานของ ${targetUsername} เป็น "ว่าง/ปรกติ" ?`)) {
-        return;
-    }
-    // ส่งคำสั่งไปที่ Server
-    socket.emit('admin_reset_user_status', { targetUsername: targetUsername });
-}
 
-// รับผลตอบกลับจาก Server (ถ้ามี)
-socket.on('reset_status_success', (msg) => {
-    alert(msg || 'รีเซ็ตสถานะเรียบร้อยแล้ว');
-    // อาจจะเรียก fetchUsers() ใหม่เพื่ออัปเดตหน้าจอ
-});
 
 
 async function isUserBanned(username) {
