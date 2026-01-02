@@ -2585,6 +2585,52 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
 });
 
 
+// 🚩 เพิ่ม/แก้ไขใน server.js (สำหรับร้านค้ากดจบงาน)
+app.post('/api/posts/:id/finish-job', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { rating, author } = req.body; // author คือคนกด (ร้านค้า)
+
+    try {
+        const post = await postsCollection.findOne({ id: postId });
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+
+        // 1. อัปเดตสถานะงาน
+        await postsCollection.updateOne(
+            { id: postId },
+            { $set: { status: 'finished', finishedAt: Date.now() } }
+        );
+
+        // 2. ให้คะแนนไรเดอร์ (Rating Logic)
+        const riderName = post.acceptedBy;
+        if (riderName && rating) {
+            const score = parseFloat(rating);
+            const riderUser = await usersCollection.findOne({ username: riderName });
+            
+            if (riderUser) {
+                let oldRating = riderUser.rating || 5;
+                let count = riderUser.ratingCount || 0;
+                // สูตรคำนวณคะแนนเฉลี่ย
+                let newRating = ((oldRating * count) + score) / (count + 1);
+
+                await usersCollection.updateOne(
+                    { username: riderName },
+                    { $set: { rating: newRating, ratingCount: count + 1 } }
+                );
+            }
+        }
+
+        // 3. แจ้งไรเดอร์ว่างานจบแล้ว
+        io.to(`post-${postId}`).emit('job-finished-by-merchant', { rating: rating });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+
+
 // API: ให้คะแนนเรตติ้ง (ใช้ได้ทั้งร้านค้าให้ไรเดอร์ และไรเดอร์ให้ร้านค้า)
 app.post('/api/posts/:id/rate', async (req, res) => {
     const { targetUser, rating, comment, role } = req.body; // role: 'merchant' หรือ 'rider'
@@ -2700,6 +2746,51 @@ app.post('/api/posts/:id/rider-complete', async (req, res) => {
 
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
+});
+
+
+// 🚩 เพิ่มใน server.js (สำหรับไรเดอร์กดส่งงานและให้คะแนนร้าน)
+app.post('/api/posts/:id/rider-complete-job', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { merchantRating } = req.body; // รับคะแนนที่ไรเดอร์ให้ร้าน
+
+    try {
+        // 1. เปลี่ยนสถานะงานเป็น 'delivered' (รอร้านค้ากด finish อีกที หรือจะให้จบเลยก็ได้)
+        // ในที่นี้เราเปลี่ยนเป็น 'delivered' เพื่อบอกว่าส่งของครบแล้ว
+        await postsCollection.updateOne(
+            { id: postId },
+            { $set: { status: 'delivered' } } 
+        );
+
+        // 2. บันทึกคะแนนให้ร้านค้า (เจ้าของโพสต์)
+        const post = await postsCollection.findOne({ id: postId });
+        const merchantName = post.author;
+
+        if (merchantName && merchantRating) {
+            const score = parseFloat(merchantRating);
+            const merchantUser = await usersCollection.findOne({ username: merchantName });
+
+            if (merchantUser) {
+                let oldRating = merchantUser.rating || 5;
+                let count = merchantUser.ratingCount || 0;
+                let newRating = ((oldRating * count) + score) / (count + 1);
+
+                await usersCollection.updateOne(
+                    { username: merchantName },
+                    { $set: { rating: newRating, ratingCount: count + 1 } }
+                );
+            }
+        }
+
+        // แจ้งเตือนร้านค้า
+        io.to(`post-${postId}`).emit('job-delivered', { 
+            message: 'ไรเดอร์ส่งงานครบและให้คะแนนคุณแล้ว!' 
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
 });
 
 
