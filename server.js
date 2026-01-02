@@ -2470,21 +2470,20 @@ app.post('/api/posts/:id/comments', async (req, res) => {
 app.get('/api/rider-stats/:username', async (req, res) => {
     const { username } = req.params;
     try {
-        // 1. ดึงข้อมูลพื้นฐานจาก usersCollection (เช่น rating)
         const user = await usersCollection.findOne({ username: username });
-        
-        // 2. นับจำนวนงานที่เคยทำสำเร็จ (status: 'finished')
         const completedJobs = await postsCollection.countDocuments({ 
             acceptedBy: username, 
-            status: 'finished' 
+            status: { $in: ['finished', 'success', 'completed'] } 
         });
+
+        console.log(`Debug: Rider ${username} has ${completedJobs} completed jobs`);
 
         res.json({
             success: true,
             stats: {
                 username: username,
-                rating: user?.rating || 5.0, // ถ้าไม่มีให้เริ่มที่ 5.0
-                totalJobs: completedJobs,
+                rating: user?.rating || 0,
+                totalJobs: completedJobs, // ส่งค่าที่นับได้ไป
                 avatar: user?.avatar || null
             }
         });
