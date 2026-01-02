@@ -2395,8 +2395,8 @@ app.get('/api/merchant/tasks', async (req, res) => {
         // 1. ดึงงานทั้งหมดของร้านที่ยังไม่ได้กดยืนยันจบงาน (closed_by_merchant)
         const posts = await postsCollection.find({ 
             author: username, 
-			isMerchantTask: true,
-			status: { $ne: 'closed_by_merchant' } 
+            isMerchantTask: true,
+            status: { $ne: 'closed_by_merchant' } 
         }).sort({ id: -1 }).toArray();
 
         const now = Date.now();
@@ -2404,15 +2404,16 @@ app.get('/api/merchant/tasks', async (req, res) => {
 
         // 2. กรองงานที่จะแสดงผลในหน้า Active Tasks
         const activeTasks = posts.filter(post => {
-            // ✅ ถ้าสถานะเป็น finished (ไรเดอร์กดส่งงานมา) แต่ร้านยังไม่กดปิด -> ต้องโชว์ (ถูกต้องแล้ว)
+            // เงื่อนไข A: ถ้า Rider ส่งครบทุกจุดแล้ว (status: 'finished') -> ต้องโชว์เพื่อให้ร้านกดยืนยัน
             if (post.status === 'finished') return true;
 
-            // ✅ ถ้าเราเพิ่งแก้ให้กดจบงานแล้ว status เป็น 'closed_by_merchant' 
-            // มันจะหลุดตั้งแต่ post.find ด้านบนแล้วครับ
-
+            // เงื่อนไข B: เช็คเรื่องเวลาหมด (1 ชม.)
             const isExpired = (now - post.id > oneHour) && !post.isPinned;
+            
+            // ถ้างานถูกปิด (isClosed) หรือ หมดเวลาแล้ว -> ไม่ต้องโชว์ในหน้า Active
             if (post.isClosed || isExpired) return false;
 
+            // นอกเหนือจากนั้นคือสถานะ pending หรือ in_progress ที่ยังไม่หมดเวลา -> ให้โชว์
             return true;
         });
         
@@ -2498,45 +2499,6 @@ app.get('/api/rider-stats/:username', async (req, res) => {
     }
 });
 
-
-// 🚩 API สำหรับร้านค้ากด Bypass การเช็คอินของไรเดอร์
-app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
-    const { postId, stopIndex } = req.params;
-    const { merchantName } = req.body;
-
-    try {
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
-
-        // ตรวจสอบความปลอดภัย (เฉพาะเจ้าของงานที่ Bypass ได้)
-        if (post.author !== merchantName) {
-            return res.status(403).json({ success: false, error: 'ไม่มีสิทธิ์จัดการงานนี้' });
-        }
-
-        // อัปเดตสถานะ Stop ที่เลือกใน Array
-        const updateKey = `stops.${stopIndex}.status`;
-        const updateTimeKey = `stops.${stopIndex}.completedAt`;
-        
-        await postsCollection.updateOne(
-            { id: parseInt(postId) },
-            { $set: { 
-                [updateKey]: 'success',
-                [updateTimeKey]: Date.now() 
-            } }
-        );
-
-        // 🚩 ส่งสัญญาณ Socket ให้ไรเดอร์รู้ว่าจุดนี้ "ผ่านแล้ว" หน้าจอไรเดอร์จะได้เปลี่ยนทันที
-        io.to(`post-${postId}`).emit('stop-bypassed', { 
-            stopIndex: parseInt(stopIndex), 
-            status: 'success' 
-        });
-
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false });
-    }
-});
-
 //ใรเดอร์รับงานร้านค้า
 
 // API: ไรเดอร์เช็คอินพิกัดรายจุด และปิดงานอัตโนมัติ
@@ -2584,56 +2546,6 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
 });
 
 
-// 🚩 เพิ่ม/แก้ไขใน server.js (สำหรับร้านค้ากดจบงาน)
-// แก้ไขที่ไฟล์ Server
-app.post('/api/posts/:id/finish-job', async (req, res) => {
-    const postId = parseInt(req.params.id);
-    const { rating, author } = req.body;
-
-    try {
-        const post = await postsCollection.findOne({ id: postId });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
-
-        // 🟢 แก้ไขจุดนี้: เปลี่ยน status เป็น 'closed_by_merchant'
-        await postsCollection.updateOne(
-            { id: postId },
-            { 
-                $set: { 
-                    status: 'closed_by_merchant', 
-                    isClosed: true, 
-                    finishedAt: Date.now()
-                } 
-            }
-        );
-
-        // 2. ให้คะแนนไรเดอร์ (Rating Logic - เหมือนเดิม)
-        const riderName = post.acceptedBy;
-        if (riderName && rating) {
-            const score = parseFloat(rating);
-            const riderUser = await usersCollection.findOne({ username: riderName });
-            if (riderUser) {
-                let oldRating = riderUser.rating || 5;
-                let count = riderUser.ratingCount || 0;
-                let newRating = ((oldRating * count) + score) / (count + 1);
-                await usersCollection.updateOne(
-                    { username: riderName },
-                    { $set: { rating: newRating, ratingCount: count + 1 } }
-                );
-            }
-        }
-
-        // 3. แจ้งไรเดอร์ (ใช้ Event เดิมได้)
-        io.to(`post-${postId}`).emit('job-finished-by-merchant', { rating: rating });
-
-        res.json({ success: true });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ success: false, error: 'Server Error' });
-    }
-});
-
-
-
 // API: ให้คะแนนเรตติ้ง (ใช้ได้ทั้งร้านค้าให้ไรเดอร์ และไรเดอร์ให้ร้านค้า)
 app.post('/api/posts/:id/rate', async (req, res) => {
     const { targetUser, rating, comment, role } = req.body; // role: 'merchant' หรือ 'rider'
@@ -2678,117 +2590,43 @@ app.post('/api/posts/:id/apply', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// 🚩 API: ร้านค้ากดยืนยันรับ Rider (Approve)
+// API: ร้านค้ากดยืนยันรับ Rider คนนี้
 app.post('/api/posts/:id/approve-rider', async (req, res) => {
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
-        if (!post || !post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
-
-        const riderName = post.pendingRider;
+        if (!post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
 
         await postsCollection.updateOne(
-    { id: postId },
-    { $set: { acceptedBy: post.pendingRider, pendingRider: null, status: 'in_progress' } }
-);
-
-        // 📣 ส่งสัญญาณบอกทุกคนในห้องงานนี้ (โดยเฉพาะไรเดอร์คนนั้น)
-        io.to(`post-${postId}`).emit('rider-status-result', { 
-            status: 'approved', 
-            rider: riderName,
-            message: '✅ ร้านค้าอนุมัติให้คุณรับงานนี้แล้ว!' 
-        });
-
+            { id: postId },
+            { 
+                $set: { 
+                    acceptedBy: post.pendingRider, 
+                    pendingRider: null, // ล้างค่ารอคอย
+                    status: 'in_progress' // เปลี่ยนสถานะงาน
+                } 
+            }
+        );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// 🚩 API: ร้านค้ากดปฏิเสธคำขอ (Reject)
+// API: ร้านค้ากดปฏิเสธคำขอของไรเดอร์
 app.post('/api/posts/:id/reject-rider', async (req, res) => {
     const postId = parseInt(req.params.id);
     try {
-        const post = await postsCollection.findOne({ id: postId });
-        const riderName = post.pendingRider;
-
         await postsCollection.updateOne(
             { id: postId },
-            { $set: { pendingRider: null } }
+            { $set: { pendingRider: null } } // ล้างค่าไรเดอร์ที่ขอมา
         );
         
-        // 📣 ส่งสัญญาณบอกไรเดอร์ว่าถูกปฏิเสธ
-        io.to(`post-${postId}`).emit('rider-status-result', { 
-            status: 'rejected', 
-            rider: riderName,
-            message: '❌ ร้านค้าได้ปฏิเสธคำขอของคุณ' 
-        });
+        // ส่งสัญญาณบอกไรเดอร์ว่าคำขอถูกปฏิเสธ (Rider จะได้กดรับงานใหม่ได้)
+        io.emit('rider-rejected', { postId: postId });
         
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-
-// API: ไรเดอร์แจ้งว่าส่งงานครบแล้ว
-app.post('/api/posts/:id/rider-complete', async (req, res) => {
-    const postId = parseInt(req.params.id);
-    try {
-        await postsCollection.updateOne(
-            { id: postId },
-            { $set: { status: 'delivered' } } // สถานะใหม่: ส่งแล้ว รอรีวิว
-        );
-
-        // แจ้งเตือนร้านค้าให้รู้ตัว
-        io.to(`post-${postId}`).emit('job-delivered', { 
-            message: 'ไรเดอร์ส่งงานครบแล้ว กรุณาตรวจสอบและให้คะแนน!' 
-        });
-
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
-});
-
-
-// 🚩 เพิ่มใน server.js (สำหรับไรเดอร์กดส่งงานและให้คะแนนร้าน)
-app.post('/api/posts/:id/rider-complete-job', async (req, res) => {
-    const postId = parseInt(req.params.id);
-    const { merchantRating } = req.body; // รับคะแนนที่ไรเดอร์ให้ร้าน
-
-    try {
-        // 1. เปลี่ยนสถานะงานเป็น 'delivered' (รอร้านค้ากด finish อีกที หรือจะให้จบเลยก็ได้)
-        // ในที่นี้เราเปลี่ยนเป็น 'delivered' เพื่อบอกว่าส่งของครบแล้ว
-        await postsCollection.updateOne(
-            { id: postId },
-            { $set: { status: 'delivered' } } 
-        );
-
-        // 2. บันทึกคะแนนให้ร้านค้า (เจ้าของโพสต์)
-        const post = await postsCollection.findOne({ id: postId });
-        const merchantName = post.author;
-
-        if (merchantName && merchantRating) {
-            const score = parseFloat(merchantRating);
-            const merchantUser = await usersCollection.findOne({ username: merchantName });
-
-            if (merchantUser) {
-                let oldRating = merchantUser.rating || 5;
-                let count = merchantUser.ratingCount || 0;
-                let newRating = ((oldRating * count) + score) / (count + 1);
-
-                await usersCollection.updateOne(
-                    { username: merchantName },
-                    { $set: { rating: newRating, ratingCount: count + 1 } }
-                );
-            }
-        }
-
-        // แจ้งเตือนร้านค้า
-        io.to(`post-${postId}`).emit('job-delivered', { 
-            message: 'ไรเดอร์ส่งงานครบและให้คะแนนคุณแล้ว!' 
-        });
-
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false });
-    }
-});
 
 
 

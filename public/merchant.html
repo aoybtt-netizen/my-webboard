@@ -1571,98 +1571,21 @@ function switchTab(tabName) {
 
 function renderSidebarDetails() {
     const container = document.getElementById('sidebar-details-content');
-    
-    // 1. Safety Check
-    if (!activeTaskInSidebar || !activeTaskInSidebar.stops) {
-        return;
-    }
-
-    let timelineHtml = '';
-
-    // 2. Loop สร้างแต่ละจุด (Stop)
-    activeTaskInSidebar.stops.forEach((stop, index) => {
-        const isDone = (stop.status === 'success');
-        
-        // แยกส่วน Icon/Button ออกมาเพื่อไม่ให้โค้ดซ้อนกันเกินไป
-        let actionContent = '';
-        if (isDone) {
-            actionContent = '<i class="fas fa-check-circle" style="color: #27ae60;"></i>';
-        } else {
-            actionContent = `
-                <button onclick="confirmBypass('${activeTaskInSidebar.id}', ${index}, '${stop.locationName}')" 
-                        style="background: #e74c3c; color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; cursor: pointer;">
-                    <i class="fas fa-forward"></i> ข้าม
-                </button>`;
-        }
-
-        // กำหนดสีตามสถานะ
-        const dotColor = isDone ? '#27ae60' : '#ddd';
-        const titleColor = isDone ? '#27ae60' : '#333';
-
-        // ประกอบร่าง HTML ของไอเทมนี้
-        timelineHtml += `
-            <div class="timeline-item" style="position: relative; margin-bottom: 20px; padding-left: 25px;">
-                <div class="dot" style="position: absolute; left: -32px; top: 0; width: 15px; height: 15px; border-radius: 50%; background: ${dotColor}; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.1);"></div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <b style="color: ${titleColor}; font-size: 0.95em;">${stop.locationName}</b><br>
-                        <small style="color: #666;">${stop.note || 'ไม่มีหมายเหตุ'}</small>
-                    </div>
-                    <div>
-                        ${actionContent}
-                    </div>
+    let html = '';
+    activeTaskInSidebar.stops.forEach((stop, i) => {
+        const isDone = stop.status === 'success';
+        html += `
+            <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; opacity: ${isDone ? 0.5 : 1}">
+                <i class="fas ${isDone ? 'fa-check-circle' : 'fa-circle'}" style="color: ${isDone ? '#27ae60' : '#ccc'}"></i>
+                <div>
+                    <div style="font-weight: bold; font-size: 0.9em;">${i === 0 ? '🏠 รับของ' : '📍 จุดส่งที่ '+i}</div>
+                    <div style="font-size: 0.85em;">${stop.label}</div>
                 </div>
-            </div>`;
+            </div>
+        `;
     });
-
-    // 3. ใส่ครอบ Timeline และ Render
-    container.innerHTML = `
-        <div class="timeline" style="padding: 10px; border-left: 2px dashed #ddd; margin-left: 20px;">
-            ${timelineHtml}
-        </div>`;
+    container.innerHTML = html;
 }
-
-
-async function confirmBypass(postId, stopIndex, locationName) {
-    if (!confirm(`คุณต้องการยืนยันการเช็คอินแทนไรเดอร์ที่จุด: "${locationName}" ใช่หรือไม่?`)) return;
-
-    try {
-        const res = await fetch(`/api/posts/${postId}/bypass-stop/${stopIndex}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ merchantName: myUsername })
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-            // อัปเดตข้อมูลในตัวแปรโลคอลเพื่อรีเรนเดอร์ทันที
-            activeTaskInSidebar.stops[stopIndex].status = 'success';
-            renderSidebarDetails(); // รีเฟรชหน้าแสดงลำดับงาน
-            
-            // ตรวจสอบว่าถ้าครบทุกจุดแล้ว ให้แสดงปุ่มจบงานในหน้าหลัก
-            loadActiveMerchantTasks(); 
-        } else {
-            alert("ไม่สามารถ Bypass ได้: " + data.error);
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-
-socket.on('stop-bypassed', (data) => {
-    console.log("📍 จุดที่ " + data.stopIndex + " ถูกร้านค้า Bypass แล้ว");
-    
-    // ถ้าเราเปิดดูงานนี้อยู่ ให้โหลดข้อมูลใหม่
-    if (typeof jobId !== 'undefined' && jobId) {
-        loadJobDetails(); // ฟังก์ชันเดิมที่คุณมีเพื่อรีเฟรชหน้าจอทั้งหมด
-        
-        // หรือจะแจ้งเตือนไรเดอร์สักหน่อย
-        alert("📢 ร้านค้าได้ยืนยันการเช็คอินที่จุดดังกล่าวให้คุณแล้ว");
-    }
-});
-
 
 // ระบบแชท (ใช้ Logic เดียวกับ post.html)
 async function loadSidebarChat(postId) {
@@ -1845,17 +1768,6 @@ async function confirmAndRate(postId, riderName) {
         alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
     }
 }
-
-
-socket.on('job-delivered', (data) => {
-    alert("📢 " + data.message);
-    
-    // รีเฟรชหน้างานเพื่อแสดงปุ่มให้คะแนน (ถ้าเปิดอยู่)
-    if (activeTaskInSidebar) {
-        openRightSidebar(activeTaskInSidebar.id);
-    }
-    loadActiveMerchantTasks();
-});
 
 
 </script>
