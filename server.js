@@ -2471,19 +2471,26 @@ app.get('/api/rider-stats/:username', async (req, res) => {
     const { username } = req.params;
     try {
         const user = await usersCollection.findOne({ username: username });
+
+        // 🚩 แก้ไขจุดนับงาน: เช็คทั้งสองฟิลด์ (acceptedBy และ acceptedViewer) 
+        // และเช็คทุกสถานะที่ถือว่างานสำเร็จ/จบแล้ว
         const completedJobs = await postsCollection.countDocuments({ 
-            acceptedBy: username, 
-            status: { $in: ['finished', 'success', 'completed'] } 
+            $or: [
+                { acceptedBy: username }, 
+                { acceptedViewer: username }
+            ],
+            status: { $in: ['finished', 'success', 'completed', 'closed_permanently', 'rating_pending'] } 
         });
 
-        console.log(`Debug: Rider ${username} has ${completedJobs} completed jobs`);
+        // ตรวจสอบใน Terminal ว่ารอบนี้นับได้เลขอะไร
+        console.log(`📊 Stats for ${username}: Found ${completedJobs} jobs`);
 
         res.json({
             success: true,
             stats: {
                 username: username,
                 rating: user?.rating || 0,
-                totalJobs: completedJobs, // ส่งค่าที่นับได้ไป
+                totalJobs: completedJobs, 
                 avatar: user?.avatar || null
             }
         });

@@ -769,7 +769,6 @@ async function loadSavedLocations() {
     const data = await res.json();
     if (data.success) {
         mySavedLocations = data.locations;
-        console.log("โหลดพิกัดสำเร็จ:", mySavedLocations);
     }
 }
 
