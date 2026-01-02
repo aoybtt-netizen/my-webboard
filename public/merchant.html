@@ -474,9 +474,18 @@
             <div class="menu-item" onclick="openAddLocationModal()">
                 <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
             </div>
+			<div class="menu-item" onclick="openAddOrderModal()">
+                <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกออเดอร์
+            </div>
             <hr>
             <div class="menu-item" onclick="openManageLocationsModal()">
-                <i class="fas fa-list"></i> รายการที่บันทึกไว้ทั้งหมด
+                <i class="fas fa-list"></i> พิกัดที่บันทึกไว้ทั้งหมด
+            </div>
+			<div class="menu-item" onclick="openAddOrderModal()">
+                <i class="fas fa-list"></i> ออเดอร์ที่บันทึกไว้ทั้งหมด
+            </div>
+			<div class="menu-item" onclick="openAddOrderModal()">
+                <i class="fas fa-list"></i> การสั่งงานด้วยเสียง
             </div>
         </div>
     </div>
@@ -753,6 +762,10 @@ function openAddLocationModal() {
     document.querySelector('#map-modal .btn-submit:first-child').innerText = "บันทึกลงสมุด";
     
     initMap();
+}
+
+
+function openAddOrderModal(){
 }
 
 
