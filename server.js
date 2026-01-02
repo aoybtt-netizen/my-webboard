@@ -2409,21 +2409,21 @@ app.get('/api/merchant/tasks', async (req, res) => {
 
         // 2. กรองงาน (Filtering Logic)
         const activeTasks = posts.filter(post => {
-            // เงื่อนไขที่ 1: ถ้า Rider ส่งสำเร็จแล้ว (finished) -> ต้องโชว์เพื่อให้ Merchant กดยืนยันจบงาน
-            if (post.status === 'finished') return true;
+		const now = Date.now();
+		const isExpiredAndNoRider = (now - post.id > 3600000) && !post.isPinned && !post.acceptedBy;
 
-            // เงื่อนไขที่ 2: งานที่ "หมดเวลาและไม่มีคนรับ" 
-            // เพิ่มการเช็ค !post.acceptedBy เพื่อให้งานที่ไรเดอร์รับไปแล้วไม่ถูกซ่อน แม้จะเกิน 1 ชม.
-            const isExpiredAndNoRider = (now - post.id > oneHour) && !post.isPinned && !post.acceptedBy;
-            
-            // เงื่อนไขที่ 3: งานที่ถูกปิดโดยระบบ (isClosed) หรือ หมดเวลาตามเงื่อนไขข้างบน -> ไม่ต้องโชว์
-            if (post.isClosed || isExpiredAndNoRider) {
-                return false;
-            }
+		// 1. เช็คสิ่งที่ต้อง "ซ่อน" ก่อน (ถ้าเข้าเงื่อนไขนี้ ให้หายไปทันที)
+		if (post.status === 'closed_by_merchant' || post.isClosed || isExpiredAndNoRider) {
+        return false; 
+		}
 
-            // นอกเหนือจากนั้น (เช่น กำลังหาไรเดอร์ หรือ ไรเดอร์กำลังไปส่ง) -> ให้โชว์
-            return true;
-        });
+		// 2. เช็คสิ่งที่ต้อง "แสดง" (เช่น ไรเดอร์ส่งแล้วรอร้านกดยืนยัน หรือ กำลังวิ่งงาน)
+		if (post.status === 'finished' || post.acceptedBy || !post.isClosed) {
+        return true;
+		}
+
+		return false;
+});
         
         res.json({ success: true, posts: activeTasks });
     } catch (error) {
@@ -2504,6 +2504,59 @@ app.get('/api/rider-stats/:username', async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ success: false });
+    }
+});
+
+// API: ร้านค้ายืนยันจบงาน และให้คะแนนไรเดอร์
+app.post('/api/posts/:postId/finish-job', async (req, res) => {
+    const { postId } = req.params;
+    const { rating, author } = req.body; // author คือชื่อร้านค้าที่ส่งมา
+
+    try {
+        // 1. ค้นหางานนี้ก่อน
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงานนี้' });
+
+        // 2. อัปเดตสถานะโพสต์ให้เป็น "ปิดโดยร้านค้า" เพื่อให้หายจากหน้า Active Tasks
+        await postsCollection.updateOne(
+            { id: parseInt(postId) },
+            { 
+                $set: { 
+                    status: 'closed_by_merchant', 
+                    isClosed: true,
+                    merchantRating: rating, // บันทึกคะแนนที่ร้านค้าให้
+                    finishTimestamp: Date.now()
+                } 
+            }
+        );
+
+        // 3. อัปเดตสถิติให้ร้านค้า (Merchant)
+        await usersCollection.updateOne(
+            { username: post.author },
+            { $inc: { totalJobs: 1 } }
+        );
+
+        // 4. อัปเดตสถิติและคะแนนให้ไรเดอร์ (Rider)
+        const riderName = post.acceptedBy || post.acceptedViewer;
+        if (riderName) {
+            await usersCollection.updateOne(
+                { username: riderName },
+                { 
+                    $inc: { totalJobs: 1, totalRatingScore: rating, ratingCount: 1 }
+                    // หมายเหตุ: การคำนวณคะแนนเฉลี่ย สามารถทำได้ตอนดึงไปโชว์ (score / count)
+                }
+            );
+        }
+
+        // 5. แจ้งเตือนผ่าน Socket (ถ้ามี)
+        io.to(`post-${postId}`).emit('job-finished-complete', { postId, rating });
+        io.emit('update-post-status'); // ให้หน้าจอคนอื่นอัปเดตด้วย
+
+        res.json({ success: true, message: 'บันทึกการจบงานเรียบร้อย' });
+
+    } catch (error) {
+        console.error("Finish Job Error:", error);
+        res.status(500).json({ success: false, error: 'Database Error' });
     }
 });
 
@@ -3061,7 +3114,7 @@ socket.on('reply-extension-request', async (data) => {
             // 🚩 แก้ไขสถานะให้เป็น 'finished' (เพื่อให้สถิติที่หน้า Merchant นับเจอ)
             await postsCollection.updateOne({ id: parseInt(postId) }, { 
                 $set: { 
-                    status: 'finished', // เปลี่ยนจาก rating_pending เป็น finished เลย หรือจัดการให้ดี
+                    status: 'closed_by_merchant', // เปลี่ยนจาก finished เป็นตัวนี้เพื่อให้หายจากหน้า Active
                     isClosed: true, 
                     finishTimestamp: Date.now()
                 } 
@@ -3087,7 +3140,7 @@ socket.on('reply-extension-request', async (data) => {
             }
 
             io.emit('update-post-status');
-            io.to(`post-${postId}`).emit('start-rating-phase');
+            io.to(`post-${postId}`).emit('job-fully-closed');
         }
     }
 });
