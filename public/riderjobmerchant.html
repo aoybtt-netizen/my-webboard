@@ -247,7 +247,7 @@
 		let currentPostData = null;
 
         const urlParams = new URLSearchParams(window.location.search);
-        const jobId = urlParams.get('id');
+        const jobId = urlParams.get('view_id') || urlParams.get('id');
         const myUsername = localStorage.getItem('myUsername');
 		
 		// 🚩 เช็คว่าถ้าไม่มี ID งาน ให้ดีดกลับหน้าแรกทันที ไม่ต้องรอ Loading
