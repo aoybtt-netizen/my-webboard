@@ -2605,11 +2605,10 @@ app.post('/api/posts/:id/reject-rider', async (req, res) => {
 // Socket.io Logic
 // ==========================================
 io.on('connection', (socket) => {
-	console.log('User connected:', socket.id);
+	
 	socket.on('join-post', (postId) => {
         const roomName = `post-${postId}`;
         socket.join(roomName);
-        console.log(`✅ Socket ${socket.id} joined room: ${roomName}`);
     });
     
     socket.on('register', async (username) => {

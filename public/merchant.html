@@ -386,7 +386,7 @@
     <script>
 	const socket = io();
 	const myUsername = localStorage.getItem('myUsername');
-	
+	let currentTab = 'notif';
     let stopCount = 0;
     let mySavedLocations = [];
     let currentTargetStopId = null;
@@ -1323,13 +1323,27 @@ function closeRightSidebar() {
 }
 
 function switchTab(tabName) {
+    // 🚩 อัปเดตค่า Tab ปัจจุบันลงในตัวแปร
+    currentTab = tabName; 
+
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
     document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
-    
+
     document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    // หา Tab Item ที่ตรงกับ tabName เพื่อใส่ class active (ตัวอย่างเช่น index)
+    
+    // หาปุ่มที่ถูกกด
     const tabs = ['notif', 'details', 'chat'];
-    document.querySelectorAll('.tab-item')[tabs.indexOf(tabName)].classList.add('active');
+    const activeIdx = tabs.indexOf(tabName);
+    const targetTabItem = document.querySelectorAll('.tab-item')[activeIdx];
+    
+    if (targetTabItem) {
+        targetTabItem.classList.add('active');
+        
+        // 🚩 ถ้ากดสลับมาที่หน้าแชทแล้ว ให้ล้างสีแดงแจ้งเตือนออก
+        if (tabName === 'chat') {
+            targetTabItem.style.color = ''; // คืนค่าสีเดิมตาม CSS
+        }
+    }
 }
 
 function renderSidebarDetails() {
