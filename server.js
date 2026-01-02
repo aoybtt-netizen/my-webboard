@@ -2463,6 +2463,7 @@ app.post('/api/posts/:id/comments', async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, error: 'Database Error' });
     }
+	io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
 });
 
 //ใรเดอร์รับงานร้านค้า
@@ -2604,6 +2605,12 @@ app.post('/api/posts/:id/reject-rider', async (req, res) => {
 // Socket.io Logic
 // ==========================================
 io.on('connection', (socket) => {
+	console.log('User connected:', socket.id);
+	socket.on('join-post', (postId) => {
+        const roomName = `post-${postId}`;
+        socket.join(roomName);
+        console.log(`✅ Socket ${socket.id} joined room: ${roomName}`);
+    });
     
     socket.on('register', async (username) => {
         socket.join(username);

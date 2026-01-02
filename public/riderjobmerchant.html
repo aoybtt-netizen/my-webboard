@@ -241,7 +241,7 @@
     </div>
 
     <script>
-	
+		const socket = io();
 		let routeMap = null;
 		let currentPostData = null;
 
@@ -671,6 +671,21 @@ async function sendRiderChat() {
         alert("ส่งข้อความไม่ได้");
     }
 }
+
+	// ทันทีที่โหลดหน้างาน Rider ให้เข้าห้องแชทของงานนั้นๆ
+window.addEventListener('load', () => {
+    if (jobId) {
+        socket.emit('join-post', jobId);
+        console.log("Joined Room:", jobId);
+    }
+});
+
+// รับแชทสดฝั่ง Rider ด้วย
+socket.on('new-comment', (data) => {
+    if (data.postId == jobId) {
+        loadRiderMessages(); // หรือจะใช้ insertAdjacentHTML แบบร้านค้าก็ได้จะลื่นกว่า
+    }
+});
 
 
         window.onload = loadJobDetails;
