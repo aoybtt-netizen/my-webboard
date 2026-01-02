@@ -2748,6 +2748,37 @@ app.post('/api/posts/:id/reject-rider', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
+app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
+    const { postId } = req.params;
+    const { rating, riderName } = req.body;
+
+    try {
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+
+        // 1. บันทึกคะแนนลงในโพสต์ (เพื่อเก็บหลักฐาน)
+        await postsCollection.updateOne(
+            { id: parseInt(postId) },
+            { $set: { riderToMerchantRating: rating } }
+        );
+
+        // 2. อัปเดตคะแนนสะสมให้ร้านค้า (Author ของโพสต์)
+        await usersCollection.updateOne(
+            { username: post.author },
+            { 
+                $inc: { 
+                    merchantRatingScore: rating, 
+                    merchantRatingCount: 1 
+                } 
+            }
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false });
+    }
+});
+
 
 
 

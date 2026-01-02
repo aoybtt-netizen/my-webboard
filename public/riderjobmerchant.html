@@ -263,10 +263,13 @@
         
         if (data.success) {
             currentPostData = data.post; 
-            renderJob(data.post); // วาดเนื้อหางาน
+            renderJob(data.post); // วาดเนื้อหางาน (จุดรับ-ส่ง)
             
-            // 🚩 เรียกใช้ฟังก์ชันจัดการปุ่มที่นี่
+            // 1. จัดการปุ่มกด (รับงาน/กำลังดำเนินการ/ฯลฯ)
             updateFooterButtons(data.post); 
+            
+            // 2. 🚩 เพิ่มบรรทัดนี้: เช็คว่างานจบหรือยัง เพื่อโชว์หน้าให้คะแนนร้านค้า
+            checkJobCompletion(data.post);
         }
     } catch (error) { 
         console.error("Load Job Details Error:", error); 
@@ -727,6 +730,53 @@ async function sendRiderChat() {
     }
 }
 
+let selectedMerchantRating = 0;
+
+// ฟังก์ชันระบายสีดาว
+function setMerchantRating(n) {
+    selectedMerchantRating = n;
+    const stars = document.querySelectorAll('#merchant-stars i');
+    stars.forEach((s, i) => {
+        s.style.color = i < n ? '#f1c40f' : '#ddd';
+    });
+    const btn = document.getElementById('btn-submit-rating');
+    btn.disabled = false;
+    btn.style.background = '#11998e';
+}
+
+// ตรวจสอบใน loadJobDetails ว่างานจบหรือยัง
+function checkJobCompletion(post) {
+    if (post.status === 'finished' && post.acceptedBy === myUsername) {
+        const modal = document.getElementById('rating-merchant-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex'; // มั่นใจว่าแสดงผลแน่นอน
+        }
+    }
+}
+
+// ส่งคะแนนไปที่ Server
+async function submitMerchantRating() {
+    try {
+        const res = await fetch(`/api/posts/${jobId}/rate-merchant`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                rating: selectedMerchantRating,
+                riderName: myUsername 
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert("ขอบคุณสำหรับคะแนนรีวิวครับ!");
+            location.href = '/index.html'; // เด้งกลับหน้าแรก (ปรับ path ตามจริง)
+        }
+    } catch (e) {
+        alert("เกิดข้อผิดพลาดในการส่งคะแนน");
+    }
+}
+
 	// ทันทีที่โหลดหน้างาน Rider ให้เข้าห้องแชทของงานนั้นๆ
 window.addEventListener('load', () => {
     if (jobId) {
@@ -790,6 +840,28 @@ socket.on('job-finished-complete', (data) => {
 	<div class="floating-chat-btn" onclick="openRiderChat()">
     <i class="fas fa-comments"></i>
     <span>CHAT</span>
+</div>
+
+
+	<div id="rating-merchant-modal" class="chat-modal hidden" style="z-index: 2000; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center;">
+    <div style="background: white; width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; text-align: center;">
+        <div style="font-size: 3em; color: #f1c40f; margin-bottom: 15px;"><i class="fas fa-store"></i></div>
+        <h3 style="margin: 0 0 10px 0;">งานสำเร็จแล้ว!</h3>
+        <p style="color: #666; font-size: 0.9em;">กรุณาให้คะแนนความพึงพอใจต่อร้านค้า</p>
+        
+        <div style="margin: 20px 0; font-size: 2em; color: #ddd;" id="merchant-stars">
+            <i class="fas fa-star" onclick="setMerchantRating(1)" style="cursor:pointer;"></i>
+            <i class="fas fa-star" onclick="setMerchantRating(2)" style="cursor:pointer;"></i>
+            <i class="fas fa-star" onclick="setMerchantRating(3)" style="cursor:pointer;"></i>
+            <i class="fas fa-star" onclick="setMerchantRating(4)" style="cursor:pointer;"></i>
+            <i class="fas fa-star" onclick="setMerchantRating(5)" style="cursor:pointer;"></i>
+        </div>
+
+        <button onclick="submitMerchantRating()" id="btn-submit-rating" disabled 
+            style="width: 100%; padding: 12px; background: #ccc; color: white; border: none; border-radius: 12px; font-weight: bold;">
+            ยืนยันและกลับหน้าแรก
+        </button>
+    </div>
 </div>
 
 
