@@ -721,12 +721,14 @@ function openStopMap(id) {
     mapMode = 'stop';
     
     document.getElementById('map-modal').classList.remove('hidden');
-    document.getElementById('map-extra-info').classList.add('hidden'); // ซ่อนแค่ช่องกรอกชื่อ
+    document.getElementById('map-extra-info').classList.add('hidden');
     
     document.querySelector('#map-modal h3').innerText = "📍 ปักหมุดจุดส่งงาน";
     document.querySelector('#map-modal .btn-submit:first-child').innerText = "เลือกจุดนี้";
     
     initMap();
+    // 🚩 เพิ่มบรรทัดนี้: บังคับคำนวณขนาดใหม่
+    setTimeout(() => { if(merchantMap) merchantMap.invalidateSize(); }, 300);
 }
 
 // ฟังก์ชันเปิด Modal เพิ่มพิกัดส่งงานใหม่
@@ -780,10 +782,24 @@ async function confirmMapLocation() {
     if (!selectedLat || !selectedLng) return alert("กรุณาปักหมุดบนแผนที่");
 
     if (mapMode === 'stop') {
-        // ... (Logic สำหรับเลือกจุดส่งงานเหมือนเดิมของคุณ) ...
+        const id = currentTargetStopId;
+        const latInput = document.getElementById(`lat-${id}`);
+        const lngInput = document.getElementById(`lng-${id}`);
+        const coordsDisplay = document.getElementById(`coords-display-${id}`);
+
+        if (latInput && lngInput) {
+            latInput.value = selectedLat;
+            lngInput.value = selectedLng;
+            if (coordsDisplay) {
+                coordsDisplay.innerText = `พิกัด: ${selectedLat.toFixed(5)}, ${selectedLng.toFixed(5)}`;
+            }
+            closeMapModal();
+            console.log(`📍 บันทึกพิกัดจุดส่ง ${id} สำเร็จ`);
+        }
         return;
     }
 
+    // ส่วนที่เหลือสำหรับบันทึกลงสมุดที่อยู่ (Book Mode)
     const name = document.getElementById('map-loc-name').value.trim();
     if (!name) return alert("กรุณาระบุชื่อเรียกพิกัด");
 
