@@ -421,6 +421,33 @@
 
 
 
+.rider-profile-box {
+    background: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.stat-item {
+    text-align: center;
+    flex: 1;
+}
+.stat-value {
+    display: block;
+    font-weight: bold;
+    color: #11998e;
+    font-size: 1.1em;
+}
+.stat-label {
+    font-size: 0.75em;
+    color: #999;
+}
+
+
+
 
     </style>
 </head>
@@ -580,8 +607,8 @@ async function loadActiveMerchantTasks() {
                 } else if (post.pendingRider) {
                     actionBtnHtml = `
                         <div style="text-align:right;">
-                            <small style="display:block; margin-bottom:5px; color:#f39c12;">Rider <b>${post.pendingRider}</b> ของานนี้</small>
-                            <button onclick="event.stopPropagation(); approveRider('${post.id}')" style="background: #f39c12; color: white; border: none; padding: 6px 15px; border-radius: 15px; font-size: 0.8em; cursor: pointer; font-weight:bold;">ตกลงให้งาน</button>
+                            <small style="display:block; margin-bottom:5px; color:#f39c12;">Rider <b>${post.pendingRider}</b> ของานนี้...</small>
+                            
                         </div>`;
                 } else {
                     actionBtnHtml = '<small style="color: #999;">⌛ รอไรเดอร์รับงาน...</small>';
@@ -1433,32 +1460,61 @@ function closeManageModal() {
         notifList.innerHTML = ''; 
         
         if (activeTaskInSidebar.pendingRider) {
+			const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.pendingRider}`);
+			const statsData = await statsRes.json();
+			const stats = statsData.stats;
             notifList.innerHTML = `
-                <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12;">
-                    <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> มีคำขอเข้าใหม่</b><br>
-                    คุณ <b>${activeTaskInSidebar.pendingRider}</b> ต้องการรับงานนี้<br>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px;">ตกลง</button>
-                        <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px;">ปฏิเสธ</button>
+            <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12;">
+                <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ไรเดอร์สนใจรับงานนี้</b>
+                
+                <div class="rider-profile-box">
+                    <div style="width: 50px; height: 50px; background: #ddd; border-radius: 50%; overflow: hidden;">
+                        <img src="${stats.avatar || 'https://via.placeholder.com/50'}" style="width:100%; height:100%; object-fit:cover;">
                     </div>
-                </div>`;
-        } else if (activeTaskInSidebar.acceptedBy) {
-            notifList.innerHTML = `<p style="text-align:center; color:#27ae60;">🟢 มอบหมายงานให้คุณ ${activeTaskInSidebar.acceptedBy} เรียบร้อยแล้ว</p>`;
-        } else {
-            notifList.innerHTML = `<p style="text-align:center; color:#999;">⌛ ยังไม่มีการแจ้งเตือนใหม่</p>`;
-        }
+                    <div style="flex-grow: 1;">
+                        <div style="font-weight:bold; color:#333;">${stats.username}</div>
+                        <div style="color:#f1c40f; font-size: 0.85em;">
+                            <i class="fas fa-star"></i> ${stats.rating.toFixed(1)} คะแนน
+                        </div>
+                    </div>
+                </div>
 
-        renderSidebarDetails();
-        loadSidebarChat(postId);
-        
-        if (typeof socket !== 'undefined') {
-            socket.emit('join-post', postId);
-        }
+                <div style="display: flex; margin-top: 10px; background: white; border-radius: 10px; padding: 10px;">
+                    <div class="stat-item">
+                        <span class="stat-value">${stats.totalJobs}</span>
+                        <span class="stat-label">งานที่สำเร็จ</span>
+                    </div>
+                    <div style="width: 1px; background: #eee;"></div>
+                    <div class="stat-item">
+                        <span class="stat-value">ดีมาก</span>
+                        <span class="stat-label">ระดับ</span>
+                    </div>
+                </div>
 
-        document.getElementById('right-sidebar').classList.add('active');
-        document.getElementById('right-sidebar-overlay').classList.remove('hidden');
-        
-        switchTab('notif'); // เริ่มที่หน้าแจ้งเตือนเสมอ
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">ตกลงให้งาน</button>
+                    <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">ปฏิเสธ</button>
+                </div>
+            </div>
+        `;
+    } else if (activeTaskInSidebar.acceptedBy) {
+        notifList.innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
+                <p style="color:#27ae60; font-weight:bold;">มอบหมายงานให้คุณ ${activeTaskInSidebar.acceptedBy} แล้ว</p>
+                <small style="color:#999;">คุณสามารถติดตามพิกัดและแชทคุยได้ใน Tab อื่น</small>
+            </div>
+        `;
+    } else {
+        notifList.innerHTML = `<p style="text-align:center; padding:30px; color:#999;">⌛ กำลังรอไรเดอร์เข้ามารับงาน...</p>`;
+    }
+
+    renderSidebarDetails();
+    loadSidebarChat(postId);
+    socket.emit('join-post', postId);
+    document.getElementById('right-sidebar').classList.add('active');
+    document.getElementById('right-sidebar-overlay').classList.remove('hidden');
+    switchTab('notif');  // เริ่มที่หน้าแจ้งเตือนเสมอ
     } catch (e) {
         console.error("Sidebar Error:", e);
     }

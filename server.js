@@ -2466,6 +2466,33 @@ app.post('/api/posts/:id/comments', async (req, res) => {
 	io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
 });
 
+	// API: ดึงสถิติของ Rider เพื่อให้ร้านค้าดูประกอบการตัดสินใจ
+app.get('/api/rider-stats/:username', async (req, res) => {
+    const { username } = req.params;
+    try {
+        // 1. ดึงข้อมูลพื้นฐานจาก usersCollection (เช่น rating)
+        const user = await usersCollection.findOne({ username: username });
+        
+        // 2. นับจำนวนงานที่เคยทำสำเร็จ (status: 'finished')
+        const completedJobs = await postsCollection.countDocuments({ 
+            acceptedBy: username, 
+            status: 'finished' 
+        });
+
+        res.json({
+            success: true,
+            stats: {
+                username: username,
+                rating: user?.rating || 5.0, // ถ้าไม่มีให้เริ่มที่ 5.0
+                totalJobs: completedJobs,
+                avatar: user?.avatar || null
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 //ใรเดอร์รับงานร้านค้า
 
 // API: ไรเดอร์เช็คอินพิกัดรายจุด และปิดงานอัตโนมัติ
