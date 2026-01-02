@@ -333,6 +333,54 @@
 }
 
 
+
+
+/* Wrapper สำหรับไอคอนแจ้งเตือน */
+.notif-wrapper {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ไอคอนข้อความ */
+.msg-icon {
+    font-size: 1.4em;
+    color: #bdc3c7; /* สีเทาจางๆ เมื่อไม่มีข้อความใหม่ */
+    transition: 0.3s;
+}
+
+/* จุดแดงบนไอคอน */
+.dot-on-icon {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    background: #ff4757;
+    border-radius: 50%;
+    border: 2px solid white;
+    display: none; /* ซ่อนไว้ก่อน */
+}
+
+/* เมื่อมีข้อความใหม่ (Active State) */
+.has-unread .msg-icon {
+    color: #11998e; /* เปลี่ยนเป็นสีเขียว/ฟ้าตามธีม */
+}
+.has-unread .dot-on-icon {
+    display: block; /* โชว์จุดแดง */
+    animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 71, 87, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+}
+
+
     </style>
 </head>
 <body>
@@ -431,6 +479,7 @@
 	let mapMode = 'book';
 	
 	let activeTaskInSidebar = null;
+	let unreadPosts = {};
 	
 	
 
@@ -503,7 +552,10 @@ async function loadActiveMerchantTasks() {
                 finalHtml += `
                     <div id="card-${post.id}" class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} position: relative; padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
                         
-                        <div id="badge-container-${post.id}"></div>
+                        <div id="notif-box-${post.id}" class="notif-wrapper">
+						<i class="fas fa-comment-dots msg-icon"></i>
+						<div class="dot-on-icon"></div>
+						</div>
 
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div>
@@ -1320,28 +1372,23 @@ function closeManageModal() {
     activeTaskInSidebar = data.post;
     document.getElementById('sidebar-task-title').innerText = `งาน: ${activeTaskInSidebar.title}`;
     
-    // 🚩 จัดการหน้าแจ้งเตือน (Notif Tab)
     const notifList = document.getElementById('notif-list');
-    notifList.innerHTML = ''; // ล้างค่าเก่า
-	
-	const badgeContainer = document.getElementById(`badge-container-${postId}`);
-    if (badgeContainer) {
-        badgeContainer.innerHTML = '';
-        const card = document.getElementById(`card-${postId}`);
-        if(card) card.style.backgroundColor = 'white';
+    notifList.innerHTML = ''; 
+    if (currentTab === 'chat') {
+        clearUnreadBadge(postId);
     }
-	
-    
+    // -------------------------------------------
+
     if (activeTaskInSidebar.pendingRider) {
-    notifList.innerHTML = `
-        <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12;">
-            <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> มีคำขอเข้าใหม่</b><br>
-            คุณ <b>${activeTaskInSidebar.pendingRider}</b> ต้องการรับงานนี้<br>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px;">ตกลง</button>
-                <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px;">ปฏิเสธ</button>
+        notifList.innerHTML = `
+            <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12;">
+                <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> มีคำขอเข้าใหม่</b><br>
+                คุณ <b>${activeTaskInSidebar.pendingRider}</b> ต้องการรับงานนี้<br>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px;">ตกลง</button>
+                    <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px;">ปฏิเสธ</button>
+                </div>
             </div>
-        </div>
         `;
     } else if (activeTaskInSidebar.acceptedBy) {
         notifList.innerHTML = `<p style="text-align:center; color:#27ae60;">🟢 มอบหมายงานให้คุณ ${activeTaskInSidebar.acceptedBy} เรียบร้อยแล้ว</p>`;
@@ -1351,7 +1398,7 @@ function closeManageModal() {
 
     renderSidebarDetails();
     loadSidebarChat(postId);
-	socket.emit('join-post', postId);
+    socket.emit('join-post', postId);
     document.getElementById('right-sidebar').classList.add('active');
     document.getElementById('right-sidebar-overlay').classList.remove('hidden');
     switchTab('notif'); 
@@ -1376,6 +1423,23 @@ function switchTab(tabName) {
     const tabs = ['notif', 'details', 'chat'];
     const activeIdx = tabs.indexOf(tabName);
     const targetTabItem = document.querySelectorAll('.tab-item')[activeIdx];
+	
+	if (tabName === 'chat' && activeTaskInSidebar) {
+        const postId = activeTaskInSidebar.id;
+        
+        // ล้างค่าสถานะ
+        delete unreadPosts[postId];
+        
+        // ลบจุดแดงที่ไอคอนบนการ์ดงาน
+        const notifBox = document.getElementById(`notif-box-${postId}`);
+        if (notifBox) {
+            notifBox.classList.remove('has-unread');
+        }
+        
+        // ล้างสีแดงที่ไอคอนใน Sidebar (ถ้ามี)
+        const chatTabIcon = document.querySelector('.tab-item[onclick*="chat"]');
+        if (chatTabIcon) chatTabIcon.style.color = '';
+    }
     
     if (targetTabItem) {
         targetTabItem.classList.add('active');
@@ -1508,9 +1572,7 @@ socket.on('rider-applied', (data) => {
 
 // 🚩 2. ปรับตัวรับสัญญาณใน merchant.html
 socket.on('new-comment', (data) => {
-    console.log("📩 ได้รับข้อความใหม่:", data);
-
-    // 1. ถ้าเปิดแชทงานนั้นอยู่ ให้เด้งข้อความในสไลด์บาร์ (เหมือนเดิม)
+    // 1. ถ้าเปิด Sidebar งานนั้นอยู่ ให้แสดงข้อความสด
     if (activeTaskInSidebar && activeTaskInSidebar.id == data.postId) {
         const chatBox = document.getElementById('chat-box');
         const isMe = data.comment.author === myUsername;
@@ -1518,19 +1580,27 @@ socket.on('new-comment', (data) => {
         chatBox.insertAdjacentHTML('beforeend', newMsgHtml);
         chatBox.scrollTop = chatBox.scrollHeight;
 
-        // ถ้าไม่ได้อยู่ที่หน้า Chat ให้ไอคอนใน Sidebar เป็นสีแดง
+        // ถ้าเปิดงานนี้อยู่ แต่ร้านค้ายังอยู่ที่ Tab อื่น (ไม่ใช่ Chat) ให้ไอคอนใน Sidebar เป็นสีแดง
         if (currentTab !== 'chat') {
-            document.querySelector('.tab-item[onclick*="chat"]').style.color = 'red';
+            const chatIcon = document.querySelector('.tab-item[onclick*="chat"]');
+            if (chatIcon) chatIcon.style.color = 'red';
         }
     } 
 
-    // 2. 🚩 [ส่วนที่เพิ่มใหม่] เพิ่มจุดแดงบน "การ์ดงาน" ในรายการหลัก (ถ้าไม่ใช่เราเป็นคนส่งเอง)
+    // 2. แสดงแจ้งเตือนบน "การ์ดงาน" ในรายการหลัก (ถ้าไม่ใช่เราเป็นคนส่งเอง)
     if (data.comment.author !== myUsername) {
-        const badgeContainer = document.getElementById(`badge-container-${data.postId}`);
-        if (badgeContainer) {
-            badgeContainer.innerHTML = `<div class="unread-badge">1</div>`;
-            // เพิ่มลูกเล่นให้การ์ดสั่นเล็กน้อย
-            document.getElementById(`card-${data.postId}`).style.backgroundColor = '#fff9f9';
+        // เช็คเงื่อนไข: ถ้าไม่ได้เปิดงานนี้ + หน้าแชทอยู่ ให้ขึ้นจุดแดงที่การ์ด
+        if (!(activeTaskInSidebar && activeTaskInSidebar.id == data.postId && currentTab === 'chat')) {
+            
+            // เปลี่ยนมาใช้การหา ID notif-box ที่เราเพิ่งสร้างใหม่
+            const notifBox = document.getElementById(`notif-box-${data.postId}`);
+            if (notifBox) {
+                notifBox.classList.add('has-unread'); // ใส่ Class เพื่อโชว์จุดแดง
+                
+                // ใส่ลูกเล่นให้พื้นหลังการ์ดเปลี่ยนสีเล็กน้อย (Optional)
+                const card = document.getElementById(`card-${data.postId}`);
+                if (card) card.style.backgroundColor = '#fff9f9';
+            }
         }
     }
 });
