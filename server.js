@@ -2577,6 +2577,22 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
+// API: ร้านค้ากดปฏิเสธคำขอของไรเดอร์
+app.post('/api/posts/:id/reject-rider', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    try {
+        await postsCollection.updateOne(
+            { id: postId },
+            { $set: { pendingRider: null } } // ล้างค่าไรเดอร์ที่ขอมา
+        );
+        
+        // ส่งสัญญาณบอกไรเดอร์ว่าคำขอถูกปฏิเสธ (Rider จะได้กดรับงานใหม่ได้)
+        io.emit('rider-rejected', { postId: postId });
+        
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
 
 
 
