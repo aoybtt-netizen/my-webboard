@@ -2404,16 +2404,15 @@ app.get('/api/merchant/tasks', async (req, res) => {
 
         // 2. กรองงานที่จะแสดงผลในหน้า Active Tasks
         const activeTasks = posts.filter(post => {
-            // เงื่อนไข A: ถ้า Rider ส่งครบทุกจุดแล้ว (status: 'finished') -> ต้องโชว์เพื่อให้ร้านกดยืนยัน
+            // ✅ ถ้าสถานะเป็น finished (ไรเดอร์กดส่งงานมา) แต่ร้านยังไม่กดปิด -> ต้องโชว์ (ถูกต้องแล้ว)
             if (post.status === 'finished') return true;
 
-            // เงื่อนไข B: เช็คเรื่องเวลาหมด (1 ชม.)
+            // ✅ ถ้าเราเพิ่งแก้ให้กดจบงานแล้ว status เป็น 'closed_by_merchant' 
+            // มันจะหลุดตั้งแต่ post.find ด้านบนแล้วครับ
+
             const isExpired = (now - post.id > oneHour) && !post.isPinned;
-            
-            // ถ้างานถูกปิด (isClosed) หรือ หมดเวลาแล้ว -> ไม่ต้องโชว์ในหน้า Active
             if (post.isClosed || isExpired) return false;
 
-            // นอกเหนือจากนั้นคือสถานะ pending หรือ in_progress ที่ยังไม่หมดเวลา -> ให้โชว์
             return true;
         });
         
@@ -2586,32 +2585,36 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
 
 
 // 🚩 เพิ่ม/แก้ไขใน server.js (สำหรับร้านค้ากดจบงาน)
+// แก้ไขที่ไฟล์ Server
 app.post('/api/posts/:id/finish-job', async (req, res) => {
     const postId = parseInt(req.params.id);
-    const { rating, author } = req.body; // author คือคนกด (ร้านค้า)
+    const { rating, author } = req.body;
 
     try {
         const post = await postsCollection.findOne({ id: postId });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
 
-        // 1. อัปเดตสถานะงาน
+        // 🟢 แก้ไขจุดนี้: เปลี่ยน status เป็น 'closed_by_merchant'
         await postsCollection.updateOne(
             { id: postId },
-            { $set: { status: 'finished', finishedAt: Date.now() } }
+            { 
+                $set: { 
+                    status: 'closed_by_merchant', // เปลี่ยนจาก finished เป็น closed_by_merchant
+                    finishedAt: Date.now(),
+                    isClosed: true // เพิ่ม flag นี้ไว้ด้วยเพื่อความชัวร์
+                } 
+            }
         );
 
-        // 2. ให้คะแนนไรเดอร์ (Rating Logic)
+        // 2. ให้คะแนนไรเดอร์ (Rating Logic - เหมือนเดิม)
         const riderName = post.acceptedBy;
         if (riderName && rating) {
             const score = parseFloat(rating);
             const riderUser = await usersCollection.findOne({ username: riderName });
-            
             if (riderUser) {
                 let oldRating = riderUser.rating || 5;
                 let count = riderUser.ratingCount || 0;
-                // สูตรคำนวณคะแนนเฉลี่ย
                 let newRating = ((oldRating * count) + score) / (count + 1);
-
                 await usersCollection.updateOne(
                     { username: riderName },
                     { $set: { rating: newRating, ratingCount: count + 1 } }
@@ -2619,7 +2622,7 @@ app.post('/api/posts/:id/finish-job', async (req, res) => {
             }
         }
 
-        // 3. แจ้งไรเดอร์ว่างานจบแล้ว
+        // 3. แจ้งไรเดอร์ (ใช้ Event เดิมได้)
         io.to(`post-${postId}`).emit('job-finished-by-merchant', { rating: rating });
 
         res.json({ success: true });
