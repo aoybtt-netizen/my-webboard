@@ -381,6 +381,47 @@
 }
 
 
+
+
+
+.notif-inline-wrapper {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px; /* เว้นระยะห่างจากชื่อไรเดอร์ */
+    vertical-align: middle;
+}
+
+.msg-icon-small {
+    font-size: 1.1em;
+    color: #bdc3c7;
+    transition: 0.3s;
+    position: relative;
+}
+
+.dot-on-icon-small {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 7px;
+    height: 7px;
+    background: #ff4757;
+    border-radius: 50%;
+    border: 1.5px solid white;
+    display: none;
+}
+
+/* เมื่อมีข้อความใหม่ */
+.has-unread .msg-icon-small {
+    color: #11998e;
+}
+.has-unread .dot-on-icon-small {
+    display: block;
+    animation: pulse-dot 1.5s infinite;
+}
+
+
+
+
     </style>
 </head>
 <body>
@@ -550,25 +591,25 @@ async function loadActiveMerchantTasks() {
 
                 // 🚩 แก้ไขจุดนี้: เพิ่ม ID และ Badge Container
                 finalHtml += `
-                    <div id="card-${post.id}" class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} position: relative; padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
-                        
-                        <div id="notif-box-${post.id}" class="notif-wrapper">
-						<i class="fas fa-comment-dots msg-icon"></i>
-						<div class="dot-on-icon"></div>
-						</div>
-
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div>
-                                <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
-                                <small style="color: #999; margin-left: 5px;">เมื่อ ${postTime}</small>
-                                <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
-                            </div>
-                            <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
-                        </div>
-                        
-                        <div style="font-size: 0.85em; color: #666; margin: 10px 0;">
-                            👤 ผู้รับงาน: <span style="color: #11998e; font-weight: 600;">${post.acceptedBy || 'ยังไม่มี'}</span>
-                        </div>
+    <div id="card-${post.id}" class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
+                <small style="color: #999; margin-left: 5px;">เมื่อ ${postTime}</small>
+                <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
+            </div>
+            <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
+        </div>
+        
+        <div style="font-size: 0.85em; color: #666; margin: 10px 0; display: flex; align-items: center;">
+            👤 ผู้รับงาน: <span style="color: #11998e; font-weight: 600; margin-left: 4px;">${post.acceptedBy || 'ยังไม่มี'}</span>
+            
+            <div id="notif-box-${post.id}" class="notif-inline-wrapper">
+                <i class="fas fa-comment-dots msg-icon-small"></i>
+                <div class="dot-on-icon-small"></div>
+            </div>
+        </div>
                         
                         <div class="task-progress-bar" style="height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 5px;">
                             <div class="progress-fill" style="width: ${progressPercent}%; height: 100%; background: #11998e; transition: 0.5s;"></div>
