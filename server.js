@@ -2779,6 +2779,26 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
     }
 });
 
+app.get('/api/rider/active-job', async (req, res) => {
+    const { username } = req.query;
+    try {
+        // หางานที่คนนี้รับไว้ และสถานะยังเป็น in_progress
+        const activeJob = await postsCollection.findOne({
+            acceptedBy: username,
+            status: 'in_progress',
+            isClosed: { $ne: true }
+        });
+
+        if (activeJob) {
+            res.json({ success: true, activeJobId: activeJob.id });
+        } else {
+            res.json({ success: false });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false });
+    }
+});
+
 
 
 

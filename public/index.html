@@ -5353,6 +5353,23 @@ function closeZoneOwnerModal() {
     document.getElementById('zone-owner-modal').classList.add('hidden');
 }
 
+
+window.addEventListener('load', async () => {
+    try {
+        // เช็คว่าไรเดอร์คนนี้มีงานที่สถานะ in_progress ค้างอยู่หรือไม่
+        const res = await fetch(`/api/rider/active-job?username=${myUsername}`);
+        const data = await res.json();
+        
+        if (data.success && data.activeJobId) {
+            // 🚩 ถ้ามีงานค้าง ให้ดีดไปหน้ารายละเอียดงานนั้นทันที
+            window.location.href = `riderjobmerchant.html?id=${data.activeJobId}`;
+        }
+    } catch (e) {
+        console.log("Check active job error");
+    }
+});
+
+
 /*<button id="bottom-zone-btn" class="sticky-bottom-btn" onclick="openZoneOwnerModal()">
     🚀 โอกาสเป็นเจ้าของโซน
 </button>*/

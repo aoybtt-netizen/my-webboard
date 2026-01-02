@@ -279,42 +279,78 @@
 // แยกฟังก์ชันออกมาไว้ข้างนอก loadJobDetails
 function updateFooterButtons(post) {
     const acceptBtn = document.getElementById('btn-accept-job');
+    const backBtn = document.getElementById('btn-back'); // มั่นใจว่าปุ่มกลับมี ID นี้
     const footerContainer = document.getElementById('footer-btns');
 
-    // ล้างข้อความเก่าที่อาจจะเคย append ไว้ (กันข้อความซ้ำ)
+    // 1. ล้างข้อความเก่าที่อาจจะเคย append ไว้
     const oldMsg = footerContainer.querySelector('small');
     if (oldMsg) oldMsg.remove();
 
-    // 1. ถ้างานนี้ถูกรับไปแล้ว (โดยคนอื่น หรือเริ่มงานแล้ว)
+    // 2. เริ่มการตรวจสอบเงื่อนไข
     if (post.acceptedBy) {
         if (post.acceptedBy === myUsername) {
-            acceptBtn.innerHTML = '<i class="fas fa-motorcycle"></i> งานของคุณ (กำลังดำเนินการ)';
-            acceptBtn.style.background = "#11998e";
-            acceptBtn.disabled = true;
+            // --- กรณี: งานของเราเอง ---
+            
+            if (post.status === 'in_progress') {
+                // 🚩 [LOCK] กำลังส่งงาน: ซ่อนปุ่มกลับ + ล็อคปุ่มดำเนินการ
+                if (backBtn) backBtn.style.display = 'none';
+                
+                acceptBtn.style.display = 'block';
+                acceptBtn.innerHTML = '<i class="fas fa-motorcycle fa-beat"></i> กำลังดำเนินการส่ง (ห้ามออกจากหน้านี้)';
+                acceptBtn.style.background = "#2ecc71";
+                acceptBtn.style.width = "100%"; // ขยายเต็มเพื่อความสวยงาม
+                acceptBtn.disabled = true;
+
+                // ดักการกดปุ่ม Back ของมือถือ/เบราว์เซอร์
+                window.history.pushState(null, null, window.location.href);
+                window.onpopstate = function() {
+                    window.history.go(1);
+                    alert("⚠️ คุณมีงานที่ต้องส่งให้เสร็จ กรุณาดำเนินการให้เรียบร้อยก่อนออกจากหน้านี้ครับ");
+                };
+
+            } else if (post.status === 'finished') {
+                // 🔓 [UNLOCK] งานสำเร็จแล้ว (รอให้คะแนน): ปล่อยให้ปุ่มกลับแสดงได้
+                if (backBtn) backBtn.style.display = 'block';
+                acceptBtn.style.display = 'none'; // ซ่อนปุ่มนี้เพราะจะไปใช้ Modal ให้คะแนนแทน
+                window.onpopstate = null; // คืนอิสระให้ปุ่ม Back
+            }
+
         } else {
+            // --- กรณี: งานของคนอื่นรับไปแล้ว ---
             acceptBtn.style.display = 'none';
+            if (backBtn) backBtn.style.display = 'block';
+            
             const msg = document.createElement('small');
             msg.style.color = "#999";
             msg.innerText = "งานนี้มีผู้รับไปแล้ว";
             footerContainer.appendChild(msg);
+            window.onpopstate = null;
         }
     } 
-    // 2. ถ้าเราส่งคำขอไปแล้ว (รอร้านค้ากดยืนยัน)
     else if (post.pendingRider === myUsername) {
+        // --- กรณี: เราส่งคำขอไปแล้ว ---
+        if (backBtn) backBtn.style.display = 'block';
+        acceptBtn.style.display = 'block';
         acceptBtn.innerHTML = '<i class="fas fa-clock"></i> รอร้านค้าตอบรับ...';
         acceptBtn.style.background = "#f39c12";
         acceptBtn.disabled = true;
+        window.onpopstate = null;
     }
-    // 3. ถ้างานมีสถานะอื่นๆ ที่ไม่เปิดรับแล้ว
     else if (post.status === 'finished' || post.status === 'closed_by_merchant' || post.isClosed) {
+        // --- กรณี: งานจบไปแล้ว หรือปิดไปแล้ว ---
         acceptBtn.style.display = 'none';
+        if (backBtn) backBtn.style.display = 'block';
+        window.onpopstate = null;
     } 
-    // 4. ถ้างานว่างปกติ
     else {
+        // --- กรณี: งานว่างปกติ ---
+        if (backBtn) backBtn.style.display = 'block';
         acceptBtn.style.display = 'block';
         acceptBtn.disabled = false;
         acceptBtn.innerHTML = 'กดรับงานนี้';
-        acceptBtn.style.background = ""; // กลับไปใช้สีตาม CSS เดิม
+        acceptBtn.style.background = ""; // กลับไปใช้สีตาม CSS (ปุ่มเขียว)
+        acceptBtn.style.width = ""; // กลับไปใช้ขนาดปกติ
+        window.onpopstate = null;
     }
 }
 
