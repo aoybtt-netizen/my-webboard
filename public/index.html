@@ -2591,76 +2591,69 @@ async function showMyClosedPosts(page = 1) {
 	toggleSidebar();
 }
 
-        function renderPostList() {
-            const list = document.getElementById('post-list');
-            const paginationDiv = document.getElementById('post-pagination');
-            list.innerHTML = '';
-            
-            let postsArray = Object.values(postStatusMap).map(item => item);
-            let filteredPosts = postsArray;
+    function renderPostList() {
+    const list = document.getElementById('post-list');
+    const paginationDiv = document.getElementById('post-pagination');
+    list.innerHTML = '';
+    
+    let postsArray = Object.values(postStatusMap).map(item => item);
+    let filteredPosts = postsArray;
 
-            if (currentView === 'closed') {
+    if (currentView === 'closed') {
         filteredPosts = postsArray.filter(item => item.data.isClosed);
     } else {
-        // ต่อให้ currentView เป็น 'home' หรือเป็นค่าว่าง/undefined ก็ให้กรองเอาอันที่ปิดออก
-        filteredPosts = postsArray.filter(item => !item.data.isClosed);
-        currentView = 'home'; // บังคับเซ็ตค่ากลับเผื่อกรณีตัวแปรหลุด
+        // 🚩 แก้ไขจุดนี้: กรองงานที่ปิดออก และต้อง "ยังไม่มีคนรับ" (acceptedBy ต้องเป็นค่าว่าง)
+        filteredPosts = postsArray.filter(item => {
+            const p = item.data;
+            const isNotClosed = !p.isClosed;
+            
+            // ถ้าเป็นงานร้านค้า (MerchantTask) จะโชว์เฉพาะตอนที่ยังไม่มีคนรับ (!p.acceptedBy)
+            // ถ้าเป็นโพสต์ทั่วไป ก็โชว์ตามปกติ
+            const isVacant = p.isMerchantTask ? !p.acceptedBy : true;
+
+            return isNotClosed && isVacant;
+        });
+        currentView = 'home'; 
     }
 
-    // -----------------------------------------------------------
-    // Zone Lock Filter
-    // -----------------------------------------------------------
-    // กรองกระทู้: แสดงเฉพาะกระทู้ที่อยู่ใน Zone เดียวกับ User หรือกระทู้ที่ไม่มี Zone (เช่นของระบบ)
+    // --- Zone Lock Filter ---
     if (myZoneId) {
         filteredPosts = filteredPosts.filter(item => {
             const p = item.data;
-            // ถ้ากระทู้มี Zone ID และไม่ตรงกับของเรา -> ซ่อน
-            if (p.zoneId && p.zoneId !== myZoneId) {
-                return false;
-            }
+            if (p.zoneId && p.zoneId !== myZoneId) return false;
             return true;
         });
     }
-			
-			if (filterLocation && filterMaxDistance) {
+
+    // --- Location Filter ---
+    if (filterLocation && filterMaxDistance) {
         filteredPosts = filteredPosts.filter(item => {
-            // ... (โค้ดการคำนวณระยะทางเดิม) ...
-            
             const post = item.data;
-            // ถ้ากระทู้ไม่มีพิกัด ก็ไม่ต้องแสดง (ยังคง logic เดิม)
-            if (!post.location || !post.location.lat || !post.location.lng) {
-                 return false;  
-            }
-            
+            if (!post.location || !post.location.lat || !post.location.lng) return false;
             const dist = getDistanceFromLatLonInKm(
                 filterLocation.lat, filterLocation.lng,
                 post.location.lat, post.location.lng
             );
-            // คืนค่า True ถ้าอยู่ในระยะ
             return dist <= filterMaxDistance;
         });
-}
-            
-            filteredPosts.sort((a, b) => {
-                const postA = a.data;
-                const postB = b.data;
+    }
 
-                // 1. เช็ค Pinned Post ก่อน (ให้ Pinned อยู่บนสุดเสมอ)
-                const aIsPinned = postA.isPinned && !postA.isClosed;
-				const bIsPinned = postB.isPinned && !postB.isClosed;
-                
-                if (aIsPinned && !bIsPinned) return -1; // a เป็น Pinned -> เอาขึ้นก่อน
-                if (!aIsPinned && bIsPinned) return 1;  // b เป็น Pinned -> เอาขึ้นก่อน
+    // --- Sorting Logic ---
+    filteredPosts.sort((a, b) => {
+        const postA = a.data; const postB = b.data;
+        const aIsPinned = postA.isPinned && !postA.isClosed;
+        const bIsPinned = postB.isPinned && !postB.isClosed;
+        
+        if (aIsPinned && !bIsPinned) return -1;
+        if (!aIsPinned && bIsPinned) return 1;
 
-                // 2. เช็คสถานะจบงาน/ปิด (ให้งานที่จบแล้วอยู่ล่าง)
-                const aDone = postA.status === 'finished' || postA.isClosed;
-                const bDone = postB.status === 'finished' || postB.isClosed;
-                
-                if (aDone && !bDone) return 1; 
-                if (!aDone && bDone) return -1; 
+        // งานที่จบแล้วจะไปอยู่ในหน้า Closed อยู่แล้ว แต่กันพลาดให้เรียงไว้ล่างสุด
+        const aDone = postA.status === 'finished' || postA.isClosed;
+        const bDone = postB.status === 'finished' || postB.isClosed;
+        if (aDone && !bDone) return 1;
+        if (!aDone && bDone) return -1;
 
-                // 3. สุดท้ายเรียงตามเวลา (ใหม่สุดขึ้นก่อน)
-                return postB.id - postA.id; 
+        return postB.id - postA.id;
             });
 
             if (filteredPosts.length === 0) {
@@ -2697,97 +2690,102 @@ async function showMyClosedPosts(page = 1) {
         // ---addPostToDOM (With Winner Display) ---
     function addPostToDOM(post, isOccupied) {
     const list = document.getElementById('post-list');
-    
-    let deleteBtn = myUsername === 'Admin' 
-        ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>` 
+
+    // 1. เตรียมปุ่มลบสำหรับ Admin
+    let deleteBtn = myUsername === 'Admin'
+        ? `<button onclick="deletePost(event,${post.id})" style="border:none;background:none;color:red;font-size:1.2em;cursor:pointer;">🗑️</button>`
         : '';
 
+    // 2. เตรียมสถานะการคุย (Occupied)
     let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
-    let occupiedText = isOccupied 
+    let occupiedText = isOccupied
         ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(กำลังคุย 💬)</span>`
         : '';
 
+    // 3. เตรียมคะแนนและผู้รับงาน
     let ratingHtml = `<span style="color:black; font-weight:bold; font-size:0.9em; margin-left:5px;">(⭐ ${post.authorRating || '0.00'})</span>`;
     let winnerHtml = post.acceptedViewer ? ` <span style="color:#d9534f; font-weight:bold;">(✔ ${post.acceptedViewer})</span>` : '';
 
+    // 4. กำหนด Style และ Icon ตามประเภทงานและสถานะ
     let baseStyle = '';
     let icon = '';
-    
-    // การจัดการสีและการแสดงผล
+
     if (post.isPinned) {
-        baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;'; 
-        icon = '📌'; 
-    } else if (post.status === 'finished' || post.status === 'closed_permanently') {
-        baseStyle = 'background:#fff3cd; color:#856404; border-left:5px solid #ffc107;';
-        icon = '🔒'; 
-    } else if (post.isClosed) {
+        baseStyle = 'background:#f0e2ff; color:#6a1b9a; border-left:5px solid #6a1b9a;';
+        icon = '📌';
+    } else if (post.status === 'finished' || post.status === 'closed_permanently' || post.isClosed) {
         baseStyle = 'background:#e2e3e5; color:#6c757d; border-left:5px solid #6c757d;';
         icon = '🔒';
-    } else if (!post.isPinned) {
-        // 🚩 ปรับสีสำหรับงานร้านค้าให้ดูเด่นขึ้น (สีเขียวสว่าง)
-        baseStyle = post.isMerchantTask 
-            ? 'background:#e8f5e9; color:#1b5e20; border-left:5px solid #4caf50; border-bottom: 2px solid #c8e6c9;' 
+    } else {
+        // กรณีงานปกติ หรือ งานร้านค้า
+        baseStyle = post.isMerchantTask
+            ? 'background:#e8f5e9; color:#1b5e20; border-left:5px solid #4caf50; border-bottom: 2px solid #c8e6c9;'
             : 'background:#d1e7dd; color:#0f5132; border-left:5px solid #198754;';
-        icon = post.isMerchantTask ? '📦' : '✅'; 
+        icon = post.isMerchantTask ? '📦' : '✅';
     }
 
-    // 🚩 แก้ไขการ Redirect: ส่ง Rider ไปที่หน้า riderjobmerchant.html
+    // 5. จัดการการคลิก (Redirect)
     let action = '';
-    if (post.isClosed && myUsername !== 'Admin' && myAdminLevel < 1 && myUsername !== post.author) {
+    if (post.isClosed && myUsername !== 'Admin' && myUsername !== post.author) {
         action = "alert('⛔ กระทู้นี้ถูกปิดแล้ว')";
     } else {
         if (post.isMerchantTask) {
-            // 🚩 เปลี่ยนจาก merchant.html เป็น riderjobmerchant.html สำหรับคนรับงาน
             action = `location.href='riderjobmerchant.html?view_id=${post.id}'`;
         } else {
             action = `location.href='post.html?id=${post.id}'`;
         }
     }
 
-    // กำหนดชื่อผู้แสดงผล: ร้านค้า หรือ ผู้โพสต์ทั่วไป
+    // 6. กำหนดชื่อผู้แสดงผล
     const displayName = post.isMerchantTask ? (post.storeName || post.author) : post.author;
 
+    // 7. จัดการการแสดงพิกัดและระยะทาง
     let locationHtml = '';
     if (post.location && post.location.lat && post.location.lng) {
-        let displayText = post.isMerchantTask ? "พิกัดร้าน" : (post.location.name || "พิกัด"); 
-        
+        let displayText = post.isMerchantTask ? "พิกัดร้าน" : (post.location.name || "พิกัด");
+
         if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
             const dist = getDistanceFromLatLonInKm(
                 filterLocation.lat, filterLocation.lng,
                 post.location.lat, post.location.lng
             );
-            displayText = `${dist.toFixed(1)} km`; 
+            displayText = `${dist.toFixed(1)} km`;
         }
 
         locationHtml = `
             <span onclick="event.stopPropagation()" style="color:#666; font-size:0.85em; margin-left:10px; cursor:default;">
-            📍 ${displayText} 
+                📍 ${displayText}
             </span>
         `;
     }
 
-    // 🚩 เพิ่มส่วนแสดงงบประมาณ (Budget) ให้ Rider เห็นทันทีที่หน้าแรก
+    // 8. เตรียมงบประมาณ
     let budgetHtml = post.isMerchantTask ? `<b style="color:#e67e22; margin-left:10px;">฿${post.budget}</b>` : '';
 
+    // 9. พ่น HTML ลงในรายการ
     list.insertAdjacentHTML('beforeend', `
-        <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" style="${baseStyle} padding:15px; margin-bottom:10px; border-radius:12px; display:flex; justify-content:space-between; cursor:pointer;">
-            <div style="flex-grow: 1;"> 
+        <div class="post-card ${occupiedClass}" id="post-${post.id}" onclick="${action}" 
+             style="${baseStyle} padding:15px; margin-bottom:10px; border-radius:12px; display:flex; justify-content:space-between; cursor:pointer;">
+            
+            <div style="flex-grow: 1;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <b>${icon} ${post.title}${winnerHtml}</b>
                     ${budgetHtml}
                 </div>
                 <div style="margin-top:5px;">
                     <small>
-                        <i class="fas ${post.isMerchantTask ? 'fa-store' : 'fa-user'}" style="width:16px;"></i> ${displayName} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()} 
+                        <i class="fas ${post.isMerchantTask ? 'fa-store' : 'fa-user'}" style="width:16px;"></i> 
+                        ${displayName} ${ratingHtml} • ${new Date(post.id).toLocaleTimeString()}
                     </small>
                     ${locationHtml}
                     ${occupiedText}
                 </div>
             </div>
-            
+
             <div style="display:flex; align-items:center; margin-left:10px;">
                 ${deleteBtn}
             </div>
+
         </div>
     `);
 }
