@@ -2707,20 +2707,29 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
-        if (!post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
+        if (!post || !post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
+
+        const acceptedRider = post.pendingRider; // เก็บชื่อไรเดอร์ไว้ก่อนล้างค่า
 
         await postsCollection.updateOne(
             { id: postId },
             { 
                 $set: { 
-                    acceptedBy: post.pendingRider, 
-                    pendingRider: null, // ล้างค่ารอคอย
-                    status: 'in_progress' // เปลี่ยนสถานะงาน
+                    acceptedBy: acceptedRider, 
+                    pendingRider: null, 
+                    status: 'in_progress' 
                 } 
             }
         );
+
+        // 🚩 เพิ่มบรรทัดนี้เพื่อให้ไรเดอร์เห็นการเปลี่ยนแปลงทันที!
+        io.emit('update-post-status'); // บอกหน้า List ทุกหน้าให้อัปเดต
+        io.to(postId.toString()).emit('update-job-status', { status: 'in_progress' }); // บอกหน้ารายละเอียดงาน
+
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) { 
+        res.status(500).json({ success: false }); 
+    }
 });
 
 // API: ร้านค้ากดปฏิเสธคำขอของไรเดอร์
