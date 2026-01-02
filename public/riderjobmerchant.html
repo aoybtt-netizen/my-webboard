@@ -237,9 +237,9 @@
     </div>
 
     <div class="footer-action" id="footer-btns">
-        <button class="btn-action btn-back" onclick="history.back()">กลับ</button>
-        <button class="btn-action btn-accept" onclick="acceptJob()">กดรับงานนี้</button>
-    </div>
+    <button id="btn-back" class="btn-action btn-back" onclick="history.back()">กลับ</button>
+    <button id="btn-accept-job" class="btn-action btn-accept" onclick="acceptJob()">กดรับงานนี้</button>
+</div>
 
     <script>
 		const socket = io();
@@ -249,16 +249,70 @@
         const urlParams = new URLSearchParams(window.location.search);
         const jobId = urlParams.get('view_id');
         const myUsername = localStorage.getItem('myUsername');
+		
+		
+	socket.on('update-post-status', () => {
+    // เมื่อมีการอัปเดตสถานะงานจากที่อื่น ให้โหลดข้อมูลใหม่ทันที
+    loadJobDetails(); 
+});
 
     async function loadJobDetails() {
     try {
         const res = await fetch(`/api/posts/${jobId}`);
         const data = await res.json();
+        
         if (data.success) {
-            currentPostData = data.post; // 🚩 เก็บข้อมูลไว้
-            renderJob(data.post);
+            currentPostData = data.post; 
+            renderJob(data.post); // วาดเนื้อหางาน
+            
+            // 🚩 เรียกใช้ฟังก์ชันจัดการปุ่มที่นี่
+            updateFooterButtons(data.post); 
         }
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+        console.error("Load Job Details Error:", error); 
+    }
+}
+
+// แยกฟังก์ชันออกมาไว้ข้างนอก loadJobDetails
+function updateFooterButtons(post) {
+    const acceptBtn = document.getElementById('btn-accept-job');
+    const footerContainer = document.getElementById('footer-btns');
+
+    // ล้างข้อความเก่าที่อาจจะเคย append ไว้ (กันข้อความซ้ำ)
+    const oldMsg = footerContainer.querySelector('small');
+    if (oldMsg) oldMsg.remove();
+
+    // 1. ถ้างานนี้ถูกรับไปแล้ว (โดยคนอื่น หรือเริ่มงานแล้ว)
+    if (post.acceptedBy) {
+        if (post.acceptedBy === myUsername) {
+            acceptBtn.innerHTML = '<i class="fas fa-motorcycle"></i> งานของคุณ (กำลังดำเนินการ)';
+            acceptBtn.style.background = "#11998e";
+            acceptBtn.disabled = true;
+        } else {
+            acceptBtn.style.display = 'none';
+            const msg = document.createElement('small');
+            msg.style.color = "#999";
+            msg.innerText = "งานนี้มีผู้รับไปแล้ว";
+            footerContainer.appendChild(msg);
+        }
+    } 
+    // 2. ถ้าเราส่งคำขอไปแล้ว (รอร้านค้ากดยืนยัน)
+    else if (post.pendingRider === myUsername) {
+        acceptBtn.innerHTML = '<i class="fas fa-clock"></i> รอร้านค้าตอบรับ...';
+        acceptBtn.style.background = "#f39c12";
+        acceptBtn.disabled = true;
+    }
+    // 3. ถ้างานมีสถานะอื่นๆ ที่ไม่เปิดรับแล้ว
+    else if (post.status === 'finished' || post.status === 'closed_by_merchant' || post.isClosed) {
+        acceptBtn.style.display = 'none';
+    } 
+    // 4. ถ้างานว่างปกติ
+    else {
+        acceptBtn.style.display = 'block';
+        acceptBtn.disabled = false;
+        acceptBtn.innerHTML = 'กดรับงานนี้';
+        acceptBtn.style.background = ""; // กลับไปใช้สีตาม CSS เดิม
+    }
 }
 
 
