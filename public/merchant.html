@@ -3,13 +3,10 @@
 <head>
 
 	
-	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-	<script>
-	// เริ่มใช้งาน vConsole
-	var vConsole = new window.VConsole();
+	le = new window.VConsole();
 	</script>
 	
-	
+	<script src="/socket.io/socket.io.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GedGoZone - Merchant Center</title>
@@ -390,7 +387,7 @@
     </div>
 
     <script>
-	
+	const socket = io();
 	const myUsername = localStorage.getItem('myUsername');
 	
     let stopCount = 0;
@@ -1376,29 +1373,29 @@ async function loadSidebarChat(postId) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-async function sendSidebarChat(event) {
-    if(event) event.preventDefault(); // ป้องกันการรีเฟรชหน้าจอ (ถ้าอยู่ใน Form)
-
+async function sendSidebarChat() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
+    
+    // ถ้าไม่มีข้อความ หรือไม่ได้เปิดงานอยู่ ให้หยุด
     if (!text || !activeTaskInSidebar) return;
 
-    // เก็บ ID ไว้ก่อนส่ง
-    const targetId = activeTaskInSidebar.id;
-
+    // ส่งข้อมูลไปหา Server
     try {
-        const res = await fetch(`/api/posts/${targetId}/comments`, {
+        const res = await fetch(`/api/posts/${activeTaskInSidebar.id}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ author: myUsername, text: text })
         });
 
         if (res.ok) {
-            input.value = '';
-            // ❌ ห้ามใส่ location.reload() ตรงนี้เด็ดขาด
-            // ข้อความจะเด้งขึ้นมาเองผ่าน Socket ที่เราจะทำข้างล่างนี้ครับ
+            // ✅ เคลียร์ช่องพิมพ์อย่างเดียวพอ 
+            // ไม่ต้องเรียก loadSidebarChat() แล้ว เพราะ Socket จะดันข้อความขึ้นมาเอง
+            input.value = ''; 
         }
-    } catch (e) { console.error("Send error:", e); }
+    } catch (e) {
+        console.error("ส่งข้อความไม่สำเร็จ", e);
+    }
 }
 
 
@@ -1459,21 +1456,26 @@ socket.on('rider-applied', (data) => {
 
 // 💬 รับสัญญาณเมื่อมี "ข้อความแชทใหม่" (แก้ปัญหาไม่ต้องส่งก่อนถึงเห็น)
 socket.on('new-comment', (data) => {
-    console.log("ได้รับแชทใหม่:", data);
-    
-    // 1. ตรวจสอบว่าเราเปิด Sidebar งานนี้อยู่หรือไม่
+    // เช็คว่าเรากำลังเปิดหน้าต่างงานที่ตรงกับข้อความนี้อยู่หรือไม่
     if (activeTaskInSidebar && activeTaskInSidebar.id === data.postId) {
+        
         const chatBox = document.getElementById('chat-box');
+        
+        // เช็คว่าเป็นข้อความของเราเองหรือของคนอื่น
         const isMe = data.comment.author === myUsername;
         
-        // แทรกข้อความใหม่ลงไปในช่องแชททันทีโดยไม่ต้อง Refresh
+        // สร้าง HTML ข้อความใหม่
         const newMsgHtml = `
             <div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}">
                 ${data.comment.text}
             </div>
         `;
+        
+        // แทรกข้อความใหม่ลงไปต่อท้ายทันที
         chatBox.insertAdjacentHTML('beforeend', newMsgHtml);
-        chatBox.scrollTop = chatBox.scrollHeight; // เลื่อนลงล่างสุด
+        
+        // เลื่อน ScrollBar ลงไปล่างสุดให้เห็นข้อความล่าสุด
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 });
 
