@@ -1795,9 +1795,20 @@ async function bypassCheckIn(postId, stopIndex) {
 
         const data = await res.json();
         if (data.success) {
+            // ✅ แทนที่จะใช้ openRightSidebar(postId) ซึ่งจะรีเซ็ต Tab
+            // ให้ดึงข้อมูลล่าสุดของงานนี้มาอัปเดตตัวแปร global แทน
+            const updatedRes = await fetch(`/api/posts/${postId}`); // สมมติว่าคุณมี API ดึงงานเดี่ยวๆ
+            const updatedData = await updatedRes.json();
+            
+            if (updatedData.success) {
+                activeTaskInSidebar = updatedData.post; // อัปเดตข้อมูลในตัวแปรที่ใช้เรนเดอร์
+                renderSidebarDetails(); // สั่งวาดลำดับงานใหม่ (โดยที่ยังอยู่ที่ Tabเดิม)
+                
+                // ถ้าอยากให้อัปเดต Tab อื่นๆ ด้วย (เช่นหน้าแชทหรือหน้าแรก)
+                loadActiveMerchantTasks(); 
+            }
+            
             alert("✅ บายพาสจุดส่งเรียบร้อย");
-            // โหลดข้อมูล Sidebar ใหม่ หรือรอ Socket อัปเดต
-            openRightSidebar(postId); 
         } else {
             alert("เกิดข้อผิดพลาด: " + data.error);
         }
