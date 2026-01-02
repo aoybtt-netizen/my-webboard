@@ -2499,6 +2499,45 @@ app.get('/api/rider-stats/:username', async (req, res) => {
     }
 });
 
+
+// 🚩 API สำหรับร้านค้ากด Bypass การเช็คอินของไรเดอร์
+app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
+    const { postId, stopIndex } = req.params;
+    const { merchantName } = req.body;
+
+    try {
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+
+        // ตรวจสอบความปลอดภัย (เฉพาะเจ้าของงานที่ Bypass ได้)
+        if (post.author !== merchantName) {
+            return res.status(403).json({ success: false, error: 'ไม่มีสิทธิ์จัดการงานนี้' });
+        }
+
+        // อัปเดตสถานะ Stop ที่เลือกใน Array
+        const updateKey = `stops.${stopIndex}.status`;
+        const updateTimeKey = `stops.${stopIndex}.completedAt`;
+        
+        await postsCollection.updateOne(
+            { id: parseInt(postId) },
+            { $set: { 
+                [updateKey]: 'success',
+                [updateTimeKey]: Date.now() 
+            } }
+        );
+
+        // 🚩 ส่งสัญญาณ Socket ให้ไรเดอร์รู้ว่าจุดนี้ "ผ่านแล้ว" หน้าจอไรเดอร์จะได้เปลี่ยนทันที
+        io.to(`post-${postId}`).emit('stop-bypassed', { 
+            stopIndex: parseInt(stopIndex), 
+            status: 'success' 
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 //ใรเดอร์รับงานร้านค้า
 
 // API: ไรเดอร์เช็คอินพิกัดรายจุด และปิดงานอัตโนมัติ
@@ -2590,43 +2629,78 @@ app.post('/api/posts/:id/apply', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// API: ร้านค้ากดยืนยันรับ Rider คนนี้
+// 🚩 API: ร้านค้ากดยืนยันรับ Rider (Approve)
 app.post('/api/posts/:id/approve-rider', async (req, res) => {
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
-        if (!post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
+        if (!post || !post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
+
+        const riderName = post.pendingRider;
 
         await postsCollection.updateOne(
             { id: postId },
             { 
                 $set: { 
-                    acceptedBy: post.pendingRider, 
-                    pendingRider: null, // ล้างค่ารอคอย
-                    status: 'in_progress' // เปลี่ยนสถานะงาน
+                    acceptedBy: riderName, 
+                    pendingRider: null, 
+                    status: 'in_progress' 
                 } 
             }
         );
+
+        // 📣 ส่งสัญญาณบอกทุกคนในห้องงานนี้ (โดยเฉพาะไรเดอร์คนนั้น)
+        io.to(`post-${postId}`).emit('rider-status-result', { 
+            status: 'approved', 
+            rider: riderName,
+            message: '✅ ร้านค้าอนุมัติให้คุณรับงานนี้แล้ว!' 
+        });
+
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// API: ร้านค้ากดปฏิเสธคำขอของไรเดอร์
+// 🚩 API: ร้านค้ากดปฏิเสธคำขอ (Reject)
 app.post('/api/posts/:id/reject-rider', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    try {
+        const post = await postsCollection.findOne({ id: postId });
+        const riderName = post.pendingRider;
+
+        await postsCollection.updateOne(
+            { id: postId },
+            { $set: { pendingRider: null } }
+        );
+        
+        // 📣 ส่งสัญญาณบอกไรเดอร์ว่าถูกปฏิเสธ
+        io.to(`post-${postId}`).emit('rider-status-result', { 
+            status: 'rejected', 
+            rider: riderName,
+            message: '❌ ร้านค้าได้ปฏิเสธคำขอของคุณ' 
+        });
+        
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+
+// API: ไรเดอร์แจ้งว่าส่งงานครบแล้ว
+app.post('/api/posts/:id/rider-complete', async (req, res) => {
     const postId = parseInt(req.params.id);
     try {
         await postsCollection.updateOne(
             { id: postId },
-            { $set: { pendingRider: null } } // ล้างค่าไรเดอร์ที่ขอมา
+            { $set: { status: 'delivered' } } // สถานะใหม่: ส่งแล้ว รอรีวิว
         );
-        
-        // ส่งสัญญาณบอกไรเดอร์ว่าคำขอถูกปฏิเสธ (Rider จะได้กดรับงานใหม่ได้)
-        io.emit('rider-rejected', { postId: postId });
-        
+
+        // แจ้งเตือนร้านค้าให้รู้ตัว
+        io.to(`post-${postId}`).emit('job-delivered', { 
+            message: 'ไรเดอร์ส่งงานครบแล้ว กรุณาตรวจสอบและให้คะแนน!' 
+        });
+
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
-
 
 
 
