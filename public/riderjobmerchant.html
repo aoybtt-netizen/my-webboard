@@ -251,33 +251,14 @@
         const myUsername = localStorage.getItem('myUsername');
 
     async function loadJobDetails() {
-    const container = document.getElementById('job-details');
-    if (!jobId) {
-        container.innerHTML = '<div class="card" style="text-align:center; color:red;">ไม่พบรหัสงาน (Invalid Job ID)</div>';
-        return;
-    }
-
     try {
-        console.log("กำลังโหลดงาน ID:", jobId);
         const res = await fetch(`/api/posts/${jobId}`);
         const data = await res.json();
-
         if (data.success) {
-            currentPostData = data.post;
+            currentPostData = data.post; // 🚩 เก็บข้อมูลไว้
             renderJob(data.post);
-            updateMap(data.post.stops);
-            loadRiderMessages();
-            
-            // 🚩 2. สั่งเข้าห้องแชทตรงนี้เลยหลังจากโหลดข้อมูลสำเร็จ
-            socket.emit('join-post', jobId);
-            console.log("✅ Joined Room:", jobId);
-        } else {
-            container.innerHTML = '<div class="card" style="text-align:center; color:red;">ไม่พบข้อมูลงานนี้ในระบบ</div>';
         }
-    } catch (error) {
-        console.error("Load Job Error:", error);
-        container.innerHTML = '<div class="card" style="text-align:center; color:red;">เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์</div>';
-    }
+    } catch (error) { console.error(error); }
 }
 
 
@@ -703,16 +684,7 @@ window.addEventListener('load', () => {
 // รับแชทสดฝั่ง Rider ด้วย
 socket.on('new-comment', (data) => {
     if (data.postId == jobId) {
-        const container = document.getElementById('chat-messages');
-        const isMe = data.comment.author === myUsername;
-        
-        const html = `
-            <div class="chat-bubble ${isMe ? 'bubble-me' : 'bubble-them'}">
-                ${data.comment.text || data.comment.content}
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
-        container.scrollTop = container.scrollHeight;
+        loadRiderMessages(); // หรือจะใช้ insertAdjacentHTML แบบร้านค้าก็ได้จะลื่นกว่า
     }
 });
 
