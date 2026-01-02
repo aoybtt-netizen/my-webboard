@@ -2507,6 +2507,57 @@ app.get('/api/rider-stats/:username', async (req, res) => {
     }
 });
 
+
+app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
+    const { postId, stopIndex } = req.params;
+    const { author } = req.body;
+
+    try {
+        // 1. ค้นหางาน
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+        
+        // ตรวจสอบว่าเป็นเจ้าของงานจริงไหม (Security)
+        if (post.author !== author) return res.status(403).json({ success: false, error: 'ไม่มีสิทธิ์จัดการงานนี้' });
+
+        // 2. อัปเดตสถานะเฉพาะจุด (Array Element) ให้เป็น success
+        const updateKey = `stops.${stopIndex}.status`;
+        const updateData = { [updateKey]: 'success' };
+
+        // 3. ตรวจสอบว่าถ้าบายพาสแล้ว งานจะจบเลยหรือไม่
+        const currentStops = post.stops;
+        currentStops[stopIndex].status = 'success';
+        const allFinished = currentStops.every(s => s.status === 'success');
+
+        if (allFinished) {
+            updateData.status = 'finished'; // ถ้าครบทุกจุด ให้เปลี่ยนสถานะงานรวมเป็น finished
+        }
+
+        await postsCollection.updateOne(
+            { id: parseInt(postId) },
+            { $set: updateData }
+        );
+
+        // 4. แจ้งเตือนทุกคนในห้องผ่าน Socket
+        io.to(postId.toString()).emit('update-job-status', { 
+            postId, 
+            stopIndex, 
+            status: 'success',
+            allFinished 
+        });
+        
+        // ส่งไปอัปเดตหน้า List ด้วย
+        io.emit('update-post-status');
+
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+
 // API: ร้านค้ายืนยันจบงาน และให้คะแนนไรเดอร์
 app.post('/api/posts/:postId/finish-job', async (req, res) => {
     const { postId } = req.params;
