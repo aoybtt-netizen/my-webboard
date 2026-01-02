@@ -3012,37 +3012,40 @@ socket.on('reply-extension-request', async (data) => {
 
     socket.on('confirm-finish-job', async ({ postId, accepted, requester }) => {
     if (accepted) {
-        // 1. ดึงข้อมูลกระทู้มาก่อนเพื่อดูว่าใครคือคนโพสต์ (Author) และใครคือคนรับงาน (AcceptedViewer)
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         
         if (post) {
-            // 2. อัปเดตสถานะกระทู้ตามปกติ
+            // 🚩 แก้ไขสถานะให้เป็น 'finished' (เพื่อให้สถิติที่หน้า Merchant นับเจอ)
             await postsCollection.updateOne({ id: parseInt(postId) }, { 
-                $set: { status: 'rating_pending', isClosed: true, ratings: {} } 
+                $set: { 
+                    status: 'finished', // เปลี่ยนจาก rating_pending เป็น finished เลย หรือจัดการให้ดี
+                    isClosed: true, 
+                    finishTimestamp: Date.now()
+                } 
             });
 
-            // 🎯 3. [เพิ่มใหม่] นับจำนวน "จบงาน" ให้กับทั้ง 2 ฝ่าย
-            // เพิ่มให้เจ้าของกระทู้ (Employer)
+            // 🚩 แก้ไขการนับสถิติใน User ให้ใช้ฟิลด์เดียวกัน
+            // ผมแนะนำให้ใช้ระบบ "นับสด (Count)" แบบที่ผมบอกไปก่อนหน้านี้จะแม่นยำกว่า 
+            // แต่ถ้าจะใช้ $inc ต่อ ก็ต้องใช้ชื่อฟิลด์ให้เหมือนกันทั้งระบบครับ
+            
+            // เพิ่มให้เจ้าของกระทู้
             await usersCollection.updateOne(
                 { username: post.author },
-                { $inc: { completedJobs: 1 } }
+                { $inc: { totalJobs: 1 } } // เปลี่ยนชื่อให้ตรงกับหน้า stats
             );
 
-            // เพิ่มให้ผู้รับงาน (Worker)
-            if (post.acceptedViewer) {
+            // เพิ่มให้ผู้รับงาน (เช็คทั้ง 2 ฟิลด์เลยเพื่อกันพลาด)
+            const worker = post.acceptedViewer || post.acceptedBy; 
+            if (worker) {
                 await usersCollection.updateOne(
-                    { username: post.acceptedViewer },
-                    { $inc: { completedJobs: 1 } }
+                    { username: worker },
+                    { $inc: { totalJobs: 1 } } 
                 );
             }
 
-            console.log(`📊 Updated completedJobs for ${post.author} and ${post.acceptedViewer}`);
-            
             io.emit('update-post-status');
             io.to(`post-${postId}`).emit('start-rating-phase');
         }
-    } else {
-        io.to(requester).emit('finish-request-rejected', { msgKey: 'SYS_FINISH_REJECTED' });
     }
 });
 

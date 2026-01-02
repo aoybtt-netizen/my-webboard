@@ -1481,9 +1481,9 @@ function closeManageModal() {
 
                 <div style="display: flex; margin-top: 10px; background: white; border-radius: 10px; padding: 10px;">
                     <div class="stat-item">
-                        <span class="stat-value">${stats.totalJobs}</span>
-                        <span class="stat-label">งานที่สำเร็จ</span>
-                    </div>
+                    <span class="stat-value">${stats.totalJobs || 0}</span>
+                    <span class="stat-label">งานที่รับ</span>
+					</div>
                     <div style="width: 1px; background: #eee;"></div>
                     <div class="stat-item">
                         <span class="stat-value">ดีมาก</span>
@@ -1720,6 +1720,52 @@ socket.on('new-comment', (data) => {
         }
     }
 });
+
+
+// แก้ไขฟังก์ชัน confirmAndRate ให้เรียกใช้ API กลาง
+async function confirmAndRate(postId, riderName) {
+    // 1. ถามคะแนนด้วยหน้าต่างเด้ง (คุณสามารถเปลี่ยนเป็นระบบ Star Rating ทีหลังได้)
+    const rating = prompt(`กรุณาให้คะแนนคุณ ${riderName} (1-5 คะแนน):`, "5");
+    
+    if (rating === null) return; // กดยกเลิก
+    const score = parseFloat(rating);
+    
+    if (isNaN(score) || score < 1 || score > 5) {
+        alert("กรุณาใส่คะแนนระหว่าง 1 ถึง 5 ครับ");
+        return;
+    }
+
+    try {
+        // 🚩 เรียกใช้ API ยูนิฟอร์มที่เราแก้ใน Server
+        const res = await fetch(`/api/posts/${postId}/finish-job`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                rating: score,
+                author: myUsername // ส่งชื่อร้านค้าไปด้วยเพื่อให้ระบบรู้ว่าใครเป็นคนประเมิน
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alert("✅ จบงานและบันทึกสถิติเรียบร้อย!");
+            
+            // ปิด Sidebar และโหลดรายการงานใหม่
+            document.getElementById('right-sidebar').classList.remove('active');
+            document.getElementById('right-sidebar-overlay').classList.add('hidden');
+            loadActiveMerchantTasks(); 
+            
+            // ส่งสัญญาณ Socket ให้ฝั่ง Rider รู้ว่างานจบแล้ว (ถ้าต้องการ)
+            socket.emit('confirm-finish-job', { postId: postId, accepted: true });
+        } else {
+            alert("เกิดข้อผิดพลาด: " + data.error);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
+    }
+}
 
 
 </script>
