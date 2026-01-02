@@ -2248,6 +2248,8 @@ app.post('/api/admin/set-zone-ref-from-user', async (req, res) => {
     }
 });
 
+
+
 // --- Socket Helpers ---
 function broadcastPostStatus(postId, isOccupied) { 
     io.emit('post-list-update', { postId: postId, isOccupied: isOccupied }); 
@@ -2395,7 +2397,7 @@ app.get('/api/merchant/tasks', async (req, res) => {
     if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้' });
 
     try {
-        // 1. ดึงงานทั้งหมดของร้านที่ยังไม่ได้กดยืนยันจบงาน (closed_by_merchant)
+        // 1. ดึงจาก DB: กรองเบื้องต้นเอาเฉพาะงานของตัวเองที่เป็น Merchant Task และยังไม่ปิดงาน
         const posts = await postsCollection.find({ 
             author: username, 
             isMerchantTask: true,
@@ -2405,18 +2407,21 @@ app.get('/api/merchant/tasks', async (req, res) => {
         const now = Date.now();
         const oneHour = 3600000;
 
-        // 2. กรองงานที่จะแสดงผลในหน้า Active Tasks
+        // 2. กรองงาน (Filtering Logic)
         const activeTasks = posts.filter(post => {
-            // เงื่อนไข A: ถ้า Rider ส่งครบทุกจุดแล้ว (status: 'finished') -> ต้องโชว์เพื่อให้ร้านกดยืนยัน
+            // เงื่อนไขที่ 1: ถ้า Rider ส่งสำเร็จแล้ว (finished) -> ต้องโชว์เพื่อให้ Merchant กดยืนยันจบงาน
             if (post.status === 'finished') return true;
 
-            // เงื่อนไข B: เช็คเรื่องเวลาหมด (1 ชม.)
-            const isExpired = (now - post.id > oneHour) && !post.isPinned;
+            // เงื่อนไขที่ 2: งานที่ "หมดเวลาและไม่มีคนรับ" 
+            // เพิ่มการเช็ค !post.acceptedBy เพื่อให้งานที่ไรเดอร์รับไปแล้วไม่ถูกซ่อน แม้จะเกิน 1 ชม.
+            const isExpiredAndNoRider = (now - post.id > oneHour) && !post.isPinned && !post.acceptedBy;
             
-            // ถ้างานถูกปิด (isClosed) หรือ หมดเวลาแล้ว -> ไม่ต้องโชว์ในหน้า Active
-            if (post.isClosed || isExpired) return false;
+            // เงื่อนไขที่ 3: งานที่ถูกปิดโดยระบบ (isClosed) หรือ หมดเวลาตามเงื่อนไขข้างบน -> ไม่ต้องโชว์
+            if (post.isClosed || isExpiredAndNoRider) {
+                return false;
+            }
 
-            // นอกเหนือจากนั้นคือสถานะ pending หรือ in_progress ที่ยังไม่หมดเวลา -> ให้โชว์
+            // นอกเหนือจากนั้น (เช่น กำลังหาไรเดอร์ หรือ ไรเดอร์กำลังไปส่ง) -> ให้โชว์
             return true;
         });
         
