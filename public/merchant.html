@@ -1313,7 +1313,7 @@ function closeManageModal() {
 
     renderSidebarDetails();
     loadSidebarChat(postId);
-
+	socket.emit('join-post', postId);
     document.getElementById('right-sidebar').classList.add('active');
     document.getElementById('right-sidebar-overlay').classList.remove('hidden');
     switchTab('notif'); 
