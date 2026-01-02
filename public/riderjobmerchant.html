@@ -247,9 +247,21 @@
 		let currentPostData = null;
 
         const urlParams = new URLSearchParams(window.location.search);
-        const jobId = urlParams.get('view_id');
+        const jobId = urlParams.get('id');
         const myUsername = localStorage.getItem('myUsername');
 		
+		// 🚩 เช็คว่าถ้าไม่มี ID งาน ให้ดีดกลับหน้าแรกทันที ไม่ต้องรอ Loading
+if (!jobId) {
+    alert("ไม่พบรหัสงาน");
+    window.location.href = 'index.html';
+}
+
+// 🚩 เช็คว่าถ้ายังไม่ Login ให้ไปหน้า Login
+if (!myUsername) {
+    alert("กรุณาเข้าสู่ระบบก่อน");
+    window.location.href = 'login.html'; 
+}
+
 		
 	socket.on('update-post-status', () => {
     // เมื่อมีการอัปเดตสถานะงานจากที่อื่น ให้โหลดข้อมูลใหม่ทันที
