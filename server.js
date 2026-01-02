@@ -2395,8 +2395,8 @@ app.get('/api/merchant/tasks', async (req, res) => {
         // 1. ดึงงานทั้งหมดของร้านที่ยังไม่ได้กดยืนยันจบงาน (closed_by_merchant)
         const posts = await postsCollection.find({ 
             author: username, 
-            isMerchantTask: true,
-            status: { $ne: 'closed_by_merchant' } 
+			isMerchantTask: true,
+			status: { $ne: 'closed_by_merchant' } 
         }).sort({ id: -1 }).toArray();
 
         const now = Date.now();
@@ -2599,9 +2599,9 @@ app.post('/api/posts/:id/finish-job', async (req, res) => {
             { id: postId },
             { 
                 $set: { 
-                    status: 'closed_by_merchant', // เปลี่ยนจาก finished เป็น closed_by_merchant
-                    finishedAt: Date.now(),
-                    isClosed: true // เพิ่ม flag นี้ไว้ด้วยเพื่อความชัวร์
+                    status: 'closed_by_merchant', 
+                    isClosed: true, 
+                    finishedAt: Date.now()
                 } 
             }
         );
