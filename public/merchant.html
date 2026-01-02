@@ -1298,12 +1298,15 @@ function closeManageModal() {
     notifList.innerHTML = ''; // ล้างค่าเก่า
     
     if (activeTaskInSidebar.pendingRider) {
-        notifList.innerHTML = `
-            <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12;">
-                <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> คำขอที่ค้างอยู่</b><br>
-                ไรเดอร์ <b>${activeTaskInSidebar.pendingRider}</b> กำลังรอคุณตอบรับ<br>
-                <button onclick="approveRider('${postId}')" style="margin-top:10px; background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:20px; width:100%;">ตกลงให้งาน</button>
+    notifList.innerHTML = `
+        <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12;">
+            <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> มีคำขอเข้าใหม่</b><br>
+            คุณ <b>${activeTaskInSidebar.pendingRider}</b> ต้องการรับงานนี้<br>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px;">ตกลง</button>
+                <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px;">ปฏิเสธ</button>
             </div>
+        </div>
         `;
     } else if (activeTaskInSidebar.acceptedBy) {
         notifList.innerHTML = `<p style="text-align:center; color:#27ae60;">🟢 มอบหมายงานให้คุณ ${activeTaskInSidebar.acceptedBy} เรียบร้อยแล้ว</p>`;
@@ -1427,19 +1430,7 @@ async function rejectRider(postId) {
     } catch (e) { alert("เกิดข้อผิดพลาด"); }
 }
 
-// ปรับปรุงส่วนแสดงผลใน Notif List (ข้างใน openRightSidebar)
-if (activeTaskInSidebar.pendingRider) {
-    notifList.innerHTML = `
-        <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12;">
-            <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> มีคำขอเข้าใหม่</b><br>
-            คุณ <b>${activeTaskInSidebar.pendingRider}</b> ต้องการรับงานนี้<br>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px;">ตกลง</button>
-                <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px;">ปฏิเสธ</button>
-            </div>
-        </div>
-    `;
-}
+
 
 
 
