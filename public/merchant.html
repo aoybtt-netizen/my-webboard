@@ -300,6 +300,39 @@
 .msg-them { background: #eee; color: #333; }
 
 
+
+
+/* จุดแจ้งเตือนสีแดงบนการ์ดงาน */
+.unread-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* ปรับให้ Card เป็น relative เพื่อให้ badge แปะถูกที่ */
+.active-task-card {
+    position: relative;
+}
+
+
     </style>
 </head>
 <body>
@@ -436,7 +469,9 @@ async function loadActiveMerchantTasks() {
             let finalHtml = ''; 
 
             data.posts.forEach(post => {
-                // 1. คำนวณค่าต่างๆ
+                // ✅ ถูกต้อง: เข้าห้องแชททุกงานเพื่อให้รับแจ้งเตือนสดได้
+                socket.emit('join-post', post.id);
+
                 const totalStops = post.stops.length;
                 const completedStops = post.stops.filter(s => s.status === 'success').length;
                 const progressPercent = (completedStops / totalStops) * 100;
@@ -444,34 +479,32 @@ async function loadActiveMerchantTasks() {
                 const postTime = new Date(post.id).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
                 const refCode = post.id.toString().slice(-4);
 
-                // 2. [ส่วนที่เพิ่มใหม่] Logic การตัดสินใจเลือกแสดงปุ่ม Action
                 let actionBtnHtml = '';
                 
                 if (post.acceptedBy) {
-                    // กรณีที่ 1: มีคนรับงานแล้ว
                     if (canConfirm) {
                         actionBtnHtml = '<button onclick="event.stopPropagation(); confirmAndRate(\'' + post.id + '\', \'' + post.acceptedBy + '\')" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">✅ จบงาน & ให้คะแนน</button>';
                     } else {
                         actionBtnHtml = '<small style="color: #11998e; font-weight: bold;">🛵 ไรเดอร์กำลังดำเนินการ...</small>';
                     }
                 } else if (post.pendingRider) {
-                    // กรณีที่ 2: มีไรเดอร์กดของาน (รอร้านค้ากดอนุมัติ)
-                    // ใช้ event.stopPropagation() เพื่อไม่ให้มันไปเปิด Sidebar เมื่อกดปุ่ม
                     actionBtnHtml = `
                         <div style="text-align:right;">
                             <small style="display:block; margin-bottom:5px; color:#f39c12;">Rider <b>${post.pendingRider}</b> ของานนี้</small>
                             <button onclick="event.stopPropagation(); approveRider('${post.id}')" style="background: #f39c12; color: white; border: none; padding: 6px 15px; border-radius: 15px; font-size: 0.8em; cursor: pointer; font-weight:bold;">ตกลงให้งาน</button>
                         </div>`;
                 } else {
-                    // กรณีที่ 3: ยังไม่มีใครกดรับงาน
                     actionBtnHtml = '<small style="color: #999;">⌛ รอไรเดอร์รับงาน...</small>';
                 }
 
                 const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
 
-                // 3. ประกอบร่าง HTML
+                // 🚩 แก้ไขจุดนี้: เพิ่ม ID และ Badge Container
                 finalHtml += `
-                    <div class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
+                    <div id="card-${post.id}" class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} position: relative; padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
+                        
+                        <div id="badge-container-${post.id}"></div>
+
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div>
                                 <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
@@ -1290,6 +1323,14 @@ function closeManageModal() {
     // 🚩 จัดการหน้าแจ้งเตือน (Notif Tab)
     const notifList = document.getElementById('notif-list');
     notifList.innerHTML = ''; // ล้างค่าเก่า
+	
+	const badgeContainer = document.getElementById(`badge-container-${postId}`);
+    if (badgeContainer) {
+        badgeContainer.innerHTML = '';
+        const card = document.getElementById(`card-${postId}`);
+        if(card) card.style.backgroundColor = 'white';
+    }
+	
     
     if (activeTaskInSidebar.pendingRider) {
     notifList.innerHTML = `
@@ -1467,25 +1508,29 @@ socket.on('rider-applied', (data) => {
 
 // 🚩 2. ปรับตัวรับสัญญาณใน merchant.html
 socket.on('new-comment', (data) => {
-    console.log("📩 ได้รับแชทสด:", data); // ตรวจสอบใน vConsole ว่า Log นี้ขึ้นไหม
+    console.log("📩 ได้รับข้อความใหม่:", data);
 
-    // ใช้ == (สองอัน) เพื่อเลี่ยงปัญหา String เทียบกับ Number
+    // 1. ถ้าเปิดแชทงานนั้นอยู่ ให้เด้งข้อความในสไลด์บาร์ (เหมือนเดิม)
     if (activeTaskInSidebar && activeTaskInSidebar.id == data.postId) {
         const chatBox = document.getElementById('chat-box');
         const isMe = data.comment.author === myUsername;
-        
-        const newMsgHtml = `
-            <div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}">
-                ${data.comment.text}
-            </div>
-        `;
-        
+        const newMsgHtml = `<div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}">${data.comment.text}</div>`;
         chatBox.insertAdjacentHTML('beforeend', newMsgHtml);
         chatBox.scrollTop = chatBox.scrollHeight;
-        
-        // ถ้าอยู่หน้า Tab อื่น ให้ขึ้นจุดแดงที่ไอคอนแชท (แถมให้)
+
+        // ถ้าไม่ได้อยู่ที่หน้า Chat ให้ไอคอนใน Sidebar เป็นสีแดง
         if (currentTab !== 'chat') {
-             document.querySelector('.tab-item[onclick*="chat"]').style.color = 'red';
+            document.querySelector('.tab-item[onclick*="chat"]').style.color = 'red';
+        }
+    } 
+
+    // 2. 🚩 [ส่วนที่เพิ่มใหม่] เพิ่มจุดแดงบน "การ์ดงาน" ในรายการหลัก (ถ้าไม่ใช่เราเป็นคนส่งเอง)
+    if (data.comment.author !== myUsername) {
+        const badgeContainer = document.getElementById(`badge-container-${data.postId}`);
+        if (badgeContainer) {
+            badgeContainer.innerHTML = `<div class="unread-badge">1</div>`;
+            // เพิ่มลูกเล่นให้การ์ดสั่นเล็กน้อย
+            document.getElementById(`card-${data.postId}`).style.backgroundColor = '#fff9f9';
         }
     }
 });
