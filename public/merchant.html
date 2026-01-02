@@ -1572,15 +1572,29 @@ function switchTab(tabName) {
 function renderSidebarDetails() {
     const container = document.getElementById('sidebar-details-content');
     let html = '';
+    
+    // ตรวจสอบว่ามีข้อมูล activeTaskInSidebar หรือไม่
+    if (!activeTaskInSidebar || !activeTaskInSidebar.stops) return;
+
     activeTaskInSidebar.stops.forEach((stop, i) => {
         const isDone = stop.status === 'success';
+        
+        // สร้างปุ่ม Bypass เฉพาะจุดที่ยังทำไม่สำเร็จ
+        const bypassBtn = !isDone ? `
+            <button onclick="bypassCheckIn('${activeTaskInSidebar.id}', ${i})" 
+                style="margin-left: auto; background: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; cursor: pointer;">
+                <i class="fas fa-forward"></i> Bypass
+            </button>
+        ` : '';
+
         html += `
-            <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; opacity: ${isDone ? 0.5 : 1}">
+            <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; opacity: ${isDone ? 0.6 : 1}">
                 <i class="fas ${isDone ? 'fa-check-circle' : 'fa-circle'}" style="color: ${isDone ? '#27ae60' : '#ccc'}"></i>
-                <div>
+                <div style="flex-grow: 1;">
                     <div style="font-weight: bold; font-size: 0.9em;">${i === 0 ? '🏠 รับของ' : '📍 จุดส่งที่ '+i}</div>
-                    <div style="font-size: 0.85em;">${stop.label}</div>
+                    <div style="font-size: 0.85em; color: #666;">${stop.label || stop.locationName || ''}</div>
                 </div>
+                ${bypassBtn}
             </div>
         `;
     });
@@ -1767,6 +1781,33 @@ async function confirmAndRate(postId, riderName) {
         alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
     }
 }
+
+
+async function bypassCheckIn(postId, stopIndex) {
+    if (!confirm("คุณต้องการยืนยันการเช็คอินจุดนี้แทนไรเดอร์ใช่หรือไม่?")) return;
+
+    try {
+        const res = await fetch(`/api/posts/${postId}/bypass-stop/${stopIndex}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ author: myUsername })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert("✅ บายพาสจุดส่งเรียบร้อย");
+            // โหลดข้อมูล Sidebar ใหม่ หรือรอ Socket อัปเดต
+            openRightSidebar(postId); 
+        } else {
+            alert("เกิดข้อผิดพลาด: " + data.error);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
+    }
+}
+
+
 
 
 </script>
