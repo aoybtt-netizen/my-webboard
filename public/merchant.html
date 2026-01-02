@@ -1293,15 +1293,30 @@ function closeManageModal() {
     activeTaskInSidebar = data.post;
     document.getElementById('sidebar-task-title').innerText = `งาน: ${activeTaskInSidebar.title}`;
     
-    // โหลดรายละเอียดงานใน Tab Details
-    renderSidebarDetails();
+    // 🚩 จัดการหน้าแจ้งเตือน (Notif Tab)
+    const notifList = document.getElementById('notif-list');
+    notifList.innerHTML = ''; // ล้างค่าเก่า
     
-    // โหลดแชท
+    if (activeTaskInSidebar.pendingRider) {
+        notifList.innerHTML = `
+            <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12;">
+                <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> คำขอที่ค้างอยู่</b><br>
+                ไรเดอร์ <b>${activeTaskInSidebar.pendingRider}</b> กำลังรอคุณตอบรับ<br>
+                <button onclick="approveRider('${postId}')" style="margin-top:10px; background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:20px; width:100%;">ตกลงให้งาน</button>
+            </div>
+        `;
+    } else if (activeTaskInSidebar.acceptedBy) {
+        notifList.innerHTML = `<p style="text-align:center; color:#27ae60;">🟢 มอบหมายงานให้คุณ ${activeTaskInSidebar.acceptedBy} เรียบร้อยแล้ว</p>`;
+    } else {
+        notifList.innerHTML = `<p style="text-align:center; color:#999;">⌛ ยังไม่มีการแจ้งเตือนใหม่</p>`;
+    }
+
+    renderSidebarDetails();
     loadSidebarChat(postId);
 
     document.getElementById('right-sidebar').classList.add('active');
     document.getElementById('right-sidebar-overlay').classList.remove('hidden');
-    switchTab('notif'); // เริ่มที่หน้าแจ้งเตือน
+    switchTab('notif'); 
 }
 
 function closeRightSidebar() {
@@ -1389,6 +1404,48 @@ async function approveRider(postId) {
         }
     } catch (e) { alert("Error"); }
 }
+
+
+
+
+
+
+
+
+// 🔔 รับสัญญาณเมื่อมีไรเดอร์กด "ของาน"
+socket.on('rider-applied', (data) => {
+    // 1. โหลดรายการงานใหม่ทันทีเพื่อให้ปุ่ม "ตกลงให้งาน" ปรากฏ
+    loadActiveMerchantTasks();
+    
+    // 2. ถ้าเปิด Sidebar งานนั้นอยู่ ให้เพิ่มแจ้งเตือนใน Tab Notif
+    if (activeTaskInSidebar && activeTaskInSidebar.id === data.postId) {
+        const notifList = document.getElementById('notif-list');
+        notifList.innerHTML = `
+            <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12; margin-bottom: 10px;">
+                <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> คำขอรับงานใหม่!</b><br>
+                ไรเดอร์ <b>${data.riderName}</b> ต้องการรับงานนี้<br>
+                <button onclick="approveRider('${data.postId}')" style="margin-top:10px; background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:20px; width:100%;">กดยืนยันให้งาน</button>
+            </div>
+        ` + notifList.innerHTML;
+    }
+});
+
+// 💬 รับสัญญาณเมื่อมี "ข้อความแชทใหม่" (แก้ปัญหาไม่ต้องส่งก่อนถึงเห็น)
+socket.on('new-comment', (data) => {
+    // ตรวจสอบว่า Sidebar ที่เปิดอยู่ คือโพสต์เดียวกับที่แชทมาหรือไม่
+    if (activeTaskInSidebar && activeTaskInSidebar.id === data.postId) {
+        const chatBox = document.getElementById('chat-box');
+        const isMe = data.comment.author === myUsername;
+        
+        // เพิ่มข้อความเข้าไปในช่องแชททันที
+        chatBox.innerHTML += `
+            <div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}">
+                ${data.comment.text}
+            </div>
+        `;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+});
 
 
 </script>

@@ -2544,11 +2544,14 @@ app.post('/api/posts/:id/apply', async (req, res) => {
     const postId = parseInt(req.params.id);
     const { riderName } = req.body;
     try {
-        // บันทึกชื่อ Rider ลงในฟิลด์ pendingRider เพื่อรอร้านค้าตัดสินใจ
         await postsCollection.updateOne(
             { id: postId },
             { $set: { pendingRider: riderName, applyTimestamp: Date.now() } }
         );
+
+        // 🔔 เพิ่มบรรทัดนี้: ส่งสัญญาณบอกร้านค้าว่ามีคนของาน
+        io.emit('rider-applied', { postId: postId, riderName: riderName });
+
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
