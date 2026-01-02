@@ -402,6 +402,22 @@ async function getPostCostByLocation(location) {
 }
 
 
+// ฟังก์ชันกดปุ่มรีเซ็ตสถานะ
+function resetUserJobStatus(targetUsername) {
+    if (!confirm(`ยืนยันการรีเซ็ตสถานะงานของ ${targetUsername} เป็น "ว่าง/ปรกติ" ?`)) {
+        return;
+    }
+    // ส่งคำสั่งไปที่ Server
+    socket.emit('admin_reset_user_status', { targetUsername: targetUsername });
+}
+
+// รับผลตอบกลับจาก Server (ถ้ามี)
+socket.on('reset_status_success', (msg) => {
+    alert(msg || 'รีเซ็ตสถานะเรียบร้อยแล้ว');
+    // อาจจะเรียก fetchUsers() ใหม่เพื่ออัปเดตหน้าจอ
+});
+
+
 async function isUserBanned(username) {
     if (username === 'Admin') return false;
     const user = await usersCollection.findOne({ username: username });
@@ -2643,6 +2659,34 @@ io.on('connection', (socket) => {
         const roomName = `post-${postId}`;
         socket.join(roomName);
     });
+	
+	socket.on('admin_reset_user_status', async ({ targetUsername }) => {
+    // เช็คว่าเป็น Admin หรือไม่ (ความปลอดภัย)
+    // if (!currentUser || currentUser.adminLevel < 1) return; 
+
+    try {
+        await usersCollection.updateOne(
+            { username: targetUsername },
+            { 
+                $set: { 
+                    isWorking: false,    // ไม่ได้ทำงาน
+                    currentJobId: null,  // ไม่มีงานค้าง
+                    role: 'user'         // กลับเป็น user ปรกติ (หรือตามระบบคุณ)
+                } 
+            }
+        );
+        
+        // แจ้งกลับมาที่ Admin
+        socket.emit('reset_status_success', `รีเซ็ตสถานะของ ${targetUsername} แล้ว`);
+        
+        // อัปเดตข้อมูลให้คนอื่นเห็นด้วย (ถ้าจำเป็น)
+        io.emit('update-user-list', await fetchAllUsers()); 
+
+    } catch (err) {
+        console.error(err);
+    }
+});
+
     
     socket.on('register', async (username) => {
         socket.join(username);

@@ -5082,23 +5082,26 @@ function openUserDetail(targetUsername) {
     document.getElementById('detail-name').innerText = u.name;
     document.getElementById('detail-coins').innerText = u.coins.toLocaleString();
     document.getElementById('detail-rating').innerText = u.rating.toFixed(2);
-	
-	const postEl = document.getElementById('detail-total-posts');
+
+    const postEl = document.getElementById('detail-total-posts');
     const jobEl = document.getElementById('detail-completed-jobs');
     if (postEl) postEl.innerText = u.totalPosts || 0;
     if (jobEl) jobEl.innerText = u.completedJobs || 0;
-    
+
     // สร้าง Badges
     let badgesHtml = '';
     if (targetLevel > 0) badgesHtml += `<span style="background:#007bff; color:white; padding:4px 8px; border-radius:4px; margin-right:5px;">Admin Level ${targetLevel}</span>`;
     if (isBanned) badgesHtml += `<span style="background:#dc3545; color:white; padding:4px 8px; border-radius:4px;">⛔ BANNED</span>`;
     document.getElementById('detail-badges').innerHTML = badgesHtml;
 
-    // 2. เตรียมปุ่มจัดการ (ย้าย Logic เดิมมาที่นี่)
+    // 2. เตรียมปุ่มจัดการ
     const chatText = currentLang === 'th' ? '💬 แชท / โอนเหรียญ' : '💬 Chat / Transfer';
     const ratingText = currentLang === 'th' ? '⭐ ตั้งค่าคะแนน' : '⭐ Set Rating';
     const banText = isBanned ? (currentLang === 'th' ? '✅ ปลดแบน' : '✅ Unban') : (currentLang === 'th' ? '❌ แบนสมาชิก' : '❌ Ban User');
     const banBtnColor = isBanned ? '#28a745' : '#dc3545';
+    
+    // --- ข้อความปุ่ม Reset Status ---
+    const resetText = currentLang === 'th' ? '🔄 รีเซ็ตสถานะงาน' : '🔄 Reset Job Status';
 
     let buttonsHtml = '';
 
@@ -5109,12 +5112,17 @@ function openUserDetail(targetUsername) {
         </button>
     `;
 
-    // ปุ่ม Admin (Rate, Ban)
-    if (myAdminLevel >= 1) { // หรือเงื่อนไขตามที่คุณต้องการ
+    // ปุ่ม Admin (Rate, Ban, Reset Status)
+    if (myAdminLevel >= 1) { 
         buttonsHtml += `
             <button class="sidebar-btn admin-btn" style="background:#ffc107; color:black;" onclick="setMemberRating('${u.name}')">
                 ${ratingText}
             </button>
+            
+            <button class="sidebar-btn" style="background:#fd7e14; color:white;" onclick="resetUserJobStatus('${u.name}'); document.getElementById('user-detail-modal').classList.add('hidden');">
+                ${resetText}
+            </button>
+
             <button class="sidebar-btn" style="background:${banBtnColor}; color:white;" onclick="toggleBanUser('${u.name}', ${isBanned}); document.getElementById('user-detail-modal').classList.add('hidden');">
                 ${banText}
             </button>
@@ -5128,16 +5136,16 @@ function openUserDetail(targetUsername) {
     if (myAdminLevel >= 3 && targetLevel < 2) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6610f2; color:white;" onclick="setAdminLevel('${u.name}', 2)">👨‍💼 ตั้งเป็น Admin 2</button>`;
     }
-	
-	if (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 3 && targetLevel === 2) {
-         const lat = u.assignedLocation ? u.assignedLocation.lat : '';
-         const lng = u.assignedLocation ? u.assignedLocation.lng : '';
-         const hasLoc = u.assignedLocation && u.assignedLocation.lat;
-         
-         const btnColor = hasLoc ? '#28a745' : '#17a2b8'; // เขียวถ้ามีแล้ว / ฟ้าถ้ายังไม่มี
-         const btnText = hasLoc ? '📍 แก้ไขพิกัดอ้างอิง' : '📍 กำหนดพิกัดอ้างอิง';
 
-         buttonsHtml += `
+    if (typeof myAdminLevel !== 'undefined' && myAdminLevel >= 3 && targetLevel === 2) {
+        const lat = u.assignedLocation ? u.assignedLocation.lat : '';
+        const lng = u.assignedLocation ? u.assignedLocation.lng : '';
+        const hasLoc = u.assignedLocation && u.assignedLocation.lat;
+
+        const btnColor = hasLoc ? '#28a745' : '#17a2b8'; 
+        const btnText = hasLoc ? '📍 แก้ไขพิกัดอ้างอิง' : '📍 กำหนดพิกัดอ้างอิง';
+
+        buttonsHtml += `
             <button class="sidebar-btn" 
                 onclick="document.getElementById('user-detail-modal').classList.add('hidden'); openSetLocationModal('${u.name}', '${lat}', '${lng}')" 
                 style="background: ${btnColor}; color: white; margin-bottom:5px;">
@@ -5145,7 +5153,7 @@ function openUserDetail(targetUsername) {
             </button>
          `;
     }
-	
+
     if (myAdminLevel > targetLevel && targetLevel > 0) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6c757d; color:white;" onclick="setAdminLevel('${u.name}', 0)">⬇️ ถอนสิทธิ์ Admin</button>`;
     }
@@ -5154,7 +5162,7 @@ function openUserDetail(targetUsername) {
 
     const banOptions = document.getElementById('ban-options');
     if (banOptions) banOptions.style.display = 'none';
-    
+
     modal.classList.remove('hidden');
 }
 
