@@ -2367,28 +2367,7 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
     }
 });
 
-// API: แก้ไขข้อมูลพิกัดที่บันทึกไว้
-app.put('/api/merchant/locations/:id', async (req, res) => {
-    try {
-        const { label, voiceKeyword, lat, lng, phone } = req.body;
-        await merchantLocationsCollection.updateOne(
-            { _id: new ObjectId(req.params.id) },
-            { 
-                $set: { 
-                    label, 
-                    voiceKeyword, 
-                    phone: phone || "",
-                    lat: parseFloat(lat), 
-                    lng: parseFloat(lng),
-                    updatedAt: Date.now() 
-                } 
-            }
-        );
-        res.json({ success: true });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: 'ไม่สามารถอัปเดตข้อมูลได้' }); 
-    }
-});
+
 
 
 // API: ดึงงานของร้านค้า (Merchant) เฉพาะที่ยังไม่จบกระบวนการ

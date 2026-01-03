@@ -474,17 +474,14 @@
             <div class="menu-item" onclick="openAddLocationModal()">
                 <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
             </div>
-			<div class="menu-item" onclick="openAddOrderModal()">
-                <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกออเดอร์
-            </div>
             <hr>
             <div class="menu-item" onclick="openManageLocationsModal()">
                 <i class="fas fa-list"></i> พิกัดที่บันทึกไว้ทั้งหมด
             </div>
-			<div class="menu-item" onclick="openAddOrderModal()">
+			<div class="menu-item" onclick="openListOrderModal()">
                 <i class="fas fa-list"></i> ออเดอร์ที่บันทึกไว้ทั้งหมด
             </div>
-			<div class="menu-item" onclick="openAddOrderModal()">
+			<div class="menu-item" onclick="openListOrderModal()">
                 <i class="fas fa-list"></i> การสั่งงานด้วยเสียง
             </div>
         </div>
@@ -495,7 +492,15 @@
         <div class="add-job-card" onclick="toggleTaskForm()">
             <i class="fas fa-plus-circle"></i> สร้างงานจ้างขนส่งใหม่
         </div>
+		
+		<div>
+        <small onclick="openListOrderModal()" style="color: #f39c12; cursor: pointer; margin-right: 15px;">
+            <i class="fas fa-history"></i> ออเดอร์ที่บันทึก
+        </small>
     </div>
+	
+    </div>
+	
 
     <div class="container" id="active-tasks-container">
         <h4 style="color: #666; margin-left: 10px;"><i class="fas fa-clock"></i> งานที่กำลังดำเนินการ</h4>
@@ -787,8 +792,167 @@ function openAddLocationModal() {
 }
 
 
-function openAddOrderModal(){
+
+
+// 1. ฟังก์ชันเปิด Modal เพื่อเตรียมบันทึก
+function openSaveTemplateModal() {
+    const stopsCount = document.querySelectorAll('.stop-item').length;
+    if (stopsCount === 0) return alert("กรุณาเพิ่มจุดส่งอย่างน้อย 1 จุดก่อนบันทึก");
+    
+    document.getElementById('save-template-modal').classList.remove('hidden');
+    document.getElementById('tpl-name').value = "";
+    document.getElementById('tpl-voice').value = "";
 }
+
+function closeSaveTplModal() {
+    document.getElementById('save-template-modal').classList.add('hidden');
+}
+
+// 2. ฟังก์ชันกดยืนยันการบันทึก (ส่งข้อมูลไป Server)
+async function confirmSaveTemplate() {
+    const tplName = document.getElementById('tpl-name').value.trim();
+    const voiceKey = document.getElementById('tpl-voice').value.trim();
+    
+    if (!tplName || !voiceKey) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+
+    const stops = [];
+    const stopElements = document.querySelectorAll('.stop-item');
+    let hasError = false;
+
+    stopElements.forEach((el, index) => {
+        const id = el.id.split('-')[1];
+        const label = document.getElementById(`label-${id}`).value;
+        const phone = document.getElementById(`phone-${id}`).value;
+        const lat = document.getElementById(`lat-${id}`).value;
+        const lng = document.getElementById(`lng-${id}`).value;
+
+        if (!lat || !lng) hasError = true;
+
+        stops.push({
+            step: index + 1,
+            label: label || (index === 0 ? "จุดรับงาน" : `จุดส่งที่ ${index}`),
+            phone: phone,
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
+            status: 'pending'
+        });
+    });
+
+    if (hasError) return alert("กรุณาปักหมุดพิกัดในออเดอร์ให้ครบก่อนบันทึก");
+
+    const payload = {
+        username: myUsername,
+        templateName: tplName,
+        voiceKeyword: voiceKey,
+        category: document.getElementById('task-category').value,
+        budget: document.getElementById('task-budget').value || 0,
+        content: document.getElementById('task-desc').value,
+        stops: stops
+    };
+
+    try {
+        const res = await fetch('/api/merchant/templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("✨ บันทึกออเดอร์สำเร็จรูปเรียบร้อย!");
+            closeSaveTplModal();
+            loadOrderTemplates(); // โหลดข้อมูลใหม่เข้าตัวแปร global
+        }
+    } catch (e) { alert("บันทึกไม่สำเร็จ"); }
+}
+
+// 3. ฟังก์ชันเปิดดูรายการที่บันทึกไว้
+async function openListOrderModal() {
+    // โหลดข้อมูลล่าสุดก่อนเปิด
+    await loadOrderTemplates();
+    
+    const listContent = document.getElementById('template-list-content');
+    listContent.innerHTML = "";
+
+    if (myOrderTemplates.length === 0) {
+        listContent.innerHTML = `<div style="text-align:center; padding:30px; color:#999;">ยังไม่มีออเดอร์ที่บันทึกไว้</div>`;
+    } else {
+        myOrderTemplates.forEach((tpl, index) => {
+            listContent.innerHTML += `
+                <div class="manage-item" style="cursor:pointer;" onclick="selectOrderTemplate(${index})">
+                    <div class="manage-info">
+                        <strong style="color: #11998e;"><i class="fas fa-file-invoice"></i> ${tpl.templateName}</strong><br>
+                        <small style="color:#888;">🎙️ คำสั่งเสียง: "${tpl.voiceKeyword}" • ${tpl.stops.length} จุด</small>
+                    </div>
+                    <div class="manage-actions">
+                        <button class="btn-delete" onclick="event.stopPropagation(); deleteOrderTemplate('${tpl._id}', ${index})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>`;
+        });
+    }
+    document.getElementById('list-order-modal').classList.remove('hidden');
+}
+
+function closeListOrderModal() {
+    document.getElementById('list-order-modal').classList.add('hidden');
+}
+
+// 4. ฟังก์ชันเลือกเทมเพลตมาใช้ (กรอกฟอร์มอัตโนมัติ)
+function selectOrderTemplate(index) {
+    const tpl = myOrderTemplates[index];
+    if (!tpl) return;
+
+    // เติมข้อมูลหลัก
+    document.getElementById('task-category').value = tpl.category;
+    document.getElementById('task-budget').value = tpl.budget;
+    document.getElementById('task-desc').value = tpl.content || "";
+
+    // ล้างจุดเก่า
+    document.getElementById('stops-container').innerHTML = "";
+    stopCount = 0;
+
+    // สร้างจุดใหม่ตามเทมเพลต
+    tpl.stops.forEach((stop) => {
+        addNewStop();
+        const currentId = stopCount;
+        
+        // ใช้ setTimeout เพื่อให้มั่นใจว่า DOM ถูกสร้างเสร็จก่อนกรอกค่า
+        setTimeout(() => {
+            document.getElementById(`label-${currentId}`).value = stop.label;
+            document.getElementById(`phone-${currentId}`).value = stop.phone || "";
+            document.getElementById(`lat-${currentId}`).value = stop.lat;
+            document.getElementById(`lng-${currentId}`).value = stop.lng;
+            document.getElementById(`coords-display-${currentId}`).innerText = 
+                `พิกัด: ${parseFloat(stop.lat).toFixed(5)}, ${parseFloat(stop.lng).toFixed(5)}`;
+            reorderStops();
+        }, 0);
+    });
+
+    closeListOrderModal();
+    // ถ้าหน้าจอซ่อนฟอร์มอยู่ ให้เปิดออกมาดูด้วย
+    document.getElementById('task-form-container').classList.remove('hidden');
+}
+
+// 5. ฟังก์ชันใช้เสียงกรอกคีย์เวิร์ดในหน้าบันทึกเทมเพลต
+function startVoiceForTemplate(btn) {
+    if (!SpeechRecognition) return alert("ไม่รองรับเสียง");
+    const vRec = new SpeechRecognition();
+    vRec.lang = 'th-TH';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    vRec.start();
+    vRec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        document.getElementById('tpl-voice').value = text.replace(/\s+/g, '');
+        btn.innerHTML = '<i class="fas fa-microphone"></i>';
+    };
+    vRec.onerror = () => {
+        btn.innerHTML = '<i class="fas fa-microphone"></i>';
+        alert("ลองใหม่อีกครั้ง");
+    };
+}
+
+
 
 
 // ฟังก์ชันย้ายหมุดและเก็บค่าพิกัด
@@ -2041,6 +2205,42 @@ async function bypassCheckIn(postId, stopIndex) {
     </div>
 </div>
 <div id="right-sidebar-overlay" class="sidebar-overlay hidden" onclick="closeRightSidebar()"></div>
+
+
+	<div id="save-template-modal" class="modal-overlay hidden" style="z-index: 9500;">
+    <div class="modal-box" style="max-width: 400px;">
+        <div style="background: #11998e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0;">
+            <h3 style="margin: 0;"><i class="fas fa-save"></i> บันทึกออเดอร์นี้</h3>
+        </div>
+        <label>ชื่อเรียกออเดอร์ (เช่น ออเดอร์เอ)</label>
+        <input type="text" id="tpl-name" placeholder="ตั้งชื่อที่จำง่าย...">
+        
+        <label>คำสั่งเสียง (Keyword)</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="tpl-voice" placeholder="เช่น ออเดอร์เอ" style="margin-bottom: 0;">
+            <button onclick="startVoiceForTemplate(this)" style="background: #f39c12; color: white; border: none; border-radius: 8px; width: 45px; cursor: pointer;">
+                <i class="fas fa-microphone"></i>
+            </button>
+        </div>
+        <p style="font-size: 0.8em; color: #888; margin-top: 5px;">* พูดคำนี้เพื่อสั่งงานอัตโนมัติ</p>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn-submit" onclick="confirmSaveTemplate()">บันทึกสำเร็จรูป</button>
+            <button class="btn-submit" onclick="closeSaveTplModal()" style="background: #999;">ยกเลิก</button>
+        </div>
+    </div>
+</div>
+
+<div id="list-order-modal" class="modal-overlay hidden" style="z-index: 9000;">
+    <div class="modal-box" style="max-width: 450px;">
+        <div style="background: #11998e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0;">
+            <h3 style="margin: 0;"><i class="fas fa-bookmark"></i> ออเดอร์ที่บันทึกไว้</h3>
+        </div>
+        <div id="template-list-content" style="max-height: 400px; overflow-y: auto;">
+            </div>
+        <button class="btn-submit" onclick="closeListOrderModal()" style="background: #999; margin-top: 20px; border-radius: 8px;">ปิดหน้าต่าง</button>
+    </div>
+</div>
 
 
 
