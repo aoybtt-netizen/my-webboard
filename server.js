@@ -2378,37 +2378,32 @@ app.get('/api/merchant/tasks', async (req, res) => {
     if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้' });
 
     try {
-        // 1. ดึงจาก DB: กรองเบื้องต้นเอาเฉพาะงานของตัวเองที่เป็น Merchant Task และยังไม่ปิดงาน
         const posts = await postsCollection.find({ 
             author: username, 
             isMerchantTask: true,
-            status: { $ne: 'closed_by_merchant' } 
+            status: { $ne: 'closed_by_merchant' } // 🚩 ดึงทุกงานที่ยังไม่ได้ถูก "ร้านค้ากดยืนยันจบงานเอง"
         }).sort({ id: -1 }).toArray();
 
-        const now = Date.now();
-        const oneHour = 3600000;
-
-        // 2. กรองงาน (Filtering Logic)
         const activeTasks = posts.filter(post => {
-		const now = Date.now();
-		const isExpiredAndNoRider = (now - post.id > 3600000) && !post.isPinned && !post.acceptedBy;
+            const now = Date.now();
+            const isExpiredAndNoRider = (now - post.id > 3600000) && !post.isPinned && !post.acceptedBy;
 
-		// 1. เช็คสิ่งที่ต้อง "ซ่อน" ก่อน (ถ้าเข้าเงื่อนไขนี้ ให้หายไปทันที)
-		if (post.status === 'closed_by_merchant' || post.isClosed || isExpiredAndNoRider) {
-        return false; 
-		}
+            // 🚩 แก้ไขจุดนี้: งานจะหายไปก็ต่อเมื่อ status คือ 'closed_by_merchant'
+            // ถ้าเป็น 'finished' (ไรเดอร์ส่งครบ) ต้องยัง return true เพื่อให้ร้านเห็นปุ่มให้คะแนน
+            if (post.status === 'closed_by_merchant' || isExpiredAndNoRider) {
+                return false; 
+            }
 
-		// 2. เช็คสิ่งที่ต้อง "แสดง" (เช่น ไรเดอร์ส่งแล้วรอร้านกดยืนยัน หรือ กำลังวิ่งงาน)
-		if (post.status === 'finished' || post.acceptedBy || !post.isClosed) {
-        return true;
-		}
+            // แสดงงานที่: กำลังรอ, ไรเดอร์รับแล้ว, หรือไรเดอร์ส่งเสร็จแล้วแต่ร้านยังไม่ปิดงาน
+            if (post.status === 'finished' || post.acceptedBy || !post.isClosed) {
+                return true;
+            }
 
-		return false;
-});
+            return false;
+        });
         
         res.json({ success: true, posts: activeTasks });
     } catch (error) {
-        console.error("Fetch Merchant Tasks Error:", error);
         res.status(500).json({ success: false, error: 'Database Error' });
     }
 });
@@ -2675,13 +2670,20 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
         const allDone = updatedPost.stops.every(s => s.status === 'success');
 
         if (allDone) {
-            // หากครบทุกจุด ให้ปิดงานอัตโนมัติ
+            // 🚩 แก้ไข: เปลี่ยนเฉพาะ status เป็น finished แต่ห้ามใส่ isClosed: true
             await postsCollection.updateOne(
                 { id: postId },
-                { $set: { isClosed: true, status: 'finished', finishedAt: Date.now() } }
+                { $set: { status: 'finished', finishedAt: Date.now() } }
             );
-            return res.json({ success: true, isFinished: true, message: '🎉 งานเสร็จสมบูรณ์! ขอบคุณที่ร่วมงานกับเรา' });
+            
+            // 🔔 ส่งสัญญาณบอกร้านค้าว่าไรเดอร์ส่งครบแล้ว (เพิ่อให้อัปเดต UI อัตโนมัติ)
+            io.emit('update-job-status', { postId: postId, status: 'finished' });
+            
+            return res.json({ success: true, isFinished: true, message: '🎉 ส่งงานครบทุกจุดแล้ว! รอร้านค้ายืนยัน' });
         }
+
+        // 🔔 ส่งสัญญาณอัปเดตจุดรายทาง (เพื่อให้ Progress Bar เลื่อน)
+        io.emit('update-job-status', { postId: postId, stopIndex: stopIndex, status: 'success' });
 
         res.json({ success: true, isFinished: false, message: 'บันทึกการเช็คอินเรียบร้อย' });
     } catch (error) {

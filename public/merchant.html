@@ -2141,6 +2141,33 @@ function safeNavigateHome() {
 }
 
 
+// 🔔 รับสัญญาณเมื่อไรเดอร์ "เช็คอิน" หรือ "อัปเดตสถานะจุดส่ง"
+socket.on('update-job-status', (data) => {
+    console.log("📍 มีการอัปเดตจุดส่งในงาน:", data.postId);
+    
+    // 1. โหลดรายการงานหน้าแรกใหม่ทันที (เพื่ออัปเดต Progress Bar และจำนวนจุด)
+    loadActiveMerchantTasks();
+    
+    // 2. ถ้าเราเปิด Sidebar งานนั้นค้างไว้ ให้โหลดข้อมูลใน Sidebar ใหม่ด้วย
+    if (activeTaskInSidebar && activeTaskInSidebar.id == data.postId) {
+        // ดึงข้อมูลใหม่มาอัปเดตรายละเอียดใน Sidebar โดยไม่ปิดหน้าต่าง
+        updateSidebarDataOnly(data.postId);
+    }
+});
+
+// ฟังก์ชันพิเศษสำหรับโหลดข้อมูลเฉพาะใน Sidebar เพื่อไม่ให้หน้าต่างเด้ง
+async function updateSidebarDataOnly(postId) {
+    try {
+        const res = await fetch(`/api/posts/${postId}`);
+        const data = await res.json();
+        if (data.success) {
+            activeTaskInSidebar = data.post;
+            renderSidebarDetails(); // วาดลำดับจุดใหม่
+        }
+    } catch (e) { console.error(e); }
+}
+
+
 
 window.onbeforeunload = function() {
     const activeTasks = document.querySelectorAll('.active-task-card').length;
