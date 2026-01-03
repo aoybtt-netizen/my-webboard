@@ -457,9 +457,9 @@
             <i class="fas fa-bars"></i>
         </div>
         <h2 style="margin: 0; display: inline-block;">GedGo Merchant</h2>
-        <div style="float: right; cursor: pointer;" onclick="window.location.href='index.html'">
-            <i class="fas fa-home"></i>
-        </div>
+        <div style="float: right; cursor: pointer;" onclick="safeNavigateHome()">
+    <i class="fas fa-home"></i>
+</div>
     </div>
 
     <div id="merchant-sidebar" class="merchant-sidebar">
@@ -1253,7 +1253,18 @@ function reorderStops() {
 
         if (data.success) {
             alert("🚀 โพสต์งานเข้าระบบเรียบร้อยแล้ว!");
-            window.location.href = 'index.html'; 
+            toggleTaskForm(); 
+            await loadActiveMerchantTasks(); 
+            document.getElementById('task-desc').value = '';
+            document.getElementById('task-budget').value = '';
+            document.getElementById('stops-container').innerHTML = '';
+            stopCount = 0;
+            updateTitlePreview();
+            
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.innerHTML = originalContent; 
         } else {
             alert("❌ เกิดข้อผิดพลาด: " + data.error);
             // กรณี error จาก server ให้เปิดปุ่มให้กดใหม่ได้
@@ -2117,8 +2128,26 @@ function renderTemplateListInModal() {
 }
 
 
+function safeNavigateHome() {
+    // ตรวจสอบว่ามีกล่องงาน Active Tasks อยู่หรือไม่ (เช็คจากจำนวนลูกของ listContainer)
+    const activeTasks = document.querySelectorAll('.active-task-card').length;
+    
+    if (activeTasks > 0) {
+        alert("⚠️ คุณมีงานที่ยังดำเนินการอยู่ กรุณาจัดการงานให้เสร็จสิ้นก่อนออกจากหน้านี้");
+        // หรือจะให้สั่น หรือมี Modal แจ้งเตือนสวยๆ ก็ได้ครับ
+    } else {
+        window.location.href = 'index.html';
+    }
+}
 
 
+
+window.onbeforeunload = function() {
+    const activeTasks = document.querySelectorAll('.active-task-card').length;
+    if (activeTasks > 0) {
+        return "คุณยังมีงานค้างอยู่ ต้องการออกจากหน้าจอนี้จริงหรือไม่?";
+    }
+};
 
 </script>
 	
