@@ -2621,6 +2621,28 @@ app.get('/api/merchant/templates', async (req, res) => {
     }
 });
 
+// API: ลบออเดอร์สำเร็จรูป (Template)
+app.delete('/api/merchant/templates/:id', async (req, res) => {
+    try {
+        const templateId = req.params.id;
+        
+        // ลบข้อมูลโดยอ้างอิงจาก _id
+        const result = await merchantTemplatesCollection.deleteOne({ 
+            _id: new ObjectId(templateId) 
+        });
+
+        if (result.deletedCount === 1) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'ไม่พบข้อมูลที่ต้องการลบ' });
+        }
+    } catch (error) {
+        console.error("Delete Template Error:", error);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+
 //ใรเดอร์รับงานร้านค้า
 
 // API: ไรเดอร์เช็คอินพิกัดรายจุด และปิดงานอัตโนมัติ
