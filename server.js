@@ -2842,11 +2842,12 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
 app.get('/api/rider/active-job', async (req, res) => {
     const { username } = req.query;
     try {
-        // หางานที่คนนี้รับไว้ และสถานะยังเป็น in_progress
         const activeJob = await postsCollection.findOne({
             acceptedBy: username,
-            status: 'in_progress',
-            isClosed: { $ne: true }
+            // 🚩 แก้ไขเงื่อนไขให้รัดกุมขึ้น
+            status: { $in: ['in_progress', 'finished'] }, // ค้นหาเฉพาะงานที่ยังวิ่งอยู่หรือรอตรวจ
+            isClosed: { $ne: true }, // ต้องยังไม่ถูกปิด
+            riderProcessStatus: { $ne: 'rated' } // ✅ ต้องยังไม่ได้ให้คะแนนร้านค้า
         });
 
         if (activeJob) {
