@@ -812,17 +812,33 @@ app.get('/api/member/transactions', async (req, res) => {
 // 6. Check Active Job
 app.get('/api/check-active-job', async (req, res) => {
     const username = req.query.username;
-    if (!username) return res.json({ hasJob: false });
+    if (!username) return res.json({ success: false, hasJob: false });
 
-    // หาโพสต์ที่สถานะเป็น 'finished' (คืองานที่กำลังทำอยู่)
-    // โดยไม่ต้องสนว่า isClosed เป็น true หรือ false (เพราะตอนรับงานมันถูกปิดไปแล้ว)
-    const activeJob = await postsCollection.findOne({
-        status: 'finished', 
-        $or: [{ author: username }, { acceptedViewer: username }]
-    });
+    try {
+        // ค้นหางานที่ยังไม่ถูกปิดโดยสมบูรณ์ (status ไม่ใช่ closed_by_merchant)
+        const activeJob = await postsCollection.findOne({
+            status: { $ne: 'closed_by_merchant' }, 
+            $or: [{ author: username }, { acceptedBy: username }, { acceptedViewer: username }]
+        });
 
-    if (activeJob) return res.json({ hasJob: true, postId: activeJob.id, title: activeJob.title });
-    res.json({ hasJob: false });
+        if (activeJob) {
+            // เช็คว่าคนเรียกคือเจ้าของงาน (Merchant) หรือไม่
+            const isMerchant = (activeJob.author === username);
+            
+            return res.json({ 
+                success: true,
+                hasJob: true, 
+                postId: activeJob.id, 
+                title: activeJob.title,
+                isMerchantTask: isMerchant, // 🚩 ส่งบอกว่าเป็นร้านค้า
+                isRiderJob: !isMerchant     // 🚩 ส่งบอกว่าเป็นไรเดอร์
+            });
+        }
+        
+        res.json({ success: true, hasJob: false });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
 });
 
 // 7. Set Cost

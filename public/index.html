@@ -1781,29 +1781,22 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
      
 
 	async function checkAndRedirectActiveJob(username) {
-    if (!username) return; 
+    if (!username) return; // กัน Error กรณี username ว่าง
 
-    try {
-        const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(username)}`);
-        const data = await res.json();
-        
-        // ถ้ามีงานค้าง (status: finished หรือกำลังดำเนินการ)
-        if (data.hasJob && data.postId) {
-            console.log(`📌 พบงานค้าง: ${data.title}`);
-
-            // 🚩 แก้ไขจุดนี้: เช็คว่าตัวแปรที่ส่งกลับมาคืองานของร้านค้าหรือไม่
-            // (ตรวจสอบว่าใน API /api/check-active-job มีการส่งค่า isMerchantTask กลับมาด้วย)
-            if (data.isMerchantTask) {
-                // ถ้าร้านค้ามีงานค้าง ให้ส่งไปหน้าจัดการร้านค้า เพื่อกด Finish Job
-                window.location.replace('/merchant.html');
-            } else {
-                // ถ้าไม่ใช่ (เช่น ไรเดอร์) ให้ส่งไปที่หน้ากระทู้งานตามปกติ
-                window.location.replace(`/post.html?id=${data.postId}`);
-            }
-        }
-    } catch (err) {
-        console.error("Error checking active job:", err);
-    }
+    try {
+        const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(username)}`);
+        const data = await res.json();
+        
+        // ถ้ามีงานค้าง (status: finished)
+        if (data.hasJob && data.postId) {
+            console.log(`📌 พบงานค้างในกระทู้: ${data.title}`);
+            
+            // ใช้ replace แทน href เพื่อไม่ให้ผู้ใช้กด Back กลับมาหน้า index แล้วโดนดีดไปอีกรอบ (วนลูป)
+            window.location.replace(`/post.html?id=${data.postId}`);
+        }
+    } catch (err) {
+        console.error("Error checking active job:", err);
+    }
 }
 
         function logout() {
@@ -5360,17 +5353,30 @@ function closeZoneOwnerModal() {
 
 
 window.addEventListener('load', async () => {
+    if (!myUsername) return; // ถ้าไม่ได้ล็อกอิน ไม่ต้องเช็ค
+
     try {
-        // เช็คว่าไรเดอร์คนนี้มีงานที่สถานะ in_progress ค้างอยู่หรือไม่
-        const res = await fetch(`/api/rider/active-job?username=${myUsername}`);
+        // เรียก API ตัวกลางที่ใช้เช็คงานค้าง (ตัวเดียวกับที่ทำไว้ก่อนหน้า)
+        const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(myUsername)}`);
         const data = await res.json();
         
-        if (data.success && data.activeJobId) {
-    // 🚩 มั่นใจว่าใช้ view_id เหมือนใน addPostToDOM
-    window.location.href = `riderjobmerchant.html?view_id=${data.activeJobId}`;
-}
+        if (data.success && data.hasJob && data.postId) {
+            
+            // 🚩 กรณีที่ 1: เป็นร้านค้า (Merchant) ที่ยังมีงานค้าง
+            if (data.isMerchantTask) {
+                console.log("🏠 พบงานร้านค้าค้างอยู่: ส่งกลับหน้าจัดการ");
+                // ใช้ replace เพื่อไม่ให้กด Back กลับมาหน้า index ได้ (ป้องกัน Loop)
+                window.location.replace('merchant.html');
+            } 
+            
+            // 🚩 กรณีที่ 2: เป็นไรเดอร์ (Rider) ที่กำลังวิ่งงานอยู่
+            else if (data.isRiderJob) {
+                console.log("🛵 พบงานไรเดอร์ค้างอยู่: ส่งกลับหน้าวิ่งงาน");
+                window.location.replace(`riderjobmerchant.html?view_id=${data.postId}`);
+            }
+        }
     } catch (e) {
-        console.log("Check active job error");
+        console.error("Check active job error:", e);
     }
 });
 
