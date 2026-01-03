@@ -815,23 +815,27 @@ app.get('/api/check-active-job', async (req, res) => {
     if (!username) return res.json({ success: false, hasJob: false });
 
     try {
-        // ค้นหางานที่ยังไม่ถูกปิดโดยสมบูรณ์ (status ไม่ใช่ closed_by_merchant)
+        // 🚩 โลจิกใหม่: ค้นหาเฉพาะงานที่ "เป็นงานจ้าง" และ "ยังไม่ปิดระบบจริงๆ"
         const activeJob = await postsCollection.findOne({
-            status: { $ne: 'closed_by_merchant' }, 
-            $or: [{ author: username }, { acceptedBy: username }, { acceptedViewer: username }]
-        });
+            isMerchantTask: true,             // 1. ต้องเป็นงานจ้างเท่านั้น (ไม่ใช่กระทู้คุยเล่น)
+            isClosed: { $ne: true },          // 2. ต้องยังไม่ถูกปิด (isClosed ต้องไม่ใช่ true)
+            status: { $ne: 'closed_by_merchant' }, // 3. ร้านค้าต้องยังไม่ได้กดจบงานเอง
+            $or: [
+                { author: username },         // กรณีเป็นเจ้าของร้าน
+                { acceptedBy: username },     // กรณีเป็นไรเดอร์ (รับงานแล้ว)
+                { acceptedViewer: username }  // กรณีเป็นไรเดอร์ (กำลังขอ)
+            ]
+        }, { sort: { id: -1 } }); // 4. เอาอันล่าสุดเสมอ (ID มากสุด)
 
         if (activeJob) {
-            // เช็คว่าคนเรียกคือเจ้าของงาน (Merchant) หรือไม่
             const isMerchant = (activeJob.author === username);
-            
             return res.json({ 
                 success: true,
                 hasJob: true, 
                 postId: activeJob.id, 
                 title: activeJob.title,
-                isMerchantTask: isMerchant, // 🚩 ส่งบอกว่าเป็นร้านค้า
-                isRiderJob: !isMerchant     // 🚩 ส่งบอกว่าเป็นไรเดอร์
+                isMerchantTask: isMerchant,
+                isRiderJob: !isMerchant
             });
         }
         
