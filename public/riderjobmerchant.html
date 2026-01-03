@@ -275,14 +275,6 @@ if (!myUsername) {
         
         if (data.success) {
             currentPostData = data.post; 
-			
-			//--------------------------------
-			console.log("🐞 [DEBUG Rider Page]");
-            console.log("Status งานปัจจุบัน:", post.status);
-            console.log("คนรับงาน (acceptedBy):", post.acceptedBy);
-            console.log("คนจองงาน (pendingRider):", post.pendingRider);
-            console.log("จุดเช็คอินทั้งหมด:", post.stops);
-			//----------------------------------
             renderJob(data.post); // วาดเนื้อหางาน (จุดรับ-ส่ง)
             
             // 1. จัดการปุ่มกด (รับงาน/กำลังดำเนินการ/ฯลฯ)
@@ -328,7 +320,7 @@ function updateFooterButtons(post) {
                     alert("⚠️ คุณมีงานที่ต้องส่งให้เสร็จ กรุณาดำเนินการให้เรียบร้อยก่อนออกจากหน้านี้ครับ");
                 };
 
-            } else if (post.status === 'closed_permanently') {
+            } else if (post.status === 'finished') {
                 // 🔓 [UNLOCK] งานสำเร็จแล้ว (รอให้คะแนน): ปล่อยให้ปุ่มกลับแสดงได้
                 if (backBtn) backBtn.style.display = 'block';
                 acceptBtn.style.display = 'none'; // ซ่อนปุ่มนี้เพราะจะไปใช้ Modal ให้คะแนนแทน
@@ -356,7 +348,7 @@ function updateFooterButtons(post) {
         acceptBtn.disabled = true;
         window.onpopstate = null;
     }
-    else if (post.status === 'closed_permanently' || post.status === 'closed_by_merchant' || post.isClosed) {
+    else if (post.status === 'finished' || post.status === 'closed_by_merchant' || post.isClosed) {
         // --- กรณี: งานจบไปแล้ว หรือปิดไปแล้ว ---
         acceptBtn.style.display = 'none';
         if (backBtn) backBtn.style.display = 'block';
@@ -802,7 +794,7 @@ function setMerchantRating(n) {
 
 // ตรวจสอบใน loadJobDetails ว่างานจบหรือยัง
 function checkJobCompletion(post) {
-    if (post.status === 'closed_permanently' && post.acceptedBy === myUsername) {
+    if (post.status === 'finished' && post.acceptedBy === myUsername) {
         const modal = document.getElementById('rating-merchant-modal');
         if (modal) {
             modal.classList.remove('hidden');

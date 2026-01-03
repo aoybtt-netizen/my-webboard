@@ -1751,12 +1751,7 @@ socket.on('viewer-left-location', (data) => {
             </div>`;
         }
 
-function renderPost(post, isAdmin = false) {
-	console.log("🐞 [DEBUG renderPost]");
-    console.log("ID กระทู้:", post.id);
-    console.log("สถานะปัจจุบัน (Status):", post.status);
-    console.log("ปิดกระทู้หรือยัง (isClosed):", post.isClosed);
-    console.log("คนรับงาน (acceptedViewer):", post.acceptedViewer);
+        function renderPost(post, isAdmin = false) {
     // --- 1. จัดการส่วนสถิติเจ้าของกระทู้ ---
     const oldStats = document.getElementById('author-stats-container');
     if (oldStats) oldStats.remove();

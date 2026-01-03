@@ -619,15 +619,6 @@ async function loadActiveMerchantTasks() {
         const data = await res.json();
 
         if (data.success && data.posts.length > 0) {
-			
-			//------------------------------
-			console.log("🐞 [DEBUG Merchant] ทั้งหมดที่ดึงมา:", data.posts); // ดูภาพรวมงานทั้งหมด
-            
-            data.posts.forEach(post => {
-                // ใส่บรรทัดนี้เพื่อเช็ครายตัว
-                console.log(`📌 Job ID: ${post.id} | Status: ${post.status} | AcceptedBy: ${post.acceptedBy}`);
-            });
-			//---------------------------
             let finalHtml = ''; 
 
             data.posts.forEach(post => {
@@ -2200,7 +2191,7 @@ async function debugMerchantStatus() {
             })));
 
             // ตรวจสอบงานที่ "ค้าง" (ส่งเสร็จแต่ยังไม่ได้จบงาน)
-            const stuckJobs = data.posts.filter(p => p.status === 'wait_rating' && !p.isClosed);
+            const stuckJobs = data.posts.filter(p => p.status === 'finished' && !p.isClosed);
             if (stuckJobs.length > 0) {
                 console.warn(`⚠️ พบงานค้าง ${stuckJobs.length} งาน: ไรเดอร์ส่งครบแล้วแต่ร้านยังไม่กดให้คะแนน`);
             }
