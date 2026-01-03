@@ -5352,29 +5352,16 @@ function closeZoneOwnerModal() {
 }
 
 
-// ส่วนตรวจสอบงานค้างเมื่อโหลดหน้า
 window.addEventListener('load', async () => {
-    if (!myUsername) return;
-
     try {
-        const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(myUsername)}`);
+        // เช็คว่าไรเดอร์คนนี้มีงานที่สถานะ in_progress ค้างอยู่หรือไม่
+        const res = await fetch(`/api/rider/active-job?username=${myUsername}`);
         const data = await res.json();
         
-        if (data.success && data.hasJob && data.postId) {
-            
-            // 🏠 กรณีเป็นร้านค้า (Merchant)
-            if (data.isMerchantTask) {
-                console.log("📌 พบงานร้านค้าค้าง: ส่งไปหน้า Merchant");
-                // ใช้ replace เพื่อไม่ให้กด Back กลับมาหน้า index ได้
-                window.location.replace('merchant.html');
-            } 
-            
-            // 🛵 กรณีเป็นไรเดอร์ (Rider)
-            else if (data.isRiderJob) {
-                console.log("📌 พบงานไรเดอร์ค้าง: ส่งไปหน้าวิ่งงาน");
-                window.location.replace(`riderjobmerchant.html?view_id=${data.postId}`);
-            }
-        }
+        if (data.success && data.activeJobId) {
+    // 🚩 มั่นใจว่าใช้ view_id เหมือนใน addPostToDOM
+    window.location.href = `riderjobmerchant.html?view_id=${data.activeJobId}`;
+}
     } catch (e) {
         console.log("Check active job error");
     }
