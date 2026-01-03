@@ -2611,6 +2611,35 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
     }
 });
 
+// บันทึกออเดอร์สำเร็จรูป (Templates)
+app.post('/api/merchant/templates', async (req, res) => {
+    const { username, templateName, voiceKeyword, category, budget, stops, content } = req.body;
+    try {
+        const newTemplate = {
+            owner: username,
+            templateName,   // เช่น "ออเดอร์เอ"
+            voiceKeyword: voiceKeyword.replace(/\s+/g, ''), // คำสั่งเสียง
+            category, budget, stops, content,
+            createdAt: Date.now()
+        };
+        await merchantTemplatesCollection.insertOne(newTemplate);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'ไม่สามารถบันทึกเทมเพลตได้' });
+    }
+});
+
+//  ดึงรายการออเดอร์สำเร็จรูป
+app.get('/api/merchant/templates', async (req, res) => {
+    const username = req.query.username;
+    try {
+        const templates = await merchantTemplatesCollection.find({ owner: username }).toArray();
+        res.json({ success: true, templates });
+    } catch (error) {
+        res.status(500).json({ success: false });
+    }
+});
+
 //ใรเดอร์รับงานร้านค้า
 
 // API: ไรเดอร์เช็คอินพิกัดรายจุด และปิดงานอัตโนมัติ

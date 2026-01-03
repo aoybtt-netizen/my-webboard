@@ -531,13 +531,23 @@
                 <i class="fas fa-plus"></i> เพิ่มจุดรับ-ส่งงาน
             </button>
 
-            <button id="voice-btn" class="btn-submit" style="background: #f39c12; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);" onclick="startVoiceCommand()">
-                <i class="fas fa-play"></i> พูดสั่งงานที่บันทึกใว้
-            </button>
+            <button id="submit-btn" class="btn-submit" 
+			style="flex: 2; height: 50px; border-radius: 12px;" 
+			onclick="postMerchantTask()">
+			<i class="fas fa-paper-plane"></i> โพสต์ (ส่ง <span id="title-preview">-</span>)
+			</button>
 
-            <button id="submit-btn" class="btn-submit" onclick="postMerchantTask()">
-                <i class="fas fa-paper-plane"></i> โพสต์งานเข้าระบบ (ส่ง <span id="title-preview">-</span>)
-            </button>
+            <button id="voice-btn" class="btn-submit" 
+			style="flex: 1; background: #f39c12; border-radius: 12px; height: 50px;" 
+			onclick="startVoiceCommand()">
+			<i class="fas fa-microphone"></i> พูดสั่ง
+			</button>
+			
+			<div style="text-align: right; margin-top: 10px;">
+			<small onclick="openSaveTemplateModal()" style="color: #11998e; cursor: pointer;">
+			<i class="fas fa-save"></i> บันทึกเป็นออเดอร์
+			</small>
+			</div>
         </div>
     </div>
 
@@ -557,6 +567,16 @@
 	let mapMode = 'book';
 	
 	let activeTaskInSidebar = null;
+	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
+
+async function loadOrderTemplates() {
+    const res = await fetch(`/api/merchant/templates?username=${myUsername}`);
+    const data = await res.json();
+    if (data.success) {
+        myOrderTemplates = data.templates;
+    }
+}
+
 	
 	
 
@@ -1167,6 +1187,21 @@ function processVoiceOrder(speechText) {
     
     // ลบช่องว่างในประโยคที่พูดออกชั่วคราวเพื่อให้หาคีย์เวิร์ดง่ายขึ้น
     const cleanSpeech = speechText.replace(/\s+/g, '');
+	const foundTemplate = myOrderTemplates.find(t => cleanSpeech.includes(t.voiceKeyword));
+
+    if (foundTemplate) {
+        console.log("🎯 พบออเดอร์สำเร็จรูป:", foundTemplate.templateName);
+        lastVoiceAnalysis = {
+            category: foundTemplate.category,
+            title: foundTemplate.templateName,
+            stops: foundTemplate.stops,
+            budget: foundTemplate.budget,
+            content: foundTemplate.content,
+            isFullTemplate: true // มาร์คไว้ว่าเป็นเทมเพลตชุดใหญ่
+        };
+        showVoiceSummaryModal(); // เรียก Modal สรุปผลที่คุณมีอยู่แล้วได้เลย
+        return; 
+    }
 
     mySavedLocations.forEach(loc => {
         const keyword = (loc.voiceKeyword || loc.label).replace(/\s+/g, '');
