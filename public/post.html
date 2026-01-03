@@ -844,15 +844,6 @@
 			};
 			
 			
-	if (postData.author === myUsername && postData.isMerchantTask) {
-    // สร้างปุ่มพาไปหน้า merchant.html
-    const backBtn = document.createElement('button');
-    backBtn.innerHTML = '<i class="fas fa-store"></i> กลับหน้าจัดการงานร้านค้า';
-    backBtn.onclick = () => window.location.href = 'merchant.html';
-    backBtn.className = 'your-button-class'; // ใส่คลาสที่คุณใช้
-    document.body.appendChild(backBtn);
-}
-
         // 1. ฟังก์ชันเริ่มโทรหา (ผูกกับปุ่มโทร)
         async function startCall(targetUsername) {
             if (targetUsername === myUsername) return alert('Why would you call yourself that? 😂');
