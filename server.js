@@ -2557,30 +2557,30 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
 // API: ร้านค้ายืนยันจบงาน และให้คะแนนไรเดอร์
 app.post('/api/posts/:postId/finish-job', async (req, res) => {
     const { postId } = req.params;
-    const { rating, author } = req.body; // author คือชื่อร้านค้าที่ส่งมา
+    const { rating, author } = req.body; 
 
     try {
         // 1. ค้นหางานนี้ก่อน
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงานนี้' });
 
-        // 2. อัปเดตสถานะโพสต์ให้เป็น "ปิดโดยร้านค้า" เพื่อให้หายจากหน้า Active Tasks
+        // 2. อัปเดตสถานะเป็น closed_permanently ตามที่คุณต้องการล็อคระบบถาวร
         await postsCollection.updateOne(
             { id: parseInt(postId) },
             { 
                 $set: { 
-                    status: 'closed_by_merchant', 
+                    status: 'closed_permanently', // ✅ เปลี่ยนเป็นตัวนี้เพื่อให้สัมพันธ์กับหน้าบ้าน
                     isClosed: true,
-                    merchantRating: rating, // บันทึกคะแนนที่ร้านค้าให้
+                    merchantRating: rating, 
                     finishTimestamp: Date.now()
                 } 
             }
         );
 
-        // 3. อัปเดตสถิติให้ร้านค้า (Merchant)
+        // 3. อัปเดตสถิติจบงานให้ร้านค้า (Merchant)
         await usersCollection.updateOne(
             { username: post.author },
-            { $inc: { totalJobs: 1 } }
+            { $inc: { totalJobs: 1, authorCompletedJobs: 1 } } // เพิ่ม authorCompletedJobs ตามโครงสร้างเดิม
         );
 
         // 4. อัปเดตสถิติและคะแนนให้ไรเดอร์ (Rider)
@@ -2589,17 +2589,23 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
             await usersCollection.updateOne(
                 { username: riderName },
                 { 
-                    $inc: { totalJobs: 1, totalRatingScore: rating, ratingCount: 1 }
-                    // หมายเหตุ: การคำนวณคะแนนเฉลี่ย สามารถทำได้ตอนดึงไปโชว์ (score / count)
+                    $inc: { 
+                        totalJobs: 1, 
+                        totalRatingScore: parseFloat(rating), 
+                        ratingCount: 1 
+                    }
                 }
             );
         }
 
-        // 5. แจ้งเตือนผ่าน Socket (ถ้ามี)
-        io.to(`post-${postId}`).emit('job-finished-complete', { postId, rating });
-        io.emit('update-post-status'); // ให้หน้าจอคนอื่นอัปเดตด้วย
+        // 5. แจ้งเตือนผ่าน Socket
+        // ส่งไปยังห้องของงานนั้นเพื่อให้ไรเดอร์เด้งหน้าให้คะแนนทันที
+        io.to(postId.toString()).emit('job-finished-complete', { postId, rating });
+        
+        // ส่งสัญญาณกลางให้หน้ารายการงาน (Merchant Dashboard) อัปเดตการ์ดทิ้งไป
+        io.emit('update-post-status'); 
 
-        res.json({ success: true, message: 'บันทึกการจบงานเรียบร้อย' });
+        res.json({ success: true, message: 'บันทึกการจบงานและปิดกระทู้ถาวรเรียบร้อย' });
 
     } catch (error) {
         console.error("Finish Job Error:", error);
