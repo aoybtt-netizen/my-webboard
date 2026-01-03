@@ -275,6 +275,14 @@ if (!myUsername) {
         
         if (data.success) {
             currentPostData = data.post; 
+			
+			//--------------------------------
+			console.log("🐞 [DEBUG Rider Page]");
+            console.log("Status งานปัจจุบัน:", post.status);
+            console.log("คนรับงาน (acceptedBy):", post.acceptedBy);
+            console.log("คนจองงาน (pendingRider):", post.pendingRider);
+            console.log("จุดเช็คอินทั้งหมด:", post.stops);
+			//----------------------------------
             renderJob(data.post); // วาดเนื้อหางาน (จุดรับ-ส่ง)
             
             // 1. จัดการปุ่มกด (รับงาน/กำลังดำเนินการ/ฯลฯ)
