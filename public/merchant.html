@@ -701,16 +701,21 @@ async function loadActiveMerchantTasks() {
     }
 }
 
-// เรียกใช้งานตอนโหลดหน้า
+
+
 window.onload = async function() {
     if (!myUsername) {
-        alert("กรุณาเข้าสู่ระบบก่อนใช้งานหน้าพาร์ทเนอร์");
+        console.error("🛑 ไม่พบ Username ในระบบ");
         window.location.href = 'index.html';
         return;
     }
-    await loadSavedLocations();        // โหลดสมุดที่อยู่
-    await loadActiveMerchantTasks();  // โหลดงานที่ค้างอยู่
-	await loadOrderTemplates();
+
+    // 🚩 เริ่มการดีบั๊ก
+    await debugMerchantStatus();
+
+    await loadSavedLocations();   
+    await loadActiveMerchantTasks(); 
+    await loadOrderTemplates();
 };
 
 
@@ -2165,6 +2170,37 @@ async function updateSidebarDataOnly(postId) {
             renderSidebarDetails(); // วาดลำดับจุดใหม่
         }
     } catch (e) { console.error(e); }
+}
+
+// ฟังก์ชันสำหรับ Debug สถานะงานร้านค้า
+async function debugMerchantStatus() {
+    console.log("🔍 [Debug] เริ่มการตรวจสอบสถานะร้านค้าสำหรับ:", myUsername);
+    
+    try {
+        const res = await fetch(`/api/merchant/tasks?username=${myUsername}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            console.table(data.posts.map(post => ({
+                ID: post.id.toString().slice(-4),
+                หัวข้อ: post.title,
+                สถานะ: post.status,
+                ไรเดอร์: post.acceptedBy || post.acceptedViewer || 'ยังไม่มี',
+                เช็คอินครบ: post.stops.filter(s => s.status === 'success').length + "/" + post.stops.length,
+                isClosed: post.isClosed || false
+            })));
+
+            // ตรวจสอบงานที่ "ค้าง" (ส่งเสร็จแต่ยังไม่ได้จบงาน)
+            const stuckJobs = data.posts.filter(p => p.status === 'finished' && !p.isClosed);
+            if (stuckJobs.length > 0) {
+                console.warn(`⚠️ พบงานค้าง ${stuckJobs.length} งาน: ไรเดอร์ส่งครบแล้วแต่ร้านยังไม่กดให้คะแนน`);
+            }
+        } else {
+            console.error("❌ ไม่สามารถดึงข้อมูลจาก Server ได้:", data.error);
+        }
+    } catch (e) {
+        console.error("❌ [Debug Error]:", e);
+    }
 }
 
 
