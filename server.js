@@ -21,6 +21,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const merchantTemplatesCollection = db.collection('merchant_templates');
 
 // --- Middleware ---
 app.use(express.json()); 
@@ -210,6 +211,7 @@ async function connectDB() {
 
         // กำหนดค่าให้ Collection ต่างๆ (ทำที่เดียวให้ครบ)
         merchantLocationsCollection = db.collection('merchant_locations');
+		
         postsCollection = db.collection('posts');
         usersCollection = db.collection('users');
         configCollection = db.collection('config');
