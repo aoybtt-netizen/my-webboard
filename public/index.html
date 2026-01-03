@@ -1781,18 +1781,25 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
      
 
 	async function checkAndRedirectActiveJob(username) {
-    if (!username) return; // กัน Error กรณี username ว่าง
+    if (!username) return; 
 
     try {
         const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(username)}`);
         const data = await res.json();
         
-        // ถ้ามีงานค้าง (status: finished)
+        // ถ้ามีงานค้าง (status: finished หรือกำลังดำเนินการ)
         if (data.hasJob && data.postId) {
-            console.log(`📌 พบงานค้างในกระทู้: ${data.title}`);
-            
-            // ใช้ replace แทน href เพื่อไม่ให้ผู้ใช้กด Back กลับมาหน้า index แล้วโดนดีดไปอีกรอบ (วนลูป)
-            window.location.replace(`/post.html?id=${data.postId}`);
+            console.log(`📌 พบงานค้าง: ${data.title}`);
+
+            // 🚩 แก้ไขจุดนี้: เช็คว่าตัวแปรที่ส่งกลับมาคืองานของร้านค้าหรือไม่
+            // (ตรวจสอบว่าใน API /api/check-active-job มีการส่งค่า isMerchantTask กลับมาด้วย)
+            if (data.isMerchantTask) {
+                // ถ้าร้านค้ามีงานค้าง ให้ส่งไปหน้าจัดการร้านค้า เพื่อกด Finish Job
+                window.location.replace('/merchant.html');
+            } else {
+                // ถ้าไม่ใช่ (เช่น ไรเดอร์) ให้ส่งไปที่หน้ากระทู้งานตามปกติ
+                window.location.replace(`/post.html?id=${data.postId}`);
+            }
         }
     } catch (err) {
         console.error("Error checking active job:", err);
