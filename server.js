@@ -21,7 +21,6 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const merchantTemplatesCollection = db.collection('merchant_templates');
 
 // --- Middleware ---
 app.use(express.json()); 
@@ -31,6 +30,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let db;
 let usersCollection, postsCollection, configCollection, transactionsCollection;
 let topicsCollection, messagesCollection, zonesCollection, merchantLocationsCollection;
+let merchantTemplatesCollection;
 
 const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
@@ -211,7 +211,7 @@ async function connectDB() {
 
         // กำหนดค่าให้ Collection ต่างๆ (ทำที่เดียวให้ครบ)
         merchantLocationsCollection = db.collection('merchant_locations');
-		
+		merchantTemplatesCollection = db.collection('merchant_templates');
         postsCollection = db.collection('posts');
         usersCollection = db.collection('users');
         configCollection = db.collection('config');
