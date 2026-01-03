@@ -2526,7 +2526,7 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
         const allFinished = currentStops.every(s => s.status === 'success');
 
         if (allFinished) {
-            updateData.status = 'finished'; // ถ้าครบทุกจุด ให้เปลี่ยนสถานะงานรวมเป็น finished
+            updateData.status = 'closed_permanently'; // ถ้าครบทุกจุด ให้เปลี่ยนสถานะงานรวมเป็น finished
         }
 
         await postsCollection.updateOne(

@@ -2191,7 +2191,7 @@ async function debugMerchantStatus() {
             })));
 
             // ตรวจสอบงานที่ "ค้าง" (ส่งเสร็จแต่ยังไม่ได้จบงาน)
-            const stuckJobs = data.posts.filter(p => p.status === 'finished' && !p.isClosed);
+            const stuckJobs = data.posts.filter(p => p.status === 'closed_permanently' && !p.isClosed);
             if (stuckJobs.length > 0) {
                 console.warn(`⚠️ พบงานค้าง ${stuckJobs.length} งาน: ไรเดอร์ส่งครบแล้วแต่ร้านยังไม่กดให้คะแนน`);
             }
