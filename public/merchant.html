@@ -531,10 +531,11 @@
                 <i class="fas fa-plus"></i> เพิ่มจุดรับ-ส่งงาน
             </button>
 
+			<div style="display: flex; gap: 8px; margin-top: 15px;">
             <button id="submit-btn" class="btn-submit" 
 			style="flex: 2; height: 50px; border-radius: 12px;" 
 			onclick="postMerchantTask()">
-			<i class="fas fa-paper-plane"></i> โพสต์ (ส่ง <span id="title-preview">-</span>)
+			<i class="fas fa-paper-plane"></i> โพสต์งานเข้าระบบ (ส่ง <span id="title-preview">-</span>)
 			</button>
 
             <button id="voice-btn" class="btn-submit" 
@@ -542,6 +543,7 @@
 			onclick="startVoiceCommand()">
 			<i class="fas fa-microphone"></i> พูดสั่ง
 			</button>
+			</div>
 			
 			<div style="text-align: right; margin-top: 10px;">
 			<small onclick="openSaveTemplateModal()" style="color: #11998e; cursor: pointer;">
