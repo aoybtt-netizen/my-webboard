@@ -1780,33 +1780,20 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
      
 
-	// [index.html] แก้ไขส่วน checkAndRedirectActiveJob
-async function checkAndRedirectActiveJob(username) {
-    if (!username) return;
+	async function checkAndRedirectActiveJob(username) {
+    if (!username) return; // กัน Error กรณี username ว่าง
 
     try {
         const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(username)}`);
         const data = await res.json();
         
-        // 🚩 เช็คให้ชัวร์ว่า Server ตอบว่ามีงานค้างจริงๆ และมี postId มาให้
-        if (data.success && data.hasJob && data.postId) {
+        // ถ้ามีงานค้าง (status: finished)
+        if (data.hasJob && data.postId) {
+            console.log(`📌 พบงานค้างในกระทู้: ${data.title}`);
             
-            // ถ้าเป็นเจ้าของงาน (Merchant)
-            if (data.isMerchantTask) {
-                console.log("📌 พบงานร้านค้าค้าง: ส่งไปหน้า Merchant Dashboard");
-                window.location.replace('merchant.html'); 
-                return; // จบการทำงาน
-            } 
-            
-            // ถ้าเป็นไรเดอร์ (Rider)
-            if (data.isRiderJob) {
-                console.log("📌 พบงานไรเดอร์ค้าง: ส่งไปหน้าแผนที่วิ่งงาน");
-                window.location.replace(`riderjobmerchant.html?view_id=${data.postId}`);
-                return; // จบการทำงาน
-            }
+            // ใช้ replace แทน href เพื่อไม่ให้ผู้ใช้กด Back กลับมาหน้า index แล้วโดนดีดไปอีกรอบ (วนลูป)
+            window.location.replace(`/post.html?id=${data.postId}`);
         }
-        
-        console.log("✅ ไม่มีงานค้างที่ต้องดำเนินการ");
     } catch (err) {
         console.error("Error checking active job:", err);
     }
