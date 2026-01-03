@@ -868,30 +868,8 @@ async function confirmSaveTemplate() {
 
 // 3. ฟังก์ชันเปิดดูรายการที่บันทึกไว้
 async function openListOrderModal() {
-    // โหลดข้อมูลล่าสุดก่อนเปิด
-    await loadOrderTemplates();
-    
-    const listContent = document.getElementById('template-list-content');
-    listContent.innerHTML = "";
-
-    if (myOrderTemplates.length === 0) {
-        listContent.innerHTML = `<div style="text-align:center; padding:30px; color:#999;">ยังไม่มีออเดอร์ที่บันทึกไว้</div>`;
-    } else {
-        myOrderTemplates.forEach((tpl, index) => {
-            listContent.innerHTML += `
-                <div class="manage-item" style="cursor:pointer;" onclick="selectOrderTemplate(${index})">
-                    <div class="manage-info">
-                        <strong style="color: #11998e;"><i class="fas fa-file-invoice"></i> ${tpl.templateName}</strong><br>
-                        <small style="color:#888;">🎙️ คำสั่งเสียง: "${tpl.voiceKeyword}" • ${tpl.stops.length} จุด</small>
-                    </div>
-                    <div class="manage-actions">
-                        <button class="btn-delete" onclick="event.stopPropagation(); deleteOrderTemplate('${tpl._id}', ${index})">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                </div>`;
-        });
-    }
+    await loadOrderTemplates(); // โหลดข้อมูลล่าสุด
+    renderTemplateListInModal(); // เรียกใช้ฟังก์ชันวาดรายการ
     document.getElementById('list-order-modal').classList.remove('hidden');
 }
 
@@ -2082,6 +2060,60 @@ function closeHowToVoice() {
     if (modal) {
         modal.classList.add('hidden');
     }
+}
+
+
+async function deleteOrderTemplate(id, index) {
+    if (!confirm("คุณต้องการลบออเดอร์สำเร็จรูปนี้ใช่หรือไม่?")) return;
+
+    try {
+        const res = await fetch(`/api/merchant/templates/${id}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            alert("🗑️ ลบออเดอร์สำเร็จรูปเรียบร้อย!");
+            
+            // อัปเดตข้อมูลในตัวแปร Global
+            myOrderTemplates.splice(index, 1);
+            
+            // วาดรายการใน Modal ใหม่ทันทีโดยไม่ต้องปิดหน้าต่าง
+            renderTemplateListInModal(); 
+        } else {
+            alert("ไม่สามารถลบได้: " + data.error);
+        }
+    } catch (e) {
+        console.error("Delete Error:", e);
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    }
+}
+
+// ฟังก์ชันช่วยวาดรายการใหม่ (แยกออกมาเพื่อให้เรียกซ้ำได้)
+function renderTemplateListInModal() {
+    const listContent = document.getElementById('template-list-content');
+    if (!listContent) return;
+    
+    listContent.innerHTML = "";
+    if (myOrderTemplates.length === 0) {
+        listContent.innerHTML = `<div style="text-align:center; padding:30px; color:#999;">ยังไม่มีออเดอร์ที่บันทึกไว้</div>`;
+        return;
+    }
+
+    myOrderTemplates.forEach((tpl, index) => {
+        listContent.innerHTML += `
+            <div class="manage-item" style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee;" onclick="selectOrderTemplate(${index})">
+                <div class="manage-info">
+                    <strong style="color: #11998e;"><i class="fas fa-file-invoice"></i> ${tpl.templateName}</strong><br>
+                    <small style="color:#888;">🎙️ "${tpl.voiceKeyword}" • ${tpl.stops.length} จุด</small>
+                </div>
+                <div class="manage-actions">
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteOrderTemplate('${tpl._id}', ${index})">
+                        <i class="fas fa-trash-alt" style="color: #dc3545;"></i>
+                    </button>
+                </div>
+            </div>`;
+    });
 }
 
 
