@@ -2816,21 +2816,21 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
 
-        // 1. บันทึกคะแนนลงในโพสต์ (เพื่อเก็บหลักฐาน)
+        // 🚩 แก้ไขจุดนี้: นอกจากบันทึกคะแนนแล้ว ให้เพิ่ม Flag หรือเปลี่ยนสถานะภายใน
         await postsCollection.updateOne(
             { id: parseInt(postId) },
-            { $set: { riderToMerchantRating: rating } }
-        );
-
-        // 2. อัปเดตคะแนนสะสมให้ร้านค้า (Author ของโพสต์)
-        await usersCollection.updateOne(
-            { username: post.author },
             { 
-                $inc: { 
-                    merchantRatingScore: rating, 
-                    merchantRatingCount: 1 
+                $set: { 
+                    riderToMerchantRating: rating,
+                    riderProcessStatus: 'rated' // ✅ เพิ่ม Flag ว่าไรเดอร์ให้คะแนนแล้ว
                 } 
             }
+        );
+
+        // อัปเดตคะแนนร้านค้า (โค้ดเดิมของคุณ...)
+        await usersCollection.updateOne(
+            { username: post.author },
+            { $inc: { merchantRatingScore: rating, merchantRatingCount: 1 } }
         );
 
         res.json({ success: true });
