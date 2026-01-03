@@ -481,7 +481,7 @@
 			<div class="menu-item" onclick="openListOrderModal()">
                 <i class="fas fa-list"></i> ออเดอร์ที่บันทึกไว้ทั้งหมด
             </div>
-			<div class="menu-item" onclick="openListOrderModal()">
+			<div class="menu-item" onclick="HowToVoiceCommands()">
                 <i class="fas fa-list"></i> การสั่งงานด้วยเสียง
             </div>
         </div>
@@ -1922,6 +1922,9 @@ async function rejectRider(postId) {
 
 
 
+
+
+
 // 🔔 รับสัญญาณเมื่อมีไรเดอร์กด "ของาน"
 socket.on('rider-applied', (data) => {
     // 1. โหลดรายการงานใหม่ทันทีเพื่อให้ปุ่ม "ตกลงให้งาน" ปรากฏ
@@ -2055,6 +2058,32 @@ async function bypassCheckIn(postId, stopIndex) {
         alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
     }
 }
+
+
+
+function HowToVoiceCommands() {
+    // ปิด Sidebar ก่อนเพื่อให้เห็น Modal ชัดเจน
+    if (typeof toggleMerchantSidebar === 'function') {
+        const sidebar = document.getElementById('merchant-sidebar');
+        if (sidebar && sidebar.classList.contains('active')) {
+            toggleMerchantSidebar();
+        }
+    }
+    
+    const modal = document.getElementById('how-to-voice-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+// ฟังก์ชันปิด
+function closeHowToVoice() {
+    const modal = document.getElementById('how-to-voice-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
 
 
 
@@ -2247,6 +2276,42 @@ async function bypassCheckIn(postId, stopIndex) {
         <div id="template-list-content" style="max-height: 400px; overflow-y: auto;">
             </div>
         <button class="btn-submit" onclick="closeListOrderModal()" style="background: #999; margin-top: 20px; border-radius: 8px;">ปิดหน้าต่าง</button>
+    </div>
+</div>
+
+
+	
+	
+	<div id="how-to-voice-modal" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="modal-box" style="max-width: 450px; text-align: left;">
+        <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
+            <i class="fas fa-microphone-alt" style="font-size: 2.5em; margin-bottom: 10px;"></i>
+            <h3 style="margin: 0;">คู่มือการสั่งงานด้วยเสียง</h3>
+        </div>
+
+        <div style="padding: 10px;">
+            <p style="font-weight: bold; color: #11998e;"><i class="fas fa-star"></i> วิธีที่ 1: สั่งงานด้วย "ชื่อออเดอร์"</p>
+            <p style="font-size: 0.9em; color: #666; margin-left: 15px;">
+                พูดคำว่า <b>"ออเดอร์"</b> ตามด้วยชื่อที่คุณบันทึกไว้ในเทมเพลต ระบบจะดึงข้อมูลพิกัดและราคามาให้ทันที
+            </p>
+            <div style="background: #fff4e5; padding: 10px; border-radius: 8px; font-size: 0.85em; margin-bottom: 20px;">
+                <b>ตัวอย่าง:</b> "ออเดอร์เอ", "ออเดอร์ข้าวกล่อง"
+            </div>
+
+            <p style="font-weight: bold; color: #11998e;"><i class="fas fa-star"></i> วิธีที่ 2: สั่งงานแบบระบุพิกัดแยกส่วน</p>
+            <p style="font-size: 0.9em; color: #666; margin-left: 15px;">
+                พูดประเภทงาน พิกัด และราคา รวมกันในประโยคเดียว (ระบบจะดึงพิกัดจากสมุดที่อยู่ของคุณ)
+            </p>
+            <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; font-size: 0.85em; margin-bottom: 20px;">
+                <b>ตัวอย่าง:</b> "ส่งเอกสารไป <u>บ้านลูกค้าเอ</u> <u>ห้าสิบ</u>บาท", "ส่งของไป <u>คลังสินค้า</u> งบ <u>แปดสิบ</u>"
+            </div>
+
+            <p style="font-size: 0.8em; color: #999; border-top: 1px solid #eee; pt-10;">
+                * หมายเหตุ: กรุณาตั้งชื่อพิกัดหรือเทมเพลตให้สั้นและชัดเจน เพื่อความแม่นยำของ AI
+            </p>
+        </div>
+
+        <button class="btn-submit" onclick="closeHowToVoice()" style="margin-top: 20px;">เข้าใจแล้ว</button>
     </div>
 </div>
 
