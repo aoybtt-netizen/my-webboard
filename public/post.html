@@ -842,7 +842,8 @@
 			const rtcConfig = {
 				iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // ใช้ STUN ฟรีของ Google
 			};
-
+			
+			
         // 1. ฟังก์ชันเริ่มโทรหา (ผูกกับปุ่มโทร)
         async function startCall(targetUsername) {
             if (targetUsername === myUsername) return alert('Why would you call yourself that? 😂');

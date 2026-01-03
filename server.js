@@ -2526,7 +2526,7 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
         const allFinished = currentStops.every(s => s.status === 'success');
 
         if (allFinished) {
-            updateData.status = 'finished'; // ถ้าครบทุกจุด ให้เปลี่ยนสถานะงานรวมเป็น finished
+            updateData.status = 'closed_permanently'; // ถ้าครบทุกจุด ให้เปลี่ยนสถานะงานรวมเป็น finished
         }
 
         await postsCollection.updateOne(
@@ -2690,14 +2690,14 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
         const allDone = updatedPost.stops.every(s => s.status === 'success');
 
         if (allDone) {
-            // 🚩 แก้ไข: เปลี่ยนเฉพาะ status เป็น finished แต่ห้ามใส่ isClosed: true
+            // 🚩 แก้ไข: เปลี่ยนเฉพาะ status เป็น complete แต่ห้ามใส่ isClosed: true
             await postsCollection.updateOne(
                 { id: postId },
-                { $set: { status: 'finished', finishedAt: Date.now() } }
+                { $set: { status: 'closed_permanently', finishedAt: Date.now() } }
             );
             
             // 🔔 ส่งสัญญาณบอกร้านค้าว่าไรเดอร์ส่งครบแล้ว (เพิ่อให้อัปเดต UI อัตโนมัติ)
-            io.emit('update-job-status', { postId: postId, status: 'finished' });
+            io.emit('update-job-status', { postId: postId, status: 'closed_permanently' });
             
             return res.json({ success: true, isFinished: true, message: '🎉 ส่งงานครบทุกจุดแล้ว! รอร้านค้ายืนยัน' });
         }
@@ -2835,6 +2835,7 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
 
 app.get('/api/rider/active-job', async (req, res) => {
     const { username } = req.query;
+	console.log("🔍 Checking active job for rider:", username);
     try {
         // หางานที่คนนี้รับไว้ และสถานะยังเป็น in_progress
         const activeJob = await postsCollection.findOne({
