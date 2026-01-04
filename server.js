@@ -2814,30 +2814,41 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
     const { postId } = req.params;
     const { rating, riderName } = req.body;
 
+    console.log(`\n--- 🏁 Start Rate-Merchant Debug ---`);
+    console.log(`📦 PostID: ${postId} | 🛵 Rider: ${riderName} | ⭐ Rating: ${rating}`);
+
     try {
         const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+        if (!post) {
+            console.log(`❌ Error: ไม่พบงาน ID ${postId} ในระบบ`);
+            return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+        }
 
         // 1. บันทึกคะแนนลงในงาน
-        await postsCollection.updateOne(
+        const updatePost = await postsCollection.updateOne(
             { id: parseInt(postId) },
             { $set: { riderToMerchantRating: rating, riderProcessStatus: 'rated' } }
         );
+        console.log(`✅ 1. บันทึกคะแนนลง Post สำเร็จ (Matched: ${updatePost.matchedCount})`);
 
         // 🚩 2. ปลดล็อค Rider ให้ว่างงาน (ลบตัวแปร working ออก)
-        await usersCollection.updateOne(
+        const updateRider = await usersCollection.updateOne(
             { username: riderName },
-            { $set: { working: null } } // กลับเป็น null เพื่อให้รับงานใหม่ได้
+            { $set: { working: null } }
         );
+        console.log(`✅ 2. ปลดล็อค Rider [${riderName}] ให้ว่างงาน (working = null)`);
 
-        // 3. อัปเดตคะแนนสะสมให้ร้านค้า (โค้ดเดิมของคุณ)
-        await usersCollection.updateOne(
+        // 3. อัปเดตคะแนนสะสมให้ร้านค้า
+        const updateMerchant = await usersCollection.updateOne(
             { username: post.author },
             { $inc: { merchantRatingScore: rating, merchantRatingCount: 1 } }
         );
+        console.log(`✅ 3. อัปเดตคะแนนให้ร้านค้า [${post.author}] เรียบร้อย`);
+        console.log(`--- 🏁 End Rate-Merchant Debug ---\n`);
 
         res.json({ success: true });
     } catch (err) {
+        console.error("🚨 Rate-Merchant Error:", err);
         res.status(500).json({ success: false });
     }
 });
@@ -2846,20 +2857,23 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
 // API สำหรับหน้า index.html ไว้เช็คว่าต้องดีด Rider ไปหน้างานไหม
 app.get('/api/rider/check-working-status', async (req, res) => {
     const { username } = req.query;
+    console.log(`🔍 [Check Working] สมาชิก: ${username} กำลังเช็คสถานะงานค้าง...`);
+
     try {
         const user = await usersCollection.findOne({ username: username });
         
-        // ถ้าสมาชิกคนนี้มี ID งานผูกอยู่ในตัวแปร working
         if (user && user.working) {
+            console.log(`🚩 [Redirect] พบงานค้าง! ดีด Rider [${username}] ไปที่งาน ID: ${user.working}`);
             res.json({ success: true, workingJobId: user.working });
         } else {
+            console.log(`🟢 [Free] Rider [${username}] ไม่มีงานค้าง (Working เป็น null)`);
             res.json({ success: false });
         }
     } catch (err) {
+        console.error("🚨 Check-Working Error:", err);
         res.status(500).json({ success: false });
     }
 });
-
 
 
 
