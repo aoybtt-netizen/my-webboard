@@ -5366,17 +5366,20 @@ function closeZoneOwnerModal() {
 
 
 window.addEventListener('load', async () => {
+    const myUsername = localStorage.getItem('username');
+    if (!myUsername) return;
+
     try {
-        // เช็คว่าไรเดอร์คนนี้มีงานที่สถานะ in_progress ค้างอยู่หรือไม่
-        const res = await fetch(`/api/rider/active-job?username=${myUsername}`);
+        // เปลี่ยนมาถาม API ที่เช็คตัวแปร working โดยตรง
+        const res = await fetch(`/api/rider/check-working-status?username=${myUsername}`);
         const data = await res.json();
         
-        if (data.success && data.activeJobId) {
-    // 🚩 มั่นใจว่าใช้ view_id เหมือนใน addPostToDOM
-    window.location.href = `riderjobmerchant.html?view_id=${data.activeJobId}`;
-}
+        if (data.success && data.workingJobId) {
+            // ดีดเข้าหน้างานทันทีถ้ายังมีงานผูกอยู่
+            window.location.href = `riderjobmerchant.html?view_id=${data.workingJobId}`;
+        }
     } catch (e) {
-        console.log("Check active job error");
+        console.log("Check working status error");
     }
 });
 

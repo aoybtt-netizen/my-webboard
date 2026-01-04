@@ -2769,22 +2769,23 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
         const post = await postsCollection.findOne({ id: postId });
         if (!post || !post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
 
-        const acceptedRider = post.pendingRider; // เก็บชื่อไรเดอร์ไว้ก่อนล้างค่า
+        const acceptedRider = post.pendingRider;
 
+        // 1. อัปเดตฝั่งงาน (Posts)
         await postsCollection.updateOne(
             { id: postId },
-            { 
-                $set: { 
-                    acceptedBy: acceptedRider, 
-                    pendingRider: null, 
-                    status: 'in_progress' 
-                } 
-            }
+            { $set: { acceptedBy: acceptedRider, pendingRider: null, status: 'in_progress' } }
         );
 
-        // 🚩 เพิ่มบรรทัดนี้เพื่อให้ไรเดอร์เห็นการเปลี่ยนแปลงทันที!
-        io.emit('update-post-status'); // บอกหน้า List ทุกหน้าให้อัปเดต
-        io.to(postId.toString()).emit('update-job-status', { status: 'in_progress' }); // บอกหน้ารายละเอียดงาน
+        // 🚩 2. ผูกงานไว้กับ Rider (เพิ่มจุดนี้)
+        // เพื่อให้ Rider คนนี้ติดสถานะ "กำลังทำงาน" และรับงานอื่นไม่ได้
+        await usersCollection.updateOne(
+            { username: acceptedRider },
+            { $set: { working: postId } }
+        );
+
+        io.emit('update-post-status');
+        io.to(postId.toString()).emit('update-job-status', { status: 'in_progress' });
 
         res.json({ success: true });
     } catch (e) { 
@@ -2808,6 +2809,7 @@ app.post('/api/posts/:id/reject-rider', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
+// API: ไรเดอร์ให้คะแนนร้านค้า (ปลดล็อคสถานะ working)
 app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
     const { postId } = req.params;
     const { rating, riderName } = req.body;
@@ -2816,18 +2818,19 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
 
-        // 🚩 อัปเดตคะแนน พร้อมประทับตรา 'rated' เพื่อบอกว่าไรเดอร์คนนี้จบงานส่วนของเขาแล้ว
+        // 1. บันทึกคะแนนลงในงาน
         await postsCollection.updateOne(
             { id: parseInt(postId) },
-            { 
-                $set: { 
-                    riderToMerchantRating: rating,
-                    riderProcessStatus: 'rated' // ✅ ตัวประทับตราสำคัญ
-                } 
-            }
+            { $set: { riderToMerchantRating: rating, riderProcessStatus: 'rated' } }
         );
 
-        // อัปเดตคะแนนสะสมให้ร้านค้า (โค้ดเดิมของคุณ)
+        // 🚩 2. ปลดล็อค Rider ให้ว่างงาน (ลบตัวแปร working ออก)
+        await usersCollection.updateOne(
+            { username: riderName },
+            { $set: { working: null } } // กลับเป็น null เพื่อให้รับงานใหม่ได้
+        );
+
+        // 3. อัปเดตคะแนนสะสมให้ร้านค้า (โค้ดเดิมของคุณ)
         await usersCollection.updateOne(
             { username: post.author },
             { $inc: { merchantRatingScore: rating, merchantRatingCount: 1 } }
@@ -2835,32 +2838,24 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        console.error(err);
         res.status(500).json({ success: false });
     }
 });
 
-app.get('/api/rider/active-job', async (req, res) => {
+
+// API สำหรับหน้า index.html ไว้เช็คว่าต้องดีด Rider ไปหน้างานไหม
+app.get('/api/rider/check-working-status', async (req, res) => {
     const { username } = req.query;
     try {
-        // ค้นหางานที่คนนี้รับไว้ 
-        // 🚩 ปรับ Query ให้เช็คทั้งสถานะ และเช็คว่าต้องยังไม่เคยประทับตรา 'rated'
-        const activeJob = await postsCollection.findOne({
-            acceptedBy: username,
-            status: { $in: ['in_progress'] }, // เช็คทั้งกำลังทำ และส่งของแล้วรอตรวจ
-            isClosed: { $ne: true }, // งานยังไม่ถูกปิดถาวร
-            riderProcessStatus: { $ne: 'rated' } // ✅ เพิ่มจุดนี้: ถ้าประทับตรา 'rated' แล้ว ไม่ต้องดึงกลับ!
-        });
-
-        if (activeJob) {
-            // ถ้าเจอภารกิจที่ยังไม่ประทับตรา 'rated' ให้ส่ง ID ไปดีดหน้าจอ
-            res.json({ success: true, activeJobId: activeJob.id });
+        const user = await usersCollection.findOne({ username: username });
+        
+        // ถ้าสมาชิกคนนี้มี ID งานผูกอยู่ในตัวแปร working
+        if (user && user.working) {
+            res.json({ success: true, workingJobId: user.working });
         } else {
-            // ถ้าไม่เจอ (เพราะให้คะแนนไปแล้ว) จะส่ง success: false ไรเดอร์จะอยู่ที่หน้าแรกได้ปกติ
             res.json({ success: false });
         }
     } catch (err) {
-        console.error(err);
         res.status(500).json({ success: false });
     }
 });
