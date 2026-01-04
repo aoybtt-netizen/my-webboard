@@ -2533,9 +2533,9 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
             if (riderName) {
                 await usersCollection.updateOne(
                     { username: riderName },
-                    { $set: { working: null } }
+                    { $set: { riderWorking: null } }
                 );
-                console.log(`✅ Unlocked Rider: ${riderName} (working = null)`);
+                console.log(`✅ Unlocked Rider: ${riderName} (riderWorking = null)`);
                 
                 // อัปเดตสถิติไรเดอร์ (optional)
                 await usersCollection.updateOne(
@@ -2728,7 +2728,7 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
             // 🚩 แก้ไข: เปลี่ยนเฉพาะ status เป็น finished แต่ห้ามใส่ isClosed: true
             await postsCollection.updateOne(
                 { id: postId },
-                { $set: { status: 'finished', finishedAt: Date.now() } }
+                { $set: { status: 'finished',riderWorking: null, finishedAt: Date.now() } }
             );
             
             // 🔔 ส่งสัญญาณบอกร้านค้าว่าไรเดอร์ส่งครบแล้ว (เพิ่อให้อัปเดต UI อัตโนมัติ)
@@ -2810,7 +2810,7 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
         // เพื่อให้ Rider คนนี้ติดสถานะ "กำลังทำงาน" และรับงานอื่นไม่ได้
         await usersCollection.updateOne(
             { username: acceptedRider },
-            { $set: { working: postId } }
+            { $set: { riderWorking: postId } }
         );
 
         io.emit('update-post-status');
@@ -2858,7 +2858,7 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
         // 🚩 2. ปลดล็อค Rider ให้ว่างงาน (ลบตัวแปร working ออก)
         const updateRider = await usersCollection.updateOne(
             { username: riderName },
-            { $set: { working: null } }
+            { $set: { riderWorking: null } }
         );
 
         // 3. อัปเดตคะแนนสะสมให้ร้านค้า
@@ -2875,28 +2875,38 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
 });
 
 
-// API สำหรับหน้า index.html ไว้เช็คว่าต้องดีด Rider ไปหน้างานไหม
+// API สำหรับหน้า index.html ไว้เช็คว่าต้องดีดไปหน้างานไหม
 app.get('/api/rider/check-working-status', async (req, res) => {
     const { username } = req.query;
     try {
         const user = await usersCollection.findOne({ username: username });
+        if (!user) return res.json({ success: false });
+
+        // 🚩 1. เช็คว่ามีงานค้างในฟิลด์ไหน (ลำดับความสำคัญตามธุรกิจคุณ)
+        const activeJobId = user.working || user.riderWorking;
         
-        if (user && user.working) {
-            const jobId = parseInt(user.working);
-            const post = await postsCollection.findOne({ id: jobId });
+        // 🚩 2. ระบุประเภทงานเพื่อส่งไปบอกหน้าบ้าน
+        // ถ้ามี riderWorking แปลว่าเป็นงานร้านค้า (Merchant)
+        // ถ้ามี working แปลว่าเป็นงานทั่วไป (Handover)
+        const jobType = user.riderWorking ? 'merchant' : 'handover';
+
+        if (activeJobId) {
+            const post = await postsCollection.findOne({ id: parseInt(activeJobId) });
             
-            // ตรวจสอบว่าผู้ใช้คนนี้เป็นเจ้าของโพสต์ (Merchant) หรือไม่
+            // ตรวจสอบว่าผู้ใช้คนนี้เป็นเจ้าของโพสต์ (Merchant/Owner) หรือไม่
             const isOwner = post && post.author === username;
 
             res.json({ 
                 success: true, 
-                workingJobId: user.working,
-                isOwner: isOwner // ส่งค่านี้กลับไปให้หน้าบ้านด้วย
+                workingJobId: activeJobId,
+                jobType: jobType, // ส่งประเภทงานกลับไป
+                isOwner: isOwner
             });
         } else {
             res.json({ success: false });
         }
     } catch (err) {
+        console.error(err);
         res.status(500).json({ success: false });
     }
 });

@@ -1780,7 +1780,7 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
      
 
-	// [index.html] แก้ไขส่วน checkAndRedirectActiveJob
+	// ส่งไปหน้างานค้าง
 async function checkAndRedirectActiveJob(username) {
     if (!username) return;
 
@@ -1790,24 +1790,28 @@ async function checkAndRedirectActiveJob(username) {
         
         if (data.success && data.workingJobId) {
             const jobId = data.workingJobId.toString();
-            console.log("🚩 พบงานค้าง ID:", jobId, "เป็นเจ้าของหรือไม่:", data.isOwner);
+            const type = data.jobType; // 'merchant' หรือ 'handover'
+            
+            console.log(`🚩 พบงานค้าง ID: ${jobId} | ประเภท: ${type} | เป็นเจ้าของ: ${data.isOwner}`);
 
-            // 1. ถ้าเป็นงานทั่วไป (HANDOVER - ID ยาว)
-            // ทั้งเจ้าของและคนรับงานจะใช้หน้า post.html ร่วมกัน
-            if (jobId.length > 10) {
+            // 🟢 กรณีที่ 1: งานทั่วไป (HANDOVER)
+            if (type === 'handover') {
+                // ทั้งเจ้าของและคนรับงานจะใช้หน้า post.html ร่วมกัน
                 window.location.replace(`post.html?id=${jobId}`);
                 return;
             }
 
-            // 2. ถ้าเป็นงานร้านค้า (ID สั้น)
-            if (data.isOwner) {
-                // ถ้าเป็นเจ้าของร้าน -> ส่งไปหน้าจัดการออเดอร์ (Merchant Dashboard)
-                window.location.replace('merchant.html');
-            } else {
-                // ถ้าเป็นไรเดอร์ -> ส่งไปหน้าแผนที่วิ่งงาน
-                window.location.replace(`riderjobmerchant.html?view_id=${jobId}`);
+            // 🔵 กรณีที่ 2: งานร้านค้า (MERCHANT)
+            if (type === 'merchant') {
+                if (data.isOwner) {
+                    // ถ้าเป็นเจ้าของร้าน -> ส่งไปหน้าจัดการ (Merchant Dashboard)
+                    window.location.replace('merchant.html');
+                } else {
+                    // ถ้าเป็นไรเดอร์ -> ส่งไปหน้าแผนที่วิ่งงาน
+                    window.location.replace(`riderjobmerchant.html?view_id=${jobId}`);
+                }
+                return;
             }
-            return;
         }
         
         console.log("✅ ไม่มีงานค้าง");
