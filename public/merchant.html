@@ -1915,6 +1915,7 @@ async function sendSidebarChat() {
 
 
 async function deleteMerchantTask(postId) {
+	closeRightSidebar();
     // 🚩 ดึงชื่อใหม่อีกครั้งกันพลาด
     const currentUsername = localStorage.getItem('myUsername'); 
     
