@@ -2404,6 +2404,42 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 
 
 //ส่วนของร้านค้าาาาา
+// API: ลบงานร้านค้า และคืนค่า mercNum
+app.delete('/api/merchant/tasks/:id', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { username } = req.body;
+
+    try {
+        // 1. ค้นหางานก่อนว่ามีจริงและยังไม่มีคนรับใช่ไหม
+        const post = await postsCollection.findOne({ id: postId });
+        
+        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+        
+        // 🚩 เช็คความปลอดภัย: ต้องเป็นเจ้าของ และงานต้องยังไม่มีคนรับ (status เป็น undefined หรือไม่มี)
+        if (post.author !== username) return res.status(403).json({ success: false, error: 'ไม่มีสิทธิ์ลบงานนี้' });
+        
+        if (post.acceptedBy || post.status === 'in_progress') {
+            return res.status(400).json({ success: false, error: 'ไม่สามารถลบได้ เนื่องจากมีคนรับงานแล้ว' });
+        }
+
+        // 2. ลบโพสต์ออกจากระบบ
+        await postsCollection.deleteOne({ id: postId });
+
+        // 🚩 3. ลดแต้ม mercNum ให้ร้านค้า (-1)
+        await usersCollection.updateOne(
+            { username: username },
+            { $inc: { mercNum: -1 } }
+        );
+
+        console.log(`🗑️ Merchant Task Deleted: ${postId} by ${username} (mercNum -1)`);
+        
+        io.emit('update-post-status'); // บอกหน้า Lobby ให้ลบงานนี้ออกด้วย
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Database Error' });
+    }
+});
+
 // API: รีเซ็ตค่า mercNum ให้เป็น 0 (ใช้สำหรับล้างสถานะร้านค้า)
 app.post('/api/merchant/reset-mercnum', async (req, res) => {
     const { username } = req.body;

@@ -447,6 +447,23 @@
 }
 
 
+.btn-delete-task {
+    width: 100%;
+    padding: 12px;
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Kanit', sans-serif;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+}
+.btn-delete-task:hover {
+    background: #cc0000;
+}
+
+
 
 
     </style>
@@ -1808,10 +1825,10 @@ function renderSidebarDetails() {
     // ตรวจสอบว่ามีข้อมูล activeTaskInSidebar หรือไม่
     if (!activeTaskInSidebar || !activeTaskInSidebar.stops) return;
 
+    // 1. วาดรายการจุดส่ง (ลำดับงาน)
     activeTaskInSidebar.stops.forEach((stop, i) => {
         const isDone = stop.status === 'success';
         
-        // สร้างปุ่ม Bypass เฉพาะจุดที่ยังทำไม่สำเร็จ
         const bypassBtn = !isDone ? `
             <button onclick="bypassCheckIn('${activeTaskInSidebar.id}', ${i})" 
                 style="margin-left: auto; background: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; cursor: pointer;">
@@ -1830,6 +1847,23 @@ function renderSidebarDetails() {
             </div>
         `;
     });
+
+    // 🚩 2. ส่วนที่เพิ่มใหม่: ปุ่มลบงาน (แสดงเฉพาะเมื่อยังไม่มีใครรับงาน)
+    // เงื่อนไข: ไม่มีคนรับ (acceptedBy) หรือ สถานะเป็น undefined
+    if (!activeTaskInSidebar.acceptedBy || activeTaskInSidebar.status === 'undefined') {
+        html += `
+            <div style="padding: 20px; text-align: center; background: #fff;">
+                <button onclick="deleteMerchantTask('${activeTaskInSidebar.id}')" 
+                    style="width: 100%; background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit', sans-serif; font-weight: bold; cursor: pointer; transition: 0.3s;">
+                    <i class="fas fa-trash-alt"></i> ยกเลิกและลบงานนี้
+                </button>
+                <p style="font-size: 0.75em; color: #999; margin-top: 8px;">
+                    * คุณสามารถลบงานได้เฉพาะช่วงที่ยังไม่มีไรเดอร์รับงานเท่านั้น
+                </p>
+            </div>
+        `;
+    }
+
     container.innerHTML = html;
 }
 
@@ -1875,6 +1909,41 @@ async function sendSidebarChat() {
         }
     } catch (e) {
         console.error("ส่งข้อความไม่สำเร็จ", e);
+    }
+}
+
+
+async function deleteMerchantTask(postId) {
+    const confirmDelete = await Swal.fire({
+        title: 'ยืนยันการลบงาน?',
+        text: "คุณต้องการยกเลิกงานนี้ใช่หรือไม่? ระบบจะคืนค่าสถานะให้คุณ",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ใช่, ลบเลย!',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (confirmDelete.isConfirmed) {
+        try {
+            const res = await fetch(`/api/merchant/tasks/${postId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: myUsername }) // ส่งชื่อไปเพื่อลด mercNum
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('ลบสำเร็จ!', 'งานของคุณถูกลบและรีเซ็ตสถานะแล้ว', 'success');
+                closeRightSidebar(); // ปิด Sidebar
+                loadActiveMerchantTasks(); // โหลดรายการงานใหม่
+            } else {
+                alert("ลบไม่สำเร็จ: " + data.error);
+            }
+        } catch (error) {
+            console.error("Delete Error:", error);
+        }
     }
 }
 
