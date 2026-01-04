@@ -2406,24 +2406,40 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 //ส่วนของร้านค้าาาาา
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
-    const postId = parseInt(req.params.id);
+    // 🚩 ลองใส่ console.log เพื่อดูว่าค่ามาถึง Server หรือไม่
+    console.log("🗑️ Delete Request - ID:", req.params.id, "User:", req.body.username);
+
+    const postId = parseInt(req.params.id); // แปลงเป็นตัวเลข
     const { username } = req.body;
 
+    if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้ใน Request' });
+
     try {
+        // ค้นหาโดยระบุเลข ID ให้ชัดเจน
         const post = await postsCollection.findOne({ id: postId });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
         
-        // ห้ามลบถ้ามีคนรับไปแล้ว
-        if (post.acceptedBy) return res.status(400).json({ success: false, error: 'มีไรเดอร์รับงานไปแล้ว' });
+        if (!post) {
+            console.log("❌ ไม่พบงาน ID:", postId);
+            return res.status(404).json({ success: false, error: 'ไม่พบงานในระบบ' });
+        }
+
+        if (post.acceptedBy) {
+            return res.status(400).json({ success: false, error: 'มีไรเดอร์รับงานไปแล้ว ลบไม่ได้' });
+        }
 
         await postsCollection.deleteOne({ id: postId });
         
-        // 🚩 ลดแต้ม mercNum คืนให้ร้านค้า
-        await usersCollection.updateOne({ username: username }, { $inc: { mercNum: -1 } });
+        // 🚩 ตรวจสอบว่าลดแต้ม mercNum ถูกคน
+        const updateResult = await usersCollection.updateOne(
+            { username: username }, 
+            { $inc: { mercNum: -1 } }
+        );
 
+        console.log(`✅ ลบงานสำเร็จและลดแต้มให้ ${username}`);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ success: false });
+        console.error("🚨 Server Error:", err);
+        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดที่ Server' });
     }
 });
 

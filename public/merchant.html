@@ -1914,37 +1914,46 @@ async function sendSidebarChat() {
 
 
 async function deleteMerchantTask(postId) {
+    // 🚩 ดึงชื่อใหม่อีกครั้งกันพลาด
+    const currentUsername = localStorage.getItem('myUsername'); 
+    
+    if (!currentUsername) {
+        return Swal.fire('ผิดพลาด', 'ไม่พบชื่อผู้ใช้ กรุณาล็อกอินใหม่', 'error');
+    }
+
     const confirmDelete = await Swal.fire({
         title: 'ยืนยันการลบงาน?',
         text: "งานจะถูกลบออกจากระบบและคืนสถานะว่างงานให้คุณ",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e74c3c',
-        cancelButtonColor: '#95a5a6',
         confirmButtonText: 'ใช่, ลบงานเลย',
         cancelButtonText: 'ยกเลิก'
     });
 
     if (confirmDelete.isConfirmed) {
         try {
-            // ใช้ค่า myUsername จากหน้า merchant.html ของคุณ
             const res = await fetch(`/api/merchant/tasks/${postId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: myUsername }) 
+                body: JSON.stringify({ username: currentUsername }) // ส่งชื่อที่ดึงมาใหม่
             });
+
+            // 🚩 ตรวจสอบว่า HTTP Status คือ 200 หรือไม่
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Network response was not ok');
+            }
 
             const data = await res.json();
             if (data.success) {
                 Swal.fire('ลบสำเร็จ!', 'สถานะของคุณถูกรีเซ็ตแล้ว', 'success');
-                closeRightSidebar(); // ปิดแถบข้าง
-                loadActiveMerchantTasks(); // โหลดงานใหม่ (รายการจะหายไป)
-            } else {
-                Swal.fire('ผิดพลาด', data.error || 'ไม่สามารถลบงานได้', 'error');
+                closeRightSidebar();
+                loadActiveMerchantTasks();
             }
         } catch (err) {
             console.error("Delete Error:", err);
-            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+            Swal.fire('Error', err.message, 'error');
         }
     }
 }
