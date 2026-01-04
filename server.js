@@ -500,7 +500,7 @@ function convertUSD(amountUSD, targetCurrency) {
 
 // ฟังก์ชันพนักงานทำความสะอาดหลังบ้าน
 async function runPostCleanup() {
-    const ONE_HOUR = 360000;
+    const ONE_HOUR = 3600000;
     const expirationTime = Date.now() - ONE_HOUR;
 
     try {
