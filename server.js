@@ -2410,33 +2410,20 @@ app.delete('/api/merchant/tasks/:id', async (req, res) => {
     const { username } = req.body;
 
     try {
-        // 1. ค้นหางานก่อนว่ามีจริงและยังไม่มีคนรับใช่ไหม
         const post = await postsCollection.findOne({ id: postId });
-        
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
         
-        // 🚩 เช็คความปลอดภัย: ต้องเป็นเจ้าของ และงานต้องยังไม่มีคนรับ (status เป็น undefined หรือไม่มี)
-        if (post.author !== username) return res.status(403).json({ success: false, error: 'ไม่มีสิทธิ์ลบงานนี้' });
-        
-        if (post.acceptedBy || post.status === 'in_progress') {
-            return res.status(400).json({ success: false, error: 'ไม่สามารถลบได้ เนื่องจากมีคนรับงานแล้ว' });
-        }
+        // ห้ามลบถ้ามีคนรับไปแล้ว
+        if (post.acceptedBy) return res.status(400).json({ success: false, error: 'มีไรเดอร์รับงานไปแล้ว' });
 
-        // 2. ลบโพสต์ออกจากระบบ
         await postsCollection.deleteOne({ id: postId });
-
-        // 🚩 3. ลดแต้ม mercNum ให้ร้านค้า (-1)
-        await usersCollection.updateOne(
-            { username: username },
-            { $inc: { mercNum: -1 } }
-        );
-
-        console.log(`🗑️ Merchant Task Deleted: ${postId} by ${username} (mercNum -1)`);
         
-        io.emit('update-post-status'); // บอกหน้า Lobby ให้ลบงานนี้ออกด้วย
+        // 🚩 ลดแต้ม mercNum คืนให้ร้านค้า
+        await usersCollection.updateOne({ username: username }, { $inc: { mercNum: -1 } });
+
         res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Database Error' });
+    } catch (err) {
+        res.status(500).json({ success: false });
     }
 });
 

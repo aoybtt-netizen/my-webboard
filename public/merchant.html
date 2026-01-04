@@ -1916,33 +1916,35 @@ async function sendSidebarChat() {
 async function deleteMerchantTask(postId) {
     const confirmDelete = await Swal.fire({
         title: 'ยืนยันการลบงาน?',
-        text: "คุณต้องการยกเลิกงานนี้ใช่หรือไม่? ระบบจะคืนค่าสถานะให้คุณ",
+        text: "งานจะถูกลบออกจากระบบและคืนสถานะว่างงานให้คุณ",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'ใช่, ลบเลย!',
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#95a5a6',
+        confirmButtonText: 'ใช่, ลบงานเลย',
         cancelButtonText: 'ยกเลิก'
     });
 
     if (confirmDelete.isConfirmed) {
         try {
+            // ใช้ค่า myUsername จากหน้า merchant.html ของคุณ
             const res = await fetch(`/api/merchant/tasks/${postId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: myUsername }) // ส่งชื่อไปเพื่อลด mercNum
+                body: JSON.stringify({ username: myUsername }) 
             });
 
             const data = await res.json();
             if (data.success) {
-                Swal.fire('ลบสำเร็จ!', 'งานของคุณถูกลบและรีเซ็ตสถานะแล้ว', 'success');
-                closeRightSidebar(); // ปิด Sidebar
-                loadActiveMerchantTasks(); // โหลดรายการงานใหม่
+                Swal.fire('ลบสำเร็จ!', 'สถานะของคุณถูกรีเซ็ตแล้ว', 'success');
+                closeRightSidebar(); // ปิดแถบข้าง
+                loadActiveMerchantTasks(); // โหลดงานใหม่ (รายการจะหายไป)
             } else {
-                alert("ลบไม่สำเร็จ: " + data.error);
+                Swal.fire('ผิดพลาด', data.error || 'ไม่สามารถลบงานได้', 'error');
             }
-        } catch (error) {
-            console.error("Delete Error:", error);
+        } catch (err) {
+            console.error("Delete Error:", err);
+            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
         }
     }
 }
