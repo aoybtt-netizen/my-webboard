@@ -2391,6 +2391,34 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 
 
 //ส่วนของร้านค้าาาาา
+// API: รีเซ็ตค่า mercNum ให้เป็น 0 (ใช้สำหรับล้างสถานะร้านค้า)
+app.post('/api/merchant/reset-mercnum', async (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้' });
+    }
+
+    try {
+        console.log(`🧹 Manual Reset: Clearing mercNum for ${username}`);
+
+        // 🚩 ตั้งค่า mercNum และ riderWorking ให้เป็น null/0
+        await usersCollection.updateOne(
+            { username: username },
+            { 
+                $set: { 
+                    mercNum: 0, 
+                    riderWorking: null 
+                } 
+            }
+        );
+
+        res.json({ success: true, message: 'รีเซ็ตสถานะเรียบร้อยแล้ว' });
+    } catch (err) {
+        console.error("🚨 Reset MercNum Error:", err);
+        res.status(500).json({ success: false, error: 'Database Error' });
+    }
+});
 
 // 2. API: ดึงพิกัดทั้งหมดของร้านค้า
 app.get('/api/merchant/locations', async (req, res) => {
