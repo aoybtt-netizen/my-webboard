@@ -3171,7 +3171,8 @@ io.on('connection', (socket) => {
             { username: { $in: [owner, viewer] } },
             { $set: { working: parseInt(postId) } }
         );
-        
+        console.log(`🔒 Locked working status for Owner: ${owner} and Viewer: ${viewer}`);
+		
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         await transactionsCollection.insertOne({
             id: Date.now(), type: 'HANDOVER', amount: 0, fromUser: owner, toUser: viewer,
@@ -3334,7 +3335,7 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
                 { username: { $in: [post.author, post.acceptedViewer] } },
                 { $set: { working: null } }
             );
-
+			console.log(`🔓 Unlocked working status for ${post.author} and ${post.acceptedViewer}`);
             // 🎯 3. [เพิ่มใหม่] นับจำนวน "จบงาน" ให้กับทั้ง 2 ฝ่าย
             // เพิ่มให้เจ้าของกระทู้ (Employer)
             await usersCollection.updateOne(
