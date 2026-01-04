@@ -2000,14 +2000,17 @@ async function confirmAndRate(postId, riderName) {
         const data = await res.json();
         
         if (data.success) {
-            alert("✅ จบงานและบันทึกสถิติเรียบร้อย!");
-            
-            // ปิด Sidebar และโหลดรายการงานใหม่
+            const taskCard = document.getElementById(`card-${postId}`);
+            if (taskCard) {
+                taskCard.style.opacity = '0';
+                taskCard.style.transform = 'scale(0.9)';
+                taskCard.style.transition = '0.3s';
+                setTimeout(() => taskCard.remove(), 300); // ค่อยๆ เฟดหายไปแล้วลบ
+            }
             document.getElementById('right-sidebar').classList.remove('active');
             document.getElementById('right-sidebar-overlay').classList.add('hidden');
+            console.log("Job finished successfully");
             loadActiveMerchantTasks(); 
-            
-            // ส่งสัญญาณ Socket ให้ฝั่ง Rider รู้ว่างานจบแล้ว (ถ้าต้องการ)
             socket.emit('confirm-finish-job', { postId: postId, accepted: true });
         } else {
             alert("เกิดข้อผิดพลาด: " + data.error);
