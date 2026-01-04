@@ -1539,6 +1539,13 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
     await postsCollection.insertOne(newPost);
     await usersCollection.updateOne({ username: author }, { $inc: { totalPosts: 1 } });
+	if (isMerchantTask) {
+    await usersCollection.updateOne(
+        { username: author },
+        { $inc: { mercNum: 1 } } // บวก 1 เมื่อร้านค้าสร้างงาน
+    );
+    console.log(`📈 Merchant Task Created: ${author} (mercNum +1)`);
+}
     
     // (ส่วนการแจ้งเตือนรักษาไว้เหมือนเดิม)
     if (author !== 'Admin') {
@@ -2627,7 +2634,7 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
         // 4. อัปเดตสถิติจบงานให้ร้านค้า (Merchant)
         await usersCollection.updateOne(
             { username: post.author },
-            { $inc: { totalJobs: 1, authorCompletedJobs: 1 } }
+            { $inc: { totalJobs: 1, authorCompletedJobs: 1, mercNum: -1 } }
         );
 
         // 5. แจ้งเตือนผ่าน Socket
@@ -2882,28 +2889,37 @@ app.get('/api/rider/check-working-status', async (req, res) => {
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.json({ success: false });
 
-        // 🚩 1. เช็คว่ามีงานค้างในฟิลด์ไหน (ลำดับความสำคัญตามธุรกิจคุณ)
+        // 🚩 ดึงค่า mercNum (ถ้าไม่มีให้เป็น 0)
+        const mercNum = user.mercNum || 0;
+
+        // เช็คการ Lock งานปัจจุบัน (ระบบเดิม)
         const activeJobId = user.working || user.riderWorking;
-        
-        // 🚩 2. ระบุประเภทงานเพื่อส่งไปบอกหน้าบ้าน
-        // ถ้ามี riderWorking แปลว่าเป็นงานร้านค้า (Merchant)
-        // ถ้ามี working แปลว่าเป็นงานทั่วไป (Handover)
         const jobType = user.riderWorking ? 'merchant' : 'handover';
 
+        // กรณีมีเลขงานผูก (In Progress)
         if (activeJobId) {
             const post = await postsCollection.findOne({ id: parseInt(activeJobId) });
-            
-            // ตรวจสอบว่าผู้ใช้คนนี้เป็นเจ้าของโพสต์ (Merchant/Owner) หรือไม่
             const isOwner = post && post.author === username;
 
             res.json({ 
                 success: true, 
                 workingJobId: activeJobId,
-                jobType: jobType, // ส่งประเภทงานกลับไป
-                isOwner: isOwner
+                jobType: jobType,
+                isOwner: isOwner,
+                mercNum: mercNum // 🚩 ส่งจำนวนงานไปด้วย
             });
-        } else {
-            res.json({ success: false });
+        } 
+        // 🚩 กรณีไม่มีงานล็อค แต่ mercNum > 0 (คือร้านค้ามีงานที่ยังไม่จบกระบวนการ)
+        else if (mercNum > 0) {
+            res.json({
+                success: true,
+                mercNum: mercNum,
+                jobType: 'merchant',
+                isOwner: true 
+            });
+        } 
+        else {
+            res.json({ success: false, mercNum: 0 });
         }
     } catch (err) {
         console.error(err);

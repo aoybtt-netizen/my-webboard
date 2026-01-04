@@ -1788,29 +1788,31 @@ async function checkAndRedirectActiveJob(username) {
         const res = await fetch(`/api/rider/check-working-status?username=${encodeURIComponent(username)}`);
         const data = await res.json();
         
-        if (data.success && data.workingJobId) {
-            const jobId = data.workingJobId.toString();
-            const type = data.jobType; // 'merchant' หรือ 'handover'
-            
-            console.log(`🚩 พบงานค้าง ID: ${jobId} | ประเภท: ${type} | เป็นเจ้าของ: ${data.isOwner}`);
-
-            // 🟢 กรณีที่ 1: งานทั่วไป (HANDOVER)
-            if (type === 'handover') {
-                // ทั้งเจ้าของและคนรับงานจะใช้หน้า post.html ร่วมกัน
-                window.location.replace(`post.html?id=${jobId}`);
+        if (data.success) {
+            // 🚩 ลำดับที่ 1: เช็ค mercNum สำหรับร้านค้า (Merchant)
+            // ถ้าเป็นเจ้าของ และมีงานค้าง (mercNum > 0) ให้ดีดไปหน้า merchant ทันที
+            if (data.isOwner && data.mercNum > 0) {
+                console.log(`📌 พบงานร้านค้าค้างอยู่ (${data.mercNum} งาน): ส่งไปหน้า Merchant`);
+                window.location.replace('merchant.html');
                 return;
             }
 
-            // 🔵 กรณีที่ 2: งานร้านค้า (MERCHANT)
-            if (type === 'merchant') {
-                if (data.isOwner) {
-                    // ถ้าเป็นเจ้าของร้าน -> ส่งไปหน้าจัดการ (Merchant Dashboard)
-                    window.location.replace('merchant.html');
-                } else {
-                    // ถ้าเป็นไรเดอร์ -> ส่งไปหน้าแผนที่วิ่งงาน
-                    window.location.replace(`riderjobmerchant.html?view_id=${jobId}`);
+            // 🚩 ลำดับที่ 2: ระบบ Lock สำหรับ Rider หรือ งานทั่วไป (Handover)
+            if (data.workingJobId) {
+                const jobId = data.workingJobId.toString();
+                const type = data.jobType;
+
+                // กรณีงานทั่วไป
+                if (type === 'handover') {
+                    window.location.replace(`post.html?id=${jobId}`);
+                    return;
                 }
-                return;
+
+                // กรณีไรเดอร์ที่กำลังวิ่งงานร้านค้า (ไม่ใช่เจ้าของ)
+                if (type === 'merchant' && !data.isOwner) {
+                    window.location.replace(`riderjobmerchant.html?view_id=${jobId}`);
+                    return;
+                }
             }
         }
         
