@@ -789,6 +789,7 @@
 	<div style="margin-top: 10px; text-align: left; padding: 10px; background: #f8f9fa; border-radius: 8px;">
     <label style="font-weight: bold; color: #333;"><i class="fas fa-hourglass-start"></i> Time Limit</label>
     <select id="selectTimeLimit" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+		<option value="180000">3 Min</option>
         <option value="1800000">30 Min</option>
         <option value="3600000">1 H</option>
         <option value="7200000">2 H</option>
@@ -2492,7 +2493,6 @@ function updateExtendButtonVisibility() {
 
 	// รับ Event เมื่อหมดเวลา (Server สั่งตัดจบ)
 	socket.on('force-close-job', (data) => {
-
     // 1. หยุดตัวนับเวลา
     if (typeof countdownInterval !== 'undefined') {
         clearInterval(countdownInterval);
@@ -2500,25 +2500,19 @@ function updateExtendButtonVisibility() {
 
     // 2. ซ่อนแถบเวลาและปุ่มส่งงาน	
     const finishBtn = document.getElementById('final-finish-btn');
-    if(finishBtn) {
-        finishBtn.style.display = 'none';
-    }
+    if(finishBtn) finishBtn.style.display = 'none';
     
-    // 3. ซ่อน Modal ทุกอย่าง
+    // 3. ซ่อน Modal (ลบ location.reload ออกจากตรงนี้!)
     const modalIds = ['handover-modal', 'offer-modal', 'call-modal'];
     modalIds.forEach(id => {
         const el = document.getElementById(id);
-        if(el) {
-            el.classList.add('hidden');
-			location.reload();
-        }
+        if(el) el.classList.add('hidden');
     });
 
-    // 4. แจ้งเตือนแบบบังคับ
-    
+    // 4. แจ้งเตือนแบบบังคับ และเปลี่ยนหน้า
     Swal.fire({
         icon: 'error',
-        title: 'TimeUp!',
+        title: 'หมดเวลา!',
         text: data.message || 'งานนี้สิ้นสุดระยะเวลาแล้ว ระบบได้ปิดกระทู้อัตโนมัติ',
         allowOutsideClick: false,
         allowEscapeKey: false,
@@ -2526,12 +2520,11 @@ function updateExtendButtonVisibility() {
         confirmButtonColor: '#d33'
     }).then((result) => {
         if (result.isConfirmed) {
-            // ใช้แค่ window.location.href ก็พอครับ ไม่ต้องใส่ reload() ซ้อนกัน
-            window.location.href = '/';
+            // ✅ ดีดกลับหน้าแรก
+            window.location.replace('/'); 
         }
     });
 });
-
 
         // --- FINISH JOB ---
 

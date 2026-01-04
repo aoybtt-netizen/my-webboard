@@ -417,52 +417,47 @@ async function isUserBanned(username) {
 async function processJobTimeout(postId, io) {
     try {
         const targetId = parseInt(postId);
-        console.log(`[Timeout Handler] ⏳ Processing timeout for Post ID: ${targetId}`);
+        console.log(`[Timeout Handler] ⏳ เริ่มจัดการหมดเวลาสำหรับ ID: ${targetId}`);
 
         const currentPost = await postsCollection.findOne({ id: targetId });
 
-        // เช็คว่าสถานะยังเป็น finished อยู่ (ยังไม่มีใครกดจบงานไปก่อน)
-        if (currentPost && currentPost.status === 'finished') {
+        if (currentPost && (currentPost.status === 'finished' || currentPost.status === 'in_progress')) {
             
-            // ✅ แก้ไข Bug และ รวมคำสั่งอัปเดต User (ปลดล็อก working และ status พร้อมกัน)
-            await usersCollection.updateMany(
-                { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
+            // 🚩 1. ปลดล็อก User (ตรวจสอบชื่อให้เป๊ะ)
+            const usersToUnlock = [currentPost.author, currentPost.acceptedViewer, currentPost.acceptedBy].filter(Boolean);
+            
+            const userUpdate = await usersCollection.updateMany(
+                { username: { $in: usersToUnlock } },
                 { $set: { working: null, status: 'idle' } }
             );
+            console.log(`🔓 ปลดล็อก User สำเร็จ: ${userUpdate.modifiedCount} คน`);
 
-            // A. ปิดกระทู้ถาวร
+            // 🚩 2. ปิดกระทู้
             await postsCollection.updateOne(
                 { id: targetId },
                 { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
             );
 
-            // B. ส่งคำสั่งเตะ (Kick)
+            // 🚩 3. ส่งสัญญาณเตะ
             const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
             
-            // ส่งเข้าห้อง (Room)
-            io.to(targetId.toString()).emit('force-close-job', kickMsg);
+            // ส่งรายตัว (ต้องมั่นใจว่า socket.join(username) ไว้แล้ว)
+            usersToUnlock.forEach(user => {
+                io.to(user).emit('force-close-job', kickMsg);
+            });
             
-            // ส่งรายตัว (Backup เพื่อความชัวร์)
-            io.to(currentPost.author).emit('force-close-job', kickMsg);
-            if (currentPost.acceptedViewer) {
-                io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
-            }
+            // ส่งเข้าห้องเลขงาน
+            io.to(targetId.toString()).emit('force-close-job', kickMsg);
 
-            // C. อัปเดตหน้า Lobby
-            io.emit('post-list-update', { postId: targetId, status: 'closed_permanently' });
-
-            console.log(`[Timeout Handler] ✅ Post ${targetId} closed and Users unlocked successfully.`);
+            console.log(`[Timeout Handler] ✅ งาน ${targetId} ถูกปิดถาวรและปลดล็อกสมาชิกแล้ว`);
         } else {
-            console.log(`[Timeout Handler] ℹ️ Post ${targetId} is already closed or status changed.`);
+            console.log(`[Timeout Handler] ℹ️ งาน ${targetId} ไม่ต้องจัดการ (สถานะปัจจุบัน: ${currentPost ? currentPost.status : 'ไม่พบงาน'})`);
         }
 
-        // ลบ Timer ออกจากหน่วยความจำ
-        if (activePostTimers[postId]) {
-            delete activePostTimers[postId];
-        }
+        if (activePostTimers[postId]) delete activePostTimers[postId];
 
     } catch (err) {
-        console.error(`[Timeout Handler] ❌ Error processing timeout for ${postId}:`, err);
+        console.error(`[Timeout Handler] ❌ Error:`, err);
     }
 }
 
