@@ -1804,6 +1804,15 @@ async function checkAndRedirectActiveJob(username) {
                 window.location.replace(`riderjobmerchant.html?view_id=${data.postId}`);
                 return; // จบการทำงาน
             }
+			
+			if (data.success && data.workingJobId) {
+            const jobId = data.workingJobId.toString();
+            console.log("🚩 พบงานค้างในระบบ Working ID:", jobId);
+                window.location.replace(`post.html?id=${jobId}`);
+            
+            return;
+        }
+		
         }
         
         console.log("✅ ไม่มีงานค้างที่ต้องดำเนินการ");
