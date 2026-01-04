@@ -2641,7 +2641,7 @@ function updateExtendButtonVisibility() {
 });
 
         function replyFinishJob(accepted) {
-            socket.emit('confirm-finish-job', { 
+            socket.emit('confirm-finish-job-post', { 
                 postId, 
                 accepted, 
                 requester: finishRequester 

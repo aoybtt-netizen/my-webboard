@@ -423,7 +423,12 @@ async function processJobTimeout(postId, io) {
 
         // เช็คว่าสถานะยังเป็น finished อยู่ (ยังไม่มีใครกดจบงานไปก่อน)
         if (currentPost && currentPost.status === 'finished') {
-            console.log(`[Timeout Handler] 🚀 Closing post ${targetId} due to timeout...`);
+            
+            // ✅ แก้ไข Bug และ รวมคำสั่งอัปเดต User (ปลดล็อก working และ status พร้อมกัน)
+            await usersCollection.updateMany(
+                { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
+                { $set: { working: null, status: 'idle' } }
+            );
 
             // A. ปิดกระทู้ถาวร
             await postsCollection.updateOne(
@@ -431,28 +436,22 @@ async function processJobTimeout(postId, io) {
                 { $set: { status: 'closed_permanently', isClosed: true, closedAt: Date.now() } }
             );
 
-            // B. คืนสถานะผู้ใช้ทั้งคู่ให้เป็น idle (ว่างงาน)
-            await usersCollection.updateMany(
-                { username: { $in: [currentPost.author, currentPost.acceptedViewer] } },
-                { $set: { status: 'idle' } }
-            );
-
-            // C. ส่งคำสั่งเตะ (Kick)
+            // B. ส่งคำสั่งเตะ (Kick)
             const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
             
             // ส่งเข้าห้อง (Room)
             io.to(targetId.toString()).emit('force-close-job', kickMsg);
             
-            // ส่งรายตัว (Backup)
+            // ส่งรายตัว (Backup เพื่อความชัวร์)
             io.to(currentPost.author).emit('force-close-job', kickMsg);
             if (currentPost.acceptedViewer) {
                 io.to(currentPost.acceptedViewer).emit('force-close-job', kickMsg);
             }
 
-            // D. อัปเดตหน้า Lobby
+            // C. อัปเดตหน้า Lobby
             io.emit('post-list-update', { postId: targetId, status: 'closed_permanently' });
 
-            console.log(`[Timeout Handler] ✅ Post ${targetId} closed successfully.`);
+            console.log(`[Timeout Handler] ✅ Post ${targetId} closed and Users unlocked successfully.`);
         } else {
             console.log(`[Timeout Handler] ℹ️ Post ${targetId} is already closed or status changed.`);
         }
@@ -3168,6 +3167,10 @@ io.on('connection', (socket) => {
                 jobDeadline: deadline // [NEW] บันทึกเวลาหมดอายุลง DB
             }}
         );
+		await usersCollection.updateMany(
+            { username: { $in: [owner, viewer] } },
+            { $set: { working: parseInt(postId) } }
+        );
         
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         await transactionsCollection.insertOne({
@@ -3314,6 +3317,47 @@ socket.on('reply-extension-request', async (data) => {
     else if (requester === post.acceptedViewer) target = post.author;
     
     if (target) io.to(target).emit('receive-finish-request', { requester });
+});
+
+socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => {
+    if (accepted) {
+        // 1. ดึงข้อมูลกระทู้มาก่อนเพื่อดูว่าใครคือคนโพสต์ (Author) และใครคือคนรับงาน (AcceptedViewer)
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        
+        if (post) {
+            // 2. อัปเดตสถานะกระทู้ตามปกติ
+            await postsCollection.updateOne({ id: parseInt(postId) }, { 
+                $set: { status: 'rating_pending', isClosed: true, ratings: {} } 
+            });
+			
+			await usersCollection.updateMany(
+                { username: { $in: [post.author, post.acceptedViewer] } },
+                { $set: { working: null } }
+            );
+
+            // 🎯 3. [เพิ่มใหม่] นับจำนวน "จบงาน" ให้กับทั้ง 2 ฝ่าย
+            // เพิ่มให้เจ้าของกระทู้ (Employer)
+            await usersCollection.updateOne(
+                { username: post.author },
+                { $inc: { completedJobs: 1 } }
+            );
+
+            // เพิ่มให้ผู้รับงาน (Worker)
+            if (post.acceptedViewer) {
+                await usersCollection.updateOne(
+                    { username: post.acceptedViewer },
+                    { $inc: { completedJobs: 1 } }
+                );
+            }
+
+            console.log(`📊 Updated completedJobs for ${post.author} and ${post.acceptedViewer}`);
+            
+            io.emit('update-post-status');
+            io.to(`post-${postId}`).emit('start-rating-phase');
+        }
+    } else {
+        io.to(requester).emit('finish-request-rejected', { msgKey: 'SYS_FINISH_REJECTED' });
+    }
 });
 
     socket.on('confirm-finish-job', async ({ postId, accepted, requester }) => {
