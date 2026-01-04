@@ -1785,30 +1785,28 @@ async function checkAndRedirectActiveJob(username) {
     if (!username) return;
 
     try {
-        const res = await fetch(`/api/check-active-job?username=${encodeURIComponent(username)}`);
+        // 🔍 ถาม API ใหม่ที่เราสร้างไว้ (เช็คจากฟิลด์ working ในตัว User)
+        const res = await fetch(`/api/rider/check-working-status?username=${encodeURIComponent(username)}`);
         const data = await res.json();
         
-        // 🚩 เช็คให้ชัวร์ว่า Server ตอบว่ามีงานค้างจริงๆ และมี postId มาให้
-        if (data.success && data.hasJob && data.postId) {
-            
-            // ถ้าเป็นเจ้าของงาน (Merchant)
-            if (data.isMerchantTask) {
-                console.log("📌 พบงานร้านค้าค้าง: ส่งไปหน้า Merchant Dashboard");
-                window.location.replace('merchant.html'); 
-                return; // จบการทำงาน
-            } 
-            
-            // ถ้าเป็นไรเดอร์ (Rider)
-            if (data.isRiderJob) {
-                console.log("📌 พบงานไรเดอร์ค้าง: ส่งไปหน้าแผนที่วิ่งงาน");
-                window.location.replace(`riderjobmerchant.html?view_id=${data.postId}`);
-                return; // จบการทำงาน
+        if (data.success && data.workingJobId) {
+            const jobId = data.workingJobId.toString();
+            console.log("🚩 พบงานค้างในระบบ Working ID:", jobId);
+
+            // 💡 แยกหน้าดีดตามความยาวของ ID (ID ยาว = post.html | ID สั้น = riderjobmerchant.html)
+            if (jobId.length > 10) {
+                // งานทั่วไป (HANDOVER)
+                window.location.replace(`post.html?id=${jobId}`);
+            } else {
+                // งานร้านค้า (Merchant)
+                window.location.replace(`riderjobmerchant.html?view_id=${jobId}`);
             }
+            return;
         }
         
-        console.log("✅ ไม่มีงานค้างที่ต้องดำเนินการ");
+        console.log("✅ สมาชิกว่างงาน (ไม่มีค่าใน working)");
     } catch (err) {
-        console.error("Error checking active job:", err);
+        console.error("🚨 Error checking working status:", err);
     }
 }
 
