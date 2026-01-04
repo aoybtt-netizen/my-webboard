@@ -2141,11 +2141,10 @@ function renderTemplateListInModal() {
 
 
 async function safeNavigateHome() {
-    // 1. ตรวจสอบว่ามีการ์ดงานที่ยังไม่จบ (Active Tasks) บนหน้าจอหรือไม่
+    // 1. ตรวจสอบคลาสชื่อการ์ดงาน (ตรวจสอบใน loadActiveMerchantTasks ว่าใช้คลาสนี้จริงไหม)
     const activeTasks = document.querySelectorAll('.active-task-card').length;
     
     if (activeTasks > 0) {
-        // หากยังมีงานค้างอยู่ ห้ามออกและห้ามรีเซ็ต
         Swal.fire({
             icon: 'warning',
             title: 'ไม่สามารถออกจากหน้านี้ได้',
@@ -2153,11 +2152,16 @@ async function safeNavigateHome() {
             confirmButtonColor: '#11998e'
         });
     } else {
-        // ✅ กรณีไม่มีงานค้างบนหน้าจอแล้ว ให้ทำการรีเซ็ต mercNum เพื่อความชัวร์ก่อนกลับหน้าแรก
         try {
-            const myUsername = localStorage.getItem('username');
+            // 🚩 แก้ไขจุดนี้: เปลี่ยนจาก 'username' เป็น 'myUsername' ตามที่ประกาศไว้ในหน้าเว็บ
+            const myUsername = localStorage.getItem('myUsername'); 
             
-            // เรียก API รีเซ็ตค่าเป็น 0
+            if (!myUsername) {
+                console.error("No username found in localStorage");
+                window.location.href = 'index.html';
+                return;
+            }
+
             const res = await fetch('/api/merchant/reset-mercnum', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2167,10 +2171,10 @@ async function safeNavigateHome() {
             const data = await res.json();
             
             if (data.success) {
-                console.log("🔄 ระบบรีเซ็ตสถานะว่างงานเรียบร้อย");
+                console.log("🔄 รีเซ็ต mercNum เป็น 0 สำเร็จ");
                 window.location.href = 'index.html';
             } else {
-                // หาก API มีปัญหา ให้กลับหน้าแรกไปก่อนเลย
+                console.error("Reset failed on server:", data.error);
                 window.location.href = 'index.html';
             }
         } catch (e) {
