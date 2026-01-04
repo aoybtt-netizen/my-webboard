@@ -1435,10 +1435,7 @@ if (homeBtn) {
         const notificationSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3');
         const ADMIN_USERNAME = 'Admin'; 
 
-window.onload = () => {
-
-	const user = localStorage.getItem('username');
-    checkAndRedirectActiveJob(user);
+        window.onload = () => {
     
     // Cooldown Check for Rapid Refresh
     const lastRefreshTime = parseInt(localStorage.getItem('lastRefreshTime') || '0');
@@ -1807,15 +1804,6 @@ async function checkAndRedirectActiveJob(username) {
                 window.location.replace(`riderjobmerchant.html?view_id=${data.postId}`);
                 return; // จบการทำงาน
             }
-			
-			if (data.success && data.workingJobId) {
-            const jobId = data.workingJobId.toString();
-            console.log("🚩 พบงานค้างในระบบ Working ID:", jobId);
-                window.location.replace(`post.html?id=${jobId}`);
-            
-            return;
-        }
-		
         }
         
         console.log("✅ ไม่มีงานค้างที่ต้องดำเนินการ");
