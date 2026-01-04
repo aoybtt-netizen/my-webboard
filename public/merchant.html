@@ -519,7 +519,10 @@
                 <i class="fas fa-list"></i> ออเดอร์ที่บันทึกไว้ทั้งหมด
             </div>
 			<div class="menu-item" onclick="HowToVoiceCommands()">
-                <i class="fas fa-list"></i> การสั่งงานด้วยเสียง
+                <i class="fas fa-microphone-alt"></i> การสั่งงานด้วยเสียง
+            </div>
+			<div class="menu-item" onclick="infouse()">
+                <i class="fas fa-info"></i> การสั่งงานด้วยเสียง
             </div>
         </div>
     </div>
@@ -2178,9 +2181,30 @@ function HowToVoiceCommands() {
     }
 }
 
+function infouse(){
+	if (typeof toggleMerchantSidebar === 'function') {
+        const sidebar = document.getElementById('merchant-sidebar');
+        if (sidebar && sidebar.classList.contains('active')) {
+            toggleMerchantSidebar();
+        }
+    }
+    
+    const modal = document.getElementById('info-use-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
 // ฟังก์ชันปิด
 function closeHowToVoice() {
     const modal = document.getElementById('how-to-voice-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function closeInfo() {
+	const modal = document.getElementById('info-use-modal');
     if (modal) {
         modal.classList.add('hidden');
     }
@@ -2589,6 +2613,27 @@ window.onbeforeunload = function() {
     </div>
 </div>
 
+
+
+	<div id="info-use-modal" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="modal-box" style="max-width: 450px; text-align: left;">
+        <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
+            <i class="fas fa-info" style="font-size: 2.5em; margin-bottom: 10px;"></i>
+            <h3 style="margin: 0;">ข้อควรจำ</h3>
+        </div>
+
+        <div style="padding: 10px;">
+            <p style="font-weight: bold; color: #11998e;"><i class="fas fa-star"></i> การกดบายพาส</p>
+            <p style="font-size: 0.9em; color: #666; margin-left: 15px;">
+                การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ
+            </p>
+
+            
+        </div>
+
+        <button class="btn-submit" onclick="closeInfo()" style="margin-top: 20px;">เข้าใจแล้ว</button>
+    </div>
+</div>
 
 
 
