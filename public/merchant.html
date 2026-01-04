@@ -50,6 +50,25 @@
             border-radius: 8px; cursor: pointer; font-weight: bold;
             margin-bottom: 20px;
         }
+		.btn-add-stopp {
+            background: rgb(241, 238, 66); border: 2px dashed #afa513;
+            color: #5e5d21; width: 100%; padding: 10px;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+            margin-bottom: 20px;
+        }
+		.btn-add-contac {
+            background: rgb(22, 218, 120); border: 2px dashed #13994f;
+            color: #1d5f14; width: 100%; padding: 10px;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+		.btn-add-contacmap {
+            background: rgb(57, 159, 218); border: 2px dashed #216ec7;
+            color: #122d61; width: 100%; padding: 10px;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+            margin-bottom: 20px;
+        }
         .btn-submit {
             background: #11998e; color: white; border: none;
             width: 100%; padding: 15px; border-radius: 30px;
@@ -550,7 +569,7 @@
             <div id="stops-container">
                 </div>
 
-            <button class="btn-add-stop" onclick="addNewStop()">
+            <button class="btn-add-stopp" onclick="addNewStop()">
                 <i class="fas fa-plus"></i> เพิ่มจุดรับ-ส่งงาน
             </button>
 
@@ -1047,7 +1066,7 @@ function closeMapModal() {
     const container = document.getElementById('stops-container');
     const isPickup = (document.querySelectorAll('.stop-item').length === 0);
     const themeColor = isPickup ? "#27ae60" : "#11998e";
-    const bgColor = isPickup ? "#f0fff4" : "#f0f7f7";
+    const bgColor = isPickup ? "#8cfa91" : "#94e0e0";
     const labelTitle = isPickup ? "🟢 จุดรับงาน (Pickup)" : "📍 จุดส่งงาน (Drop-off)";
 
     const stopHtml = `
@@ -1065,8 +1084,8 @@ function closeMapModal() {
             <div id="coords-display-${stopCount}" style="font-size: 0.7em; color: #999; margin-bottom: 10px;">พิกัด: ยังไม่ได้ระบุ</div>
             
             <div style="display: flex; gap: 6px;">
-                <button class="btn-add-stop" onclick="openStopMap(${stopCount})"><i class="fas fa-map"></i> เลือกบนแผนที่</button>
-                <button class="btn-add-stop" onclick="showSavedLocationsModal(${stopCount})"><i class="fas fa-bookmark"></i> จากสมุดที่อยู่</button>
+                <button class="btn-add-contacmap" onclick="openStopMap(${stopCount})"><i class="fas fa-map"></i> เลือกบนแผนที่</button>
+                <button class="btn-add-contac" onclick="showSavedLocationsModal(${stopCount})"><i class="fas fa-bookmark"></i> จากสมุดที่อยู่</button>
             </div>
 
             <input type="hidden" id="lat-${stopCount}">
