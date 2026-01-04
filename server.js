@@ -497,6 +497,62 @@ function convertUSD(amountUSD, targetCurrency) {
     return R * c;
 }
 
+
+// ฟังก์ชันพนักงานทำความสะอาดหลังบ้าน
+async function runPostCleanup() {
+    const ONE_HOUR = 3600000;
+    const expirationTime = Date.now() - ONE_HOUR;
+
+    try {
+        console.log("🧹 Background Cleanup: Starting...");
+
+        // 1. จัดการงานร้านค้าที่หมดอายุ (ลด mercNum)
+        const expiredMerchantTasks = await postsCollection.find({
+            isClosed: false,
+            isMerchantTask: true,
+            id: { $lt: expirationTime }
+        }).toArray();
+
+        for (const task of expiredMerchantTasks) {
+            await usersCollection.updateOne(
+                { username: task.author },
+                { $inc: { mercNum: -1 } }
+            );
+            console.log(`📉 Cleanup: Merchant [${task.author}] mercNum -1 (Expired)`);
+        }
+
+        if (expiredMerchantTasks.length > 0) {
+            const expiredIds = expiredMerchantTasks.map(t => t.id);
+            await postsCollection.updateMany(
+                { id: { $in: expiredIds } },
+                { $set: { isClosed: true } }
+            );
+        }
+
+        // 2. จัดการงานทั่วไปที่หมดอายุ
+        const res = await postsCollection.updateMany(
+            { 
+                isClosed: false, 
+                isPinned: false, 
+                isMerchantTask: { $ne: true },
+                id: { $lt: expirationTime } 
+            },
+            { $set: { isClosed: true } }
+        );
+
+        if (res.modifiedCount > 0 || expiredMerchantTasks.length > 0) {
+            console.log(`✅ Cleanup Finished: Closed ${res.modifiedCount + expiredMerchantTasks.length} posts.`);
+            io.emit('update-post-status'); // แจ้งเตือนหน้าจอให้ทุกคนอัปเดต
+        }
+
+    } catch (err) {
+        console.error("🚨 Cleanup Error:", err);
+    }
+}
+
+setInterval(runPostCleanup, 5 * 60 * 1000);
+
+
 // ==========================================
 // API Endpoints
 // ==========================================
@@ -1289,37 +1345,43 @@ app.get('/api/admin/get-announcement', async (req, res) => {
     }
 });
 
-// 11. Posts (List)
+// 11. Posts (List) - ปรับปรุงใหม่ให้ทำงานเร็วขึ้น
 app.get('/api/posts', async (req, res) => {
-    const ONE_HOUR = 3600000;
-    await postsCollection.updateMany(
-        { isClosed: false, isPinned: false, id: { $lt: Date.now() - ONE_HOUR } },
-        { $set: { isClosed: true } }
-    );
+    try {
 
-    const page = parseInt(req.query.page) || 1;
-    let limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
+        const page = parseInt(req.query.page) || 1;
+        let limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
 
-    const allPosts = await postsCollection.find({}).toArray();
-    const sortedPosts = allPosts.sort((a, b) => {
-        const aIsPinnedActive = a.isPinned && !a.isClosed;
-        const bIsPinnedActive = b.isPinned && !b.isClosed;
-        if (aIsPinnedActive && !bIsPinnedActive) return -1;
-        if (!aIsPinnedActive && bIsPinnedActive) return 1;
-        return b.id - a.id;
-    });
+        // ดึงเฉพาะข้อมูลมาแสดงผล (Logic เดิมของคุณ)
+        const allPosts = await postsCollection.find({}).toArray();
+        const sortedPosts = allPosts.sort((a, b) => {
+            const aIsPinnedActive = a.isPinned && !a.isClosed;
+            const bIsPinnedActive = b.isPinned && !b.isClosed;
+            if (aIsPinnedActive && !bIsPinnedActive) return -1;
+            if (!aIsPinnedActive && bIsPinnedActive) return 1;
+            return b.id - a.id;
+        });
 
-    const paginatedPosts = sortedPosts.slice(skip, skip + limit);
-    const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
-    const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
-    const authorMap = {};
-    authors.forEach(u => authorMap[u.username] = u.rating);
+        const paginatedPosts = sortedPosts.slice(skip, skip + limit);
+        const authorNames = [...new Set(paginatedPosts.map(p => p.author))];
+        const authors = await usersCollection.find({ username: { $in: authorNames } }).toArray();
+        const authorMap = {};
+        authors.forEach(u => authorMap[u.username] = u.rating);
 
-    res.json({
-        posts: paginatedPosts.map(post => ({ ...post, authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' })),
-        totalItems: sortedPosts.length, totalPages: Math.ceil(sortedPosts.length / limit), currentPage: page, limit
-    });
+        res.json({
+            posts: paginatedPosts.map(post => ({ 
+                ...post, 
+                authorRating: authorMap[post.author] !== undefined ? authorMap[post.author].toFixed(2) : '0.00' 
+            })),
+            totalItems: sortedPosts.length, 
+            totalPages: Math.ceil(sortedPosts.length / limit), 
+            currentPage: page, 
+            limit
+        });
+    } catch (err) {
+        res.status(500).json({ success: false });
+    }
 });
 
 // 12. Single Post	
