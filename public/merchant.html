@@ -1992,7 +1992,8 @@ async function confirmAndRate(postId, riderName) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 rating: score,
-                author: myUsername // ส่งชื่อร้านค้าไปด้วยเพื่อให้ระบบรู้ว่าใครเป็นคนประเมิน
+                author: myUsername, 
+				riderName: riderName
             })
         });
 
@@ -2030,20 +2031,23 @@ async function bypassCheckIn(postId, stopIndex) {
 
         const data = await res.json();
         if (data.success) {
-            // ✅ แทนที่จะใช้ openRightSidebar(postId) ซึ่งจะรีเซ็ต Tab
-            // ให้ดึงข้อมูลล่าสุดของงานนี้มาอัปเดตตัวแปร global แทน
-            const updatedRes = await fetch(`/api/posts/${postId}`); // สมมติว่าคุณมี API ดึงงานเดี่ยวๆ
+            // โหลดข้อมูลใหม่มาอัปเดต UI
+            const updatedRes = await fetch(`/api/posts/${postId}`);
             const updatedData = await updatedRes.json();
             
             if (updatedData.success) {
-                activeTaskInSidebar = updatedData.post; // อัปเดตข้อมูลในตัวแปรที่ใช้เรนเดอร์
-                renderSidebarDetails(); // สั่งวาดลำดับงานใหม่ (โดยที่ยังอยู่ที่ Tabเดิม)
-                
-                // ถ้าอยากให้อัปเดต Tab อื่นๆ ด้วย (เช่นหน้าแชทหรือหน้าแรก)
-                loadActiveMerchantTasks(); 
+                activeTaskInSidebar = updatedData.post;
+                renderSidebarDetails();
+                loadActiveMerchantTasks();
             }
             
-            alert("✅ บายพาสจุดส่งเรียบร้อย");
+            if (data.allFinished) {
+                alert("✅ งานนี้ส่งครบทุกจุดและปิดงานเรียบร้อยแล้ว");
+                // ปิด Sidebar ถ้างานจบแล้ว
+                closeRightSidebar();
+            } else {
+                alert("✅ บายพาสจุดส่งเรียบร้อย");
+            }
         } else {
             alert("เกิดข้อผิดพลาด: " + data.error);
         }

@@ -2504,29 +2504,57 @@ app.get('/api/rider-stats/:username', async (req, res) => {
 });
 
 
+// API: ร้านค้ากดบายพาสจุดส่ง
 app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
     const { postId, stopIndex } = req.params;
     const { author } = req.body;
+
+    console.log(`\n--- ⏩ Start Bypass Debug ---`);
+    console.log(`📦 PostID: ${postId} | 📍 StopIndex: ${stopIndex} | 👤 Merchant: ${author}`);
 
     try {
         // 1. ค้นหางาน
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
         
-        // ตรวจสอบว่าเป็นเจ้าของงานจริงไหม (Security)
         if (post.author !== author) return res.status(403).json({ success: false, error: 'ไม่มีสิทธิ์จัดการงานนี้' });
 
-        // 2. อัปเดตสถานะเฉพาะจุด (Array Element) ให้เป็น success
+        // 2. เตรียมอัปเดตสถานะจุด
         const updateKey = `stops.${stopIndex}.status`;
-        const updateData = { [updateKey]: 'success' };
+        let updateData = { [updateKey]: 'success' };
 
-        // 3. ตรวจสอบว่าถ้าบายพาสแล้ว งานจะจบเลยหรือไม่
+        // 3. ตรวจสอบว่างานจะจบเลยหรือไม่
         const currentStops = post.stops;
         currentStops[stopIndex].status = 'success';
         const allFinished = currentStops.every(s => s.status === 'success');
 
         if (allFinished) {
-            updateData.status = 'closed_permanently'; // ถ้าครบทุกจุด ให้เปลี่ยนสถานะงานรวมเป็น finished
+            console.log(`🚩 All stops finished via Bypass. Closing job...`);
+            updateData.status = 'closed_permanently';
+            updateData.isClosed = true;
+            updateData.finishTimestamp = Date.now();
+
+            // 🚩 ปลดล็อค Rider ทันที (เพราะร้านค้าเป็นคนปิดงานให้)
+            const riderName = post.acceptedBy || post.acceptedViewer;
+            if (riderName) {
+                await usersCollection.updateOne(
+                    { username: riderName },
+                    { $set: { working: null } }
+                );
+                console.log(`✅ Unlocked Rider: ${riderName} (working = null)`);
+                
+                // อัปเดตสถิติไรเดอร์ (optional)
+                await usersCollection.updateOne(
+                    { username: riderName },
+                    { $inc: { totalJobs: 1 } }
+                );
+            }
+
+            // อัปเดตสถิติร้านค้า
+            await usersCollection.updateOne(
+                { username: author },
+                { $inc: { totalJobs: 1, authorCompletedJobs: 1 } }
+            );
         }
 
         await postsCollection.updateOne(
@@ -2534,21 +2562,27 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
             { $set: updateData }
         );
 
-        // 4. แจ้งเตือนทุกคนในห้องผ่าน Socket
+        // 4. แจ้งเตือนผ่าน Socket
         io.to(postId.toString()).emit('update-job-status', { 
             postId, 
             stopIndex, 
             status: 'success',
             allFinished 
         });
-        
-        // ส่งไปอัปเดตหน้า List ด้วย
-        io.emit('update-post-status');
 
-        res.json({ success: true });
+        // ถ้าจบงาน ให้ส่งสัญญาณให้ Rider เด้งหน้าให้คะแนน (ถ้าคุณยังต้องการให้ไรเดอร์ประเมินร้าน)
+        if (allFinished) {
+            io.to(postId.toString()).emit('job-finished-complete', { postId });
+        }
+        
+        io.emit('update-post-status');
+        console.log(`✅ Bypass Process Completed. (Job Finished: ${allFinished})`);
+        console.log(`--- ⏩ End Bypass Debug ---\n`);
+
+        res.json({ success: true, allFinished });
 
     } catch (err) {
-        console.error(err);
+        console.error("🚨 Bypass Error:", err);
         res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
@@ -2560,16 +2594,17 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
     const { rating, author } = req.body; 
 
     try {
-        // 1. ค้นหางานนี้ก่อน
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงานนี้' });
 
-        // 2. อัปเดตสถานะเป็น closed_permanently ตามที่คุณต้องการล็อคระบบถาวร
+        const riderName = post.acceptedBy || post.acceptedViewer;
+
+        // 1. อัปเดตสถานะโพสต์เป็นปิดถาวร
         await postsCollection.updateOne(
             { id: parseInt(postId) },
             { 
                 $set: { 
-                    status: 'closed_permanently', // ✅ เปลี่ยนเป็นตัวนี้เพื่อให้สัมพันธ์กับหน้าบ้าน
+                    status: 'closed_permanently', 
                     isClosed: true,
                     merchantRating: rating, 
                     finishTimestamp: Date.now()
@@ -2577,15 +2612,14 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
             }
         );
 
-        // 3. อัปเดตสถิติจบงานให้ร้านค้า (Merchant)
-        await usersCollection.updateOne(
-            { username: post.author },
-            { $inc: { totalJobs: 1, authorCompletedJobs: 1 } } // เพิ่ม authorCompletedJobs ตามโครงสร้างเดิม
-        );
-
-        // 4. อัปเดตสถิติและคะแนนให้ไรเดอร์ (Rider)
-        const riderName = post.acceptedBy || post.acceptedViewer;
+        // 🚩 2. ปลดล็อค Rider ทันทีเพื่อให้เขาไปรับงานอื่นได้ (ล้างค่า working)
         if (riderName) {
+            await usersCollection.updateOne(
+                { username: riderName },
+                { $set: { working: null } } // ✅ ล้างงานที่ผูกไว้
+            );
+            
+            // 3. อัปเดตสถิติและคะแนนให้ไรเดอร์ (Rider)
             await usersCollection.updateOne(
                 { username: riderName },
                 { 
@@ -2598,14 +2632,17 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
             );
         }
 
+        // 4. อัปเดตสถิติจบงานให้ร้านค้า (Merchant)
+        await usersCollection.updateOne(
+            { username: post.author },
+            { $inc: { totalJobs: 1, authorCompletedJobs: 1 } }
+        );
+
         // 5. แจ้งเตือนผ่าน Socket
-        // ส่งไปยังห้องของงานนั้นเพื่อให้ไรเดอร์เด้งหน้าให้คะแนนทันที
         io.to(postId.toString()).emit('job-finished-complete', { postId, rating });
-        
-        // ส่งสัญญาณกลางให้หน้ารายการงาน (Merchant Dashboard) อัปเดตการ์ดทิ้งไป
         io.emit('update-post-status'); 
 
-        res.json({ success: true, message: 'บันทึกการจบงานและปิดกระทู้ถาวรเรียบร้อย' });
+        res.json({ success: true, message: 'จบงานและปลดล็อคไรเดอร์เรียบร้อย' });
 
     } catch (error) {
         console.error("Finish Job Error:", error);
