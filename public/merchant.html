@@ -2141,46 +2141,53 @@ function renderTemplateListInModal() {
 
 
 async function safeNavigateHome() {
-    // 1. ตรวจสอบคลาสชื่อการ์ดงาน (ตรวจสอบใน loadActiveMerchantTasks ว่าใช้คลาสนี้จริงไหม)
-    const activeTasks = document.querySelectorAll('.active-task-card').length;
+    const myUsername = localStorage.getItem('myUsername');
     
-    if (activeTasks > 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'ไม่สามารถออกจากหน้านี้ได้',
-            text: '⚠️ คุณยังมีงานที่ดำเนินการอยู่ กรุณาจัดการหรือปิดงานให้เรียบร้อยก่อนครับ',
-            confirmButtonColor: '#11998e'
-        });
-    } else {
-        try {
-            // 🚩 แก้ไขจุดนี้: เปลี่ยนจาก 'username' เป็น 'myUsername' ตามที่ประกาศไว้ในหน้าเว็บ
-            const myUsername = localStorage.getItem('myUsername'); 
-            
-            if (!myUsername) {
-                console.error("No username found in localStorage");
-                window.location.href = 'index.html';
-                return;
-            }
+    if (!myUsername) {
+        window.location.href = 'index.html';
+        return;
+    }
 
-            const res = await fetch('/api/merchant/reset-mercnum', {
+    try {
+        // 🔍 1. ถาม API ก่อนว่าตอนนี้ mercNum ในฐานข้อมูลเป็นเท่าไหร่
+        const checkRes = await fetch(`/api/rider/check-working-status?username=${encodeURIComponent(myUsername)}`);
+        const checkData = await checkRes.json();
+        
+        // ดึงค่า mercNum ออกมา (ถ้าไม่มีให้เป็น 0)
+        const currentMercNum = checkData.mercNum || 0;
+
+        // 🚩 2. เช็คเงื่อนไข: ถ้า mercNum >= 1 แสดงว่ายังมีงานค้างในระบบ
+        if (currentMercNum >= 1) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่สามารถออกจากหน้านี้ได้',
+                text: `⚠️ คุณยังมีงานค้างในระบบ ${currentMercNum} งาน กรุณาจัดการให้เรียบร้อยก่อนครับ`,
+                confirmButtonColor: '#11998e'
+            });
+        } 
+        // ✅ 3. ถ้าไม่มีงานค้าง (mercNum < 1) ให้ทำการรีเซ็ตเพื่อความปลอดภัยและกลับหน้าแรก
+        else {
+            console.log("✅ ไม่พบงานค้าง (mercNum < 1) กำลังเตรียมกลับหน้าหลัก...");
+            
+            const resetRes = await fetch('/api/merchant/reset-mercnum', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: myUsername })
             });
 
-            const data = await res.json();
+            const resetData = await resetRes.json();
             
-            if (data.success) {
-                console.log("🔄 รีเซ็ต mercNum เป็น 0 สำเร็จ");
+            if (resetData.success) {
                 window.location.href = 'index.html';
             } else {
-                console.error("Reset failed on server:", data.error);
+                // ถ้ามีปัญหาที่ API รีเซ็ต แต่เราเช็คแล้วว่าไม่มีงานจริง ก็ให้กลับหน้าแรกได้เลย
                 window.location.href = 'index.html';
             }
-        } catch (e) {
-            console.error("Reset Error:", e);
-            window.location.href = 'index.html';
         }
+    } catch (e) {
+        console.error("🚨 Navigation Error:", e);
+        // กรณีเชื่อมต่อไม่ได้ ให้กลับหน้าแรกเพื่อป้องกัน User ติดค้าง
+        window.location.href = 'index.html';
     }
 }
 
