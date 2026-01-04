@@ -500,56 +500,69 @@ function convertUSD(amountUSD, targetCurrency) {
 
 // ฟังก์ชันพนักงานทำความสะอาดหลังบ้าน
 async function runPostCleanup() {
-    const ONE_HOUR = 3600000;
+    const ONE_HOUR = 360000;
     const expirationTime = Date.now() - ONE_HOUR;
 
     try {
-        console.log("🧹 Background Cleanup: Starting...");
+        console.log(`[${new Date().toLocaleTimeString()}] 🧹 เริ่มระบบ Cleanup...`);
 
-        // 1. จัดการงานร้านค้าที่หมดอายุ (ลด mercNum)
+        // 1. ค้นหางานร้านค้าที่หมดอายุ (ต้องไม่มีคนรับ และยังไม่ปิด)
         const expiredMerchantTasks = await postsCollection.find({
             isClosed: false,
-            isMerchantTask: true,
+            // 🚩 กันพลาด: เช็คทั้งค่า Boolean และ String
+            isMerchantTask: { $in: [true, 'true'] }, 
+            // 🚩 สำคัญ: ปิดเฉพาะงานที่ยังไม่มีไรเดอร์รับ (ไม่มี acceptedBy) 
+            // และสถานะต้องไม่ใช่กำลังทำหรือทำเสร็จแล้ว
+            acceptedBy: { $exists: false },
+            status: { $nin: ['in_progress', 'finished'] },
             id: { $lt: expirationTime }
         }).toArray();
 
+        console.log(`🔍 พบงานร้านค้าหมดอายุ: ${expiredMerchantTasks.length} งาน`);
+
         for (const task of expiredMerchantTasks) {
-            await usersCollection.updateOne(
+            // ลดแต้ม mercNum ให้เจ้าของงาน
+            const userUpdate = await usersCollection.updateOne(
                 { username: task.author },
                 { $inc: { mercNum: -1 } }
             );
-            console.log(`📉 Cleanup: Merchant [${task.author}] mercNum -1 (Expired)`);
+
+            if (userUpdate.modifiedCount > 0) {
+                console.log(`📉 ลดแต้มสำเร็จ: [${task.author}] mercNum -1 (Job ID: ${task.id})`);
+            } else {
+                console.log(`⚠️ ไม่สามารถลดแต้มได้: ไม่พบผู้ใช้ [${task.author}] หรือ mercNum ไม่เปลี่ยนแปลง`);
+            }
         }
 
         if (expiredMerchantTasks.length > 0) {
             const expiredIds = expiredMerchantTasks.map(t => t.id);
             await postsCollection.updateMany(
                 { id: { $in: expiredIds } },
-                { $set: { isClosed: true } }
+                { $set: { isClosed: true, closedAt: Date.now(), closeReason: 'expired' } }
             );
         }
 
-        // 2. จัดการงานทั่วไปที่หมดอายุ
+        // 2. จัดการงานทั่วไป (Non-Merchant) ที่หมดอายุ
         const res = await postsCollection.updateMany(
             { 
                 isClosed: false, 
                 isPinned: false, 
-                isMerchantTask: { $ne: true },
+                // 🚩 ต้องมั่นใจว่าเงื่อนไขนี้ไม่ไปทับซ้อนกับงานร้านค้า
+                isMerchantTask: { $nin: [true, 'true'] }, 
                 id: { $lt: expirationTime } 
             },
-            { $set: { isClosed: true } }
+            { $set: { isClosed: true, closedAt: Date.now() } }
         );
 
         if (res.modifiedCount > 0 || expiredMerchantTasks.length > 0) {
-            console.log(`✅ Cleanup Finished: Closed ${res.modifiedCount + expiredMerchantTasks.length} posts.`);
-            io.emit('update-post-status'); // แจ้งเตือนหน้าจอให้ทุกคนอัปเดต
+            console.log(`✅ Cleanup เรียบร้อย: ปิดงานทั่วไป ${res.modifiedCount} งาน, งานร้านค้า ${expiredMerchantTasks.length} งาน`);
+            io.emit('update-post-status'); 
         }
 
     } catch (err) {
         console.error("🚨 Cleanup Error:", err);
     }
 }
-
 setInterval(runPostCleanup, 5 * 60 * 1000);
 
 
