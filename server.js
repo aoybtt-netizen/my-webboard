@@ -2883,17 +2883,25 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
 // API สำหรับหน้า index.html ไว้เช็คว่าต้องดีด Rider ไปหน้างานไหม
 app.get('/api/rider/check-working-status', async (req, res) => {
     const { username } = req.query;
-
     try {
         const user = await usersCollection.findOne({ username: username });
         
         if (user && user.working) {
-            res.json({ success: true, workingJobId: user.working });
+            const jobId = parseInt(user.working);
+            const post = await postsCollection.findOne({ id: jobId });
+            
+            // ตรวจสอบว่าผู้ใช้คนนี้เป็นเจ้าของโพสต์ (Merchant) หรือไม่
+            const isOwner = post && post.author === username;
+
+            res.json({ 
+                success: true, 
+                workingJobId: user.working,
+                isOwner: isOwner // ส่งค่านี้กลับไปให้หน้าบ้านด้วย
+            });
         } else {
             res.json({ success: false });
         }
     } catch (err) {
-        console.error("🚨 Check-Working Error:", err);
         res.status(500).json({ success: false });
     }
 });
