@@ -108,39 +108,58 @@
 </div>
 
 <div id="kyc-modal" class="modal">
-    <div class="modal-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0;">ยืนยันตัวตนสมาชิก</h3>
-            <i class="fas fa-times" onclick="closeKYC()" style="cursor: pointer;"></i>
+    <div class="modal-content" style="position: relative;">
+        <div onclick="closeKYC()" style="position: absolute; right: 20px; top: 20px; cursor: pointer; color: #999; font-size: 1.5em;">
+            <i class="fas fa-times-circle"></i>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 20px;">
+            <h3 style="margin: 0; color: var(--dark);">ยืนยันตัวตนสมาชิก</h3>
+            <p style="font-size: 0.8em; color: #666; margin-top: 5px;">อัปโหลดข้อมูลเพื่อให้เจ้าของโซนตรวจสอบ</p>
         </div>
         
-        <p style="font-size: 0.8em; color: #666;">กรุณากรอกข้อมูลและอัปโหลดรูปถ่ายบัตรประจำตัวประชาชน</p>
-        
-        <input type="text" id="full-name" placeholder="ชื่อ-นามสกุล (ตามบัตร)" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
-        <input type="text" id="id-number" placeholder="เลขประจำตัวประชาชน" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+        <div style="text-align: left;">
+            <label style="font-size: 0.85em; font-weight: bold;">ชื่อ-นามสกุล (ตามบัตร):</label>
+            <input type="text" id="full-name" placeholder="ระบุชื่อและนามสกุล..." style="width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
 
+            <label style="font-size: 0.85em; font-weight: bold;">เลขประจำตัวประชาชน:</label>
+            <input type="number" id="id-number" placeholder="เลข 13 หลัก..." style="width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+
+            <label style="font-size: 0.85em; font-weight: bold;">เบอร์โทรศัพท์ติดต่อ:</label>
+            <input type="tel" id="phone-number" placeholder="08x-xxx-xxxx" style="width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+        </div>
+
+        <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left;">อัปโหลดรูปถ่าย (3 รูป):</label>
         <div class="upload-grid">
             <div class="upload-box">
-                <i class="fas fa-camera"></i><p>รูปหน้าบัตรประชาชน</p>
-                <input type="file" accept="image/*">
+                <i class="fas fa-id-card"></i>
+                <p>หน้าบัตรประชาชน</p>
+                <input type="file" accept="image/*" onchange="previewImg(this)">
             </div>
             <div class="upload-box">
-                <i class="fas fa-camera"></i><p>รูปหลังบัตรประชาชน</p>
-                <input type="file" accept="image/*">
+                <i class="fas fa-barcode"></i>
+                <p>หลังบัตรประชาชน</p>
+                <input type="file" accept="image/*" onchange="previewImg(this)">
             </div>
             <div class="upload-box">
-                <i class="fas fa-camera"></i><p>รูปคุณถือคู่กับบัตรประชาชน</p>
-                <input type="file" accept="image/*">
+                <i class="fas fa-user-tag"></i>
+                <p>รูปคุณถือคู่กับบัตร</p>
+                <input type="file" accept="image/*" onchange="previewImg(this)">
             </div>
         </div>
 
         <div class="proximity-alert">
             <i class="fas fa-map-marker-alt"></i><br>
-            <b>เงื่อนไขการส่งข้อมูล:</b> คุณต้องอยู่ใกล้ "เจ้าของโซน" ในระยะไม่เกิน 20 เมตร เพื่อกดส่งยืนยันตัวตน
+            <b>การส่งข้อมูล:</b> คุณต้องอยู่ห่างจากเจ้าของโซนไม่เกิน <b>20 เมตร</b> ปุ่มส่งจึงจะทำงาน (ระบบจะตรวจสอบอัตโนมัติ)
         </div>
 
-        <button id="btn-kyc-submit" class="btn-submit" disabled>ส่งข้อมูล (ตรวจสอบระยะทาง...)</button>
-        <p style="font-size: 0.7em; color: #999; text-align: center; margin-top: 10px;">สามารถอัปโหลดและกรอกข้อมูลทิ้งไว้ได้</p>
+        <button id="btn-kyc-submit" class="btn-submit" disabled>
+            <i class="fas fa-lock"></i> ส่งข้อมูล (ตรวจสอบระยะทาง...)
+        </button>
+        
+        <button onclick="closeKYC()" style="width: 100%; padding: 10px; background: none; border: none; color: #999; margin-top: 10px; cursor: pointer; font-size: 0.9em;">
+            ยกเลิกและปิดหน้าต่าง
+        </button>
     </div>
 </div>
 
@@ -170,6 +189,34 @@
             window.location.href = 'index.html';
         }
     }
+	
+	
+	// ฟังก์ชันแสดงพรีวิวเมื่อเลือกรูป (เสริมความมั่นใจให้ผู้ใช้)
+function previewImg(input) {
+    if (input.files && input.files[0]) {
+        const box = input.parentElement;
+        box.style.borderColor = "#11998e";
+        box.style.background = "#e8f5e9";
+        box.querySelector('i').style.color = "#11998e";
+        box.querySelector('p').innerText = "เลือกไฟล์แล้ว ✅";
+    }
+}
+
+// ขยาย Logic เช็คระยะทาง (จำลอง)
+function updateKycStatus(isNear) {
+    const btn = document.getElementById('btn-kyc-submit');
+    if(isNear) {
+        btn.disabled = false;
+        btn.classList.add('btn-active');
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งข้อมูลยืนยันตัวตน';
+    } else {
+        btn.disabled = true;
+        btn.classList.remove('btn-active');
+        btn.innerHTML = '<i class="fas fa-lock"></i> ส่งข้อมูล (ตรวจสอบระยะทาง...)';
+    }
+}
+
+
 </script>
 
 </body>
