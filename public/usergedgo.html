@@ -64,11 +64,98 @@
             border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: not-allowed; 
         }
         .btn-active { background: var(--primary); cursor: pointer; }
+		
+		
+		
+			/* Sidebar สไลด์ฝั่งซ้าย */
+.merchant-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px; /* ซ่อนไว้ฝั่งซ้าย */
+    width: 280px;
+    height: 100%;
+    background: white;
+    z-index: 7000;
+    transition: 0.3s;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+.merchant-sidebar.active {
+    left: 0;
+}
+.sidebar-header {
+    background: #11998e;
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sidebar-menu {
+    padding: 10px;
+}
+.menu-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 1.05em;
+}
+.menu-item:hover {
+    background: #f9f9f9;
+    color: #11998e;
+}
+.sidebar-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 6500;
+}
+
     </style>
 </head>
 <body>
+	<div class="header">
+        <div style="float: left; cursor: pointer;" onclick="toggleMenuSidebar()">
+            <i class="fas fa-bars"></i>
+        </div>
+        <h2 style="margin: 0; display: inline-block;">GedGo Merchant</h2>
+        <div style="float: right; cursor: pointer;" onclick="safeNavigateHome()">
+    <i class="fas fa-home"></i>
+</div>
+    </div>
 
-	<button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
+    <div id="merchant-sidebar" class="merchant-sidebar">
+        <div class="sidebar-header">
+            <h3>จัดการพิกัด</h3>
+            <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-item" onclick="openSaveStoreModal()">
+                <i class="fas fa-store"></i> บันทึกพิกัดร้าน (Base)
+            </div>
+            <div class="menu-item" onclick="openAddLocationModal()">
+                <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
+            </div>
+            <hr>
+            <div class="menu-item" onclick="openManageLocationsModal()">
+                <i class="fas fa-list"></i> พิกัดที่บันทึกไว้ทั้งหมด
+            </div>
+			<div class="menu-item" onclick="openListOrderModal()">
+                <i class="fas fa-list"></i> ออเดอร์ที่บันทึกไว้ทั้งหมด
+            </div>
+			<div class="menu-item" onclick="HowToVoiceCommands()">
+                <i class="fas fa-microphone-alt"></i> การสั่งงานด้วยเสียง
+            </div>
+			<div class="menu-item" onclick="infouse()">
+                <i class="fas fa-info"></i> ข้อควรจำ
+            </div>
+        </div>
+    </div>
+	
+	
 
 <div class="container">
     <div class="profile-main">
@@ -328,6 +415,14 @@ async function submitTopupRequest() {
     alert(`ส่งคำขอเติมเงินจำนวน ${amount} USD เรียบร้อยแล้ว! \nกรุณารอดำเนินการตรวจสอบจากเจ้าของโซน`);
     
     closeRequestTopup();
+}
+
+
+function toggleMenuSidebar() {
+    const sidebar = document.getElementById('merchant-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('hidden');
 }
 
 
