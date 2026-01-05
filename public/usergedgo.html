@@ -34,6 +34,8 @@
         }
         
         /* Menu List */
+		.menu-btn { position: fixed; top: 20px; left: 20px; z-index: 800; background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 20px; }
+
         .menu-list { margin-top: 20px; }
         .menu-item { 
             display: flex; align-items: center; padding: 14px 15px; background: white; 
@@ -66,10 +68,7 @@
 </head>
 <body>
 
-<div class="header">
-    <a href="javascript:history.back()"><i class="fas fa-chevron-left"></i> กลับ</a>
-    <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
-    <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a> </div>
+	<button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
 
 <div class="container">
     <div class="profile-main">
