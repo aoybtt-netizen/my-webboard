@@ -96,15 +96,15 @@
 
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
-        <div class="avatar" style="font-size: 50px;">👤</div>
-        <div id="sidebar-username" style="font-weight: bold; margin-top:10px;">Guest</div>
+        <div class="avatar" style="font-size: 50px; margin-bottom: 10px;">👤</div>
+        <div id="sidebar-username" style="font-weight: bold; font-size: 1.1em;">Guest</div>
     </div>
     
-    <div class="sidebar-content" style="padding: 10px;">
+    <div class="sidebar-content">
         <div class="menu-list">
-            <div class="menu-item" onclick="openKYC(); toggleSidebar();" style="background: #fff9e6; border: 1px solid #f1c40f;">
-                <i class="fas fa-id-card" style="color: #f1c40f;"></i>
-                <div style="flex: 1; text-align: left;">
+            <div class="menu-item verify-btn" onclick="openKYC(); toggleSidebar();">
+                <i class="fas fa-id-card"></i>
+                <div style="text-align: left; flex: 1;">
                     <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
                     <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงาน</div>
                 </div>
@@ -112,10 +112,13 @@
             </div>
 
             <a href="#" class="menu-item">
-                <i class="fas fa-history"></i> ประวัติธุรกรรม
+                <i class="fas fa-envelope"></i> 
+                อีเมล: <span id="sidebar-display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span>
             </a>
             
-            <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;">
+            <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
+            
+            <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea; margin-top: 20px;">
                 <i class="fas fa-power-off"></i> ออกจากระบบ
             </a>
         </div>
@@ -128,133 +131,90 @@
         <p class="username" id="display-name">Guest</p>
         
         <div class="icon-stats">
-            <div class="stat-item"><i class="fas fa-paper-plane"></i><span id="count-post">0</span><span class="stat-label">โพสต์</span></div>
-            <div class="stat-item"><i class="fas fa-check-double"></i><span id="count-job">0</span><span class="stat-label">สำเร็จ</span></div>
-            <div class="stat-item"><i class="fas fa-star" style="color: #f1c40f;"></i><span id="count-rating">5.0</span><span class="stat-label">เรตติ้ง</span></div>
+            <div class="stat-item">
+                <i class="fas fa-paper-plane"></i>
+                <span id="count-post">0</span>
+                <span class="stat-label">โพสต์</span>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-check-double"></i>
+                <span id="count-job">0</span>
+                <span class="stat-label">สำเร็จ</span>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-star" style="color: #f1c40f;"></i>
+                <span id="count-rating">5.0</span>
+                <span class="stat-label">เรตติ้ง</span>
+            </div>
         </div>
 
-        <div class="wallet-bar" style="cursor: default;">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-wallet" style="font-size: 0.9em; opacity: 0.8;"></i>
-        <span style="font-size: 0.8em; opacity: 0.8;">ยอดเงิน:</span>
-        <button onclick="openRequestTopup()" 
-                style="background: #38ef7d; border: none; color: #114b46; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; transition: 0.2s;"
-                onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-            <i class="fas fa-plus"></i>
-        </button>
-    </div>
-    <div style="text-align: right;">
-        <span id="display-balance-usd" style="font-weight: bold; font-size: 1.1em;">0.00 USD</span>
-        <span id="display-balance-thb" style="font-size: 0.7em; opacity: 0.7; margin-left: 5px;">(0.00 THB)</span>
-    </div>
-</div>
+        <div class="wallet-bar">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-wallet" style="font-size: 0.9em; opacity: 0.8;"></i>
+                <span style="font-size: 0.8em; opacity: 0.8;">ยอดเงิน:</span>
+                <button onclick="openRequestTopup()" 
+                        style="background: #38ef7d; border: none; color: #114b46; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div style="text-align: right;">
+                <span id="display-balance-usd" style="font-weight: bold; font-size: 1.1em;">0.00 USD</span>
+                <span id="display-balance-thb" style="font-size: 0.7em; opacity: 0.7; margin-left: 5px;">(0.00 THB)</span>
+            </div>
+        </div>
 
-
-	<div id="zone-info-box" style="margin-top: 15px; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 15px; text-align: left; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-    <div style="background: #e8f5e9; color: #11998e; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
-        <i class="fas fa-map-marker-alt"></i>
-    </div>
-    <div style="flex: 1;">
-        <div style="font-size: 0.7em; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">พื้นที่การใช้งานปัจจุบัน</div>
-        <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.95em;">กำลังค้นหาโซน...</div>
-        <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
-            <i class="fas fa-user-shield" style="font-size: 0.9em; color: #f1c40f;"></i> เจ้าของโซน: 
-            <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);">รอการเชื่อมต่อ</span>
+        <div id="zone-info-box" style="margin-top: 15px; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 15px; text-align: left; display: flex; align-items: center; gap: 12px;">
+            <div style="background: #e8f5e9; color: #11998e; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
+                <i class="fas fa-map-marker-alt"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 0.7em; color: #999; text-transform: uppercase;">พื้นที่ปัจจุบัน</div>
+                <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.95em;">กำลังค้นหา...</div>
+                <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
+                    <i class="fas fa-user-shield" style="font-size: 0.9em; color: #f1c40f;"></i> เจ้าของโซน: 
+                    <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);">รอเชื่อมต่อ</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-
-
 
 <div id="topup-request-modal" class="modal">
     <div class="modal-content" style="max-width: 320px; text-align: center;">
         <div style="font-size: 40px; color: #f1c40f; margin-bottom: 10px;"><i class="fas fa-hand-holding-usd"></i></div>
-        <h3 style="margin: 0 0 10px;">ส่งคำขอเติมเงิน</h3>
-        <p style="font-size: 0.8em; color: #666; margin-bottom: 15px;">กรุณาระบุจำนวนเงิน (USD) ที่คุณต้องการเติม</p>
-        
-        <div style="position: relative; margin-bottom: 20px;">
-            <input type="number" id="request-amount-input" placeholder="0.00" 
-                   style="width: 100%; padding: 12px 15px; border: 2px solid #eee; border-radius: 12px; font-size: 1.5em; text-align: center; box-sizing: border-box; outline: none; font-weight: bold; color: #2c3e50;">
-            <span style="position: absolute; right: 15px; top: 15px; font-weight: bold; color: #999;">USD</span>
-        </div>
-
+        <h3>ส่งคำขอเติมเงิน</h3>
+        <input type="number" id="request-amount-input" placeholder="0.00" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; text-align: center; font-size: 1.2em; margin-bottom: 15px;">
         <div style="display: flex; gap: 10px;">
-            <button onclick="closeRequestTopup()" style="flex: 1; padding: 12px; background: #eee; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: #666;">ยกเลิก</button>
-            <button onclick="submitTopupRequest()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">ส่งคำขอ</button>
-        </div>
-    </div>
-</div>
-
-        <div class="menu-list">
-            <div class="menu-item verify-btn" onclick="openKYC()">
-                <i class="fas fa-id-card"></i>
-                <div style="text-align: left; flex: 1;">
-                    <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
-                    <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงานที่มูลค่าสูงขึ้น</div>
-                </div>
-                <i class="fas fa-chevron-right" style="font-size: 0.8em; color: #ccc;"></i>
-            </div>
-
-            <a href="#" class="menu-item"><i class="fas fa-envelope"></i> อีเมล: <span id="display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span></a>
-            <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
-            <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;"><i class="fas fa-power-off"></i> ออกจากระบบ</a>
+            <button onclick="closeRequestTopup()" style="flex: 1; padding: 10px; border: none; border-radius: 8px;">ยกเลิก</button>
+            <button onclick="submitTopupRequest()" style="flex: 1; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px;">ส่งคำขอ</button>
         </div>
     </div>
 </div>
 
 <div id="kyc-modal" class="modal">
-    <div class="modal-content" style="position: relative;">
-        <div onclick="closeKYC()" style="position: absolute; right: 20px; top: 20px; cursor: pointer; color: #999; font-size: 1.5em;">
-            <i class="fas fa-times-circle"></i>
-        </div>
-
-        <div style="text-align: left; margin-bottom: 20px;">
-            <h3 style="margin: 0; color: var(--dark);">ยืนยันตัวตนสมาชิก</h3>
-            <p style="font-size: 0.8em; color: #666; margin-top: 5px;">อัปโหลดข้อมูลเพื่อให้เจ้าของโซนตรวจสอบ</p>
-        </div>
-        
+    <div class="modal-content">
+        <div onclick="closeKYC()" style="float: right; cursor: pointer; color: #999;"><i class="fas fa-times-circle"></i></div>
+        <h3>ยืนยันตัวตนสมาชิก</h3>
         <div style="text-align: left;">
-            <label style="font-size: 0.85em; font-weight: bold;">ชื่อ-นามสกุล (ตามบัตร):</label>
-            <input type="text" id="full-name" placeholder="ระบุชื่อและนามสกุล..." style="width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
-
-            <label style="font-size: 0.85em; font-weight: bold;">เลขประจำตัวประชาชน:</label>
-            <input type="number" id="id-number" placeholder="เลข 13 หลัก..." style="width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
-
-            <label style="font-size: 0.85em; font-weight: bold;">เบอร์โทรศัพท์ติดต่อ:</label>
-            <input type="tel" id="phone-number" placeholder="08x-xxx-xxxx" style="width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+            <label>ชื่อ-นามสกุล:</label>
+            <input type="text" id="full-name" style="width: 100%; padding: 10px; margin: 5px 0 15px; border-radius: 8px; border: 1px solid #ddd;">
+            
+            <label>เลขประจำตัวประชาชน:</label>
+            <input type="number" id="id-number" style="width: 100%; padding: 10px; margin: 5px 0 15px; border-radius: 8px; border: 1px solid #ddd;">
         </div>
 
-        <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left;">อัปโหลดรูปถ่าย (3 รูป):</label>
         <div class="upload-grid">
-            <div class="upload-box">
-                <i class="fas fa-id-card"></i>
-                <p>หน้าบัตรประชาชน</p>
-                <input type="file" accept="image/*" onchange="previewImg(this)">
-            </div>
-            <div class="upload-box">
-                <i class="fas fa-barcode"></i>
-                <p>หลังบัตรประชาชน</p>
-                <input type="file" accept="image/*" onchange="previewImg(this)">
-            </div>
-            <div class="upload-box">
-                <i class="fas fa-user-tag"></i>
-                <p>รูปคุณถือคู่กับบัตร</p>
-                <input type="file" accept="image/*" onchange="previewImg(this)">
-            </div>
+            <div class="upload-box"><i class="fas fa-id-card"></i><p>หน้าบัตร</p><input type="file" onchange="previewImg(this)"></div>
+            <div class="upload-box"><i class="fas fa-barcode"></i><p>หลังบัตร</p><input type="file" onchange="previewImg(this)"></div>
+            <div class="upload-box"><i class="fas fa-user-tag"></i><p>ถือคู่บัตร</p><input type="file" onchange="previewImg(this)"></div>
         </div>
 
         <div class="proximity-alert">
             <i class="fas fa-map-marker-alt"></i><br>
-            <b>การส่งข้อมูล:</b> คุณต้องอยู่ห่างจากเจ้าของโซนไม่เกิน <b>20 เมตร</b> ปุ่มส่งจึงจะทำงาน (ระบบจะตรวจสอบอัตโนมัติ)
+            ต้องอยู่ห่างเจ้าของโซนไม่เกิน <b>20 เมตร</b>
         </div>
 
-        <button id="btn-kyc-submit" class="btn-submit" disabled>
-            <i class="fas fa-lock"></i> ส่งข้อมูล (ตรวจสอบระยะทาง...)
-        </button>
-        
-        <button onclick="closeKYC()" style="width: 100%; padding: 10px; background: none; border: none; color: #999; margin-top: 10px; cursor: pointer; font-size: 0.9em;">
-            ยกเลิกและปิดหน้าต่าง
-        </button>
+        <button id="btn-kyc-submit" class="btn-submit" disabled>ส่งข้อมูล</button>
     </div>
 </div>
 
