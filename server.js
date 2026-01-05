@@ -725,25 +725,36 @@ app.get('/api/profile-details', async (req, res) => {
         const { username, location } = req.query;
         if (!username) return res.status(400).json({ error: 'No username' });
 
+        // ดึงข้อมูล User จาก Database
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // 🚩 เพิ่มบรรทัด DEBUG ตรงนี้เพื่อดูฟิลด์ทั้งหมดของ User
+        console.log("======= [DEBUG] USER DATA IN DATABASE =======");
+        console.log(`Username: ${user.username}`);
+        console.log(JSON.stringify(user, null, 2)); // พ่นออกมาเป็นโครงสร้าง JSON ทั้งหมด
+        console.log("=============================================");
 
         let zoneName = "นอกพื้นที่บริการ";
         let zoneOwner = "ไม่มีผู้ดูแล";
 
-        // ใช้ Logic เดิมที่คุณมีในการหาโซน
         if (location) {
             const locationObj = JSON.parse(decodeURIComponent(location));
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
-                // ดึงชื่อโซนและชื่อแอดมินจากข้อมูลโซนที่คุณมี
+                // 🚩 DEBUG ข้อมูลโซนอีกครั้งเพื่อความชัวร์
+                console.log("======= [DEBUG] ZONE INFO =======");
+                console.log(`Zone: ${zoneInfo.zoneData.name}`);
+                console.log(`Owner: ${zoneInfo.zoneData.assignedAdmin}`);
+                console.log("================================");
+
                 zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
                 zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล"; 
             }
         }
 
-        // ส่งข้อมูลที่หน้า Profile ต้องใช้กลับไป
+        // ส่งข้อมูลกลับไปให้ Frontend
         res.json({
             coins: user.coins || 0,
             rating: user.rating || 5.0,
@@ -752,7 +763,7 @@ app.get('/api/profile-details', async (req, res) => {
             email: user.email || "ยังไม่ระบุ",
             zoneName: zoneName,
             zoneOwner: zoneOwner,
-            currencySymbol: "THB" // หรือดึงจากระบบแปลงค่าเงินของคุณ
+            currencySymbol: "THB"
         });
 
     } catch (e) {
