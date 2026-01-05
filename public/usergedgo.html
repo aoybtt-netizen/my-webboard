@@ -225,66 +225,54 @@
     window.onload = async () => {
     const myName = localStorage.getItem('myUsername');
     if (!myName) {
-        window.location.href = 'index.html'; // ถ้าไม่มีชื่อให้กลับไป Login
+        window.location.href = 'index.html';
         return;
     }
 
-    // แสดงชื่อเบื้องต้นจาก LocalStorage ก่อนเพื่อให้ UI ไม่ว่าง
     document.getElementById('display-name').innerText = myName;
 
     try {
-        // 1. ดึงพิกัดที่บันทึกไว้เพื่อส่งไปเช็คว่าตอนนี้อยู่โซนไหน
+        // 1. ดึงพิกัดที่เคยบันทึกไว้จาก LocalStorage (ที่เซฟมาจาก index.html)
         const savedLoc = localStorage.getItem('userPrimaryLocation');
-        let locationParam = '';
-        if (savedLoc) locationParam = `&location=${encodeURIComponent(savedLoc)}`;
+        let locationQuery = '';
+        
+        if (savedLoc) {
+            // เตรียมส่งพิกัดไปให้ API เพื่อให้ API ไปหาชื่อโซนและเจ้าของโซนมาให้
+            locationQuery = `&location=${encodeURIComponent(savedLoc)}`;
+        }
 
-        // 2. เรียก API ดึงข้อมูล User (รวมถึงข้อมูลโซน, ยอดเงิน และสถิติ)
-        // หมายเหตุ: currentCurrency และ currentLang ควรมีตัวแปร global รองรับ หรือลบออกถ้าไม่ได้ใช้
-        const currency = localStorage.getItem('currentCurrency') || 'USD';
-        const response = await fetch(`/api/user-info?username=${myName}&currency=${currency}${locationParam}`);
-        const data = await response.json();
+        // 2. เรียก API ดึงข้อมูล User (ส่งพิกัดไปด้วยเพื่อให้ Server รู้ว่าอยู่โซนไหน)
+        const res = await fetch(`/api/user-info?username=${myName}${locationQuery}`);
+        const data = await res.json();
 
         if (data.error) throw new Error(data.error);
 
-        // 3. อัปเดตสถิติ (ส่งโพสต์ / สำเร็จ)
+        // 3. อัปเดตยอดเงินและสถิติ
         document.getElementById('count-post').innerText = data.totalPosts || 0;
         document.getElementById('count-job').innerText = data.completedJobs || 0;
+        document.getElementById('display-balance-usd').innerText = `${(data.coins || 0).toFixed(2)} USD`;
+        document.getElementById('display-balance-thb').innerText = `(${(data.convertedCoins || 0).toLocaleString()} ${data.currencySymbol || 'THB'})`;
 
-        // 4. อัปเดตยอดเงิน (ใช้ .toFixed(2) เพื่อป้องกัน Error ที่เราแก้กันก่อนหน้า)
-        const usdBalance = parseFloat(data.coins || 0);
-        const convBalance = parseFloat(data.convertedCoins || 0);
-        document.getElementById('display-balance-usd').innerText = `${usdBalance.toFixed(2)} USD`;
-        document.getElementById('display-balance-thb').innerText = `(${convBalance.toLocaleString(undefined, {minimumFractionDigits: 2})} ${data.currencySymbol || 'THB'})`;
-
-        // 5. อัปเดตข้อมูลโซนและเจ้าของโซน (ส่วนที่เพิ่มใหม่)
+        // 4. [ส่วนสำคัญ] อัปเดตข้อมูลโซนและเจ้าของโซน
         const zoneNameEl = document.getElementById('display-zone-name');
         const zoneAdminEl = document.getElementById('display-zone-admin');
 
-        if (data.userZoneId || data.zoneName) {
-            zoneNameEl.innerText = data.zoneName || "โซนปัจจุบันของคุณ";
-            zoneAdminEl.innerText = data.zoneOwner || "เจ้าของโซน";
+        // ตรวจสอบว่า Server ส่งข้อมูลโซนกลับมาไหม
+        if (data.zoneName) {
+            zoneNameEl.innerText = data.zoneName; // เช่น "โซนกรุงเทพฯ"
+            zoneAdminEl.innerText = data.zoneOwner || "ไม่มีผู้ดูแล"; // เช่น "Admin_John"
         } else {
+            // ถ้าพิกัดไม่อยู่ในโซนที่ตั้งไว้ หรือยังไม่ได้กดยืนยันตำแหน่ง
             zoneNameEl.innerText = "อยู่นอกพื้นที่บริการ";
-            zoneAdminEl.innerText = "ไม่มีผู้ดูแล";
+            zoneAdminEl.innerText = "โปรดระบุตำแหน่งที่หน้าแรก";
         }
-
-        // 6. อัปเดตอีเมล
-        if (data.email) {
-            const emailEl = document.getElementById('display-email');
-            emailEl.innerText = data.email;
-            emailEl.style.color = '#333';
-        }
-
-        // 7. ตรวจสอบระยะทาง (ถ้ามีฟังก์ชัน Geolocation)
-        checkProximity(); 
 
     } catch (err) {
-        console.error("Error loading profile data:", err);
-        // กรณี Error ให้แสดงข้อความแจ้งเตือนในช่องโซน
-        if(document.getElementById('display-zone-name')) {
-            document.getElementById('display-zone-name').innerText = "โหลดข้อมูลล้มเหลว";
-        }
+        console.error("Fetch User Info Error:", err);
+        document.getElementById('display-zone-name').innerText = "โหลดข้อมูลล้มเหลว";
     }
+
+    checkProximity();
 };
 
 
