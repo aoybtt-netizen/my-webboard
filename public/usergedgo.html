@@ -67,38 +67,26 @@
 		
 		
 	/* Sidebar Styles */
+/* Sidebar พื้นฐาน */
 .sidebar {
     position: fixed;
     top: 0;
-    left: -280px; /* ซ่อนไว้ทางซ้าย */
+    left: -280px; /* ซ่อนไว้ */
     width: 280px;
     height: 100%;
     background: white;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    z-index: 1100;
-    transition: 0.3s ease;
+    box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+    z-index: 2000;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
 }
 
 .sidebar.active {
-    left: 0; /* แสดงออกมา */
+    left: 0; /* เลื่อนออกมา */
 }
 
-.sidebar-header {
-    padding: 20px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-    text-align: center;
-}
-
-.sidebar-content {
-    padding: 15px;
-    flex: 1;
-    overflow-y: auto;
-}
-
-/* Overlay พื้นหลังดำเวลาเปิดเมนู */
+/* พื้นหลังมืดเมื่อเปิดเมนู */
 .sidebar-overlay {
     position: fixed;
     top: 0;
@@ -107,37 +95,46 @@
     height: 100%;
     background: rgba(0,0,0,0.5);
     display: none;
-    z-index: 1050;
+    z-index: 1900;
 }
 
 .sidebar-overlay.active {
     display: block;
 }
 
-/* ปรับแต่งปุ่มเปิดเมนูใน Header */
-.menu-trigger {
-    cursor: pointer;
-    font-size: 1.2em;
-    margin-right: 10px;
+/* ส่วนหัวของ Sidebar */
+.sidebar-header {
+    padding: 30px 20px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    text-align: center;
 }
 
-/* ปรับเมนูข้างใน sidebar ให้ดูเข้ากัน */
+/* ปรับแต่งเมนูข้างใน Sidebar */
+.sidebar .menu-list {
+    padding: 10px;
+    margin-top: 0;
+}
+
 .sidebar .menu-item {
-    margin-bottom: 8px;
     border: none;
-    border-bottom: 1px solid #f0f0f0;
-    border-radius: 0;
+    border-radius: 10px;
+    margin-bottom: 5px;
+    transition: 0.2s;
+}
+
+.sidebar .menu-item:active {
+    background: #f0f0f0;
 }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div style="display: flex; align-items: center;">
-        <i class="fas fa-bars menu-trigger" onclick="toggleSidebar()"></i>
-        <a href="javascript:history.back()"><i class="fas fa-chevron-left"></i> กลับ</a>
-    </div>
+    <i class="fas fa-bars menu-trigger" onclick="toggleSidebar()" style="cursor: pointer; font-size: 1.3em;"></i>
+    
     <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
+    
     <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a>
 </div>
 
@@ -421,8 +418,8 @@ async function submitTopupRequest() {
 
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
-        <div class="avatar" style="font-size: 40px;">👤</div>
-        <div id="sidebar-username" style="font-weight: bold; margin-top: 10px;">Guest</div>
+        <div class="avatar" style="font-size: 50px; margin-bottom: 10px;">👤</div>
+        <div id="sidebar-username" style="font-weight: bold; font-size: 1.1em;">Guest</div>
     </div>
     
     <div class="sidebar-content">
@@ -440,15 +437,13 @@ async function submitTopupRequest() {
                 <i class="fas fa-envelope"></i> 
                 อีเมล: <span id="sidebar-display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span>
             </a>
+            
             <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
+            
             <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;">
                 <i class="fas fa-power-off"></i> ออกจากระบบ
             </a>
         </div>
-    </div>
-    
-    <div style="padding: 20px; font-size: 0.7em; color: #ccc; text-align: center;">
-        GedGoZone v1.0
     </div>
 </div>
 
