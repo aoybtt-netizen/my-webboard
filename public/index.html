@@ -402,6 +402,7 @@
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
     <div style="font-size:0.8em; color:gray; margin-bottom:5px;" data-i18n-key="admin_section">ส่วนของแอดมิน</div>
     <button class="sidebar-btn admin-btn" onclick="openAdminAnnouncementModal()" id="admin-announcement-btn" data-i18n-key="admin_set_announcement">📢 ตั้งค่าประกาศ</button>
+	<button class="sidebar-btn admin-btn" onclick="adminpanel()">หน้าแอดมิน</button>
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
@@ -2452,6 +2453,38 @@ function getTransactionDetail(t) {
                 saveUnreadStatus(); 
             }
         }
+	
+	async function adminpanel() {
+    // 1. ตรวจสอบเบื้องต้นว่ามีชื่อผู้ใช้ในเครื่องไหม
+    const myUsername = localStorage.getItem('myUsername');
+    if (!myUsername) {
+        Swal.fire("กรุณาเข้าสู่ระบบ", "", "warning");
+        return;
+    }
+
+    try {
+        // 2. ดึงข้อมูลล่าสุดจาก Server เพื่อเช็ค Admin Level อีกครั้ง (ป้องกันการแก้ LocalStorage เอง)
+        const res = await fetch(`/api/user-info?username=${myUsername}`);
+        const data = await res.json();
+
+        if (data.adminLevel >= 1) {
+            // ถ้าเป็น Admin ระดับ 1 ขึ้นไป ให้ส่งไปหน้า Admin Zone
+            Swal.fire({
+                title: 'กำลังเข้าสู่ระบบจัดการโซน',
+                timer: 1000,
+                didOpen: () => { Swal.showLoading(); }
+            }).then(() => {
+                window.location.href = 'adminzoneGedgo.html';
+            });
+        } else {
+            // ถ้าไม่ใช่ Admin
+            Swal.fire("คุณไม่มีสิทธิ์เข้าถึงหน้านี้", "เฉพาะเจ้าของโซนเท่านั้น", "error");
+        }
+    } catch (e) {
+        console.error("Admin Panel Error:", e);
+        Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถตรวจสอบสิทธิ์ได้", "error");
+    }
+}
         
         async function switchView(view) {
     currentView = view;

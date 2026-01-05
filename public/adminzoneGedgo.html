@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGo! - Admin Zone Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    <style>
+        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --light: #f8fafc; }
+        body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar Style */
+        .sidebar { 
+            width: 260px; background: var(--dark); color: white; height: 100%; 
+            transition: all 0.3s; display: flex; flex-direction: column;
+            position: relative; z-index: 1001;
+        }
+        .sidebar-header { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-menu { flex: 1; padding: 10px 0; }
+        .menu-item { 
+            padding: 15px 25px; display: flex; align-items: center; gap: 12px; 
+            color: rgba(255,255,255,0.7); text-decoration: none; cursor: pointer; transition: 0.2s;
+        }
+        .menu-item:hover, .menu-item.active { background: rgba(255,255,255,0.1); color: var(--secondary); border-left: 4px solid var(--secondary); }
+        .menu-item i { width: 20px; }
+        
+        .badge { background: #e74c3c; color: white; font-size: 0.7em; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
+
+        /* Main Content Area */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .top-bar { 
+            background: white; padding: 15px 25px; display: flex; align-items: center; 
+            justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        }
+        .content-body { padding: 25px; }
+
+        /* Card Style for List */
+        .admin-card { 
+            background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #eee;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .status-btn { padding: 8px 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-left: 5px; }
+        .btn-approve { background: #e8f5e9; color: #2e7d32; }
+        .btn-reject { background: #ffebee; color: #c62828; }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: -260px; }
+            .sidebar.active { left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3 style="margin:0; color:var(--secondary);">GedGo! Zone</h3>
+            <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-item active" onclick="showContent('topup')">
+                <i class="fas fa-wallet"></i> คำขอเติมเงิน
+                <span class="badge" id="topup-count">0</span>
+            </div>
+            <div class="menu-item" onclick="showContent('kyc')">
+                <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
+                <span class="badge" id="kyc-count">0</span>
+            </div>
+            <div class="menu-item" onclick="showContent('history')">
+                <i class="fas fa-history"></i> ประวัติธุรกรรมในโซน
+            </div>
+        </div>
+        <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <a href="index.html" class="menu-item" style="padding:0;"><i class="fas fa-home"></i> กลับหน้าหลัก</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="top-bar">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em;"></i>
+                <h2 id="content-title" style="margin:0; font-size: 1.2em;">คำขอเติมเงิน</h2>
+            </div>
+            <div id="admin-info">
+                <small>เจ้าของโซน: <b id="admin-name">Loading...</b></small>
+            </div>
+        </header>
+
+        <div class="content-body" id="main-display">
+            <div style="text-align:center; margin-top: 50px; color: #999;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>กำลังโหลดข้อมูล...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        function showContent(type) {
+            const display = document.getElementById('main-display');
+            const title = document.getElementById('content-title');
+            
+            // ปรับสถานะเมนู Active
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            if (type === 'topup') {
+                title.innerText = 'คำขอเติมเงิน (Pending)';
+                display.innerHTML = renderTopupList();
+            } else if (type === 'kyc') {
+                title.innerText = 'คำขอยืนยันตัวตน (KYC)';
+                display.innerHTML = renderKYCList();
+            } else if (type === 'history') {
+                title.innerText = 'ประวัติธุรกรรมในโซน';
+                display.innerHTML = `<p style="text-align:center; color:#999;">แสดงประวัติการเงินทั้งหมดในโซนของคุณ...</p>`;
+            }
+            
+            // ถ้าเป็นมือถือให้ปิด sidebar หลังเลือก
+            if(window.innerWidth <= 768) toggleSidebar();
+        }
+
+        // ตัวอย่างการ Render รายการเติมเงิน
+        function renderTopupList() {
+            return `
+                <div class="admin-card">
+                    <div>
+                        <strong>User: Somchai_66</strong><br>
+                        <small style="color:var(--primary);">จำนวน: 50.00 USD</small>
+                    </div>
+                    <div>
+                        <button class="status-btn btn-reject">ปฏิเสธ</button>
+                        <button class="status-btn btn-approve" onclick="confirmTopup('Somchai_66', 50)">อนุมัติ</button>
+                    </div>
+                </div>
+                `;
+        }
+
+        // ตัวอย่างการ Render รายการ KYC
+        function renderKYCList() {
+            return `
+                <div class="admin-card">
+                    <div>
+                        <strong>User: Maria_Brazil</strong><br>
+                        <small style="color:#666;">เบอร์โทร: 081-xxx-xxxx</small>
+                    </div>
+                    <div>
+                        <button class="status-btn btn-approve" onclick="viewKYC('Maria_Brazil')">ตรวจเอกสาร</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function confirmTopup(user, amount) {
+            if(confirm(`ยืนยันการเติมเงิน ${amount} USD ให้กับคุณ ${user}?`)) {
+                alert('ดำเนินการสำเร็จ ยอดเงินถูกเพิ่มเข้าระบบแล้ว');
+            }
+        }
+
+        window.onload = () => {
+            document.getElementById('admin-name').innerText = localStorage.getItem('myUsername') || 'Admin';
+            showContent('topup'); // เริ่มต้นที่หน้าคำขอเติมเงิน
+        };
+    </script>
+</body>
+</html>
