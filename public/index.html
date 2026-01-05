@@ -2454,37 +2454,10 @@ function getTransactionDetail(t) {
             }
         }
 	
-	async function adminpanel() {
-    // 1. ตรวจสอบเบื้องต้นว่ามีชื่อผู้ใช้ในเครื่องไหม
-    const myUsername = localStorage.getItem('myUsername');
-    if (!myUsername) {
-        Swal.fire("กรุณาเข้าสู่ระบบ", "", "warning");
-        return;
-    }
-
-    try {
-        // 2. ดึงข้อมูลล่าสุดจาก Server เพื่อเช็ค Admin Level อีกครั้ง (ป้องกันการแก้ LocalStorage เอง)
-        const res = await fetch(`/api/user-info?username=${myUsername}`);
-        const data = await res.json();
-
-        if (data.adminLevel >= 1) {
-            // ถ้าเป็น Admin ระดับ 1 ขึ้นไป ให้ส่งไปหน้า Admin Zone
-            Swal.fire({
-                title: 'กำลังเข้าสู่ระบบจัดการโซน',
-                timer: 1000,
-                didOpen: () => { Swal.showLoading(); }
-            }).then(() => {
-                window.location.href = 'adminzoneGedgo.html';
-            });
-        } else {
-            // ถ้าไม่ใช่ Admin
-            Swal.fire("คุณไม่มีสิทธิ์เข้าถึงหน้านี้", "เฉพาะเจ้าของโซนเท่านั้น", "error");
-        }
-    } catch (e) {
-        console.error("Admin Panel Error:", e);
-        Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถตรวจสอบสิทธิ์ได้", "error");
-    }
-}
+	async function adminpanel() {    
+        window.location.href = 'adminzoneGedgo.html';
+		toggleSidebar();
+	}
         
         async function switchView(view) {
     currentView = view;
