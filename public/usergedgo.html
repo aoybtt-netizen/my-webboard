@@ -34,8 +34,6 @@
         }
         
         /* Menu List */
-		.menu-btn { position: fixed; top: 20px; left: 20px; z-index: 800; background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 20px; }
-
         .menu-list { margin-top: 20px; }
         .menu-item { 
             display: flex; align-items: center; padding: 14px 15px; background: white; 
@@ -67,95 +65,81 @@
 		
 		
 		
-			/* Sidebar สไลด์ฝั่งซ้าย */
-.merchant-sidebar {
+		
+	/* Sidebar Styles */
+.sidebar {
     position: fixed;
     top: 0;
-    left: -280px; /* ซ่อนไว้ฝั่งซ้าย */
+    left: -280px; /* ซ่อนไว้ทางซ้าย */
     width: 280px;
     height: 100%;
     background: white;
-    z-index: 7000;
-    transition: 0.3s;
     box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-}
-.merchant-sidebar.active {
-    left: 0;
-}
-.sidebar-header {
-    background: #11998e;
-    color: white;
-    padding: 20px;
+    z-index: 1100;
+    transition: 0.3s ease;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.sidebar-menu {
-    padding: 10px;
-}
-.menu-item {
-    padding: 15px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    font-size: 1.05em;
-}
-.menu-item:hover {
-    background: #f9f9f9;
-    color: #11998e;
-}
-.sidebar-overlay {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.4);
-    z-index: 6500;
+    flex-direction: column;
 }
 
+.sidebar.active {
+    left: 0; /* แสดงออกมา */
+}
+
+.sidebar-header {
+    padding: 20px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    text-align: center;
+}
+
+.sidebar-content {
+    padding: 15px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Overlay พื้นหลังดำเวลาเปิดเมนู */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    z-index: 1050;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* ปรับแต่งปุ่มเปิดเมนูใน Header */
+.menu-trigger {
+    cursor: pointer;
+    font-size: 1.2em;
+    margin-right: 10px;
+}
+
+/* ปรับเมนูข้างใน sidebar ให้ดูเข้ากัน */
+.sidebar .menu-item {
+    margin-bottom: 8px;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+    border-radius: 0;
+}
     </style>
 </head>
 <body>
-	<div class="header">
-        <div style="float: left; cursor: pointer;" onclick="toggleMenuSidebar()">
-            <i class="fas fa-bars"></i>
-        </div>
-        <h2 style="margin: 0; display: inline-block;">GedGo Merchant</h2>
-        <div style="float: right; cursor: pointer;" onclick="safeNavigateHome()">
-    <i class="fas fa-home"></i>
-</div>
-    </div>
 
-    <div id="merchant-sidebar" class="merchant-sidebar">
-        <div class="sidebar-header">
-            <h3>จัดการพิกัด</h3>
-            <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
-        </div>
-        <div class="sidebar-menu">
-            <div class="menu-item" onclick="openSaveStoreModal()">
-                <i class="fas fa-store"></i> บันทึกพิกัดร้าน (Base)
-            </div>
-            <div class="menu-item" onclick="openAddLocationModal()">
-                <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
-            </div>
-            <hr>
-            <div class="menu-item" onclick="openManageLocationsModal()">
-                <i class="fas fa-list"></i> พิกัดที่บันทึกไว้ทั้งหมด
-            </div>
-			<div class="menu-item" onclick="openListOrderModal()">
-                <i class="fas fa-list"></i> ออเดอร์ที่บันทึกไว้ทั้งหมด
-            </div>
-			<div class="menu-item" onclick="HowToVoiceCommands()">
-                <i class="fas fa-microphone-alt"></i> การสั่งงานด้วยเสียง
-            </div>
-			<div class="menu-item" onclick="infouse()">
-                <i class="fas fa-info"></i> ข้อควรจำ
-            </div>
-        </div>
+<div class="header">
+    <div style="display: flex; align-items: center;">
+        <i class="fas fa-bars menu-trigger" onclick="toggleSidebar()"></i>
+        <a href="javascript:history.back()"><i class="fas fa-chevron-left"></i> กลับ</a>
     </div>
-	
-	
+    <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
+    <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a>
+</div>
 
 <div class="container">
     <div class="profile-main">
@@ -307,9 +291,20 @@
             btn.innerText = "ส่งข้อมูลยืนยันตัวตน";
         }
     }
+	
+	function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
 
     window.onload = async () => {
     const myName = localStorage.getItem('myUsername');
+	if (myName) {
+        document.getElementById('sidebar-username').innerText = myName;
+    }
     if (!myName) {
         window.location.href = 'index.html';
         return;
@@ -418,15 +413,45 @@ async function submitTopupRequest() {
 }
 
 
-function toggleMenuSidebar() {
-    const sidebar = document.getElementById('merchant-sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    sidebar.classList.toggle('active');
-    overlay.classList.toggle('hidden');
-}
-
-
 </script>
+
+
+
+	<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <div class="avatar" style="font-size: 40px;">👤</div>
+        <div id="sidebar-username" style="font-weight: bold; margin-top: 10px;">Guest</div>
+    </div>
+    
+    <div class="sidebar-content">
+        <div class="menu-list">
+            <div class="menu-item verify-btn" onclick="openKYC(); toggleSidebar();">
+                <i class="fas fa-id-card"></i>
+                <div style="text-align: left; flex: 1;">
+                    <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
+                    <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงาน</div>
+                </div>
+                <i class="fas fa-chevron-right" style="font-size: 0.8em; color: #ccc;"></i>
+            </div>
+
+            <a href="#" class="menu-item">
+                <i class="fas fa-envelope"></i> 
+                อีเมล: <span id="sidebar-display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span>
+            </a>
+            <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
+            <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;">
+                <i class="fas fa-power-off"></i> ออกจากระบบ
+            </a>
+        </div>
+    </div>
+    
+    <div style="padding: 20px; font-size: 0.7em; color: #ccc; text-align: center;">
+        GedGoZone v1.0
+    </div>
+</div>
+
 
 </body>
 </html>
