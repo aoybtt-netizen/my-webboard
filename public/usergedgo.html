@@ -77,9 +77,9 @@
         <p class="username" id="display-name">Guest</p>
         
         <div class="icon-stats">
-            <div class="stat-item"><i class="fas fa-paper-plane"></i><span id="count-post">0</span><span class="stat-label">ส่งโพสต์</span></div>
+            <div class="stat-item"><i class="fas fa-paper-plane"></i><span id="count-post">0</span><span class="stat-label">โพสต์</span></div>
             <div class="stat-item"><i class="fas fa-check-double"></i><span id="count-job">0</span><span class="stat-label">สำเร็จ</span></div>
-            <div class="stat-item"><i class="fas fa-star" style="color: #f1c40f;"></i><span>5.0</span><span class="stat-label">เรตติ้ง</span></div>
+            <div class="stat-item"><i class="fas fa-star" style="color: #f1c40f;"></i><span id="count-rating">5.0</span><span class="stat-label">เรตติ้ง</span></div>
         </div>
 
         <div class="wallet-bar" style="cursor: default;">
@@ -245,6 +245,7 @@
         // 1. อัปเดตยอดเงินและสถิติ (ใช้ || 0 ป้องกัน Error .toFixed)
         document.getElementById('count-post').innerText = data.totalPosts || 0;
         document.getElementById('count-job').innerText = data.completedJobs || 0;
+		document.getElementById('count-rating').innerText = data.rating || 0;
         
         const usdAmount = data.coins || 0;
         document.getElementById('display-balance-usd').innerText = `${usdAmount.toFixed(2)} USD`;
