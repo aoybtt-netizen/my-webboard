@@ -62,11 +62,94 @@
             border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: not-allowed; 
         }
         .btn-active { background: var(--primary); cursor: pointer; }
+		
+		
+	/* --- ส่วนของ Sidebar --- */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5); /* พื้นหลังดำจางๆ */
+    z-index: 1100;
+    display: none; /* ซ่อนไว้เริ่มต้น */
+    backdrop-filter: blur(2px); /* เอฟเฟกต์เบลอ */
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px; /* ซ่อนไว้ทางซ้าย */
+    width: 260px;
+    height: 100%;
+    background: white;
+    z-index: 1200;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* แอนิเมชันตอนสไลด์ */
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+/* เมื่อเพิ่มคลาส active จะสไลด์ออกมา */
+.sidebar.active {
+    left: 0;
+}
+
+.sidebar-header {
+    padding: 30px 20px;
+    background: var(--dark);
+    color: white;
+    text-align: center;
+}
+
+.sidebar-menu {
+    flex: 1;
+    padding: 10px 0;
+}
+
+.nav-item {
+    padding: 15px 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: #444;
+    text-decoration: none;
+    cursor: pointer;
+    transition: 0.2s;
+    border-left: 4px solid transparent;
+}
+
+.nav-item:hover, .nav-item.active {
+    background: #f0fdf4;
+    color: var(--primary);
+    border-left-color: var(--primary);
+}
+
+.nav-item i {
+    width: 20px;
+    text-align: center;
+}
+
+/* ปุ่มเปิดเมนูใน Header */
+.menu-btn {
+    font-size: 1.4em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 5px;
+}
+
     </style>
 </head>
 <body>
 
 <div class="header">
+	<div class="menu-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</div>
+
+
     <a href="javascript:history.back()"><i class="fas fa-chevron-left"></i> กลับ</a>
     <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
     <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a> </div>
@@ -273,6 +356,28 @@
         }
     }
 	
+	function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    
+    sidebar.classList.toggle('active');
+    
+    // แสดงหรือซ่อน Overlay แผ่นใส
+    if (sidebar.classList.contains('active')) {
+        overlay.style.display = 'block';
+    } else {
+        overlay.style.display = 'none';
+    }
+}
+
+// ฟังก์ชันสำหรับสลับหน้า (ถ้าคุณใช้ระบบสลับ View)
+function switchView(viewId) {
+    console.log("เปลี่ยนไปหน้า:", viewId);
+    toggleSidebar(); // ปิดเมนูหลังจากกดเลือก
+    
+    // ใส่ Logic การซ่อน/แสดงหน้าจอของคุณตรงนี้ครับ
+}
+	
 	
 	// ฟังก์ชันแสดงพรีวิวเมื่อเลือกรูป (เสริมความมั่นใจให้ผู้ใช้)
 function previewImg(input) {
@@ -333,6 +438,38 @@ async function submitTopupRequest() {
 
 
 </script>
+
+	<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div style="font-size: 45px; margin-bottom: 5px;">👤</div>
+        <div id="sidebar-user-name" style="font-weight: bold;">Guest</div>
+        <small style="opacity: 0.7;">สมาชิก GedGo!</small>
+    </div>
+
+    <div class="sidebar-menu">
+        <div class="nav-item active" onclick="switchView('dashboard')">
+            <i class="fas fa-chart-line"></i> ภาพรวม
+        </div>
+        <div class="nav-item" onclick="switchView('kyc')">
+            <i class="fas fa-id-card"></i> ยืนยันตัวตน (KYC)
+        </div>
+        <div class="nav-item" onclick="switchView('history')">
+            <i class="fas fa-history"></i> ประวัติธุรกรรม
+        </div>
+        <div class="nav-item" onclick="switchView('settings')">
+            <i class="fas fa-user-cog"></i> ตั้งค่าบัญชี
+        </div>
+    </div>
+
+    <div style="padding: 20px; border-top: 1px solid #eee;">
+        <div class="nav-item" onclick="logout()" style="color: var(--danger);">
+            <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+        </div>
+    </div>
+</nav>
+
 
 </body>
 </html>
