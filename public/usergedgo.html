@@ -133,7 +133,6 @@
     display: flex;
     align-items: center;
     padding: 5px;
-	z-index: 2000;
 }
 
     </style>
@@ -145,9 +144,45 @@
 	<div class="menu-btn" onclick="toggleSidebar()">
     <i class="fas fa-bars"></i>
 </div>
+</div>
 
 
-    <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a> </div>
+  
+	
+	
+	
+	<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div style="font-size: 45px; margin-bottom: 5px;">👤</div>
+        <div id="sidebar-user-name" style="font-weight: bold;">Guest</div>
+        <small style="opacity: 0.7;">สมาชิก GedGo!</small>
+    </div>
+
+    <div class="sidebar-menu">
+        <div class="nav-item active" onclick="switchView('dashboard')">
+            <i class="fas fa-chart-line"></i> ภาพรวม
+        </div>
+        <div class="nav-item" onclick="switchView('kyc')">
+            <i class="fas fa-id-card"></i> ยืนยันตัวตน (KYC)
+        </div>
+        <div class="nav-item" onclick="switchView('history')">
+            <i class="fas fa-history"></i> ประวัติธุรกรรม
+        </div>
+        <div class="nav-item" onclick="switchView('settings')">
+            <i class="fas fa-user-cog"></i> ตั้งค่าบัญชี
+        </div>
+    </div>
+
+    <div style="padding: 20px; border-top: 1px solid #eee;">
+        <div class="nav-item" onclick="logout()" style="color: var(--danger);">
+            <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+        </div>
+    </div>
+</nav>
+
+
 
 <div class="container">
     <div class="profile-main">
@@ -434,36 +469,7 @@ async function submitTopupRequest() {
 
 </script>
 
-	<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
-
-<nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <div style="font-size: 45px; margin-bottom: 5px;">👤</div>
-        <div id="sidebar-user-name" style="font-weight: bold;">Guest</div>
-        <small style="opacity: 0.7;">สมาชิก GedGo!</small>
-    </div>
-
-    <div class="sidebar-menu">
-        <div class="nav-item active" onclick="switchView('dashboard')">
-            <i class="fas fa-chart-line"></i> ภาพรวม
-        </div>
-        <div class="nav-item" onclick="switchView('kyc')">
-            <i class="fas fa-id-card"></i> ยืนยันตัวตน (KYC)
-        </div>
-        <div class="nav-item" onclick="switchView('history')">
-            <i class="fas fa-history"></i> ประวัติธุรกรรม
-        </div>
-        <div class="nav-item" onclick="switchView('settings')">
-            <i class="fas fa-user-cog"></i> ตั้งค่าบัญชี
-        </div>
-    </div>
-
-    <div style="padding: 20px; border-top: 1px solid #eee;">
-        <div class="nav-item" onclick="logout()" style="color: var(--danger);">
-            <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
-        </div>
-    </div>
-</nav>
+	
 
 
 </body>
