@@ -129,6 +129,80 @@
     border-radius: 0;
 }
 
+
+
+
+/* --- แผ่นพื้นหลังเวลาเปิดเมนู (Overlay) --- */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1100;
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.3s;
+    backdrop-filter: blur(2px);
+}
+.sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- ตัวแถบเมนู (Sidebar) --- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px; /* ซ่อนไว้ฝั่งซ้าย */
+    width: 260px;
+    height: 100%;
+    background: white;
+    z-index: 1200;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+.sidebar.active {
+    left: 0; /* สไลด์ออกมา */
+}
+
+/* หัวข้อ Sidebar */
+.sidebar-header {
+    padding: 30px 20px;
+    background: var(--dark);
+    color: white;
+    text-align: center;
+}
+
+/* รายการเมนู */
+.sidebar-menu {
+    flex: 1;
+    padding: 15px 0;
+}
+.nav-item {
+    padding: 15px 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: #444;
+    text-decoration: none;
+    cursor: pointer;
+    transition: 0.2s;
+    border-left: 4px solid transparent;
+}
+.nav-item:hover {
+    background: #f0fdf4;
+    color: var(--primary);
+    border-left-color: var(--primary);
+}
+.nav-item i {
+    width: 20px;
+    text-align: center;
+}
+
     </style>
 </head>
 <body>
@@ -412,6 +486,40 @@ async function submitTopupRequest() {
 
 
 </script>
+
+
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div style="font-size: 40px;">👤</div>
+        <div id="sidebar-user" style="font-weight:bold; margin-top:5px;">Guest</div>
+        <small style="opacity:0.7;">สมาชิก GedGo!</small>
+    </div>
+
+    <div class="sidebar-menu">
+        <div class="nav-item" onclick="switchView(1)">
+            <i class="fas fa-chart-line"></i> <span>ตัวเลือกที่ 1</span>
+        </div>
+        <div class="nav-item" onclick="switchView(2)">
+            <i class="fas fa-id-card"></i> <span>ตัวเลือกที่ 2</span>
+        </div>
+        <div class="nav-item" onclick="switchView(3)">
+            <i class="fas fa-history"></i> <span>ตัวเลือกที่ 3</span>
+        </div>
+        <div class="nav-item" onclick="switchView(4)">
+            <i class="fas fa-cog"></i> <span>ตัวเลือกที่ 4</span>
+        </div>
+    </div>
+
+    <div style="padding: 20px; border-top: 1px solid #eee;">
+        <div class="nav-item" onclick="logout()" style="color: var(--danger);">
+            <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+        </div>
+    </div>
+</nav>
+
 
 </body>
 </html>
