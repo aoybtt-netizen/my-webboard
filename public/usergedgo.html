@@ -65,19 +65,42 @@
 	left: 5px; 
 	z-index: 800; 
 	background: #007bff; 
-	color: white; border: 
-	none; padding: 10px 15px; 
+	color: white; 
+	border: none; 
+	padding: 10px 15px; 
 	border-radius: 8px; 
 	cursor: pointer; 
 	font-size: 20px; 
 	}
+	
+	.floating-menu-btn {
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    width: 65px;
+    height: 45px;
+    background: white;
+    border-radius: 10%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    cursor: pointer;
+    background: #007bff; 
+	color: white; 
+	border: none; 
+    font-size: 1.2em;
+}
 
 
     </style>
 </head>
 <body>
 
-	<button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
+	<div class="floating-menu-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</div>
 
 
 
