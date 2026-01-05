@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGo! - ข้อมูลสมาชิก</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    <style>
+        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; }
+        body { font-family: 'Kanit', sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
+        .header { background: linear-gradient(to right, var(--primary), var(--secondary)); color: white; padding: 20px; text-align: center; border-radius: 0 0 25px 25px; position: relative; }
+        .back-btn { position: absolute; left: 20px; top: 25px; color: white; text-decoration: none; font-size: 1.2em; }
+        .container { padding: 20px; max-width: 500px; margin: -50px auto 0; }
+        .profile-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        .avatar { font-size: 80px; margin-bottom: 10px; }
+        .username { font-size: 1.5em; font-weight: bold; margin: 5px 0; color: var(--dark); }
+        .status-badge { background: #e8f5e9; color: #2ecc71; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; display: inline-block; margin-bottom: 20px; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: #f8f9fa; padding: 15px; border-radius: 15px; border: 1px solid #eee; }
+        .stat-value { font-size: 1.2em; font-weight: bold; color: var(--dark); }
+        .stat-label { font-size: 0.8em; color: #777; }
+
+        .wallet-section { background: var(--dark); color: white; border-radius: 20px; padding: 20px; margin-top: 20px; text-align: left; }
+        .wallet-label { font-size: 0.9em; opacity: 0.8; }
+        .wallet-balance { font-size: 2em; font-weight: bold; margin: 10px 0; }
+        
+        .action-list { margin-top: 25px; text-align: left; }
+        .action-item { display: flex; align-items: center; padding: 15px; background: white; margin-bottom: 10px; border-radius: 15px; text-decoration: none; color: #333; border: 1px solid #eee; }
+        .action-item i { margin-right: 15px; color: var(--primary); width: 20px; text-align: center; }
+        .logout-btn { color: #e74c3c; border: 1px solid #e74c3c; margin-top: 20px; justify-content: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <a href="javascript:history.back()" class="back-btn"><i class="fas fa-arrow-left"></i></a>
+    <h2>โปรไฟล์ของฉัน</h2>
+</div>
+
+<div class="container">
+    <div class="profile-card">
+        <div class="avatar">👤</div>
+        <div class="username" id="display-name">Guest</div>
+        <div class="status-badge"><i class="fas fa-check-circle"></i> สมาชิก GedGo!</div>
+        
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value" id="count-post">0</div>
+                <div class="stat-label">งานที่โพสต์</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="count-job">0</div>
+                <div class="stat-label">งานที่ส่งสำเร็จ</div>
+            </div>
+        </div>
+
+        <div class="wallet-section">
+            <div class="wallet-label"><i class="fas fa-wallet"></i> ยอดเงินคงเหลือ</div>
+            <div class="wallet-balance" id="display-balance-usd">0.00 USD</div>
+            <div style="font-size: 0.9em; opacity: 0.7;" id="display-balance-thb">≈ 0.00 THB</div>
+        </div>
+
+        <div class="action-list">
+            <a href="#" class="action-item">
+                <i class="fas fa-envelope"></i> <span>อีเมล: <span id="display-email">ยังไม่ได้ยืนยัน</span></span>
+            </a>
+            <a href="#" class="action-item">
+                <i class="fas fa-shield-alt"></i> <span>เปลี่ยนรหัสผ่าน</span>
+            </a>
+            <a href="#" class="action-item">
+                <i class="fas fa-history"></i> <span>ประวัติการเติมเงิน</span>
+            </a>
+            <a href="javascript:logout()" class="action-item logout-btn">
+                <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ดึงข้อมูลมาแสดงผล (คุณสามารถ fetch จาก API จริงได้ที่นี่)
+    window.onload = () => {
+        const myName = localStorage.getItem('myUsername') || 'Guest';
+        document.getElementById('display-name').innerText = myName;
+        
+        // ตัวอย่างการดึงข้อมูลจาก API (สมมติ)
+        // fetchUserData(myName);
+    };
+
+    function logout() {
+        if(confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
+            localStorage.clear();
+            window.location.href = 'index.html'; // หรือหน้า Login ของคุณ
+        }
+    }
+</script>
+
+</body>
+</html>
