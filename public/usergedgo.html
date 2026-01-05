@@ -67,7 +67,7 @@
 <body>
 
 <div class="header">
-    <a href="javascript:history.back()"><i class="fas fa-chevron-left"></i> กลับ</a>
+    <a href="toggleSidebar()"><i class="fas fa-chevron-left"></i> ☰ Menu</a>
     <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
     <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a> </div>
 
@@ -221,9 +221,20 @@
             btn.innerText = "ส่งข้อมูลยืนยันตัวตน";
         }
     }
+	
+	function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
 
     window.onload = async () => {
     const myName = localStorage.getItem('myUsername');
+	if (myName) {
+        document.getElementById('sidebar-username').innerText = myName;
+    }
     if (!myName) {
         window.location.href = 'index.html';
         return;
@@ -333,6 +344,42 @@ async function submitTopupRequest() {
 
 
 </script>
+
+
+	<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <div class="avatar" style="font-size: 40px;">👤</div>
+        <div id="sidebar-username" style="font-weight: bold; margin-top: 10px;">Guest</div>
+    </div>
+    
+    <div class="sidebar-content">
+        <div class="menu-list">
+            <div class="menu-item verify-btn" onclick="openKYC(); toggleSidebar();">
+                <i class="fas fa-id-card"></i>
+                <div style="text-align: left; flex: 1;">
+                    <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
+                    <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงาน</div>
+                </div>
+                <i class="fas fa-chevron-right" style="font-size: 0.8em; color: #ccc;"></i>
+            </div>
+
+            <a href="#" class="menu-item">
+                <i class="fas fa-envelope"></i> 
+                อีเมล: <span id="sidebar-display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span>
+            </a>
+            <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
+            <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;">
+                <i class="fas fa-power-off"></i> ออกจากระบบ
+            </a>
+        </div>
+    </div>
+    
+    <div style="padding: 20px; font-size: 0.7em; color: #ccc; text-align: center;">
+        GedGoZone v1.0
+    </div>
+</div>
 
 </body>
 </html>
