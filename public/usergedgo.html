@@ -3,54 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GedGo! - Profile</title>
+    <title>GedGo! - Profile & Verification</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     <style>
-        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; }
+        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --danger: #e74c3c; }
         body { font-family: 'Kanit', sans-serif; background: #f8fafc; margin: 0; padding: 0; }
         
+        /* Header ปรับปรุงใหม่ */
         .header { 
             background: linear-gradient(135deg, var(--primary), var(--secondary)); 
             color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
-            border-radius: 0 0 20px 20px;
+            border-radius: 0 0 20px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        .header a { color: white; text-decoration: none; font-size: 1.2em; }
+        .header a { color: white; text-decoration: none; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
         
         .container { padding: 15px; max-width: 450px; margin: 0 auto; }
         
         .profile-main { background: white; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .avatar { font-size: 60px; margin-bottom: 5px; }
-        .username { font-size: 1.3em; font-weight: bold; color: var(--dark); margin: 0; }
-        
-        /* สถิติแบบไอคอน */
+        .avatar { font-size: 60px; }
+        .username { font-size: 1.3em; font-weight: bold; color: var(--dark); margin: 5px 0; }
+
         .icon-stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; padding: 10px; border-top: 1px solid #f0f0f0; }
-        .stat-item { text-align: center; }
         .stat-item i { font-size: 1.2em; color: var(--primary); display: block; margin-bottom: 5px; }
-        .stat-item span { font-weight: bold; font-size: 1.1em; }
+        .stat-item span { font-weight: bold; }
         .stat-label { font-size: 0.7em; color: #999; display: block; }
 
-        /* ยอดเงินบรรทัดเดียว */
         .wallet-bar { 
             background: var(--dark); color: white; padding: 12px; border-radius: 12px; 
-            display: flex; justify-content: space-between; align-items: center; margin-top: 10px;
+            display: flex; justify-content: space-between; align-items: center;
         }
         
+        /* Menu List */
         .menu-list { margin-top: 20px; }
         .menu-item { 
-            display: flex; align-items: center; padding: 12px 15px; background: white; 
-            margin-bottom: 8px; border-radius: 12px; text-decoration: none; color: #444; 
-            border: 1px solid #f0f0f0; font-size: 0.9em;
+            display: flex; align-items: center; padding: 14px 15px; background: white; 
+            margin-bottom: 10px; border-radius: 12px; text-decoration: none; color: #444; 
+            border: 1px solid #f0f0f0; font-size: 0.95em; cursor: pointer;
         }
-        .menu-item i { width: 25px; color: var(--primary); }
-        .logout { color: #e74c3c; border-color: #ffeaea; font-weight: bold; justify-content: center; margin-top: 20px; }
+        .menu-item i { width: 25px; color: var(--primary); font-size: 1.1em; }
+        .verify-btn { background: #fff9e6; border: 1px solid #f1c40f; }
+        .verify-btn i { color: #f1c40f; }
+
+        /* Modal ยืนยันตัวตน */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; overflow-y: auto; }
+        .modal-content { background: white; width: 90%; max-width: 400px; margin: 20px auto; border-radius: 20px; padding: 20px; }
+        .upload-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 15px 0; }
+        .upload-box { border: 2px dashed #ccc; padding: 15px; text-align: center; border-radius: 10px; cursor: pointer; position: relative; }
+        .upload-box i { font-size: 20px; color: #999; }
+        .upload-box p { font-size: 10px; margin: 5px 0 0; }
+        .upload-box input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        .proximity-alert { 
+            background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; 
+            padding: 10px; border-radius: 10px; font-size: 0.8em; margin-top: 15px; text-align: center;
+        }
+        .btn-submit { 
+            width: 100%; padding: 12px; background: #ccc; color: white; border: none; 
+            border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: not-allowed; 
+        }
+        .btn-active { background: var(--primary); cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <a href="javascript:history.back()"><i class="fas fa-chevron-left"></i></a>
-    <span style="font-weight: bold;">สมาชิก GedGo!</span>
-    <a href="index.html"><i class="fas fa-home"></i></a> </div>
+    <a href="javascript:history.back()"><i class="fas fa-chevron-left"></i> กลับ</a>
+    <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
+    <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a> </div>
 
 <div class="container">
     <div class="profile-main">
@@ -58,45 +77,91 @@
         <p class="username" id="display-name">Guest</p>
         
         <div class="icon-stats">
-            <div class="stat-item">
-                <i class="fas fa-paper-plane"></i>
-                <span id="count-post">0</span>
-                <span class="stat-label">ส่งโพสต์</span>
-            </div>
-            <div class="stat-item">
-                <i class="fas fa-check-double"></i>
-                <span id="count-job">0</span>
-                <span class="stat-label">สำเร็จ</span>
-            </div>
-            <div class="stat-item">
-                <i class="fas fa-star" style="color: #f1c40f;"></i>
-                <span>5.0</span>
-                <span class="stat-label">คะแนน</span>
-            </div>
+            <div class="stat-item"><i class="fas fa-paper-plane"></i><span id="count-post">0</span><span class="stat-label">ส่งโพสต์</span></div>
+            <div class="stat-item"><i class="fas fa-check-double"></i><span id="count-job">0</span><span class="stat-label">สำเร็จ</span></div>
+            <div class="stat-item"><i class="fas fa-star" style="color: #f1c40f;"></i><span>5.0</span><span class="stat-label">เรตติ้ง</span></div>
         </div>
 
         <div class="wallet-bar">
             <span style="font-size: 0.8em; opacity: 0.8;"><i class="fas fa-wallet"></i> ยอดเงิน:</span>
             <div style="text-align: right;">
-                <span id="display-balance-usd" style="font-weight: bold; font-size: 1.1em;">0.00 USD</span>
-                <span id="display-balance-thb" style="font-size: 0.75em; opacity: 0.7; margin-left: 5px;">(0.00 THB)</span>
+                <span id="display-balance-usd" style="font-weight: bold;">0.00 USD</span>
+                <span id="display-balance-thb" style="font-size: 0.7em; opacity: 0.7; margin-left: 5px;">(0.00 THB)</span>
             </div>
         </div>
 
         <div class="menu-list">
+            <div class="menu-item verify-btn" onclick="openKYC()">
+                <i class="fas fa-id-card"></i>
+                <div style="text-align: left; flex: 1;">
+                    <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
+                    <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงานที่มูลค่าสูงขึ้น</div>
+                </div>
+                <i class="fas fa-chevron-right" style="font-size: 0.8em; color: #ccc;"></i>
+            </div>
+
             <a href="#" class="menu-item"><i class="fas fa-envelope"></i> อีเมล: <span id="display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span></a>
             <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
-            <a href="#" class="menu-item"><i class="fas fa-user-shield"></i> ตั้งค่าความปลอดภัย</a>
-            <a href="javascript:logout()" class="menu-item logout"><i class="fas fa-power-off"></i> ออกจากระบบ</a>
+            <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;"><i class="fas fa-power-off"></i> ออกจากระบบ</a>
         </div>
     </div>
 </div>
 
+<div id="kyc-modal" class="modal">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0;">ยืนยันตัวตนสมาชิก</h3>
+            <i class="fas fa-times" onclick="closeKYC()" style="cursor: pointer;"></i>
+        </div>
+        
+        <p style="font-size: 0.8em; color: #666;">กรุณากรอกข้อมูลและอัปโหลดรูปถ่ายบัตรประจำตัวประชาชน</p>
+        
+        <input type="text" id="full-name" placeholder="ชื่อ-นามสกุล (ตามบัตร)" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+        <input type="text" id="id-number" placeholder="เลขประจำตัวประชาชน" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+
+        <div class="upload-grid">
+            <div class="upload-box">
+                <i class="fas fa-camera"></i><p>รูปหน้าบัตรประชาชน</p>
+                <input type="file" accept="image/*">
+            </div>
+            <div class="upload-box">
+                <i class="fas fa-camera"></i><p>รูปหลังบัตรประชาชน</p>
+                <input type="file" accept="image/*">
+            </div>
+            <div class="upload-box">
+                <i class="fas fa-camera"></i><p>รูปคุณถือคู่กับบัตรประชาชน</p>
+                <input type="file" accept="image/*">
+            </div>
+        </div>
+
+        <div class="proximity-alert">
+            <i class="fas fa-map-marker-alt"></i><br>
+            <b>เงื่อนไขการส่งข้อมูล:</b> คุณต้องอยู่ใกล้ "เจ้าของโซน" ในระยะไม่เกิน 20 เมตร เพื่อกดส่งยืนยันตัวตน
+        </div>
+
+        <button id="btn-kyc-submit" class="btn-submit" disabled>ส่งข้อมูล (ตรวจสอบระยะทาง...)</button>
+        <p style="font-size: 0.7em; color: #999; text-align: center; margin-top: 10px;">สามารถอัปโหลดและกรอกข้อมูลทิ้งไว้ได้</p>
+    </div>
+</div>
+
 <script>
+    function openKYC() { document.getElementById('kyc-modal').style.display = 'block'; }
+    function closeKYC() { document.getElementById('kyc-modal').style.display = 'none'; }
+
+    // จำลองการตรวจสอบระยะทาง (ในอนาคตจะใช้ Geolocation API)
+    function checkProximity() {
+        const isNear = false; // เปลี่ยนเป็น true เมื่ออยู่ใกล้ 20m
+        const btn = document.getElementById('btn-kyc-submit');
+        if(isNear) {
+            btn.disabled = false;
+            btn.classList.add('btn-active');
+            btn.innerText = "ส่งข้อมูลยืนยันตัวตน";
+        }
+    }
+
     window.onload = () => {
-        const myName = localStorage.getItem('myUsername') || 'Guest';
-        document.getElementById('display-name').innerText = myName;
-        // ดึงข้อมูลอื่นๆ มาแสดงผลที่นี่
+        document.getElementById('display-name').innerText = localStorage.getItem('myUsername') || 'Guest';
+        checkProximity();
     };
 
     function logout() {
