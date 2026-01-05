@@ -59,93 +59,15 @@
 		
 		
 		
-		
-	/* Sidebar Styles */
-/* Sidebar พื้นฐาน */
-.sidebar {
-    position: fixed;
-    top: 0;
-    left: -280px; /* ซ่อนไว้ */
-    width: 280px;
-    height: 100%;
-    background: white;
-    box-shadow: 2px 0 15px rgba(0,0,0,0.2);
-    z-index: 2000;
-    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    flex-direction: column;
-}
+	.menu-btn { position: fixed; top: 20px; left: 20px; z-index: 800; background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 20px; }
 
-.sidebar.active {
-    left: 0; /* เลื่อนออกมา */
-}
-
-/* พื้นหลังมืดเมื่อเปิดเมนู */
-.sidebar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: none;
-    z-index: 1900;
-}
-
-.sidebar-overlay.active {
-    display: block;
-}
-
-/* ส่วนหัวของ Sidebar */
-.sidebar-header {
-    padding: 30px 20px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-    text-align: center;
-}
-
-/* ปรับแต่งเมนูข้างใน Sidebar */
-.sidebar .menu-list {
-    padding: 10px;
-    margin-top: 0;
-}
-
-.sidebar .menu-item {
-    border: none;
-    border-radius: 10px;
-    margin-bottom: 5px;
-    transition: 0.2s;
-}
-
-.sidebar .menu-item:active {
-    background: #f0f0f0;
-}
-
-
-.floating-menu-btn {
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    width: 45px;
-    height: 45px;
-    background: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    z-index: 1000;
-    cursor: pointer;
-    color: var(--primary);
-    font-size: 1.2em;
-}
 
     </style>
 </head>
 <body>
 
 
-	<div class="sidebar" onclick="toggleSidebar()">
+	<div class="menu-btn" onclick="toggleSidebar()">
     <i class="fas fa-bars"></i>
 </div>
 
