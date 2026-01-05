@@ -82,13 +82,40 @@
             <div class="stat-item"><i class="fas fa-star" style="color: #f1c40f;"></i><span>5.0</span><span class="stat-label">เรตติ้ง</span></div>
         </div>
 
-        <div class="wallet-bar">
-            <span style="font-size: 0.8em; opacity: 0.8;"><i class="fas fa-wallet"></i> ยอดเงิน:</span>
-            <div style="text-align: right;">
-                <span id="display-balance-usd" style="font-weight: bold;">0.00 USD</span>
-                <span id="display-balance-thb" style="font-size: 0.7em; opacity: 0.7; margin-left: 5px;">(0.00 THB)</span>
-            </div>
+        <div class="wallet-bar" style="cursor: default;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-wallet" style="font-size: 0.9em; opacity: 0.8;"></i>
+        <span style="font-size: 0.8em; opacity: 0.8;">ยอดเงิน:</span>
+        <button onclick="openRequestTopup()" 
+                style="background: #38ef7d; border: none; color: #114b46; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; transition: 0.2s;"
+                onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    <div style="text-align: right;">
+        <span id="display-balance-usd" style="font-weight: bold; font-size: 1.1em;">0.00 USD</span>
+        <span id="display-balance-thb" style="font-size: 0.7em; opacity: 0.7; margin-left: 5px;">(0.00 THB)</span>
+    </div>
+</div>
+
+<div id="topup-request-modal" class="modal">
+    <div class="modal-content" style="max-width: 320px; text-align: center;">
+        <div style="font-size: 40px; color: #f1c40f; margin-bottom: 10px;"><i class="fas fa-hand-holding-usd"></i></div>
+        <h3 style="margin: 0 0 10px;">ส่งคำขอเติมเงิน</h3>
+        <p style="font-size: 0.8em; color: #666; margin-bottom: 15px;">กรุณาระบุจำนวนเงิน (USD) ที่คุณต้องการเติม</p>
+        
+        <div style="position: relative; margin-bottom: 20px;">
+            <input type="number" id="request-amount-input" placeholder="0.00" 
+                   style="width: 100%; padding: 12px 15px; border: 2px solid #eee; border-radius: 12px; font-size: 1.5em; text-align: center; box-sizing: border-box; outline: none; font-weight: bold; color: #2c3e50;">
+            <span style="position: absolute; right: 15px; top: 15px; font-weight: bold; color: #999;">USD</span>
         </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="closeRequestTopup()" style="flex: 1; padding: 12px; background: #eee; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: #666;">ยกเลิก</button>
+            <button onclick="submitTopupRequest()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">ส่งคำขอ</button>
+        </div>
+    </div>
+</div>
 
         <div class="menu-list">
             <div class="menu-item verify-btn" onclick="openKYC()">
@@ -214,6 +241,38 @@ function updateKycStatus(isNear) {
         btn.classList.remove('btn-active');
         btn.innerHTML = '<i class="fas fa-lock"></i> ส่งข้อมูล (ตรวจสอบระยะทาง...)';
     }
+}
+
+
+// ฟังก์ชันเปิด Modal เติมเงิน
+function openRequestTopup() {
+    document.getElementById('topup-request-modal').style.display = 'block';
+    document.getElementById('request-amount-input').focus();
+}
+
+// ฟังก์ชันปิด Modal
+function closeRequestTopup() {
+    document.getElementById('topup-request-modal').style.display = 'none';
+    document.getElementById('request-amount-input').value = '';
+}
+
+// ฟังก์ชันส่งคำขอ
+async function submitTopupRequest() {
+    const amount = document.getElementById('request-amount-input').value;
+    const username = localStorage.getItem('myUsername');
+
+    if (!amount || amount <= 0) {
+        alert("กรุณาระบุจำนวนเงินที่ถูกต้อง");
+        return;
+    }
+
+    // ในอนาคตคุณจะยิง API ตรงนี้เพื่อบันทึกคำขอลงฐานข้อมูล
+    console.log(`ส่งคำขอเติมเงิน: ${amount} USD จากผู้ใช้: ${username}`);
+    
+    // แจ้งเตือนผู้ใช้ (ตัวอย่าง)
+    alert(`ส่งคำขอเติมเงินจำนวน ${amount} USD เรียบร้อยแล้ว! \nกรุณารอดำเนินการตรวจสอบจากเจ้าของโซน`);
+    
+    closeRequestTopup();
 }
 
 
