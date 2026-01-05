@@ -454,7 +454,10 @@
         <input type="text" id="username-input" placeholder="ชื่อเล่น..." autofocus style="margin-bottom: 10px;">
         <input type="password" id="password-input" placeholder="รหัสผ่าน..." style="margin-bottom: 10px;">
         
-        <button class="sidebar-btn create-btn" onclick="login()" style="width: 100%;">เข้าสู่ระบบ / สมัครสมาชิก</button>
+        <div style="display: flex; gap: 10px;">
+            <button class="sidebar-btn" onclick="login()" style="flex: 1; background: #11998e; color: white;">เข้าสู่ระบบ</button>
+            <button class="sidebar-btn" onclick="register()" style="flex: 1; background: #f39c12; color: white;">สมัครสมาชิก</button>
+        </div>
 
         <div style="margin: 25px 0; border-top: 1px solid #eee; position: relative;">
             <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #999; font-size: 0.85em;">หรือใช้บัญชี Google</span>
@@ -669,7 +672,7 @@
     </div>
 </div>
     
-    <div class="version-display">Alpha:1.0.2</div>
+    <div class="version-display">Alpha:1.0.4</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1590,6 +1593,31 @@ async function submitGoogleSetup() {
         document.getElementById('google-setup-modal').classList.add('hidden');
     } else {
         alert(data.error); // แจ้งเตือนถ้าชื่อซ้ำ
+    }
+}
+
+
+async function register() {
+    const username = document.getElementById('username-input').value.trim();
+    const password = document.getElementById('password-input').value;
+
+    if (!username || !password) return alert("กรุณากรอกทั้งชื่อและรหัสผ่านเพื่อสมัครสมาชิก");
+    if (username.length < 3) return alert("ชื่อเล่นต้องมีอย่างน้อย 3 ตัวอักษร");
+
+    const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    
+    const data = await res.json();
+
+    if (data.success) {
+        alert("สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...");
+        localStorage.setItem('myUsername', data.user.username);
+        startApp(data.user.username);
+    } else {
+        alert(data.error); // เช่น "ชื่อนี้ถูกใช้ไปแล้ว"
     }
 }
 

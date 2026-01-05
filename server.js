@@ -194,6 +194,42 @@ app.post('/api/auth/set-password', async (req, res) => {
     res.json({ success: true });
 });
 
+// Route สำหรับสมัครสมาชิกใหม่
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // 1. ตรวจสอบว่าชื่อซ้ำไหม
+        const existingUser = await usersCollection.findOne({ username: username });
+        if (existingUser) {
+            return res.status(400).json({ success: false, error: "ชื่อนี้ถูกใช้ไปแล้ว กรุณาใช้ชื่ออื่น" });
+        }
+
+        // 2. Hash รหัสผ่าน
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 3. บันทึก User ใหม่ (ใส่ค่าเริ่มต้นที่จำเป็นไปด้วยเลย)
+        const newUser = {
+            username: username,
+            password: hashedPassword,
+            coins: 0,           // เงินในระบบ
+            mercNum: 0,        // สถานะการรับงาน
+            createdAt: new Date()
+        };
+
+        await usersCollection.insertOne(newUser);
+
+        res.json({ 
+            success: true, 
+            user: { username: newUser.username } 
+        });
+        
+    } catch (err) {
+        console.error("Register Error:", err);
+        res.status(500).json({ success: false, error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    }
+});
+
 
 // ==========================================
 // Helper Functions for MongoDB
