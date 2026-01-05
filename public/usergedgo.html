@@ -9,13 +9,7 @@
         :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --danger: #e74c3c; }
         body { font-family: 'Kanit', sans-serif; background: #f8fafc; margin: 0; padding: 0; }
         
-        /* Header ปรับปรุงใหม่ */
-        .header { 
-            background: linear-gradient(135deg, var(--primary), var(--secondary)); 
-            color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
-            border-radius: 0 0 20px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header a { color: white; text-decoration: none; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
+        
         
         .container { padding: 15px; max-width: 450px; margin: 0 auto; }
         
@@ -126,17 +120,36 @@
 .sidebar .menu-item:active {
     background: #f0f0f0;
 }
+
+
+.floating-menu-btn {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    width: 45px;
+    height: 45px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    cursor: pointer;
+    color: var(--primary);
+    font-size: 1.2em;
+}
+
     </style>
 </head>
 <body>
 
-<div class="header">
-    <i class="fas fa-bars menu-trigger" onclick="toggleSidebar()"></i>
-    
-    <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
-    
-    <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a>
+
+	<div class="floating-menu-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
 </div>
+
+
 
 <div class="container">
     <div class="profile-main">
