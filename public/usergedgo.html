@@ -3,245 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GedGo! - Profile & Verification</title>
+    <title>GedGo! - Profile Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     <style>
-        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --danger: #e74c3c; --light: #f8fafc; }
-        body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; padding: 0; overflow-x: hidden; }
+        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --danger: #e74c3c; }
+        body { font-family: 'Kanit', sans-serif; background: #f8fafc; margin: 0; padding: 0; overflow-x: hidden; }
         
-        /* --- Header ปรับปรุงใหม่ --- */
+        /* --- Header --- */
         .header { 
             background: linear-gradient(135deg, var(--primary), var(--secondary)); 
-            color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between;
-            position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            border-radius: 0 0 20px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 1000;
         }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .header-title { font-weight: bold; font-size: 1.1em; }
-        .menu-btn { font-size: 1.3em; cursor: pointer; }
+        .header a { color: white; text-decoration: none; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
+        
+        /* ปุ่มเมนู (แก้ให้เห็นชัดขึ้น) */
+        .menu-btn { font-size: 1.5em; cursor: pointer; color: white; display: flex; align-items: center; padding: 5px; }
 
-        /* --- Sidebar & Overlay --- */
-        .sidebar-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 1100; display: none;
-            backdrop-filter: blur(2px);
-        }
-        .sidebar {
-            position: fixed; top: 0; left: -280px; width: 260px; height: 100%;
-            background: white; z-index: 1200; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-        }
-        .sidebar.active { left: 0; }
-        .sidebar-header { padding: 30px 20px; background: var(--dark); color: white; text-align: center; }
-        .sidebar-menu { flex: 1; padding: 10px 0; }
-        .nav-item {
-            padding: 15px 25px; display: flex; align-items: center; gap: 15px;
-            color: #444; text-decoration: none; cursor: pointer; transition: 0.2s;
-            border-left: 4px solid transparent;
-        }
-        .nav-item:hover, .nav-item.active { background: #f0fdf4; color: var(--primary); border-left-color: var(--primary); }
-        .nav-item i { width: 20px; text-align: center; }
-
-        /* --- Main Content View Switching --- */
         .container { padding: 15px; max-width: 450px; margin: 0 auto; }
+        
+        /* --- ส่วนเนื้อหา (Views) --- */
         .view-section { display: none; animation: fadeIn 0.3s ease; }
         .view-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- UI Components (รักษา Style เดิมจากภาพ) --- */
-        .profile-main { background: white; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .avatar { font-size: 60px; margin-bottom: 10px; }
+        /* --- UI เดิมของคุณ --- */
+        .profile-main { background: white; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .avatar { font-size: 60px; }
         .username { font-size: 1.3em; font-weight: bold; color: var(--dark); margin: 5px 0; }
         .icon-stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; padding: 10px; border-top: 1px solid #f0f0f0; }
         .stat-item i { font-size: 1.2em; color: var(--primary); display: block; margin-bottom: 5px; }
         .stat-label { font-size: 0.7em; color: #999; display: block; }
+        .wallet-bar { background: var(--dark); color: white; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
 
-        .wallet-bar { background: var(--dark); color: white; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .zone-info-box { margin-top: 15px; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 15px; display: flex; align-items: center; gap: 12px; }
+        /* --- Sidebar --- */
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1100; display: none; backdrop-filter: blur(2px); }
+        .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: white; z-index: 1200; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        .sidebar.active { left: 0; }
+        .sidebar-header { padding: 30px 20px; background: var(--dark); color: white; text-align: center; }
+        .nav-item { padding: 15px 25px; display: flex; align-items: center; gap: 15px; color: #444; text-decoration: none; cursor: pointer; border-left: 4px solid transparent; }
+        .nav-item.active { background: #f0fdf4; color: var(--primary); border-left-color: var(--primary); }
 
-        /* --- Form & Modal --- */
+        /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; overflow-y: auto; }
-        .modal-content { background: white; width: 90%; max-width: 400px; margin: 20px auto; border-radius: 20px; padding: 20px; position: relative; }
-        .upload-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 15px 0; }
-        .upload-box { border: 2px dashed #ccc; padding: 15px; text-align: center; border-radius: 10px; cursor: pointer; position: relative; background: #fafafa; }
-        .btn-submit { width: 100%; padding: 14px; background: #ccc; color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: not-allowed; }
-        .btn-active { background: var(--primary); cursor: pointer; }
+        .modal-content { background: white; width: 90%; max-width: 400px; margin: 20px auto; border-radius: 20px; padding: 20px; }
     </style>
 </head>
 <body>
 
-    <header class="header">
-        <div class="header-left">
-            <div class="menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></div>
-            <span class="header-title" id="view-title">ภาพรวม</span>
+<div class="header">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <div class="menu-btn" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
         </div>
-        <a href="index.html"><i class="fas fa-home"></i></a>
-    </header>
+        <a href="javascript:history.back()">
+            <i class="fas fa-chevron-left"></i> กลับ
+        </a>
+    </div>
+    <span style="font-weight: bold; flex: 1; text-align: center;" id="header-title">โปรไฟล์สมาชิก</span>
+    <a href="index.html"><i class="fas fa-home"></i></a>
+</div>
 
-    <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="avatar" style="font-size: 45px;">👤</div>
-            <div id="sidebar-name" style="font-weight: bold; margin-top: 5px;">Guest</div>
-            <small style="opacity: 0.7;">สมาชิก GedGo!</small>
+<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div style="font-size: 45px; margin-bottom: 5px;">👤</div>
+        <div id="sidebar-user-name" style="font-weight: bold;">Guest</div>
+        <small style="opacity: 0.7;">สมาชิก GedGo!</small>
+    </div>
+    <div class="sidebar-menu">
+        <div class="nav-item active" onclick="switchView('dashboard', 'ภาพรวมโปรไฟล์')">
+            <i class="fas fa-chart-line"></i> ภาพรวม
         </div>
-        <div class="sidebar-menu">
-            <div class="nav-item active" onclick="switchView('dashboard', 'ภาพรวม')">
-                <i class="fas fa-chart-line"></i> ภาพรวม
-            </div>
-            <div class="nav-item" onclick="switchView('kyc', 'ยืนยันตัวตน')">
-                <i class="fas fa-id-card"></i> ยืนยันตัวตน (KYC)
-            </div>
-            <div class="nav-item" onclick="switchView('history', 'ประวัติ')">
-                <i class="fas fa-history"></i> ประวัติธุรกรรม
-            </div>
-            <div class="nav-item" onclick="switchView('settings', 'ตั้งค่า')">
-                <i class="fas fa-user-cog"></i> ตั้งค่าโปรไฟล์
-            </div>
+        <div class="nav-item" onclick="switchView('kyc', 'ยืนยันตัวตน')">
+            <i class="fas fa-id-card"></i> ยืนยันตัวตน (KYC)
         </div>
-        <div style="padding: 20px; border-top: 1px solid #eee;">
-            <div class="nav-item" onclick="logout()" style="color: var(--danger); padding: 0;">
-                <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
-            </div>
+        <div class="nav-item" onclick="switchView('history', 'ประวัติธุรกรรม')">
+            <i class="fas fa-history"></i> ประวัติธุรกรรม
         </div>
-    </nav>
+    </div>
+    <div style="padding: 20px; border-top: 1px solid #eee;">
+        <div class="nav-item" onclick="logout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</div>
+    </div>
+</nav>
 
-    <div class="container">
-        <section id="view-dashboard" class="view-section active">
+<div class="container">
+    <section id="view-dashboard" class="view-section active">
+        <div class="profile-main">
+            <div class="avatar">👤</div>
+            <p class="username" id="display-name">Guest</p>
+            <div class="icon-stats">
+                <div class="stat-item"><i class="fas fa-paper-plane"></i><span id="count-post">0</span><span class="stat-label">โพสต์</span></div>
+                <div class="stat-item"><i class="fas fa-check-double"></i><span id="count-job">0</span><span class="stat-label">สำเร็จ</span></div>
+                <div class="stat-item"><i class="fas fa-star" style="color: #f1c40f;"></i><span id="count-rating">5.0</span><span class="stat-label">เรตติ้ง</span></div>
+            </div>
             <div class="wallet-bar">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-wallet" style="opacity: 0.8;"></i>
+                    <i class="fas fa-wallet" style="font-size: 0.9em; opacity: 0.8;"></i>
                     <span style="font-size: 0.8em; opacity: 0.8;">ยอดเงิน:</span>
                     <button onclick="openRequestTopup()" style="background: #38ef7d; border: none; color: #114b46; width: 24px; height: 24px; border-radius: 50%; cursor: pointer;"><i class="fas fa-plus"></i></button>
                 </div>
                 <div style="text-align: right;">
-                    <div id="display-balance-usd" style="font-weight: bold;">0.00 USD</div>
-                    <div id="display-balance-thb" style="font-size: 0.7em; opacity: 0.7;">(0.00 THB)</div>
+                    <span id="display-balance-usd" style="font-weight: bold;">0.00 USD</span>
                 </div>
             </div>
-
-            <div class="profile-main" style="margin-top: 20px;">
-                <div class="avatar">👤</div>
-                <p class="username" id="display-name">Guest</p>
-                <div class="icon-stats">
-                    <div class="stat-item"><i class="fas fa-paper-plane"></i><span id="count-post">0</span><span class="stat-label">โพสต์</span></div>
-                    <div class="stat-item"><i class="fas fa-check-double"></i><span id="count-job">0</span><span class="stat-label">สำเร็จ</span></div>
-                    <div class="stat-item"><i class="fas fa-star" style="color: #f1c40f;"></i><span id="count-rating">5.0</span><span class="stat-label">เรตติ้ง</span></div>
+            <div id="zone-info-box" style="margin-top: 15px; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 15px; display: flex; align-items: center; gap: 12px; text-align: left;">
+                <i class="fas fa-map-marker-alt" style="color: var(--primary); font-size: 1.5em;"></i>
+                <div>
+                    <div id="display-zone-name" style="font-weight: bold; font-size: 0.9em;">กำลังโหลดโซน...</div>
+                    <div id="display-zone-admin" style="font-size: 0.7em; color: #666;">เจ้าของโซน: -</div>
                 </div>
-            </div>
-
-            <div class="zone-info-box">
-                <div style="background: #e8f5e9; color: #11998e; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-map-marker-alt"></i></div>
-                <div style="flex: 1; text-align: left;">
-                    <div style="font-size: 0.7em; color: #999;">พื้นที่ปัจจุบัน</div>
-                    <div id="display-zone-name" style="font-weight: bold; font-size: 0.9em;">กำลังโหลด...</div>
-                    <div style="font-size: 0.75em; color: #666;"><i class="fas fa-user-shield" style="color:#f1c40f;"></i> <span id="display-zone-admin">รอการเชื่อมต่อ</span></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="view-kyc" class="view-section">
-            <div class="profile-main" style="text-align: left;">
-                <h3 style="margin-top:0;">ข้อมูลยืนยันตัวตน</h3>
-                <label style="font-size: 0.8em; font-weight: bold;">ชื่อ-นามสกุล:</label>
-                <input type="text" id="full-name" class="upload-box" style="width:100%; text-align:left; border-style:solid; margin-bottom:10px;" placeholder="ระบุชื่อจริง...">
-                
-                <label style="font-size: 0.8em; font-weight: bold;">เบอร์โทรศัพท์:</label>
-                <input type="tel" id="phone-number" class="upload-box" style="width:100%; text-align:left; border-style:solid; margin-bottom:10px;" placeholder="08x-xxx-xxxx">
-
-                <div class="upload-grid">
-                    <div class="upload-box" onclick="this.querySelector('input').click()">
-                        <i class="fas fa-camera"></i><p>หน้าบัตรประชาชน</p>
-                        <input type="file" hidden onchange="previewImg(this)">
-                    </div>
-                    <div class="upload-box" onclick="this.querySelector('input').click()">
-                        <i class="fas fa-user-check"></i><p>รูปถือคู่กับบัตร</p>
-                        <input type="file" hidden onchange="previewImg(this)">
-                    </div>
-                </div>
-                <button id="btn-kyc-submit" class="btn-submit" disabled>ส่งข้อมูลยืนยัน</button>
-            </div>
-        </section>
-
-        <section id="view-history" class="view-section">
-            <div class="profile-main"><p style="color:#999;">ยังไม่มีประวัติธุรกรรม</p></div>
-        </section>
-        
-        <section id="view-settings" class="view-section">
-            <div class="profile-main">
-                <p>อีเมล: <span id="display-email">ยังไม่ระบุ</span></p>
-                <button class="btn-active" style="padding:10px 20px; border:none; border-radius:10px; color:white;">แก้ไขข้อมูล</button>
-            </div>
-        </section>
-    </div>
-
-    <div id="topup-request-modal" class="modal">
-        <div class="modal-content">
-            <h3 style="margin-top:0;">เติมเงิน USD</h3>
-            <input type="number" id="request-amount-input" placeholder="0.00" style="width:100%; padding:15px; font-size:1.5em; text-align:center; border:1px solid #eee; border-radius:10px;">
-            <div style="display: flex; gap: 10px; margin-top:20px;">
-                <button onclick="closeRequestTopup()" style="flex:1; padding:10px; border:none; border-radius:8px;">ยกเลิก</button>
-                <button onclick="submitTopupRequest()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:8px;">ส่งคำขอ</button>
             </div>
         </div>
+    </section>
+
+    <section id="view-kyc" class="view-section">
+        <div class="profile-main" style="text-align: left;">
+            <h3 style="margin-top:0;">ยืนยันตัวตน</h3>
+            <label>ชื่อ-นามสกุล:</label>
+            <input type="text" id="full-name" style="width:100%; padding:10px; margin-bottom:10px;">
+            <button class="btn-active" style="width:100%; padding:12px; border:none; border-radius:10px; color:white;">ส่งข้อมูล</button>
+        </div>
+    </section>
+
+    <section id="view-history" class="view-section">
+        <div class="profile-main">
+            <p style="color:#999;">ยังไม่มีประวัติธุรกรรม</p>
+        </div>
+    </section>
+</div>
+
+<div id="topup-request-modal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0;">เติมเงิน</h3>
+        <input type="number" id="request-amount-input" placeholder="0.00" style="width:100%; padding:10px;">
+        <button onclick="submitTopupRequest()" style="width:100%; margin-top:10px; padding:10px; background:var(--primary); color:white; border:none; border-radius:8px;">ส่งคำขอ</button>
+        <button onclick="closeRequestTopup()" style="width:100%; margin-top:5px; background:none; border:none; color:#999;">ยกเลิก</button>
     </div>
+</div>
 
-    <script>
-        // --- ระบบสลับหน้าจอ (SPA Logic) ---
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            const overlay = document.getElementById('overlay');
-            overlay.style.display = (overlay.style.display === 'block') ? 'none' : 'block';
-        }
+<script>
+    // --- ระบบ Sidebar ---
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.toggle('active');
+        overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+    }
 
-        function switchView(viewId, title) {
-            // ปิด Sidebar
-            toggleSidebar();
-            
-            // สลับ Class Active
-            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-            document.getElementById('view-' + viewId).classList.add('active');
-            
-            // สลับ Menu Active
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            
-            // เปลี่ยนหัวข้อบน Header
-            document.getElementById('view-title').innerText = title;
-        }
+    // --- ระบบสลับหน้า (สำคัญ!) ---
+    function switchView(viewId, title) {
+        // ซ่อนทุกหน้า
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        // แสดงหน้าที่เลือก
+        document.getElementById('view-' + viewId).classList.add('active');
+        // เปลี่ยนชื่อหัวข้อ
+        document.getElementById('header-title').innerText = title;
+        // เปลี่ยนสถานะเมนูใน Sidebar
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        // ปิด Sidebar
+        toggleSidebar();
+    }
 
-        // --- รักษา Logic เดิมของคุณไว้ทั้งหมด ---
-        window.onload = async () => {
-            const myName = localStorage.getItem('myUsername');
-            if (!myName) { window.location.href = 'index.html'; return; }
+    // --- โหลดข้อมูล ---
+    window.onload = async () => {
+        const myName = localStorage.getItem('myUsername') || 'Guest';
+        document.getElementById('display-name').innerText = myName;
+        document.getElementById('sidebar-user-name').innerText = myName;
 
-            document.getElementById('display-name').innerText = myName;
-            document.getElementById('sidebar-name').innerText = myName;
+        try {
+            const savedLoc = localStorage.getItem('userPrimaryLocation');
+            let locationParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
+            const res = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
+            const data = await res.json();
 
-            try {
-                const savedLoc = localStorage.getItem('userPrimaryLocation');
-                let locationParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
+            if (!data.error) {
+                document.getElementById('count-post').innerText = data.totalPosts || 0;
+                document.getElementById('count-job').innerText = data.completedJobs || 0;
+                document.getElementById('count-rating').innerText = (data.rating || 5).toFixed(1);
+                document.getElementById('display-balance-usd').innerText = (data.coins || 0).toFixed(2) + " USD";
+                document.getElementById('display-zone-name').innerText = data.zoneName || "นอกพื้นที่";
+                document.getElementById('display-zone-admin').innerText = "เจ้าของโซน: " + (data.zoneOwner || "-");
+            }
+        } catch (e) { console.error(e); }
+    };
 
-                const res = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
-                const data = await res.json();
-
-                if (!data.error) {
-                    document.getElementById('count-post').innerText = data.totalPosts || 0;
-                    document.getElementById('count-job').innerText = data.completedJobs || 0;
-                    document.getElementById('count-rating').innerText = (data.rating || 5.0).toFixed(1);
-                    document.getElementById('display-balance-usd').innerText = `${(data.coins || 0).toFixed(2)} USD`;
-                    document.getElementById('display-balance-thb').innerText = `(${(data.coins * 34).toFixed(2)} THB)`;
-                    document.getElementById('display-zone-name').innerText = data.zoneName || "นอกพื้นที่";
-                    document.getElementById('display-zone-admin').innerText = data.zoneOwner || "ไม่มี";
-                    document.getElementById('display-email').innerText = data.email || "ยังไม่ระบุ";
-                }
-            } catch (err) { console.error(err); }
-        };
-
-        // ฟังก์ชันเสริมอื่นๆ คงเดิม
-        function openRequestTopup() { document.getElementById('topup-request-modal').style.display = 'flex'; }
-        function closeRequestTopup() { document.getElementById('topup-request-modal').style.display = 'none'; }
-        function previewImg(input) { if (input.files && input.files[0]) { input.parentElement.style.background = "#e8f5e9"; input.parentElement.querySelector('p').innerText = "เลือกแล้ว ✅"; } }
-        function logout() { if(confirm('ออกจากระบบ?')) { localStorage.clear(); window.location.href = 'index.html'; } }
-    </script>
+    function openRequestTopup() { document.getElementById('topup-request-modal').style.display = 'block'; }
+    function closeRequestTopup() { document.getElementById('topup-request-modal').style.display = 'none'; }
+    function logout() { if(confirm('ออกจากระบบ?')) { localStorage.clear(); window.location.href = 'index.html'; } }
+</script>
 </body>
 </html>
