@@ -737,6 +737,9 @@ app.get('/api/profile-details', async (req, res) => {
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
+				console.log("======= DEBUG ZONE DATA =======");
+                console.log(JSON.stringify(zoneInfo.zoneData, null, 2)); // พ่นข้อมูลออกมาเป็น JSON สวยๆ
+                console.log("===============================");
                 // ดึงชื่อโซนและชื่อแอดมินจากข้อมูลโซนที่คุณมี
                 zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
                 zoneOwner = zoneInfo.zoneData.adminUsername || "Admin"; 
