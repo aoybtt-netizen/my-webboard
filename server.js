@@ -231,6 +231,18 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 
+
+//===============admin
+app.get('/api/admin/pending-counts', async (req, res) => {
+    const { admin } = req.query;
+    // ค้นหาคำขอที่สถานะเป็น 'pending' และอยู่ในโซนของแอดมินคนนี้
+    const topupCount = await db.collection('topup_requests').countDocuments({ adminId: admin, status: 'pending' });
+    const kycCount = await db.collection('kyc_requests').countDocuments({ adminId: admin, status: 'pending' });
+    
+    res.json({ topupCount, kycCount });
+});
+
+
 // ==========================================
 // Helper Functions for MongoDB
 // ==========================================
