@@ -2348,68 +2348,78 @@ function getTransactionDetail(t) {
         }
         
         async function openMemberLedger(page = 1) {
-            document.getElementById('user-list-modal').classList.remove('hidden');
-            document.getElementById('user-list-title').innerText = translations[currentLang]['member_tx_title'];
-            document.getElementById('user-list-desc').innerText = translations[currentLang]['member_tx_desc'];
-            
-            localStorage.setItem(`hasNewTransaction_${myUsername}`, 'false');
-            document.getElementById('coin-notif-dot').classList.add('hidden'); 
-            
-            const container = document.getElementById('user-list-container');
-            container.innerHTML = "กำลังโหลด...";
-            
-            document.getElementById('user-search-input').style.display = 'none';
-            document.getElementById('pagination-controls').style.display = 'none';
+    document.getElementById('user-list-modal').classList.remove('hidden');
+    document.getElementById('user-list-title').innerText = translations[currentLang]['member_tx_title'];
+    document.getElementById('user-list-desc').innerText = translations[currentLang]['member_tx_desc'];
+    
+    localStorage.setItem(`hasNewTransaction_${myUsername}`, 'false');
+    document.getElementById('coin-notif-dot').classList.add('hidden'); 
+    
+    const container = document.getElementById('user-list-container');
+    container.innerHTML = "กำลังโหลด...";
+    
+    document.getElementById('user-search-input').style.display = 'none';
+    document.getElementById('pagination-controls').style.display = 'none';
 
-            const res = await fetch(`/api/member/transactions?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
-            
-            if(res.status !== 200) {
-                container.innerHTML = "<p style='color:red;'>ไม่สามารถโหลดประวัติได้</p>";
-                return;
-            }
-            
-            const data = await res.json();
-            const transactions = data.transactions;
+    const res = await fetch(`/api/member/transactions?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
+    
+    if(res.status !== 200) {
+        container.innerHTML = "<p style='color:red;'>ไม่สามารถโหลดประวัติได้</p>";
+        return;
+    }
+    
+    const data = await res.json();
+    const transactions = data.transactions;
 
-            if (transactions.length === 0 && data.currentPage > 1) {
-                return openMemberLedger(1);
-            } else if (transactions.length === 0) {
-                container.innerHTML = "<p style='text-align:center;color:gray;margin-top:20px;'>ไม่มีประวัติธุรกรรม</p>";
-                updatePaginationUI(data, 'memberTx');
-                return;
-            }
+    // --- [เพิ่มส่วนปุ่มเติมเงินตรงนี้] ---
+    const topUpBtnHtml = `
+        <div style="padding: 10px 0; margin-bottom: 10px; border-bottom: 2px solid #f0f0f0;">
+            <button onclick="window.location.href='usergedgo.html'" 
+                    style="width: 100%; padding: 12px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 10px rgba(17,153,142,0.2);">
+                <i class="fas fa-plus-circle"></i> ${translations[currentLang]['btn_topup'] || 'เติมเงิน / จัดการบัญชี'}
+            </button>
+        </div>
+    `;
 
-            container.innerHTML = transactions.map(t => {
-                const isIncome = t.toUser === myUsername; 
-                const typeText = isIncome 
-                    ? `✅ ${translations[currentLang]['tx_received']}`
-                    : `❌ ${translations[currentLang]['tx_paid']}`;
-                const styleClass = isIncome ? 'tx-plus' : 'tx-minus';
-                const amountSign = isIncome ? '+' : '-';
-                
-                const detail = getTransactionDetail(t);
+    if (transactions.length === 0 && data.currentPage > 1) {
+        return openMemberLedger(1);
+    } else if (transactions.length === 0) {
+        container.innerHTML = topUpBtnHtml + "<p style='text-align:center;color:gray;margin-top:20px;'>ไม่มีประวัติธุรกรรม</p>";
+        updatePaginationUI(data, 'memberTx');
+        return;
+    }
 
-                const relatedUser = isIncome ? t.fromUser : t.toUser;
-                const fromToPrefix = isIncome 
-                    ? translations[currentLang]['tx_from'] 
-                    : translations[currentLang]['tx_to'];
+    // รวมปุ่มเติมเงินเข้ากับรายการธุรกรรม
+    container.innerHTML = topUpBtnHtml + transactions.map(t => {
+        const isIncome = t.toUser === myUsername; 
+        const typeText = isIncome 
+            ? `✅ ${translations[currentLang]['tx_received']}`
+            : `❌ ${translations[currentLang]['tx_paid']}`;
+        const styleClass = isIncome ? 'tx-plus' : 'tx-minus';
+        const amountSign = isIncome ? '+' : '-';
+        
+        const detail = getTransactionDetail(t);
+        const relatedUser = isIncome ? t.fromUser : t.toUser;
+        const fromToPrefix = isIncome 
+            ? translations[currentLang]['tx_from'] 
+            : translations[currentLang]['tx_to'];
 
-                return `
-                    <div class="transaction-item" style="border-left: 5px solid ${isIncome ? '#28a745' : '#dc3545'}; margin-bottom:5px;">
-                        <div>
-                            <strong>${typeText}</strong> ${detail}<br>
-                            <small style="color:gray;">${new Date(t.timestamp).toLocaleString()} | ${fromToPrefix}: ${relatedUser}</small>
-                        </div>
-                        <span class="${styleClass}">${amountSign}${t.amount} USD</span>
-                    </div>
-                `;
-            }).join('');
-            
-            updatePaginationUI(data, 'memberTx');
-            memberTxPage = data.currentPage;
-			document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
-            document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
-        }
+        return `
+            <div class="transaction-item" style="border-left: 5px solid ${isIncome ? '#28a745' : '#dc3545'}; margin-bottom:5px;">
+                <div>
+                    <strong>${typeText}</strong> ${detail}<br>
+                    <small style="color:gray;">${new Date(t.timestamp).toLocaleString()} | ${fromToPrefix}: ${relatedUser}</small>
+                </div>
+                <span class="${styleClass}">${amountSign}${(t.amount || 0).toFixed(2)} USD</span>
+            </div>
+        `;
+    }).join('');
+    
+    updatePaginationUI(data, 'memberTx');
+    memberTxPage = data.currentPage;
+    document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
+    document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
+}
 
         function contactAdmin() {
             if (myUsername === 'Admin') openTransactionModal(); 
