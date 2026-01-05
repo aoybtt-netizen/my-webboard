@@ -135,13 +135,61 @@
     padding: 5px;
 }
 
+
+
+.merchant-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px; /* ซ่อนไว้ฝั่งซ้าย */
+    width: 280px;
+    height: 100%;
+    background: white;
+    z-index: 7000;
+    transition: 0.3s;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+.merchant-sidebar.active {
+    left: 0;
+}
+.sidebar-header {
+    background: #11998e;
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sidebar-menu {
+    padding: 10px;
+}
+.menu-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 1.05em;
+}
+.menu-item:hover {
+    background: #f9f9f9;
+    color: #11998e;
+}
+.sidebar-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 6500;
+}
+
     </style>
 </head>
 <body>
 
 <div class="header">
 
-	<div class="menu-btn" onclick="toggleSidebar()">
+	<div class="merchant-sidebar" onclick="toggleSidebar()">
     <i class="fas fa-bars"></i>
 </div>
 </div>
