@@ -232,44 +232,33 @@
     document.getElementById('display-name').innerText = myName;
 
     try {
-        // 1. ดึงพิกัดที่เคยบันทึกไว้จาก LocalStorage (ที่เซฟมาจาก index.html)
         const savedLoc = localStorage.getItem('userPrimaryLocation');
-        let locationQuery = '';
-        
-        if (savedLoc) {
-            // เตรียมส่งพิกัดไปให้ API เพื่อให้ API ไปหาชื่อโซนและเจ้าของโซนมาให้
-            locationQuery = `&location=${encodeURIComponent(savedLoc)}`;
-        }
+        let locationParam = '';
+        if (savedLoc) locationParam = `&location=${encodeURIComponent(savedLoc)}`;
 
-        // 2. เรียก API ดึงข้อมูล User (ส่งพิกัดไปด้วยเพื่อให้ Server รู้ว่าอยู่โซนไหน)
-        const res = await fetch(`/api/user-info?username=${myName}${locationQuery}`);
+        // เรียก API ตัวใหม่ที่เราเพิ่งสร้าง
+        const res = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
         const data = await res.json();
 
         if (data.error) throw new Error(data.error);
 
-        // 3. อัปเดตยอดเงินและสถิติ
+        // 1. อัปเดตยอดเงินและสถิติ (ใช้ || 0 ป้องกัน Error .toFixed)
         document.getElementById('count-post').innerText = data.totalPosts || 0;
         document.getElementById('count-job').innerText = data.completedJobs || 0;
-        document.getElementById('display-balance-usd').innerText = `${(data.coins || 0).toFixed(2)} USD`;
-        document.getElementById('display-balance-thb').innerText = `(${(data.convertedCoins || 0).toLocaleString()} ${data.currencySymbol || 'THB'})`;
+        
+        const usdAmount = data.coins || 0;
+        document.getElementById('display-balance-usd').innerText = `${usdAmount.toFixed(2)} USD`;
+        
+        // 2. แสดงข้อมูลโซนและเจ้าของโซน
+        document.getElementById('display-zone-name').innerText = data.zoneName;
+        document.getElementById('display-zone-admin').innerText = data.zoneOwner;
 
-        // 4. [ส่วนสำคัญ] อัปเดตข้อมูลโซนและเจ้าของโซน
-        const zoneNameEl = document.getElementById('display-zone-name');
-        const zoneAdminEl = document.getElementById('display-zone-admin');
-
-        // ตรวจสอบว่า Server ส่งข้อมูลโซนกลับมาไหม
-        if (data.zoneName) {
-            zoneNameEl.innerText = data.zoneName; // เช่น "โซนกรุงเทพฯ"
-            zoneAdminEl.innerText = data.zoneOwner || "ไม่มีผู้ดูแล"; // เช่น "Admin_John"
-        } else {
-            // ถ้าพิกัดไม่อยู่ในโซนที่ตั้งไว้ หรือยังไม่ได้กดยืนยันตำแหน่ง
-            zoneNameEl.innerText = "อยู่นอกพื้นที่บริการ";
-            zoneAdminEl.innerText = "โปรดระบุตำแหน่งที่หน้าแรก";
-        }
+        // 3. แสดงอีเมล
+        document.getElementById('display-email').innerText = data.email;
 
     } catch (err) {
-        console.error("Fetch User Info Error:", err);
-        document.getElementById('display-zone-name').innerText = "โหลดข้อมูลล้มเหลว";
+        console.error("Load Profile Error:", err);
+        document.getElementById('display-zone-name').innerText = "ข้อมูลไม่พร้อมใช้งาน";
     }
 
     checkProximity();
