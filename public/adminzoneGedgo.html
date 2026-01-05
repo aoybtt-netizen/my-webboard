@@ -160,10 +160,32 @@
             }
         }
 
-        window.onload = () => {
-            document.getElementById('admin-name').innerText = localStorage.getItem('myUsername') || 'Admin';
-            showContent('topup'); // เริ่มต้นที่หน้าคำขอเติมเงิน
-        };
+    window.onload = async () => {
+    const myUsername = localStorage.getItem('myUsername');
+    if (!myUsername) { window.location.href = 'index.html'; return; }
+
+    document.getElementById('admin-name').innerText = myUsername;
+
+    // เรียกดึงจำนวนคำขอที่ค้างอยู่มาโชว์ที่ Badge (จุดแดง)
+    updateBadges();
+    
+    // เริ่มต้นที่หน้าคำขอเติมเงิน
+    showContent('topup'); 
+};
+
+
+
+	async function updateBadges() {
+    const myUsername = localStorage.getItem('myUsername');
+    const res = await fetch(`/api/admin/pending-counts?admin=${myUsername}`);
+    const data = await res.json();
+    
+    // อัปเดตตัวเลขแจ้งเตือนบนเมนู
+    document.getElementById('topup-count').innerText = data.topupCount || 0;
+    document.getElementById('kyc-count').innerText = data.kycCount || 0;
+}
+
+
     </script>
 </body>
 </html>
