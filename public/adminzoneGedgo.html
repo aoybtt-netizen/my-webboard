@@ -161,6 +161,8 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     // --- ส่วนจัดการเนื้อหา ---
 
     if (type === 'topup') {
+		updateBadges();
+		loadTopupRequests();
         title.innerText = 'รายการคำขอเติมเงิน';
         display.innerHTML = ''; 
         display.appendChild(topupListSec);
@@ -170,8 +172,6 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         topupListSec.style.display = 'block';
         
         document.getElementById('topup-list-container').innerHTML = 'กำลังโหลด...';
-        loadTopupRequests(); 
-
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
         display.innerHTML = '<p style="text-align:center; color:#999;">กำลังดึงข้อมูลจากเซิร์ฟเวอร์...</p>';
