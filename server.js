@@ -71,7 +71,6 @@ const uploadSlip = multer({ storage: slipStorage });
 
 //ส่วนลบรูปภาพอัตโนมัติ2เดือน
 const cron = require('node-cron');
-const cloudinary = require('cloudinary').v2;
 
 
 
