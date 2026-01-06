@@ -149,11 +149,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
     
-    // 1. ดึง Element ส่วนรายการและแชทมาเตรียมไว้
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
 
-    // ลบสีเขียว (active) ออกจากทุกเมนูก่อน
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     let targetItem = window.event?.currentTarget || document.querySelector(`.menu-item[onclick*="'${type}'"]`);
     if (targetItem) targetItem.classList.add('active');
@@ -162,47 +160,114 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
-        
-        // ✅ เคลียร์หน้าจอหลักก่อนเพื่อให้เหลือแค่โครงสร้าง Section
         display.innerHTML = ''; 
-        // ✅ ใส่ Section กลับคืนไป (กรณีที่โดน automessage ล้างทิ้ง)
         display.appendChild(topupListSec);
         display.appendChild(adminChatSec);
 
         adminChatSec.style.display = 'none';
         topupListSec.style.display = 'block';
         
-        // เคลียร์ด้านใน container ก่อนโหลดใหม่ป้องกันการ์ดซ้อน
         document.getElementById('topup-list-container').innerHTML = 'กำลังโหลด...';
         loadTopupRequests(); 
 
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
-        
-        // ✅ ล้างทุกอย่างใน display ทิ้ง (รวมถึงพวก section topup ด้วย) 
-        // เพื่อให้ฟอร์มตั้งค่าแสดงผลอันเดียวเพียวๆ
         display.innerHTML = '<p style="text-align:center; color:#999;">กำลังดึงข้อมูลจากเซิร์ฟเวอร์...</p>';
 
         try {
             const adminName = localStorage.getItem('myUsername');
             const res = await fetch(`/api/admin/get-settings?admin=${adminName}`);
             const settings = await res.json();
-            
-            // ✅ วาดฟอร์มทับลงไปเลย
             display.innerHTML = renderAutoMessageForm(settings.bankInfo, settings.desc);
         } catch (e) {
             display.innerHTML = renderAutoMessageForm();
         }
 
+    } else if (type === 'history') {
+        title.innerText = 'ประวัติธุรกรรมในโซน';
+        display.innerHTML = `
+            <div id="admin-history-container" style="padding: 10px;">
+                <p style="text-align:center; color:#999;">กำลังโหลดประวัติ...</p>
+            </div>
+        `;
+        loadAdminHistory(); 
+
     } else {
-        // ส่วนอื่นๆ kyc หรือ history
-        title.innerText = type === 'kyc' ? 'ตรวจสอบการยืนยันตัวตน' : 'ประวัติธุรกรรมในโซน';
+        title.innerText = type === 'kyc' ? 'ตรวจสอบการยืนยันตัวตน' : 'หน้าใหม่';
         display.innerHTML = `<p style="text-align:center; color:#999; margin-top:50px;">กำลังพัฒนาส่วนนี้...</p>`;
     }
 
     if(window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('active')) {
         toggleSidebar();
     }
+}
+
+
+async function loadAdminHistory() {
+    const adminName = localStorage.getItem('myUsername');
+    const container = document.getElementById('admin-history-container');
+    if (!container) return;
+
+    try {
+        const res = await fetch(`/api/admin/topup-history?admin=${adminName}`);
+        const history = await res.json();
+
+        if (history.length === 0) {
+            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-history fa-3x"></i><p>ยังไม่มีประวัติการจัดการ</p></div>';
+            return;
+        }
+
+        container.innerHTML = history.map(item => `
+            <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
+                <div>
+                    <strong>User: ${item.username}</strong><br>
+                    <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
+                        ${item.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'}: ${item.amount.toFixed(2)} USD
+                    </span>
+                </div>
+                <div style="text-align:right;">
+                    <small style="color:#999;">${new Date(item.processedAt).toLocaleString('th-TH')}</small><br>
+                    <i class="fas fa-chevron-right" style="color:#eee;"></i>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
+    }
+}
+
+
+async function viewArchivedAdminChat(requestId, username, amount, status) {
+    currentChatRequestId = requestId;
+    // ไม่ต้อง joinRequest เพราะเป็นแชทเก่าที่จบแล้ว ไม่มีการเรียลไทม์
+
+    const display = document.getElementById('main-display');
+    display.innerHTML = `
+        <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
+            
+            <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px;">
+                <button onclick="showContent('history')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div>
+                    <h4 style="margin:0;">ประวัติ: ${username}</h4>
+                    <small style="color:${status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
+                        สถานะ: ${status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'} (${amount.toFixed(2)} USD)
+                    </small>
+                </div>
+            </div>
+
+            <div id="chat-box" style="flex: 1; padding: 20px; background: #f1f5f9; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                </div>
+
+            <div style="padding: 15px; background: #fff; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 0.9em;">
+                <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้วเมื่อ ${new Date().toLocaleDateString('th-TH')}
+            </div>
+        </div>
+    `;
+
+    // โหลดประวัติแชทจริงจาก DB
+    await loadAdminChatHistory(requestId);
 }
 
 
@@ -462,9 +527,23 @@ async function openFullChat(requestId, username, amount) {
 
 
 //2.1
-async function processAction(status, username, amount = 0) {
+async function processAction(status, username, initialAmount = 0) {
+    let finalAmount = initialAmount;
     const actionName = status === 'approved' ? 'อนุมัติการเติมเงิน' : 'ยกเลิกคำขอ';
-    if (!confirm(`คุณต้องการ ${actionName} ให้คุณ ${username} ใช่หรือไม่?`)) return;
+
+    // ถ้าแอดมินกดอนุมัติ ให้เด้งถามยอดเงินอีกครั้ง (เผื่อแก้ไข)
+    if (status === 'approved') {
+        const inputAmount = prompt(`ยืนยันยอดเงินที่จะเติมให้คุณ ${username} (USD):`, initialAmount);
+        if (inputAmount === null) return; // กดยกเลิก Prompt
+        finalAmount = parseFloat(inputAmount);
+        
+        if (isNaN(finalAmount) || finalAmount <= 0) {
+            alert("กรุณาใส่จำนวนเงินที่ถูกต้อง");
+            return;
+        }
+    } else {
+        if (!confirm(`คุณต้องการ ${actionName} ให้คุณ ${username} ใช่หรือไม่?`)) return;
+    }
 
     try {
         const res = await fetch('/api/admin/process-topup', {
@@ -473,6 +552,7 @@ async function processAction(status, username, amount = 0) {
             body: JSON.stringify({ 
                 requestId: currentChatRequestId, 
                 status: status,
+                finalAmount: finalAmount, // ส่งยอดที่ตรวจสอบแล้วไป
                 adminName: localStorage.getItem('myUsername')
             })
         });
@@ -481,9 +561,21 @@ async function processAction(status, username, amount = 0) {
 
         if (res.ok) {
             alert(data.message);
-            // แจ้งเตือน Real-time ให้ User
+
+            // 1. แจ้งเปลี่ยนสถานะเพื่อให้หน้าจอ User สลับกลับ
             socket.emit('statusChanged', { requestId: currentChatRequestId, status: status });
-            // กลับหน้าหลัก (การ์ดจะหายไปเองเพราะสถานะเปลี่ยนแล้ว)
+
+            // 2. ส่งข้อความระบบเข้าแชท (System Message)
+            const sysMsg = {
+                requestId: currentChatRequestId,
+                sender: 'System',
+                message: status === 'approved' 
+                    ? `✅ รายการได้รับอนุมัติแล้ว จำนวน ${finalAmount.toFixed(2)} USD` 
+                    : `❌ รายการถูกปฏิเสธโดยแอดมิน`,
+                type: 'system'
+            };
+            socket.emit('sendMessage', sysMsg);
+
             showContent('topup');
             updateBadges();
         } else {
@@ -561,6 +653,17 @@ function appendAdminChatMessage(msg) {
     } else {
         contentHTML = `<p style="margin: 0; line-height: 1.5;">${msg.message}</p>`;
     }
+	
+	if (msg.type === 'system') {
+    const sysHTML = `
+        <div style="align-self: center; margin: 15px 0; background: #fff4e5; color: #663c00; padding: 8px 20px; border-radius: 20px; font-size: 0.85em; font-weight: bold; border: 1px solid #ffe7cc;">
+            ${msg.message}
+        </div>
+    `;
+    chatContainer.innerHTML += sysHTML; // chatContainer คือไอดีของกล่องแชทแต่ละหน้า
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return; // จบการทำงานของฟังก์ชันสำหรับข้อความประเภทนี้
+}
 
     const msgHTML = `
         <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 12px;">

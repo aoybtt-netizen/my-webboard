@@ -3260,6 +3260,24 @@ app.get('/api/topup/status', async (req, res) => {
     }
 });
 
+// 1.3 API สำหรับดึงประวัติการเติมเงินของสมาชิก (Approved / Rejected)
+app.get('/api/topup/history', async (req, res) => {
+    try {
+        const { username } = req.query;
+        if (!username) return res.status(400).send("Missing username");
+
+        // ค้นหาคำขอที่สถานะไม่ใช่ pending และเรียงจากใหม่ไปเก่า
+        const history = await topupRequestsCollection
+            .find({ username: username, status: { $ne: 'pending' } })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json(history);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ==========================================
 // [SECTION] สำหรับฝั่ง ADMIN (เจ้าของโซน)
 // ==========================================
@@ -3312,10 +3330,9 @@ app.get('/api/admin/topup-list', async (req, res) => {
 // --- API สำหรับแอดมินจัดการคำขอเติมเงิน (อนุมัติ/ปฏิเสธ) ---
 app.post('/api/admin/process-topup', async (req, res) => {
     try {
-        const { requestId, status, adminName } = req.body;
+        const { requestId, status, adminName, finalAmount } = req.body;
 
         if (status !== 'approved') {
-            // กรณี 'rejected' (ปฏิเสธ) ให้เปลี่ยนสถานะอย่างเดียว ไม่ต้องเช็คเงิน
             await topupRequestsCollection.updateOne(
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
@@ -3324,53 +3341,61 @@ app.post('/api/admin/process-topup', async (req, res) => {
         }
 
         // --- กรณี 'approved' (อนุมัติ) ---
-
-        // 1. ดึงข้อมูลคำขอเติมเงิน
         const topupReq = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
         if (!topupReq || topupReq.status !== 'pending') {
             return res.status(400).json({ error: "คำขอนี้ไม่พร้อมสำหรับการดำเนินการ" });
         }
 
-        const amount = parseFloat(topupReq.amount);
+        // ใช้ยอดเงินที่แอดมินกรอกมา (finalAmount)
+        const amountToProcess = parseFloat(finalAmount);
 
-        // 2. เช็คยอดเงินของแอดมินผู้ดำเนินการ
+        // เช็คเงินแอดมิน
         const adminUser = await usersCollection.findOne({ username: adminName });
-        if (!adminUser || (adminUser.coins || 0) < amount) {
+        if (!adminUser || (adminUser.coins || 0) < amountToProcess) {
             return res.status(400).json({ 
-                error: `ยอดเงินของคุณไม่เพียงพอ (ขาดอีก ${(amount - (adminUser.coins || 0)).toFixed(2)} USD)` 
+                error: `ยอดเงินของคุณไม่เพียงพอ (ขาดอีก ${(amountToProcess - (adminUser.coins || 0)).toFixed(2)} USD)` 
             });
         }
 
-        // 3. เริ่มกระบวนการโอนเงิน (หักแอดมิน - เพิ่มยูสเซอร์)
-        // หักเงินแอดมิน
-        await usersCollection.updateOne(
-            { username: adminName },
-            { $inc: { coins: -amount } } // ติดลบคือการหักออก
-        );
+        // ธุรกรรมการโอน
+        await usersCollection.updateOne({ username: adminName }, { $inc: { coins: -amountToProcess } });
+        await usersCollection.updateOne({ username: topupReq.username }, { $inc: { coins: amountToProcess } });
 
-        // เพิ่มเงินยูสเซอร์
-        await usersCollection.updateOne(
-            { username: topupReq.username },
-            { $inc: { coins: amount } }
-        );
-
-        // 4. อัปเดตสถานะคำขอ
+        // อัปเดตสถานะพร้อมบันทึกยอดเงินจริงที่โอน (actualAmount)
         await topupRequestsCollection.updateOne(
             { _id: new ObjectId(requestId) },
             { 
                 $set: { 
                     status: 'approved', 
+                    amount: amountToProcess, // อัปเดตยอดเงินตามที่โอนจริง
                     processedBy: adminName,
                     processedAt: new Date()
                 } 
             }
         );
 
-        res.json({ success: true, message: "เติมเงินสำเร็จและหักยอดเงินจากบัญชีของคุณแล้ว" });
+        res.json({ success: true, message: `อนุมัติสำเร็จ จำนวน ${amountToProcess} USD` });
 
     } catch (err) {
-        console.error("❌ Process Topup Error:", err);
         res.status(500).json({ error: "เกิดข้อผิดพลาดในการประมวลผล" });
+    }
+});
+
+// API สำหรับดึงประวัติที่แอดมินจัดการ (Approved / Rejected)
+app.get('/api/admin/topup-history', async (req, res) => {
+    try {
+        const { admin } = req.query;
+        if (!admin) return res.status(400).send("Missing admin name");
+
+        // ค้นหาคำขอที่แอดมินคนนี้เป็นคนประมวลผล (processedBy)
+        const history = await topupRequestsCollection
+            .find({ processedBy: admin, status: { $ne: 'pending' } })
+            .sort({ processedAt: -1 }) // เรียงตามเวลาที่จัดการล่าสุด
+            .toArray();
+
+        res.json(history);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 

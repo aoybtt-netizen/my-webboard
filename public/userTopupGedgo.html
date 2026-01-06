@@ -166,26 +166,34 @@
             overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
         }
 
-        function switchTab(tab) {
-            const title = document.getElementById('content-title');
-            const topupSec = document.getElementById('section-topup');
-            const historySec = document.getElementById('section-history');
-            
-            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+    function switchTab(tab) {
+    const title = document.getElementById('content-title');
+    const topupSec = document.getElementById('section-topup-form'); // ตรวจสอบ ID ให้ตรงกับ HTML
+    const historySec = document.getElementById('section-history');
+    const chatSec = document.getElementById('section-pending-chat');
 
-            if (tab === 'topup') {
-                title.innerText = 'เติมเงิน';
-                topupSec.style.display = 'block';
-                historySec.style.display = 'none';
-            } else {
-                title.innerText = 'ประวัติการเติมเงิน';
-                topupSec.style.display = 'none';
-                historySec.style.display = 'block';
-                loadHistory();
-            }
-            if (window.innerWidth <= 768) toggleSidebar();
-        }
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+    // ใช้ event.currentTarget หรือตรวจสอบตัวแปร event
+    if(event) event.currentTarget.classList.add('active');
+
+    // รีเซ็ตการซ่อน/โชว์ช่องพิมพ์แชทเสมอเมื่อเปลี่ยนแท็บ
+    const inputArea = chatSec.querySelector('div:last-child');
+    if(inputArea) inputArea.style.display = 'flex';
+
+    if (tab === 'topup') {
+        title.innerText = 'เติมเงิน';
+        historySec.style.display = 'none';
+        // เรียก checkTopupStatus เพื่อดูว่าควรโชว์ฟอร์มหรือโชว์แชทที่กำลังดำเนินการ
+        checkTopupStatus(); 
+    } else {
+        title.innerText = 'ประวัติการเติมเงิน';
+        if(topupSec) topupSec.style.display = 'none';
+        chatSec.style.display = 'none';
+        historySec.style.display = 'block';
+        loadHistory();
+    }
+    if (window.innerWidth <= 768) toggleSidebar();
+}
 
         async function processTopup() {
             const amount = document.getElementById('topup-amount').value;
@@ -195,16 +203,38 @@
             alert(`ส่งคำขอเติมเงินจำนวน ${amount} USD เรียบร้อยแล้ว!`);
         }
 
-        function loadHistory() {
-            // จำลองการโหลดประวัติ
-            const list = document.getElementById('history-list');
-            list.innerHTML = `
-                <div class="history-item">
-                    <div><b>50.00 USD</b><br><small>2024-05-20 10:30</small></div>
-                    <div class="status-pending">รอตรวจสอบ</div>
-                </div>
-            `;
+        async function loadHistory() {
+    const myName = localStorage.getItem('myUsername');
+    const list = document.getElementById('history-list');
+    list.innerHTML = '<p style="text-align: center; color: #999;">กำลังโหลดประวัติ...</p>';
+
+    try {
+        const res = await fetch(`/api/topup/history?username=${myName}`);
+        const history = await res.json();
+
+        if (history.length === 0) {
+            list.innerHTML = '<p style="text-align: center; color: #999; margin-top:20px;">ไม่พบประวัติการเติมเงิน</p>';
+            return;
         }
+
+        list.innerHTML = history.map(item => `
+            <div class="history-item" onclick="viewArchivedChat('${item._id}', ${item.amount}, '${item.status}')" style="cursor:pointer; transition: 0.2s; border-left: 5px solid ${item.status === 'approved' ? '#2ecc71' : '#e74c3c'};">
+                <div>
+                    <b style="font-size: 1.1em;">${item.amount.toFixed(2)} USD</b><br>
+                    <small style="color:#999;">${new Date(item.createdAt).toLocaleString('th-TH')}</small>
+                </div>
+                <div style="text-align:right;">
+                    <span class="status-${item.status === 'approved' ? 'success' : 'danger'}" style="font-size: 0.9em;">
+                        ${item.status === 'approved' ? 'สำเร็จ' : 'ปฏิเสธ'}
+                    </span><br>
+                    <i class="fas fa-chevron-right" style="color:#eee; font-size: 0.8em;"></i>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        list.innerHTML = '<p style="text-align: center; color: red;">โหลดข้อมูลล้มเหลว</p>';
+    }
+}
 
     window.onload = async () => {
     const myName = localStorage.getItem('myUsername');
@@ -355,6 +385,17 @@ function appendMessage(msg) { // หรือ appendAdminChatMessage(msg)
     } else {
         contentHTML = `<p style="margin: 0; line-height: 1.5;">${msg.message}</p>`;
     }
+	
+	if (msg.type === 'system') {
+    const sysHTML = `
+        <div style="align-self: center; margin: 15px 0; background: #fff4e5; color: #663c00; padding: 8px 20px; border-radius: 20px; font-size: 0.85em; font-weight: bold; border: 1px solid #ffe7cc;">
+            ${msg.message}
+        </div>
+    `;
+    chatContainer.innerHTML += sysHTML; // chatContainer คือไอดีของกล่องแชทแต่ละหน้า
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return; // จบการทำงานของฟังก์ชันสำหรับข้อความประเภทนี้
+}
 
     const msgHTML = `
         <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 12px;">
@@ -492,6 +533,43 @@ async function compressImage(file, { maxWidth = 1024, quality = 0.7 }) {
         };
         reader.onerror = (error) => reject(error);
     });
+}
+
+async function viewArchivedChat(requestId, amount, status) {
+    currentRequestId = requestId; // กำหนด ID เพื่อให้ loadChatHistory รู้ว่าจะดึงห้องไหน
+    const titleElem = document.getElementById('content-title');
+    const historySec = document.getElementById('section-history');
+    const chatSec = document.getElementById('section-pending-chat');
+    
+    // 1. สลับหน้าจอ
+    titleElem.innerText = "รายละเอียดธุรกรรม";
+    historySec.style.display = 'none';
+    chatSec.style.display = 'flex';
+
+    // 2. ซ่อนช่องพิมพ์แชท (เพราะเป็นประวัติย้อนหลัง แก้ไขไม่ได้แล้ว)
+    const inputArea = chatSec.querySelector('div:last-child'); 
+    if(inputArea) inputArea.style.display = 'none';
+
+    // 3. ปรับเปลี่ยนส่วนหัวแชทให้โชว์สรุปรายการ
+    const headerWrapper = document.getElementById('admin-auto-reply-wrapper');
+    headerWrapper.innerHTML = `
+        <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'};">
+            <div style="text-align: center;">
+                <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
+                <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
+                    รายการนี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
+                </div>
+                <div style="font-size: 0.9em; color: #666;">ยอดเงิน: ${amount.toFixed(2)} USD</div>
+            </div>
+            <button onclick="switchTab('history')" style="width:100%; margin-top:10px; border:none; background:rgba(0,0,0,0.05); padding: 8px; border-radius: 8px; cursor:pointer; font-size: 0.8em;">
+                <i class="fas fa-arrow-left"></i> กลับไปหน้าประวัติ
+            </button>
+        </div>
+    `;
+
+    // 4. ล้างข้อความแชทเก่าที่อาจค้างในจอ แล้วโหลดประวัติแชทจริงจาก DB
+    document.getElementById('realtime-chats').innerHTML = '';
+    await loadChatHistory(requestId);
 }
 
 
