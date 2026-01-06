@@ -73,35 +73,34 @@
             <div>
                 ยอดเงินปัจจุบัน: <b id="current-balance">0.00</b> USD
             </div>
-			
-			<div id="zone-info-display" style="margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 12px; display: flex; align-items: center; gap: 12px; text-align: left;">
-    <div style="background: #e8f5e9; color: var(--primary); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-        <i class="fas fa-map-marker-alt"></i>
-    </div>
-    <div style="flex: 1;">
-        <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.9em;">กำลังโหลด...</div>
-        <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
-            <i class="fas fa-user-shield" style="color: #f1c40f;"></i> ผู้ดูแล: 
-            <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);">รอการเชื่อมต่อ</span>
-        </div>
-    </div>
-</div>
-
         </header>
 
+        <div class="container" style="padding-bottom: 0;">
+            <div id="zone-info-display" style="margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 12px; display: flex; align-items: center; gap: 12px; text-align: left;">
+                <div style="background: #e8f5e9; color: var(--primary); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <div style="flex: 1;">
+                    <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.9em;">กำลังโหลด...</div>
+                    <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
+                        <i class="fas fa-user-shield" style="color: #f1c40f;"></i> ผู้ดูแล: 
+                        <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);">รอการเชื่อมต่อ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="content-body" id="main-display">
-            <div id="section-topup">
+            
+            <div id="section-topup-form">
                 <div class="topup-card">
                     <div style="font-size: 50px; color: var(--primary);"><i class="fas fa-wallet"></i></div>
                     <h3>ระบุจำนวนเงินที่ต้องการเติม</h3>
-                    <p style="color: #666; font-size: 0.9em;">จำนวนเงินจะถูกส่งให้เจ้าของโซนตรวจสอบ</p>
-                    
                     <div class="amount-input-group">
                         <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
                         <div style="margin-top: 10px; font-weight: bold; color: var(--primary);">USD</div>
                     </div>
-
-                    <button class="btn-submit-topup" onclick="processTopup()">
+                    <button class="btn-submit-topup" onclick="submitTopupRequest()">
                         <i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน
                     </button>
                 </div>
@@ -117,61 +116,43 @@
                 </div>
             </div>
 
+            <div id="section-pending-chat" style="display: none;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <span style="background: #fff9e6; color: #f1c40f; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid #f1c40f;">
+                        <i class="fas fa-clock"></i> อยู่ระหว่างตรวจสอบ
+                    </span>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <div style="width: 35px; height: 35px; background: var(--dark); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.75em; color: #999; margin-bottom: 5px;" id="chat-admin-name">Admin</div>
+                        <div style="background: white; padding: 15px; border-radius: 0 15px 15px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; position: relative;">
+                            <p style="margin: 0; font-size: 0.95em; color: #333; line-height: 1.5;" id="admin-auto-reply">
+                                กำลังโหลดข้อความอัตโนมัติ...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: #e8f5e9; padding: 15px; border-radius: 12px; text-align: center;">
+                    <p style="margin: 0; color: #2e7d32; font-size: 0.85em;">
+                        <i class="fas fa-info-circle"></i> เมื่อโอนเงินเสร็จแล้ว โปรดรอแอดมินยืนยันรายการ
+                    </p>
+                </div>
+            </div>
+
             <div id="section-history" style="display: none;">
                 <h4>ประวัติการส่งคำขอ</h4>
                 <div id="history-list">
                     <p style="text-align: center; color: #999;">กำลังโหลดประวัติ...</p>
                 </div>
             </div>
+
         </div>
     </main>
-	
-	
-		<div class="content-body" id="main-display">
-    <div id="section-topup-form">
-        <div class="topup-card">
-            <div style="font-size: 50px; color: var(--primary);"><i class="fas fa-wallet"></i></div>
-            <h3>ระบุจำนวนเงินที่ต้องการเติม</h3>
-            <div class="amount-input-group">
-                <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
-                <div style="margin-top: 10px; font-weight: bold; color: var(--primary);">USD</div>
-            </div>
-            <button class="btn-submit-topup" onclick="submitTopupRequest()">
-                <i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน
-            </button>
-        </div>
-    </div>
-
-    <div id="section-pending-chat" style="display: none;">
-        <div style="text-align: center; margin-bottom: 20px;">
-            <span style="background: #fff9e6; color: #f1c40f; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid #f1c40f;">
-                <i class="fas fa-clock"></i> อยู่ระหว่างตรวจสอบ
-            </span>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <div style="width: 35px; height: 35px; background: var(--dark); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
-                <i class="fas fa-user-shield"></i>
-            </div>
-            <div style="flex: 1;">
-                <div style="font-size: 0.75em; color: #999; margin-bottom: 5px;" id="chat-admin-name">Admin</div>
-                <div style="background: white; padding: 15px; border-radius: 0 15px 15px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; position: relative;">
-                    <p style="margin: 0; font-size: 0.95em; color: #333; line-height: 1.5;" id="admin-auto-reply">
-                        กำลังโหลดข้อความอัตโนมัติ...
-                    </p>
-                </div>
-                <div style="font-size: 0.7em; color: #ccc; margin-top: 5px;">ส่งอัตโนมัติโดยระบบ</div>
-            </div>
-        </div>
-
-        <div class="card" style="background: #e8f5e9; border: none; padding: 15px; border-radius: 12px; text-align: center;">
-            <p style="margin: 0; color: #2e7d32; font-size: 0.85em;">
-                <i class="fas fa-info-circle"></i> เมื่อโอนเงินเสร็จแล้ว โปรดรอแอดมินยืนยันรายการ <br>
-                <b>คุณจะส่งคำขอใหม่ได้เมื่อรายการนี้เสร็จสิ้น</b>
-            </p>
-        </div>
-    </div>
-</div>
 
     <script>
         function toggleSidebar() {

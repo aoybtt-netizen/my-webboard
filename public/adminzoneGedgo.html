@@ -131,7 +131,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 	
     function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay'); // เช็ค ID ให้ตรงกับ HTML
+    const overlay = document.getElementById('sidebar-overlay');
     
     sidebar.classList.toggle('active');
     
@@ -146,11 +146,22 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
     
-    // ปรับสถานะเมนู Active (สีเขียว)
+    // ลบสีเขียว (active) ออกจากทุกเมนูก่อน
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-    // ค้นหาเมนูที่ถูกกด (ป้องกัน error กรณีเรียกผ่าน onload)
-    if(event) event.currentTarget.classList.add('active');
+    
+    // หาเมนูที่ต้องไฮไลท์สีเขียว
+    let targetItem;
+    if (window.event && window.event.currentTarget && window.event.currentTarget.classList && window.event.currentTarget.classList.contains('menu-item')) {
+        // ถ้ามาจากการ "คลิก"
+        targetItem = window.event.currentTarget;
+    } else {
+        // ถ้ามาจากการ "โหลดหน้า" (หาเมนูที่มีคำสั่งตรงกับ type)
+        targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
+    }
 
+    if (targetItem) targetItem.classList.add('active');
+
+    // เปลี่ยนเนื้อหาตามประเภท
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
         display.innerHTML = renderTopupList();
@@ -159,51 +170,54 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         display.innerHTML = renderKYCList();
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
-        display.innerHTML = renderAutoMessageForm(); // เรียกหน้าฟอร์มกรอกเลขบัญชี
+        display.innerHTML = renderAutoMessageForm();
     } else if (type === 'history') {
         title.innerText = 'ประวัติธุรกรรมในโซน';
-        display.innerHTML = `<p style="text-align:center; color:#999;">แสดงประวัติการเงินทั้งหมด...</p>`;
+        display.innerHTML = `<p style="text-align:center; color:#999; margin-top:50px;">ยังไม่มีข้อมูลประวัติในขณะนี้...</p>`;
     }
     
-    if(window.innerWidth <= 768) toggleSidebar();
+    // ถ้าเป็นมือถือให้ปิด sidebar อัตโนมัติหลังเลือก
+    if(window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('active')) {
+        toggleSidebar();
+    }
 }
 
         // ตัวอย่างการ Render รายการเติมเงิน
-        function renderTopupList() {
-            return `
-                <div class="admin-card">
-                    <div>
-                        <strong>User: Somchai_66</strong><br>
-                        <small style="color:var(--primary);">จำนวน: 50.00 USD</small>
-                    </div>
-                    <div>
-                        <button class="status-btn btn-reject">ปฏิเสธ</button>
-                        <button class="status-btn btn-approve" onclick="confirmTopup('Somchai_66', 50)">อนุมัติ</button>
-                    </div>
-                </div>
-                `;
-        }
+    function renderTopupList() {
+    return `
+        <div class="admin-card">
+            <div>
+                <strong>User: Somchai_66</strong><br>
+                <small style="color:var(--primary);">จำนวน: 50.00 USD</small>
+            </div>
+            <div>
+                <button class="status-btn btn-reject">ปฏิเสธ</button>
+                <button class="status-btn btn-approve" onclick="confirmTopup('Somchai_66', 50)">อนุมัติ</button>
+            </div>
+        </div>
+    `;
+}
 
         // ตัวอย่างการ Render รายการ KYC
-        function renderKYCList() {
-            return `
-                <div class="admin-card">
-                    <div>
-                        <strong>User: Maria_Brazil</strong><br>
-                        <small style="color:#666;">เบอร์โทร: 081-xxx-xxxx</small>
-                    </div>
-                    <div>
-                        <button class="status-btn btn-approve" onclick="viewKYC('Maria_Brazil')">ตรวจเอกสาร</button>
-                    </div>
-                </div>
-            `;
-        }
+    function renderKYCList() {
+    return `
+        <div class="admin-card">
+            <div>
+                <strong>User: Maria_Brazil</strong><br>
+                <small style="color:#666;">รอการตรวจเอกสารยืนยันตัวตน</small>
+            </div>
+            <div>
+                <button class="status-btn btn-approve">ตรวจเอกสาร</button>
+            </div>
+        </div>
+    `;
+}
 
-        function confirmTopup(user, amount) {
-            if(confirm(`ยืนยันการเติมเงิน ${amount} USD ให้กับคุณ ${user}?`)) {
-                alert('ดำเนินการสำเร็จ ยอดเงินถูกเพิ่มเข้าระบบแล้ว');
-            }
-        }
+    function confirmTopup(user, amount) {
+    if(confirm(`อนุมัติเงิน ${amount} USD ให้คุณ ${user}?`)) {
+        alert('อนุมัติสำเร็จ');
+    }
+}
 
     window.onload = async () => {
     const myUsername = localStorage.getItem('myUsername');
@@ -211,37 +225,29 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     document.getElementById('admin-name').innerText = myUsername;
 
-    // ดึงจำนวนตัวเลขแจ้งเตือน
+    // ดึงตัวเลข (ทำงานเบื้องหลัง)
     updateBadges();
     
-    // ✅ บังคับให้แสดงหน้าคำขอเติมเงินทันทีเมื่อโหลดเสร็จ
+    // ✅ เรียกแสดงหน้าเติมเงินทันที
     showContent('topup'); 
 };
 
 
 
 	function renderAutoMessageForm() {
-    // ดึงข้อมูลเดิมที่เคยบันทึกไว้ (ถ้ามี)
     const savedBankInfo = localStorage.getItem('adminBankInfo') || "";
     const savedDesc = localStorage.getItem('adminTopupDesc') || "กรุณาโอนเงินตามยอดที่ระบุ และแนบสลิปในแชท";
-
     return `
         <div class="admin-card" style="display: block;">
             <div style="margin-bottom: 20px;">
                 <label style="font-weight: bold; display: block; margin-bottom: 8px;">เลขบัญชี / พร้อมเพย์:</label>
-                <input type="text" id="bank-info-input" value="${savedBankInfo}" 
-                       placeholder="เช่น กสิกรไทย 012-3-45678-9 สมชาย" 
-                       style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+                <input type="text" id="bank-info-input" value="${savedBankInfo}" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px;">
             </div>
             <div style="margin-bottom: 20px;">
-                <label style="font-weight: bold; display: block; margin-bottom: 8px;">คำอธิบายขั้นตอนการโอน:</label>
-                <textarea id="topup-desc-input" rows="4" 
-                          style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">${savedDesc}</textarea>
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">คำอธิบาย:</label>
+                <textarea id="topup-desc-input" rows="4" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px;">${savedDesc}</textarea>
             </div>
-            <button onclick="saveAutoMessage()" 
-                    style="width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">
-                <i class="fas fa-save"></i> บันทึกข้อมูลข้อความอัตโนมัติ
-            </button>
+            <button onclick="saveAutoMessage()" style="width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">บันทึกข้อมูล</button>
         </div>
     `;
 }
@@ -249,23 +255,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 async function saveAutoMessage() {
     const bankInfo = document.getElementById('bank-info-input').value;
     const desc = document.getElementById('topup-desc-input').value;
-
-    // 1. บันทึกไว้ในเครื่องก่อน
     localStorage.setItem('adminBankInfo', bankInfo);
     localStorage.setItem('adminTopupDesc', desc);
-
-    // 2. ส่งไปบันทึกที่ Database (Backend) เพื่อให้ฝั่ง User ดึงไปโชว์ได้
-    const adminName = localStorage.getItem('myUsername');
-    try {
-        const res = await fetch('/api/admin/save-auto-message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName, bankInfo, desc })
-        });
-        if(res.ok) alert("บันทึกข้อมูลสำเร็จ! สมาชิกจะเห็นข้อความนี้เมื่อส่งคำขอเติมเงิน");
-    } catch(e) {
-        alert("บันทึกลง Server ไม่สำเร็จ แต่บันทึกในเครื่องแล้ว");
-    }
+    alert("บันทึกเรียบร้อย!");
 }
 
 
@@ -274,12 +266,15 @@ async function saveAutoMessage() {
 
 	async function updateBadges() {
     const myUsername = localStorage.getItem('myUsername');
-    const res = await fetch(`/api/admin/pending-counts?admin=${myUsername}`);
-    const data = await res.json();
-    
-    // อัปเดตตัวเลขแจ้งเตือนบนเมนู
-    document.getElementById('topup-count').innerText = data.topupCount || 0;
-    document.getElementById('kyc-count').innerText = data.kycCount || 0;
+    try {
+        const res = await fetch(`/api/admin/pending-counts?admin=${myUsername}`);
+        if (!res.ok) throw new Error('API Not Ready');
+        const data = await res.json();
+        document.getElementById('topup-count').innerText = data.topupCount || 0;
+        document.getElementById('kyc-count').innerText = data.kycCount || 0;
+    } catch(e) {
+        console.warn("Badge API ยังไม่พร้อมใช้งาน");
+    }
 }
 
 
