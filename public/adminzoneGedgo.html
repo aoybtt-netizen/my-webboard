@@ -149,37 +149,49 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
     
+    // 1. ดึง Element ของแต่ละส่วนมาเตรียมไว้
+    const topupListSec = document.getElementById('section-topup-list');
+    const adminChatSec = document.getElementById('section-admin-chat');
+
     // ลบสีเขียว (active) ออกจากทุกเมนูก่อน
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     
     // หาเมนูที่ต้องไฮไลท์สีเขียว
-    let targetItem;
-    if (window.event && window.event.currentTarget && window.event.currentTarget.classList && window.event.currentTarget.classList.contains('menu-item')) {
-        // ถ้ามาจากการ "คลิก"
-        targetItem = window.event.currentTarget;
-    } else {
-        // ถ้ามาจากการ "โหลดหน้า" (หาเมนูที่มีคำสั่งตรงกับ type)
-        targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
-    }
-
+    let targetItem = window.event?.currentTarget || document.querySelector(`.menu-item[onclick*="'${type}'"]`);
     if (targetItem) targetItem.classList.add('active');
 
-    // เปลี่ยนเนื้อหาตามประเภท
+    // --- ส่วนจัดการเนื้อหา ---
+    
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
-        display.innerHTML = renderTopupList();
-    } else if (type === 'kyc') {
-        title.innerText = 'ตรวจสอบการยืนยันตัวตน';
-        display.innerHTML = renderKYCList();
+        
+        // ✅ ปิดหน้าแชท และเปิดหน้ารายการ
+        if(adminChatSec) adminChatSec.style.display = 'none';
+        if(topupListSec) {
+            topupListSec.style.display = 'block';
+            // ✅ เรียกฟังก์ชันดึงข้อมูลจริงจาก Server มาโชว์
+            loadTopupRequests(); 
+        }
+
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
+        // ซ่อนส่วนอื่นๆ
+        if(topupListSec) topupListSec.style.display = 'none';
+        if(adminChatSec) adminChatSec.style.display = 'none';
+        
+        // โชว์ฟอร์มตั้งค่า (ใช้ innerHTML ได้เพราะส่วนนี้มักจะเป็นฟอร์มแยก)
         display.innerHTML = renderAutoMessageForm();
-    } else if (type === 'history') {
-        title.innerText = 'ประวัติธุรกรรมในโซน';
-        display.innerHTML = `<p style="text-align:center; color:#999; margin-top:50px;">ยังไม่มีข้อมูลประวัติในขณะนี้...</p>`;
+
+    } else if (type === 'kyc' || type === 'history') {
+        // ซ่อนส่วนเติมเงิน/แชท เมื่อไปหน้าอื่น
+        if(topupListSec) topupListSec.style.display = 'none';
+        if(adminChatSec) adminChatSec.style.display = 'none';
+        
+        title.innerText = type === 'kyc' ? 'ตรวจสอบการยืนยันตัวตน' : 'ประวัติธุรกรรมในโซน';
+        display.innerHTML = `<p style="text-align:center; color:#999; margin-top:50px;">กำลังพัฒนาส่วนนี้...</p>`;
     }
-    
-    // ถ้าเป็นมือถือให้ปิด sidebar อัตโนมัติหลังเลือก
+
+    // ถ้าเป็นมือถือให้ปิด sidebar อัตโนมัติ
     if(window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('active')) {
         toggleSidebar();
     }
