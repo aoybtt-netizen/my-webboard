@@ -153,8 +153,10 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const adminChatSec = document.getElementById('section-admin-chat');
 
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-    let targetItem = window.event?.currentTarget || document.querySelector(`.menu-item[onclick*="'${type}'"]`);
-    if (targetItem) targetItem.classList.add('active');
+    let targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
+    if (targetItem && targetItem.classList) {
+        targetItem.classList.add('active');
+    }
 
     // --- ส่วนจัดการเนื้อหา ---
 
@@ -669,9 +671,9 @@ function appendAdminChatMessage(msg) {
             ${msg.message}
         </div>
     `;
-    chatContainer.innerHTML += sysHTML; // chatContainer คือไอดีของกล่องแชทแต่ละหน้า
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    return; // จบการทำงานของฟังก์ชันสำหรับข้อความประเภทนี้
+    chatBox.innerHTML += sysHTML;
+    chatBox.scrollTop = chatBox.scrollHeight; 
+    return;
 }
 
     const msgHTML = `
