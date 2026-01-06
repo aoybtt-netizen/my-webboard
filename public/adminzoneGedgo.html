@@ -441,12 +441,18 @@ async function openFullChat(requestId, username, amount) {
                 </div>
             </div>
 
-            <div style="padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px;">
-                <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
-                <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
+            <div style="padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; align-items: center;">
+    <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
+    <button onclick="document.getElementById('admin-slip-input').click()" id="admin-image-btn" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; color: #64748b;">
+        <i class="fas fa-image"></i>
+    </button>
+
+    <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+    
+    <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
+        <i class="fas fa-paper-plane"></i>
+    </button>
+</div>
         </div>
     `;
 
@@ -547,18 +553,25 @@ function appendAdminChatMessage(msg) {
     if (!chatBox) return;
 
     const isMe = msg.sender === localStorage.getItem('myUsername');
+    
+    // ตรวจสอบว่าเป็นรูปภาพหรือไม่
+    let contentHTML = "";
+    if (msg.type === 'image') {
+        contentHTML = `<img src="${msg.message}" style="max-width: 100%; border-radius: 10px; cursor: pointer; display: block;" onclick="window.open(this.src)">`;
+    } else {
+        contentHTML = `<p style="margin: 0; line-height: 1.5;">${msg.message}</p>`;
+    }
 
     const msgHTML = `
-        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 10px;">
+        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 12px;">
             <div style="background: ${isMe ? 'var(--primary)' : 'white'}; 
                         color: ${isMe ? 'white' : 'var(--dark)'}; 
-                        padding: 10px 15px; 
+                        padding: ${msg.type === 'image' ? '5px' : '10px 15px'}; 
                         border-radius: ${isMe ? '15px 15px 0 15px' : '15px 15px 15px 0'}; 
-                        max-width: 80%; 
+                        max-width: 70%; 
                         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                        border: ${isMe ? 'none' : '1px solid #eee'};
-                        font-size: 0.9em;">
-                ${msg.message}
+                        border: ${isMe ? 'none' : '1px solid #eee'};">
+                ${contentHTML}
             </div>
             <small style="font-size: 0.7em; color: #94a3b8; margin-top: 3px;">
                 ${isMe ? 'คุณ (Admin)' : msg.sender}
@@ -567,8 +580,6 @@ function appendAdminChatMessage(msg) {
     `;
 
     chatBox.innerHTML += msgHTML;
-    
-    // เลื่อนลงล่างสุดอัตโนมัติ
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
@@ -584,6 +595,77 @@ socket.on('receiveMessage', (msg) => {
         appendAdminChatMessage(msg);
     }
 });
+
+
+// 1. ฟังก์ชันย่อขนาดรูป (เหมือนฝั่ง User)
+async function compressImage(file, { maxWidth = 1024, quality = 0.7 }) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+            };
+        };
+        reader.onerror = (error) => reject(error);
+    });
+}
+
+// 2. ฟังก์ชันจัดการการอัปโหลดรูปของแอดมิน
+async function handleAdminSlipUpload() {
+    const fileInput = document.getElementById('admin-slip-input');
+    const file = fileInput.files[0];
+    if (!file || !currentChatRequestId) return;
+
+    const btn = document.getElementById('admin-image-btn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; // แสดงสถานะกำลังโหลด
+
+    try {
+        // ย่อรูปก่อนส่ง
+        const compressedBlob = await compressImage(file, { maxWidth: 1024, quality: 0.7 });
+        
+        const formData = new FormData();
+        formData.append('slip', compressedBlob, 'admin_receipt.jpg');
+
+        // อัปโหลดไปยัง API ที่เราสร้างไว้ (Cloudinary - โฟลเดอร์ topup_slips)
+        const res = await fetch('/api/upload-slip', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.url) {
+            const chatData = {
+                requestId: currentChatRequestId,
+                sender: localStorage.getItem('myUsername'),
+                message: data.url,
+                type: 'image'
+            };
+            // ส่งผ่าน Socket และวาดบนหน้าจอแอดมิน
+            socket.emit('sendMessage', chatData);
+            appendAdminChatMessage(chatData);
+        }
+    } catch (err) {
+        console.error("Upload error:", err);
+        alert("อัปโหลดรูปภาพล้มเหลว");
+    } finally {
+        fileInput.value = '';
+        btn.innerHTML = '<i class="fas fa-image"></i>';
+    }
+}
 
 
 

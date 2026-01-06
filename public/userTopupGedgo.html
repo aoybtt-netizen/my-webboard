@@ -129,12 +129,19 @@
         <div id="realtime-chats"></div>
     </div>
 
-    <div style="display: flex; gap: 10px; background: white; padding: 10px; border-radius: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);">
-        <input type="text" id="user-chat-input" placeholder="พิมพ์ข้อความคุยกับแอดมิน..." style="flex: 1; border: 1px solid #ddd; padding: 12px; border-radius: 10px; outline: none;">
-        <button onclick="sendUserChat()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
-            <i class="fas fa-paper-plane"></i>
-        </button>
-    </div>
+    <div style="display: flex; gap: 10px; background: white; padding: 10px; border-radius: 15px; align-items: center; border: 1px solid #eee;">
+    <input type="file" id="slip-file-input" hidden accept="image/*" onchange="handleSlipUpload()">
+    <button onclick="document.getElementById('slip-file-input').click()" style="background: #f1f5f9; border: none; width: 40px; height: 40px; border-radius: 10px; cursor: pointer; color: #64748b;">
+        <i class="fas fa-image"></i>
+    </button>
+    
+    <input type="text" id="user-chat-input" placeholder="พิมพ์ข้อความ..." style="flex: 1; border: none; padding: 10px; outline: none;">
+    
+    <button onclick="sendUserChat()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
+        <i class="fas fa-paper-plane"></i>
+    </button>
+</div>
+
 </div>
 
             <div id="section-history" style="display: none;">
@@ -335,33 +342,39 @@ function sendUserChat() {
 }
 
 // ฟังก์ชันวาดข้อความลงในกล่องแชท
-function appendMessage(msg) {
-    const chatContainer = document.getElementById('realtime-chats');
+function appendMessage(msg) { // หรือ appendAdminChatMessage(msg)
+    const chatContainer = document.getElementById('realtime-chats'); // หรือ chat-box ของแอดมิน
+    if (!chatContainer) return;
+
     const isMe = msg.sender === localStorage.getItem('myUsername');
     
+    // ตรวจสอบประเภทข้อความ
+    let contentHTML = "";
+    if (msg.type === 'image') {
+        contentHTML = `<img src="${msg.message}" style="max-width: 100%; border-radius: 10px; cursor: pointer; display: block;" onclick="window.open(this.src)">`;
+    } else {
+        contentHTML = `<p style="margin: 0; line-height: 1.5;">${msg.message}</p>`;
+    }
+
     const msgHTML = `
-        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 10px;">
+        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 12px;">
             <div style="background: ${isMe ? 'var(--primary)' : 'white'}; 
                         color: ${isMe ? 'white' : 'var(--dark)'}; 
-                        padding: 10px 15px; 
+                        padding: ${msg.type === 'image' ? '5px' : '10px 15px'}; 
                         border-radius: ${isMe ? '15px 15px 0 15px' : '0 15px 15px 15px'}; 
-                        max-width: 80%; 
+                        max-width: 75%; 
                         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-                        border: ${isMe ? 'none' : '1px solid #eee'};
-                        font-size: 0.9em;">
-                ${msg.message}
+                        border: ${isMe ? 'none' : '1px solid #eee'};">
+                ${contentHTML}
             </div>
-            <small style="font-size: 0.65em; color: #999; margin-top: 3px;">
-                ${isMe ? 'คุณ' : 'แอดมิน'}
+            <small style="font-size: 0.7em; color: #999; margin-top: 4px;">
+                ${isMe ? 'คุณ' : msg.sender}
             </small>
         </div>
     `;
     
     chatContainer.innerHTML += msgHTML;
-    
-    // เลื่อนลงล่างสุดอัตโนมัติ
-    const scrollArea = document.getElementById('chat-messages-container');
-    scrollArea.scrollTop = scrollArea.scrollHeight;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 
@@ -404,6 +417,83 @@ async function submitTopupRequest() {
         alert("เกิดข้อผิดพลาดในการส่งคำขอ");
     }
 }
+
+	
+	async function handleSlipUpload() {
+    const fileInput = document.getElementById('slip-file-input');
+    const file = fileInput.files[0];
+    if (!file || !currentRequestId) return;
+
+    const originalBtn = document.querySelector('button[onclick*="slip-file-input"]');
+    originalBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        // ✅ ขั้นตอนใหม่: ย่อขนาดรูปภาพก่อน (Max width 1024px, Quality 70%)
+        const compressedBlob = await compressImage(file, { maxWidth: 1024, quality: 0.7 });
+
+        const formData = new FormData();
+        // ส่งไฟล์ที่ย่อแล้วแทนไฟล์จริง (ตั้งชื่อไฟล์ใหม่ให้เป็น .jpg)
+        formData.append('slip', compressedBlob, 'slip_optimized.jpg');
+
+        const res = await fetch('/api/upload-slip', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.url) {
+            const chatData = {
+                requestId: currentRequestId,
+                sender: localStorage.getItem('myUsername'),
+                message: data.url,
+                type: 'image'
+            };
+            socket.emit('sendMessage', chatData);
+            appendMessage(chatData);
+        }
+    } catch (err) {
+        console.error("Upload error:", err);
+        alert("การอัปโหลดหรือย่อรูปผิดพลาด");
+    } finally {
+        fileInput.value = '';
+        originalBtn.innerHTML = '<i class="fas fa-image"></i>';
+    }
+}
+
+	// ฟังก์ชันช่วยย่อขนาดรูปภาพ
+async function compressImage(file, { maxWidth = 1024, quality = 0.7 }) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // คำนวณขนาดใหม่โดยรักษาอัตราส่วนเดิม (Aspect Ratio)
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // แปลงเป็น Blob (ไฟล์) โดยระบุคุณภาพ 0.7 (70%)
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/jpeg', quality);
+            };
+        };
+        reader.onerror = (error) => reject(error);
+    });
+}
+
 
 
     </script>

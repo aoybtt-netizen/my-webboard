@@ -56,6 +56,16 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage: storage });
 
+const slipStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'topup_slips', // แยกโฟลเดอร์ออกมา
+        allowed_formats: ['jpg', 'png', 'jpeg'],
+    },
+});
+
+const uploadSlip = multer({ storage: slipStorage });
+
 // --- Live Exchange Rate & Data ---
 const LIVE_API_KEY = '1f39c37f85-b1b3f2287e-t6oki5'; 
 const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE_API_KEY}`; 
@@ -245,6 +255,16 @@ app.get('/api/admin/pending-counts', async (req, res) => {
 
 
 
+// API สำหรับอัปโหลดสลิปไปที่ Cloudinary
+app.post('/api/upload-slip', uploadSlip.single('slip'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'ไม่พบไฟล์' });
+        // ส่ง URL ของ Cloudinary กลับไป
+        res.json({ success: true, url: req.file.path });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 
 
@@ -3964,19 +3984,21 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
 
     // 2. รับและส่งข้อความแชท
     socket.on('sendMessage', async (data) => {
-    // data: { requestId, sender, message, type }
+    // data ประกอบด้วย { requestId, sender, message, type }
     const chatMsg = {
         requestId: data.requestId,
         sender: data.sender,
-        message: data.message,
-        type: data.type || 'text',
+        message: data.message, // ถ้าเป็นรูป ตรงนี้จะเป็น URL จาก Cloudinary
+        type: data.type || 'text', // 'text' หรือ 'image'
         timestamp: new Date()
     };
-    
-    // บันทึกลงฐานข้อมูล
-    await topupChatsCollection.insertOne(chatMsg);
-    
-    // ส่งต่อไปยังคนอื่นๆ ในห้อง
+
+    // บันทึกลง MongoDB (คอลเลกชัน topup_chats ที่เราสร้างไว้ก่อนหน้า)
+    if (typeof topupChatsCollection !== 'undefined') {
+        await topupChatsCollection.insertOne(chatMsg);
+    }
+
+    // ส่งต่อให้ทุกคนในห้อง (รวมแอดมินด้วย)
     io.to(data.requestId).emit('receiveMessage', chatMsg);
 });
 
