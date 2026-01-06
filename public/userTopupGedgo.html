@@ -79,7 +79,6 @@
         <i class="fas fa-map-marker-alt"></i>
     </div>
     <div style="flex: 1;">
-        <div style="font-size: 0.7em; color: #999; text-transform: uppercase;">โซนปัจจุบันของคุณ</div>
         <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.9em;">กำลังโหลด...</div>
         <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
             <i class="fas fa-user-shield" style="color: #f1c40f;"></i> ผู้ดูแล: 
@@ -126,6 +125,53 @@
             </div>
         </div>
     </main>
+	
+	
+		<div class="content-body" id="main-display">
+    <div id="section-topup-form">
+        <div class="topup-card">
+            <div style="font-size: 50px; color: var(--primary);"><i class="fas fa-wallet"></i></div>
+            <h3>ระบุจำนวนเงินที่ต้องการเติม</h3>
+            <div class="amount-input-group">
+                <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
+                <div style="margin-top: 10px; font-weight: bold; color: var(--primary);">USD</div>
+            </div>
+            <button class="btn-submit-topup" onclick="submitTopupRequest()">
+                <i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน
+            </button>
+        </div>
+    </div>
+
+    <div id="section-pending-chat" style="display: none;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span style="background: #fff9e6; color: #f1c40f; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid #f1c40f;">
+                <i class="fas fa-clock"></i> อยู่ระหว่างตรวจสอบ
+            </span>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <div style="width: 35px; height: 35px; background: var(--dark); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em;">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 0.75em; color: #999; margin-bottom: 5px;" id="chat-admin-name">Admin</div>
+                <div style="background: white; padding: 15px; border-radius: 0 15px 15px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; position: relative;">
+                    <p style="margin: 0; font-size: 0.95em; color: #333; line-height: 1.5;" id="admin-auto-reply">
+                        กำลังโหลดข้อความอัตโนมัติ...
+                    </p>
+                </div>
+                <div style="font-size: 0.7em; color: #ccc; margin-top: 5px;">ส่งอัตโนมัติโดยระบบ</div>
+            </div>
+        </div>
+
+        <div class="card" style="background: #e8f5e9; border: none; padding: 15px; border-radius: 12px; text-align: center;">
+            <p style="margin: 0; color: #2e7d32; font-size: 0.85em;">
+                <i class="fas fa-info-circle"></i> เมื่อโอนเงินเสร็จแล้ว โปรดรอแอดมินยืนยันรายการ <br>
+                <b>คุณจะส่งคำขอใหม่ได้เมื่อรายการนี้เสร็จสิ้น</b>
+            </p>
+        </div>
+    </div>
+</div>
 
     <script>
         function toggleSidebar() {
@@ -175,8 +221,9 @@
             `;
         }
 
-        window.onload = async () => {
+    window.onload = async () => {
     const myName = localStorage.getItem('myUsername');
+	await checkTopupStatus();
     if (!myName) {
         window.location.href = 'index.html';
         return;
@@ -204,6 +251,75 @@
         document.getElementById('display-zone-name').innerText = "โหลดข้อมูลล้มเหลว";
     }
 };
+
+
+
+async function checkTopupStatus() {
+    const myName = localStorage.getItem('myUsername');
+    const savedLoc = localStorage.getItem('userPrimaryLocation');
+    const locParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
+
+    try {
+        // เรียก API เพื่อดูว่ามีคำขอค้างไหม และดึงข้อมูลแอดมินมาด้วย
+        const res = await fetch(`/api/topup/status?username=${myName}${locParam}`);
+        const data = await res.json();
+
+        const formSec = document.getElementById('section-topup-form');
+        const chatSec = document.getElementById('section-pending-chat');
+
+        if (data.hasPending) {
+            // ถ้ามีคำขอค้างอยู่ -> สลับไปหน้าแชท
+            formSec.style.display = 'none';
+            chatSec.style.display = 'block';
+            document.getElementById('header-title').innerText = "สถานะการเติมเงิน";
+            
+            // แสดงข้อความอัตโนมัติของแอดมินคนนั้น
+            document.getElementById('chat-admin-name').innerText = data.adminName;
+            document.getElementById('admin-auto-reply').innerHTML = `
+                <b>แจ้งรายละเอียดการโอนเงิน</b><br>
+                ---------------------------<br>
+                ${data.adminMessage.bankInfo}<br><br>
+                ${data.adminMessage.desc}
+            `;
+        } else {
+            // ถ้าไม่มี -> แสดงฟอร์มเติมเงินปกติ
+            formSec.style.display = 'block';
+            chatSec.style.display = 'none';
+            document.getElementById('header-title').innerText = "เติมเงิน";
+        }
+    } catch (err) {
+        console.error("Check status error:", err);
+    }
+}
+
+async function submitTopupRequest() {
+    const amount = document.getElementById('topup-amount').value;
+    const username = localStorage.getItem('myUsername');
+    
+    if (!amount || amount <= 0) return alert("กรุณาระบุจำนวนเงิน");
+
+    try {
+        const res = await fetch('/api/topup/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username,
+                amount: amount,
+                // ระบบจะหา adminId จากพิกัดในฝั่ง Backend เอง
+                location: localStorage.getItem('userPrimaryLocation') 
+            })
+        });
+
+        if (res.ok) {
+            // เมื่อส่งสำเร็จ ให้รีเฟรชหน้าเพื่อสลับไปหน้าแชทอัตโนมัติ
+            await checkTopupStatus();
+        }
+    } catch (err) {
+        alert("เกิดข้อผิดพลาดในการส่งคำขอ");
+    }
+}
+
+
     </script>
 </body>
 </html>

@@ -87,18 +87,21 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
     </div>
     <div class="sidebar-menu">
-        <div class="menu-item active" onclick="showContent('topup')">
-            <i class="fas fa-wallet"></i> คำขอเติมเงิน
-            <span class="badge" id="topup-count">0</span>
-        </div>
-        <div class="menu-item" onclick="showContent('kyc')">
-            <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
-            <span class="badge" id="kyc-count">0</span>
-        </div>
-        <div class="menu-item" onclick="showContent('history')">
-            <i class="fas fa-history"></i> ประวัติธุรกรรมในโซน
-        </div>
+    <div class="menu-item active" onclick="showContent('topup')">
+        <i class="fas fa-wallet"></i> คำขอเติมเงิน
+        <span class="badge" id="topup-count">0</span>
     </div>
+    <div class="menu-item" onclick="showContent('kyc')">
+        <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
+        <span class="badge" id="kyc-count">0</span>
+    </div>
+    <div class="menu-item" onclick="showContent('automessage')">
+        <i class="fas fa-comment-dots"></i> ข้อความอัตโนมัติ (เลขบัญชี)
+    </div>
+    <div class="menu-item" onclick="showContent('history')">
+        <i class="fas fa-history"></i> ประวัติธุรกรรมในโซน
+    </div>
+</div>
     <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
         <a href="index.html" class="menu-item" style="padding:0;"><i class="fas fa-home"></i> กลับหน้าหลัก</a>
     </div>
@@ -139,31 +142,31 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     }
 }
 
-        function showContent(type) {
-            const display = document.getElementById('main-display');
-            const title = document.getElementById('content-title');
-            
-            // ปรับสถานะเมนู Active
-            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-			if (window.innerWidth <= 768) {
-				toggleSidebar();
-			}
+    function showContent(type) {
+    const display = document.getElementById('main-display');
+    const title = document.getElementById('content-title');
+    
+    // ปรับสถานะเมนู Active (สีเขียว)
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    // ค้นหาเมนูที่ถูกกด (ป้องกัน error กรณีเรียกผ่าน onload)
+    if(event) event.currentTarget.classList.add('active');
 
-            if (type === 'topup') {
-                title.innerText = 'คำขอเติมเงิน (Pending)';
-                display.innerHTML = renderTopupList();
-            } else if (type === 'kyc') {
-                title.innerText = 'คำขอยืนยันตัวตน (KYC)';
-                display.innerHTML = renderKYCList();
-            } else if (type === 'history') {
-                title.innerText = 'ประวัติธุรกรรมในโซน';
-                display.innerHTML = `<p style="text-align:center; color:#999;">แสดงประวัติการเงินทั้งหมดในโซนของคุณ...</p>`;
-            }
-            
-            // ถ้าเป็นมือถือให้ปิด sidebar หลังเลือก
-            if(window.innerWidth <= 768) toggleSidebar();
-        }
+    if (type === 'topup') {
+        title.innerText = 'รายการคำขอเติมเงิน';
+        display.innerHTML = renderTopupList();
+    } else if (type === 'kyc') {
+        title.innerText = 'ตรวจสอบการยืนยันตัวตน';
+        display.innerHTML = renderKYCList();
+    } else if (type === 'automessage') {
+        title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
+        display.innerHTML = renderAutoMessageForm(); // เรียกหน้าฟอร์มกรอกเลขบัญชี
+    } else if (type === 'history') {
+        title.innerText = 'ประวัติธุรกรรมในโซน';
+        display.innerHTML = `<p style="text-align:center; color:#999;">แสดงประวัติการเงินทั้งหมด...</p>`;
+    }
+    
+    if(window.innerWidth <= 768) toggleSidebar();
+}
 
         // ตัวอย่างการ Render รายการเติมเงิน
         function renderTopupList() {
@@ -208,12 +211,64 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     document.getElementById('admin-name').innerText = myUsername;
 
-    // เรียกดึงจำนวนคำขอที่ค้างอยู่มาโชว์ที่ Badge (จุดแดง)
+    // ดึงจำนวนตัวเลขแจ้งเตือน
     updateBadges();
     
-    // เริ่มต้นที่หน้าคำขอเติมเงิน
+    // ✅ บังคับให้แสดงหน้าคำขอเติมเงินทันทีเมื่อโหลดเสร็จ
     showContent('topup'); 
 };
+
+
+
+	function renderAutoMessageForm() {
+    // ดึงข้อมูลเดิมที่เคยบันทึกไว้ (ถ้ามี)
+    const savedBankInfo = localStorage.getItem('adminBankInfo') || "";
+    const savedDesc = localStorage.getItem('adminTopupDesc') || "กรุณาโอนเงินตามยอดที่ระบุ และแนบสลิปในแชท";
+
+    return `
+        <div class="admin-card" style="display: block;">
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">เลขบัญชี / พร้อมเพย์:</label>
+                <input type="text" id="bank-info-input" value="${savedBankInfo}" 
+                       placeholder="เช่น กสิกรไทย 012-3-45678-9 สมชาย" 
+                       style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">คำอธิบายขั้นตอนการโอน:</label>
+                <textarea id="topup-desc-input" rows="4" 
+                          style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">${savedDesc}</textarea>
+            </div>
+            <button onclick="saveAutoMessage()" 
+                    style="width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">
+                <i class="fas fa-save"></i> บันทึกข้อมูลข้อความอัตโนมัติ
+            </button>
+        </div>
+    `;
+}
+
+async function saveAutoMessage() {
+    const bankInfo = document.getElementById('bank-info-input').value;
+    const desc = document.getElementById('topup-desc-input').value;
+
+    // 1. บันทึกไว้ในเครื่องก่อน
+    localStorage.setItem('adminBankInfo', bankInfo);
+    localStorage.setItem('adminTopupDesc', desc);
+
+    // 2. ส่งไปบันทึกที่ Database (Backend) เพื่อให้ฝั่ง User ดึงไปโชว์ได้
+    const adminName = localStorage.getItem('myUsername');
+    try {
+        const res = await fetch('/api/admin/save-auto-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName, bankInfo, desc })
+        });
+        if(res.ok) alert("บันทึกข้อมูลสำเร็จ! สมาชิกจะเห็นข้อความนี้เมื่อส่งคำขอเติมเงิน");
+    } catch(e) {
+        alert("บันทึกลง Server ไม่สำเร็จ แต่บันทึกในเครื่องแล้ว");
+    }
+}
+
+
 
 
 
