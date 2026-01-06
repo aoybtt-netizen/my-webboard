@@ -283,9 +283,9 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px;">
-                <button onclick="showContent('history')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
+                <button onclick="showContent('topup')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;">
+				<i class="fas fa-arrow-left"></i>
+				</button>
                 <div>
                     <h4 style="margin:0;">ประวัติ: ${username}</h4>
                     <small style="color:${status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
