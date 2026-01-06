@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGo! - เติมเงินสมาชิก</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --light: #f8fafc; --danger: #e74c3c; }
+        body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar สไตล์เดียวกับ Admin */
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; backdrop-filter: blur(2px); }
+        .sidebar { 
+            width: 260px; background: var(--dark); color: white; height: 100vh; 
+            position: fixed; left: -260px; top: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1001; display: flex; flex-direction: column;
+        }
+        .sidebar.active { left: 0; }
+        .sidebar-header { padding: 30px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .sidebar-menu { flex: 1; padding: 10px 0; }
+        .menu-item { padding: 15px 25px; display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.7); text-decoration: none; cursor: pointer; transition: 0.2s; }
+        .menu-item:hover, .menu-item.active { background: rgba(255,255,255,0.1); color: var(--secondary); border-left: 4px solid var(--secondary); }
+        
+        /* Main Content */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; width: 100%; }
+        .top-bar { background: white; padding: 15px 25px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 999; }
+        .content-body { padding: 25px; max-width: 600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+
+        /* ส่วนของฟอร์มเติมเงิน */
+        .topup-card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
+        .amount-input-group { position: relative; margin: 25px 0; }
+        .amount-input { width: 100%; padding: 15px; font-size: 2em; text-align: center; border: 2px solid #eee; border-radius: 15px; outline: none; font-weight: bold; color: var(--dark); transition: 0.3s; }
+        .amount-input:focus { border-color: var(--secondary); box-shadow: 0 0 10px rgba(56, 239, 125, 0.2); }
+        
+        .btn-submit-topup { width: 100%; padding: 15px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; border-radius: 12px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3); }
+        .btn-submit-topup:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4); }
+
+        /* รายการประวัติแบบย่อ */
+        .history-item { background: white; border-radius: 12px; padding: 15px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
+        .status-pending { color: #f1c40f; font-weight: bold; }
+        .status-success { color: #2ecc71; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3 style="margin:0; color:var(--secondary);">GedGo! Wallet</h3>
+            <small style="opacity:0.6;">ระบบกระเป๋าเงินสมาชิก</small>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-item active" onclick="switchTab('topup')">
+                <i class="fas fa-hand-holding-usd"></i> เติมเงิน
+            </div>
+            <div class="menu-item" onclick="switchTab('history')">
+                <i class="fas fa-file-invoice-dollar"></i> ประวัติการเติมเงิน
+            </div>
+        </div>
+        <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <a href="usergedgo.html" class="menu-item" style="padding:0;"><i class="fas fa-user-circle"></i> กลับหน้าโปรไฟล์</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="top-bar">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <i class="fas fa-bars menu-btn" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em;"></i>
+                <h2 id="content-title" style="margin:0; font-size: 1.2em;">เติมเงิน</h2>
+            </div>
+            <div>
+                ยอดเงินปัจจุบัน: <b id="current-balance">0.00</b> USD
+            </div>
+        </header>
+
+        <div class="content-body" id="main-display">
+            <div id="section-topup">
+                <div class="topup-card">
+                    <div style="font-size: 50px; color: var(--primary);"><i class="fas fa-wallet"></i></div>
+                    <h3>ระบุจำนวนเงินที่ต้องการเติม</h3>
+                    <p style="color: #666; font-size: 0.9em;">จำนวนเงินจะถูกส่งให้เจ้าของโซนตรวจสอบ</p>
+                    
+                    <div class="amount-input-group">
+                        <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
+                        <div style="margin-top: 10px; font-weight: bold; color: var(--primary);">USD</div>
+                    </div>
+
+                    <button class="btn-submit-topup" onclick="processTopup()">
+                        <i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน
+                    </button>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h4><i class="fas fa-info-circle"></i> ขั้นตอนการเติมเงิน</h4>
+                    <ul style="color: #666; font-size: 0.85em; line-height: 1.8;">
+                        <li>ระบุจำนวนเงิน USD ที่ต้องการ</li>
+                        <li>ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด</li>
+                        <li>ชำระเงินตามวิธีที่เจ้าของโซนกำหนดในพื้นที่</li>
+                        <li>เมื่อเจ้าของโซนยืนยัน ยอดเงินจะเข้าบัญชีทันที</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="section-history" style="display: none;">
+                <h4>ประวัติการส่งคำขอ</h4>
+                <div id="history-list">
+                    <p style="text-align: center; color: #999;">กำลังโหลดประวัติ...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('active');
+            overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+        }
+
+        function switchTab(tab) {
+            const title = document.getElementById('content-title');
+            const topupSec = document.getElementById('section-topup');
+            const historySec = document.getElementById('section-history');
+            
+            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            if (tab === 'topup') {
+                title.innerText = 'เติมเงิน';
+                topupSec.style.display = 'block';
+                historySec.style.display = 'none';
+            } else {
+                title.innerText = 'ประวัติการเติมเงิน';
+                topupSec.style.display = 'none';
+                historySec.style.display = 'block';
+                loadHistory();
+            }
+            if (window.innerWidth <= 768) toggleSidebar();
+        }
+
+        async function processTopup() {
+            const amount = document.getElementById('topup-amount').value;
+            if(!amount || amount <= 0) return alert("กรุณาระบุจำนวนเงิน");
+            
+            // Logic ส่งคำขอเติมเงินจะอยู่ตรงนี้
+            alert(`ส่งคำขอเติมเงินจำนวน ${amount} USD เรียบร้อยแล้ว!`);
+        }
+
+        function loadHistory() {
+            // จำลองการโหลดประวัติ
+            const list = document.getElementById('history-list');
+            list.innerHTML = `
+                <div class="history-item">
+                    <div><b>50.00 USD</b><br><small>2024-05-20 10:30</small></div>
+                    <div class="status-pending">รอตรวจสอบ</div>
+                </div>
+            `;
+        }
+
+        window.onload = () => {
+            // ดึงยอดเงินปัจจุบันจาก LocalStorage หรือ API
+            document.getElementById('current-balance').innerText = "0.00";
+        };
+    </script>
+</body>
+</html>
