@@ -388,11 +388,7 @@ async function handleQuickAction(requestId, status, username, amount = 0) {
 
 
 
-socket.on('receiveMessage', (msg) => {
-        if(msg.requestId === currentChatRequestId) {
-            appendAdminChatMessage(msg);
-        }
-    });
+
 // 2. ฟังก์ชันเปิดหน้าแชท
 async function openFullChat(requestId, username, amount) {
     currentChatRequestId = requestId;
@@ -506,6 +502,70 @@ async function processRequest(status) {
         alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     }
 }
+
+
+
+// ฟังก์ชันสำหรับส่งข้อความจากฝั่งแอดมิน
+function sendAdminMessage() {
+    const input = document.getElementById('admin-chat-input');
+    const message = input.value.trim();
+    if (!message || !currentChatRequestId) return;
+
+    const chatData = {
+        requestId: currentChatRequestId,
+        sender: localStorage.getItem('myUsername'),
+        message: message,
+        type: 'text'
+    };
+
+    socket.emit('sendMessage', chatData); // ส่งไป Server
+    appendAdminChatMessage(chatData);     // แสดงฝั่งตัวเองทันที
+    input.value = ''; // ล้างช่องพิมพ์
+}
+
+// ฟังก์ชันสำหรับวาดข้อความแชทในหน้าแอดมิน
+function appendAdminChatMessage(msg) {
+    const chatBox = document.getElementById('chat-box');
+    if (!chatBox) return;
+
+    const isMe = msg.sender === localStorage.getItem('myUsername');
+
+    const msgHTML = `
+        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 10px;">
+            <div style="background: ${isMe ? 'var(--primary)' : 'white'}; 
+                        color: ${isMe ? 'white' : 'var(--dark)'}; 
+                        padding: 10px 15px; 
+                        border-radius: ${isMe ? '15px 15px 0 15px' : '15px 15px 15px 0'}; 
+                        max-width: 80%; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                        border: ${isMe ? 'none' : '1px solid #eee'};
+                        font-size: 0.9em;">
+                ${msg.message}
+            </div>
+            <small style="font-size: 0.7em; color: #94a3b8; margin-top: 3px;">
+                ${isMe ? 'คุณ (Admin)' : msg.sender}
+            </small>
+        </div>
+    `;
+
+    chatBox.innerHTML += msgHTML;
+    
+    // เลื่อนลงล่างสุดอัตโนมัติ
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// แก้ไขฟังก์ชันรับข้อความ Socket ให้เรียกใช้ appendAdminChatMessage
+socket.on('receiveMessage', (msg) => {
+    // 1. เช็คว่าข้อความที่ส่งมา (msg.requestId) ตรงกับห้องที่แอดมินเปิดแชทค้างไว้หรือไม่ (currentChatRequestId)
+    // 2. เช็คว่าคนส่ง "ไม่ใช่ตัวแอดมินเอง" (เพราะแอดมินจะสั่ง appendMessage ไปแล้วตอนกดส่ง)
+    // 3. เช็คว่าฟังก์ชันสำหรับแสดงผลพร้อมใช้งานหรือไม่
+    if (msg.requestId === currentChatRequestId && 
+        msg.sender !== localStorage.getItem('myUsername') &&
+        typeof appendAdminChatMessage === "function") {
+        
+        appendAdminChatMessage(msg);
+    }
+});
 
 
 
