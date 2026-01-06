@@ -260,9 +260,27 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 async function saveAutoMessage() {
     const bankInfo = document.getElementById('bank-info-input').value;
     const desc = document.getElementById('topup-desc-input').value;
-    localStorage.setItem('adminBankInfo', bankInfo);
-    localStorage.setItem('adminTopupDesc', desc);
-    alert("บันทึกเรียบร้อย!");
+    const adminName = localStorage.getItem('myUsername'); // ดึงชื่อแอดมิน
+
+    try {
+        const res = await fetch('/api/admin/save-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName, bankInfo, desc })
+        });
+
+        if (res.ok) {
+            // ยังคงเซฟลง localStorage ไว้ด้วยเพื่อให้แสดงผลในหน้า Admin เร็วขึ้น
+            localStorage.setItem('adminBankInfo', bankInfo);
+            localStorage.setItem('adminTopupDesc', desc);
+            alert("บันทึกลงระบบเรียบร้อยแล้ว สมาชิกจะเห็นข้อมูลนี้ทันที!");
+        } else {
+            alert("เกิดข้อผิดพลาดในการบันทึก");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
+    }
 }
 
 

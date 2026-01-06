@@ -3256,17 +3256,27 @@ app.get('/api/admin/pending-counts', async (req, res) => {
 });
 
 // 2.2 บันทึกข้อความอัตโนมัติ (เลขบัญชี)
-app.post('/api/admin/save-auto-message', async (req, res) => {
+app.post('/api/admin/save-settings', async (req, res) => {
     try {
         const { adminName, bankInfo, desc } = req.body;
-        await adminSettingsCollection.updateOne(
-            { adminName },
-            { $set: { bankInfo, desc, updatedAt: new Date() } },
-            { upsert: true } // ถ้าไม่มีให้สร้างใหม่
+        
+        // ใช้ updateOne แบบ upsert: true (ถ้ายังไม่มีชื่อแอดมินคนนี้ให้สร้างใหม่ ถ้ามีแล้วให้อัปเดต)
+        await db.collection('admin_settings').updateOne(
+            { adminName: adminName },
+            { 
+                $set: { 
+                    bankInfo: bankInfo, 
+                    desc: desc,
+                    updatedAt: new Date() 
+                } 
+            },
+            { upsert: true }
         );
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
+
+        res.json({ success: true, message: "Settings saved successfully" });
+    } catch (err) {
+        console.error("❌ Save Settings Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
