@@ -41,6 +41,27 @@
         .history-item { background: white; border-radius: 12px; padding: 15px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
         .status-pending { color: #f1c40f; font-weight: bold; }
         .status-success { color: #2ecc71; font-weight: bold; }
+		
+		
+		
+	#section-pending-chat {
+    display: none; /* ปิดไว้ก่อน */
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+#realtime-chats {
+    flex: 1; /* ให้พื้นที่ส่วนแชทขยายเต็มที่ */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+}
+
+
+
     </style>
 </head>
 <body>
@@ -542,7 +563,7 @@ let isHistoryMode = false; // เพิ่มตัวแปรสถานะ
 
 async function viewArchivedChat(requestId, amount, status) {
     currentRequestId = requestId;
-    isHistoryMode = true; // เปิดโหมดประวัติ
+    isHistoryMode = true; 
     
     const titleElem = document.getElementById('content-title');
     const historySec = document.getElementById('section-history');
@@ -550,28 +571,37 @@ async function viewArchivedChat(requestId, amount, status) {
     
     titleElem.innerText = "รายละเอียดธุรกรรม";
     historySec.style.display = 'none';
+    
+    // --- แก้ไขจุดนี้ ---
     chatSec.style.display = 'flex';
+    chatSec.style.flexDirection = 'column'; // บังคับให้เรียงจากบนลงล่าง
+    chatSec.style.width = '100%';           // ให้กว้างเต็มจอ
+    chatSec.style.height = '100%';          // ให้สูงเต็มพื้นที่
+    // ------------------
 
-    // ซ่อนช่องพิมพ์แชทด้วย ID ที่เราตั้งไว้
     const inputArea = document.getElementById('chat-input-area');
     if(inputArea) inputArea.style.display = 'none';
 
-    // แสดงส่วนหัวสรุปรายการ
     const headerWrapper = document.getElementById('admin-auto-reply-wrapper');
     headerWrapper.innerHTML = `
-        <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'}; text-align: center;">
+        <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'}; text-align: center; width: 100%; box-sizing: border-box;">
             <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
             <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
                 รายการนี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
             </div>
             <div style="font-size: 0.9em; color: #666;">ยอดเงิน: ${amount.toFixed(2)} USD</div>
-            <button onclick="switchTab('history')" style="width:100%; margin-top:10px; border:none; background:rgba(0,0,0,0.05); padding: 8px; border-radius: 8px; cursor:pointer;">
+            <button onclick="location.reload()" style="width:100%; margin-top:10px; border:none; background:rgba(0,0,0,0.05); padding: 8px; border-radius: 8px; cursor:pointer;">
                 <i class="fas fa-arrow-left"></i> กลับไปหน้าประวัติ
             </button>
         </div>
     `;
 
-    document.getElementById('realtime-chats').innerHTML = '<p style="text-align:center; color:#999;">กำลังโหลดประวัติแชท...</p>';
+    // ทำให้ส่วนที่แสดงแชท ยืดตัวเต็มพื้นที่ที่เหลือ
+    const chatDisplay = document.getElementById('realtime-chats');
+    chatDisplay.style.flex = '1';
+    chatDisplay.style.overflowY = 'auto';
+    chatDisplay.innerHTML = '<p style="text-align:center; color:#999;">กำลังโหลดประวัติแชท...</p>';
+    
     await loadChatHistory(requestId);
 }
 
