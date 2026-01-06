@@ -262,57 +262,51 @@ async function checkTopupStatus() {
     const locParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
 
     try {
+        // 1. เรียก API ตรวจสอบสถานะ (ฝั่ง Server ต้องส่ง adminMessage กลับมาด้วย)
         const res = await fetch(`/api/topup/status?username=${myName}${locParam}`);
-        
-        // เช็คว่า Server ตอบกลับ OK ไหม (200-299)
-        if (!res.ok) {
-            throw new Error(`Server error: ${res.status}`);
-        }
-
         const data = await res.json();
 
-        // เช็คว่ามี Element ครบไหมก่อนสั่งงาน
         const formSec = document.getElementById('section-topup-form');
         const chatSec = document.getElementById('section-pending-chat');
-        const titleElem = document.getElementById('content-title'); // แก้จาก header-title
-
-        if (!formSec || !chatSec || !titleElem) {
-            console.error("❌ หา Element บางตัวไม่เจอ: ", { formSec, chatSec, titleElem });
-            return;
-        }
+        const titleElem = document.getElementById('content-title');
 
         if (data.hasPending) {
-            formSec.style.display = 'none';//เงือนใขส่งคำขอ none 1คำขอ blockไม่มีจำกัด
+            // 2. สลับหน้าจอไปที่หน้าแชท
+            formSec.style.display = 'none';
             chatSec.style.display = 'block';
             titleElem.innerText = "สถานะการเติมเงิน";
+
+            // 3. แสดงชื่อแอดมินและข้อความอัตโนมัติ (Bank Info / Desc)
+            document.getElementById('chat-admin-name').innerText = `แอดมิน: ${data.adminName}`;
             
-            // เช็คว่าข้อมูลแอดมินส่งมาครบไหม
-            const adminNameElem = document.getElementById('chat-admin-name');
-            const adminReplyElem = document.getElementById('admin-auto-reply');
+            // จัดรูปแบบข้อความให้น่าอ่าน
+            const autoReplyHTML = `
+                <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">
+                    <i class="fas fa-university"></i> ช่องทางการชำระเงิน
+                </div>
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 4px solid var(--secondary); margin-bottom: 10px;">
+                    ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}
+                </div>
+                <div style="font-size: 0.9em; color: #666;">
+                    ${data.adminMessage.desc.replace(/\n/g, '<br>')}
+                </div>
+            `;
+            
+            document.getElementById('admin-auto-reply').innerHTML = autoReplyHTML;
 
-            if (adminNameElem) adminNameElem.innerText = data.adminName || "Admin";
-            if (adminReplyElem && data.adminMessage) {
-                adminReplyElem.innerHTML = `
-                    <b>แจ้งรายละเอียดการโอนเงิน</b><br>
-                    ---------------------------<br>
-                    ${data.adminMessage.bankInfo || 'รอเลขบัญชี'}<br><br>
-                    ${data.adminMessage.desc || ''}
-                `;
-            }
-
-            // ✅ เช็คว่า socket พร้อมใช้งานไหมก่อน emit
+            // เข้าร่วมห้อง Socket ตาม ID คำขอ
             if (typeof socket !== 'undefined' && data.requestId) {
                 socket.emit('joinRequest', data.requestId);
             }
 
         } else {
+            // กรณีไม่มีคำขอค้างอยู่ กลับไปหน้าฟอร์มปกติ
             formSec.style.display = 'block';
-            chatSec.style.display = 'none';//none
+            chatSec.style.display = 'none';
             titleElem.innerText = "เติมเงิน";
         }
     } catch (err) {
-        // บรรทัดนี้จะบอกคุณว่า "Error จริงๆ คืออะไร"
-        console.error("🚨 Check status error:", err.message); 
+        console.error("🚨 Check status error:", err.message);
     }
 }
 
