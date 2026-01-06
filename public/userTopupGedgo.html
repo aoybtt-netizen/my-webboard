@@ -343,27 +343,30 @@ async function checkTopupStatus() {
         const chatSec = document.getElementById('section-pending-chat');
 
         if (data.hasPending) {
-            currentRequestId = data.requestId; // เก็บ ID ไว้ส่งแชท
-            formSec.style.display = 'none';
-            chatSec.style.display = 'flex'; // เปลี่ยนเป็น flex เพื่อให้แชทเต็มความสูง
-			await loadChatHistory(data.requestId);
-
-			socket.emit('joinRequest', data.requestId);
-            // 1. แสดงข้อมูลบัญชีแอดมิน (Auto Reply)
-            document.getElementById('admin-auto-reply-wrapper').innerHTML = `
-                <div style="align-self: flex-start; max-width: 90%;">
-                    <div style="font-size: 0.7em; color: #999; margin-bottom: 4px;">แอดมิน: ${data.adminName}</div>
-                    <div style="background: white; padding: 15px; border-radius: 0 15px 15px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                        <b style="color: var(--primary);">🏦 ข้อมูลการโอนเงิน:</b><br>
-                        ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}<br><br>
-                        <b style="color: var(--dark);">📝 รายละเอียด:</b><br>
-                        ${data.adminMessage.desc.replace(/\n/g, '<br>')}
-                    </div>
+    currentRequestId = data.requestId;
+    formSec.style.display = 'none';
+    chatSec.style.display = 'flex';
+    
+    // ปรับปรุง HTML ส่วนข้อมูลการโอนให้พับได้
+    document.getElementById('admin-auto-reply-wrapper').innerHTML = `
+        <div style="margin-bottom: 15px; width: 100%;">
+            <details open style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <summary style="padding: 10px 15px; background: #f8fafc; cursor: pointer; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between; align-items: center; list-style: none;">
+                    <span><i class="fas fa-university"></i> ข้อมูลการโอนเงิน (คลิกเพื่อปิด/เปิด)</span>
+                    <i class="fas fa-chevron-down" style="font-size: 0.8em;"></i>
+                </summary>
+                <div style="padding: 15px; font-size: 0.9em; border-top: 1px solid #eee;">
+                    <b style="color: var(--primary);">🏦 บัญชีธนาคาร:</b><br>
+                    ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}<br><br>
+                    <b style="color: var(--dark);">📝 รายละเอียดเพิ่มเติม:</b><br>
+                    ${data.adminMessage.desc.replace(/\n/g, '<br>')}
                 </div>
-            `;
+            </details>
+        </div>
+    `;
 
-            // 2. Join Socket Room
-            socket.emit('joinRequest', data.requestId);
+    await loadChatHistory(data.requestId);
+    socket.emit('joinRequest', data.requestId);
 
         } else {
             formSec.style.display = 'block';
