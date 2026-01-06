@@ -240,7 +240,7 @@
         }
 
         list.innerHTML = history.map(item => `
-            <div class="history-item" onclick="viewArchivedChat('${item._id}', ${item.amount}, '${item.status}')" style="cursor:pointer; transition: 0.2s; border-left: 5px solid ${item.status === 'approved' ? '#2ecc71' : '#e74c3c'};">
+            <div class="history-item" onclick="viewArchivedChat('${item._id}', ${item.amount}, '${item.createdAt}', '${item.processedAt}, '${item.status}')" style="cursor:pointer; transition: 0.2s; border-left: 5px solid ${item.status === 'approved' ? '#2ecc71' : '#e74c3c'};">
                 <div>
                     <b style="font-size: 1.1em;">${item.amount.toFixed(2)} USD</b><br>
                     <small style="color:#999;">${new Date(item.createdAt).toLocaleString('th-TH')}</small>

@@ -230,7 +230,7 @@ async function loadAdminHistory() {
         }
 
         container.innerHTML = history.map(item => `
-    <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.slipUrl || ""}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
+    <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.createdAt}', '${item.processedAt}', '${item.slipUrl || ""}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
         <div>
             <strong>User: ${item.username}</strong><br>
             <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
