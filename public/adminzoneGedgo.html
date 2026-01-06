@@ -164,7 +164,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
-        
+        display.innerHTML = '<div id="topup-list-container">กำลังโหลด...</div>';
         // ✅ ปิดหน้าแชท และเปิดหน้ารายการ
         if(adminChatSec) adminChatSec.style.display = 'none';
         if(topupListSec) {
@@ -321,6 +321,45 @@ async function loadTopupRequests() {
         container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
     }
 }
+
+
+async function handleQuickAction(requestId, status, username, amount = 0) {
+    const actionText = status === 'approved' ? `ยืนยันเติมเงิน ${amount} USD ให้คุณ ${username}?` : `ปฏิเสธคำขอของคุณ ${username}?`;
+    
+    if (!confirm(actionText)) return;
+
+    try {
+        const res = await fetch('/api/admin/process-topup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                requestId: requestId, 
+                status: status,
+                adminName: localStorage.getItem('myUsername')
+            })
+        });
+
+        if (res.ok) {
+            alert("ดำเนินการสำเร็จ!");
+            
+            // ส่งสัญญาณ Socket บอก User ให้หน้าจอเขาอัปเดตทันที
+            socket.emit('statusChanged', { 
+                requestId: requestId, 
+                status: status 
+            });
+
+            // โหลดรายการใหม่เพื่อลบการ์ดที่จัดการเสร็จแล้วออก
+            loadTopupRequests();
+            updateBadges();
+        } else {
+            alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("การเชื่อมต่อเซิร์ฟเวอร์มีปัญหา");
+    }
+}
+
 
 
 socket.on('receiveMessage', (msg) => {
