@@ -218,7 +218,7 @@ async function loadAdminHistory() {
         }
 
         container.innerHTML = history.map(item => `
-            <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
+            <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.slipUrl)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
                 <div>
                     <strong>User: ${item.username}</strong><br>
                     <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
@@ -237,10 +237,29 @@ async function loadAdminHistory() {
 }
 
 
-async function viewArchivedAdminChat(requestId, username, amount, status) {
+async function viewArchivedAdminChat(requestId, username, amount, status, slipUrl) {
     currentChatRequestId = requestId;
-    // ไม่ต้อง joinRequest เพราะเป็นแชทเก่าที่จบแล้ว ไม่มีการเรียลไทม์
 
+    // 1. แยกส่วน HTML ของสลิปออกมาไว้ในตัวแปรก่อน เพื่อลดความซับซ้อนของ Backticks
+    let slipSection = "";
+    if (slipUrl) {
+        slipSection = `
+            <div style="align-self: flex-start; background: white; padding: 10px; border-radius: 10px; border: 1px solid #ddd; max-width: 70%;">
+                <div style="font-size: 0.8em; color: #666; margin-bottom: 5px;">
+                    <i class="fas fa-info-circle"></i> ข้อมูลเริ่มต้นจากระบบ
+                </div>
+                <img src="${slipUrl}" style="max-width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open('${slipUrl}')">
+                <div style="margin-top: 5px; font-weight: bold; color: var(--dark);">
+                    ยอดแจ้งเติม: ${amount.toFixed(2)} USD
+                </div>
+            </div>`;
+    }
+
+    // 2. จัดการเรื่องสีสถานะ
+    const statusColor = (status === 'approved') ? 'var(--primary)' : 'var(--danger)';
+    const statusText = (status === 'approved') ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว';
+
+    // 3. ใส่โครงสร้างหลักเข้าไปใน display
     const display = document.getElementById('main-display');
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
@@ -251,22 +270,22 @@ async function viewArchivedAdminChat(requestId, username, amount, status) {
                 </button>
                 <div>
                     <h4 style="margin:0;">ประวัติ: ${username}</h4>
-                    <small style="color:${status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
-                        สถานะ: ${status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'} (${amount.toFixed(2)} USD)
+                    <small style="color:${statusColor}; font-weight:bold;">
+                        สถานะ: ${statusText} (${amount.toFixed(2)} USD)
                     </small>
                 </div>
             </div>
 
             <div id="chat-box" style="flex: 1; padding: 20px; background: #f1f5f9; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
-                </div>
+                ${slipSection} 
+            </div>
 
             <div style="padding: 15px; background: #fff; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 0.9em;">
-                <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้วเมื่อ ${new Date().toLocaleDateString('th-TH')}
+                <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้ว
             </div>
-        </div>
-    `;
+        </div>`;
 
-    // โหลดประวัติแชทจริงจาก DB
+    // 4. โหลดประวัติแชทต่อท้าย
     await loadAdminChatHistory(requestId);
 }
 
@@ -453,12 +472,11 @@ async function handleQuickAction(requestId, status, username, amount = 0) {
 
 
 async function loadAdminChatHistory(requestId) {
+    const chatBox = document.getElementById('chat-box');
     try {
-        // ดึงข้อมูลจาก API ประวัติแชท
         const res = await fetch(`/api/topup/chat-history?requestId=${requestId}`);
         const history = await res.json();
         
-        // วนลูปนำข้อความเก่าๆ มาแสดงผลโดยใช้ฟังก์ชันที่คุณมีอยู่แล้ว
         if (Array.isArray(history)) {
             history.forEach(msg => {
                 appendAdminChatMessage(msg);
