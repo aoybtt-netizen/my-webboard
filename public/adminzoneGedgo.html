@@ -249,44 +249,31 @@ async function loadAdminHistory() {
 }
 
 
-async function viewArchivedAdminChat(requestId, username, amount, status, slipUrl) {
-    // --- แทรกส่วนนี้: เพื่อป้องกัน Section หลักหายเวลาดูประวัติ ---
+async function viewArchivedAdminChat(requestId, username, amount, status, slipUrl, createdAt, processedAt) {
+    // --- ส่วนป้องกัน Section หลักหาย (เหมือนเดิม) ---
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
-    
-    // ย้ายไปเก็บในที่ปลอดภัยก่อน (hidden-storage)
-    let storage = document.getElementById('hidden-storage');
-    if (!storage) {
-        storage = document.createElement('div');
-        storage.id = 'hidden-storage';
-        storage.style.display = 'none';
-        document.body.appendChild(storage);
-    }
+    let storage = document.getElementById('hidden-storage') || document.createElement('div');
+    if (!storage.id) { storage.id = 'hidden-storage'; storage.style.display = 'none'; document.body.appendChild(storage); }
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
-    // --------------------------------------------------
 
     currentChatRequestId = requestId;
     const display = document.getElementById('main-display');
     
-    // 1. แยกส่วนแสดงสลิปออกมา
     let slipSection = "";
     if (slipUrl && slipUrl !== "") {
-        slipSection = `
-            <div style="align-self: flex-start; background: white; padding: 10px; border-radius: 10px; border: 1px solid #ddd; max-width: 70%;">
-                <div style="font-size: 0.8em; color: #666; margin-bottom: 5px;"><i class="fas fa-info-circle"></i> ข้อมูลเริ่มต้นจากระบบ</div>
-                <img src="${slipUrl}" style="max-width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open('${slipUrl}')">
-                <div style="margin-top: 5px; font-weight: bold; color: var(--dark);">ยอดแจ้งเติม: ${amount.toFixed(2)} USD</div>
-            </div>`;
+        slipSection = `<div style="align-self: flex-start; background: white; padding: 10px; border-radius: 10px; border: 1px solid #ddd; max-width: 70%; margin-bottom:10px;">
+            <div style="font-size: 0.8em; color: #666; margin-bottom: 5px;"><i class="fas fa-info-circle"></i> ข้อมูลเริ่มต้นจากระบบ</div>
+            <img src="${slipUrl}" style="max-width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open('${slipUrl}')">
+            <div style="margin-top: 5px; font-weight: bold; color: var(--dark);">ยอดแจ้งเติม: ${amount.toFixed(2)} USD</div>
+        </div>`;
     }
 
-    // 2. แสดงผลหน้าจอหลัก (ตอนนี้สั่งล้าง innerHTML ได้ปลอดภัยแล้ว ของไม่หาย)
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px;">
-                <button onclick="showContent('history')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
+                <button onclick="showContent('history')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;"><i class="fas fa-arrow-left"></i></button>
                 <div>
                     <h4 style="margin:0;">ประวัติ: ${username}</h4>
                     <small style="color:${status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
@@ -299,8 +286,18 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
                 ${slipSection} 
             </div>
 
-            <div style="padding: 15px; background: #fff; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 0.9em;">
-                <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้ว
+            <div style="padding: 15px; background: #fff; border-top: 1px solid #eee; color: #666; font-size: 0.85em; line-height: 1.6;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span><i class="far fa-clock"></i> เวลาส่งคำขอ:</span>
+                    <b>${new Date(createdAt).toLocaleString('th-TH')}</b>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span><i class="fas fa-check-double"></i> เวลาที่ดำเนินการ:</span>
+                    <b>${new Date(processedAt).toLocaleString('th-TH')}</b>
+                </div>
+                <div style="text-align: center; color: #ccc; margin-top: 8px; font-size: 0.9em;">
+                    <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้ว
+                </div>
             </div>
         </div>`;
 
