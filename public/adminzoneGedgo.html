@@ -149,32 +149,48 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
     
+    // --- ส่วนที่เพิ่มเข้ามาเพื่อป้องกันข้อมูลหาย ---
+    // 1. ดึง Section สำคัญมาไว้ในตัวแปร
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
 
-    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-    let targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
-    if (targetItem && targetItem.classList) {
-        targetItem.classList.add('active');
+    // 2. สร้าง "ที่เก็บของลับ" (ถ้ายังไม่มี) เพื่อเอาไว้พัก Element ไม่ให้โดนลบ
+    let storage = document.getElementById('hidden-storage');
+    if (!storage) {
+        storage = document.createElement('div');
+        storage.id = 'hidden-storage';
+        storage.style.display = 'none';
+        document.body.appendChild(storage);
     }
 
-    // --- ส่วนจัดการเนื้อหา ---
+    // 3. ย้าย Section ไปเก็บไว้ใน storage ก่อนจะล้างหน้าจอ
+    if (topupListSec) storage.appendChild(topupListSec);
+    if (adminChatSec) storage.appendChild(adminChatSec);
+
+    // 4. ตอนนี้ล้างหน้าจอได้ปลอดภัยแล้ว ของไม่หาย
+    display.innerHTML = ''; 
+    // ------------------------------------------
+
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    let targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
+    if (targetItem) targetItem.classList.add('active');
 
     if (type === 'topup') {
-		updateBadges();
-		loadTopupRequests();
         title.innerText = 'รายการคำขอเติมเงิน';
-        display.innerHTML = ''; 
+        
+        // ย้ายกลับมาจาก storage มาแสดงที่หน้าจอ
         display.appendChild(topupListSec);
         display.appendChild(adminChatSec);
 
         adminChatSec.style.display = 'none';
         topupListSec.style.display = 'block';
         
-        document.getElementById('topup-list-container').innerHTML = 'กำลังโหลด...';
+        document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">กำลังโหลด...</p>';
+        loadTopupRequests(); 
+
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
-        display.innerHTML = '<p style="text-align:center; color:#999;">กำลังดึงข้อมูลจากเซิร์ฟเวอร์...</p>';
+        display.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">กำลังดึงข้อมูล...</p>';
 
         try {
             const adminName = localStorage.getItem('myUsername');
@@ -187,19 +203,12 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     } else if (type === 'history') {
         title.innerText = 'ประวัติธุรกรรมในโซน';
-        display.innerHTML = `
-            <div id="admin-history-container" style="padding: 10px;">
-                <p style="text-align:center; color:#999;">กำลังโหลดประวัติ...</p>
-            </div>
-        `;
+        display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">กำลังโหลด...</p></div>`;
         loadAdminHistory(); 
-
-    } else {
-        title.innerText = type === 'kyc' ? 'ตรวจสอบการยืนยันตัวตน' : 'หน้าใหม่';
-        display.innerHTML = `<p style="text-align:center; color:#999; margin-top:50px;">กำลังพัฒนาส่วนนี้...</p>`;
     }
-
-    if(window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('active')) {
+    
+    // ปิด Sidebar สำหรับมือถือ
+    if(window.innerWidth <= 768 && document.getElementById('sidebar')?.classList.contains('active')) {
         toggleSidebar();
     }
 }
@@ -240,11 +249,26 @@ async function loadAdminHistory() {
 
 
 async function viewArchivedAdminChat(requestId, username, amount, status, slipUrl) {
-    currentChatRequestId = requestId;
+    // --- แทรกส่วนนี้: เพื่อป้องกัน Section หลักหายเวลาดูประวัติ ---
+    const topupListSec = document.getElementById('section-topup-list');
+    const adminChatSec = document.getElementById('section-admin-chat');
+    
+    // ย้ายไปเก็บในที่ปลอดภัยก่อน (hidden-storage)
+    let storage = document.getElementById('hidden-storage');
+    if (!storage) {
+        storage = document.createElement('div');
+        storage.id = 'hidden-storage';
+        storage.style.display = 'none';
+        document.body.appendChild(storage);
+    }
+    if (topupListSec) storage.appendChild(topupListSec);
+    if (adminChatSec) storage.appendChild(adminChatSec);
+    // --------------------------------------------------
 
+    currentChatRequestId = requestId;
     const display = document.getElementById('main-display');
     
-    // 1. แยกส่วนแสดงสลิปออกมา (กัน IDE งงเรื่องปีกกา)
+    // 1. แยกส่วนแสดงสลิปออกมา
     let slipSection = "";
     if (slipUrl && slipUrl !== "") {
         slipSection = `
@@ -255,7 +279,7 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
             </div>`;
     }
 
-    // 2. แสดงผลหน้าจอหลัก
+    // 2. แสดงผลหน้าจอหลัก (ตอนนี้สั่งล้าง innerHTML ได้ปลอดภัยแล้ว ของไม่หาย)
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px;">
