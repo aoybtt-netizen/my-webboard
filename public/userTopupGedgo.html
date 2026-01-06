@@ -167,6 +167,7 @@
         }
 
     function switchTab(tab) {
+	isHistoryMode = false;
     const title = document.getElementById('content-title');
     const topupSec = document.getElementById('section-topup-form'); // ตรวจสอบ ID ให้ตรงกับ HTML
     const historySec = document.getElementById('section-history');
@@ -355,6 +356,8 @@ async function checkTopupStatus() {
 
 // ฟังก์ชันส่งข้อความจากฝั่ง User
 function sendUserChat() {
+    if (isHistoryMode) return; // ถ้าดูประวัติอยู่ ห้ามส่ง!
+    
     const input = document.getElementById('user-chat-input');
     const message = input.value.trim();
     if (!message || !currentRequestId) return;
@@ -367,7 +370,7 @@ function sendUserChat() {
     };
 
     socket.emit('sendMessage', chatData);
-    appendMessage(chatData); // โชว์ที่ฝั่งตัวเองทันที
+    appendMessage(chatData);
     input.value = '';
 }
 
@@ -535,40 +538,40 @@ async function compressImage(file, { maxWidth = 1024, quality = 0.7 }) {
     });
 }
 
+let isHistoryMode = false; // เพิ่มตัวแปรสถานะ
+
 async function viewArchivedChat(requestId, amount, status) {
-    currentRequestId = requestId; // กำหนด ID เพื่อให้ loadChatHistory รู้ว่าจะดึงห้องไหน
+    currentRequestId = requestId;
+    isHistoryMode = true; // เปิดโหมดประวัติ
+    
     const titleElem = document.getElementById('content-title');
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
     
-    // 1. สลับหน้าจอ
     titleElem.innerText = "รายละเอียดธุรกรรม";
     historySec.style.display = 'none';
     chatSec.style.display = 'flex';
 
-    // 2. ซ่อนช่องพิมพ์แชท (เพราะเป็นประวัติย้อนหลัง แก้ไขไม่ได้แล้ว)
-    const inputArea = chatSec.querySelector('div:last-child'); 
+    // ซ่อนช่องพิมพ์แชทด้วย ID ที่เราตั้งไว้
+    const inputArea = document.getElementById('chat-input-area');
     if(inputArea) inputArea.style.display = 'none';
 
-    // 3. ปรับเปลี่ยนส่วนหัวแชทให้โชว์สรุปรายการ
+    // แสดงส่วนหัวสรุปรายการ
     const headerWrapper = document.getElementById('admin-auto-reply-wrapper');
     headerWrapper.innerHTML = `
-        <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'};">
-            <div style="text-align: center;">
-                <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
-                <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
-                    รายการนี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
-                </div>
-                <div style="font-size: 0.9em; color: #666;">ยอดเงิน: ${amount.toFixed(2)} USD</div>
+        <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'}; text-align: center;">
+            <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
+            <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
+                รายการนี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
             </div>
-            <button onclick="switchTab('history')" style="width:100%; margin-top:10px; border:none; background:rgba(0,0,0,0.05); padding: 8px; border-radius: 8px; cursor:pointer; font-size: 0.8em;">
+            <div style="font-size: 0.9em; color: #666;">ยอดเงิน: ${amount.toFixed(2)} USD</div>
+            <button onclick="switchTab('history')" style="width:100%; margin-top:10px; border:none; background:rgba(0,0,0,0.05); padding: 8px; border-radius: 8px; cursor:pointer;">
                 <i class="fas fa-arrow-left"></i> กลับไปหน้าประวัติ
             </button>
         </div>
     `;
 
-    // 4. ล้างข้อความแชทเก่าที่อาจค้างในจอ แล้วโหลดประวัติแชทจริงจาก DB
-    document.getElementById('realtime-chats').innerHTML = '';
+    document.getElementById('realtime-chats').innerHTML = '<p style="text-align:center; color:#999;">กำลังโหลดประวัติแชท...</p>';
     await loadChatHistory(requestId);
 }
 
