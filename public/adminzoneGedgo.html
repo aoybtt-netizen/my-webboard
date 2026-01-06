@@ -286,9 +286,10 @@ async function loadTopupRequests() {
     const adminName = localStorage.getItem('myUsername');
     const container = document.getElementById('topup-list-container');
     
-    if (!container) return; // กัน Error ถ้าหา Element ไม่เจอ
+    if (!container) return; 
 
     try {
+        // 1. ดึงข้อมูลจริงจาก API
         const res = await fetch(`/api/admin/topup-list?admin=${adminName}`);
         const requests = await res.json();
         
@@ -297,17 +298,24 @@ async function loadTopupRequests() {
             return;
         }
 
-        // วาดการ์ดคำขอจากข้อมูลจริง
+        // 2. วาดการ์ดโดยใช้โครงสร้างที่คุณต้องการ + ข้อมูลจริง (req.username, req.amount)
         container.innerHTML = requests.map(req => `
-            <div class="admin-card" onclick="openChat('${req._id}')" style="cursor:pointer;">
+            <div class="admin-card" style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong style="font-size: 1.1em;">User: ${req.username}</strong><br>
-                    <small style="color:var(--primary); font-weight:bold;">ยอดเติม: ${req.amount.toFixed(2)} USD</small><br>
-                    <small style="color:#999;">เมื่อ: ${new Date(req.createdAt).toLocaleString('th-TH')}</small>
+                    <strong>User: ${req.username}</strong><br>
+                    <small style="color:var(--primary); font-weight:bold;">จำนวน: ${req.amount.toFixed(2)} USD</small><br>
+                    <small style="color:#999; font-size: 0.8em;">เมื่อ: ${new Date(req.createdAt).toLocaleString('th-TH')}</small>
                 </div>
-                <i class="fas fa-chevron-right" style="color:#ccc;"></i>
+                <div style="display: flex; gap: 8px;">
+                    <button class="status-btn" style="background:#f0f0f0; color:#666;" onclick="openChat('${req._id}')">
+                        <i class="fas fa-comment"></i>
+                    </button>
+                    <button class="status-btn btn-reject" onclick="handleQuickAction('${req._id}', 'rejected', '${req.username}')">ปฏิเสธ</button>
+                    <button class="status-btn btn-approve" onclick="handleQuickAction('${req._id}', 'approved', '${req.username}', ${req.amount})">อนุมัติ</button>
+                </div>
             </div>
         `).join('');
+
     } catch (err) {
         console.error("Load requests error:", err);
         container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
