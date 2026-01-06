@@ -387,6 +387,22 @@ async function handleQuickAction(requestId, status, username, amount = 0) {
 }
 
 
+async function loadAdminChatHistory(requestId) {
+    try {
+        // ดึงข้อมูลจาก API ประวัติแชท
+        const res = await fetch(`/api/topup/chat-history?requestId=${requestId}`);
+        const history = await res.json();
+        
+        // วนลูปนำข้อความเก่าๆ มาแสดงผลโดยใช้ฟังก์ชันที่คุณมีอยู่แล้ว
+        if (Array.isArray(history)) {
+            history.forEach(msg => {
+                appendAdminChatMessage(msg);
+            });
+        }
+    } catch (err) {
+        console.error("🚨 Load chat history error:", err);
+    }
+}
 
 
 // 2. ฟังก์ชันเปิดหน้าแชท
@@ -396,10 +412,9 @@ async function openFullChat(requestId, username, amount) {
 
     const display = document.getElementById('main-display');
     
-    // เปลี่ยนเนื้อหาใน main-display ให้เป็นหน้าแชทเต็มรูปแบบ
+    // 1. วาดโครงสร้างหน้าแชท (โค้ดเดิมของคุณ)
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
-            
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <button onclick="showContent('topup')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer; color:var(--dark);">
@@ -434,6 +449,9 @@ async function openFullChat(requestId, username, amount) {
             </div>
         </div>
     `;
+
+    // ✅ 2. เพิ่มบรรทัดนี้: โหลดประวัติแชทจากฐานข้อมูลมาแสดงทันที
+    await loadAdminChatHistory(requestId);
 }
 
 

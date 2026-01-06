@@ -274,6 +274,7 @@ async function connectDB() {
         zonesCollection = db.collection('zones');
 		topupRequestsCollection = db.collection('topup_requests');
         adminSettingsCollection = db.collection('admin_settings');
+		const topupChatsCollection = db.collection('topup_chats');
 
         if (typeof seedInitialData === 'function') {
             await seedInitialData();
@@ -3962,10 +3963,39 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
     });
 
     // 2. รับและส่งข้อความแชท
-    socket.on('sendMessage', (data) => {
-        // data ประกอบด้วย { requestId, sender, message, type: 'text'|'image' }
-        io.to(data.requestId).emit('receiveMessage', data);
-    });
+    socket.on('sendMessage', async (data) => {
+    // data: { requestId, sender, message, type }
+    const chatMsg = {
+        requestId: data.requestId,
+        sender: data.sender,
+        message: data.message,
+        type: data.type || 'text',
+        timestamp: new Date()
+    };
+    
+    // บันทึกลงฐานข้อมูล
+    await topupChatsCollection.insertOne(chatMsg);
+    
+    // ส่งต่อไปยังคนอื่นๆ ในห้อง
+    io.to(data.requestId).emit('receiveMessage', chatMsg);
+});
+
+	// 2.1
+	app.get('/api/topup/chat-history', async (req, res) => {
+    try {
+        const { requestId } = req.query;
+        if (!requestId) return res.status(400).send("Missing requestId");
+
+        const history = await topupChatsCollection
+            .find({ requestId: requestId })
+            .sort({ timestamp: 1 }) // เรียงจากเก่าไปใหม่
+            .toArray();
+
+        res.json(history);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
     // 3. แจ้งเตือนเมื่อสถานะเปลี่ยน (เช่น อนุมัติแล้ว)
     socket.on('statusChanged', (data) => {

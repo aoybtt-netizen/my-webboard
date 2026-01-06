@@ -255,6 +255,22 @@ socket.on('updateStatus', (data) => {
     }
 });
 
+async function loadChatHistory(requestId) {
+    try {
+        const res = await fetch(`/api/topup/chat-history?requestId=${requestId}`);
+        const history = await res.json();
+        
+        const chatContainer = document.getElementById('realtime-chats');
+        chatContainer.innerHTML = ''; // ล้างแชทเก่าก่อน (ถ้ามี)
+
+        history.forEach(msg => {
+            appendMessage(msg); // ใช้ฟังก์ชันเดิมที่คุณมีในการวาดข้อความ
+        });
+    } catch (err) {
+        console.error("Load chat history error:", err);
+    }
+}
+
 async function checkTopupStatus() {
     const myName = localStorage.getItem('myUsername');
     const savedLoc = localStorage.getItem('userPrimaryLocation');
@@ -271,7 +287,9 @@ async function checkTopupStatus() {
             currentRequestId = data.requestId; // เก็บ ID ไว้ส่งแชท
             formSec.style.display = 'none';
             chatSec.style.display = 'flex'; // เปลี่ยนเป็น flex เพื่อให้แชทเต็มความสูง
+			await loadChatHistory(data.requestId);
 
+			socket.emit('joinRequest', data.requestId);
             // 1. แสดงข้อมูลบัญชีแอดมิน (Auto Reply)
             document.getElementById('admin-auto-reply-wrapper').innerHTML = `
                 <div style="align-self: flex-start; max-width: 90%;">
