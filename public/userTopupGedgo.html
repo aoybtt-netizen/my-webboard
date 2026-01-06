@@ -282,7 +282,7 @@ async function checkTopupStatus() {
         }
 
         if (data.hasPending) {
-            formSec.style.display = 'none';
+            formSec.style.display = 'block';//เงือนใขส่งคำขอ none 1คำขอ blockไม่มีจำกัด
             chatSec.style.display = 'block';
             titleElem.innerText = "สถานะการเติมเงิน";
             
@@ -307,7 +307,7 @@ async function checkTopupStatus() {
 
         } else {
             formSec.style.display = 'block';
-            chatSec.style.display = 'none';
+            chatSec.style.display = 'block';//none
             titleElem.innerText = "เติมเงิน";
         }
     } catch (err) {

@@ -3184,18 +3184,14 @@ app.get('/api/rider/check-working-status', async (req, res) => {
 app.post('/api/topup/request', async (req, res) => {
     try {
         const { username, amount, location } = req.body;
-        
-        // ค้นหาแอดมินที่ดูแลโซนนี้ (ใช้ฟังก์ชันเดิมที่เราเคยทำไว้)
         const locationObj = JSON.parse(decodeURIComponent(location));
         const zoneInfo = await findResponsibleAdmin(locationObj);
         
         if (!zoneInfo || !zoneInfo.zoneData.assignedAdmin) {
-            return res.status(400).json({ error: "ไม่อยู่ในพื้นที่บริการของแอดมินคนใด" });
+            return res.status(400).json({ error: "ไม่อยู่ในพื้นที่บริการ" });
         }
 
         const adminId = zoneInfo.zoneData.assignedAdmin;
-
-        // บันทึกคำขอลง Collection
         const newRequest = {
             username,
             amount: parseFloat(amount),
@@ -3204,8 +3200,9 @@ app.post('/api/topup/request', async (req, res) => {
             createdAt: new Date()
         };
 
-        await topupRequestsCollection.insertOne(newRequest);
-        res.json({ success: true, adminId });
+        const result = await topupRequestsCollection.insertOne(newRequest);
+        // ✅ ส่ง requestId (insertedId) กลับไปด้วย
+        res.json({ success: true, adminId, requestId: result.insertedId }); 
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -3215,25 +3212,17 @@ app.post('/api/topup/request', async (req, res) => {
 app.get('/api/topup/status', async (req, res) => {
     try {
         const { username } = req.query;
-        
-        // หาคำขอที่สถานะยังเป็น pending
-        const pendingRequest = await topupRequestsCollection.findOne({ 
-            username, 
-            status: 'pending' 
-        });
+        const pendingRequest = await topupRequestsCollection.findOne({ username, status: 'pending' });
 
         if (pendingRequest) {
-            // ดึงข้อความอัตโนมัติ (เลขบัญชี) ของแอดมินคนนั้นมาด้วย
-            const adminSettings = await adminSettingsCollection.findOne({ 
-                adminName: pendingRequest.adminId 
-            });
-
+            const adminSettings = await adminSettingsCollection.findOne({ adminName: pendingRequest.adminId });
             res.json({
                 hasPending: true,
+                requestId: pendingRequest._id, // ✅ ต้องส่ง ID นี้กลับไปให้ Socket.io ใช้
                 adminName: pendingRequest.adminId,
                 adminMessage: {
-                    bankInfo: adminSettings ? adminSettings.bankInfo : "โปรดติดต่อแอดมินโดยตรง",
-                    desc: adminSettings ? adminSettings.desc : "กำลังรอการตอบกลับ"
+                    bankInfo: adminSettings ? adminSettings.bankInfo : "โปรดติดต่อแอดมิน",
+                    desc: adminSettings ? adminSettings.desc : ""
                 }
             });
         } else {
