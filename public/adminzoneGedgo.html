@@ -145,53 +145,61 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     }
 }
 
-    function showContent(type) {
+    async function showContent(type) {
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
     
-    // 1. ดึง Element ของแต่ละส่วนมาเตรียมไว้
+    // 1. ดึง Element ส่วนรายการและแชทมาเตรียมไว้
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
 
     // ลบสีเขียว (active) ออกจากทุกเมนูก่อน
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-    
-    // หาเมนูที่ต้องไฮไลท์สีเขียว
     let targetItem = window.event?.currentTarget || document.querySelector(`.menu-item[onclick*="'${type}'"]`);
     if (targetItem) targetItem.classList.add('active');
 
     // --- ส่วนจัดการเนื้อหา ---
-    
+
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
-        display.innerHTML = '<div id="topup-list-container">กำลังโหลด...</div>';
-        // ✅ ปิดหน้าแชท และเปิดหน้ารายการ
-        if(adminChatSec) adminChatSec.style.display = 'none';
-        if(topupListSec) {
-            topupListSec.style.display = 'block';
-            // ✅ เรียกฟังก์ชันดึงข้อมูลจริงจาก Server มาโชว์
-            loadTopupRequests(); 
-        }
+        
+        // ✅ เคลียร์หน้าจอหลักก่อนเพื่อให้เหลือแค่โครงสร้าง Section
+        display.innerHTML = ''; 
+        // ✅ ใส่ Section กลับคืนไป (กรณีที่โดน automessage ล้างทิ้ง)
+        display.appendChild(topupListSec);
+        display.appendChild(adminChatSec);
+
+        adminChatSec.style.display = 'none';
+        topupListSec.style.display = 'block';
+        
+        // เคลียร์ด้านใน container ก่อนโหลดใหม่ป้องกันการ์ดซ้อน
+        document.getElementById('topup-list-container').innerHTML = 'กำลังโหลด...';
+        loadTopupRequests(); 
 
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
-        // ซ่อนส่วนอื่นๆ
-        if(topupListSec) topupListSec.style.display = 'none';
-        if(adminChatSec) adminChatSec.style.display = 'none';
         
-        // โชว์ฟอร์มตั้งค่า (ใช้ innerHTML ได้เพราะส่วนนี้มักจะเป็นฟอร์มแยก)
-        display.innerHTML = renderAutoMessageForm();
+        // ✅ ล้างทุกอย่างใน display ทิ้ง (รวมถึงพวก section topup ด้วย) 
+        // เพื่อให้ฟอร์มตั้งค่าแสดงผลอันเดียวเพียวๆ
+        display.innerHTML = '<p style="text-align:center; color:#999;">กำลังดึงข้อมูลจากเซิร์ฟเวอร์...</p>';
 
-    } else if (type === 'kyc' || type === 'history') {
-        // ซ่อนส่วนเติมเงิน/แชท เมื่อไปหน้าอื่น
-        if(topupListSec) topupListSec.style.display = 'none';
-        if(adminChatSec) adminChatSec.style.display = 'none';
-        
+        try {
+            const adminName = localStorage.getItem('myUsername');
+            const res = await fetch(`/api/admin/get-settings?admin=${adminName}`);
+            const settings = await res.json();
+            
+            // ✅ วาดฟอร์มทับลงไปเลย
+            display.innerHTML = renderAutoMessageForm(settings.bankInfo, settings.desc);
+        } catch (e) {
+            display.innerHTML = renderAutoMessageForm();
+        }
+
+    } else {
+        // ส่วนอื่นๆ kyc หรือ history
         title.innerText = type === 'kyc' ? 'ตรวจสอบการยืนยันตัวตน' : 'ประวัติธุรกรรมในโซน';
         display.innerHTML = `<p style="text-align:center; color:#999; margin-top:50px;">กำลังพัฒนาส่วนนี้...</p>`;
     }
 
-    // ถ้าเป็นมือถือให้ปิด sidebar อัตโนมัติ
     if(window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('active')) {
         toggleSidebar();
     }
@@ -239,20 +247,25 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
 
 
-	function renderAutoMessageForm() {
-    const savedBankInfo = localStorage.getItem('adminBankInfo') || "";
-    const savedDesc = localStorage.getItem('adminTopupDesc') || "กรุณาโอนเงินตามยอดที่ระบุ และแนบสลิปในแชท";
+	function renderAutoMessageForm(bankInfo = "", desc = "") {
+    // กำหนดค่าเริ่มต้นถ้าไม่มีข้อมูล
+    const displayBank = bankInfo || "";
+    const displayDesc = desc || "กรุณาโอนเงินตามยอดที่ระบุ และแนบสลิปในแชท";
+
     return `
-        <div class="admin-card" style="display: block;">
+        <div class="admin-card" style="display: block; max-width: 600px; margin: 0 auto;">
+            <h3 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px;">ตั้งค่าการรับเงิน</h3>
             <div style="margin-bottom: 20px;">
                 <label style="font-weight: bold; display: block; margin-bottom: 8px;">เลขบัญชี / พร้อมเพย์:</label>
-                <input type="text" id="bank-info-input" value="${savedBankInfo}" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px;">
+                <textarea id="bank-info-input" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-family: inherit;">${displayBank}</textarea>
             </div>
             <div style="margin-bottom: 20px;">
-                <label style="font-weight: bold; display: block; margin-bottom: 8px;">คำอธิบาย:</label>
-                <textarea id="topup-desc-input" rows="4" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px;">${savedDesc}</textarea>
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">คำอธิบายขั้นตอนการเติมเงิน:</label>
+                <textarea id="topup-desc-input" rows="4" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-family: inherit;">${displayDesc}</textarea>
             </div>
-            <button onclick="saveAutoMessage()" style="width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">บันทึกข้อมูล</button>
+            <button onclick="saveAutoMessage()" style="width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s;">
+                <i class="fas fa-save"></i> บันทึกข้อมูลลงฐานข้อมูล
+            </button>
         </div>
     `;
 }
