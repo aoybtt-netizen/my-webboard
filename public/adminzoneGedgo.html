@@ -185,21 +185,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     }
 }
 
-        // ตัวอย่างการ Render รายการเติมเงิน
-    function renderTopupList() {
-    return `
-        <div class="admin-card">
-            <div>
-                <strong>User: Somchai_66</strong><br>
-                <small style="color:var(--primary);">จำนวน: 50.00 USD</small>
-            </div>
-            <div>
-                <button class="status-btn btn-reject">ปฏิเสธ</button>
-                <button class="status-btn btn-approve" onclick="confirmTopup('Somchai_66', 50)">อนุมัติ</button>
-            </div>
-        </div>
-    `;
-}
+
 
         // ตัวอย่างการ Render รายการ KYC
     function renderKYCList() {
@@ -286,25 +272,34 @@ async function saveAutoMessage() {
 
 async function loadTopupRequests() {
     const adminName = localStorage.getItem('myUsername');
-    const res = await fetch(`/api/admin/topup-list?admin=${adminName}`);
-    const requests = await res.json();
-    
     const container = document.getElementById('topup-list-container');
-    if (requests.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:30px;">ไม่มีคำขอใหม่ในขณะนี้</p>';
-        return;
-    }
+    
+    if (!container) return; // กัน Error ถ้าหา Element ไม่เจอ
 
-    container.innerHTML = requests.map(req => `
-        <div class="admin-card" onclick="openChat('${req._id}')" style="cursor:pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='#eee'">
-            <div>
-                <strong style="font-size: 1.1em;">User: ${req.username}</strong><br>
-                <small style="color:var(--primary); font-weight:bold;">ยอดเติม: ${req.amount.toFixed(2)} USD</small><br>
-                <small style="color:#999;">${new Date(req.createdAt).toLocaleString('th-TH')}</small>
+    try {
+        const res = await fetch(`/api/admin/topup-list?admin=${adminName}`);
+        const requests = await res.json();
+        
+        if (requests.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:30px;">ไม่มีคำขอใหม่ในขณะนี้</p>';
+            return;
+        }
+
+        // วาดการ์ดคำขอจากข้อมูลจริง
+        container.innerHTML = requests.map(req => `
+            <div class="admin-card" onclick="openChat('${req._id}')" style="cursor:pointer;">
+                <div>
+                    <strong style="font-size: 1.1em;">User: ${req.username}</strong><br>
+                    <small style="color:var(--primary); font-weight:bold;">ยอดเติม: ${req.amount.toFixed(2)} USD</small><br>
+                    <small style="color:#999;">เมื่อ: ${new Date(req.createdAt).toLocaleString('th-TH')}</small>
+                </div>
+                <i class="fas fa-chevron-right" style="color:#ccc;"></i>
             </div>
-            <i class="fas fa-chevron-right" style="color:#ccc;"></i>
-        </div>
-    `).join('');
+        `).join('');
+    } catch (err) {
+        console.error("Load requests error:", err);
+        container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
+    }
 }
 
 
