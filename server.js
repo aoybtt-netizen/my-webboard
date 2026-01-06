@@ -4074,7 +4074,13 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
         io.to(data.requestId).emit('updateStatus', data);
     });
 	
-	
+	//
+	socket.on('newTopupRequest', (data) => {
+    console.log(`📣 มีรายการเติมเงินใหม่จาก ${data.username} ถึงแอดมิน ${data.adminId}`);
+    
+    // ส่งสัญญาณไปบอกแอดมินทุกคน (หรือส่งเฉพาะคนด้วย io.to(data.adminId) ถ้าทำระบบ Room ไว้)
+    io.emit('notifyAdminNewRequest', data);
+});
 	
 	
 	

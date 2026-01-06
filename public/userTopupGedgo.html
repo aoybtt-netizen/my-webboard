@@ -475,7 +475,12 @@ async function submitTopupRequest() {
         });
 
         if (res.ok) {
-            // เมื่อส่งสำเร็จ ให้รีเฟรชหน้าเพื่อสลับไปหน้าแชทอัตโนมัติ
+            const result = await res.json();
+			socket.emit('newTopupRequest', {
+                adminId: result.adminId,
+                username: username,
+                amount: amount
+				});
             await checkTopupStatus();
         }
     } catch (err) {
