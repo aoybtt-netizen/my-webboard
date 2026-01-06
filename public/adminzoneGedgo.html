@@ -218,33 +218,44 @@ async function loadAdminHistory() {
         }
 
         container.innerHTML = history.map(item => `
-            <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
-                <div>
-                    <strong>User: ${item.username}</strong><br>
-                    <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
-                        ${item.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'}: ${item.amount.toFixed(2)} USD
-                    </span>
-                </div>
-                <div style="text-align:right;">
-                    <small style="color:#999;">${new Date(item.processedAt).toLocaleString('th-TH')}</small><br>
-                    <i class="fas fa-chevron-right" style="color:#eee;"></i>
-                </div>
-            </div>
-        `).join('');
+    <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.slipUrl || ""}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
+        <div>
+            <strong>User: ${item.username}</strong><br>
+            <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
+                ${item.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'}: ${item.amount.toFixed(2)} USD
+            </span>
+        </div>
+        <div style="text-align:right;">
+            <small style="color:#999;">${new Date(item.processedAt).toLocaleString('th-TH')}</small><br>
+            <i class="fas fa-chevron-right" style="color:#eee;"></i>
+        </div>
+    </div>
+`).join('');
     } catch (err) {
         container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
     }
 }
 
 
-async function viewArchivedAdminChat(requestId, username, amount, status) {
+async function viewArchivedAdminChat(requestId, username, amount, status, slipUrl) {
     currentChatRequestId = requestId;
-    // ไม่ต้อง joinRequest เพราะเป็นแชทเก่าที่จบแล้ว ไม่มีการเรียลไทม์
 
     const display = document.getElementById('main-display');
+    
+    // 1. แยกส่วนแสดงสลิปออกมา (กัน IDE งงเรื่องปีกกา)
+    let slipSection = "";
+    if (slipUrl && slipUrl !== "") {
+        slipSection = `
+            <div style="align-self: flex-start; background: white; padding: 10px; border-radius: 10px; border: 1px solid #ddd; max-width: 70%;">
+                <div style="font-size: 0.8em; color: #666; margin-bottom: 5px;"><i class="fas fa-info-circle"></i> ข้อมูลเริ่มต้นจากระบบ</div>
+                <img src="${slipUrl}" style="max-width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open('${slipUrl}')">
+                <div style="margin-top: 5px; font-weight: bold; color: var(--dark);">ยอดแจ้งเติม: ${amount.toFixed(2)} USD</div>
+            </div>`;
+    }
+
+    // 2. แสดงผลหน้าจอหลัก
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
-            
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px;">
                 <button onclick="showContent('history')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;">
                     <i class="fas fa-arrow-left"></i>
@@ -258,15 +269,14 @@ async function viewArchivedAdminChat(requestId, username, amount, status) {
             </div>
 
             <div id="chat-box" style="flex: 1; padding: 20px; background: #f1f5f9; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
-                </div>
+                ${slipSection} 
+            </div>
 
             <div style="padding: 15px; background: #fff; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 0.9em;">
-                <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้วเมื่อ ${new Date().toLocaleDateString('th-TH')}
+                <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้ว
             </div>
-        </div>
-    `;
+        </div>`;
 
-    // โหลดประวัติแชทจริงจาก DB
     await loadAdminChatHistory(requestId);
 }
 
