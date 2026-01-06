@@ -73,6 +73,21 @@
             <div>
                 ยอดเงินปัจจุบัน: <b id="current-balance">0.00</b> USD
             </div>
+			
+			<div id="zone-info-display" style="margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 12px; display: flex; align-items: center; gap: 12px; text-align: left;">
+    <div style="background: #e8f5e9; color: var(--primary); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+        <i class="fas fa-map-marker-alt"></i>
+    </div>
+    <div style="flex: 1;">
+        <div style="font-size: 0.7em; color: #999; text-transform: uppercase;">โซนปัจจุบันของคุณ</div>
+        <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.9em;">กำลังโหลด...</div>
+        <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
+            <i class="fas fa-user-shield" style="color: #f1c40f;"></i> ผู้ดูแล: 
+            <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);">รอการเชื่อมต่อ</span>
+        </div>
+    </div>
+</div>
+
         </header>
 
         <div class="content-body" id="main-display">
@@ -160,10 +175,35 @@
             `;
         }
 
-        window.onload = () => {
-            // ดึงยอดเงินปัจจุบันจาก LocalStorage หรือ API
-            document.getElementById('current-balance').innerText = "0.00";
-        };
+        window.onload = async () => {
+    const myName = localStorage.getItem('myUsername');
+    if (!myName) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    try {
+        const savedLoc = localStorage.getItem('userPrimaryLocation');
+        let locationParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
+
+        // ดึงข้อมูลผ่าน API ตัวเดิมที่เราใช้กับหน้าโปรไฟล์
+        const res = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        // 1. อัปเดตยอดเงิน
+        document.getElementById('current-balance').innerText = (data.coins || 0).toFixed(2);
+        
+        // 2. อัปเดตข้อมูลโซนและเจ้าของโซน (นี่คือส่วนที่สำคัญ!)
+        document.getElementById('display-zone-name').innerText = data.zoneName || "นอกพื้นที่บริการ";
+        document.getElementById('display-zone-admin').innerText = data.zoneOwner || "ไม่มีผู้ดูแล";
+
+    } catch (err) {
+        console.error("Load Topup Info Error:", err);
+        document.getElementById('display-zone-name').innerText = "โหลดข้อมูลล้มเหลว";
+    }
+};
     </script>
 </body>
 </html>
