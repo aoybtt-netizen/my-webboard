@@ -3272,26 +3272,62 @@ app.get('/api/admin/topup-list', async (req, res) => {
 });
 
 // 2.4 อนุมัติการเติมเงิน
-app.post('/api/admin/approve-topup', async (req, res) => {
-    const { requestId, adminName } = req.body;
-    
-    // 1. หาข้อมูลคำขอ
-    const request = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
-    if (!request || request.status !== 'pending') return res.status(400).send("ไม่พบคำขอ");
+// --- API สำหรับแอดมินจัดการคำขอเติมเงิน (อนุมัติ/ปฏิเสธ) ---
+app.post('/api/admin/process-topup', async (req, res) => {
+    try {
+        const { requestId, status, adminName } = req.body;
 
-    // 2. อัปเดตเงินในตัวแปร coins ของ User
-    await usersCollection.updateOne(
-        { username: request.username },
-        { $inc: { coins: request.amount } } // ใช้ $inc เพื่อบวกเพิ่ม
-    );
+        if (!requestId || !status) {
+            return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
+        }
 
-    // 3. เปลี่ยนสถานะคำขอเป็น approved
-    await topupRequestsCollection.updateOne(
-        { _id: new ObjectId(requestId) },
-        { $set: { status: 'approved', approvedAt: new Date() } }
-    );
+        // 1. ค้นหาคำขอเติมเงิน
+        const topupReq = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
 
-    res.json({ success: true });
+        if (!topupReq) {
+            return res.status(404).json({ error: "ไม่พบคำขอเติมเงินนี้" });
+        }
+
+        if (topupReq.status !== 'pending') {
+            return res.status(400).json({ error: "คำขอนี้ถูกดำเนินการไปแล้ว" });
+        }
+
+        // 2. ถ้าแอดมินเลือก 'approved' (อนุมัติ) ให้ไปเพิ่มเงินให้ User
+        if (status === 'approved') {
+            const amountToAdd = parseFloat(topupReq.amount);
+
+            // อัปเดตเงินใน usersCollection (บวกเหรียญเพิ่ม)
+            const userUpdate = await usersCollection.updateOne(
+                { username: topupReq.username },
+                { $inc: { coins: amountToAdd } }
+            );
+
+            if (userUpdate.matchedCount === 0) {
+                return res.status(404).json({ error: "ไม่พบชื่อผู้ใช้งานนี้ในระบบ" });
+            }
+        }
+
+        // 3. เปลี่ยนสถานะใน topup_requests จาก pending เป็นสถานะใหม่ (approved หรือ rejected)
+        await topupRequestsCollection.updateOne(
+            { _id: new ObjectId(requestId) },
+            { 
+                $set: { 
+                    status: status, 
+                    processedBy: adminName,
+                    processedAt: new Date()
+                } 
+            }
+        );
+
+        // 4. บันทึก Transaction (ถ้ามี collection เก็บประวัติ) - ส่วนนี้ใส่เพิ่มได้ภายหลัง
+        console.log(`✅ [Topup] ${topupReq.username} ${status} by ${adminName} (${topupReq.amount} USD)`);
+
+        res.json({ success: true, message: `ดำเนินการ ${status} เรียบร้อยแล้ว` });
+
+    } catch (err) {
+        console.error("❌ Process Topup Error:", err);
+        res.status(500).json({ error: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" });
+    }
 });
 
 

@@ -289,7 +289,6 @@ async function loadTopupRequests() {
     if (!container) return; 
 
     try {
-        // 1. ดึงข้อมูลจริงจาก API
         const res = await fetch(`/api/admin/topup-list?admin=${adminName}`);
         const requests = await res.json();
         
@@ -298,26 +297,21 @@ async function loadTopupRequests() {
             return;
         }
 
-        // 2. วาดการ์ดโดยใช้โครงสร้างที่คุณต้องการ + ข้อมูลจริง (req.username, req.amount)
+        // วาดการ์ดแบบไม่มีปุ่ม (เน้นความสะอาด) และคลิกเพื่อเปิดแชท
         container.innerHTML = requests.map(req => `
-            <div class="admin-card" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="admin-card" onclick="openChat('${req._id}', '${req.username}', ${req.amount})" style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;">
                 <div>
-                    <strong>User: ${req.username}</strong><br>
-                    <small style="color:var(--primary); font-weight:bold;">จำนวน: ${req.amount.toFixed(2)} USD</small><br>
-                    <small style="color:#999; font-size: 0.8em;">เมื่อ: ${new Date(req.createdAt).toLocaleString('th-TH')}</small>
+                    <strong style="font-size: 1.1em; color: var(--dark);">User: ${req.username}</strong><br>
+                    <small style="color:var(--primary); font-weight:bold;">ยอดเติม: ${req.amount.toFixed(2)} USD</small>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="status-btn" style="background:#f0f0f0; color:#666;" onclick="openChat('${req._id}')">
-                        <i class="fas fa-comment"></i>
-                    </button>
-                    <button class="status-btn btn-reject" onclick="handleQuickAction('${req._id}', 'rejected', '${req.username}')">ปฏิเสธ</button>
-                    <button class="status-btn btn-approve" onclick="handleQuickAction('${req._id}', 'approved', '${req.username}', ${req.amount})">อนุมัติ</button>
+                <div style="text-align: right;">
+                    <small style="color:#999; font-size: 0.75em;">${new Date(req.createdAt).toLocaleTimeString('th-TH')} น.</small><br>
+                    <i class="fas fa-chevron-right" style="color:#eee; margin-top:5px;"></i>
                 </div>
             </div>
         `).join('');
 
     } catch (err) {
-        console.error("Load requests error:", err);
         container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
     }
 }
@@ -368,32 +362,88 @@ socket.on('receiveMessage', (msg) => {
         }
     });
 // 2. ฟังก์ชันเปิดหน้าแชท
-async function openChat(requestId) {
+async function openChat(requestId, username, amount) {
     currentChatRequestId = requestId;
     socket.emit('joinRequest', requestId);
-    // ซ่อนหน้ารายการ โชว์หน้าแชท
+
+    // สลับหน้าจอ
     document.getElementById('section-topup-list').style.display = 'none';
-    document.getElementById('section-admin-chat').style.display = 'block';
-    document.getElementById('content-title').innerText = "แชทตรวจสอบการโอน";
+    const chatSec = document.getElementById('section-admin-chat');
+    chatSec.style.display = 'block';
 
-    // ดึงข้อมูลคำขอจาก Array หรือ Server (ในที่นี้สมมติหาจากข้อมูลที่โหลดมาแล้ว)
-    // หรือยิง API ใหม่เพื่อเอาข้อมูลแอดมิน (Auto Message)
-    const adminName = localStorage.getItem('myUsername');
-    const bankInfo = localStorage.getItem('adminBankInfo') || "ไม่ได้ตั้งค่าเลขบัญชี";
-    const bankDesc = localStorage.getItem('adminTopupDesc') || "";
-
-    const chatBox = document.getElementById('chat-box');
-    
-    // จำลองประวัติเริ่มต้น
-    chatBox.innerHTML = `
-        <div style="align-self: flex-start; background: #e9ecef; padding: 10px 15px; border-radius: 15px; max-width: 80%; font-size: 0.9em; color: #666; border: 1px dashed #ccc;">
-            <i class="fas fa-info-circle"></i> สมาชิกส่งคำขอเติมเงิน
+    // ปรับแต่งหัวข้อแชทและปุ่มควบคุมภายในหน้าแชท
+    chatSec.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #eee;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button onclick="showContent('topup')" style="background: #eee; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div>
+                    <div style="font-weight: bold; color: var(--dark);">คำขอเติมเงิน: ${amount.toFixed(2)} USD</div>
+                    <div style="font-size: 0.8em; color: #666;">ผู้ส่ง: <span style="color: var(--primary);">${username}</span></div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <button class="status-btn btn-reject" style="padding: 8px 15px; font-size: 0.85em;" onclick="processRequestFromChat('rejected', '${username}')">ยกเลิก</button>
+                <button class="status-btn btn-approve" style="padding: 8px 15px; font-size: 0.85em;" onclick="processRequestFromChat('approved', '${username}', ${amount})">อนุมัติ</button>
+            </div>
         </div>
-        <div style="align-self: flex-end; background: var(--primary); color: white; padding: 12px 18px; border-radius: 15px 15px 0 15px; max-width: 85%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-            <div style="font-size: 0.8em; opacity: 0.8; margin-bottom: 5px;">ข้อความตอบกลับอัตโนมัติ</div>
-            <b>รายละเอียดการโอนเงิน:</b><br>${bankInfo}<br>${bankDesc}
+
+        <div id="chat-box" style="background: #f1f3f5; padding: 20px; border-radius: 15px; height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+            <div style="align-self: flex-start; background: white; padding: 12px; border-radius: 15px; font-size: 0.9em; border: 1px solid #eee;">
+                ระบบ: สมาชิก <b>${username}</b> ต้องการเติมเงิน <b>${amount.toFixed(2)} USD</b> 
+                <div style="font-size: 0.7em; color: #999; margin-top: 5px;">โปรดตรวจสอบหลักฐานก่อนกดอนุมัติ</div>
+            </div>
         </div>
     `;
+
+    // ดึงข้อมูลเลขบัญชีมาโชว์เป็นข้อความฝั่งแอดมิน (Auto Message)
+    const bankInfo = localStorage.getItem('adminBankInfo') || "ยังไม่ได้ตั้งค่า";
+    const chatBox = document.getElementById('chat-box');
+    chatBox.innerHTML += `
+        <div style="align-self: flex-end; background: var(--primary); color: white; padding: 12px; border-radius: 15px 15px 0 15px; font-size: 0.9em; max-width: 80%;">
+            <b>ข้อมูลโอนเงินของคุณ:</b><br>${bankInfo}
+        </div>
+    `;
+}
+
+//2.1
+async function processRequestFromChat(status, username, amount = 0) {
+    const actionText = status === 'approved' ? `อนุมัติ ${amount} USD ให้คุณ ${username}?` : `ปฏิเสธคำขอของคุณ ${username}?`;
+    if (!confirm(actionText)) return;
+
+    try {
+        const res = await fetch('/api/admin/process-topup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                requestId: currentChatRequestId, 
+                status: status,
+                adminName: localStorage.getItem('myUsername')
+            })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+            alert(result.message || "ดำเนินการสำเร็จ!");
+            
+            // แจ้งเตือน Real-time ไปที่ User
+            socket.emit('statusChanged', { 
+                requestId: currentChatRequestId, 
+                status: status 
+            });
+
+            // กลับไปหน้ารวมรายการ และโหลดข้อมูลใหม่ (การ์ดใบเดิมจะหายไป)
+            showContent('topup');
+            updateBadges();
+        } else {
+            alert(result.error || "เกิดข้อผิดพลาด");
+        }
+    } catch (e) {
+        alert("การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    }
 }
 
 // 3. ฟังก์ชันอนุมัติหรือปฏิเสธ
