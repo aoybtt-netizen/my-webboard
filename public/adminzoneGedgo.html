@@ -49,32 +49,97 @@
             .sidebar { position: fixed; left: -260px; }
             .sidebar.active { left: 0; }
         }
+		
+		
+		
+	
+	/* แผ่นใสสีดำพื้นหลังเวลาเปิดเมนูบนมือถือ */
+.sidebar-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: none;
+    backdrop-filter: blur(2px);
+}
+
+/* ตัว Sidebar */
+.sidebar { 
+    width: 260px; 
+    background: var(--dark); 
+    color: white; 
+    height: 100vh; 
+    position: fixed; /* ยึดติดกับหน้าจอ */
+    left: 0; 
+    top: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+}
+
+/* สถานะตอนซ่อน (สำหรับมือถือหรือตอนสั่งปิด) */
+@media (max-width: 768px) {
+    .sidebar { left: -260px; }
+    .sidebar.active { left: 0; }
+}
+
+/* การตกแต่งเมนูภายใน */
+.sidebar-header { padding: 30px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.menu-item { 
+    padding: 15px 25px; 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    color: rgba(255,255,255,0.7); 
+    text-decoration: none; 
+    cursor: pointer; 
+    transition: 0.2s;
+}
+.menu-item:hover, .menu-item.active { 
+    background: rgba(255,255,255,0.1); 
+    color: var(--secondary); 
+    border-left: 4px solid var(--secondary); 
+}
+.badge { 
+    background: var(--danger); 
+    color: white; 
+    font-size: 0.7em; 
+    padding: 2px 8px; 
+    border-radius: 10px; 
+    margin-left: auto; 
+}
+
     </style>
 </head>
 <body>
 
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3 style="margin:0; color:var(--secondary);">GedGo! Zone</h3>
-            <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <h3 style="margin:0; color:var(--secondary);">GedGo! Zone</h3>
+        <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
+    </div>
+    <div class="sidebar-menu">
+        <div class="menu-item active" onclick="showContent('topup')">
+            <i class="fas fa-wallet"></i> คำขอเติมเงิน
+            <span class="badge" id="topup-count">0</span>
         </div>
-        <div class="sidebar-menu">
-            <div class="menu-item active" onclick="showContent('topup')">
-                <i class="fas fa-wallet"></i> คำขอเติมเงิน
-                <span class="badge" id="topup-count">0</span>
-            </div>
-            <div class="menu-item" onclick="showContent('kyc')">
-                <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
-                <span class="badge" id="kyc-count">0</span>
-            </div>
-            <div class="menu-item" onclick="showContent('history')">
-                <i class="fas fa-history"></i> ประวัติธุรกรรมในโซน
-            </div>
+        <div class="menu-item" onclick="showContent('kyc')">
+            <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
+            <span class="badge" id="kyc-count">0</span>
         </div>
-        <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <a href="index.html" class="menu-item" style="padding:0;"><i class="fas fa-home"></i> กลับหน้าหลัก</a>
+        <div class="menu-item" onclick="showContent('history')">
+            <i class="fas fa-history"></i> ประวัติธุรกรรมในโซน
         </div>
-    </nav>
+    </div>
+    <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <a href="index.html" class="menu-item" style="padding:0;"><i class="fas fa-home"></i> กลับหน้าหลัก</a>
+    </div>
+</nav>
+
 
     <main class="main-content">
         <header class="top-bar">
@@ -97,8 +162,19 @@
 
     <script>
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-        }
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    // สลับคลาส active เพื่อสั่งสไลด์
+    sidebar.classList.toggle('active');
+    
+    // แสดง/ซ่อน แผ่นดำ (Overlay)
+    if (sidebar.classList.contains('active')) {
+        overlay.style.display = 'block';
+    } else {
+        overlay.style.display = 'none';
+    }
+}
 
         function showContent(type) {
             const display = document.getElementById('main-display');
@@ -107,6 +183,9 @@
             // ปรับสถานะเมนู Active
             document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
             event.currentTarget.classList.add('active');
+			if (window.innerWidth <= 768) {
+				toggleSidebar();
+			}
 
             if (type === 'topup') {
                 title.innerText = 'คำขอเติมเงิน (Pending)';
