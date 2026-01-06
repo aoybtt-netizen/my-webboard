@@ -177,7 +177,8 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
-        
+        const topupListSec = document.getElementById('section-topup-list');
+		const adminChatSec = document.getElementById('section-admin-chat');
         // ย้ายกลับมาจาก storage มาแสดงที่หน้าจอ
         display.appendChild(topupListSec);
         display.appendChild(adminChatSec);
@@ -283,9 +284,9 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px;">
-                <button onclick="showContent('topup')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;">
-				<i class="fas fa-arrow-left"></i>
-				</button>
+                <button onclick="showContent('history')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
                 <div>
                     <h4 style="margin:0;">ประวัติ: ${username}</h4>
                     <small style="color:${status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
@@ -507,12 +508,28 @@ async function loadAdminChatHistory(requestId) {
 
 // 2. ฟังก์ชันเปิดหน้าแชท
 async function openFullChat(requestId, username, amount) {
+    // --- 1. แทรกส่วนนี้: เพื่อป้องกัน Section รายชื่อหาย ---
+    const topupListSec = document.getElementById('section-topup-list');
+    const adminChatSec = document.getElementById('section-admin-chat');
+    
+    // ย้ายไปเก็บในที่ปลอดภัยก่อน (hidden-storage)
+    let storage = document.getElementById('hidden-storage');
+    if (!storage) {
+        storage = document.createElement('div');
+        storage.id = 'hidden-storage';
+        storage.style.display = 'none';
+        document.body.appendChild(storage);
+    }
+    if (topupListSec) storage.appendChild(topupListSec);
+    if (adminChatSec) storage.appendChild(adminChatSec);
+    // --------------------------------------------------
+
     currentChatRequestId = requestId;
     socket.emit('joinRequest', requestId);
 
     const display = document.getElementById('main-display');
     
-    // 1. วาดโครงสร้างหน้าแชท (โค้ดเดิมของคุณ)
+    // วาดโครงสร้างหน้าแชท (ตอนนี้ล้างหน้าจอได้ปลอดภัยแล้ว เพราะเราย้ายของออกไปแล้ว)
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
@@ -525,38 +542,10 @@ async function openFullChat(requestId, username, amount) {
                         <small style="color:var(--primary); font-weight:bold;">ยอดคำขอ: ${amount.toFixed(2)} USD</small>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}')">ปฏิเสธ</button>
-                    <button class="status-btn btn-approve" onclick="processAction('approved', '${username}', ${amount})">อนุมัติเติมเงิน</button>
                 </div>
             </div>
-
-            <div id="chat-box" style="flex: 1; padding: 20px; background: #f1f5f9; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
-                <div style="align-self: center; background: #fff; padding: 5px 15px; border-radius: 20px; font-size: 0.75em; color: #94a3b8; border: 1px solid #e2e8f0; margin-bottom: 10px;">
-                    เริ่มการสนทนาตรวจสอบยอดเงิน
-                </div>
-                <div style="align-self: flex-start; background: white; padding: 12px; border-radius: 0 15px 15px 15px; max-width: 80%; font-size: 0.9em; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <b>ระบบ:</b> สมาชิกแจ้งความประสงค์เติมเงินจำนวน <b>${amount.toFixed(2)} USD</b><br>
-                    <small style="color:#94a3b8;">${new Date().toLocaleString('th-TH')}</small>
-                </div>
-            </div>
-
-            <div style="padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; align-items: center;">
-    <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
-    <button onclick="document.getElementById('admin-slip-input').click()" id="admin-image-btn" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; color: #64748b;">
-        <i class="fas fa-image"></i>
-    </button>
-
-    <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
-    
-    <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
-        <i class="fas fa-paper-plane"></i>
-    </button>
-</div>
-        </div>
     `;
 
-    // ✅ 2. เพิ่มบรรทัดนี้: โหลดประวัติแชทจากฐานข้อมูลมาแสดงทันที
     await loadAdminChatHistory(requestId);
 }
 
