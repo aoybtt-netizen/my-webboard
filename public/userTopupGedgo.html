@@ -263,34 +263,56 @@ async function checkTopupStatus() {
 
     try {
         const res = await fetch(`/api/topup/status?username=${myName}${locParam}`);
+        
+        // เช็คว่า Server ตอบกลับ OK ไหม (200-299)
+        if (!res.ok) {
+            throw new Error(`Server error: ${res.status}`);
+        }
+
         const data = await res.json();
 
+        // เช็คว่ามี Element ครบไหมก่อนสั่งงาน
         const formSec = document.getElementById('section-topup-form');
         const chatSec = document.getElementById('section-pending-chat');
+        const titleElem = document.getElementById('content-title'); // แก้จาก header-title
+
+        if (!formSec || !chatSec || !titleElem) {
+            console.error("❌ หา Element บางตัวไม่เจอ: ", { formSec, chatSec, titleElem });
+            return;
+        }
 
         if (data.hasPending) {
             formSec.style.display = 'none';
             chatSec.style.display = 'block';
-            document.getElementById('header-title').innerText = "สถานะการเติมเงิน";
+            titleElem.innerText = "สถานะการเติมเงิน";
             
-            document.getElementById('chat-admin-name').innerText = data.adminName;
-            document.getElementById('admin-auto-reply').innerHTML = `
-                <b>แจ้งรายละเอียดการโอนเงิน</b><br>
-                ---------------------------<br>
-                ${data.adminMessage.bankInfo}<br><br>
-                ${data.adminMessage.desc}
-            `;
+            // เช็คว่าข้อมูลแอดมินส่งมาครบไหม
+            const adminNameElem = document.getElementById('chat-admin-name');
+            const adminReplyElem = document.getElementById('admin-auto-reply');
 
-            // ✅ แค่สั่ง Join Room ก็พอ ไม่ต้องประกาศ .on ซ้ำที่นี่
-            socket.emit('joinRequest', data.requestId);
+            if (adminNameElem) adminNameElem.innerText = data.adminName || "Admin";
+            if (adminReplyElem && data.adminMessage) {
+                adminReplyElem.innerHTML = `
+                    <b>แจ้งรายละเอียดการโอนเงิน</b><br>
+                    ---------------------------<br>
+                    ${data.adminMessage.bankInfo || 'รอเลขบัญชี'}<br><br>
+                    ${data.adminMessage.desc || ''}
+                `;
+            }
+
+            // ✅ เช็คว่า socket พร้อมใช้งานไหมก่อน emit
+            if (typeof socket !== 'undefined' && data.requestId) {
+                socket.emit('joinRequest', data.requestId);
+            }
 
         } else {
             formSec.style.display = 'block';
             chatSec.style.display = 'none';
-            document.getElementById('header-title').innerText = "เติมเงิน";
+            titleElem.innerText = "เติมเงิน";
         }
     } catch (err) {
-        console.error("Check status error:", err);
+        // บรรทัดนี้จะบอกคุณว่า "Error จริงๆ คืออะไร"
+        console.error("🚨 Check status error:", err.message); 
     }
 }
 
