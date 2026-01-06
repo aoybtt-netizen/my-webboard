@@ -62,6 +62,7 @@ let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 32.0 };
 const DEFAULT_CURRENCY = 'THB';
 let postViewers = {}; 
 let viewerGeolocation = {};
+const topupChatsCollection = db.collection('topup_chats');
 
 // --- Translations ---
 const serverTranslations = {
@@ -274,7 +275,6 @@ async function connectDB() {
         zonesCollection = db.collection('zones');
 		topupRequestsCollection = db.collection('topup_requests');
         adminSettingsCollection = db.collection('admin_settings');
-		const topupChatsCollection = db.collection('topup_chats');
 
         if (typeof seedInitialData === 'function') {
             await seedInitialData();
