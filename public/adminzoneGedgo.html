@@ -146,39 +146,59 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 }
 
     async function showContent(type) {
+    const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
+    
     const topupListSec = document.getElementById('section-topup-list');
-    const dynamicContent = document.getElementById('dynamic-content');
     const adminChatSec = document.getElementById('section-admin-chat');
 
-    // 1. ซ่อนทุก Section ก่อน
-    topupListSec.style.display = 'none';
-    adminChatSec.style.display = 'none';
-    dynamicContent.innerHTML = ''; // ล้างเฉพาะส่วนที่เป็น Dynamic
-
-    // 2. จัดการเมนู Active
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     let targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
-    if (targetItem) targetItem.classList.add('active');
+    if (targetItem && targetItem.classList) {
+        targetItem.classList.add('active');
+    }
 
-    // 3. แสดงเนื้อหาตามประเภท
+    // --- ส่วนจัดการเนื้อหา ---
+
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
-        topupListSec.style.display = 'block'; // เปิดแสดงรายการ
-        loadTopupRequests(); 
+        display.innerHTML = ''; 
+        display.appendChild(topupListSec);
+        display.appendChild(adminChatSec);
 
-    } else if (type === 'history') {
-        title.innerText = 'ประวัติธุรกรรมในโซน';
-        dynamicContent.innerHTML = '<div id="admin-history-container">กำลังโหลด...</div>';
-        loadAdminHistory();
+        adminChatSec.style.display = 'none';
+        topupListSec.style.display = 'block';
+        
+        document.getElementById('topup-list-container').innerHTML = 'กำลังโหลด...';
+        loadTopupRequests(); 
 
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
-        // ... โค้ดดึงข้อมูล settings ...
-        dynamicContent.innerHTML = renderAutoMessageForm(settings.bankInfo, settings.desc);
+        display.innerHTML = '<p style="text-align:center; color:#999;">กำลังดึงข้อมูลจากเซิร์ฟเวอร์...</p>';
+
+        try {
+            const adminName = localStorage.getItem('myUsername');
+            const res = await fetch(`/api/admin/get-settings?admin=${adminName}`);
+            const settings = await res.json();
+            display.innerHTML = renderAutoMessageForm(settings.bankInfo, settings.desc);
+        } catch (e) {
+            display.innerHTML = renderAutoMessageForm();
+        }
+
+    } else if (type === 'history') {
+        title.innerText = 'ประวัติธุรกรรมในโซน';
+        display.innerHTML = `
+            <div id="admin-history-container" style="padding: 10px;">
+                <p style="text-align:center; color:#999;">กำลังโหลดประวัติ...</p>
+            </div>
+        `;
+        loadAdminHistory(); 
+
+    } else {
+        title.innerText = type === 'kyc' ? 'ตรวจสอบการยืนยันตัวตน' : 'หน้าใหม่';
+        display.innerHTML = `<p style="text-align:center; color:#999; margin-top:50px;">กำลังพัฒนาส่วนนี้...</p>`;
     }
-    
-    // ปิด Sidebar (มือถือ)
+
     if(window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('active')) {
         toggleSidebar();
     }
