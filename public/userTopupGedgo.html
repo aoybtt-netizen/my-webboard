@@ -271,25 +271,17 @@ async function checkTopupStatus() {
         const titleElem = document.getElementById('content-title');
 
         if (data.hasPending) {
-            // 2. สลับหน้าจอไปที่หน้าแชท
-            formSec.style.display = 'none';
-            chatSec.style.display = 'block';
-            titleElem.innerText = "สถานะการเติมเงิน";
-
-            // 3. แสดงชื่อแอดมินและข้อความอัตโนมัติ (Bank Info / Desc)
-            document.getElementById('chat-admin-name').innerText = `แอดมิน: ${data.adminName}`;
-            
-            // จัดรูปแบบข้อความให้น่าอ่าน
-            const autoReplyHTML = `
-                <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">
-                    <i class="fas fa-university"></i> ช่องทางการชำระเงิน
-                </div>
-                <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 4px solid var(--secondary); margin-bottom: 10px;">
-                    ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}
-                </div>
-                <div style="font-size: 0.9em; color: #666;">
-                    ${data.adminMessage.desc.replace(/\n/g, '<br>')}
-                </div>
+    document.getElementById('section-topup-form').style.display = 'none';
+    document.getElementById('section-pending-chat').style.display = 'block';
+    
+    // แสดงรายละเอียดที่ดึงมาจาก admin_settings
+    document.getElementById('admin-auto-reply').innerHTML = `
+        <div style="background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #eee;">
+            <b style="color: var(--primary);">🏦 ข้อมูลการโอนเงิน:</b><br>
+            ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}<br><br>
+            <b style="color: var(--dark);">📝 รายละเอียดเพิ่มเติม:</b><br>
+            ${data.adminMessage.desc.replace(/\n/g, '<br>')}
+        </div>
             `;
             
             document.getElementById('admin-auto-reply').innerHTML = autoReplyHTML;
