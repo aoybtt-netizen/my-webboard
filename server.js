@@ -3399,6 +3399,30 @@ app.get('/api/admin/topup-history', async (req, res) => {
     }
 });
 
+app.get('/api/admin/get-settings', async (req, res) => {
+    try {
+        const adminName = req.query.admin;
+        if (!adminName) return res.status(400).json({ error: "Missing admin name" });
+
+        // ค้นหาข้อมูลจาก Database
+        const settings = await db.collection('admin_settings').findOne({ adminName: adminName });
+
+        if (settings) {
+            // ส่งข้อมูลกลับไป (ถ้ามี)
+            res.json({
+                bankInfo: settings.bankInfo || "",
+                desc: settings.desc || ""
+            });
+        } else {
+            // ถ้าไม่เคยเซฟเลย ให้ส่งค่าว่างกลับไป
+            res.json({ bankInfo: "", desc: "" });
+        }
+    } catch (err) {
+        console.error("❌ Get Settings Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 
 
 

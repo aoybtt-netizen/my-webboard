@@ -178,7 +178,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
         try {
             const adminName = localStorage.getItem('myUsername');
-            const res = await fetch(`/api/admin/save-settings?admin=${adminName}`);
+            const res = await fetch(`/api/admin/get-settings?admin=${adminName}`);
             const settings = await res.json();
             display.innerHTML = renderAutoMessageForm(settings.bankInfo, settings.desc);
         } catch (e) {
