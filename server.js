@@ -243,6 +243,144 @@ app.get('/api/admin/pending-counts', async (req, res) => {
 });
 
 
+
+
+
+//================ส่วนเติมเงิน
+// --- 1. ตั้งค่า Collection (สมมติว่าใช้ MongoDB) ---
+const topupRequestsCollection = db.collection('topup_requests');
+const adminSettingsCollection = db.collection('admin_settings');
+
+// ==========================================
+// [SECTION] สำหรับฝั่ง USER (สมาชิก)
+// ==========================================
+
+// 1.1 ส่งคำขอเติมเงิน
+app.post('/api/topup/request', async (req, res) => {
+    try {
+        const { username, amount, location } = req.body;
+        
+        // ค้นหาแอดมินที่ดูแลโซนนี้ (ใช้ฟังก์ชันเดิมที่เราเคยทำไว้)
+        const locationObj = JSON.parse(decodeURIComponent(location));
+        const zoneInfo = await findResponsibleAdmin(locationObj);
+        
+        if (!zoneInfo || !zoneInfo.zoneData.assignedAdmin) {
+            return res.status(400).json({ error: "ไม่อยู่ในพื้นที่บริการของแอดมินคนใด" });
+        }
+
+        const adminId = zoneInfo.zoneData.assignedAdmin;
+
+        // บันทึกคำขอลง Collection
+        const newRequest = {
+            username,
+            amount: parseFloat(amount),
+            adminId,
+            status: 'pending',
+            createdAt: new Date()
+        };
+
+        await topupRequestsCollection.insertOne(newRequest);
+        res.json({ success: true, adminId });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 1.2 เช็คสถานะคำขอที่ค้างอยู่ (เพื่อสลับไปหน้าแชทอัตโนมัติ)
+app.get('/api/topup/status', async (req, res) => {
+    try {
+        const { username } = req.query;
+        
+        // หาคำขอที่สถานะยังเป็น pending
+        const pendingRequest = await topupRequestsCollection.findOne({ 
+            username, 
+            status: 'pending' 
+        });
+
+        if (pendingRequest) {
+            // ดึงข้อความอัตโนมัติ (เลขบัญชี) ของแอดมินคนนั้นมาด้วย
+            const adminSettings = await adminSettingsCollection.findOne({ 
+                adminName: pendingRequest.adminId 
+            });
+
+            res.json({
+                hasPending: true,
+                adminName: pendingRequest.adminId,
+                adminMessage: {
+                    bankInfo: adminSettings ? adminSettings.bankInfo : "โปรดติดต่อแอดมินโดยตรง",
+                    desc: adminSettings ? adminSettings.desc : "กำลังรอการตอบกลับ"
+                }
+            });
+        } else {
+            res.json({ hasPending: false });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ==========================================
+// [SECTION] สำหรับฝั่ง ADMIN (เจ้าของโซน)
+// ==========================================
+
+// 2.1 ดึงจำนวนคำขอที่ค้างอยู่ (สำหรับ Badge จุดแดง)
+app.get('/api/admin/pending-counts', async (req, res) => {
+    try {
+        const { admin } = req.query;
+        const topupCount = await topupRequestsCollection.countDocuments({ adminId: admin, status: 'pending' });
+        // ในอนาคตเพิ่ม KYC Count ตรงนี้
+        res.json({ topupCount, kycCount: 0 });
+    } catch (e) {
+        res.json({ topupCount: 0, kycCount: 0 });
+    }
+});
+
+// 2.2 บันทึกข้อความอัตโนมัติ (เลขบัญชี)
+app.post('/api/admin/save-auto-message', async (req, res) => {
+    try {
+        const { adminName, bankInfo, desc } = req.body;
+        await adminSettingsCollection.updateOne(
+            { adminName },
+            { $set: { bankInfo, desc, updatedAt: new Date() } },
+            { upsert: true } // ถ้าไม่มีให้สร้างใหม่
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2.3 ดึงรายการคำขอทั้งหมดของแอดมินคนนี้ (ใช้แสดงในหน้าจอแอดมิน)
+app.get('/api/admin/topup-list', async (req, res) => {
+    const { admin } = req.query;
+    const list = await topupRequestsCollection.find({ adminId: admin, status: 'pending' }).toArray();
+    res.json(list);
+});
+
+// 2.4 อนุมัติการเติมเงิน
+app.post('/api/admin/approve-topup', async (req, res) => {
+    const { requestId, adminName } = req.body;
+    
+    // 1. หาข้อมูลคำขอ
+    const request = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
+    if (!request || request.status !== 'pending') return res.status(400).send("ไม่พบคำขอ");
+
+    // 2. อัปเดตเงินในตัวแปร coins ของ User
+    await usersCollection.updateOne(
+        { username: request.username },
+        { $inc: { coins: request.amount } } // ใช้ $inc เพื่อบวกเพิ่ม
+    );
+
+    // 3. เปลี่ยนสถานะคำขอเป็น approved
+    await topupRequestsCollection.updateOne(
+        { _id: new ObjectId(requestId) },
+        { $set: { status: 'approved', approvedAt: new Date() } }
+    );
+
+    res.json({ success: true });
+});
+
+
 // ==========================================
 // Helper Functions for MongoDB
 // ==========================================
@@ -318,6 +456,10 @@ async function seedInitialData() {
         await usersCollection.updateOne({ username: 'Admin' }, { $set: { adminLevel: 3 } });
     }
 }
+
+
+
+
 
 // เริ่มต้นเชื่อมต่อ DB
 connectDB();
@@ -3758,6 +3900,32 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
             socket.emit('force-leave', msg); 
         }
     });
+	
+	
+	
+	
+	//=======CHAT TOPUP แชทเติมเงิน
+	// 1. เข้าร่วมห้องแชทตาม ID ของคำขอ (RequestId)
+    socket.on('joinRequest', (requestId) => {
+        socket.join(requestId);
+        console.log(`User joined room: ${requestId}`);
+    });
+
+    // 2. รับและส่งข้อความแชท
+    socket.on('sendMessage', (data) => {
+        // data ประกอบด้วย { requestId, sender, message, type: 'text'|'image' }
+        io.to(data.requestId).emit('receiveMessage', data);
+    });
+
+    // 3. แจ้งเตือนเมื่อสถานะเปลี่ยน (เช่น อนุมัติแล้ว)
+    socket.on('statusChanged', (data) => {
+        // data ประกอบด้วย { requestId, status }
+        io.to(data.requestId).emit('updateStatus', data);
+    });
+	
+	
+	
+	
 	
 	//  WebRTC Signaling (ระบบโทร P2P) ---
 

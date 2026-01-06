@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="/socket.io/socket.io.js"></script>
     <title>GedGo! - เติมเงินสมาชิก</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -155,6 +156,9 @@
     </main>
 
     <script>
+	const socket = io();
+	
+	
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -235,13 +239,29 @@
 
 
 
+
+socket.on('receiveMessage', (msg) => {
+    if (typeof appendMessage === "function") {
+        appendMessage(msg); 
+    }
+});
+
+socket.on('updateStatus', (data) => {
+    if(data.status === 'approved') {
+        alert("ยินดีด้วย! การเติมเงินของคุณได้รับการอนุมัติแล้ว");
+        checkTopupStatus(); // รีเฟรชหน้าจอเพื่อสลับฟอร์ม
+    } else if(data.status === 'rejected') {
+        alert("คำขอของคุณถูกปฏิเสธ โปรดติดต่อเจ้าหน้าที่");
+        checkTopupStatus();
+    }
+});
+
 async function checkTopupStatus() {
     const myName = localStorage.getItem('myUsername');
     const savedLoc = localStorage.getItem('userPrimaryLocation');
     const locParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
 
     try {
-        // เรียก API เพื่อดูว่ามีคำขอค้างไหม และดึงข้อมูลแอดมินมาด้วย
         const res = await fetch(`/api/topup/status?username=${myName}${locParam}`);
         const data = await res.json();
 
@@ -249,12 +269,10 @@ async function checkTopupStatus() {
         const chatSec = document.getElementById('section-pending-chat');
 
         if (data.hasPending) {
-            // ถ้ามีคำขอค้างอยู่ -> สลับไปหน้าแชท
             formSec.style.display = 'none';
             chatSec.style.display = 'block';
             document.getElementById('header-title').innerText = "สถานะการเติมเงิน";
             
-            // แสดงข้อความอัตโนมัติของแอดมินคนนั้น
             document.getElementById('chat-admin-name').innerText = data.adminName;
             document.getElementById('admin-auto-reply').innerHTML = `
                 <b>แจ้งรายละเอียดการโอนเงิน</b><br>
@@ -262,8 +280,11 @@ async function checkTopupStatus() {
                 ${data.adminMessage.bankInfo}<br><br>
                 ${data.adminMessage.desc}
             `;
+
+            // ✅ แค่สั่ง Join Room ก็พอ ไม่ต้องประกาศ .on ซ้ำที่นี่
+            socket.emit('joinRequest', data.requestId);
+
         } else {
-            // ถ้าไม่มี -> แสดงฟอร์มเติมเงินปกติ
             formSec.style.display = 'block';
             chatSec.style.display = 'none';
             document.getElementById('header-title').innerText = "เติมเงิน";
@@ -271,6 +292,16 @@ async function checkTopupStatus() {
     } catch (err) {
         console.error("Check status error:", err);
     }
+}
+
+function sendChat(content, type = 'text') {
+    const requestId = "..."; // เก็บจากสถานะที่ดึงมา
+    socket.emit('sendMessage', {
+        requestId,
+        sender: localStorage.getItem('myUsername'),
+        message: content,
+        type: type
+    });
 }
 
 async function submitTopupRequest() {
