@@ -32,6 +32,8 @@ let usersCollection, postsCollection, configCollection, transactionsCollection;
 let topicsCollection, messagesCollection, zonesCollection, merchantLocationsCollection;
 let merchantTemplatesCollection;
 let topupChatsCollection;
+let topupRequestsCollection;
+let adminSettingsCollection;
 
 const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
@@ -291,7 +293,7 @@ async function connectDB() {
         
         db = client.db(); 
 
-        // กำหนดค่าให้ Collection ต่างๆ (ทำที่เดียวให้ครบ)
+        // กำหนดค่าให้ Collection ต่างๆ
         merchantLocationsCollection = db.collection('merchant_locations');
         merchantTemplatesCollection = db.collection('merchant_templates');
         postsCollection = db.collection('posts');
@@ -311,41 +313,65 @@ async function connectDB() {
         
         console.log("📦 All Collections Initialized");
 
-        // === วางแทรกส่วน Cron Job ตรงนี้ ===
+        // === รวมส่วน Cron Job ไว้ที่เดียว ทำงานเวลา 03:00 น. ===
         cron.schedule('0 3 * * *', async () => {
-            console.log('🧹 [System] เริ่มต้นทำความสะอาดรูปภาพสลิปที่หมดอายุ (60 วัน)...');
+            console.log('🧹 [System] เริ่มต้นทำความสะอาดรูปภาพที่หมดอายุ (เงื่อนไข 60 วัน)...');
+            
             try {
-                const twoMonthsAgo = new Date();
-                twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+                const sixtyDaysAgo = new Date();
+                sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-                // ค้นหารายการที่มีรูปภาพและเก่ากว่า 60 วัน
-                const oldRequests = await topupRequestsCollection.find({
-                    createdAt: { $lt: twoMonthsAgo },
+                // --- 1. จัดการรูปสลิปเติมเงิน (60 วัน) ---
+                const oldTopups = await topupRequestsCollection.find({
+                    createdAt: { $lt: sixtyDaysAgo },
                     slipUrl: { $ne: null }
                 }).toArray();
 
-                if (oldRequests.length > 0) {
-                    for (let req of oldRequests) {
-                        // ลบรูปใน Cloudinary (ถ้ามีการเก็บ slipPublicId ไว้)
-                        if (req.slipPublicId) { 
-                            await cloudinary.uploader.destroy(req.slipPublicId); 
-                        }
-
-                        // ล้างค่า URL ใน Database เพื่อประหยัดพื้นที่ และบันทึกหมายเหตุ
-                        await topupRequestsCollection.updateOne(
-                            { _id: req._id },
-                            { $set: { slipUrl: null, slipNote: "รูปภาพหมดอายุและถูกลบอัตโนมัติโดยระบบ" } }
-                        );
+                for (let req of oldTopups) {
+                    // ลบจาก Cloudinary
+                    if (req.slipPublicId) {
+                        await cloudinary.uploader.destroy(req.slipPublicId);
                     }
-                    console.log(`✅ [System] ลบรูปภาพที่หมดอายุเรียบร้อยแล้ว: ${oldRequests.length} รายการ`);
-                } else {
-                    console.log('ℹ️ [System] ไม่มีรูปภาพสลิปที่หมดอายุในวันนี้');
+                    // อัปเดตฐานข้อมูล
+                    await topupRequestsCollection.updateOne(
+                        { _id: req._id },
+                        { $set: { slipUrl: null, slipNote: "รูปภาพหมดอายุและถูกลบอัตโนมัติโดยระบบ" } }
+                    );
                 }
+
+                // --- 2. จัดการรูปภาพในโพสต์/กระทู้ (60 วัน ตามเงื่อนไขใหม่) ---
+                const oldPosts = await postsCollection.find({
+                    createdAt: { $lt: sixtyDaysAgo },
+                    images: { $exists: true, $not: { $size: 0 } }
+                }).toArray();
+
+                for (let post of oldPosts) {
+                    // ลบทุกรูปในโพสต์นั้นจาก Cloudinary
+                    if (post.imagePublicIds && Array.isArray(post.imagePublicIds)) {
+                        for (let publicId of post.imagePublicIds) {
+                            await cloudinary.uploader.destroy(publicId);
+                        }
+                    }
+                    // อัปเดตฐานข้อมูล
+                    await postsCollection.updateOne(
+                        { _id: post._id },
+                        { 
+                            $set: { 
+                                images: [], 
+                                imagePublicIds: [], 
+                                contentNote: "(รูปภาพประกอบถูกลบอัตโนมัติเนื่องจากหมดอายุการใช้งาน 60 วัน)" 
+                            } 
+                        }
+                    );
+                }
+
+                console.log(`✅ [System] ทำความสะอาดเรียบร้อย: สลิป (${oldTopups.length}) และรูปโพสต์ (${oldPosts.length})`);
+                
             } catch (cronErr) {
-                console.error('❌ [System] เกิดข้อผิดพลาดในระบบ Cron:', cronErr);
+                console.error('❌ [System] Cron Job Error:', cronErr);
             }
         });
-        // =================================
+        // ===============================================
 
     } catch (err) {
         console.error("❌ MongoDB Connection Error:", err);
