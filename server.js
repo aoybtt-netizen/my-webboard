@@ -31,6 +31,7 @@ let db;
 let usersCollection, postsCollection, configCollection, transactionsCollection;
 let topicsCollection, messagesCollection, zonesCollection, merchantLocationsCollection;
 let merchantTemplatesCollection;
+let topupChatsCollection;
 
 const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
@@ -62,7 +63,6 @@ let LIVE_EXCHANGE_RATES = { 'USD': 1.0, 'THB': 32.0 };
 const DEFAULT_CURRENCY = 'THB';
 let postViewers = {}; 
 let viewerGeolocation = {};
-const topupChatsCollection = db.collection('topup_chats');
 
 // --- Translations ---
 const serverTranslations = {
@@ -275,7 +275,7 @@ async function connectDB() {
         zonesCollection = db.collection('zones');
 		topupRequestsCollection = db.collection('topup_requests');
         adminSettingsCollection = db.collection('admin_settings');
-
+		topupChatsCollection = db.collection('topup_chats');
         if (typeof seedInitialData === 'function') {
             await seedInitialData();
         }
