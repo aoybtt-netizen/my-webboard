@@ -508,11 +508,10 @@ async function loadAdminChatHistory(requestId) {
 
 // 2. ฟังก์ชันเปิดหน้าแชท
 async function openFullChat(requestId, username, amount) {
-    // --- 1. แทรกส่วนนี้: เพื่อป้องกัน Section รายชื่อหาย ---
+    // --- 1. ส่วนป้องกัน Section รายชื่อหาย ---
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
     
-    // ย้ายไปเก็บในที่ปลอดภัยก่อน (hidden-storage)
     let storage = document.getElementById('hidden-storage');
     if (!storage) {
         storage = document.createElement('div');
@@ -522,14 +521,13 @@ async function openFullChat(requestId, username, amount) {
     }
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
-    // --------------------------------------------------
 
     currentChatRequestId = requestId;
     socket.emit('joinRequest', requestId);
 
     const display = document.getElementById('main-display');
     
-    // วาดโครงสร้างหน้าแชท (ตอนนี้ล้างหน้าจอได้ปลอดภัยแล้ว เพราะเราย้ายของออกไปแล้ว)
+    // ✅ 2. วาดโครงสร้างใหม่ (ต้องมี id="chat-box" และปุ่ม Action)
     display.innerHTML = `
         <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
@@ -542,10 +540,32 @@ async function openFullChat(requestId, username, amount) {
                         <small style="color:var(--primary); font-weight:bold;">ยอดคำขอ: ${amount.toFixed(2)} USD</small>
                     </div>
                 </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}')">ปฏิเสธ</button>
+                    <button class="status-btn btn-approve" onclick="processAction('approved', '${username}', ${amount})">อนุมัติเติมเงิน</button>
                 </div>
             </div>
+
+            <div id="chat-box" style="flex: 1; padding: 20px; background: #f1f5f9; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                <div style="align-self: center; background: #fff; padding: 5px 15px; border-radius: 20px; font-size: 0.75em; color: #94a3b8; border: 1px solid #e2e8f0; margin-bottom: 10px;">
+                    เริ่มการสนทนาตรวจสอบยอดเงิน
+                </div>
+            </div>
+
+            <div style="padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; align-items: center;">
+                <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
+                <button onclick="document.getElementById('admin-slip-input').click()" id="admin-image-btn" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; color: #64748b;">
+                    <i class="fas fa-image"></i>
+                </button>
+                <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+                <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
     `;
 
+    // 3. โหลดแชท (จะ Error ทันทีถ้าข้างบนไม่มี id="chat-box")
     await loadAdminChatHistory(requestId);
 }
 
