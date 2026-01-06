@@ -66,6 +66,14 @@ const slipStorage = new CloudinaryStorage({
 
 const uploadSlip = multer({ storage: slipStorage });
 
+
+//ส่วนลบรูปภาพอัตโนมัติ2เดือน
+const cron = require('node-cron');
+const cloudinary = require('cloudinary').v2;
+
+
+
+
 // --- Live Exchange Rate & Data ---
 const LIVE_API_KEY = '1f39c37f85-b1b3f2287e-t6oki5'; 
 const LIVE_API_URL = `https://api.fastforex.io/fetch-all?from=USD&api_key=${LIVE_API_KEY}`; 
@@ -285,7 +293,7 @@ async function connectDB() {
 
         // กำหนดค่าให้ Collection ต่างๆ (ทำที่เดียวให้ครบ)
         merchantLocationsCollection = db.collection('merchant_locations');
-		merchantTemplatesCollection = db.collection('merchant_templates');
+        merchantTemplatesCollection = db.collection('merchant_templates');
         postsCollection = db.collection('posts');
         usersCollection = db.collection('users');
         configCollection = db.collection('config');
@@ -293,18 +301,54 @@ async function connectDB() {
         topicsCollection = db.collection('topics');
         messagesCollection = db.collection('messages');
         zonesCollection = db.collection('zones');
-		topupRequestsCollection = db.collection('topup_requests');
+        topupRequestsCollection = db.collection('topup_requests');
         adminSettingsCollection = db.collection('admin_settings');
-		topupChatsCollection = db.collection('topup_chats');
+        topupChatsCollection = db.collection('topup_chats');
+
         if (typeof seedInitialData === 'function') {
             await seedInitialData();
         }
         
         console.log("📦 All Collections Initialized");
 
+        // === วางแทรกส่วน Cron Job ตรงนี้ ===
+        cron.schedule('0 3 * * *', async () => {
+            console.log('🧹 [System] เริ่มต้นทำความสะอาดรูปภาพสลิปที่หมดอายุ (60 วัน)...');
+            try {
+                const twoMonthsAgo = new Date();
+                twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+
+                // ค้นหารายการที่มีรูปภาพและเก่ากว่า 60 วัน
+                const oldRequests = await topupRequestsCollection.find({
+                    createdAt: { $lt: twoMonthsAgo },
+                    slipUrl: { $ne: null }
+                }).toArray();
+
+                if (oldRequests.length > 0) {
+                    for (let req of oldRequests) {
+                        // ลบรูปใน Cloudinary (ถ้ามีการเก็บ slipPublicId ไว้)
+                        if (req.slipPublicId) { 
+                            await cloudinary.uploader.destroy(req.slipPublicId); 
+                        }
+
+                        // ล้างค่า URL ใน Database เพื่อประหยัดพื้นที่ และบันทึกหมายเหตุ
+                        await topupRequestsCollection.updateOne(
+                            { _id: req._id },
+                            { $set: { slipUrl: null, slipNote: "รูปภาพหมดอายุและถูกลบอัตโนมัติโดยระบบ" } }
+                        );
+                    }
+                    console.log(`✅ [System] ลบรูปภาพที่หมดอายุเรียบร้อยแล้ว: ${oldRequests.length} รายการ`);
+                } else {
+                    console.log('ℹ️ [System] ไม่มีรูปภาพสลิปที่หมดอายุในวันนี้');
+                }
+            } catch (cronErr) {
+                console.error('❌ [System] เกิดข้อผิดพลาดในระบบ Cron:', cronErr);
+            }
+        });
+        // =================================
+
     } catch (err) {
         console.error("❌ MongoDB Connection Error:", err);
-        // ไม่ต้องใส่ process.exit(1) เพื่อให้ Server ยังคงรันต่อได้แม้ DB จะติดขัดชั่วคราว
     }
 }
 
