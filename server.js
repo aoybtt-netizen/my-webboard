@@ -3216,22 +3216,25 @@ app.get('/api/topup/status', async (req, res) => {
         const pending = await topupRequestsCollection.findOne({ username, status: 'pending' });
 
         if (pending) {
-            // 2. ไปดึง Settings ของแอดมินคนที่เป็นเจ้าของคำขอนี้
-            const adminSettings = await adminSettingsCollection.findOne({ adminName: pending.adminId });
+            // 2. ดึงข้อมูลจากคอลเลกชัน admin_settings โดยใช้ชื่อแอดมินที่ดูแลคำขอนี้
+            // สมมติว่าตัวแปรคอลเลกชันชื่อ adminSettingsCollection
+            const settings = await adminSettingsCollection.findOne({ adminName: pending.adminId });
 
             res.json({
                 hasPending: true,
                 requestId: pending._id,
                 adminName: pending.adminId, // ชื่อแอดมินโซน
                 adminMessage: {
-                    bankInfo: adminSettings ? adminSettings.bankInfo : "โปรดรอแอดมินแจ้งเลขบัญชีในแชท",
-                    desc: adminSettings ? adminSettings.desc : "กำลังรอการตอบกลับจากแอดมิน"
+                    // ดึงค่า bankInfo และ desc จาก admin_settings
+                    bankInfo: settings ? settings.bankInfo : "โปรดรอแอดมินแจ้งเลขบัญชีในแชท",
+                    desc: settings ? settings.desc : "กำลังรอการตรวจสอบหลักฐานการโอนเงิน"
                 }
             });
         } else {
             res.json({ hasPending: false });
         }
     } catch (e) {
+        console.error("🚨 Get status error:", e);
         res.status(500).json({ error: e.message });
     }
 });
