@@ -882,45 +882,64 @@ async function loadKYCRequests() {
             return;
         }
 
-        // ดึงพิกัดแอดมินมาเก็บไว้ก่อน (ถ้ามี)
-        let adminLat, adminLng;
-        navigator.geolocation.getCurrentPosition((pos) => {
-            adminLat = pos.coords.latitude;
-            adminLng = pos.coords.longitude;
-            // เมื่อได้พิกัดแอดมินแล้ว อาจจะสั่งโหลดซ้ำเพื่ออัปเดตระยะทาง
-        });
+        // 1. ดึงพิกัดแอดมินมาเก็บไว้ใน Promise เพื่อรอให้ได้ค่าก่อนคำนวณ
+        const getPosition = () => {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject);
+            });
+        };
+
+        let adminPos = null;
+        try {
+            // รอพิกัด 1.5 วินาที ถ้ายังไม่ได้ให้ข้ามไปโชว์รายการก่อน
+            adminPos = await Promise.race([
+                getPosition(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
+            ]);
+        } catch (e) {
+            console.log("ยังดึงพิกัดแอดมินไม่ได้ในตอนนี้ หรือไม่ได้เปิด GPS");
+        }
 
         container.innerHTML = requests.map(req => {
-            // ตรวจสอบพิกัด (ถ้ายังไม่มีพิกัดแอดมิน ให้แสดงเป็น "รอพิกัด")
-            let distanceText = "กำลังคำนวณ...";
+            let distanceText = "รอพิกัด...";
+            let distanceVal = 0;
             let isClose = false;
 
-            if (adminLat && adminLng && req.coords) {
-                const distance = calculateDistance(adminLat, adminLng, req.coords.lat, req.coords.lng);
-                distanceText = `ห่าง ${distance.toFixed(1)} ม.`;
-                isClose = distance <= 20;
+            // ตรวจสอบว่ามีพิกัดทั้งแอดมินและสมาชิกไหม
+            if (adminPos && req.coords) {
+                distanceVal = calculateDistance(
+                    adminPos.coords.latitude, 
+                    adminPos.coords.longitude, 
+                    req.coords.lat, 
+                    req.coords.lng
+                );
+                distanceText = `ห่าง ${distanceVal.toFixed(1)} ม.`;
+                isClose = distanceVal <= 20;
             }
 
+            // ใช้ encodeURIComponent เพื่อป้องกันปัญหาเครื่องหมายพิเศษใน JSON
+            const dataStr = encodeURIComponent(JSON.stringify(req));
+
             return `
-<div class="admin-card" onclick="viewKYCDetail('${encodeURIComponent(JSON.stringify(req))}')" style="cursor:pointer; transition: 0.2s; position: relative;">
-    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <img src="${req.userImg || 'https://via.placeholder.com/60'}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: cover;">
-            <div style="text-align: left;">
-                <strong style="font-size: 1em;">${req.fullName}</strong><br>
-                <small style="color: #666;">ห่าง: ${distance.toFixed(1)} ม.</small>
-            </div>
-        </div>
-        <div style="color: var(--primary); font-size: 0.8em; font-weight: bold;">
-            แตะเพื่อตรวจ <i class="fas fa-chevron-right"></i>
-        </div>
-    </div>
-</div>`;
+            <div class="admin-card" onclick="viewKYCDetail('${dataStr}')" style="cursor:pointer; transition: 0.2s; position: relative; display: flex; justify-content: space-between; align-items: center; padding: 15px; border-radius: 12px; border: 1px solid #eee; margin-bottom: 10px; background: white;">
+                <div style="display: flex; gap: 12px; align-items: center; flex: 1;">
+                    <img src="${req.userImg || 'https://via.placeholder.com/60'}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: cover; border: 1px solid #ddd;">
+                    <div style="text-align: left;">
+                        <strong style="font-size: 1em; color: var(--dark);">${req.fullName}</strong><br>
+                        <small style="color: ${isClose ? 'var(--primary)' : '#666'}; font-weight: bold;">
+                            <i class="fas fa-map-marker-alt"></i> ${distanceText}
+                        </small>
+                    </div>
+                </div>
+                <div style="color: var(--primary); font-size: 0.85em; font-weight: bold; white-space: nowrap;">
+                    ตรวจข้อมูล <i class="fas fa-chevron-right" style="font-size: 0.8em; margin-left: 5px;"></i>
+                </div>
+            </div>`;
         }).join('');
 
     } catch (err) {
         console.error("Load KYC Error:", err);
-        container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลผิดพลาด</p>';
+        container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">โหลดข้อมูลผิดพลาด หรือเซิร์ฟเวอร์ขัดข้อง</p>';
     }
 }
 
