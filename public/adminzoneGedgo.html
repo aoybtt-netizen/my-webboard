@@ -902,25 +902,20 @@ async function loadKYCRequests() {
             }
 
             return `
-            <div class="admin-card" style="display: flex; flex-direction: column; align-items: stretch; gap: 15px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; gap: 12px; align-items: center;">
-                        <img src="${req.userImg || 'https://via.placeholder.com/60'}" 
-                             onclick="viewKYCFullImage(this.src)" 
-                             style="width: 60px; height: 60px; border-radius: 12px; object-fit: cover; cursor: pointer; border: 2px solid var(--primary);">
-                        <div>
-                            <strong style="font-size: 1.1em;">${req.fullName}</strong><br>
-                            <small style="color: #666;">User: ${req.username} | โทร: ${req.phone}</small>
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: bold; color: ${isClose ? '#2ecc71' : '#e74c3c'};">
-                            <i class="fas fa-map-marker-alt"></i> ${distanceText}
-                        </div>
-                        <small style="color: #999;">${isClose ? 'อยู่ในระยะอนุมัติ' : 'ยังไม่อยู่ในระยะ'}</small>
-                    </div>
-                </div>
-                </div>`;
+<div class="admin-card" onclick="viewKYCDetail('${encodeURIComponent(JSON.stringify(req))}')" style="cursor:pointer; transition: 0.2s; position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <img src="${req.userImg || 'https://via.placeholder.com/60'}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: cover;">
+            <div style="text-align: left;">
+                <strong style="font-size: 1em;">${req.fullName}</strong><br>
+                <small style="color: #666;">ห่าง: ${distance.toFixed(1)} ม.</small>
+            </div>
+        </div>
+        <div style="color: var(--primary); font-size: 0.8em; font-weight: bold;">
+            แตะเพื่อตรวจ <i class="fas fa-chevron-right"></i>
+        </div>
+    </div>
+</div>`;
         }).join('');
 
     } catch (err) {
@@ -944,6 +939,61 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function viewKYCFullImage(src) {
     document.getElementById('kyc-modal-img').src = src;
     document.getElementById('kyc-image-modal').style.display = 'flex';
+}
+
+
+// ฟังก์ชันเปิด Modal รายละเอียด
+function viewKYCDetail(dataStr) {
+    const data = JSON.parse(decodeURIComponent(dataStr));
+    const modal = document.getElementById('admin-kyc-detail-modal');
+    
+    // ใส่ข้อมูลลงใน Modal
+    document.getElementById('det-user-img').style.backgroundImage = `url(${data.userImg})`;
+    document.getElementById('det-name').innerText = data.fullName;
+    document.getElementById('det-id').innerText = data.idNumber;
+    document.getElementById('det-phone').innerText = data.phone;
+    document.getElementById('det-address').innerText = data.address;
+    
+    // คำนวณระยะทางแบบ Real-time อีกครั้งตอนเปิด
+    navigator.geolocation.getCurrentPosition((pos) => {
+        const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, data.coords.lat, data.coords.lng);
+        const isClose = dist <= 20;
+        
+        document.getElementById('det-distance').innerText = `ระยะห่างปัจจุบัน: ${dist.toFixed(1)} เมตร`;
+        
+        // ปรับแต่งสีตามระยะทาง
+        const badge = document.getElementById('det-status-badge');
+        const iconBg = document.getElementById('det-icon-bg');
+        const btnApprove = document.getElementById('btn-det-approve');
+
+        if(isClose) {
+            badge.style.background = "#e8f5e9";
+            badge.style.borderColor = "#c8e6c9";
+            iconBg.style.background = "#2e7d32";
+            btnApprove.disabled = false;
+            btnApprove.style.background = "var(--primary)";
+            btnApprove.style.color = "white";
+            btnApprove.innerHTML = '<i class="fas fa-check-double"></i> อนุมัติการยืนยัน';
+        } else {
+            badge.style.background = "#fff3e0";
+            badge.style.borderColor = "#ffe0b2";
+            iconBg.style.background = "#e65100";
+            btnApprove.disabled = true;
+            btnApprove.style.background = "#eee";
+            btnApprove.style.color = "#999";
+            btnApprove.innerText = "ระยะห่างเกิน 20ม.";
+        }
+    });
+
+    // ผูกเหตุการณ์ปุ่มกด
+    document.getElementById('btn-det-approve').onclick = () => { closeKYCDetail(); processKYC(data._id, 'approved'); };
+    document.getElementById('btn-det-reject').onclick = () => { closeKYCDetail(); processKYC(data._id, 'rejected'); };
+
+    modal.style.display = 'flex';
+}
+
+function closeKYCDetail() {
+    document.getElementById('admin-kyc-detail-modal').style.display = 'none';
 }
 
 
@@ -982,6 +1032,42 @@ function viewKYCFullImage(src) {
 <div id="kyc-image-modal" class="modal" onclick="this.style.display='none'" style="display:none; position:fixed; z-index:100000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center;">
     <img id="kyc-modal-img" src="" style="max-width:95%; max-height:95%; border-radius:10px; box-shadow:0 0 20px rgba(255,255,255,0.2);">
     <div style="position:absolute; top:20px; right:20px; color:white; font-size:2em; cursor:pointer;"><i class="fas fa-times"></i></div>
+</div>
+
+
+<div id="admin-kyc-detail-modal" class="modal" style="display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center;">
+    <div class="modal-content" style="max-width: 400px; width: 90%; background: white; border-radius: 20px; padding: 0; overflow: hidden; position: relative;">
+        <div id="det-user-img" style="width: 100%; height: 250px; background-size: cover; background-position: center; position: relative;">
+            <div onclick="closeKYCDetail()" style="position: absolute; right: 15px; top: 15px; background: rgba(0,0,0,0.5); color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </div>
+        </div>
+
+        <div style="padding: 20px;">
+            <div id="det-status-badge" style="display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 12px; border: 1px solid #c8e6c9; margin-bottom: 20px;">
+                <div id="det-icon-bg" style="background: #2e7d32; color: white; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2em;">
+                    <i class="fas fa-id-card"></i>
+                </div>
+                <div style="text-align: left; flex: 1;">
+                    <div id="det-title" style="font-weight: bold; color: #2e7d32;">รอดำเนินการตรวจสอบ</div>
+                    <div id="det-distance" style="font-size: 0.75em; color: #4caf50;">กำลังคำนวณระยะทาง...</div>
+                </div>
+                <i class="fas fa-shield-alt" style="color: #2e7d32; font-size: 1.2em;"></i>
+            </div>
+
+            <div style="text-align: left; font-size: 0.9em; line-height: 1.8;">
+                <p style="margin: 5px 0;"><b>ชื่อ-นามสกุล:</b> <span id="det-name">-</span></p>
+                <p style="margin: 5px 0;"><b>เลขบัตรประชาชน:</b> <span id="det-id">-</span></p>
+                <p style="margin: 5px 0;"><b>เบอร์โทรศัพท์:</b> <span id="det-phone">-</span></p>
+                <p style="margin: 5px 0;"><b>ที่อยู่:</b> <br> <span id="det-address" style="color: #666;">-</span></p>
+            </div>
+
+            <div id="det-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="btn-det-reject" class="status-btn btn-reject" style="flex: 1; padding: 12px;">ปฏิเสธ</button>
+                <button id="btn-det-approve" class="status-btn btn-approve" style="flex: 2; padding: 12px; font-weight: bold;">อนุมัติการยืนยัน</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 
