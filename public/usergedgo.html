@@ -203,6 +203,45 @@
     text-align: center;
 }
 
+
+
+
+/* --- KYC Modal Styles --- */
+.modal {
+    display: none; position: fixed; z-index: 2000;
+    left: 0; top: 0; width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+}
+.modal-content {
+    background-color: #fff; margin: 0; width: 100%; height: 100%;
+    padding: 30px; box-sizing: border-box; overflow-y: auto;
+    animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.upload-grid { display: flex; gap: 15px; margin: 15px 0; }
+.upload-box {
+    flex: 1; border: 2px dashed #ddd; border-radius: 15px;
+    padding: 20px; text-align: center; color: #999;
+    position: relative; transition: 0.3s;
+}
+.upload-box:hover { border-color: var(--primary); color: var(--primary); }
+.upload-box input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.upload-box i { font-size: 2em; margin-bottom: 10px; }
+
+.proximity-alert {
+    background: #fff8e1; border: 1px solid #ffe082;
+    padding: 15px; border-radius: 12px; color: #856404;
+    font-size: 0.9em; margin: 20px 0; text-align: center;
+}
+.btn-submit {
+    width: 100%; padding: 15px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white; font-weight: bold; font-size: 1.1em; cursor: pointer;
+}
+.btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+
+
     </style>
 </head>
 <body>
@@ -303,7 +342,7 @@
 
         <div style="text-align: left; margin-bottom: 20px;">
             <h3 style="margin: 0; color: var(--dark);">ยืนยันตัวตนสมาชิก</h3>
-            <p style="font-size: 0.8em; color: #666; margin-top: 5px;">อัปโหลดข้อมูลเพื่อให้เจ้าของโซนตรวจสอบ</p>
+            <p style="font-size: 0.8em; color: #666; margin-top: 5px;">อัปโหลดข้อมูลเพื่อให้แอดมินเจ้าของโซนตรวจสอบ</p>
         </div>
         
         <div style="text-align: left;">
@@ -317,18 +356,8 @@
             <input type="tel" id="phone-number" placeholder="08x-xxx-xxxx" style="width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
         </div>
 
-        <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left;">อัปโหลดรูปถ่าย (3 รูป):</label>
+        <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left;">อัปโหลดรูปถ่าย:</label>
         <div class="upload-grid">
-            <div class="upload-box">
-                <i class="fas fa-id-card"></i>
-                <p>หน้าบัตรประชาชน</p>
-                <input type="file" accept="image/*" onchange="previewImg(this)">
-            </div>
-            <div class="upload-box">
-                <i class="fas fa-barcode"></i>
-                <p>หลังบัตรประชาชน</p>
-                <input type="file" accept="image/*" onchange="previewImg(this)">
-            </div>
             <div class="upload-box">
                 <i class="fas fa-user-tag"></i>
                 <p>รูปคุณถือคู่กับบัตร</p>
@@ -338,11 +367,11 @@
 
         <div class="proximity-alert">
             <i class="fas fa-map-marker-alt"></i><br>
-            <b>การส่งข้อมูล:</b> คุณต้องอยู่ห่างจากเจ้าของโซนไม่เกิน <b>20 เมตร</b> ปุ่มส่งจึงจะทำงาน (ระบบจะตรวจสอบอัตโนมัติ)
+            <b>การส่งข้อมูล:</b> ในขั้นตอนอนุมัติคุณต้องอยู่ห่างจากแอดมินโซนไม่เกิน <b>20 เมตร</b> แอดมินถึงจะอนุมัติใด้เพื่อยืนยันตัวตนจริงๆ
         </div>
 
         <button id="btn-kyc-submit" class="btn-submit" disabled>
-            <i class="fas fa-lock"></i> ส่งข้อมูล (ตรวจสอบระยะทาง...)
+            <i class="fas fa-lock"></i> ส่งคำขอ
         </button>
         
         <button onclick="closeKYC()" style="width: 100%; padding: 10px; background: none; border: none; color: #999; margin-top: 10px; cursor: pointer; font-size: 0.9em;">
@@ -453,11 +482,7 @@ function updateKycStatus(isNear) {
 }
 
 
-// ฟังก์ชันเปิด Modal เติมเงิน
-function openRequestTopup() {
-    document.getElementById('topup-request-modal').style.display = 'block';
-    document.getElementById('request-amount-input').focus();
-}
+
 
 // ฟังก์ชันปิด Modal
 function closeRequestTopup() {
@@ -465,24 +490,62 @@ function closeRequestTopup() {
     document.getElementById('request-amount-input').value = '';
 }
 
-// ฟังก์ชันส่งคำขอ
-async function submitTopupRequest() {
-    const amount = document.getElementById('request-amount-input').value;
-    const username = localStorage.getItem('myUsername');
 
-    if (!amount || amount <= 0) {
-        alert("กรุณาระบุจำนวนเงินที่ถูกต้อง");
-        return;
-    }
-
-    // ในอนาคตคุณจะยิง API ตรงนี้เพื่อบันทึกคำขอลงฐานข้อมูล
-    console.log(`ส่งคำขอเติมเงิน: ${amount} USD จากผู้ใช้: ${username}`);
-    
-    // แจ้งเตือนผู้ใช้ (ตัวอย่าง)
-    alert(`ส่งคำขอเติมเงินจำนวน ${amount} USD เรียบร้อยแล้ว! \nกรุณารอดำเนินการตรวจสอบจากเจ้าของโซน`);
-    
-    closeRequestTopup();
+//ยืนยันตัวตน
+function openKYC() {
+    document.getElementById('kyc-modal').style.display = 'block';
+    toggleSidebar(); // ปิด sidebar หลังจากคลิก
 }
+
+function closeKYC() {
+    document.getElementById('kyc-modal').style.display = 'none';
+}
+
+function previewKYCImg(input) {
+    const container = document.getElementById('preview-container');
+    const text = document.getElementById('upload-text');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            container.style.backgroundImage = `url(${e.target.result})`;
+            container.style.backgroundSize = 'cover';
+            container.style.backgroundPosition = 'center';
+            text.style.display = 'none';
+            container.querySelector('i').style.display = 'none';
+            validateKYC();
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function validateKYC() {
+    const name = document.getElementById('full-name').value;
+    const idNum = document.getElementById('id-number').value;
+    const phone = document.getElementById('phone-number').value;
+    const file = document.getElementById('kyc-file').files.length;
+    const btn = document.getElementById('btn-kyc-submit');
+
+    // ตรวจสอบว่ากรอกครบทุกช่องและเลือกรูปแล้ว
+    if (name.trim() !== "" && idNum.length === 13 && phone.length >= 10 && file > 0) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> ส่งข้อมูลให้ตรวจสอบ';
+    } else {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-lock"></i> กรุณากรอกข้อมูลให้ครบ';
+    }
+}
+
+async function submitKYC() {
+    // โค้ดส่วนส่งข้อมูล (จะเชื่อมต่อกับ Backend ในขั้นตอนถัดไป)
+    Swal.fire({
+        icon: 'success',
+        title: 'ส่งข้อมูลเรียบร้อย',
+        text: 'กรุณาเดินทางไปพบแอดมินโซนในระยะ 20 เมตรเพื่ออนุมัติ',
+        confirmButtonColor: '#11998e'
+    });
+    closeKYC();
+}
+
 
 
 </script>
@@ -499,9 +562,9 @@ async function submitTopupRequest() {
     </div>
 
     <div class="sidebar-menu">
-        <div class="nav-item" onclick="switchView(1)">
-            <i class="fas fa-chart-line"></i> <span>ตัวเลือกที่ 1</span>
-        </div>
+        <div class="nav-item" onclick="openKYC()">
+			<i class="fas fa-user-check"></i> <span>ยืนยันตัวตน (KYC)</span>
+			</div>
         <div class="nav-item" onclick="switchView(2)">
             <i class="fas fa-id-card"></i> <span>ตัวเลือกที่ 2</span>
         </div>
@@ -519,6 +582,55 @@ async function submitTopupRequest() {
         </div>
     </div>
 </nav>
+
+
+
+
+	<div id="kyc-modal" class="modal">
+    <div class="modal-content">
+        <div onclick="closeKYC()" style="position: absolute; right: 20px; top: 20px; cursor: pointer; color: #999; font-size: 1.5em;">
+            <i class="fas fa-times-circle"></i>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 25px;">
+            <h3 style="margin: 0; color: var(--dark); font-size: 1.5em;">ยืนยันตัวตนสมาชิก</h3>
+            <p style="font-size: 0.85em; color: #666; margin-top: 5px;">อัปโหลดข้อมูลเพื่อให้แอดมินเจ้าของโซนตรวจสอบ</p>
+        </div>
+        
+        <div style="text-align: left;">
+            <label style="font-size: 0.85em; font-weight: bold;">ชื่อ-นามสกุล (ตามบัตร):</label>
+            <input type="text" id="full-name" oninput="validateKYC()" placeholder="ระบุชื่อและนามสกุล..." style="width: 100%; padding: 12px; margin: 8px 0 18px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+
+            <label style="font-size: 0.85em; font-weight: bold;">เลขประจำตัวประชาชน:</label>
+            <input type="number" id="id-number" oninput="validateKYC()" placeholder="เลข 13 หลัก..." style="width: 100%; padding: 12px; margin: 8px 0 18px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+
+            <label style="font-size: 0.85em; font-weight: bold;">เบอร์โทรศัพท์ติดต่อ:</label>
+            <input type="tel" id="phone-number" oninput="validateKYC()" placeholder="08x-xxx-xxxx" style="width: 100%; padding: 12px; margin: 8px 0 18px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+        </div>
+
+        <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left;">อัปโหลดรูปถ่ายหน้าจริง:</label>
+        <div class="upload-grid">
+            <div class="upload-box" id="preview-container">
+                <i class="fas fa-camera"></i>
+                <p id="upload-text">ถ่ายรูปคุณปัจจุบัน</p>
+                <input type="file" id="kyc-file" accept="image/*" onchange="previewKYCImg(this)">
+            </div>
+        </div>
+
+        <div class="proximity-alert">
+            <i class="fas fa-map-marker-alt" style="font-size: 1.5em; margin-bottom: 8px;"></i><br>
+            <b>เงื่อนไขการอนุมัติ:</b> ในขั้นตอนตรวจสอบ คุณต้องอยู่ห่างจากแอดมินโซนไม่เกิน <b>20 เมตร</b> แอดมินถึงจะสามารถกดยืนยันให้ได้ เพื่อความปลอดภัยสูงสุดของชุมชน
+        </div>
+
+        <button id="btn-kyc-submit" class="btn-submit" onclick="submitKYC()" disabled>
+            <i class="fas fa-paper-plane"></i> ส่งข้อมูลให้ตรวจสอบ
+        </button>
+        
+        <button onclick="closeKYC()" style="width: 100%; padding: 15px; background: none; border: none; color: #999; margin-top: 5px; cursor: pointer;">
+            ยกเลิกและปิดหน้าต่าง
+        </button>
+    </div>
+</div>
 
 
 </body>
