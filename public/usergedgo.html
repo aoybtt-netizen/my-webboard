@@ -602,11 +602,24 @@ async function submitKYC() {
             };
 
             // 3. เตรียมข้อมูล
-            const name = document.getElementById('full-name').value;
-            const idNum = document.getElementById('id-number').value;
-            const phone = document.getElementById('phone-number').value;
-            const address = document.getElementById('home-address').value;
-            const adminName = typeof currentZoneAdmin !== 'undefined' ? currentZoneAdmin : "แอดมินประจำโซน";
+				const name = document.getElementById('full-name').value;
+				const idNum = document.getElementById('id-number').value;
+				const phone = document.getElementById('phone-number').value;
+				const address = document.getElementById('home-address').value;
+			
+			// --- ดึงชื่อแอดมินจากหน้าจอที่ระบบตรวจพบโซนให้แล้ว ---
+			const adminNameElement = document.getElementById('display-zone-admin');
+			let adminName = adminNameElement ? adminNameElement.innerText : "แอดมินประจำโซน";
+
+			// ป้องกันกรณีที่ระบบยังหาโซนไม่เจอ หรือขึ้นว่า "รอการเชื่อมต่อ"
+			if (adminName === "รอการเชื่อมต่อ" || adminName === "กำลังค้นหาโซน...") {
+			return Swal.fire({
+					icon: 'warning',
+					title: 'ไม่พบแอดมินเจ้าของพื้นที่',
+					text: 'กรุณารอให้ระบบระบุโซนการใช้งานของคุณก่อนส่งคำขอ',
+					confirmButtonColor: '#11998e'
+				});
+			}
 
             // 4. ส่งผ่าน Socket ไปที่หลังบ้าน
             socket.emit('submit-kyc', {
