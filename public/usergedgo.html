@@ -527,7 +527,7 @@ function validateKYC() {
 }
 
 async function submitKYC() {
-    // 1. ยืนยันการส่งข้อมูล
+    // 1. ถามยืนยันก่อนส่ง
     const confirm = await Swal.fire({
         title: 'ยืนยันการส่งข้อมูล?',
         text: "เมื่อส่งแล้วข้อมูลจะถูกล็อกเพื่อรอแอดมินตรวจสอบ",
@@ -540,39 +540,57 @@ async function submitKYC() {
     });
 
     if (confirm.isConfirmed) {
-        // ดึงข้อมูลจากฟอร์ม
+        // --- ส่วนที่ 1: ดึงข้อมูลจากฟอร์มเตรียมไว้ก่อน ---
         const name = document.getElementById('full-name').value;
         const idNum = document.getElementById('id-number').value;
         const phone = document.getElementById('phone-number').value;
         const address = document.getElementById('home-address').value;
         const imgData = document.getElementById('preview-container').style.backgroundImage;
-
-        // 2. นำข้อมูลไปใส่ในหน้า Summary
-        document.getElementById('sum-name').innerText = name;
-        document.getElementById('sum-id').innerText = idNum.replace(/(\d{9})(\d{4})/, '*********$2'); // เซ็นเซอร์เลขบัตรเพื่อความปลอดภัย
-        document.getElementById('sum-phone').innerText = phone;
-        document.getElementById('sum-address').innerText = address;
-        document.getElementById('summary-img-preview').style.backgroundImage = imgData;
-        
-        // ใส่ชื่อแอดมินในข้อความแจ้งเตือน
         const adminName = typeof currentZoneAdmin !== 'undefined' ? currentZoneAdmin : "แอดมินประจำโซน";
-        document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
 
-        // 3. สลับหน้า (Hide Form, Show Summary)
-        document.getElementById('kyc-form-view').style.display = 'none';
-        document.getElementById('kyc-summary-view').style.display = 'block';
-        document.getElementById('btn-close-x').style.display = 'none'; // ซ่อนปุ่ม X มุมขวา
-
-        // 4. แสดงแจ้งเตือนสำเร็จ
+        // --- ส่วนที่ 2: แสดงสถานะ Loading (จำลองการส่งข้อมูลไป Server) ---
         Swal.fire({
-            icon: 'success',
-            title: 'ส่งข้อมูลเรียบร้อย',
-            text: `ส่งคำขอไปที่ ${adminName} แล้ว`,
-            confirmButtonColor: '#11998e'
+            title: 'กำลังบันทึกข้อมูล...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
         });
 
-        // บันทึกสถานะ (ตัวอย่าง)
-        console.log("KYC Submission Complete: Logged for Admin", adminName);
+        // จำลองเวลาส่ง 1.5 วินาที แล้วค่อยแสดงความสำเร็จ
+        setTimeout(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'ส่งข้อมูลเรียบร้อย',
+                text: `คำขอของคุณถูกส่งไปยัง ${adminName} แล้ว`,
+                confirmButtonColor: '#11998e'
+            }).then((result) => {
+                // --- ส่วนที่ 3: เมื่อผู้ใช้กด "ตกลง" ในหน้าต่างแจ้งเตือน ให้ทำงานนี้ต่อ ---
+                if (result.isConfirmed || result.isDismissed) {
+                    
+                    // นำข้อมูลไปใส่ในหน้า Summary (ใบสรุป)
+                    document.getElementById('sum-name').innerText = name;
+                    document.getElementById('sum-id').innerText = idNum.replace(/(\d{9})(\d{4})/, '*********$2');
+                    document.getElementById('sum-phone').innerText = phone;
+                    document.getElementById('sum-address').innerText = address;
+                    document.getElementById('summary-img-preview').style.backgroundImage = imgData;
+                    
+                    // อัปเดตข้อความแจ้งชื่อแอดมิน
+                    document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
+
+                    // สลับ View จากหน้ากรอก เป็น หน้าสรุป
+                    document.getElementById('kyc-form-view').style.display = 'none';
+                    document.getElementById('kyc-summary-view').style.display = 'block';
+                    
+                    // ซ่อนปุ่ม X ปิดหน้าต่าง เพื่อให้เขาอ่านข้อมูลสรุปก่อน
+                    if(document.getElementById('btn-close-x')) {
+                        document.getElementById('btn-close-x').style.display = 'none';
+                    }
+
+                    console.log("KYC View Switched to Summary");
+                }
+            });
+        }, 1500); 
     }
 }
 
