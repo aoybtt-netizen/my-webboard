@@ -529,15 +529,21 @@ function validateKYC() {
 async function submitKYC() {
     // 1. ถามยืนยันก่อนส่ง
     const confirm = await Swal.fire({
-        title: 'ยืนยันการส่งข้อมูล?',
-        text: "เมื่อส่งแล้วข้อมูลจะถูกล็อกเพื่อรอแอดมินตรวจสอบ",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#11998e',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'ตกลง ส่งเลย',
-        cancelButtonText: 'ตรวจสอบอีกครั้ง'
-    });
+    title: 'ยืนยันการส่งข้อมูล?',
+    text: "เมื่อส่งแล้วข้อมูลจะถูกล็อกเพื่อรอแอดมินตรวจสอบ",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#11998e',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'ตกลง ส่งเลย',
+    cancelButtonText: 'ตรวจสอบอีกครั้ง',
+    didOpen: () => {
+        const swalContainer = Swal.getContainer();
+        if (swalContainer) {
+            swalContainer.style.zIndex = "10000";
+        }
+    }
+});
 
     if (confirm.isConfirmed) {
         // --- ส่วนที่ 1: ดึงข้อมูลจากฟอร์มเตรียมไว้ก่อน ---
