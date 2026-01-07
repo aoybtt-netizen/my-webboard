@@ -77,6 +77,21 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 .btn-approve { background: #e8f5e9; color: #2e7d32; }
 .btn-reject { background: #ffebee; color: #c62828; }
 
+
+
+body {
+    padding-bottom: env(safe-area-inset-bottom);
+    min-height: -webkit-fill-available;
+}
+
+.modal-content, .sidebar {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+}
+
+html {
+    height: -webkit-fill-available;
+}
+
     </style>
 </head>
 <body>

@@ -323,7 +323,18 @@
 
 
 
+body {
+    padding-bottom: env(safe-area-inset-bottom);
+    min-height: -webkit-fill-available;
+}
 
+.modal-content, .sidebar {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+}
+
+html {
+    height: -webkit-fill-available;
+}
 
 
     </style>
