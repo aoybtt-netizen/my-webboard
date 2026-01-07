@@ -271,6 +271,9 @@
     transition: all 0.3s ease;
     background-repeat: no-repeat;
 }
+.swal2-container {
+    z-index: 100000 !important;
+}
 
 
     </style>
@@ -569,7 +572,11 @@ async function submitKYC() {
                 icon: 'success',
                 title: 'ส่งข้อมูลเรียบร้อย',
                 text: `คำขอของคุณถูกส่งไปยัง ${adminName} แล้ว`,
-                confirmButtonColor: '#11998e'
+                confirmButtonColor: '#11998e',
+				didOpen: () => {
+				const container = Swal.getContainer();
+				if (container) container.style.zIndex = '100000';
+				}
             }).then((result) => {
                 // --- ส่วนที่ 3: เมื่อผู้ใช้กด "ตกลง" ในหน้าต่างแจ้งเตือน ให้ทำงานนี้ต่อ ---
                 if (result.isConfirmed || result.isDismissed) {
