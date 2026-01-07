@@ -4330,22 +4330,16 @@ socket.on('reply-deduct-confirm', async (data) => {
 //KYC
 socket.on('submit-kyc', async (kycData) => {
     try {
-        // ใช้ชื่อตัวแปรให้ตรงกับที่ส่งมาจาก Client
-        const { fullName, idNumber, phone, address, coords, adminName } = kycData;
+        const { fullName, idNumber, phone, address, coords, adminName, userImg } = kycData; // รับ userImg มาด้วย
         
-        // 1. ตรวจสอบความถูกต้องของข้อมูลเบื้องต้น
-        if (!fullName || !coords) {
-            return console.error("❌ KYC Data incomplete");
-        }
-
-        // 2. บันทึกลงฐานข้อมูล
         const newRequest = {
-            username: socket.username || "Unknown", // ป้องกันค่าว่าง
+            username: socket.username,
             fullName,
             idNumber,
             phone,
             address,
-            coords, // เก็บเป็น Object {lat, lng} ตามที่ส่งมา
+            coords: coords, // ใช้ชื่อ 'coords' ให้ตรงกับหน้าแอดมิน
+            userImg: userImg, // เก็บรูปภาพ (Base64) ลงไปด้วย
             targetAdmin: adminName,
             status: 'pending',
             submittedAt: new Date()

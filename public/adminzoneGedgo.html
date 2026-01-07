@@ -870,12 +870,7 @@ socket.on('admin-notification', (data) => {
 
 async function loadKYCRequests() {
     const container = document.getElementById('kyc-list-container');
-    
-    // ดึงพิกัดแอดมิน (ทำแบบเงียบๆ ไม่ต้องบล็อกการโหลดข้อมูล)
-    let adminCoords = null;
-    navigator.geolocation.getCurrentPosition((pos) => {
-        adminCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    });
+    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังดึงข้อมูลคำขอ...</div>';
 
     try {
         const adminName = localStorage.getItem('myUsername');
@@ -883,30 +878,54 @@ async function loadKYCRequests() {
         const requests = await res.json();
 
         if (requests.length === 0) {
-            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><p>ไม่มีคำขอใหม่</p></div>';
+            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-user-shield fa-3x"></i><p>ไม่มีคำขอยืนยันตัวตนใหม่</p></div>';
             return;
         }
 
+        // ดึงพิกัดแอดมินมาเก็บไว้ก่อน (ถ้ามี)
+        let adminLat, adminLng;
+        navigator.geolocation.getCurrentPosition((pos) => {
+            adminLat = pos.coords.latitude;
+            adminLng = pos.coords.longitude;
+            // เมื่อได้พิกัดแอดมินแล้ว อาจจะสั่งโหลดซ้ำเพื่ออัปเดตระยะทาง
+        });
+
         container.innerHTML = requests.map(req => {
+            // ตรวจสอบพิกัด (ถ้ายังไม่มีพิกัดแอดมิน ให้แสดงเป็น "รอพิกัด")
             let distanceText = "กำลังคำนวณ...";
             let isClose = false;
 
-            if (adminCoords) {
-                const distance = calculateDistance(adminCoords.lat, adminCoords.lng, req.coords.lat, req.coords.lng);
+            if (adminLat && adminLng && req.coords) {
+                const distance = calculateDistance(adminLat, adminLng, req.coords.lat, req.coords.lng);
                 distanceText = `ห่าง ${distance.toFixed(1)} ม.`;
                 isClose = distance <= 20;
             }
 
             return `
-                <div class="admin-card">
-                   <div style="font-weight: bold; color: ${isClose ? '#2ecc71' : '#e74c3c'};">
-                       <i class="fas fa-map-marker-alt"></i> ${distanceText}
-                   </div>
-                   </div>
-            `;
+            <div class="admin-card" style="display: flex; flex-direction: column; align-items: stretch; gap: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <img src="${req.userImg || 'https://via.placeholder.com/60'}" 
+                             onclick="viewKYCFullImage(this.src)" 
+                             style="width: 60px; height: 60px; border-radius: 12px; object-fit: cover; cursor: pointer; border: 2px solid var(--primary);">
+                        <div>
+                            <strong style="font-size: 1.1em;">${req.fullName}</strong><br>
+                            <small style="color: #666;">User: ${req.username} | โทร: ${req.phone}</small>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: bold; color: ${isClose ? '#2ecc71' : '#e74c3c'};">
+                            <i class="fas fa-map-marker-alt"></i> ${distanceText}
+                        </div>
+                        <small style="color: #999;">${isClose ? 'อยู่ในระยะอนุมัติ' : 'ยังไม่อยู่ในระยะ'}</small>
+                    </div>
+                </div>
+                </div>`;
         }).join('');
+
     } catch (err) {
-        container.innerHTML = '<p>เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
+        console.error("Load KYC Error:", err);
+        container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลผิดพลาด</p>';
     }
 }
 

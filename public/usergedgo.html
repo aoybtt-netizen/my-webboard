@@ -606,6 +606,17 @@ async function submitKYC() {
 				const idNum = document.getElementById('id-number').value;
 				const phone = document.getElementById('phone-number').value;
 				const address = document.getElementById('home-address').value;
+				
+				const imgContainer = document.getElementById('preview-container');
+				let userImgData = "";
+            
+				if (imgContainer && imgContainer.style.backgroundImage) {
+                const rawBase64 = imgContainer.style.backgroundImage.slice(5, -2);
+                
+                // --- ขั้นตอนสำคัญ: ย่อรูปก่อนส่ง ---
+                Swal.update({ title: 'กำลังลดขนาดรูปภาพ...' });
+                userImgData = await resizeImage(rawBase64, 800, 0.6); // ย่อเหลือ 800px คุณภาพ 60%
+				}
 			
 			// --- ดึงชื่อแอดมินจากหน้าจอที่ระบบตรวจพบโซนให้แล้ว ---
 			const adminNameElement = document.getElementById('display-zone-admin');
@@ -628,7 +639,8 @@ async function submitKYC() {
                 phone: phone,
                 address: address,
                 coords: userCoords,
-                adminName: adminName
+                adminName: adminName,
+                userImg: userImgData
             });
 
             // 5. แสดงสถานะสำเร็จและสลับหน้า (แบบไม่จำค่าในบราวเซอร์ตามที่ต้องการ)
@@ -654,6 +666,36 @@ async function submitKYC() {
             Swal.fire('พิกัดผิดพลาด', 'ไม่สามารถดึงตำแหน่งได้ กรุณาเปิด GPS', 'error');
         });
     }
+}
+
+
+// ฟังก์ชันสำหรับย่อขนาดรูปภาพ
+async function resizeImage(base64Str, maxWidth = 800, quality = 0.7) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // คำนวณสัดส่วนใหม่ถ้าความกว้างเกิน maxWidth
+            if (width > maxWidth) {
+                height = (maxWidth / width) * height;
+                width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // แปลงเป็น Base64 แบบ JPEG และลดคุณภาพ (0.0 - 1.0)
+            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedBase64);
+        };
+    });
 }
 
 
