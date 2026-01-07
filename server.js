@@ -289,7 +289,33 @@ app.get('/api/kyc/chat-history', async (req, res) => {
     }
 });
 
+// ✅ API สำหรับสมาชิกเช็คสถานะ KYC ของตัวเอง
+app.get('/api/kyc/my-status', async (req, res) => {
+    try {
+        const { username } = req.query;
+        if (!username) return res.status(400).json({ error: "Missing username" });
+        const kycRequest = await db.collection('kycRequests')
+            .findOne({ username: username }, { sort: { submittedAt: -1 } });
 
+        if (!kycRequest) {
+            return res.json({ status: 'none' });
+        }
+
+        res.json({
+            status: kycRequest.status,
+            adminName: kycRequest.targetAdmin,
+            details: {
+                fullName: kycRequest.fullName,
+                idNumber: kycRequest.idNumber,
+                phone: kycRequest.phone,
+                address: kycRequest.address,
+                userImg: kycRequest.userImg 
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Server Error" });
+    }
+});
 
 
 
@@ -4443,34 +4469,6 @@ socket.on('kyc-status-updated', (data) => {
         });
     } 
 	
-	// ✅ API สำหรับสมาชิกเช็คสถานะ KYC ของตัวเอง
-app.get('/api/kyc/my-status', async (req, res) => {
-    try {
-        const { username } = req.query;
-        if (!username) return res.status(400).json({ error: "Missing username" });
-        const kycRequest = await db.collection('kycRequests')
-            .findOne({ username: username }, { sort: { submittedAt: -1 } });
-
-        if (!kycRequest) {
-            return res.json({ status: 'none' });
-        }
-
-        res.json({
-            status: kycRequest.status,
-            adminName: kycRequest.targetAdmin,
-            details: {
-                fullName: kycRequest.fullName,
-                idNumber: kycRequest.idNumber,
-                phone: kycRequest.phone,
-                address: kycRequest.address,
-                userImg: kycRequest.userImg 
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ error: "Server Error" });
-    }
-});
-    
     // 3. กรณีแอดมิน "ปฏิเสธและลบคำขอ" (Deleted)
     else if (data.status === 'deleted') {
         Swal.fire({
@@ -4495,6 +4493,8 @@ app.get('/api/kyc/my-status', async (req, res) => {
         });
     }
 });
+
+
 
 
 socket.on('update-kyc-location', async (data) => {
