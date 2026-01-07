@@ -972,18 +972,21 @@ function viewKYCFullImage(src) {
 // ฟังก์ชันเปิด Modal รายละเอียด
 function viewKYCDetail(dataStr) {
     const data = JSON.parse(decodeURIComponent(dataStr));
-	currentKYCRequestId = data._id;
+    
+    // ✅ แก้ไข: ใช้ username แทน _id เพื่อให้เข้าห้องแชทเดียวกับสมาชิก
+    currentKYCRequestId = data.username; 
+    
     const modal = document.getElementById('admin-kyc-detail-modal');
     
-    // 1. ใส่ข้อมูลลงในฟิลด์ต่างๆ
+    // 1. ใส่ข้อมูลลงในฟิลด์ต่างๆ (โค้ดเดิม)
     document.getElementById('det-user-img').style.backgroundImage = `url(${data.userImg})`;
     document.getElementById('det-name').innerText = data.fullName;
     document.getElementById('det-id').innerText = data.idNumber;
     document.getElementById('det-phone').innerText = data.phone;
-    document.getElementById('det-username').innerText = `@${data.username}`;
+    document.getElementById('det-username').innerText = `@${data.username}`; // ✅ username จะไม่เป็น null แล้ว
     document.getElementById('det-address').innerText = data.address;
     
-    // 2. เช็คพิกัดและปรับสี Badge อัตโนมัติ
+    // 2. เช็คพิกัดและปรับสี Badge (โค้ดเดิม)
     navigator.geolocation.getCurrentPosition((pos) => {
         const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, data.coords.lat, data.coords.lng);
         const isClose = dist <= 20;
@@ -1012,25 +1015,24 @@ function viewKYCDetail(dataStr) {
         }
     });
 
-    // 3. ตั้งค่าปุ่มกด
+    // 3. ตั้งค่าปุ่มกด (โค้ดเดิม)
     document.getElementById('btn-det-approve').onclick = () => { processKYC(data._id, 'approved'); closeKYCDetail(); };
     document.getElementById('btn-det-reject').onclick = () => { 
         deleteKYCRequest(data._id, data.username); 
     };
 
-    // 4. แสดงผลแบบเต็มจอ (เลื่อนหน้าจอไปด้านบนสุดก่อนโชว์)
+    // 4. แสดงผลแบบเต็มจอ (โค้ดเดิม)
     modal.scrollTop = 0;
     modal.style.display = 'block';
     
-    // ซ่อน Sidebar เพื่อให้ดูเหมือนเป็นหน้าใหม่จริงๆ
     if (document.getElementById('sidebar')) document.getElementById('sidebar').classList.remove('active');
     if (document.getElementById('sidebar-overlay')) document.getElementById('sidebar-overlay').style.display = 'none';
 	
-	document.getElementById('kyc-chat-box').innerHTML = '<div style="text-align:center; padding:10px; color:#999; font-size:0.8em;">กำลังโหลดประวัติแชท...</div>';
-    loadKYCChatHistory(data._id);
+    // ✅ แก้ไข: จัดการแชทโดยใช้ data.username ให้ตรงกับฝั่งสมาชิก
+    document.getElementById('kyc-chat-box').innerHTML = '<div style="text-align:center; padding:10px; color:#999; font-size:0.8em;">กำลังโหลดประวัติแชท...</div>';
     
-    // เข้าร่วมห้อง Socket สำหรับคำขอนี้
-    socket.emit('joinRequest', data._id); 
+    loadKYCChatHistory(data.username); // โหลดแชทด้วย username
+    socket.emit('joinRequest', data.username); // เข้าห้องด้วย username
 }
 
 function closeKYCDetail() {

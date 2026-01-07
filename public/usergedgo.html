@@ -587,7 +587,7 @@ function validateKYC() {
 }
 
 async function submitKYC() {
-    // 1. ถามยืนยัน
+    // 1. ถามยืนยัน (โค้ดเดิม)
     const confirm = await Swal.fire({
         title: 'ยืนยันการส่งข้อมูล?',
         text: "ข้อมูลพิกัดปัจจุบันของคุณจะถูกส่งให้แอดมินตรวจสอบ",
@@ -598,7 +598,7 @@ async function submitKYC() {
     });
 
     if (confirm.isConfirmed) {
-        // 2. ดึงพิกัด GPS ปัจจุบัน
+        // 2. ดึงพิกัด GPS (โค้ดเดิม)
         if (!navigator.geolocation) {
             return Swal.fire('ผิดพลาด', 'บราวเซอร์ไม่รองรับ GPS', 'error');
         }
@@ -615,39 +615,36 @@ async function submitKYC() {
                 lng: position.coords.longitude
             };
 
-            // 3. เตรียมข้อมูล
-				const name = document.getElementById('full-name').value;
-				const idNum = document.getElementById('id-number').value;
-				const phone = document.getElementById('phone-number').value;
-				const address = document.getElementById('home-address').value;
-				
-				const imgContainer = document.getElementById('preview-container');
-				let userImgData = "";
+            // 3. เตรียมข้อมูล (โค้ดเดิม)
+            const name = document.getElementById('full-name').value;
+            const idNum = document.getElementById('id-number').value;
+            const phone = document.getElementById('phone-number').value;
+            const address = document.getElementById('home-address').value;
             
-				if (imgContainer && imgContainer.style.backgroundImage) {
+            const imgContainer = document.getElementById('preview-container');
+            let userImgData = "";
+            
+            if (imgContainer && imgContainer.style.backgroundImage) {
                 const rawBase64 = imgContainer.style.backgroundImage.slice(5, -2);
-                
-                // --- ขั้นตอนสำคัญ: ย่อรูปก่อนส่ง ---
                 Swal.update({ title: 'กำลังลดขนาดรูปภาพ...' });
-                userImgData = await resizeImage(rawBase64, 800, 0.6); // ย่อเหลือ 800px คุณภาพ 60%
-				}
-			
-			// --- ดึงชื่อแอดมินจากหน้าจอที่ระบบตรวจพบโซนให้แล้ว ---
-			const adminNameElement = document.getElementById('display-zone-admin');
-			let adminName = adminNameElement ? adminNameElement.innerText : "แอดมินประจำโซน";
+                userImgData = await resizeImage(rawBase64, 800, 0.6); 
+            }
+            
+            const adminNameElement = document.getElementById('display-zone-admin');
+            let adminName = adminNameElement ? adminNameElement.innerText : "แอดมินประจำโซน";
 
-			// ป้องกันกรณีที่ระบบยังหาโซนไม่เจอ หรือขึ้นว่า "รอการเชื่อมต่อ"
-			if (adminName === "รอการเชื่อมต่อ" || adminName === "กำลังค้นหาโซน...") {
-			return Swal.fire({
-					icon: 'warning',
-					title: 'ไม่พบแอดมินเจ้าของพื้นที่',
-					text: 'กรุณารอให้ระบบระบุโซนการใช้งานของคุณก่อนส่งคำขอ',
-					confirmButtonColor: '#11998e'
-				});
-			}
+            if (adminName === "รอการเชื่อมต่อ" || adminName === "กำลังค้นหาโซน...") {
+                return Swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่พบแอดมินเจ้าของพื้นที่',
+                    text: 'กรุณารอให้ระบบระบุโซนการใช้งานของคุณก่อนส่งคำขอ',
+                    confirmButtonColor: '#11998e'
+                });
+            }
 
-            // 4. ส่งผ่าน Socket ไปที่หลังบ้าน
+            // 4. ส่งผ่าน Socket (แก้ไข: มั่นใจว่ามี username ส่งไป)
             socket.emit('submit-kyc', {
+                username: localStorage.getItem('myUsername'), // ✅ ส่ง username ไปด้วยกัน null
                 fullName: name,
                 idNumber: idNum,
                 phone: phone,
@@ -657,21 +654,22 @@ async function submitKYC() {
                 userImg: userImgData
             });
 
-            // 5. แสดงสถานะสำเร็จและสลับหน้า (แบบไม่จำค่าในบราวเซอร์ตามที่ต้องการ)
+            // 5. แสดงสถานะสำเร็จและสลับหน้า
             Swal.fire({
                 icon: 'success',
                 title: 'ส่งข้อมูลเรียบร้อย',
                 text: `คำขอและพิกัดของคุณถูกส่งไปยัง ${adminName} แล้ว`,
                 confirmButtonColor: '#11998e'
             }).then(() => {
-                // สลับหน้าจอใน Modal
                 document.getElementById('kyc-form-view').style.display = 'none';
                 document.getElementById('kyc-summary-view').style.display = 'block';
-				
-				currentKYCRequestId = localStorage.getItem('myUsername'); 
-				socket.emit('joinRequest', currentKYCRequestId);
                 
-                // อัปเดตข้อมูลในหน้าสรุปให้ดูในรอบนี้
+                // ✅ แก้ไข: ใช้ username เป็นชื่อห้องแชท เพื่อให้ตรงกับแอดมิน
+                const myName = localStorage.getItem('myUsername');
+                currentKYCRequestId = myName; 
+                socket.emit('joinRequest', myName); // เข้าห้องด้วยชื่อตัวเอง
+                loadKYCUserChatHistory(myName);    // โหลดประวัติแชทด้วยชื่อตัวเอง
+
                 document.getElementById('sum-name').innerText = name;
                 document.getElementById('sum-phone').innerText = phone;
                 document.getElementById('admin-status-text').innerHTML = `ส่งถึง <b>${adminName}</b> แล้ว (พิกัดถูกแนบไปกับคำขอ)`;

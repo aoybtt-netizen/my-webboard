@@ -4395,7 +4395,7 @@ socket.on('submit-kyc', async (kycData) => {
         const { fullName, idNumber, phone, address, coords, adminName, userImg } = kycData; // รับ userImg มาด้วย
         
         const newRequest = {
-            username: socket.username,
+            username: username || "Unknown",
             fullName,
             idNumber,
             phone,
