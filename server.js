@@ -275,6 +275,8 @@ app.post('/api/upload-slip', uploadSlip.single('slip'), (req, res) => {
     }
 });
 
+//kyc
+
 
 
 
