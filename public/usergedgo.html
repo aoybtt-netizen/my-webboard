@@ -517,27 +517,32 @@ function openKYC() {
     const modal = document.getElementById('kyc-modal');
     const formView = document.getElementById('kyc-form-view');
     const summaryView = document.getElementById('kyc-summary-view');
-    
-    // ตรวจสอบว่ามีสถานะค้างใน localStorage หรือไม่ (ถ้ามีแสดงว่าเป็นคำขอเดิม)
-    const savedStatus = localStorage.getItem('kyc_status');
-    const savedId = localStorage.getItem('kyc_id_request'); // สมมติว่าเก็บ ID ไว้
 
-    if (savedStatus === 'pending' || (formView.style.display === 'none' && summaryView.style.display === 'block')) {
-        formView.style.display = 'none';
-        summaryView.style.display = 'block';
-        
-        // ถ้ามี ID คำขอ ให้โหลดแชท
-        if (savedId) {
-            currentKYCRequestId = savedId;
-            socket.emit('joinRequest', savedId);
-            loadKYCUserChatHistory(savedId);
+    // ตรวจสอบความปลอดภัยว่า Element พร้อมใช้งานหรือไม่
+    if (!modal || !formView || !summaryView) {
+        console.error("KYC Modal Elements not found!");
+        return;
+    }
+
+    // สำหรับทดสอบ: ใช้ username เป็น ID ห้องแชทชั่วคราว (หรือดึงจากฐานข้อมูลถ้ามี)
+    const myName = localStorage.getItem('myUsername');
+    
+    // เช็คสถานะการแสดงผลปัจจุบัน
+    if (formView.style.display === 'none' && summaryView.style.display === 'block') {
+        // อยู่หน้า Summary อยู่แล้ว
+        if (myName) {
+            currentKYCRequestId = myName; // ใช้ username เป็น ID ห้องเพื่อทดสอบนัดหมาย
+            socket.emit('joinRequest', currentKYCRequestId);
+            loadKYCUserChatHistory(currentKYCRequestId);
         }
     } else {
         formView.style.display = 'block';
         summaryView.style.display = 'none';
+        if(document.getElementById('btn-close-x')) document.getElementById('btn-close-x').style.display = 'block';
     }
 
     modal.style.display = 'block';
+    if(typeof toggleSidebar === 'function') toggleSidebar();
 }
 
 function closeKYC() {
@@ -784,11 +789,13 @@ function updateKYCMenuUI(status, adminName = "") {
 function sendKYCUserMessage() {
     const input = document.getElementById('kyc-user-input');
     const message = input.value.trim();
-    if (!message || !currentKYCRequestId) return;
+    const myName = localStorage.getItem('myUsername');
+    
+    if (!message || !myName) return;
 
     const chatData = {
-        requestId: currentKYCRequestId,
-        sender: localStorage.getItem('myUsername'),
+        requestId: myName,
+        sender: myName,
         message: message,
         type: 'text',
         category: 'kyc'
@@ -801,8 +808,6 @@ function sendKYCUserMessage() {
 
 async function loadKYCUserChatHistory(requestId) {
     const chatBox = document.getElementById('kyc-user-chat-box');
-    chatBox.innerHTML = '<div style="text-align:center; padding:10px; color:#999; font-size:0.7em;">กำลังโหลดแชท...</div>';
-    
     try {
         const res = await fetch(`/api/kyc/chat-history?requestId=${requestId}`);
         const history = await res.json();
@@ -811,7 +816,7 @@ async function loadKYCUserChatHistory(requestId) {
             history.forEach(msg => appendKYCUserChatMessage(msg));
         }
     } catch (err) {
-        console.error("Load KYC chat error:", err);
+        console.warn("ยังไม่มีประวัติแชท KYC");
     }
 }
 
@@ -824,7 +829,7 @@ function appendKYCUserChatMessage(msg) {
     const isMe = msg.sender === myName;
     
     const msgHTML = `
-        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
+        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 5px;">
             <div style="background: ${isMe ? 'var(--primary)' : '#f1f5f9'}; 
                         color: ${isMe ? 'white' : 'var(--dark)'}; 
                         padding: 8px 12px; border-radius: 12px; 
@@ -844,7 +849,8 @@ function appendKYCUserChatMessage(msg) {
 
 // 5. รับข้อความ Real-time
 socket.on('receiveMessage', (msg) => {
-    if (msg.requestId === currentKYCRequestId && msg.sender !== localStorage.getItem('myUsername')) {
+    const myName = localStorage.getItem('myUsername');
+    if (msg.requestId === myName && msg.sender !== myName) {
         appendKYCUserChatMessage(msg);
     }
 });
