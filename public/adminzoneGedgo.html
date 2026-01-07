@@ -1134,7 +1134,10 @@ async function checkDistanceBeforeApprove(requestId, username, memberLat, member
     const adminName = localStorage.getItem('myUsername');
     
     // 1. ดึงพิกัดแอดมินปัจจุบัน
-    Swal.fire({ title: 'กำลังเช็กพิกัดของคุณ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'กำลังเช็กพิกัดของคุณ...',
+	allowOutsideClick: false,
+	target: document.getElementById('admin-kyc-detail-modal'),
+	didOpen: () => Swal.showLoading() });
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const adminLat = pos.coords.latitude;
@@ -1149,18 +1152,31 @@ async function checkDistanceBeforeApprove(requestId, username, memberLat, member
             title: isPass ? 'ผ่านเงื่อนไขระยะห่าง' : 'ไม่ผ่านเงื่อนไขระยะห่าง',
             html: `ระยะห่างปัจจุบัน: <b>${dist.toFixed(1)} เมตร</b><br>${isPass ? '<span style="color:green">อยู่ในระยะ 20 เมตรตามที่กำหนด</span>' : '<span style="color:red">คุณอยู่ไกลเกิน 20 เมตร</span>'}`,
             icon: isPass ? 'success' : 'warning',
+			target: document.getElementById('admin-kyc-detail-modal'),
             showCancelButton: true,
             confirmButtonText: 'ยืนยันอนุมัติ',
             cancelButtonText: 'ยกเลิก',
             confirmButtonColor: isPass ? '#11998e' : '#94a3b8',
         }).then((result) => {
             if (result.isConfirmed) {
-                // ถ้าแอดมินยืนยันที่จะอนุมัติ (ถึงไม่ผ่านก็กดได้ หรือจะบล็อกไม่ให้กดก็ได้ครับ)
-                executeApprove(requestId, username, adminName);
-            }
+				if (!isPass) {
+				return Swal.fire({
+					title: 'ไม่อนุมัติ',
+					text: 'ระยะห่างต้องไม่เกิน 20 เมตรเท่านั้น',
+					icon: 'error',
+					target: document.getElementById('admin-kyc-detail-modal')
+				});
+			}
+    executeApprove(requestId, username, adminName);
+}
         });
     }, (err) => {
-        Swal.fire('พิกัดผิดพลาด', 'กรุณาเปิด GPS ของคุณก่อนเช็กระยะ', 'error');
+        Swal.fire({
+            title: 'พิกัดผิดพลาด',
+            text: 'กรุณาเปิด GPS ของคุณก่อนเช็กระยะ',
+            icon: 'error',
+            target: document.getElementById('admin-kyc-detail-modal')
+        });
     });
 }
 
@@ -1173,9 +1189,15 @@ async function executeApprove(requestId, username, adminName) {
             body: JSON.stringify({ requestId, username, adminName })
         });
         if (res.ok) {
-            Swal.fire('สำเร็จ!', 'ยืนยันตัวตนสมาชิกเรียบร้อยแล้ว', 'success');
-            closeKYCDetail();
-            loadKYCRequests();
+            Swal.fire({
+                title: 'สำเร็จ!',
+                text: 'ยืนยันตัวตนสมาชิกเรียบร้อยแล้ว',
+                icon: 'success',
+                target: document.getElementById('admin-kyc-detail-modal')
+            }).then(() => {
+                closeKYCDetail();
+                loadKYCRequests();
+            });
         }
     } catch (e) { console.error(e); }
 }
