@@ -276,41 +276,7 @@ app.post('/api/upload-slip', uploadSlip.single('slip'), (req, res) => {
 });
 
 //kyc
-socket.on('submit-kyc', async (kycData) => {
-    try {
-        const { fullName, idNumber, phone, address, coords, adminName } = kycData;
-        
-        // 1. บันทึกลงฐานข้อมูล (คอลเลกชัน kycRequests)
-        const newRequest = {
-            username: socket.username,
-            fullName,
-            idNumber,
-            phone,
-            address,
-            userCoords: coords, // [lat, lng]
-            targetAdmin: adminName,
-            status: 'pending',
-            submittedAt: new Date()
-        };
 
-        // สมมติว่ามี kycRequestsCollection ที่ประกาศไว้ด้านบนแล้ว
-        await db.collection('kycRequests').insertOne(newRequest);
-
-        console.log(`📩 KYC Submitted from ${socket.username} to Admin: ${adminName}`);
-
-        // 2. ส่งแจ้งเตือน Real-time ไปที่แอดมิน
-        // เราจะส่งไปที่ 'admin-room' หรือระบุเฉพาะคนถ้ามี ID
-        io.emit('admin-notification', {
-            type: 'KYC_REQUEST',
-            message: `มีคำขอ KYC ใหม่จากคุณ ${fullName}`,
-            user: socket.username,
-            coords: coords
-        });
-
-    } catch (err) {
-        console.error("❌ KYC Submit Backend Error:", err);
-    }
-});
 
 
 
@@ -4311,19 +4277,43 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 	
 	
-	socket.on('get-verify-step', async (data, callback) => {
+//KYC
+socket.on('submit-kyc', async (kycData) => {
     try {
-        const user = await usersCollection.findOne({ username: socket.username });
-        if (user) {
-            // ส่งค่า verifyStep กลับไป (ถ้าไม่มีให้เป็น 0)
-            callback({ success: true, step: user.verifyStep || 0 });
-        } else {
-            callback({ success: false });
-        }
+        const { fullName, idNumber, phone, address, coords, adminName } = kycData;
+        
+        // 1. บันทึกลงฐานข้อมูล (คอลเลกชัน kycRequests)
+        const newRequest = {
+            username: socket.username,
+            fullName,
+            idNumber,
+            phone,
+            address,
+            userCoords: coords, // [lat, lng]
+            targetAdmin: adminName,
+            status: 'pending',
+            submittedAt: new Date()
+        };
+
+        // สมมติว่ามี kycRequestsCollection ที่ประกาศไว้ด้านบนแล้ว
+        await db.collection('kycRequests').insertOne(newRequest);
+
+        console.log(`📩 KYC Submitted from ${socket.username} to Admin: ${adminName}`);
+
+        // 2. ส่งแจ้งเตือน Real-time ไปที่แอดมิน
+        // เราจะส่งไปที่ 'admin-room' หรือระบุเฉพาะคนถ้ามี ID
+        io.emit('admin-notification', {
+            type: 'KYC_REQUEST',
+            message: `มีคำขอ KYC ใหม่จากคุณ ${fullName}`,
+            user: socket.username,
+            coords: coords
+        });
+
     } catch (err) {
-        callback({ success: false });
+        console.error("❌ KYC Submit Backend Error:", err);
     }
 });
+
 	
 	
 	
