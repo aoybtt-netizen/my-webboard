@@ -4330,32 +4330,36 @@ socket.on('reply-deduct-confirm', async (data) => {
 //KYC
 socket.on('submit-kyc', async (kycData) => {
     try {
+        // ใช้ชื่อตัวแปรให้ตรงกับที่ส่งมาจาก Client
         const { fullName, idNumber, phone, address, coords, adminName } = kycData;
         
-        // 1. บันทึกลงฐานข้อมูล (คอลเลกชัน kycRequests)
+        // 1. ตรวจสอบความถูกต้องของข้อมูลเบื้องต้น
+        if (!fullName || !coords) {
+            return console.error("❌ KYC Data incomplete");
+        }
+
+        // 2. บันทึกลงฐานข้อมูล
         const newRequest = {
-            username: socket.username,
+            username: socket.username || "Unknown", // ป้องกันค่าว่าง
             fullName,
             idNumber,
             phone,
             address,
-            userCoords: coords, // [lat, lng]
+            coords, // เก็บเป็น Object {lat, lng} ตามที่ส่งมา
             targetAdmin: adminName,
             status: 'pending',
             submittedAt: new Date()
         };
 
-        // สมมติว่ามี kycRequestsCollection ที่ประกาศไว้ด้านบนแล้ว
         await db.collection('kycRequests').insertOne(newRequest);
-
         console.log(`📩 KYC Submitted from ${socket.username} to Admin: ${adminName}`);
 
-        // 2. ส่งแจ้งเตือน Real-time ไปที่แอดมิน
-        // เราจะส่งไปที่ 'admin-room' หรือระบุเฉพาะคนถ้ามี ID
+        // 3. ส่งแจ้งเตือน Real-time ไปที่แอดมินทุกคน
+        // ใช้ io.emit เพื่อให้แอดมินที่เปิดหน้าจออยู่ได้รับทราบทันที
         io.emit('admin-notification', {
-        type: 'KYC_REQUEST',
-        message: `มีคำขอ KYC ใหม่จากคุณ ${kycData.fullName}`,
-        adminId: kycData.adminName
+            type: 'KYC_REQUEST',
+            message: `มีคำขอ KYC ใหม่จากคุณ ${fullName}`,
+            adminId: adminName // เพื่อให้ฝั่ง Admin เช็คว่าใช่ของตัวเองไหม
         });
 
     } catch (err) {
