@@ -275,7 +275,28 @@ app.post('/api/upload-slip', uploadSlip.single('slip'), (req, res) => {
     }
 });
 
+
+
 //kyc
+// API สำหรับดึงประวัติแชทเฉพาะหมวด KYC
+app.get('/api/kyc/chat-history', async (req, res) => {
+    try {
+        const { requestId } = req.query;
+        if (!requestId) return res.status(400).json({ error: "Missing requestId" });
+
+        // ดึงข้อมูลจากคอลเลกชัน kyc_chats (ที่เราแยกไว้เพื่อความเป็นระเบียบ)
+        const history = await db.collection('kyc_chats')
+            .find({ requestId: requestId })
+            .sort({ timestamp: 1 }) // เรียงจากเก่าไปใหม่ตามลำดับเวลา
+            .toArray();
+
+        res.json(history);
+    } catch (err) {
+        console.error("❌ Get KYC Chat History Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 
 
 
@@ -4154,22 +4175,28 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
 
     // 2. รับและส่งข้อความแชท
     socket.on('sendMessage', async (data) => {
-    // data ประกอบด้วย { requestId, sender, message, type }
     const chatMsg = {
         requestId: data.requestId,
         sender: data.sender,
-        message: data.message, // ถ้าเป็นรูป ตรงนี้จะเป็น URL จาก Cloudinary
-        type: data.type || 'text', // 'text' หรือ 'image'
+        message: data.message,
+        type: data.type || 'text',
+        category: data.category || 'topup', // เพิ่มบรรทัดนี้เพื่อเก็บประเภทแชท
         timestamp: new Date()
     };
 
-    // บันทึกลง MongoDB (คอลเลกชัน topup_chats ที่เราสร้างไว้ก่อนหน้า)
-    if (typeof topupChatsCollection !== 'undefined') {
-        await topupChatsCollection.insertOne(chatMsg);
-    }
+    try {
+        // แนะนำให้ใช้ Collection กลางชื่อ 'all_chats' หรือแยกตาม category
+        if (data.category === 'kyc') {
+            await db.collection('kyc_chats').insertOne(chatMsg);
+        } else {
+            await db.collection('topup_chats').insertOne(chatMsg);
+        }
 
-    // ส่งต่อให้ทุกคนในห้อง (รวมแอดมินด้วย)
-    io.to(data.requestId).emit('receiveMessage', chatMsg);
+        // ส่งต่อให้สมาชิกและแอดมินที่อยู่ในห้องเดียวกัน
+        io.to(data.requestId).emit('receiveMessage', chatMsg);
+    } catch (err) {
+        console.error("❌ Chat Save Error:", err);
+    }
 });
 
 	// 2.1

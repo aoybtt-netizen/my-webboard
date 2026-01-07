@@ -131,6 +131,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     <script>
 	const socket = io();
 	let currentChatRequestId = null;
+	let currentKYCRequestId = null;
 	
     function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -739,14 +740,21 @@ function appendAdminChatMessage(msg) {
 
 // แก้ไขฟังก์ชันรับข้อความ Socket ให้เรียกใช้ appendAdminChatMessage
 socket.on('receiveMessage', (msg) => {
-    // 1. เช็คว่าข้อความที่ส่งมา (msg.requestId) ตรงกับห้องที่แอดมินเปิดแชทค้างไว้หรือไม่ (currentChatRequestId)
-    // 2. เช็คว่าคนส่ง "ไม่ใช่ตัวแอดมินเอง" (เพราะแอดมินจะสั่ง appendMessage ไปแล้วตอนกดส่ง)
-    // 3. เช็คว่าฟังก์ชันสำหรับแสดงผลพร้อมใช้งานหรือไม่
-    if (msg.requestId === currentChatRequestId && 
-        msg.sender !== localStorage.getItem('myUsername') &&
-        typeof appendAdminChatMessage === "function") {
-        
-        appendAdminChatMessage(msg);
+    const myName = localStorage.getItem('myUsername');
+    if (msg.sender === myName) return; // ถ้าเราเป็นคนส่งเอง ไม่ต้องวาดซ้ำ (เพราะวาดไปแล้วตอนส่ง)
+
+    // กรณีที่ 1: เป็นข้อความของแชทเติมเงิน (ที่เปิดค้างไว้)
+    if (msg.requestId === currentChatRequestId) {
+        if (typeof appendAdminChatMessage === "function") {
+            appendAdminChatMessage(msg);
+        }
+    }
+
+    // กรณีที่ 2: เป็นข้อความของแชท KYC (ที่เปิดค้างไว้)
+    if (msg.requestId === currentKYCRequestId) {
+        if (typeof appendKYCChatMessage === "function") {
+            appendKYCChatMessage(msg);
+        }
     }
 });
 
@@ -964,6 +972,7 @@ function viewKYCFullImage(src) {
 // ฟังก์ชันเปิด Modal รายละเอียด
 function viewKYCDetail(dataStr) {
     const data = JSON.parse(decodeURIComponent(dataStr));
+	currentKYCRequestId = data._id;
     const modal = document.getElementById('admin-kyc-detail-modal');
     
     // 1. ใส่ข้อมูลลงในฟิลด์ต่างๆ
@@ -1014,10 +1023,78 @@ function viewKYCDetail(dataStr) {
     // ซ่อน Sidebar เพื่อให้ดูเหมือนเป็นหน้าใหม่จริงๆ
     if (document.getElementById('sidebar')) document.getElementById('sidebar').classList.remove('active');
     if (document.getElementById('sidebar-overlay')) document.getElementById('sidebar-overlay').style.display = 'none';
+	
+	document.getElementById('kyc-chat-box').innerHTML = '<div style="text-align:center; padding:10px; color:#999; font-size:0.8em;">กำลังโหลดประวัติแชท...</div>';
+    loadKYCChatHistory(data._id);
+    
+    // เข้าร่วมห้อง Socket สำหรับคำขอนี้
+    socket.emit('joinRequest', data._id); 
 }
 
 function closeKYCDetail() {
     document.getElementById('admin-kyc-detail-modal').style.display = 'none';
+}
+
+
+// 2. ฟังก์ชันโหลดประวัติแชท KYC
+async function loadKYCChatHistory(requestId) {
+    try {
+        const res = await fetch(`/api/kyc/chat-history?requestId=${requestId}`);
+        const history = await res.json();
+        const chatBox = document.getElementById('kyc-chat-box');
+        chatBox.innerHTML = '';
+        
+        if (Array.isArray(history)) {
+            history.forEach(msg => appendKYCChatMessage(msg));
+        }
+    } catch (err) {
+        console.error("Load KYC chat error:", err);
+    }
+}
+
+// 3. ฟังก์ชันส่งข้อความ
+function sendKYCAdminMessage() {
+    const input = document.getElementById('kyc-admin-input');
+    const message = input.value.trim();
+    if (!message || !currentKYCRequestId) return;
+
+    const chatData = {
+        requestId: currentKYCRequestId,
+        sender: localStorage.getItem('myUsername'),
+        message: message,
+        type: 'text',
+        category: 'kyc' // ระบุว่าเป็นแชทหมวด KYC
+    };
+
+    socket.emit('sendMessage', chatData);
+    appendKYCChatMessage(chatData); // วาดในหน้าจอตัวเอง
+    input.value = '';
+}
+
+// 4. ฟังก์ชันวาดข้อความบนหน้าจอ
+function appendKYCChatMessage(msg) {
+    const chatBox = document.getElementById('kyc-chat-box');
+    if (!chatBox) return;
+
+    const isMe = msg.sender === localStorage.getItem('myUsername');
+    
+    const msgHTML = `
+        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 8px;">
+            <div style="background: ${isMe ? 'var(--primary)' : 'white'}; 
+                        color: ${isMe ? 'white' : 'var(--dark)'}; 
+                        padding: 8px 12px; border-radius: 12px; 
+                        max-width: 85%; font-size: 0.9em;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        border: ${isMe ? 'none' : '1px solid #e2e8f0'};">
+                ${msg.message}
+            </div>
+            <small style="font-size: 0.6em; color: #94a3b8; margin-top: 2px; padding: 0 5px;">
+                ${isMe ? 'คุณ' : msg.sender} • ${new Date(msg.timestamp || new Date()).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}
+            </small>
+        </div>
+    `;
+    chatBox.insertAdjacentHTML('beforeend', msgHTML);
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 
