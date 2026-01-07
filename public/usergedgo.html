@@ -256,6 +256,14 @@
 .kyc-input:focus { border-color: var(--primary); }
 .kyc-input:disabled { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
 
+.upload-box {
+    position: relative;
+    width: 100%;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    background-repeat: no-repeat;
+}
+
 
     </style>
 </head>
@@ -553,6 +561,32 @@ async function submitKYC() {
 }
 
 
+function previewKYCImg(input) {
+    const container = document.getElementById('preview-container');
+    const placeholder = document.getElementById('upload-placeholder');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            // ใช้ backgroundImage เพื่อให้รูป Crop เข้ากรอบได้สวยงาม (Object-fit: cover)
+            container.style.backgroundImage = `url('${e.target.result}')`;
+            container.style.backgroundSize = 'cover';
+            container.style.backgroundPosition = 'center';
+            container.style.border = '2px solid var(--primary)'; // เปลี่ยนสีกรอบเมื่อมีรูป
+            
+            // ซ่อนข้อความและไอคอน placeholder
+            placeholder.style.display = 'none';
+            
+            // เรียกตรวจสอบปุ่ม submit
+            validateKYC();
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+
 
 </script>
 
@@ -598,9 +632,20 @@ async function submitKYC() {
             <i class="fas fa-times-circle"></i>
         </div>
 
-        <div style="text-align: left; margin-bottom: 25px;">
+        <div style="text-align: left; margin-bottom: 20px;">
             <h3 style="margin: 0; color: var(--dark); font-size: 1.5em;">ยืนยันตัวตนสมาชิก</h3>
             <p style="font-size: 0.85em; color: #666; margin-top: 5px;">อัปโหลดข้อมูลเพื่อให้แอดมินเจ้าของโซนตรวจสอบ</p>
+        </div>
+
+        <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left; margin-bottom: 8px;">รูปถ่ายหน้าจริงปัจจุบัน:</label>
+        <div class="upload-grid" style="margin-bottom: 20px;">
+            <div class="upload-box" id="preview-container" style="overflow: hidden; height: 180px; background-color: #f1f5f9; display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center; border: 2px dashed #cbd5e1;">
+                <div id="upload-placeholder" style="text-align: center; color: #64748b;">
+                    <i class="fas fa-camera" style="font-size: 2.5em; margin-bottom: 10px;"></i>
+                    <p style="margin: 0; font-size: 0.9em;">แตะเพื่อถ่ายรูปหรืออัปโหลด</p>
+                </div>
+                <input type="file" id="kyc-file" accept="image/*" onchange="previewKYCImg(this)" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+            </div>
         </div>
         
         <div id="kyc-input-group" style="text-align: left;">
@@ -614,21 +659,12 @@ async function submitKYC() {
             <input type="tel" id="phone-number" class="kyc-input" oninput="validateKYC()" placeholder="08x-xxx-xxxx">
 
             <label style="font-size: 0.85em; font-weight: bold;">ที่อยู่ปัจจุบัน:</label>
-            <textarea id="home-address" class="kyc-input" oninput="validateKYC()" placeholder="ระบุที่อยู่ตามบัตรประชาชนหรือที่อยู่ปัจจุบัน..." style="height: 80px; resize: none;"></textarea>
-        </div>
-
-        <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left;">อัปโหลดรูปถ่ายหน้าจริง:</label>
-        <div class="upload-grid">
-            <div class="upload-box" id="preview-container">
-                <i class="fas fa-camera"></i>
-                <p id="upload-text">ถ่ายรูปคุณปัจจุบัน</p>
-                <input type="file" id="kyc-file" accept="image/*" onchange="previewKYCImg(this)">
-            </div>
+            <textarea id="home-address" class="kyc-input" oninput="validateKYC()" placeholder="ระบุที่อยู่ปัจจุบันของคุณ..." style="height: 80px; resize: none;"></textarea>
         </div>
 
         <div id="proximity-info" class="proximity-alert">
             <i class="fas fa-map-marker-alt" style="font-size: 1.5em; margin-bottom: 8px;"></i><br>
-            <b>เงื่อนไขการอนุมัติ:</b> คุณต้องอยู่ห่างจากแอดมินโซนไม่เกิน <b>20 เมตร</b> แอดมินถึงจะสามารถกดยืนยันให้ได้
+            <b>เงื่อนไขการอนุมัติ:</b> คุณต้องอยู่ห่างจากแอดมินโซนไม่เกิน <b>20 เมตร</b> เพื่อให้แอดมินตรวจสอบตัวตนจริงๆ
         </div>
 
         <button id="btn-kyc-submit" class="btn-submit" onclick="submitKYC()" disabled>
@@ -636,7 +672,7 @@ async function submitKYC() {
         </button>
 
         <div id="kyc-status-bar" style="display: none; margin-top: 20px; padding: 15px; border-radius: 12px; background: #e0f2f1; color: #00796b; text-align: center; border: 1px dashed #00796b;">
-            <i class="fas fa-clock fa-spin"></i> <br>
+            <i class="fas fa-clock fa-spin" style="font-size: 1.5em; margin-bottom: 10px;"></i> <br>
             <b style="font-size: 1.1em;">ส่งคำขอเรียบร้อยแล้ว</b> <br>
             <span id="admin-target-info" style="font-size: 0.9em;">รอการตรวจสอบจากแอดมิน...</span> <br>
             <small style="opacity: 0.8;">* ข้อมูลถูกบันทึกแล้วและไม่สามารถแก้ไขได้</small>
