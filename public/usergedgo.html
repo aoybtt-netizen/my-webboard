@@ -440,6 +440,30 @@
     }
 
     checkProximity();
+	
+	// ฟังก์ชันเช็คสถานะเมื่อเปิดหน้าเว็บ
+function checkKYCStatus() {
+    const status = localStorage.getItem('kyc_status');
+    if (status === 'pending') {
+        // ถ้าสถานะเป็นค้างคา ให้ดึงข้อมูลมาแสดงที่หน้า Summary เลย
+        document.getElementById('sum-name').innerText = localStorage.getItem('kyc_name');
+        document.getElementById('sum-id').innerText = localStorage.getItem('kyc_id');
+        document.getElementById('sum-phone').innerText = localStorage.getItem('kyc_phone');
+        document.getElementById('sum-address').innerText = localStorage.getItem('kyc_address');
+        document.getElementById('summary-img-preview').style.backgroundImage = localStorage.getItem('kyc_img');
+        
+        const admin = localStorage.getItem('kyc_admin');
+        document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${admin}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
+        
+        // ถ้ามีการเรียกใช้ updateKYCMenuUI ให้ส่งสถานะไปด้วย
+        if (typeof updateKYCMenuUI === 'function') {
+            updateKYCMenuUI('pending', admin);
+        }
+    }
+}
+
+// เรียกใช้งานทันทีที่สคริปต์โหลด
+checkKYCStatus();
 };
 
 
@@ -491,21 +515,36 @@ function openKYC() {
     const modal = document.getElementById('kyc-modal');
     const formView = document.getElementById('kyc-form-view');
     const summaryView = document.getElementById('kyc-summary-view');
+    
+    // ดึงสถานะจาก localStorage (จำลองการเช็คจาก Database)
+    const kycStatus = localStorage.getItem('kyc_status'); // 'pending' หรือ null
 
-    if (isKYCPending) {
-        // ถ้าส่งไปแล้ว ให้โชว์หน้าสรุปเลย
+    if (kycStatus === 'pending') {
+        // ถ้าส่งไปแล้ว ให้แสดงหน้าสรุปข้อมูลเดิม
         formView.style.display = 'none';
         summaryView.style.display = 'block';
+        
+        // ดึงข้อมูลที่เคยบันทึกไว้มาโชว์ในหน้าสรุป
+        document.getElementById('sum-name').innerText = localStorage.getItem('kyc_name') || '-';
+        document.getElementById('sum-id').innerText = localStorage.getItem('kyc_id_masked') || '-';
+        document.getElementById('sum-phone').innerText = localStorage.getItem('kyc_phone') || '-';
+        document.getElementById('sum-address').innerText = localStorage.getItem('kyc_address') || '-';
+        document.getElementById('summary-img-preview').style.backgroundImage = localStorage.getItem('kyc_img') || '';
+        
+        const adminName = localStorage.getItem('kyc_admin') || "แอดมินประจำโซน";
+        document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
+        
+        // ซ่อนปุ่ม X ปิดหน้าต่าง (ถ้าต้องการ)
         if(document.getElementById('btn-close-x')) document.getElementById('btn-close-x').style.display = 'none';
     } else {
-        // ถ้ายังไม่ส่ง ให้โชว์ฟอร์มกรอก
+        // ถ้ายังไม่เคยส่ง ให้โชว์ฟอร์มกรอกปกติ
         formView.style.display = 'block';
         summaryView.style.display = 'none';
         if(document.getElementById('btn-close-x')) document.getElementById('btn-close-x').style.display = 'block';
     }
 
     modal.style.display = 'block';
-    if(typeof toggleSidebar === 'function') toggleSidebar(); // ปิด sidebar
+    if(typeof toggleSidebar === 'function') toggleSidebar();
 }
 
 function closeKYC() {
@@ -588,44 +627,62 @@ async function submitKYC() {
 
         // จำลองเวลาส่ง 1.5 วินาที แล้วค่อยแสดงความสำเร็จ
         setTimeout(() => {
-            Swal.fire({
-                icon: 'success',
-                title: 'ส่งข้อมูลเรียบร้อย',
-                text: `คำขอของคุณถูกส่งไปยัง ${adminName} แล้ว`,
-                confirmButtonColor: '#11998e',
-				didOpen: () => {
-				const container = Swal.getContainer();
-				if (container) container.style.zIndex = '100000';
-				}
-            }).then((result) => {
-                // --- ส่วนที่ 3: เมื่อผู้ใช้กด "ตกลง" ในหน้าต่างแจ้งเตือน ให้ทำงานนี้ต่อ ---
-                if (result.isConfirmed || result.isDismissed) {
-                    
-                    // นำข้อมูลไปใส่ในหน้า Summary (ใบสรุป)
-                    document.getElementById('sum-name').innerText = name;
-                    document.getElementById('sum-id').innerText = idNum.replace(/(\d{9})(\d{4})/, '*********$2');
-                    document.getElementById('sum-phone').innerText = phone;
-                    document.getElementById('sum-address').innerText = address;
-                    document.getElementById('summary-img-preview').style.backgroundImage = imgData;
-                    
-                    // อัปเดตข้อความแจ้งชื่อแอดมิน
-                    document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
+    Swal.fire({
+        icon: 'success',
+        title: 'ส่งข้อมูลเรียบร้อย',
+        text: `คำขอของคุณถูกส่งไปยัง ${adminName} แล้ว`,
+        confirmButtonColor: '#11998e',
+        didOpen: () => {
+            const container = Swal.getContainer();
+            if (container) container.style.zIndex = '100000';
+        }
+    }).then((result) => {
+        // เมื่อผู้ใช้กด "ตกลง" หรือปิดแจ้งเตือน
+        if (result.isConfirmed || result.isDismissed) {
+            
+            // 1. เตรียมข้อมูลที่จะบันทึก
+            const maskedId = idNum.replace(/(\d{9})(\d{4})/, '*********$2');
+            
+            // 2. บันทึกลง localStorage เพื่อให้ระบบจำได้ว่าส่งแล้ว
+            localStorage.setItem('kyc_status', 'pending');
+            localStorage.setItem('kyc_name', name);
+            localStorage.setItem('kyc_id', maskedId);
+            localStorage.setItem('kyc_phone', phone);
+            localStorage.setItem('kyc_address', address);
+            localStorage.setItem('kyc_img', imgData); // เก็บ Base64 ของรูป
+            localStorage.setItem('kyc_admin', adminName);
 
-                    // สลับ View จากหน้ากรอก เป็น หน้าสรุป
-                    document.getElementById('kyc-form-view').style.display = 'none';
-                    document.getElementById('kyc-summary-view').style.display = 'block';
-                    
-                    // ซ่อนปุ่ม X ปิดหน้าต่าง เพื่อให้เขาอ่านข้อมูลสรุปก่อน
-                    if(document.getElementById('btn-close-x')) {
-                        document.getElementById('btn-close-x').style.display = 'none';
-                    }
+            // 3. อัปเดต UI ในหน้า Summary ทันที
+            document.getElementById('sum-name').innerText = name;
+            document.getElementById('sum-id').innerText = maskedId;
+            document.getElementById('sum-phone').innerText = phone;
+            document.getElementById('sum-address').innerText = address;
+            document.getElementById('summary-img-preview').style.backgroundImage = imgData;
+            
+            document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
 
-                    console.log("KYC View Switched to Summary");
-                }
-            });
-        }, 1500); 
+            // 4. สลับหน้าจอ
+            document.getElementById('kyc-form-view').style.display = 'none';
+            document.getElementById('kyc-summary-view').style.display = 'block';
+            
+            if(document.getElementById('btn-close-x')) {
+                document.getElementById('btn-close-x').style.display = 'none';
+            }
+
+            // 5. อัปเดตเมนูหน้าโปรไฟล์ (ถ้ามีฟังก์ชันที่เตรียมไว้)
+            if (typeof updateKYCMenuUI === 'function') {
+                updateKYCMenuUI('pending', adminName);
+            }
+
+            console.log("KYC Data Saved & View Switched");
+        }
+    });
+}, 1500); 
     }
 }
+
+
+
 
 
 function previewKYCImg(input) {
