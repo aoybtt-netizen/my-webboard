@@ -4469,6 +4469,25 @@ socket.on('kyc-status-updated', (data) => {
 });
 
 
+socket.on('update-kyc-location', async (data) => {
+    try {
+        // 1. อัปเดตพิกัดใหม่ลงใน Database (kycRequests)
+        await db.collection('kycRequests').updateOne(
+            { username: data.username, status: 'pending' },
+            { $set: { coords: data.coords } }
+        );
+
+        // 2. ส่งสัญญาณบอกแอดมินในห้องนั้นว่า "พิกัดเปลี่ยนแล้วนะ"
+        io.to(data.username).emit('kyc-location-updated', {
+            username: data.username,
+            coords: data.coords
+        });
+
+        console.log(`📍 Location updated for ${data.username}`);
+    } catch (err) { console.error(err); }
+});
+
+
 
 
 	

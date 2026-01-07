@@ -1017,24 +1017,23 @@ function viewKYCDetail(dataStr) {
         }
     });
 
-    // 3. ตั้งค่าปุ่มกด (โค้ดเดิม)
-    document.getElementById('btn-det-approve').onclick = () => { processKYC(data._id, 'approved'); closeKYCDetail(); };
+    // 3. ตั้งค่าปุ่มกด 
+    document.getElementById('btn-det-approve').onclick = () => { checkDistanceBeforeApprove(data._id, data.username, data.coords.lat, data.coords.lng); };
     document.getElementById('btn-det-reject').onclick = () => { 
         deleteKYCRequest(data._id, data.username); 
     };
 
-    // 4. แสดงผลแบบเต็มจอ (โค้ดเดิม)
+    // 4. แสดงผลแบบเต็มจอ 
     modal.scrollTop = 0;
     modal.style.display = 'block';
     
     if (document.getElementById('sidebar')) document.getElementById('sidebar').classList.remove('active');
     if (document.getElementById('sidebar-overlay')) document.getElementById('sidebar-overlay').style.display = 'none';
-	
-    // ✅ แก้ไข: จัดการแชทโดยใช้ data.username ให้ตรงกับฝั่งสมาชิก
+
     document.getElementById('kyc-chat-box').innerHTML = '<div style="text-align:center; padding:10px; color:#999; font-size:0.8em;">กำลังโหลดประวัติแชท...</div>';
     
-    loadKYCChatHistory(data.username); // โหลดแชทด้วย username
-    socket.emit('joinRequest', data.username); // เข้าห้องด้วย username
+    loadKYCChatHistory(data.username); 
+    socket.emit('joinRequest', data.username); 
 }
 
 function closeKYCDetail() {
@@ -1069,11 +1068,11 @@ function sendKYCAdminMessage() {
         sender: localStorage.getItem('myUsername'),
         message: message,
         type: 'text',
-        category: 'kyc' // ระบุว่าเป็นแชทหมวด KYC
+        category: 'kyc' 
     };
 
     socket.emit('sendMessage', chatData);
-    appendKYCChatMessage(chatData); // วาดในหน้าจอตัวเอง
+    appendKYCChatMessage(chatData);
     input.value = '';
 }
 
@@ -1104,7 +1103,6 @@ function appendKYCChatMessage(msg) {
 }
 
 async function deleteKYCRequest(requestId, username) {
-    // ถามเพื่อความแน่ใจ
     if (!confirm(`คุณต้องการปฏิเสธและ "ลบ" คำขอของ @${username} ใช่หรือไม่?\n(สมาชิกจะต้องส่งข้อมูลมาใหม่อีกครั้ง)`)) {
         return;
     }
@@ -1120,9 +1118,9 @@ async function deleteKYCRequest(requestId, username) {
 
         if (data.success) {
             alert("ลบคำขอเรียบร้อยแล้ว");
-            closeKYCDetail(); // ปิดหน้าจอเต็มจอ
-            loadKYCRequests(); // โหลดรายการที่เหลือใหม่
-            updateBadges();    // อัปเดตตัวเลขแจ้งเตือน
+            closeKYCDetail(); 
+            loadKYCRequests();
+            updateBadges(); 
         } else {
             alert("เกิดข้อผิดพลาด: " + data.error);
         }
@@ -1131,6 +1129,66 @@ async function deleteKYCRequest(requestId, username) {
         alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
     }
 }
+
+
+// ฟังก์ชันเช็กระยะและยืนยันการอนุมัติ
+async function checkDistanceBeforeApprove(requestId, username, memberLat, memberLng) {
+    const adminName = localStorage.getItem('myUsername');
+    
+    // 1. ดึงพิกัดแอดมินปัจจุบัน
+    Swal.fire({ title: 'กำลังเช็กพิกัดของคุณ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const adminLat = pos.coords.latitude;
+        const adminLng = pos.coords.longitude;
+        
+        // 2. คำนวณระยะห่าง
+        const dist = calculateDistance(adminLat, adminLng, memberLat, memberLng);
+        const isPass = dist <= 20;
+
+        // 3. แสดงหน้าต่างแจ้งผลเงื่อนไข
+        Swal.fire({
+            title: isPass ? 'ผ่านเงื่อนไขระยะห่าง' : 'ไม่ผ่านเงื่อนไขระยะห่าง',
+            html: `ระยะห่างปัจจุบัน: <b>${dist.toFixed(1)} เมตร</b><br>${isPass ? '<span style="color:green">อยู่ในระยะ 20 เมตรตามที่กำหนด</span>' : '<span style="color:red">คุณอยู่ไกลเกิน 20 เมตร</span>'}`,
+            icon: isPass ? 'success' : 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันอนุมัติ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: isPass ? '#11998e' : '#94a3b8',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // ถ้าแอดมินยืนยันที่จะอนุมัติ (ถึงไม่ผ่านก็กดได้ หรือจะบล็อกไม่ให้กดก็ได้ครับ)
+                executeApprove(requestId, username, adminName);
+            }
+        });
+    }, (err) => {
+        Swal.fire('พิกัดผิดพลาด', 'กรุณาเปิด GPS ของคุณก่อนเช็กระยะ', 'error');
+    });
+}
+
+// ฟังก์ชันส่ง API อนุมัติ
+async function executeApprove(requestId, username, adminName) {
+    try {
+        const res = await fetch('/api/admin/approve-kyc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId, username, adminName })
+        });
+        if (res.ok) {
+            Swal.fire('สำเร็จ!', 'ยืนยันตัวตนสมาชิกเรียบร้อยแล้ว', 'success');
+            closeKYCDetail();
+            loadKYCRequests();
+        }
+    } catch (e) { console.error(e); }
+}
+
+socket.on('kyc-location-updated', (data) => {
+    if (currentKYCRequestId === data.username) {
+        console.log("สมาชิกอัปเดตพิกัดใหม่");
+        loadKYCRequests(); 
+    }
+});
+
 
 
 

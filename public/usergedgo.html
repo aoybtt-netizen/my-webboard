@@ -854,6 +854,34 @@ socket.on('receiveMessage', (msg) => {
 });
 
 
+function updateCurrentLocation() {
+    const myName = localStorage.getItem('myUsername');
+    
+    Swal.fire({ title: 'กำลังอัปเดตพิกัด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    navigator.geolocation.getCurrentPosition((pos) => {
+        const newCoords = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+        };
+
+        // ส่ง Socket ไปอัปเดตที่ฝั่ง Server และ Admin
+        socket.emit('update-kyc-location', {
+            username: myName,
+            coords: newCoords
+        });
+
+        Swal.fire({ icon: 'success', title: 'อัปเดตพิกัดนัดพบแล้ว', timer: 1500, showConfirmButton: false });
+        
+        // ส่งข้อความแจ้งในแชทด้วยว่าอัปเดตพิกัดแล้ว
+        sendKYCUserMessage("📍 อัปเดตพิกัดนัดพบใหม่แล้วครับ/ค่ะ");
+        
+    }, (err) => {
+        Swal.fire('ผิดพลาด', 'ดึงพิกัดไม่ได้ กรุณาเปิด GPS', 'error');
+    });
+}
+
+
 
 
 </script>
@@ -963,6 +991,13 @@ socket.on('receiveMessage', (msg) => {
         <div id="kyc-user-chat-box" style="height: 180px; overflow-y: auto; padding: 15px; background: #fff; display: flex; flex-direction: column; gap: 10px;">
             <div style="text-align: center; color: #94a3b8; font-size: 0.75em;">ส่งข้อความเพื่อนัดหมายเวลาพบแอดมิน</div>
         </div>
+		
+		<div style="padding: 5px 10px; background: #fff;">
+    <button onclick="updateCurrentLocation()" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px dashed var(--primary); background: #e0f2f1; color: var(--primary); font-size: 0.8em; cursor: pointer;">
+        <i class="fas fa-map-marker-alt"></i> กดเพื่ออัปเดตพิกัดนัดพบปัจจุบัน
+    </button>
+</div>
+
         <div style="padding: 10px; background: #f8fafc; border-top: 1px solid #eee; display: flex; gap: 8px; align-items: center;">
             <input type="text" id="kyc-user-input" placeholder="พิมพ์ข้อความ..." style="flex:1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 0.9em; font-family: 'Kanit', sans-serif;">
             <button onclick="sendKYCUserMessage()" style="background: var(--primary); color: white; border: none; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
