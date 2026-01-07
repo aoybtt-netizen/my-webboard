@@ -3494,6 +3494,56 @@ app.get('/api/admin/get-settings', async (req, res) => {
     }
 });
 
+//admin kyc
+// --- API สำหรับดึงรายการ KYC ของแอดมินคนนั้นๆ ---
+app.get('/api/admin/kyc-list', async (req, res) => {
+    try {
+        const adminName = req.query.admin;
+        if (!adminName) return res.status(400).json({ error: "Missing admin name" });
+
+        // ค้นหาในคอลเลกชัน kycRequests โดยระบุ targetAdmin และสถานะ pending
+        const requests = await db.collection('kycRequests')
+            .find({ targetAdmin: adminName, status: 'pending' })
+            .sort({ submittedAt: -1 }) // เอาล่าสุดขึ้นก่อน
+            .toArray();
+
+        res.json(requests);
+    } catch (err) {
+        console.error("❌ Get KYC List Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// --- API สำหรับ อนุมัติ หรือ ปฏิเสธ KYC ---
+app.post('/api/admin/process-kyc', async (req, res) => {
+    try {
+        const { requestId, status, adminName } = req.body;
+
+        // 1. อัปเดตสถานะในรายการคำขอ (kycRequests)
+        const request = await db.collection('kycRequests').findOne({ _id: new ObjectId(requestId) });
+        if (!request) return res.status(404).json({ error: "Request not found" });
+
+        await db.collection('kycRequests').updateOne(
+            { _id: new ObjectId(requestId) },
+            { $set: { status: status, processedAt: new Date(), processedBy: adminName } }
+        );
+
+        // 2. ถ้าอนุมัติ ให้ไปอัปเดตสถานะในบัญชี User ด้วย (usersCollection)
+        if (status === 'approved') {
+            await db.collection('users').updateOne(
+                { username: request.username },
+                { $set: { kycVerified: true, verifiedAt: new Date() } }
+            );
+        }
+
+        res.json({ message: `ดำเนินการ ${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} เรียบร้อยแล้ว` });
+    } catch (err) {
+        console.error("❌ Process KYC Error:", err);
+        res.status(500).json({ error: "Failed to process request" });
+    }
+});
+
+
 
 
 
@@ -4314,53 +4364,7 @@ socket.on('submit-kyc', async (kycData) => {
     }
 });
 
-// --- API สำหรับดึงรายการ KYC ของแอดมินคนนั้นๆ ---
-app.get('/api/admin/kyc-list', async (req, res) => {
-    try {
-        const adminName = req.query.admin;
-        if (!adminName) return res.status(400).json({ error: "Missing admin name" });
 
-        // ค้นหาในคอลเลกชัน kycRequests โดยระบุ targetAdmin และสถานะ pending
-        const requests = await db.collection('kycRequests')
-            .find({ targetAdmin: adminName, status: 'pending' })
-            .sort({ submittedAt: -1 }) // เอาล่าสุดขึ้นก่อน
-            .toArray();
-
-        res.json(requests);
-    } catch (err) {
-        console.error("❌ Get KYC List Error:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// --- API สำหรับ อนุมัติ หรือ ปฏิเสธ KYC ---
-app.post('/api/admin/process-kyc', async (req, res) => {
-    try {
-        const { requestId, status, adminName } = req.body;
-
-        // 1. อัปเดตสถานะในรายการคำขอ (kycRequests)
-        const request = await db.collection('kycRequests').findOne({ _id: new ObjectId(requestId) });
-        if (!request) return res.status(404).json({ error: "Request not found" });
-
-        await db.collection('kycRequests').updateOne(
-            { _id: new ObjectId(requestId) },
-            { $set: { status: status, processedAt: new Date(), processedBy: adminName } }
-        );
-
-        // 2. ถ้าอนุมัติ ให้ไปอัปเดตสถานะในบัญชี User ด้วย (usersCollection)
-        if (status === 'approved') {
-            await db.collection('users').updateOne(
-                { username: request.username },
-                { $set: { kycVerified: true, verifiedAt: new Date() } }
-            );
-        }
-
-        res.json({ message: `ดำเนินการ ${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} เรียบร้อยแล้ว` });
-    } catch (err) {
-        console.error("❌ Process KYC Error:", err);
-        res.status(500).json({ error: "Failed to process request" });
-    }
-});
 
 
 	
