@@ -4353,10 +4353,9 @@ socket.on('submit-kyc', async (kycData) => {
         // 2. ส่งแจ้งเตือน Real-time ไปที่แอดมิน
         // เราจะส่งไปที่ 'admin-room' หรือระบุเฉพาะคนถ้ามี ID
         io.emit('admin-notification', {
-            type: 'KYC_REQUEST',
-            message: `มีคำขอ KYC ใหม่จากคุณ ${fullName}`,
-            user: socket.username,
-            coords: coords
+        type: 'KYC_REQUEST',
+        message: `มีคำขอ KYC ใหม่จากคุณ ${kycData.fullName}`,
+        adminId: kycData.adminName
         });
 
     } catch (err) {

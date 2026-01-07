@@ -849,20 +849,24 @@ async function handleAdminSlipUpload() {
 // รับแจ้งเตือนคำขอ KYC ใหม่
 socket.on('admin-notification', (data) => {
     if (data.type === 'KYC_REQUEST') {
-        // 1. อัปเดตตัวเลข Badge
-        updateBadges();
+        // 1. อัปเดตตัวเลข Badge สีแดงบนเมนูทันที
+        updateBadges(); 
 
-        // 2. ถ้าแอดมินเปิดหน้า KYC ค้างไว้ ให้โหลดรายการใหม่ทันที
+        // 2. แจ้งเตือนด้วยเสียง (ถ้าต้องการ)
+        let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+        audio.play();
+
+        // 3. แสดง Alert เล็กๆ มุมจอ
+        console.log("แจ้งเตือนใหม่:", data.message);
+        
+        // 4. ถ้าตอนนี้แอดมินเปิดหน้า KYC ค้างไว้อยู่ ให้โหลดรายการใหม่ทันทีโดยไม่ต้องกดใหม่
         const kycSec = document.getElementById('section-kyc-list');
         if (kycSec && kycSec.style.display !== 'none') {
-            loadKYCRequests();
+            loadKYCRequests(); 
         }
-
-        // 3. แจ้งเตือนเสียงหรือ Toast
-        console.log("🔔 ใหม่: " + data.message);
-        // คุณสามารถเพิ่มเสียงติ๊งได้ที่นี่
     }
 });
+
 async function loadKYCRequests() {
     const container = document.getElementById('kyc-list-container');
     container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบพิกัด GPS แอดมิน...</div>';
