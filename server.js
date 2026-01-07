@@ -3370,9 +3370,10 @@ app.get('/api/topup/history', async (req, res) => {
 app.get('/api/admin/pending-counts', async (req, res) => {
     try {
         const { admin } = req.query;
-        const topupCount = await topupRequestsCollection.countDocuments({ adminId: admin, status: 'pending' });
-        // ในอนาคตเพิ่ม KYC Count ตรงนี้
-        res.json({ topupCount, kycCount: 0 });
+        const topupCount = await db.collection('topupRequests').countDocuments({ targetAdmin: admin, status: 'pending' });
+        const kycCount = await db.collection('kycRequests').countDocuments({ targetAdmin: admin, status: 'pending' });
+        
+        res.json({ topupCount, kycCount });
     } catch (e) {
         res.json({ topupCount: 0, kycCount: 0 });
     }
@@ -4384,7 +4385,7 @@ socket.on('reply-deduct-confirm', async (data) => {
 //KYC
 socket.on('submit-kyc', async (kycData) => {
     try {
-        const { fullName, idNumber, phone, address, coords, adminName, userImg } = kycData; // รับ userImg มาด้วย
+        const { username, fullName, idNumber, phone, address, coords, adminName, userImg } = kycData; // รับ userImg มาด้วย
         
         const newRequest = {
             username: username || "Unknown",

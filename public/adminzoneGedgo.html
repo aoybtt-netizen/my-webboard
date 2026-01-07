@@ -856,6 +856,8 @@ async function handleAdminSlipUpload() {
 //=====KYC 
 // รับแจ้งเตือนคำขอ KYC ใหม่
 socket.on('admin-notification', (data) => {
+	const myName = localStorage.getItem('myUsername');
+	if (data.adminId !== myName) return;
     if (data.type === 'KYC_REQUEST') {
         updateBadges(); 
         
