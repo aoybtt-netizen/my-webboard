@@ -376,7 +376,7 @@
 
 <script>
 	const socket = io();
-	let currentZoneAdmin = "แอดมิน สมชาย (Zone A)";
+	let currentZoneAdmin = null;
 	let isKYCPending = false;
 	let currentKYCRequestId = null;
 	
@@ -444,27 +444,48 @@
     checkProximity();
 	
 	// ฟังก์ชันเช็คสถานะเมื่อเปิดหน้าเว็บ
-function checkKYCStatus() {
-    const status = localStorage.getItem('kyc_status');
-    const admin = localStorage.getItem('kyc_admin');
-    
-    if (status === 'pending' || status === 'approved') {
-        // อัปเดตข้อมูลใน Modal Summary รอไว้เลย
-        if (document.getElementById('sum-name')) {
-            document.getElementById('sum-name').innerText = localStorage.getItem('kyc_name') || '-';
-            document.getElementById('sum-id').innerText = localStorage.getItem('kyc_id') || '-';
-            document.getElementById('sum-phone').innerText = localStorage.getItem('kyc_phone') || '-';
-            document.getElementById('sum-address').innerText = localStorage.getItem('kyc_address') || '-';
-            document.getElementById('summary-img-preview').style.backgroundImage = localStorage.getItem('kyc_img') || '';
-            document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${admin}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
+async function checkKYCStatusFromServer() {
+    const myName = localStorage.getItem('myUsername');
+    if (!myName) return;
+
+    try {
+        const res = await fetch(`/api/kyc/my-status?username=${myName}`);
+        const data = await res.json();
+
+        if (data.status === 'pending' || data.status === 'approved') {
+            // 1. นำข้อมูลจาก Server มาใส่ในหน้า Summary
+            document.getElementById('sum-name').innerText = data.details.fullName;
+            document.getElementById('sum-id').innerText = data.details.idNumber;
+            document.getElementById('sum-phone').innerText = data.details.phone;
+            document.getElementById('sum-address').innerText = data.details.address;
+            
+            if (data.details.userImg) {
+                document.getElementById('summary-img-preview').style.backgroundImage = `url(${data.details.userImg})`;
+            }
+
+            document.getElementById('admin-status-text').innerHTML = 
+                data.status === 'pending' 
+                ? `คำขอของคุณส่งไปที่ <b>${data.adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`
+                : `ยืนยันตัวตนเรียบร้อยโดย <b>${data.adminName}</b>`;
+
+            // 2. อัปเดต UI เมนูหน้าโปรไฟล์
+            updateKYCMenuUI(data.status, data.adminName);
+            
+            // 3. บันทึกสถานะลง localStorage (เฉพาะ status เพื่อให้ Script ส่วนอื่นทำงานต่อได้)
+            localStorage.setItem('kyc_status', data.status);
+            
+            // 4. เข้าร่วมห้องแชทเผื่อไว้เลย
+            socket.emit('joinRequest', myName);
+        } else {
+            // ถ้าไม่มีข้อมูล (status: 'none')
+            localStorage.removeItem('kyc_status');
+            updateKYCMenuUI('normal'); 
         }
-        
-        // อัปเดตหน้าตาเมนูที่หน้าโปรไฟล์
-        updateKYCMenuUI(status, admin);
+    } catch (err) {
+        console.error("เช็คสถานะ KYC ไม่สำเร็จ:", err);
     }
 }
-
-// เรียกใช้งานทันทีที่สคริปต์โหลด
+checkKYCStatusFromServer();
 checkKYCStatus();
 };
 
@@ -517,32 +538,23 @@ function openKYC() {
     const modal = document.getElementById('kyc-modal');
     const formView = document.getElementById('kyc-form-view');
     const summaryView = document.getElementById('kyc-summary-view');
-
-    // ตรวจสอบความปลอดภัยว่า Element พร้อมใช้งานหรือไม่
-    if (!modal || !formView || !summaryView) {
-        console.error("KYC Modal Elements not found!");
-        return;
-    }
-
-    // สำหรับทดสอบ: ใช้ username เป็น ID ห้องแชทชั่วคราว (หรือดึงจากฐานข้อมูลถ้ามี)
-    const myName = localStorage.getItem('myUsername');
     
-    // เช็คสถานะการแสดงผลปัจจุบัน
-    if (formView.style.display === 'none' && summaryView.style.display === 'block') {
-        // อยู่หน้า Summary อยู่แล้ว
-        if (myName) {
-            currentKYCRequestId = myName; // ใช้ username เป็น ID ห้องเพื่อทดสอบนัดหมาย
-            socket.emit('joinRequest', currentKYCRequestId);
-            loadKYCUserChatHistory(currentKYCRequestId);
-        }
+    // ตรวจสอบจากสถานะที่เราเพิ่งดึงมาจาก Server
+    const status = localStorage.getItem('kyc_status');
+
+    if (status === 'pending' || status === 'approved') {
+        formView.style.display = 'none';
+        summaryView.style.display = 'block';
+        
+        // โหลดประวัติแชท
+        const myName = localStorage.getItem('myUsername');
+        loadKYCUserChatHistory(myName);
     } else {
         formView.style.display = 'block';
         summaryView.style.display = 'none';
-        if(document.getElementById('btn-close-x')) document.getElementById('btn-close-x').style.display = 'block';
     }
 
     modal.style.display = 'block';
-    if(typeof toggleSidebar === 'function') toggleSidebar();
 }
 
 function closeKYC() {
@@ -587,7 +599,6 @@ function validateKYC() {
 }
 
 async function submitKYC() {
-    // 1. ถามยืนยัน (โค้ดเดิม)
     const confirm = await Swal.fire({
         title: 'ยืนยันการส่งข้อมูล?',
         text: "ข้อมูลพิกัดปัจจุบันของคุณจะถูกส่งให้แอดมินตรวจสอบ",
@@ -598,7 +609,6 @@ async function submitKYC() {
     });
 
     if (confirm.isConfirmed) {
-        // 2. ดึงพิกัด GPS (โค้ดเดิม)
         if (!navigator.geolocation) {
             return Swal.fire('ผิดพลาด', 'บราวเซอร์ไม่รองรับ GPS', 'error');
         }
@@ -615,7 +625,7 @@ async function submitKYC() {
                 lng: position.coords.longitude
             };
 
-            // 3. เตรียมข้อมูล (โค้ดเดิม)
+            // 3. เตรียมข้อมูล 
             const name = document.getElementById('full-name').value;
             const idNum = document.getElementById('id-number').value;
             const phone = document.getElementById('phone-number').value;
@@ -661,6 +671,13 @@ async function submitKYC() {
                 text: `คำขอและพิกัดของคุณถูกส่งไปยัง ${adminName} แล้ว`,
                 confirmButtonColor: '#11998e'
             }).then(() => {
+				localStorage.setItem('kyc_status', 'pending');
+				localStorage.setItem('kyc_admin', adminName);
+				localStorage.setItem('kyc_name', name);
+				localStorage.setItem('kyc_id', idNum);
+				localStorage.setItem('kyc_phone', phone);
+				localStorage.setItem('kyc_address', address);
+				localStorage.setItem('kyc_img', userImgData);
                 document.getElementById('kyc-form-view').style.display = 'none';
                 document.getElementById('kyc-summary-view').style.display = 'block';
                 
@@ -671,8 +688,11 @@ async function submitKYC() {
                 loadKYCUserChatHistory(myName);    // โหลดประวัติแชทด้วยชื่อตัวเอง
 
                 document.getElementById('sum-name').innerText = name;
-                document.getElementById('sum-phone').innerText = phone;
-                document.getElementById('admin-status-text').innerHTML = `ส่งถึง <b>${adminName}</b> แล้ว (พิกัดถูกแนบไปกับคำขอ)`;
+				document.getElementById('sum-id').innerText = idNum; // เพิ่มบรรทัดนี้ด้วย
+				document.getElementById('sum-phone').innerText = phone;
+				document.getElementById('sum-address').innerText = address; // เพิ่มบรรทัดนี้ด้วย
+				document.getElementById('summary-img-preview').style.backgroundImage = `url(${userImgData})`;
+				document.getElementById('admin-status-text').innerHTML = `ส่งถึง <b>${adminName}</b> แล้ว (พิกัดถูกแนบไปกับคำขอ)`;
                 
                 updateKYCMenuUI('pending', adminName);
             });
