@@ -149,12 +149,12 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
     
-    // --- ส่วนที่เพิ่มเข้ามาเพื่อป้องกันข้อมูลหาย ---
-    // 1. ดึง Section สำคัญมาไว้ในตัวแปร
+    // --- ส่วนป้องกันข้อมูลหาย (รวม KYC เข้าไปในระบบเก็บของลับ) ---
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
+    const kycListSec = document.getElementById('section-kyc-list'); // เพิ่มอ้างอิงส่วน KYC
 
-    // 2. สร้าง "ที่เก็บของลับ" (ถ้ายังไม่มี) เพื่อเอาไว้พัก Element ไม่ให้โดนลบ
+    // 2. สร้าง/ดึง "ที่เก็บของลับ"
     let storage = document.getElementById('hidden-storage');
     if (!storage) {
         storage = document.createElement('div');
@@ -163,23 +163,24 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         document.body.appendChild(storage);
     }
 
-    // 3. ย้าย Section ไปเก็บไว้ใน storage ก่อนจะล้างหน้าจอ
+    // 3. ย้ายทุก Section ไปพักไว้ใน storage ก่อน (ของจะไม่โดนลบจากหน่วยความจำ)
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
+    if (kycListSec) storage.appendChild(kycListSec); // เก็บส่วน KYC ไว้ในที่ปลอดภัยด้วย
 
-    // 4. ตอนนี้ล้างหน้าจอได้ปลอดภัยแล้ว ของไม่หาย
+    // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element จริงถูกย้ายไปที่ storage ไม่ได้ถูกทำลาย)
     display.innerHTML = ''; 
-    // ------------------------------------------
 
+    // จัดการสถานะปุ่มเมนู (Active)
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     let targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
     if (targetItem) targetItem.classList.add('active');
 
+    // --- ส่วนการแสดงผลตามประเภท (Switch View) ---
+
     if (type === 'topup') {
         title.innerText = 'รายการคำขอเติมเงิน';
-        const topupListSec = document.getElementById('section-topup-list');
-		const adminChatSec = document.getElementById('section-admin-chat');
-        // ย้ายกลับมาจาก storage มาแสดงที่หน้าจอ
+        // ดึงของจาก storage กลับมาแสดง
         display.appendChild(topupListSec);
         display.appendChild(adminChatSec);
 
@@ -189,10 +190,20 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">กำลังโหลด...</p>';
         loadTopupRequests(); 
 
+    } else if (type === 'kyc') { // ✅ เพิ่ม Logic สำหรับหน้า KYC
+        title.innerText = 'คำขอยืนยันตัวตน (20 เมตร)';
+        // ดึงส่วน KYC จาก storage มาแสดงที่หน้าจอหลัก
+        display.appendChild(kycListSec);
+        
+        kycListSec.style.display = 'block';
+        
+        // แสดงสถานะกำลังโหลด
+        document.getElementById('kyc-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบพิกัดและโหลดข้อมูล...</p>';
+        loadKYCRequests(); // เรียกฟังก์ชันโหลดข้อมูล (ที่ต้องเขียนเพิ่ม)
+
     } else if (type === 'automessage') {
         title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
         display.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">กำลังดึงข้อมูล...</p>';
-
         try {
             const adminName = localStorage.getItem('myUsername');
             const res = await fetch(`/api/admin/get-settings?admin=${adminName}`);
@@ -208,7 +219,6 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         loadAdminHistory(); 
     }
     
-    // ปิด Sidebar สำหรับมือถือ
     if(window.innerWidth <= 768 && document.getElementById('sidebar')?.classList.contains('active')) {
         toggleSidebar();
     }
@@ -833,6 +843,112 @@ async function handleAdminSlipUpload() {
 
 
 
+
+
+//=====KYC 
+// รับแจ้งเตือนคำขอ KYC ใหม่
+socket.on('admin-notification', (data) => {
+    if (data.type === 'KYC_REQUEST') {
+        // 1. อัปเดตตัวเลข Badge
+        updateBadges();
+
+        // 2. ถ้าแอดมินเปิดหน้า KYC ค้างไว้ ให้โหลดรายการใหม่ทันที
+        const kycSec = document.getElementById('section-kyc-list');
+        if (kycSec && kycSec.style.display !== 'none') {
+            loadKYCRequests();
+        }
+
+        // 3. แจ้งเตือนเสียงหรือ Toast
+        console.log("🔔 ใหม่: " + data.message);
+        // คุณสามารถเพิ่มเสียงติ๊งได้ที่นี่
+    }
+});
+async function loadKYCRequests() {
+    const container = document.getElementById('kyc-list-container');
+    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบพิกัด GPS แอดมิน...</div>';
+
+    // 1. ดึงพิกัดแอดมินปัจจุบัน
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const adminLat = pos.coords.latitude;
+        const adminLng = pos.coords.longitude;
+
+        try {
+            const adminName = localStorage.getItem('myUsername');
+            const res = await fetch(`/api/admin/kyc-list?admin=${adminName}`);
+            const requests = await res.json();
+
+            if (requests.length === 0) {
+                container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-user-shield fa-3x"></i><p>ไม่มีคำขอยืนยันตัวตนใหม่</p></div>';
+                return;
+            }
+
+            container.innerHTML = requests.map(req => {
+                // 2. คำนวณระยะทางจากแอดมินไปหา User (เมตร)
+                const distance = calculateDistance(adminLat, adminLng, req.coords.lat, req.coords.lng);
+                const isClose = distance <= 20; // เงื่อนไข 20 เมตร
+
+                return `
+                <div class="admin-card" style="display: flex; flex-direction: column; align-items: stretch; gap: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <img src="${req.userImg || 'https://via.placeholder.com/60'}" 
+                                 onclick="viewKYCFullImage(this.src)" 
+                                 style="width: 60px; height: 60px; border-radius: 12px; object-fit: cover; cursor: pointer; border: 2px solid var(--primary);">
+                            <div>
+                                <strong style="font-size: 1.1em;">${req.fullName}</strong><br>
+                                <small style="color: #666;">User: ${req.username} | โทร: ${req.phone}</small>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: bold; color: ${isClose ? '#2ecc71' : '#e74c3c'};">
+                                <i class="fas fa-map-marker-alt"></i> ห่าง ${distance.toFixed(1)} ม.
+                            </div>
+                            <small style="color: #999;">${isClose ? 'อยู่ในระยะอนุมัติ' : 'สมาชิกอยู่ไกลเกินไป'}</small>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 10px; border-radius: 10px; font-size: 0.85em; border: 1px dashed #cbd5e1;">
+                        <b>ที่อยู่:</b> ${req.address} <br>
+                        <b>ID Card:</b> ${req.idNumber}
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button class="status-btn btn-reject" onclick="processKYC('${req._id}', 'rejected')" style="flex: 1; padding: 12px;">ปฏิเสธ</button>
+                        <button class="status-btn btn-approve" 
+                                onclick="processKYC('${req._id}', 'approved')" 
+                                ${!isClose ? 'disabled style="background:#eee; color:#999; cursor:not-allowed;"' : 'style="flex: 2; padding: 12px; background:var(--primary); color:white;"'} >
+                            <i class="fas fa-check-circle"></i> ${isClose ? 'อนุมัติการยืนยันตัวตน' : 'รอเข้าใกล้ระยะ 20ม.'}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch (err) {
+            container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลผิดพลาด</p>';
+        }
+    }, (err) => {
+        container.innerHTML = '<div style="text-align:center; color:red; padding:20px;"><i class="fas fa-exclamation-triangle"></i><p>กรุณาเปิด GPS แอดมินเพื่อคำนวณระยะทาง</p></div>';
+    });
+}
+
+// ฟังก์ชัน Haversine คำนวณระยะทางพิกัด 2 จุด
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // รัศมีโลก (เมตร)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function viewKYCFullImage(src) {
+    document.getElementById('kyc-modal-img').src = src;
+    document.getElementById('kyc-image-modal').style.display = 'flex';
+}
+
+
+
     </script>
 	
 	
@@ -857,8 +973,24 @@ async function handleAdminSlipUpload() {
             <button class="status-btn btn-approve" style="flex: 1; padding: 15px;" onclick="processRequest('approved')">อนุมัติและเติมเงิน</button>
         </div>
     </div>
+	
+	
+	<div id="section-kyc-list" style="display: none;">
+    <div id="kyc-list-container" style="display: flex; flex-direction: column; gap: 15px;">
+        </div>
+</div>
+
+<div id="kyc-image-modal" class="modal" onclick="this.style.display='none'" style="display:none; position:fixed; z-index:100000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center;">
+    <img id="kyc-modal-img" src="" style="max-width:95%; max-height:95%; border-radius:10px; box-shadow:0 0 20px rgba(255,255,255,0.2);">
+    <div style="position:absolute; top:20px; right:20px; color:white; font-size:2em; cursor:pointer;"><i class="fas fa-times"></i></div>
+</div>
+
+
 
 </div>
+
+
+	
 
 
 

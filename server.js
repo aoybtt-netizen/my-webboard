@@ -276,7 +276,41 @@ app.post('/api/upload-slip', uploadSlip.single('slip'), (req, res) => {
 });
 
 //kyc
+socket.on('submit-kyc', async (kycData) => {
+    try {
+        const { fullName, idNumber, phone, address, coords, adminName } = kycData;
+        
+        // 1. บันทึกลงฐานข้อมูล (คอลเลกชัน kycRequests)
+        const newRequest = {
+            username: socket.username,
+            fullName,
+            idNumber,
+            phone,
+            address,
+            userCoords: coords, // [lat, lng]
+            targetAdmin: adminName,
+            status: 'pending',
+            submittedAt: new Date()
+        };
 
+        // สมมติว่ามี kycRequestsCollection ที่ประกาศไว้ด้านบนแล้ว
+        await db.collection('kycRequests').insertOne(newRequest);
+
+        console.log(`📩 KYC Submitted from ${socket.username} to Admin: ${adminName}`);
+
+        // 2. ส่งแจ้งเตือน Real-time ไปที่แอดมิน
+        // เราจะส่งไปที่ 'admin-room' หรือระบุเฉพาะคนถ้ามี ID
+        io.emit('admin-notification', {
+            type: 'KYC_REQUEST',
+            message: `มีคำขอ KYC ใหม่จากคุณ ${fullName}`,
+            user: socket.username,
+            coords: coords
+        });
+
+    } catch (err) {
+        console.error("❌ KYC Submit Backend Error:", err);
+    }
+});
 
 
 

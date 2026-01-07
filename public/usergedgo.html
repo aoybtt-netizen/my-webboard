@@ -571,65 +571,73 @@ function validateKYC() {
 }
 
 async function submitKYC() {
+    // 1. ถามยืนยัน
     const confirm = await Swal.fire({
         title: 'ยืนยันการส่งข้อมูล?',
-        text: "เมื่อส่งแล้วข้อมูลจะถูกล็อกเพื่อรอแอดมินตรวจสอบ",
+        text: "ข้อมูลพิกัดปัจจุบันของคุณจะถูกส่งให้แอดมินตรวจสอบ",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#11998e',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'ตกลง ส่งเลย',
-        cancelButtonText: 'ตรวจสอบอีกครั้ง',
-        didOpen: () => {
-            const swalContainer = Swal.getContainer();
-            if (swalContainer) swalContainer.style.zIndex = "100000";
-        }
+        cancelButtonText: 'ตรวจสอบอีกครั้ง'
     });
 
     if (confirm.isConfirmed) {
-        const name = document.getElementById('full-name').value;
-        const idNum = document.getElementById('id-number').value;
-        const phone = document.getElementById('phone-number').value;
-        const address = document.getElementById('home-address').value;
-        const imgData = document.getElementById('preview-container').style.backgroundImage;
-        const adminName = typeof currentZoneAdmin !== 'undefined' ? currentZoneAdmin : "แอดมินประจำโซน";
+        // 2. ดึงพิกัด GPS ปัจจุบัน
+        if (!navigator.geolocation) {
+            return Swal.fire('ผิดพลาด', 'บราวเซอร์ไม่รองรับ GPS', 'error');
+        }
 
         Swal.fire({
-            title: 'กำลังบันทึกข้อมูล...',
+            title: 'กำลังตรวจสอบพิกัด...',
             allowOutsideClick: false,
             didOpen: () => { Swal.showLoading(); }
         });
 
-        setTimeout(() => {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const userCoords = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+
+            // 3. เตรียมข้อมูล
+            const name = document.getElementById('full-name').value;
+            const idNum = document.getElementById('id-number').value;
+            const phone = document.getElementById('phone-number').value;
+            const address = document.getElementById('home-address').value;
+            const adminName = typeof currentZoneAdmin !== 'undefined' ? currentZoneAdmin : "แอดมินประจำโซน";
+
+            // 4. ส่งผ่าน Socket ไปที่หลังบ้าน
+            socket.emit('submit-kyc', {
+                fullName: name,
+                idNumber: idNum,
+                phone: phone,
+                address: address,
+                coords: userCoords,
+                adminName: adminName
+            });
+
+            // 5. แสดงสถานะสำเร็จและสลับหน้า (แบบไม่จำค่าในบราวเซอร์ตามที่ต้องการ)
             Swal.fire({
                 icon: 'success',
                 title: 'ส่งข้อมูลเรียบร้อย',
-                text: `คำขอของคุณถูกส่งไปยัง ${adminName} แล้ว`,
-                confirmButtonColor: '#11998e',
-                didOpen: () => {
-                    const container = Swal.getContainer();
-                    if (container) container.style.zIndex = '100000';
-                }
-            }).then((result) => {
-                if (result.isConfirmed || result.isDismissed) {
-                    const maskedId = idNum.replace(/(\d{9})(\d{4})/, '*********$2');
-                    
-
-                    document.getElementById('sum-name').innerText = name;
-					document.getElementById('sum-id').innerText = maskedId;
-					document.getElementById('sum-phone').innerText = phone;
-					document.getElementById('sum-address').innerText = address;
-					document.getElementById('summary-img-preview').style.backgroundImage = imgData;
-            
-					document.getElementById('admin-status-text').innerHTML = `คำขอของคุณส่งไปที่ <b>${adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`;
-	
-                    // สลับหน้าจอใน Modal
-                    document.getElementById('kyc-form-view').style.display = 'none';
-                    document.getElementById('kyc-summary-view').style.display = 'block';
-                    if(document.getElementById('btn-close-x')) document.getElementById('btn-close-x').style.display = 'none';
-                }
+                text: `คำขอและพิกัดของคุณถูกส่งไปยัง ${adminName} แล้ว`,
+                confirmButtonColor: '#11998e'
+            }).then(() => {
+                // สลับหน้าจอใน Modal
+                document.getElementById('kyc-form-view').style.display = 'none';
+                document.getElementById('kyc-summary-view').style.display = 'block';
+                
+                // อัปเดตข้อมูลในหน้าสรุปให้ดูในรอบนี้
+                document.getElementById('sum-name').innerText = name;
+                document.getElementById('sum-phone').innerText = phone;
+                document.getElementById('admin-status-text').innerHTML = `ส่งถึง <b>${adminName}</b> แล้ว (พิกัดถูกแนบไปกับคำขอ)`;
+                
+                updateKYCMenuUI('pending', adminName);
             });
-        }, 1500);
+
+        }, (err) => {
+            Swal.fire('พิกัดผิดพลาด', 'ไม่สามารถดึงตำแหน่งได้ กรุณาเปิด GPS', 'error');
+        });
     }
 }
 
