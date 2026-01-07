@@ -1125,6 +1125,27 @@ function closeKYCDetail() {
             </button>
         </div>
     </div>
+	
+	
+	<div style="background: white; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); margin-top: 20px;">
+            <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-comments" style="color: var(--primary);"></i> แชทนัดหมายกับสมาชิก
+            </div>
+            
+            <div id="kyc-chat-box" style="height: 300px; overflow-y: auto; padding: 15px; background: #f1f5f9; display: flex; flex-direction: column; gap: 10px;">
+                <div style="align-self: center; background: #fff; padding: 5px 15px; border-radius: 20px; font-size: 0.75em; color: #94a3b8; border: 1px solid #e2e8f0;">
+                    เริ่มการสนทนาเพื่อนัดพบยืนยันตัวตน
+                </div>
+            </div>
+
+            <div style="padding: 15px; background: white; display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="kyc-admin-input" placeholder="พิมพ์ข้อความนัดหมาย..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+                <button onclick="sendKYCAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+		
 </div>
 
 
