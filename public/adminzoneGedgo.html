@@ -1014,7 +1014,9 @@ function viewKYCDetail(dataStr) {
 
     // 3. ตั้งค่าปุ่มกด
     document.getElementById('btn-det-approve').onclick = () => { processKYC(data._id, 'approved'); closeKYCDetail(); };
-    document.getElementById('btn-det-reject').onclick = () => { processKYC(data._id, 'rejected'); closeKYCDetail(); };
+    document.getElementById('btn-det-reject').onclick = () => { 
+        deleteKYCRequest(data._id, data.username); 
+    };
 
     // 4. แสดงผลแบบเต็มจอ (เลื่อนหน้าจอไปด้านบนสุดก่อนโชว์)
     modal.scrollTop = 0;
@@ -1095,6 +1097,35 @@ function appendKYCChatMessage(msg) {
     `;
     chatBox.insertAdjacentHTML('beforeend', msgHTML);
     chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+async function deleteKYCRequest(requestId, username) {
+    // ถามเพื่อความแน่ใจ
+    if (!confirm(`คุณต้องการปฏิเสธและ "ลบ" คำขอของ @${username} ใช่หรือไม่?\n(สมาชิกจะต้องส่งข้อมูลมาใหม่อีกครั้ง)`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/delete-kyc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId, username })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            alert("ลบคำขอเรียบร้อยแล้ว");
+            closeKYCDetail(); // ปิดหน้าจอเต็มจอ
+            loadKYCRequests(); // โหลดรายการที่เหลือใหม่
+            updateBadges();    // อัปเดตตัวเลขแจ้งเตือน
+        } else {
+            alert("เกิดข้อผิดพลาด: " + data.error);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    }
 }
 
 

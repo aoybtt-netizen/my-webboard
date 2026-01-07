@@ -3564,6 +3564,41 @@ app.post('/api/admin/process-kyc', async (req, res) => {
     }
 });
 
+// ✅ API สำหรับแอดมินลบคำขอยืนยันตัวตน (ปฏิเสธและลบ)
+app.post('/api/admin/delete-kyc', async (req, res) => {
+    try {
+        const { requestId, username } = req.body;
+
+        if (!requestId) {
+            return res.status(400).json({ error: "Missing Request ID" });
+        }
+
+        // 1. ลบรายการออกจากคอลเลกชัน kycRequests
+        const result = await db.collection('kycRequests').deleteOne({ 
+            _id: new ObjectId(requestId) 
+        });
+
+        // 2. ลบประวัติแชทที่เกี่ยวข้องกับคำขอนี้ด้วย (เพื่อความสะอาดของ DB)
+        await db.collection('kyc_chats').deleteMany({ requestId: username });
+
+        if (result.deletedCount === 1) {
+            // 3. ส่งสัญญาณ Socket บอกสมาชิกคนนั้นว่าคำขอถูกลบแล้วนะ (ให้เขากลับไปหน้ากรอกฟอร์ม)
+            io.emit('kyc-status-updated', {
+                username: username,
+                status: 'deleted',
+                message: 'คำขอของคุณถูกปฏิเสธโดยแอดมิน กรุณาส่งข้อมูลใหม่อีกครั้ง'
+            });
+
+            res.json({ success: true, message: "ลบคำขอเรียบร้อยแล้ว" });
+        } else {
+            res.status(404).json({ error: "ไม่พบคำขอที่ต้องการลบ" });
+        }
+    } catch (err) {
+        console.error("❌ Delete KYC Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 
 
 
@@ -4385,6 +4420,58 @@ socket.on('submit-kyc', async (kycData) => {
 
     } catch (err) {
         console.error("❌ KYC Submit Backend Error:", err);
+    }
+});
+
+// ✅ รับสัญญาณการอัปเดตสถานะ KYC จาก Server
+socket.on('kyc-status-updated', (data) => {
+    const myName = localStorage.getItem('myUsername');
+    
+    // 1. ตรวจสอบก่อนว่าข้อมูลที่ส่งมาเป็นของชื่อผู้ใช้เราจริงๆ หรือไม่
+    if (data.username !== myName) return;
+
+    // 2. กรณีแอดมิน "อนุมัติ" (Approved)
+    if (data.status === 'approved') {
+        Swal.fire({
+            icon: 'success',
+            title: 'ยืนยันตัวตนสำเร็จ!',
+            text: `บัญชีของคุณได้รับการตรวจสอบและยืนยันโดย ${data.adminName} เรียบร้อยแล้ว`,
+            confirmButtonColor: '#11998e'
+        }).then(() => {
+            // อัปเดต UI ของหน้าจอทันที
+            updateKYCMenuUI('approved', data.adminName);
+            
+            // ปิด Modal KYC (ถ้าเปิดค้างไว้)
+            const modal = document.getElementById('kyc-modal');
+            if(modal) modal.style.display = 'none';
+            
+            // บันทึกสถานะลงเครื่อง (เผื่อรีเฟรชหน้า)
+            localStorage.setItem('kyc_status', 'approved');
+        });
+    } 
+    
+    // 3. กรณีแอดมิน "ปฏิเสธและลบคำขอ" (Deleted)
+    else if (data.status === 'deleted') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'คำขอถูกปฏิเสธ',
+            text: data.message || 'ข้อมูลของคุณไม่ผ่านการตรวจสอบ กรุณาส่งข้อมูลใหม่อีกครั้ง',
+            confirmButtonColor: '#e74c3c'
+        }).then(() => {
+            // ล้างค่าสถานะในเครื่อง
+            localStorage.removeItem('kyc_status');
+            localStorage.removeItem('kyc_id_request');
+
+            // สลับหน้าจอกลับไปที่หน้าฟอร์มกรอกข้อมูลใหม่
+            const formView = document.getElementById('kyc-form-view');
+            const summaryView = document.getElementById('kyc-summary-view');
+            
+            if (formView) formView.style.display = 'block';
+            if (summaryView) summaryView.style.display = 'none';
+            
+            // เปลี่ยนปุ่มเมนูให้กลับมาเป็น "ยืนยันตัวตน" สีเขียวปกติ
+            updateKYCMenuUI('normal');
+        });
     }
 });
 
