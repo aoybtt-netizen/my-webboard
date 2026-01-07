@@ -352,19 +352,22 @@
 </div>
 
         <div class="menu-list">
-            <div class="menu-item verify-btn" onclick="openKYC()">
-                <i class="fas fa-id-card"></i>
-                <div style="text-align: left; flex: 1;">
-                    <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
-                    <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงานที่มูลค่าสูงขึ้น</div>
-                </div>
-                <i class="fas fa-chevron-right" style="font-size: 0.8em; color: #ccc;"></i>
+    <div id="kyc-menu-container">
+        <div class="menu-item verify-btn" onclick="openKYC()">
+            <i class="fas fa-id-card"></i>
+            <div style="text-align: left; flex: 1;">
+                <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
+                <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงานที่มูลค่าสูงขึ้น</div>
             </div>
-
-            <a href="#" class="menu-item"><i class="fas fa-envelope"></i> อีเมล: <span id="display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span></a>
-            <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
-            <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;"><i class="fas fa-power-off"></i> ออกจากระบบ</a>
+            <i class="fas fa-chevron-right" style="font-size: 0.8em; color: #ccc;"></i>
         </div>
+    </div>
+
+    <a href="#" class="menu-item"><i class="fas fa-envelope"></i> อีเมล: <span id="display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span></a>
+    <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
+    <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;"><i class="fas fa-power-off"></i> ออกจากระบบ</a>
+</div>
+
     </div>
 </div>
 
@@ -372,6 +375,7 @@
 
 <script>
 	let currentZoneAdmin = "แอดมิน สมชาย (Zone A)";
+	let isKYCPending = false;
 	
 	function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -484,8 +488,24 @@ function closeRequestTopup() {
 
 //ยืนยันตัวตน
 function openKYC() {
-    document.getElementById('kyc-modal').style.display = 'block';
-    toggleSidebar(); // ปิด sidebar หลังจากคลิก
+    const modal = document.getElementById('kyc-modal');
+    const formView = document.getElementById('kyc-form-view');
+    const summaryView = document.getElementById('kyc-summary-view');
+
+    if (isKYCPending) {
+        // ถ้าส่งไปแล้ว ให้โชว์หน้าสรุปเลย
+        formView.style.display = 'none';
+        summaryView.style.display = 'block';
+        if(document.getElementById('btn-close-x')) document.getElementById('btn-close-x').style.display = 'none';
+    } else {
+        // ถ้ายังไม่ส่ง ให้โชว์ฟอร์มกรอก
+        formView.style.display = 'block';
+        summaryView.style.display = 'none';
+        if(document.getElementById('btn-close-x')) document.getElementById('btn-close-x').style.display = 'block';
+    }
+
+    modal.style.display = 'block';
+    if(typeof toggleSidebar === 'function') toggleSidebar(); // ปิด sidebar
 }
 
 function closeKYC() {
@@ -556,7 +576,7 @@ async function submitKYC() {
         const address = document.getElementById('home-address').value;
         const imgData = document.getElementById('preview-container').style.backgroundImage;
         const adminName = typeof currentZoneAdmin !== 'undefined' ? currentZoneAdmin : "แอดมินประจำโซน";
-
+        updateKYCMenuUI('pending', adminName);
         // --- ส่วนที่ 2: แสดงสถานะ Loading (จำลองการส่งข้อมูลไป Server) ---
         Swal.fire({
             title: 'กำลังบันทึกข้อมูล...',
@@ -632,6 +652,39 @@ function previewKYCImg(input) {
         reader.readAsDataURL(input.files[0]);
     }
 }
+
+
+// ฟังก์ชันสำหรับเปลี่ยนหน้าตาเมนู KYC ตามสถานะ
+function updateKYCMenuUI(status, adminName = "") {
+    const container = document.getElementById('kyc-menu-container');
+    
+    if (status === 'pending') {
+        // สถานะรอดำเนินการ
+        container.innerHTML = `
+            <div class="menu-item" onclick="openKYC()" style="background: #fff8e1; border-color: #ffe082;">
+                <i class="fas fa-clock" style="color: #f39c12;"></i>
+                <div style="text-align: left; flex: 1;">
+                    <div style="font-weight: bold; color: #af8600;">รอดำเนินการตรวจสอบ</div>
+                    <div style="font-size: 0.7em; color: #b58900;">ส่งคำขอไปที่: ${adminName}</div>
+                </div>
+                <span style="font-size: 0.65em; background: #f39c12; color: white; padding: 2px 8px; border-radius: 10px;">Waiting</span>
+            </div>
+        `;
+    } else if (status === 'approved') {
+        // สถานะยืนยันเรียบร้อยแล้ว
+        container.innerHTML = `
+            <div class="menu-item" style="background: #e8f5e9; border-color: #c8e6c9; cursor: default;">
+                <i class="fas fa-check-circle" style="color: #2e7d32;"></i>
+                <div style="text-align: left; flex: 1;">
+                    <div style="font-weight: bold; color: #2e7d32;">ยืนยันตัวตนแล้ว</div>
+                    <div style="font-size: 0.7em; color: #4caf50;">บัญชีของคุณมีความน่าเชื่อถือระดับสูง</div>
+                </div>
+                <i class="fas fa-shield-alt" style="color: #2e7d32; opacity: 0.5;"></i>
+            </div>
+        `;
+    }
+}
+
 
 
 
