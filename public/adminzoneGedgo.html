@@ -849,19 +849,20 @@ async function handleAdminSlipUpload() {
 // รับแจ้งเตือนคำขอ KYC ใหม่
 socket.on('admin-notification', (data) => {
     if (data.type === 'KYC_REQUEST') {
-        // 1. อัปเดตตัวเลข Badge สีแดงบนเมนูทันที
         updateBadges(); 
-
-        // 2. แจ้งเตือนด้วยเสียง (ถ้าต้องการ)
+        
         let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
         audio.play();
 
-        // 3. แสดง Alert เล็กๆ มุมจอ
         console.log("แจ้งเตือนใหม่:", data.message);
         
-        // 4. ถ้าตอนนี้แอดมินเปิดหน้า KYC ค้างไว้อยู่ ให้โหลดรายการใหม่ทันทีโดยไม่ต้องกดใหม่
-        const kycSec = document.getElementById('section-kyc-list');
-        if (kycSec && kycSec.style.display !== 'none') {
+        // เช็คว่าตอนนี้หน้าจอหลักแสดงผลส่วน KYC อยู่หรือไม่
+        const mainDisplay = document.getElementById('main-display');
+        const kycInDisplay = mainDisplay.querySelector('#section-kyc-list');
+        
+        // ถ้าเจอ section-kyc-list อยู่ในหน้าจอหลัก (แปลว่าเปิดหน้านี้ค้างไว้) ให้โหลดข้อมูลใหม่
+        if (kycInDisplay && kycInDisplay.style.display !== 'none') {
+            console.log("กำลังอัปเดตรายการ KYC ในหน้าจอ...");
             loadKYCRequests(); 
         }
     }
@@ -869,69 +870,44 @@ socket.on('admin-notification', (data) => {
 
 async function loadKYCRequests() {
     const container = document.getElementById('kyc-list-container');
-    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบพิกัด GPS แอดมิน...</div>';
+    
+    // ดึงพิกัดแอดมิน (ทำแบบเงียบๆ ไม่ต้องบล็อกการโหลดข้อมูล)
+    let adminCoords = null;
+    navigator.geolocation.getCurrentPosition((pos) => {
+        adminCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    });
 
-    // 1. ดึงพิกัดแอดมินปัจจุบัน
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-        const adminLat = pos.coords.latitude;
-        const adminLng = pos.coords.longitude;
+    try {
+        const adminName = localStorage.getItem('myUsername');
+        const res = await fetch(`/api/admin/kyc-list?admin=${adminName}`);
+        const requests = await res.json();
 
-        try {
-            const adminName = localStorage.getItem('myUsername');
-            const res = await fetch(`/api/admin/kyc-list?admin=${adminName}`);
-            const requests = await res.json();
+        if (requests.length === 0) {
+            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><p>ไม่มีคำขอใหม่</p></div>';
+            return;
+        }
 
-            if (requests.length === 0) {
-                container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-user-shield fa-3x"></i><p>ไม่มีคำขอยืนยันตัวตนใหม่</p></div>';
-                return;
+        container.innerHTML = requests.map(req => {
+            let distanceText = "กำลังคำนวณ...";
+            let isClose = false;
+
+            if (adminCoords) {
+                const distance = calculateDistance(adminCoords.lat, adminCoords.lng, req.coords.lat, req.coords.lng);
+                distanceText = `ห่าง ${distance.toFixed(1)} ม.`;
+                isClose = distance <= 20;
             }
 
-            container.innerHTML = requests.map(req => {
-                // 2. คำนวณระยะทางจากแอดมินไปหา User (เมตร)
-                const distance = calculateDistance(adminLat, adminLng, req.coords.lat, req.coords.lng);
-                const isClose = distance <= 20; // เงื่อนไข 20 เมตร
-
-                return `
-                <div class="admin-card" style="display: flex; flex-direction: column; align-items: stretch; gap: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <img src="${req.userImg || 'https://via.placeholder.com/60'}" 
-                                 onclick="viewKYCFullImage(this.src)" 
-                                 style="width: 60px; height: 60px; border-radius: 12px; object-fit: cover; cursor: pointer; border: 2px solid var(--primary);">
-                            <div>
-                                <strong style="font-size: 1.1em;">${req.fullName}</strong><br>
-                                <small style="color: #666;">User: ${req.username} | โทร: ${req.phone}</small>
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-weight: bold; color: ${isClose ? '#2ecc71' : '#e74c3c'};">
-                                <i class="fas fa-map-marker-alt"></i> ห่าง ${distance.toFixed(1)} ม.
-                            </div>
-                            <small style="color: #999;">${isClose ? 'อยู่ในระยะอนุมัติ' : 'สมาชิกอยู่ไกลเกินไป'}</small>
-                        </div>
-                    </div>
-                    
-                    <div style="background: #f8fafc; padding: 10px; border-radius: 10px; font-size: 0.85em; border: 1px dashed #cbd5e1;">
-                        <b>ที่อยู่:</b> ${req.address} <br>
-                        <b>ID Card:</b> ${req.idNumber}
-                    </div>
-
-                    <div style="display: flex; gap: 10px;">
-                        <button class="status-btn btn-reject" onclick="processKYC('${req._id}', 'rejected')" style="flex: 1; padding: 12px;">ปฏิเสธ</button>
-                        <button class="status-btn btn-approve" 
-                                onclick="processKYC('${req._id}', 'approved')" 
-                                ${!isClose ? 'disabled style="background:#eee; color:#999; cursor:not-allowed;"' : 'style="flex: 2; padding: 12px; background:var(--primary); color:white;"'} >
-                            <i class="fas fa-check-circle"></i> ${isClose ? 'อนุมัติการยืนยันตัวตน' : 'รอเข้าใกล้ระยะ 20ม.'}
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
-        } catch (err) {
-            container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลผิดพลาด</p>';
-        }
-    }, (err) => {
-        container.innerHTML = '<div style="text-align:center; color:red; padding:20px;"><i class="fas fa-exclamation-triangle"></i><p>กรุณาเปิด GPS แอดมินเพื่อคำนวณระยะทาง</p></div>';
-    });
+            return `
+                <div class="admin-card">
+                   <div style="font-weight: bold; color: ${isClose ? '#2ecc71' : '#e74c3c'};">
+                       <i class="fas fa-map-marker-alt"></i> ${distanceText}
+                   </div>
+                   </div>
+            `;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = '<p>เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
+    }
 }
 
 // ฟังก์ชัน Haversine คำนวณระยะทางพิกัด 2 จุด
