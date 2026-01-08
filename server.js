@@ -3421,6 +3421,29 @@ app.get('/api/topup/history', async (req, res) => {
 
 
 //ถอนเงิน
+// API: เช็คสถานะการถอนเงินล่าสุด (เพื่อดูว่าต้องโชว์หน้าแชทไหม)
+app.get('/api/user/withdraw-status', async (req, res) => {
+    const { username } = req.query;
+    try {
+        // หาคำขอล่าสุดที่ยังไม่จบ (pending)
+        const pendingReq = await withdrawCollection.findOne({ 
+            username: username, 
+            status: 'pending' 
+        });
+
+        if (pendingReq) {
+            res.json({ 
+                hasPending: true, 
+                data: pendingReq 
+            });
+        } else {
+            res.json({ hasPending: false });
+        }
+    } catch (err) {
+        res.status(500).json({ error: "Server Error" });
+    }
+});
+
 // API: ดึงข้อมูลยอดเงินสมาชิก (สำหรับแสดงก่อนถอนเงิน)
 app.get('/api/user-data', async (req, res) => {
     try {

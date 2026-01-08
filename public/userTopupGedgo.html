@@ -216,37 +216,48 @@ html {
         }
 
     function switchTab(tab) {
-	isHistoryMode = false;
+    isHistoryMode = false;
     const title = document.getElementById('content-title');
-    const topupSec = document.getElementById('section-topup-form'); // ตรวจสอบ ID ให้ตรงกับ HTML
+    const topupSec = document.getElementById('section-topup-form'); 
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
 
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
     // ใช้ event.currentTarget หรือตรวจสอบตัวแปร event
-    if(event) event.currentTarget.classList.add('active');
+    if(typeof event !== 'undefined' && event) event.currentTarget.classList.add('active');
 
-    // รีเซ็ตการซ่อน/โชว์ช่องพิมพ์แชทเสมอเมื่อเปลี่ยนแท็บ
-    const inputArea = chatSec.querySelector('div:last-child');
-    if(inputArea) inputArea.style.display = 'flex';
+    // ✅ แก้ไขตรงนี้: เช็คก่อนว่า chatSec มีอยู่จริงไหม ค่อยสั่งงาน
+    if (chatSec) {
+        const inputArea = chatSec.querySelector('div:last-child');
+        if(inputArea) inputArea.style.display = 'flex';
+        // ซ่อน Chat ไว้ก่อน เดี๋ยวถ้าเป็น tab topup ค่อยไปเปิดใน checkTopupStatus
+        chatSec.style.display = 'none'; 
+    }
+
+    // ซ่อนส่วนอื่นๆ รอไว้ก่อน
+    if(topupSec) topupSec.style.display = 'none';
+    if(historySec) historySec.style.display = 'none';
+
+    // --- เริ่มเงื่อนไขการแสดงผล ---
 
     if (tab === 'topup') {
         title.innerText = 'เติมเงิน';
-        historySec.style.display = 'none';
-        // เรียก checkTopupStatus เพื่อดูว่าควรโชว์ฟอร์มหรือโชว์แชทที่กำลังดำเนินการ
+        // เรียก checkTopupStatus เพื่อดูว่าควรโชว์ฟอร์มหรือโชว์แชท
         checkTopupStatus(); 
-    }else if (tab === 'withdraw') { 
-        // ✅ เพิ่มส่วนนี้
+
+    } else if (tab === 'withdraw') { 
         title.innerText = "ถอนเงินสดออกจากระบบ";
-        renderWithdrawForm();
+        checkWithdrawStatus();
     } else {
         title.innerText = 'ประวัติการเติมเงิน';
-        if(topupSec) topupSec.style.display = 'none';
-        chatSec.style.display = 'none';
-        historySec.style.display = 'block';
+        if(historySec) historySec.style.display = 'block';
         loadHistory();
     }
-    if (window.innerWidth <= 768) toggleSidebar();
+    
+    if (window.innerWidth <= 768 && typeof toggleSidebar === 'function') {
+        const sidebar = document.getElementById('sidebar');
+        if(sidebar && sidebar.classList.contains('active')) toggleSidebar();
+    }
 }
 
         async function processTopup() {
@@ -724,7 +735,9 @@ async function submitWithdraw() {
 
             if (res.ok) {
                 Swal.fire('สำเร็จ', 'ส่งคำขอถอนเงินแล้ว', 'success')
-                    .then(() => switchTab('history')); // เด้งไปหน้าประวัติ
+                    .then(() => {
+            checkWithdrawStatus(); 
+        });
             } else {
                 Swal.fire('ผิดพลาด', data.error, 'error');
             }
@@ -733,6 +746,84 @@ async function submitWithdraw() {
         }
     }
 }
+
+// 1. เช็คว่ามีรายการค้างไหม
+async function checkWithdrawStatus() {
+    const myName = localStorage.getItem('myUsername');
+    const display = document.getElementById('main-display');
+    
+    // โชว์ Loading ก่อน
+    display.innerHTML = '<div style="text-align:center; padding:50px; color:#999;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบข้อมูล...</div>';
+
+    try {
+        const res = await fetch(`/api/user/withdraw-status?username=${myName}`);
+        const result = await res.json();
+
+        if (result.hasPending) {
+            // ✅ ถ้ามีค้าง -> โชว์หน้าแชท (แต่เปลี่ยนข้อมูลเป็นถอนเงิน)
+            renderWithdrawPending(result.data);
+        } else {
+            // ❌ ถ้าไม่มี -> โชว์ฟอร์มกรอกปกติ
+            renderWithdrawForm();
+        }
+    } catch (e) {
+        console.error(e);
+        renderWithdrawForm(); // ถ้า Error ให้โชว์ฟอร์มไปก่อน
+    }
+}
+
+// 2. แปลงร่างหน้า Chat ให้เป็นข้อมูลถอนเงิน (ใช้ API Chat เดิมได้เลย!)
+function renderWithdrawPending(data) {
+    const display = document.getElementById('main-display');
+    const chatSec = document.getElementById('section-pending-chat');
+    
+    // เคลียร์ Main Display แล้วเอา Chat Section มาแปะ
+    display.innerHTML = '';
+    display.appendChild(chatSec);
+    chatSec.style.display = 'flex'; // โชว์กล่องแชท
+    
+    // เปิดช่องพิมพ์
+    const inputArea = chatSec.querySelector('div:last-child');
+    if(inputArea) inputArea.style.display = 'flex';
+
+    // 👇 ไฮไลท์สำคัญ: เปลี่ยนข้อมูลข้างบนแชท ให้เป็นรายละเอียดการถอนเงิน
+    const infoBox = document.getElementById('pending-info-box');
+    infoBox.innerHTML = `
+        <div style="text-align: center; color: #555;">
+            <div style="font-size: 3em; color: #e74c3c; margin-bottom: 10px;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h2 style="margin: 0; color: #333;">รอตรวจสอบการถอน</h2>
+            <p style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                แอดมินกำลังตรวจสอบยอดเงินและดำเนินการโอน<br>
+                กรุณารอสักครู่...
+            </p>
+            
+            <div style="background: white; border-radius: 12px; padding: 15px; margin: 15px 0; border: 1px dashed #e74c3c; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color:#666;">จำนวนเงินที่ถอน:</span>
+                    <b style="color:#e74c3c; font-size:1.1em;">${data.amount.toFixed(2)} USD</b>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color:#666;">โอนเข้าบัญชี:</span>
+                    <b style="color:#333;">${data.bankInfo}</b>
+                </div>
+                <div style="font-size: 0.8em; color: #999; margin-top: 8px; text-align: right;">
+                    เวลาแจ้ง: ${new Date(data.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+                </div>
+            </div>
+            
+            <div style="font-size: 0.85em; color: #999; background: #eee; padding: 5px 10px; border-radius: 20px; display: inline-block;">
+                <i class="fas fa-comment-dots"></i> สอบถามเพิ่มเติมได้ที่แชทด้านล่าง
+            </div>
+        </div>
+    `;
+
+    // เลื่อนแชทลงล่างสุดเสมอ
+    const chatBox = document.getElementById('realtime-chats');
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
 
 
 
