@@ -1448,12 +1448,18 @@ socket.on('kyc-location-updated', (data) => {
                 </div>
             </div>
 
-            <div style="padding: 15px; background: white; display: flex; gap: 10px; align-items: center;">
-                <input type="text" id="kyc-admin-input" placeholder="พิมพ์ข้อความนัดหมาย..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
-                <button onclick="sendKYCAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
+            <div style="padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee;">
+    <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
+    
+    <button id="admin-image-btn" onclick="document.getElementById('admin-slip-input').click()" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
+        <i class="fas fa-image"></i>
+    </button>
+
+    <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+    <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px;">
+        <i class="fas fa-paper-plane"></i>
+    </button>
+</div>
         </div>
             
     </div>
