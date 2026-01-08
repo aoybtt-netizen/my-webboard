@@ -35,9 +35,6 @@ let topupChatsCollection;
 let topupRequestsCollection;
 let adminSettingsCollection;
 
-let withdrawRequestsCollection;
-let withdrawChatsCollection; 
-
 const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
 
@@ -349,8 +346,6 @@ async function connectDB() {
         topupRequestsCollection = db.collection('topup_requests');
         adminSettingsCollection = db.collection('admin_settings');
         topupChatsCollection = db.collection('topup_chats');
-		withdrawRequestsCollection = db.collection('withdraw_requests'); // เพิ่มบรรทัดนี้
-		withdrawChatsCollection = db.collection('withdraw_chats');
 
         if (typeof seedInitialData === 'function') {
             await seedInitialData();
@@ -3568,122 +3563,6 @@ app.get('/api/admin/get-settings', async (req, res) => {
     }
 });
 
-// ==========================================
-// [SECTION] สำหรับระบบถอนเงิน (Withdrawal)
-// ==========================================
-
-// 1. ส่งคำขอถอนเงิน
-app.post('/api/user/request-withdraw', async (req, res) => {
-    try {
-        const { username, amount, bankInfo, location } = req.body;
-        
-        // ตรวจสอบข้อมูลผู้ใช้และยอดเงิน
-        const user = await usersCollection.findOne({ username });
-        if (!user) return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' });
-        
-        if (user.coins < amount) {
-            return res.status(400).json({ error: 'ยอดเงิน USD ของคุณไม่เพียงพอสำหรับการถอน' });
-        }
-
-        // ค้นหาแอดมินที่ดูแลโซนนี้ (ใช้ Logic เดียวกับเติมเงิน)
-        let locationObj = {};
-        try { locationObj = JSON.parse(decodeURIComponent(location)); } catch(e) {}
-        const zoneInfo = await findResponsibleAdmin(locationObj);
-        const targetAdmin = zoneInfo.username || 'Admin';
-
-        // 1. หักเงินผู้ใช้ทันที (เพื่อ Lock ยอดเงินไว้ตรวจสอบ)
-        await usersCollection.updateOne(
-            { username: username },
-            { $inc: { coins: -amount } }
-        );
-
-        // 2. บันทึกคำขอถอนเงิน
-        const newRequest = {
-            username,
-            amount: parseFloat(amount),
-            bankInfo,
-            targetAdmin,
-            status: 'pending',
-            createdAt: new Date(),
-            type: 'WITHDRAW'
-        };
-
-        const result = await withdrawRequestsCollection.insertOne(newRequest);
-
-        // 3. แจ้งเตือนแอดมินผ่าน Socket (ถ้ามีแอดมินออนไลน์)
-        io.emit('balance-update', { user: username, coins: user.coins - amount });
-        
-        res.json({ success: true, requestId: result.insertedId });
-    } catch (err) {
-        console.error("Withdraw Request Error:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// 2. เช็คสถานะการถอนเงินค้าง (เพื่อเปิดหน้าแชท)
-app.get('/api/user/withdraw-status', async (req, res) => {
-    try {
-        const { username } = req.query;
-        const pending = await withdrawRequestsCollection.findOne({ 
-            username, 
-            status: 'pending' 
-        }, { sort: { createdAt: -1 } });
-
-        if (pending) {
-            res.json({ hasPending: true, data: pending });
-        } else {
-            res.json({ hasPending: false });
-        }
-    } catch (err) {
-        res.status(500).json({ error: "Server Error" });
-    }
-});
-
-// 3. ดึงประวัติแชทการถอนเงิน
-app.get('/api/withdraw/chat-history', async (req, res) => {
-    try {
-        const { requestId } = req.query;
-        const history = await withdrawChatsCollection
-            .find({ requestId: requestId })
-            .sort({ timestamp: 1 })
-            .toArray();
-        res.json(history);
-    } catch (err) {
-        res.status(500).json({ error: "Chat Load Error" });
-    }
-});
-
-// API สำหรับดึงข้อมูลผู้ใช้ (เพื่อแสดงยอดเงินคงเหลือในหน้าถอนเงิน)
-app.get('/api/user-data', async (req, res) => {
-    try {
-        const { username } = req.query;
-        if (!username) return res.status(400).json({ error: "ระบุชื่อผู้ใช้งาน" });
-
-        const user = await getUserData(username); // เรียกใช้ฟังก์ชันที่มีอยู่แล้วใน server.js
-        if (!user) return res.status(404).json({ error: "ไม่พบผู้ใช้" });
-
-        res.json(user);
-    } catch (err) {
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// 3. สำหรับ Admin: ดึงรายการถอนเงินที่รออยู่
-app.get('/api/admin/withdraw-requests', async (req, res) => {
-    try {
-        const { admin } = req.query;
-        const requests = await withdrawRequestsCollection
-            .find({ targetAdmin: admin, status: 'pending' })
-            .sort({ createdAt: -1 }).toArray();
-        res.json(requests);
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-
-
-
 //admin kyc
 // --- API สำหรับดึงรายการ KYC ของแอดมินคนนั้นๆ ---
 app.get('/api/admin/kyc-list', async (req, res) => {
@@ -4399,27 +4278,6 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
         console.error("❌ Chat Save Error:", err);
     }
 });
-
-// ส่วนการส่งข้อความแชทถอนเงิน (Withdraw Chat)
-socket.on('sendWithdrawMessage', async (data) => {
-    const { requestId, sender, message, isAdmin, type } = data;
-    
-    const newMessage = {
-        requestId,
-        sender,
-        message,
-        isAdmin,
-        type: type || 'text',
-        timestamp: new Date()
-    };
-
-    // บันทึกลง withdraw_chats
-    await withdrawChatsCollection.insertOne(newMessage);
-
-    // ส่งข้อความไปในห้อง requestId
-    io.to(requestId.toString()).emit('receiveWithdrawMessage', newMessage);
-});
-
 
 	// 2.1
 	app.get('/api/topup/chat-history', async (req, res) => {
