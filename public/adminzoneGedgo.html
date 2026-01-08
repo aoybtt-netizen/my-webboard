@@ -213,14 +213,15 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     async function showContent(type) {
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
-	const membersListSec = document.getElementById('section-members-list');
     
-    // --- ส่วนป้องกันข้อมูลหาย (รวม KYC เข้าไปในระบบเก็บของลับ) ---
+    // ดึง Elements ทั้งหมดมารอไว้
+    const membersListSec = document.getElementById('section-members-list');
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
-    const kycListSec = document.getElementById('section-kyc-list'); // เพิ่มอ้างอิงส่วน KYC
+    const kycListSec = document.getElementById('section-kyc-list');
+    const withdrawListSec = document.getElementById('section-withdraw-list');
 
-    // 2. สร้าง/ดึง "ที่เก็บของลับ"
+    // ตรวจสอบ/สร้าง Storage
     let storage = document.getElementById('hidden-storage');
     if (!storage) {
         storage = document.createElement('div');
@@ -228,12 +229,15 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         storage.style.display = 'none';
         document.body.appendChild(storage);
     }
-	if (membersListSec) storage.appendChild(membersListSec);
+
+    // ย้ายของทั้งหมดไปเก็บใน Storage ก่อนเพื่อล้างหน้าจอ
+    if (membersListSec) storage.appendChild(membersListSec);
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
     if (kycListSec) storage.appendChild(kycListSec);
-	if (withdrawListSec) storage.appendChild(withdrawListSec);
-    // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element จริงถูกย้ายไปที่ storage ไม่ได้ถูกทำลาย)
+    if (withdrawListSec) storage.appendChild(withdrawListSec);
+
+    // ล้างพื้นที่แสดงผล
     display.innerHTML = ''; 
 
     // จัดการสถานะปุ่มเมนู (Active)
@@ -1621,36 +1625,49 @@ async function loadWithdrawRequests() {
 
 // ฟังก์ชันเปิดแชทและจัดการการถอน
 function openWithdrawProcess(id, user, amount, bankInfo) {
-    currentRequestId = id;
+    // 1. กำหนดค่าพื้นฐาน
+    currentChatRequestId = id; // ใช้ตัวแปรเดียวกับระบบเติมเงินเพื่อให้ระบบแชททำงานต่อได้
     const decodedBank = decodeURIComponent(bankInfo);
+    const display = document.getElementById('main-display');
 
-    // ปรับ UI แชทให้เข้ากับการถอน
+    // 2. ดึง Section แชท และ Section รายการถอน ออกมาจาก Storage
     const adminChatSec = document.getElementById('section-admin-chat');
     const withdrawListSec = document.getElementById('section-withdraw-list');
     
-    withdrawListSec.style.display = 'none';
+    // 3. จัดการแสดงผล (ย้ายแชทมาใส่หน้าจอหลัก)
+    if (withdrawListSec) withdrawListSec.style.display = 'none'; // ซ่อนหน้ารวมรายการ
+    
+    display.innerHTML = ''; // ล้างหน้าจอหลักก่อน
+    display.appendChild(adminChatSec); // ⚠️ สำคัญ: ต้อง Append แชทกลับเข้าหน้าจอหลักด้วย!
     adminChatSec.style.display = 'flex';
     
-    document.getElementById('chat-user-name').innerText = `ถอนเงิน: @${user}`;
+    // 4. อัปเดตข้อมูลหัวแชท
+    // หมายเหตุ: เช็ค ID ให้ตรงกับใน HTML ของคุณ (ถ้าใน HTML ชื่อ chat-user-name)
+    const chatTitle = document.getElementById('chat-user-name');
+    if(chatTitle) chatTitle.innerText = `ถอนเงิน: @${user}`;
     
-    // โชว์ข้อมูลบัญชีธนาคารในช่องแชท (เพื่อให้แอดมินก๊อปปี้ไปโอนได้ง่าย)
-    const chatDisplay = document.getElementById('chat-messages');
-    chatDisplay.innerHTML = `
-        <div style="background:#fff5f5; border:1px solid #ffcdd2; padding:15px; border-radius:12px; margin-bottom:15px; font-size:0.9em;">
-            <div style="font-weight:bold; color:#c62828; margin-bottom:5px;">📌 ข้อมูลการโอนเงิน</div>
-            <div style="background:white; padding:10px; border-radius:8px; border:1px dashed #c62828; user-select:all;">
-                ${decodedBank.replace(/\n/g, '<br>')}
+    // 5. โชว์ข้อมูลบัญชีธนาคาร (ใส่ไว้ในกล่องข้อความบนสุดของแชท)
+    // หมายเหตุ: เช็ค ID ของกล่องแชท (ในโค้ดเดิมคุณใช้ chat-box หรือ chat-messages?)
+    const chatDisplay = document.getElementById('chat-box'); 
+    if (chatDisplay) {
+        chatDisplay.innerHTML = `
+            <div style="background:#fff5f5; border:1px solid #ffcdd2; padding:15px; border-radius:12px; margin-bottom:15px; font-size:0.9em; align-self: stretch;">
+                <div style="font-weight:bold; color:#c62828; margin-bottom:5px;">📌 ข้อมูลการโอนเงิน (ถอนสด)</div>
+                <div style="background:white; padding:10px; border-radius:8px; border:1px dashed #c62828; user-select:all; color: #333; margin: 5px 0;">
+                    ${decodedBank.replace(/\n/g, '<br>')}
+                </div>
+                <div style="margin-top:10px; font-weight:bold; color: #c62828;">ยอดที่ต้องโอน: ${amount.toFixed(2)} USD</div>
+                <hr style="border:0; border-top:1px solid #ffcdd2; margin:10px 0;">
+                <div style="display:flex; gap:10px;">
+                    <button onclick="confirmWithdrawAction('${id}', 'approved', '${user}', ${amount})" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">ยืนยันโอนแล้ว</button>
+                    <button onclick="confirmWithdrawAction('${id}', 'rejected', '${user}', ${amount})" style="flex:1; background:#e74c3c; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">คืนเงิน/ยกเลิก</button>
+                </div>
             </div>
-            <div style="margin-top:10px; font-weight:bold;">ยอดที่ต้องโอน: ${amount.toFixed(2)} USD</div>
-            <hr style="border:0; border-top:1px solid #ffcdd2; margin:10px 0;">
-            <div style="display:flex; gap:10px;">
-                <button onclick="confirmWithdraw('${id}', 'approved')" style="flex:1; background:#27ae60; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ยืนยันการโอนแล้ว</button>
-                <button onclick="confirmWithdraw('${id}', 'rejected')" style="flex:1; background:#e74c3c; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ยกเลิก/คืนเงิน</button>
-            </div>
-        </div>
-    `;
+        `;
+    }
 
-    loadChatHistory(id); // โหลดประวัติแชทเดิม
+    // 6. โหลดประวัติแชทและการเชื่อมต่อ
+    loadAdminChatHistory(id); // ใช้ฟังก์ชันเดิมที่มีอยู่
     socket.emit('joinRequest', id);
 }
 
@@ -1663,29 +1680,23 @@ function openWithdrawProcess(id, user, amount, bankInfo) {
 	
 	
 <div id="hidden-storage" style="display: none;">
-        
-        <div id="section-topup-list">
-            <div id="topup-list-container">
-            </div>
-        </div>
-		
-		<div id="section-withdraw-list" style="display: none;">
-    <div id="withdraw-list-container">
-        </div>
-</div>
+    
+    <div id="section-topup-list">
+        <div id="topup-list-container"></div>
+    </div>
 
+    <div id="section-withdraw-list">
+        <div id="withdraw-list-container"></div>
+    </div>
 
-        <div id="section-admin-chat" style="display: none;">
-            <button onclick="showContent('topup')" style="background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 15px;">
-                <i class="fas fa-arrow-left"></i> กลับไปรายการคำขอ
-            </button>
-
-            <div id="chat-box" style="background: #f1f3f5; padding: 20px; border-radius: 15px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
-            </div>
-
-            <div style="margin-top: 15px; display: flex; gap: 10px;">
-                <button class="status-btn btn-reject" style="flex: 1; padding: 15px;" onclick="processRequest('rejected')">ปฏิเสธคำขอ</button>
-                <button class="status-btn btn-approve" style="flex: 1; padding: 15px;" onclick="processRequest('approved')">อนุมัติและเติมเงิน</button>
+    <div id="section-admin-chat">
+        <button onclick="showContent('topup')" style="background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 15px;">
+            <i class="fas fa-arrow-left"></i> กลับไปรายการคำขอ
+        </button>
+        <div id="chat-box" style="background: #f1f3f5; padding: 20px; border-radius: 15px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;"></div>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+            <button class="status-btn btn-reject" style="flex: 1; padding: 15px;" onclick="processRequest('rejected')">ปฏิเสธคำขอ</button>
+            <button class="status-btn btn-approve" style="flex: 1; padding: 15px;" onclick="processRequest('approved')">อนุมัติและเติมเงิน</button>
             </div>
         </div>
         
