@@ -296,20 +296,33 @@ async function loadAdminHistory() {
             return;
         }
 
-        container.innerHTML = history.map(item => `
-    <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.slipUrl || ""}', '${item.createdAt}', '${item.processedAt}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
-        <div>
-            <strong>User: ${item.username}</strong><br>
-            <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
-                ${item.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'}: ${item.amount.toFixed(2)} USD
-            </span>
-        </div>
-        <div style="text-align:right;">
-            <small style="color:#999;">${new Date(item.processedAt).toLocaleString('th-TH')}</small><br>
-            <i class="fas fa-chevron-right" style="color:#eee;"></i>
-        </div>
-    </div>
-`).join('');
+        container.innerHTML = history.map(item => {
+            // 🚩 ตรวจสอบประเภทธุรกรรม
+            const isWithdraw = item.type === 'WITHDRAW';
+            const color = isWithdraw ? 'var(--danger)' : 'var(--primary)';
+            const label = isWithdraw ? 'ถอนเงินสด' : 'เติมเงิน';
+            const icon = isWithdraw ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
+            const statusLabel = item.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว';
+
+            return `
+            <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.slipUrl || ""}', '${item.createdAt}', '${item.processedAt}')" 
+                 style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'};">
+                <div style="flex: 1;">
+                    <div style="font-size: 0.8em; color: ${color}; font-weight: bold; margin-bottom: 2px;">
+                        <i class="${icon}"></i> ${label}
+                    </div>
+                    <strong>User: ${item.username}</strong><br>
+                    <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
+                        ${statusLabel}: ${item.amount.toFixed(2)} USD
+                    </span>
+                </div>
+                <div style="text-align:right;">
+                    <small style="color:#999; display:block;">${new Date(item.processedAt).toLocaleString('th-TH')}</small>
+                    <i class="fas fa-chevron-right" style="color:#eee; margin-top:5px;"></i>
+                </div>
+            </div>
+            `;
+        }).join('');
     } catch (err) {
         container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
     }
