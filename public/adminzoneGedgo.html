@@ -526,65 +526,83 @@ async function loadAdminChatHistory(requestId) {
 
 // 2. ฟังก์ชันเปิดหน้าแชท
 async function openFullChat(requestId, username, amount) {
-    // --- 1. ส่วนป้องกัน Section รายชื่อหาย ---
-    const topupListSec = document.getElementById('section-topup-list');
-    const adminChatSec = document.getElementById('section-admin-chat');
-    
-    let storage = document.getElementById('hidden-storage');
-    if (!storage) {
-        storage = document.createElement('div');
-        storage.id = 'hidden-storage';
-        storage.style.display = 'none';
-        document.body.appendChild(storage);
-    }
-    if (topupListSec) storage.appendChild(topupListSec);
-    if (adminChatSec) storage.appendChild(adminChatSec);
-
+    // 1. จัดการ Socket และตัวแปรกลาง
     currentChatRequestId = requestId;
     socket.emit('joinRequest', requestId);
 
+    // 2. สร้างโครงสร้าง Modal เต็มจอ (อ้างอิง Style จากหน้า KYC ที่คุณส่งมา)
+    // เราจะสร้าง Element ใหม่แล้วแปะทับลงไปใน body หรือ main-display ก็ได้ครับ
     const display = document.getElementById('main-display');
     
-    // ✅ 2. วาดโครงสร้างใหม่ (ต้องมี id="chat-box" และปุ่ม Action)
     display.innerHTML = `
-        <div id="full-chat-container" style="display: flex; flex-direction: column; height: calc(100vh - 100px); background: white; margin: -25px; position: relative;">
-            <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <button onclick="showContent('topup')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer; color:var(--dark);">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <div>
-                        <h4 style="margin:0; color:var(--dark);">${username}</h4>
-                        <small style="color:var(--primary); font-weight:bold;">ยอดคำขอ: ${amount.toFixed(2)} USD</small>
+    <div id="topup-full-modal" style="position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100dvh; background: white; overflow-y: auto; display: flex; flex-direction: column;">
+        
+        <div style="position: sticky; top: 0; background: white; z-index: 100; padding: calc(15px + env(safe-area-inset-top)) 20px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button onclick="closeFullChatModal()" style="border: none; background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">ตรวจสอบยอดเติมเงิน</h3>
+                    <small style="color: #666;">Username: <b>${username}</b></small>
+                </div>
+            </div>
+            <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+        </div>
+
+        <div style="padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; box-sizing: border-box; flex: 1;">
+            
+            <div style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid #c8e6c9; margin-bottom: 25px; background: #e8f5e9;">
+                <div style="background: var(--primary); color: white; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+                <div style="text-align: left; flex: 1;">
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 1em;">จำนวนเงินที่ขอเติม</div>
+                    <div style="font-size: 1.2em; color: #11998e; font-weight: bold;">${amount.toFixed(2)} USD</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+                <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}')" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold; cursor: pointer;">ปฏิเสธ</button>
+                <button class="status-btn btn-approve" onclick="processAction('approved', '${username}', ${amount})" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em; cursor: pointer;">
+                    <i class="fas fa-check-circle"></i> อนุมัติเติมเงิน
+                </button>
+            </div>
+
+            <div style="background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; overflow: hidden; margin-bottom: 40px;">
+                <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px; background: #f8fafc;">
+                    <i class="fas fa-comments" style="color: var(--primary);"></i> แชทตรวจสอบหลักฐาน
+                </div>
+                
+                <div id="chat-box" style="height: 350px; overflow-y: auto; padding: 15px; background: #f1f5f9; display: flex; flex-direction: column; gap: 10px;">
                     </div>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}')">ปฏิเสธ</button>
-                    <button class="status-btn btn-approve" onclick="processAction('approved', '${username}', ${amount})">อนุมัติเติมเงิน</button>
-                </div>
-            </div>
 
-            <div id="chat-box" style="flex: 1; padding: 20px; background: #f1f5f9; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
-                <div style="align-self: center; background: #fff; padding: 5px 15px; border-radius: 20px; font-size: 0.75em; color: #94a3b8; border: 1px solid #e2e8f0; margin-bottom: 10px;">
-                    เริ่มการสนทนาตรวจสอบยอดเงิน
+                <div style="padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); background: white; display: flex; gap: 10px; align-items: center; border-top: 1px solid #eee;">
+                    <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
+                    <button onclick="document.getElementById('admin-slip-input').click()" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; color: #64748b;">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none; font-family: 'Kanit', sans-serif;">
+                    <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
-            </div>
-
-            <div style="padding: 15px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; align-items: center;">
-                <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
-                <button onclick="document.getElementById('admin-slip-input').click()" id="admin-image-btn" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; color: #64748b;">
-                    <i class="fas fa-image"></i>
-                </button>
-                <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
-                <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
             </div>
         </div>
+    </div>
     `;
 
-    // 3. โหลดแชท (จะ Error ทันทีถ้าข้างบนไม่มี id="chat-box")
+    // 3. โหลดประวัติแชทเข้าสู่ #chat-box
     await loadAdminChatHistory(requestId);
+}
+
+// ฟังก์ชันปิด Modal (เพื่อกลับไปหน้าหลัก)
+function closeFullChatModal() {
+    const modal = document.getElementById('topup-full-modal');
+    if (modal) {
+        modal.remove(); // ลบ Modal ออกจากหน้าจอ
+    }
+    showContent('topup'); // กลับไปหน้า List รายการเติมเงิน
 }
 
 
