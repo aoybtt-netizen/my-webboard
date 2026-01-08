@@ -333,20 +333,6 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
 
 
 
-        // ตัวอย่างการ Render รายการ KYC
-    function renderKYCList() {
-    return `
-        <div class="admin-card">
-            <div>
-                <strong>User: Maria_Brazil</strong><br>
-                <small style="color:#666;">รอการตรวจเอกสารยืนยันตัวตน</small>
-            </div>
-            <div>
-                <button class="status-btn btn-approve">ตรวจเอกสาร</button>
-            </div>
-        </div>
-    `;
-}
 
     function confirmTopup(user, amount) {
     if(confirm(`อนุมัติเงิน ${amount} USD ให้คุณ ${user}?`)) {
@@ -474,43 +460,6 @@ async function loadTopupRequests() {
     }
 }
 
-
-async function handleQuickAction(requestId, status, username, amount = 0) {
-    const actionText = status === 'approved' ? `ยืนยันเติมเงิน ${amount} USD ให้คุณ ${username}?` : `ปฏิเสธคำขอของคุณ ${username}?`;
-    
-    if (!confirm(actionText)) return;
-
-    try {
-        const res = await fetch('/api/admin/process-topup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                requestId: requestId, 
-                status: status,
-                adminName: localStorage.getItem('myUsername')
-            })
-        });
-
-        if (res.ok) {
-            alert("ดำเนินการสำเร็จ!");
-            
-            // ส่งสัญญาณ Socket บอก User ให้หน้าจอเขาอัปเดตทันที
-            socket.emit('statusChanged', { 
-                requestId: requestId, 
-                status: status 
-            });
-
-            // โหลดรายการใหม่เพื่อลบการ์ดที่จัดการเสร็จแล้วออก
-            loadTopupRequests();
-            updateBadges();
-        } else {
-            alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-        }
-    } catch (e) {
-        console.error(e);
-        alert("การเชื่อมต่อเซิร์ฟเวอร์มีปัญหา");
-    }
-}
 
 
 async function loadAdminChatHistory(requestId) {
