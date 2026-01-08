@@ -1332,15 +1332,11 @@ async function loadMemberList() {
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <button onclick="editMemberBalance('${username}', ${coins})" 
-                                style="border: none; background: #f1f5f9; padding: 5px 10px; border-radius: 5px; font-size: 0.75em; cursor: pointer; font-family:'Kanit';">
-                            <i class="fas fa-edit"></i> ปรับยอด
-                        </button>
-                        <button onclick="viewUserProfile('${username}')" 
-                                style="border: none; background: #e8f5e9; color: #2e7d32; padding: 5px 10px; border-radius: 5px; font-size: 0.75em; cursor: pointer; font-family:'Kanit';">
-                            <i class="fas fa-user"></i> โปรไฟล์
-                        </button>
-                    </div>
+						<button onclick="viewUserProfile('${username}')" 
+							style="border: none; background: #f1f5f9; color: var(--dark); padding: 8px 15px; border-radius: 10px; font-size: 0.85em; cursor: pointer; font-family:'Kanit'; font-weight:bold;">
+							<i class="fas fa-search"></i> ดูโปรไฟล์
+						</button>
+					</div>
                 </div>
             `;
         }).join('');
@@ -1375,7 +1371,6 @@ async function editMemberBalance(username, currentBalance) {
 
 
 async function viewUserProfile(username) {
-    // 1. แสดง Loading รอไว้ก่อน
     Swal.fire({
         title: 'กำลังดึงข้อมูลโปรไฟล์...',
         allowOutsideClick: false,
@@ -1384,11 +1379,8 @@ async function viewUserProfile(username) {
 
     try {
         const adminName = localStorage.getItem('myUsername');
-        // เรียกใช้ API users-list โดยใช้ชื่อ search เป็น username ของคนนั้นๆ
         const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${username}`);
         const data = await res.json();
-        
-        // ค้นหา user ที่มีชื่อตรงเป๊ะ
         const user = data.users.find(u => u.name === username);
 
         if (!user) {
@@ -1396,11 +1388,9 @@ async function viewUserProfile(username) {
             return;
         }
 
-        Swal.close(); // ปิด Loading
-
+        Swal.close();
         const content = document.getElementById('user-profile-content');
         
-        // 2. วาดหน้าโปรไฟล์
         content.innerHTML = `
             <div style="text-align: center; margin-bottom: 30px;">
                 <div style="position: relative; display: inline-block;">
@@ -1426,25 +1416,18 @@ async function viewUserProfile(username) {
                         </span>
                     </div>
                     <div>
-                        <small style="color: #94a3b8; display: block;">คะแนน (Rating)</small>
-                        <strong style="color: #f1c40f;"><i class="fas fa-star"></i> ${user.rating.toFixed(1)}</strong>
-                    </div>
-                    <div>
-                        <small style="color: #94a3b8; display: block;">งานสำเร็จแล้ว</small>
-                        <strong>${user.completedJobs} รายการ</strong>
+                        <small style="color: #94a3b8; display: block;">สถานะบัญชี</small>
+                        <span style="font-weight: bold; color: ${user.isBanned ? '#c62828' : '#2e7d32'};">
+                            ${user.isBanned ? 'ถูกระงับใช้งาน' : 'ปกติ'}
+                        </span>
                     </div>
                 </div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px;">
-                <button onclick="editMemberBalance('${user.name}', ${user.coins})" 
-                        style="background: var(--primary); color: white; border: none; padding: 18px; border-radius: 15px; font-weight: bold; font-family: 'Kanit'; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <i class="fas fa-wallet"></i> จัดการเติมเงิน / ปรับยอด
-                </button>
-                
-                <button onclick="toggleBanUser('${user.name}', ${user.isBanned})" 
-                        style="background: ${user.isBanned ? '#64748b' : '#ffebee'}; color: ${user.isBanned ? 'white' : '#c62828'}; border: 1px solid ${user.isBanned ? '#64748b' : '#ffcdd2'}; padding: 15px; border-radius: 15px; font-weight: bold; font-family: 'Kanit'; cursor: pointer;">
-                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดระงับผู้ใช้งานคนนี้' : 'ระงับการใช้งาน (Ban)'}
+                <button onclick="manageUserBan('${user.name}', ${user.isBanned})" 
+                        style="background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; color: ${user.isBanned ? 'white' : '#c62828'}; border: 1px solid ${user.isBanned ? 'var(--primary)' : '#ffcdd2'}; padding: 18px; border-radius: 15px; font-weight: bold; font-family: 'Kanit'; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดระงับการใช้งาน' : 'ระงับการใช้งาน (Ban)'}
                 </button>
             </div>
         `;
@@ -1452,13 +1435,97 @@ async function viewUserProfile(username) {
         document.getElementById('user-profile-modal').style.display = 'block';
 
     } catch (err) {
-        console.error(err);
-        Swal.fire('ผิดพลาด', 'ไม่สามารถดึงข้อมูลโปรไฟล์ได้ในขณะนี้', 'error');
+        Swal.fire('ผิดพลาด', 'ไม่สามารถดึงข้อมูลได้', 'error');
     }
 }
 
 function closeUserProfile() {
     document.getElementById('user-profile-modal').style.display = 'none';
+}
+
+
+async function manageUserBan(username, isCurrentlyBanned) {
+    if (isCurrentlyBanned) {
+        // กรณีถูกแบนอยู่ ให้ถามว่าจะปลดแบนไหม
+        const result = await Swal.fire({
+            title: 'ปลดระงับผู้ใช้งาน?',
+            text: `คุณต้องการปลดแบนคุณ @${username} ใช่หรือไม่?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่, ปลดแบนเลย',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            executeBanAction(username, 0); // 0 = ปลดแบน
+        }
+    } else {
+        // กรณีไม่ถูกแบน ให้เลือกวัน
+        const { value: days } = await Swal.fire({
+            title: `ระงับการใช้งาน @${username}`,
+            input: 'select',
+            inputOptions: {
+                '1': '1 วัน',
+                '3': '3 วัน',
+                '7': '7 วัน',
+                '15': '15 วัน',
+                '30': '30 วัน',
+                '9999': 'ถาวร (ไม่มีกำหนด)'
+            },
+            inputPlaceholder: 'เลือกระยะเวลาการแบน',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันการแบน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาเลือกระยะเวลา'
+            }
+        });
+
+        if (days) {
+            executeBanAction(username, parseInt(days));
+        }
+    }
+}
+
+// ฟังก์ชันส่ง API ไปยัง Server
+async function executeBanAction(username, days) {
+    Swal.fire({ title: 'กำลังดำเนินการ...', didOpen: () => Swal.showLoading() });
+
+    try {
+        const adminName = localStorage.getItem('myUsername');
+        
+        // ✅ ปรับชื่อตัวแปรให้ตรงกับ API (targetUser, shouldBan, requestBy, banDays)
+        const res = await fetch('/api/admin/toggle-ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                targetUser: username,         // ชื่อสมาชิกที่จะแบน
+                shouldBan: days > 0,          // ถ้า days > 0 คือแบน (true), ถ้า 0 คือปลดแบน (false)
+                requestBy: adminName,         // ชื่อแอดมินผู้สั่งการ
+                banDays: days,                // จำนวนวัน (1, 3, 7, 15, 30, 9999)
+                lang: 'th'                    // ภาษาที่ใช้ตอบกลับ
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            Swal.fire('สำเร็จ', 
+                days > 0 ? 'ระงับการใช้งานเรียบร้อยแล้ว' : 'ปลดแบนเรียบร้อยแล้ว', 
+                'success'
+            ).then(() => {
+                closeUserProfile(); // ปิดหน้าโปรไฟล์
+                loadMemberList();   // รีโหลดรายชื่อสมาชิกใหม่
+            });
+        } else {
+            // โชว์ Error ที่ส่งมาจาก API (เช่น "ระดับแอดมินของคุณไม่สูงพอ")
+            Swal.fire('ไม่สามารถดำเนินการได้', data.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire('ผิดพลาด', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+    }
 }
 
 
