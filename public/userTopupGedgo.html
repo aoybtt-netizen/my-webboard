@@ -100,9 +100,9 @@ html {
             <div class="menu-item active" onclick="switchTab('topup')">
                 <i class="fas fa-hand-holding-usd"></i> เติมเงิน
             </div>
-			<div class="menu-item active" onclick="switchTab('topup')">
-                <i class="fas fa-hand-holding-usd"></i> ถอนเงิน
-            </div>
+			<div class="menu-item" id="menu-withdraw" onclick="switchTab('withdraw')">
+			<i class="fas fa-money-bill-transfer"></i> ถอนเงินสด
+			</div>
             <div class="menu-item" onclick="switchTab('history')">
                 <i class="fas fa-file-invoice-dollar"></i> ประวัติการเติมเงิน
             </div>
@@ -234,6 +234,10 @@ html {
         historySec.style.display = 'none';
         // เรียก checkTopupStatus เพื่อดูว่าควรโชว์ฟอร์มหรือโชว์แชทที่กำลังดำเนินการ
         checkTopupStatus(); 
+    }else if (tab === 'withdraw') { 
+        // ✅ เพิ่มส่วนนี้
+        title.innerText = "ถอนเงินสดออกจากระบบ";
+        renderWithdrawForm();
     } else {
         title.innerText = 'ประวัติการเติมเงิน';
         if(topupSec) topupSec.style.display = 'none';
@@ -649,6 +653,86 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
     
     await loadChatHistory(requestId);
 }
+
+
+
+// ฟอร์มกรอกข้อมูลถอนเงิน
+async function renderWithdrawForm() {
+    const display = document.getElementById('main-display');
+    const myName = localStorage.getItem('myUsername');
+    
+    // ดึงยอดเงินปัจจุบัน
+    let balance = 0;
+    try {
+        const res = await fetch(`/api/user-data?username=${myName}`); // ใช้ API ดึงข้อมูล User เดิมของคุณ
+        const data = await res.json();
+        balance = data.coins || 0;
+    } catch(e) {}
+
+    display.innerHTML = `
+        <div class="topup-card" style="max-width:500px; margin:0 auto;">
+            <div style="text-align:center; margin-bottom:20px; padding:20px; background:#fff5f5; border-radius:15px; border:1px solid #ffcdd2;">
+                <div style="color:#c62828;">ยอดเงินที่ถอนได้</div>
+                <div style="font-size:2em; font-weight:bold; color:#c62828;">${balance.toFixed(2)} USD</div>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="font-weight:bold;">จำนวนเงิน (USD)</label>
+                <input type="number" id="wd-amount" placeholder="0.00" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1.1em;">
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="font-weight:bold;">โอนเข้าบัญชี (ธนาคาร/เลขบัญชี/ชื่อ)</label>
+                <textarea id="wd-bank" rows="3" placeholder="เช่น กสิกร 123-4-56789-0 นาย..." style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;"></textarea>
+            </div>
+
+            <button onclick="submitWithdraw()" style="width:100%; padding:15px; background:#c62828; color:white; border:none; border-radius:10px; font-weight:bold; font-size:1.1em; cursor:pointer;">
+                แจ้งถอนเงิน
+            </button>
+        </div>
+    `;
+}
+
+// ส่งข้อมูลไป Server
+async function submitWithdraw() {
+    const amount = parseFloat(document.getElementById('wd-amount').value);
+    const bankInfo = document.getElementById('wd-bank').value;
+    const myName = localStorage.getItem('myUsername');
+
+    if (!amount || amount <= 0 || !bankInfo) {
+        return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุจำนวนเงินและบัญชี', 'error');
+    }
+
+    const confirm = await Swal.fire({
+        title: 'ยืนยันการถอน?',
+        text: `ยอดเงิน ${amount} USD จะถูกหักออกจากกระเป๋าทันที`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        confirmButtonColor: '#c62828'
+    });
+
+    if (confirm.isConfirmed) {
+        try {
+            const res = await fetch('/api/user/request-withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: myName, amount, bankInfo })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                Swal.fire('สำเร็จ', 'ส่งคำขอถอนเงินแล้ว', 'success')
+                    .then(() => switchTab('history')); // เด้งไปหน้าประวัติ
+            } else {
+                Swal.fire('ผิดพลาด', data.error, 'error');
+            }
+        } catch(e) {
+            Swal.fire('Connection Error', 'ติดต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+        }
+    }
+}
+
 
 
 

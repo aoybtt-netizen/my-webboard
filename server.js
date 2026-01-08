@@ -3417,6 +3417,98 @@ app.get('/api/topup/history', async (req, res) => {
     }
 });
 
+
+//ถอนเงิน
+// 1. API สมาชิกแจ้งถอนเงิน (หักเงินทันที)
+app.post('/api/user/request-withdraw', async (req, res) => {
+    const { username, amount, bankInfo } = req.body;
+    
+    try {
+        const user = await usersCollection.findOne({ username });
+        if (!user) return res.status(404).json({ error: "ไม่พบผู้ใช้งาน" });
+
+        const withdrawAmount = parseFloat(amount);
+        if (user.coins < withdrawAmount) {
+            return res.status(400).json({ error: "ยอดเงินคงเหลือไม่เพียงพอ" });
+        }
+
+        // ✅ หักเงินทันทีเพื่อกันการกดซ้ำ หรือเอาเงินไปใช้อย่างอื่น
+        await usersCollection.updateOne(
+            { username }, 
+            { $inc: { coins: -withdrawAmount } }
+        );
+
+        // ✅ สร้างรายการคำขอ
+        const withdrawReq = {
+            username,
+            amount: withdrawAmount,
+            bankInfo,
+            status: 'pending', // สถานะรอตรวจสอบ
+            type: 'withdraw',
+            createdAt: new Date(),
+            adminId: user.assignedAdmin || 'MainAdmin' // ส่งให้แอดมินที่ดูแล
+        };
+        
+        await withdrawCollection.insertOne(withdrawReq);
+
+        // แจ้งเตือนแอดมิน (ถ้ามี Socket)
+        // io.to(user.assignedAdmin).emit('admin-notification', { type: 'WITHDRAW_REQUEST', message: `คำขอถอนเงินใหม่: ${amount} USD` });
+
+        res.json({ success: true, message: 'ส่งคำขอเรียบร้อย ยอดเงินถูกหักเพื่อรอการโอน' });
+
+    } catch (err) {
+        res.status(500).json({ error: "Server Error" });
+    }
+});
+
+// 2. API แอดมินดึงรายการถอนเงินรออนุมัติ
+app.get('/api/admin/withdraw-list', async (req, res) => {
+    const { admin } = req.query; // รับชื่อแอดมินเพื่อกรองเฉพาะโซนตัวเอง (ถ้ามีระบบโซน)
+    try {
+        // ดึงเฉพาะรายการที่สถานะเป็น 'pending'
+        const list = await withdrawCollection.find({ 
+            status: 'pending' 
+            // adminId: admin (เปิดบรรทัดนี้ถ้าจะกรองตามแอดมิน)
+        }).sort({ createdAt: 1 }).toArray();
+        
+        res.json(list);
+    } catch (err) {
+        res.status(500).json({ error: "Load Error" });
+    }
+});
+
+// 3. API แอดมินจัดการ (อนุมัติ / ปฏิเสธ)
+app.post('/api/admin/process-withdraw', async (req, res) => {
+    const { requestId, status, adminName } = req.body; // status = 'approved' หรือ 'rejected'
+
+    try {
+        const request = await withdrawCollection.findOne({ _id: new ObjectId(requestId) });
+        if (!request || request.status !== 'pending') {
+            return res.status(400).json({ error: "รายการนี้ถูกจัดการไปแล้ว" });
+        }
+
+        if (status === 'rejected') {
+            // ❌ ถ้าปฏิเสธ: ต้องคืนเงินให้สมาชิก
+            await usersCollection.updateOne(
+                { username: request.username },
+                { $inc: { coins: request.amount } }
+            );
+        }
+        // ✅ ถ้าอนุมัติ: ไม่ต้องทำอะไรเพิ่มกับยอดเงิน เพราะหักไปแล้วตอนแจ้งถอน
+
+        // อัปเดตสถานะคำขอ
+        await withdrawCollection.updateOne(
+            { _id: new ObjectId(requestId) },
+            { $set: { status: status, processedBy: adminName, processedAt: new Date() } }
+        );
+
+        res.json({ success: true, message: status === 'approved' ? 'อนุมัติการถอนแล้ว' : 'ปฏิเสธและคืนเงินแล้ว' });
+
+    } catch (err) {
+        res.status(500).json({ error: "Process Error" });
+    }
+});
+
 // ==========================================
 // [SECTION] สำหรับฝั่ง ADMIN (เจ้าของโซน)
 // ==========================================

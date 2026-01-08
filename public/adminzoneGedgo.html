@@ -130,6 +130,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         <i class="fas fa-wallet"></i> คำขอเติมเงิน
         <span class="badge" id="topup-count">0</span>
     </div>
+	<div class="menu-item" onclick="showContent('withdraw')">
+    <i class="fas fa-hand-holding-usd"></i> คำขอถอนเงิน
+	</div>
     <div class="menu-item" onclick="showContent('kyc')">
         <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
         <span class="badge" id="kyc-count">0</span>
@@ -206,7 +209,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
 	const membersListSec = document.getElementById('section-members-list');
-    
+    const withdrawListSec = document.getElementById('section-withdraw-list');
     // --- ส่วนป้องกันข้อมูลหาย (รวม KYC เข้าไปในระบบเก็บของลับ) ---
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
@@ -225,7 +228,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
     if (kycListSec) storage.appendChild(kycListSec); // เก็บส่วน KYC ไว้ในที่ปลอดภัยด้วย
-
+	if (withdrawListSec) storage.appendChild(withdrawListSec);
     // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element จริงถูกย้ายไปที่ storage ไม่ได้ถูกทำลาย)
     display.innerHTML = ''; 
 
@@ -248,6 +251,11 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">กำลังโหลด...</p>';
         loadTopupRequests(); 
 
+    }else if (type === 'withdraw') { // ✅ เพิ่มเคสนี้
+        title.innerText = 'รายการคำขอถอนเงิน';
+        display.appendChild(withdrawListSec);
+        withdrawListSec.style.display = 'block';
+        loadWithdrawRequests(); // เรียกฟังก์ชันโหลดข้อมูล
     } else if (type === 'kyc') { // ✅ เพิ่ม Logic สำหรับหน้า KYC
         title.innerText = 'คำขอยืนยันตัวตน (20 เมตร)';
         // ดึงส่วน KYC จาก storage มาแสดงที่หน้าจอหลัก
@@ -1569,6 +1577,84 @@ async function executeBanAction(username, days) {
 
 
 
+// โหลดรายการถอนเงิน
+async function loadWithdrawRequests() {
+    const container = document.getElementById('withdraw-list-container');
+    const adminName = localStorage.getItem('myUsername');
+    container.innerHTML = '<p style="text-align:center; margin-top:20px;">กำลังโหลด...</p>';
+
+    try {
+        const res = await fetch(`/api/admin/withdraw-list?admin=${adminName}`);
+        const requests = await res.json();
+
+        if (requests.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">ไม่มีคำขอถอนเงินใหม่</p>';
+            return;
+        }
+
+        container.innerHTML = requests.map(req => `
+            <div class="admin-card" style="border-left: 5px solid #e74c3c;">
+                <div style="flex:1;">
+                    <div style="font-size:1.1em; font-weight:bold;">@${req.username}</div>
+                    <div style="color:#c62828; font-weight:bold; font-size:1.2em;">ถอน: ${req.amount.toFixed(2)} USD</div>
+                    <div style="background:#f9f9f9; padding:8px; border-radius:8px; margin-top:5px; font-size:0.9em; color:#555;">
+                        🏦 ${req.bankInfo}
+                    </div>
+                    <small style="color:#999;">${new Date(req.createdAt).toLocaleString('th-TH')}</small>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:5px; min-width:100px;">
+                    <button onclick="processWithdraw('${req._id}', 'approved')" class="status-btn btn-approve">
+                        <i class="fas fa-check"></i> โอนแล้ว
+                    </button>
+                    <button onclick="processWithdraw('${req._id}', 'rejected')" class="status-btn btn-reject">
+                        <i class="fas fa-times"></i> ปฏิเสธ
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch(e) {
+        container.innerHTML = '<p style="color:red; text-align:center;">โหลดข้อมูลผิดพลาด</p>';
+    }
+}
+
+// อนุมัติ หรือ ปฏิเสธ
+async function processWithdraw(requestId, status) {
+    const actionName = status === 'approved' ? 'ยืนยันการโอนเงิน' : 'ปฏิเสธและคืนเงิน';
+    
+    const confirm = await Swal.fire({
+        title: actionName + '?',
+        text: status === 'rejected' ? 'ยอดเงินจะถูกคืนกลับกระเป๋าสมาชิก' : 'กรุณาตรวจสอบสลิปการโอนเงินให้เรียบร้อย',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        confirmButtonColor: status === 'approved' ? '#2e7d32' : '#c62828'
+    });
+
+    if (confirm.isConfirmed) {
+        try {
+            const adminName = localStorage.getItem('myUsername');
+            const res = await fetch('/api/admin/process-withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestId, status, adminName })
+            });
+
+            if (res.ok) {
+                Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อย', 'success');
+                loadWithdrawRequests(); // รีโหลดรายการ
+            } else {
+                Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาด', 'error');
+            }
+        } catch(e) {
+            Swal.fire('Connection Error', 'เชื่อมต่อไม่ได้', 'error');
+        }
+    }
+}
+
+
+
+
 
     </script>
 	
@@ -1736,6 +1822,13 @@ async function executeBanAction(username, days) {
     <div id="members-list-container" style="display: flex; flex-direction: column; gap: 12px;">
     </div>
 </div>
+
+
+<div id="section-withdraw-list" style="display: none;">
+    <div id="withdraw-list-container" style="display: flex; flex-direction: column; gap: 15px;">
+        </div>
+</div>
+
 
 
 	
