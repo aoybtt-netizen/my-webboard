@@ -134,9 +134,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
         <span class="badge" id="kyc-count">0</span>
     </div>
-	<div class="menu-item" onclick="showContent('history')">
-        <i class="fas fa-history"></i> สมาชิกในโซน
-    </div>
+	<div class="menu-item" onclick="showContent('members')">
+    <i class="fas fa-users"></i> รายชื่อสมาชิก
+	</div>
     <div class="menu-item" onclick="showContent('automessage')">
         <i class="fas fa-comment-dots"></i> ข้อความอัตโนมัติ (เลขบัญชี)
     </div>
@@ -205,6 +205,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     async function showContent(type) {
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
+	const membersListSec = document.getElementById('section-members-list');
     
     // --- ส่วนป้องกันข้อมูลหาย (รวม KYC เข้าไปในระบบเก็บของลับ) ---
     const topupListSec = document.getElementById('section-topup-list');
@@ -274,7 +275,12 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         title.innerText = 'ประวัติธุรกรรมในโซน';
         display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">กำลังโหลด...</p></div>`;
         loadAdminHistory(); 
-    }
+    }else if (type === 'members') {
+    title.innerText = 'รายชื่อสมาชิกในระบบ';
+    display.appendChild(membersListSec);
+    membersListSec.style.display = 'block';
+    loadMemberList(); 
+}
     
     if(window.innerWidth <= 768 && document.getElementById('sidebar')?.classList.contains('active')) {
         toggleSidebar();
@@ -1322,6 +1328,264 @@ async function executeApprove(requestId, username, adminName) {
     } catch (e) { console.error(e); }
 }
 
+
+async function loadMemberList() {
+    const container = document.getElementById('members-list-container');
+    const search = document.getElementById('member-search-input').value;
+    const filterStatus = document.getElementById('member-filter-status').value; // ✅ ดึงค่า Filter
+    const adminName = localStorage.getItem('myUsername');
+    
+    container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">กำลังโหลดข้อมูลสมาชิก...</p>';
+
+    try {
+        const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${search}&limit=100`);
+        const data = await res.json();
+        let members = data.users;
+
+        // ✅ กรองข้อมูลตามประเภทที่เลือกในฝั่ง Frontend
+        if (filterStatus === 'kyc') {
+            members = members.filter(u => u.isVerified === true);
+        } else if (filterStatus === 'not_kyc') {
+            members = members.filter(u => u.isVerified !== true);
+        } else if (filterStatus === 'banned') {
+            members = members.filter(u => u.isBanned === true);
+        }
+
+        if (!members || members.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ไม่พบสมาชิกตามเงื่อนไขที่เลือก</p>';
+            return;
+        }
+
+        // วาดรายการสมาชิก (Map ข้อมูลเหมือนเดิม)
+        container.innerHTML = members.map(user => {
+            const username = user.name;
+            const coins = user.coins || 0;
+            const relation = user.relationType;
+
+            return `
+                <div class="admin-card" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-left: 5px solid ${user.isBanned ? 'var(--danger)' : (relation === 'OWNED' ? 'var(--primary)' : '#f1c40f')};">
+                    <img src="${user.profileImg || 'https://via.placeholder.com/50'}" 
+                         style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; opacity: ${user.isBanned ? '0.5' : '1'};">
+                    
+                    <div style="flex: 1;">
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <strong style="font-size: 1em; color: ${user.isBanned ? 'var(--danger)' : 'var(--dark)'};">${username}</strong>
+                            ${user.isVerified ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size:0.8em;"></i>' : ''}
+                            ${user.isBanned ? '<small style="background:#ffebee; color:red; padding:1px 5px; border-radius:5px; font-size:0.6em;">BANNED</small>' : ''}
+                        </div>
+                        <div style="font-size: 0.8em; color: var(--primary); font-weight: bold;">
+                            Balance: ${coins.toFixed(2)} USD
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <button onclick="viewUserProfile('${username}')" 
+                                style="border: none; background: #f1f5f9; color: var(--dark); padding: 8px 15px; border-radius: 10px; font-size: 0.85em; cursor: pointer; font-family:'Kanit'; font-weight:bold;">
+                            <i class="fas fa-search"></i> ดูโปรไฟล์
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        container.innerHTML = '<p style="text-align:center; color:red;">ไม่สามารถเชื่อมต่อ API ได้</p>';
+    }
+}
+
+
+async function viewUserProfile(username) {
+    Swal.fire({
+        title: 'กำลังดึงข้อมูลโปรไฟล์...',
+        target: document.getElementById('user-profile-modal'),
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const adminName = localStorage.getItem('myUsername');
+        // ค้นหาผ่าน API เดิม
+        const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${username}`);
+        const data = await res.json();
+        const user = data.users.find(u => u.name === username);
+
+        if (!user) {
+            Swal.fire({ title: 'ไม่พบผู้ใช้', icon: 'error', target: document.getElementById('user-profile-modal') });
+            return;
+        }
+
+        Swal.close();
+        const content = document.getElementById('user-profile-content');
+        
+        // ส่วนข้อมูล KYC (จะโชว์เฉพาะคนที่ Verified แล้ว)
+        let kycHtml = "";
+        if (user.isVerified) {
+            kycHtml = `
+                <div style="background: #e8f5e9; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 1em;">
+                        <i class="fas fa-id-card"></i> ข้อมูลการยืนยันตัวตน
+                    </h4>
+                    <div style="display: grid; gap: 10px; font-size: 0.9em;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #666;">เลขบัตรประชาชน:</span>
+                            <b>${user.idNumber || '-'}</b>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #666;">เบอร์โทรศัพท์:</span>
+                            <b>${user.phone || '-'}</b>
+                        </div>
+                        <div style="border-top: 1px solid #c8e6c9; padding-top: 10px;">
+                            <small style="color: #666;">ที่อยู่ปัจจุบัน:</small>
+                            <div style="font-weight: bold; margin-top: 2px;">${user.address || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        content.innerHTML = `
+            <div style="text-align: center; margin-bottom: 25px;">
+                <div style="position: relative; display: inline-block;">
+                    <img src="${user.profileImg || 'https://via.placeholder.com/120'}" 
+                         style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    ${user.isVerified ? '<div style="position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;"><i class="fas fa-check" style="font-size: 0.8em;"></i></div>' : ''}
+                </div>
+                <h3 style="margin: 15px 0 5px;">@${user.name}</h3>
+                <div style="color: #f1c40f; font-weight: bold;">
+                    <i class="fas fa-star"></i> ${user.rating.toFixed(1)} 
+                    <span style="color: #94a3b8; font-weight: normal; font-size: 0.8em;">(${user.ratingCount} รีวิว)</span>
+                </div>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${user.fullName || 'ยังไม่ได้ระบุชื่อ'}</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
+                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">โพสต์</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalPosts}</div>
+                </div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">รับงาน</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalJobs}</div>
+                </div>
+                <div style="background: #e8f5e9; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #c8e6c9;">
+                    <div style="font-size: 0.7em; color: #2e7d32; text-transform: uppercase;">สำเร็จ</div>
+                    <div style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">${user.completedJobs}</div>
+                </div>
+            </div>
+
+            <div style="background: white; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #666;"><i class="fas fa-coins" style="color: #f1c40f;"></i> ยอดเงินคงเหลือ</span>
+                <b style="font-size: 1.2em; color: var(--primary);">${user.coins.toFixed(2)} USD</b>
+            </div>
+
+            ${kycHtml}
+
+            <div style="padding-bottom: 30px;">
+                <button onclick="manageUserBan('${user.name}', ${user.isBanned})" 
+                        style="width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-family: 'Kanit';
+                        background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; 
+                        color: ${user.isBanned ? 'white' : '#c62828'};">
+                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดระงับการใช้งาน' : 'ระงับการใช้งาน (BAN)'}
+                </button>
+            </div>
+        `;
+
+        document.getElementById('user-profile-modal').style.display = 'block';
+
+    } catch (err) {
+        console.error(err);
+        Swal.fire({ title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลโปรไฟล์ได้', icon: 'error', target: document.getElementById('user-profile-modal') });
+    }
+}
+
+function closeUserProfile() {
+    document.getElementById('user-profile-modal').style.display = 'none';
+}
+
+
+// ✅ 1. ฟังก์ชันเลือกวันแบน (1, 3, 7, 15, 30 หรือถาวร)
+async function manageUserBan(username, isCurrentlyBanned) {
+    if (isCurrentlyBanned) {
+        const result = await Swal.fire({
+            title: 'ปลดระงับผู้ใช้งาน?',
+            text: `คุณต้องการปลดแบนคุณ @${username} ใช่หรือไม่?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่, ปลดแบนเลย',
+            cancelButtonText: 'ยกเลิก',
+            target: document.getElementById('user-profile-modal')
+        });
+
+        if (result.isConfirmed) {
+            executeBanAction(username, 0); // 0 = ปลดแบน
+        }
+    } else {
+        const { value: days } = await Swal.fire({
+            title: `ระงับการใช้งาน @${username}`,
+            input: 'select',
+            inputOptions: {
+                '1': '1 วัน',
+                '3': '3 วัน',
+                '7': '7 วัน',
+                '15': '15 วัน',
+                '30': '30 วัน',
+                '9999': 'ถาวร (ไม่มีกำหนด)'
+            },
+            inputPlaceholder: 'เลือกระยะเวลาการแบน',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันการแบน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+			target: document.getElementById('user-profile-modal'),
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาเลือกระยะเวลา'
+            }
+        });
+
+        if (days) {
+            executeBanAction(username, parseInt(days));
+        }
+    }
+}
+
+// ✅ 2. ฟังก์ชันส่งข้อมูลไปที่ Server (ใช้ API /api/admin/toggle-ban ตัวเดิมของคุณ)
+async function executeBanAction(username, days) {
+    Swal.fire({ 
+			title: 'กำลังดำเนินการ...',
+			target: document.getElementById('user-profile-modal'),
+			didOpen: () => Swal.showLoading() });
+
+    try {
+        const adminName = localStorage.getItem('myUsername');
+        const res = await fetch('/api/admin/toggle-ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                targetUser: username,
+                shouldBan: days > 0, // ถ้าส่งวันมาคือแบน (true) ถ้า 0 คือปลดแบน (false)
+                requestBy: adminName,
+                banDays: days,
+                lang: 'th'
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            Swal.fire('สำเร็จ', days > 0 ? 'ระงับการใช้งานเรียบร้อยแล้ว' : 'ปลดแบนเรียบร้อยแล้ว', 'success').then(() => {
+                closeUserProfile(); // ปิดหน้าโปรไฟล์
+                loadMemberList();   // โหลดรายชื่อใหม่เพื่ออัปเดตสถานะ
+            });
+        } else {
+            Swal.fire('ไม่สามารถดำเนินการได้', data.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire('ผิดพลาด', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+    }
+}
+
+
+
 socket.on('kyc-location-updated', (data) => {
     if (currentKYCRequestId === data.username) {
         console.log("สมาชิกอัปเดตพิกัดใหม่ -> คำนวณระยะใหม่");
@@ -1463,6 +1727,49 @@ socket.on('kyc-location-updated', (data) => {
         </div>
             
     </div>
+	
+	
+	
+	<div id="user-profile-modal" class="modal" style="display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100dvh; background: white; overflow-y: auto;">
+    
+    <div style="position: sticky; top: 0; background: white; z-index: 10; padding: calc(15px + env(safe-area-inset-top)) 20px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <button onclick="closeUserProfile()" style="border: none; background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">โปรไฟล์สมาชิก</h3>
+        </div>
+        <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+    </div>
+
+    <div id="user-profile-content" style="padding: 20px; max-width: 500px; margin: 0 auto; width: 100%;">
+        </div>
+</div>
+
+	
+	
+	
+	<div id="section-members-list" style="display: none;">
+    <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="member-search-input" placeholder="ค้นหา Username หรือชื่อ..." 
+                   style="flex: 1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; outline: none; font-family: 'Kanit';">
+            <button onclick="loadMemberList()" style="background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 12px; cursor: pointer;">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        
+        <select id="member-filter-status" onchange="loadMemberList()" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; font-family: 'Kanit'; outline: none; background: white;">
+            <option value="all">แสดงสมาชิกทั้งหมด</option>
+            <option value="kyc">เฉพาะคนที่ยืนยันตัวตนแล้ว (KYC)</option>
+            <option value="not_kyc">คนที่ยังไม่ได้ยืนยันตัวตน</option>
+            <option value="banned">เฉพาะคนที่ถูกแบน</option>
+        </select>
+    </div>
+
+    <div id="members-list-container" style="display: flex; flex-direction: column; gap: 12px;">
+    </div>
+</div>
 
 
 	
