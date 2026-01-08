@@ -143,16 +143,25 @@ html {
             
             <div id="section-topup-form">
                 <div class="topup-card">
-                    <div style="font-size: 50px; color: var(--primary);"><i class="fas fa-wallet"></i></div>
-                    <h3>ระบุจำนวนเงินที่ต้องการเติม</h3>
-                    <div class="amount-input-group">
-                        <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
-                        <div style="margin-top: 10px; font-weight: bold; color: var(--primary);">USD</div>
-                    </div>
-                    <button class="btn-submit-topup" onclick="submitTopupRequest()">
-                        <i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน
-                    </button>
-                </div>
+    <div id="form-icon" style="font-size: 50px; color: var(--primary);">
+        <i class="fas fa-wallet"></i>
+    </div>
+    <h3 id="amount-label">ระบุจำนวนเงิน</h3>
+    
+    <div class="amount-input-group">
+        <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
+        <div style="margin-top: 10px; font-weight: bold; color: var(--primary);">USD</div>
+    </div>
+
+    <div id="withdraw-bank-info" style="display: none; margin-bottom: 20px; text-align: left;">
+        <label style="font-size: 0.85em; color: #666; font-weight: bold;">ระบุบัญชีธนาคารรับเงิน (ชื่อ-เลขบัญชี-ธนาคาร):</label>
+        <textarea id="withdraw-bank-details" rows="3" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #eee; font-family: inherit; margin-top: 5px;" placeholder="เช่น กสิกรไทย 123-4-567-890 นายสมชาย"></textarea>
+    </div>
+
+    <button class="btn-submit-topup" onclick="submitTransactionRequest()">
+        <i class="fas fa-paper-plane"></i> ส่งคำขอ
+    </button>
+</div>
 
                 <div style="margin-top: 30px;">
                     <h4><i class="fas fa-info-circle"></i> ขั้นตอนการเติมเงิน</h4>
@@ -205,6 +214,7 @@ html {
     <script>
 	const socket = io();
 	let currentRequestId = null;
+	let transactionType = 'TOPUP';
 	
 	
         function toggleSidebar() {
@@ -214,33 +224,44 @@ html {
             overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
         }
 
-    function switchTab(tab) {
-	isHistoryMode = false;
+    function switchTab(tab, type = 'TOPUP') {
+    isHistoryMode = false;
+    transactionType = type; // เก็บสถานะว่าคือ TOPUP หรือ WITHDRAW
+    
     const title = document.getElementById('content-title');
-    const topupSec = document.getElementById('section-topup-form'); // ตรวจสอบ ID ให้ตรงกับ HTML
+    const topupSec = document.getElementById('section-topup-form');
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
 
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-    // ใช้ event.currentTarget หรือตรวจสอบตัวแปร event
-    if(event) event.currentTarget.classList.add('active');
-
-    // รีเซ็ตการซ่อน/โชว์ช่องพิมพ์แชทเสมอเมื่อเปลี่ยนแท็บ
-    const inputArea = chatSec.querySelector('div:last-child');
-    if(inputArea) inputArea.style.display = 'flex';
-
+    
+    // จัดการ UI ตามโหมด
     if (tab === 'topup') {
-        title.innerText = 'เติมเงิน';
+        title.innerText = (transactionType === 'TOPUP') ? 'เติมเงิน' : 'ถอนเงินสด';
+		document.getElementById('withdraw-bank-info').style.display = (transactionType === 'WITHDRAW') ? 'block' : 'none';
+		document.getElementById('form-icon').style.color = (transactionType === 'WITHDRAW') ? 'var(--danger)' : 'var(--primary)';
+        // เปลี่ยนสีปุ่มและไอคอนตามโหมด
+        const submitBtn = document.querySelector('.btn-submit-topup');
+        if(transactionType === 'WITHDRAW') {
+            submitBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+            submitBtn.innerHTML = '<i class="fas fa-money-bill-transfer"></i> ยืนยันคำขอถอนเงิน';
+            document.getElementById('amount-label').innerText = 'ระบุจำนวนเงินที่ต้องการถอน';
+        } else {
+            submitBtn.style.background = 'linear-gradient(135deg, var(--primary), var(--secondary))';
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน';
+            document.getElementById('amount-label').innerText = 'ระบุจำนวนเงินที่ต้องการเติม';
+        }
+        
         historySec.style.display = 'none';
-        // เรียก checkTopupStatus เพื่อดูว่าควรโชว์ฟอร์มหรือโชว์แชทที่กำลังดำเนินการ
-        checkTopupStatus(); 
+        checkTransactionStatus(); // เปลี่ยนชื่อฟังก์ชันจาก checkTopupStatus
     } else {
-        title.innerText = 'ประวัติการเติมเงิน';
+        title.innerText = 'ประวัติธุรกรรม';
         if(topupSec) topupSec.style.display = 'none';
         chatSec.style.display = 'none';
         historySec.style.display = 'block';
         loadHistory();
     }
+    
     if (window.innerWidth <= 768) toggleSidebar();
 }
 
@@ -648,6 +669,104 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
     chatDisplay.innerHTML = '<p style="text-align:center; color:#999;">กำลังโหลดประวัติแชท...</p>';
     
     await loadChatHistory(requestId);
+}
+
+
+async function submitTransactionRequest() {
+    const amount = document.getElementById('topup-amount').value;
+    const bankDetails = document.getElementById('withdraw-bank-details').value;
+    const username = localStorage.getItem('myUsername');
+    
+    if (!amount || amount <= 0) return alert("กรุณาระบุจำนวนเงิน");
+    if (transactionType === 'WITHDRAW' && !bankDetails) return alert("กรุณาระบุรายละเอียดบัญชีธนาคาร");
+
+    // ถ้าถอนเงิน เช็คยอดเงินในเครื่องเบื้องต้นก่อน (ป้องกันกดเล่น)
+    const currentBalance = parseFloat(document.getElementById('current-balance').innerText);
+    if (transactionType === 'WITHDRAW' && amount > currentBalance) {
+        return alert("ยอดเงินของคุณไม่เพียงพอสำหรับการถอน");
+    }
+
+    try {
+        const res = await fetch('/api/topup/request', { // ใช้ API เส้นเดิม
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username,
+                amount: amount,
+                type: transactionType, // 🚩 ส่งค่า TOPUP หรือ WITHDRAW
+                bankInfo: bankDetails, // ส่งข้อมูลบัญชีไป (ถ้ามี)
+                location: localStorage.getItem('userPrimaryLocation') 
+            })
+        });
+
+        if (res.ok) {
+            const result = await res.json();
+            socket.emit('newTransactionRequest', { // เปลี่ยนชื่อ event socket
+                adminId: result.adminId,
+                username: username,
+                amount: amount,
+                type: transactionType
+            });
+            await checkTransactionStatus(); // รีเฟรชหน้าจอเพื่อเข้าสู่โหมดแชท
+        } else {
+            const error = await res.json();
+            alert(error.error || "เกิดข้อผิดพลาด");
+        }
+    } catch (err) {
+        alert("เกิดข้อผิดพลาดในการส่งคำขอ");
+    }
+}
+
+
+async function checkTransactionStatus() {
+    const myName = localStorage.getItem('myUsername');
+    try {
+        // API จะส่งกลับมาว่ามีคำขอที่ค้างอยู่หรือไม่ (ไม่ว่าจะเป็นเติมหรือถอน)
+        const res = await fetch(`/api/topup/status?username=${myName}`);
+        const data = await res.json();
+
+        const formSec = document.getElementById('section-topup-form');
+        const chatSec = document.getElementById('section-pending-chat');
+
+        if (data.hasPending) {
+            currentRequestId = data.requestId;
+            const isWithdraw = data.type === 'WITHDRAW'; // เช็คประเภทจาก server
+            
+            formSec.style.display = 'none';
+            chatSec.style.display = 'flex';
+            
+            // ปรับแต่ง UI ตามประเภท
+            const statusLabel = chatSec.querySelector('span');
+            statusLabel.style.background = isWithdraw ? '#fff5f5' : '#fff9e6';
+            statusLabel.style.color = isWithdraw ? '#e74c3c' : '#f1c40f';
+            statusLabel.style.borderColor = isWithdraw ? '#e74c3c' : '#f1c40f';
+            statusLabel.innerHTML = isWithdraw ? '<i class="fas fa-university"></i> กำลังรอการถอนเงิน' : '<i class="fas fa-clock"></i> อยู่ระหว่างตรวจสอบ';
+
+            // ถ้าเป็นเติมเงิน โชว์บัญชีแอดมิน | ถ้าเป็นถอนเงิน โชว์บัญชีตัวเอง
+            const headerHTML = isWithdraw ? `
+                <div style="background: white; border-radius: 12px; border: 1px solid #ffcdd2; padding: 15px; font-size: 0.9em;">
+                    <b style="color: #e74c3c;">📌 ข้อมูลการถอนเงินของคุณ:</b><br>
+                    จำนวน: <b>${data.amount.toFixed(2)} USD</b><br>
+                    โอนเข้า: ${data.bankInfo.replace(/\n/g, '<br>')}
+                </div>
+            ` : `
+                <details open style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+                    <summary style="padding: 10px 15px; background: #f8fafc; font-weight: bold; color: var(--primary);">🏦 ข้อมูลการโอนเงิน (เติมเงิน)</summary>
+                    <div style="padding: 15px; font-size: 0.9em; border-top: 1px solid #eee;">
+                        <b>บัญชีธนาคารแอดมิน:</b><br>${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}
+                    </div>
+                </details>
+            `;
+
+            document.getElementById('admin-auto-reply-wrapper').innerHTML = headerHTML;
+
+            await loadChatHistory(data.requestId);
+            socket.emit('joinRequest', data.requestId);
+        } else {
+            formSec.style.display = 'block';
+            chatSec.style.display = 'none';
+        }
+    } catch (err) { console.error(err); }
 }
 
 

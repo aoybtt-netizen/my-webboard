@@ -3343,7 +3343,7 @@ app.get('/api/rider/check-working-status', async (req, res) => {
 // 1.1 ส่งคำขอเติมเงิน
 app.post('/api/topup/request', async (req, res) => {
     try {
-        const { username, amount, location } = req.body;
+        const { username, amount, location, type, bankInfo } = req.body; // รับ type และ bankInfo เพิ่ม
         const locationObj = JSON.parse(decodeURIComponent(location));
         const zoneInfo = await findResponsibleAdmin(locationObj);
         
@@ -3352,16 +3352,29 @@ app.post('/api/topup/request', async (req, res) => {
         }
 
         const adminId = zoneInfo.zoneData.assignedAdmin;
+        const amountNum = parseFloat(amount);
+
+        // --- 🚩 เพิ่ม Logic สำหรับการถอนเงิน (WITHDRAW) ---
+        if (type === 'WITHDRAW') {
+            const user = await usersCollection.findOne({ username });
+            if (!user || (user.coins || 0) < amountNum) {
+                return res.status(400).json({ error: "ยอดเงินของคุณไม่เพียงพอสำหรับการถอน" });
+            }
+            // หักเงินผู้ใช้ทันทีเพื่อ "Lock" เงินไว้ตรวจสอบ
+            await usersCollection.updateOne({ username }, { $inc: { coins: -amountNum } });
+        }
+
         const newRequest = {
             username,
-            amount: parseFloat(amount),
+            amount: amountNum,
             adminId,
+            type: type || 'TOPUP', // ระบุว่าเป็น TOPUP หรือ WITHDRAW
+            bankInfo: bankInfo || null, // เก็บข้อมูลบัญชีถ้าเป็นการถอน
             status: 'pending',
             createdAt: new Date()
         };
 
         const result = await topupRequestsCollection.insertOne(newRequest);
-        // ✅ ส่ง requestId (insertedId) กลับไปด้วย
         res.json({ success: true, adminId, requestId: result.insertedId }); 
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -3372,29 +3385,27 @@ app.post('/api/topup/request', async (req, res) => {
 app.get('/api/topup/status', async (req, res) => {
     try {
         const { username } = req.query;
-        // 1. หาคำขอที่ยัง Pending ของ User คนนี้
         const pending = await topupRequestsCollection.findOne({ username, status: 'pending' });
 
         if (pending) {
-            // 2. ดึงข้อมูลจากคอลเลกชัน admin_settings โดยใช้ชื่อแอดมินที่ดูแลคำขอนี้
-            // สมมติว่าตัวแปรคอลเลกชันชื่อ adminSettingsCollection
             const settings = await adminSettingsCollection.findOne({ adminName: pending.adminId });
 
             res.json({
                 hasPending: true,
                 requestId: pending._id,
-                adminName: pending.adminId, // ชื่อแอดมินโซน
+                adminName: pending.adminId,
+                type: pending.type,   // 🚩 ส่งประเภท (TOPUP/WITHDRAW)
+                amount: pending.amount, // ส่งจำนวนเงิน
+                bankInfo: pending.bankInfo, // ส่งข้อมูลบัญชี (ถ้ามี)
                 adminMessage: {
-                    // ดึงค่า bankInfo และ desc จาก admin_settings
                     bankInfo: settings ? settings.bankInfo : "โปรดรอแอดมินแจ้งเลขบัญชีในแชท",
-                    desc: settings ? settings.desc : "กำลังรอการตรวจสอบหลักฐานการโอนเงิน"
+                    desc: settings ? settings.desc : "กำลังรอการตรวจสอบหลักฐาน"
                 }
             });
         } else {
             res.json({ hasPending: false });
         }
     } catch (e) {
-        console.error("🚨 Get status error:", e);
         res.status(500).json({ error: e.message });
     }
 });
@@ -3471,50 +3482,60 @@ app.get('/api/admin/topup-list', async (req, res) => {
 app.post('/api/admin/process-topup', async (req, res) => {
     try {
         const { requestId, status, adminName, finalAmount } = req.body;
-
-        if (status !== 'approved') {
-            await topupRequestsCollection.updateOne(
-                { _id: new ObjectId(requestId) },
-                { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
-            );
-            return res.json({ success: true, message: "ปฏิเสธคำขอเรียบร้อย" });
-        }
-
-        // --- กรณี 'approved' (อนุมัติ) ---
         const topupReq = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
+
         if (!topupReq || topupReq.status !== 'pending') {
             return res.status(400).json({ error: "คำขอนี้ไม่พร้อมสำหรับการดำเนินการ" });
         }
 
-        // ใช้ยอดเงินที่แอดมินกรอกมา (finalAmount)
-        const amountToProcess = parseFloat(finalAmount);
+        const amountToProcess = parseFloat(finalAmount || topupReq.amount);
 
-        // เช็คเงินแอดมิน
-        const adminUser = await usersCollection.findOne({ username: adminName });
-        if (!adminUser || (adminUser.coins || 0) < amountToProcess) {
-            return res.status(400).json({ 
-                error: `ยอดเงินของคุณไม่เพียงพอ (ขาดอีก ${(amountToProcess - (adminUser.coins || 0)).toFixed(2)} USD)` 
-            });
+        // --- ❌ กรณีปฏิเสธ (Rejected) ---
+        if (status !== 'approved') {
+            // 🚩 ถ้าเป็นการถอนเงิน (WITHDRAW) แล้วถูกปฏิเสธ ต้องคืนเงินให้สมาชิก
+            if (topupReq.type === 'WITHDRAW') {
+                await usersCollection.updateOne(
+                    { username: topupReq.username }, 
+                    { $inc: { coins: topupReq.amount } } 
+                );
+            }
+
+            await topupRequestsCollection.updateOne(
+                { _id: new ObjectId(requestId) },
+                { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
+            );
+            return res.json({ success: true, message: "ปฏิเสธคำขอและคืนเงิน (ถ้ามี) เรียบร้อย" });
         }
 
-        // ธุรกรรมการโอน
-        await usersCollection.updateOne({ username: adminName }, { $inc: { coins: -amountToProcess } });
-        await usersCollection.updateOne({ username: topupReq.username }, { $inc: { coins: amountToProcess } });
+        // --- ✅ กรณีอนุมัติ (Approved) ---
+        
+        if (topupReq.type === 'TOPUP') {
+            // โหมดเติมเงิน: แอดมินจ่ายเหรียญให้สมาชิก
+            const adminUser = await usersCollection.findOne({ username: adminName });
+            if (!adminUser || (adminUser.coins || 0) < amountToProcess) {
+                return res.status(400).json({ error: "ยอดเงินแอดมินไม่เพียงพอ" });
+            }
+            await usersCollection.updateOne({ username: adminName }, { $inc: { coins: -amountToProcess } });
+            await usersCollection.updateOne({ username: topupReq.username }, { $inc: { coins: amountToProcess } });
+        } else {
+            // โหมดถอนเงิน: แอดมินได้รับเหรียญจากสมาชิก (เพราะจ่ายเงินสดไปแล้ว)
+            // เหรียญสมาชิกถูกหักไปรอไว้แล้วตอนส่งคำขอ แอดมินแค่กดยืนยันเพื่อรับเหรียญนั้นเข้าตัว
+            await usersCollection.updateOne({ username: adminName }, { $inc: { coins: amountToProcess } });
+        }
 
-        // อัปเดตสถานะพร้อมบันทึกยอดเงินจริงที่โอน (actualAmount)
         await topupRequestsCollection.updateOne(
             { _id: new ObjectId(requestId) },
             { 
                 $set: { 
                     status: 'approved', 
-                    amount: amountToProcess, // อัปเดตยอดเงินตามที่โอนจริง
+                    amount: amountToProcess,
                     processedBy: adminName,
                     processedAt: new Date()
                 } 
             }
         );
 
-        res.json({ success: true, message: `อนุมัติสำเร็จ จำนวน ${amountToProcess} USD` });
+        res.json({ success: true, message: `อนุมัติรายการ ${topupReq.type} สำเร็จ` });
 
     } catch (err) {
         res.status(500).json({ error: "เกิดข้อผิดพลาดในการประมวลผล" });
