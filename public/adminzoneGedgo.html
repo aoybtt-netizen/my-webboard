@@ -14,6 +14,16 @@
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+		.header { 
+            background: linear-gradient(135deg, var(--primary), var(--secondary)); 
+            color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            border-radius: 0 0 20px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header a { color: white; text-decoration: none; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
+        
+        .container { padding: 15px; max-width: 450px; margin: 0 auto; }
+		
+		
         :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --light: #f8fafc; --danger: #e74c3c; }
 body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; display: flex; height: 100dvh; overflow: hidden; }
 
@@ -90,6 +100,16 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 </head>
 <body>
 
+	<div class="header">
+    <div style="display: flex; align-items: center;">
+        <i class="fas fa-bars menu-trigger" onclick="toggleSidebar()"></i>
+    </div>
+    <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
+    <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a>
+</div>
+
+
+
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <nav class="sidebar" id="sidebar">
@@ -119,24 +139,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 </nav>
 
 
-    <main class="main-content">
-        <header class="top-bar">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em;"></i>
-                <h2 id="content-title" style="margin:0; font-size: 1.2em;">คำขอเติมเงิน</h2>
-            </div>
-            <div id="admin-info">
-                <small>เจ้าของโซน: <b id="admin-name">Loading...</b></small>
-            </div>
-        </header>
-
-        <div class="content-body" id="main-display">
-            <div style="text-align:center; margin-top: 50px; color: #999;">
-                <i class="fas fa-spinner fa-spin fa-2x"></i>
-                <p>กำลังโหลดข้อมูล...</p>
-            </div>
-        </div>
-    </main>
+    
 
     <script>
 	const socket = io();
