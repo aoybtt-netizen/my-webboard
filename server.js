@@ -905,66 +905,85 @@ app.get('/api/profile-details', async (req, res) => {
 
 
 // 3. User List
+// 3. User List (Admin Dashboard)
 app.get('/api/users-list', async (req, res) => {
     try {
-        // แก้ไขบรรทัดนี้: ปิดปีกกาให้ถูกต้อง และกำหนดค่าเริ่มต้นให้ limit เป็น 50
-        const { requestBy, search, page = 1, limit = 50} = req.query;
+        const { requestBy, search, page = 1, limit = 50 } = req.query;
         
         const pageNum = parseInt(page) || 1;
-		const limitNum = parseInt(limit) || 50;
-		const skip = (pageNum - 1) * limitNum;
+        const limitNum = parseInt(limit) || 50;
+        const skip = (pageNum - 1) * limitNum;
 
-        // 1. ตรวจสอบสิทธิ์
+        // 1. ตรวจสอบสิทธิ์ผู้เรียก (Admin)
         const requester = await getUserData(requestBy);
         if (!requester || requester.adminLevel < 1) {
             return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
         }
         
-        // ดึงข้อมูล User ทั้งหมดมาก่อน
+        // 2. ดึงข้อมูล User ทั้งหมด
         const allUsers = await usersCollection.find({}).toArray();
 
-        const mapUserResponse = (u) => ({ 
-            name: u.username, 
-			fullName: u.fullName || '', // ✅ เพิ่มเพื่อให้โชว์ชื่อจริงได้
-			profileImg: u.profileImg || '', // ✅ เพิ่มเพื่อให้โชว์รูปได้
-            coins: u.coins, 
-            rating: u.rating, 
-            isBanned: u.isBanned,
-			isVerified: u.isVerified || false,
-            adminLevel: u.adminLevel || 0,
-            country: u.country || 'N/A',
-            assignedLocation: u.assignedLocation || null,
-            relationType: u.relationType || 'OTHER',
-			totalPosts: u.totalPosts || 0,
-			completedJobs: u.completedJobs || 0
-        });
+        // ฟังก์ชันช่วยในการจัดกลุ่มและคำนวณสถิติ
+        const mapUserResponse = (u) => {
+            // คำนวณคะแนนเฉลี่ย (รวมจาก RiderRating + MerchantRating)
+            const totalScore = (u.totalRatingScore || 0) + (u.merchantRatingScore || 0);
+            const totalRatingCount = (u.ratingCount || 0) + (u.merchantRatingCount || 0);
+            const averageRating = totalRatingCount > 0 ? (totalScore / totalRatingCount) : 0;
+
+            // รวมจำนวนงานที่สำเร็จ (Rider Completed + Merchant Completed)
+            const combinedCompleted = (u.completedJobs || 0) + (u.authorCompletedJobs || 0);
+
+            return { 
+                name: u.username, 
+                fullName: u.fullName || '', 
+                profileImg: u.profileImg || '', 
+                coins: u.coins || 0, 
+                
+                // --- สถิติจริงที่ดึงมาจาก Socket/API ที่คุณใช้ ---
+                rating: averageRating,
+                ratingCount: totalRatingCount,
+                totalPosts: u.totalPosts || 0,        // งานที่เขาเคยโพสต์
+                totalJobs: u.totalJobs || 0,          // งานที่เขากดรับ/ดำเนินการ
+                completedJobs: combinedCompleted,      // งานที่จบสำเร็จจริง (ทั้ง 2 ฝ่าย)
+
+                isBanned: u.isBanned || false,
+                isVerified: u.isVerified || false,
+                adminLevel: u.adminLevel || 0,
+                country: u.country || 'N/A',
+                assignedLocation: u.assignedLocation || null,
+                relationType: u.relationType || 'OTHER',
+                
+                // ข้อมูล KYC สำหรับหน้าโปรไฟล์ Admin
+                idNumber: u.idNumber || '',
+                phone: u.phone || '',
+                address: u.address || ''
+            };
+        };
 
         let finalResults = [];
 
-        // CASE A: Admin Level 3
+        // --- Logic การคัดกรองตามระดับ Admin และโซน ---
         if (requester.adminLevel >= 3) {
+            // Level 3: เห็นทุกคน ยกเว้นตัวเอง
             finalResults = allUsers.filter(u => u.username !== requester.username);
-        }
-        // CASE B: Admin Level 2 + Search
-        else {
-            // 1. ดึงโซนที่เกี่ยวข้องก่อนเสมอ
+        } else {
+            // Level 1-2: เห็นเฉพาะในโซนตัวเอง
             let myOwnedZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
             let myRefZones = (requester.adminLevel === 2) 
                 ? await zonesCollection.find({ "refLocation.sourceUser": requester.username }).toArray() 
                 : [];
             const allZones = await zonesCollection.find({}).toArray();
 
-            // 2. กรอง User ตามโซนพิกัด (Logic เดิมของคุณ)
             finalResults = allUsers.filter(u => {
                 if (u.username === requester.username) return false;
                 
-                // --- เพิ่มส่วนนี้: ถ้า Admin Level 2 กำลัง Search และอยู่ประเทศเดียวกัน ให้ผ่านเลย (ไม่ต้องเช็คพิกัด) ---
+                // กรณี Admin Lv2 Search หาคนในประเทศเดียวกัน (ข้ามโซนได้)
                 if (requester.adminLevel === 2 && search && u.country === requester.country) {
                     return true; 
                 }
 
-                // --- ถ้าไม่ใช่กรณี Search ข้ามโซน ให้เช็คตามพิกัดปกติ ---
                 if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
+                
                 let minDistance = Infinity;
                 let closestZone = null;
                 allZones.forEach(zone => {
@@ -982,34 +1001,36 @@ app.get('/api/users-list', async (req, res) => {
             });
         }
 
-        // 3. กรองด้วยชื่อ (Search Keyword) ในขั้นตอนสุดท้าย
+        // --- กรองด้วย Search Keyword ---
         if (search && search.trim() !== "") {
             const lowerSearch = search.toLowerCase();
-            finalResults = finalResults.filter(u => u.username.toLowerCase().includes(lowerSearch));
+            finalResults = finalResults.filter(u => 
+                u.username.toLowerCase().includes(lowerSearch) || 
+                (u.fullName && u.fullName.toLowerCase().includes(lowerSearch))
+            );
         }
-		
-		const totalOwned = finalResults.filter(u => u.relationType === 'OWNED').length;
-		const totalRef = finalResults.filter(u => u.relationType === 'REF').length;
-		const totalOther = finalResults.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF').length;
-     
+
+        // นับจำนวนสรุปตามความสัมพันธ์
+        const totalOwned = finalResults.filter(u => u.relationType === 'OWNED').length;
+        const totalRef = finalResults.filter(u => u.relationType === 'REF').length;
+        const totalOther = finalResults.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF').length;
 
         // --- ทำ Pagination ---
-        const totalUsers = finalResults.length;
         const pagedUsers = finalResults.slice(skip, skip + limitNum);
 
         res.json({
-			users: pagedUsers.map(mapUserResponse),
-			currentPage: pageNum,
-			totalPages: Math.ceil(finalResults.length / limitNum),
-			counts: {
-			owned: totalOwned,
-			ref: totalRef,
-			other: totalOther
-    }
-});
+            users: pagedUsers.map(mapUserResponse),
+            currentPage: pageNum,
+            totalPages: Math.ceil(finalResults.length / limitNum),
+            counts: {
+                owned: totalOwned,
+                ref: totalRef,
+                other: totalOther
+            }
+        });
 
     } catch (err) {
-        console.error(err);
+        console.error("🚨 API Users-List Error:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
@@ -4101,9 +4122,6 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
                 } 
             });
 
-            // 🚩 แก้ไขการนับสถิติใน User ให้ใช้ฟิลด์เดียวกัน
-            // ผมแนะนำให้ใช้ระบบ "นับสด (Count)" แบบที่ผมบอกไปก่อนหน้านี้จะแม่นยำกว่า 
-            // แต่ถ้าจะใช้ $inc ต่อ ก็ต้องใช้ชื่อฟิลด์ให้เหมือนกันทั้งระบบครับ
             
             // เพิ่มให้เจ้าของกระทู้
             await usersCollection.updateOne(

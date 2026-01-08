@@ -1380,17 +1380,16 @@ async function editMemberBalance(username, currentBalance) {
 async function viewUserProfile(username) {
     Swal.fire({
         title: 'กำลังดึงข้อมูลโปรไฟล์...',
-        target: document.getElementById('user-profile-modal'), // ป้องกันการทับซ้อน
+        target: document.getElementById('user-profile-modal'),
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
     });
 
     try {
         const adminName = localStorage.getItem('myUsername');
+        // ค้นหาผ่าน API เดิม
         const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${username}`);
         const data = await res.json();
-        
-        // ค้นหา user ที่มีชื่อตรงเป๊ะ
         const user = data.users.find(u => u.name === username);
 
         if (!user) {
@@ -1401,76 +1400,75 @@ async function viewUserProfile(username) {
         Swal.close();
         const content = document.getElementById('user-profile-content');
         
-        // --- ส่วนที่ 1: ตรวจสอบข้อมูล KYC (ถ้ามี) ---
+        // ส่วนข้อมูล KYC (จะโชว์เฉพาะคนที่ Verified แล้ว)
         let kycHtml = "";
         if (user.isVerified) {
             kycHtml = `
                 <div style="background: #e8f5e9; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
-                    <h4 style="margin: 0 0 15px 0; color: #2e7d32; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-id-card"></i> ข้อมูลยืนยันตัวตน (Verified)
+                    <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 1em;">
+                        <i class="fas fa-id-card"></i> ข้อมูลการยืนยันตัวตน
                     </h4>
-                    <div style="display: grid; gap: 12px; font-size: 0.9em;">
+                    <div style="display: grid; gap: 10px; font-size: 0.9em;">
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: #666;">เลขบัตรประชาชน:</span>
-                            <b style="color: var(--dark);">${user.idNumber || 'ข้อมูลถูกปกปิด'}</b>
+                            <b>${user.idNumber || '-'}</b>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: #666;">เบอร์โทรศัพท์:</span>
-                            <b style="color: var(--dark);">${user.phone || '-'}</b>
+                            <b>${user.phone || '-'}</b>
                         </div>
-                        <div style="border-top: 1px solid #c8e6c9; pt-10; margin-top: 5px;">
-                            <small style="color: #666; display: block; margin-bottom: 3px;">ที่อยู่ตามพิกัด:</small>
-                            <b style="color: var(--dark); line-height: 1.4;">${user.address || '-'}</b>
+                        <div style="border-top: 1px solid #c8e6c9; padding-top: 10px;">
+                            <small style="color: #666;">ที่อยู่ปัจจุบัน:</small>
+                            <div style="font-weight: bold; margin-top: 2px;">${user.address || '-'}</div>
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        // --- ส่วนที่ 2: วาด HTML ทั้งหมด ---
         content.innerHTML = `
-            <div style="text-align: center; margin-bottom: 30px;">
+            <div style="text-align: center; margin-bottom: 25px;">
                 <div style="position: relative; display: inline-block;">
                     <img src="${user.profileImg || 'https://via.placeholder.com/120'}" 
-                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 5px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    ${user.isVerified ? '<div style="position: absolute; bottom: 5px; right: 5px; background: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 2px solid var(--primary);"><i class="fas fa-check-circle"></i></div>' : ''}
+                         style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    ${user.isVerified ? '<div style="position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;"><i class="fas fa-check" style="font-size: 0.8em;"></i></div>' : ''}
                 </div>
-                <h2 style="margin: 15px 0 5px; color: var(--dark); font-size: 1.4em;">@${user.name}</h2>
-                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 5px;">
-                    <span style="color: #f1c40f; font-weight: bold; font-size: 1.1em;">
-                        <i class="fas fa-star"></i> ${user.rating ? user.rating.toFixed(1) : '0.0'}
-                    </span>
-                    <span style="color: #94a3b8; font-size: 0.85em;">(${user.ratingCount || 0} รีวิว)</span>
+                <h3 style="margin: 15px 0 5px;">@${user.name}</h3>
+                <div style="color: #f1c40f; font-weight: bold;">
+                    <i class="fas fa-star"></i> ${user.rating.toFixed(1)} 
+                    <span style="color: #94a3b8; font-weight: normal; font-size: 0.8em;">(${user.ratingCount} รีวิว)</span>
                 </div>
-                <div style="color: #64748b; font-size: 0.9em;">${user.fullName || 'ยังไม่ได้ระบุชื่อ-นามสกุล'}</div>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${user.fullName || 'ยังไม่ได้ระบุชื่อ'}</p>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px;">
-                <div style="background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid #e2e8f0; text-align: center;">
-                    <small style="color: #94a3b8; display: block; margin-bottom: 5px;">โพสต์ทั้งหมด</small>
-                    <strong style="font-size: 1.2em; color: var(--dark);">${user.totalPosts || 0}</strong>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
+                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">โพสต์</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalPosts}</div>
                 </div>
-                <div style="background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid #e2e8f0; text-align: center;">
-                    <small style="color: #94a3b8; display: block; margin-bottom: 5px;">งานที่กดรับ</small>
-                    <strong style="font-size: 1.2em; color: var(--dark);">${user.totalJobs || 0}</strong>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">รับงาน</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalJobs}</div>
                 </div>
-                <div style="background: #f1f8e9; padding: 15px; border-radius: 15px; border: 1px solid #c8e6c9; text-align: center; grid-column: span 2;">
-                    <small style="color: #689f38; display: block; margin-bottom: 5px;">งานที่ทำสำเร็จแล้ว (Completed)</small>
-                    <strong style="font-size: 1.4em; color: #2e7d32;">${user.completedJobs || 0} รายการ</strong>
+                <div style="background: #e8f5e9; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #c8e6c9;">
+                    <div style="font-size: 0.7em; color: #2e7d32; text-transform: uppercase;">สำเร็จ</div>
+                    <div style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">${user.completedJobs}</div>
                 </div>
             </div>
 
-            <div style="background: #ffffff; border-radius: 20px; padding: 15px; border: 1px solid #eee; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #666;"><i class="fas fa-wallet" style="margin-right: 8px;"></i> ยอดเงินคงเหลือ:</span>
-                <b style="color: var(--primary); font-size: 1.2em;">${user.coins ? user.coins.toFixed(2) : '0.00'} USD</b>
+            <div style="background: white; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #666;"><i class="fas fa-coins" style="color: #f1c40f;"></i> ยอดเงินคงเหลือ</span>
+                <b style="font-size: 1.2em; color: var(--primary);">${user.coins.toFixed(2)} USD</b>
             </div>
 
             ${kycHtml}
 
-            <div style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px;">
+            <div style="padding-bottom: 30px;">
                 <button onclick="manageUserBan('${user.name}', ${user.isBanned})" 
-                        style="background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; color: ${user.isBanned ? 'white' : '#c62828'}; border: none; padding: 18px; border-radius: 15px; font-weight: bold; font-family: 'Kanit'; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;">
-                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดระงับการใช้งานทันที' : 'ระงับการใช้งานสมาชิก (Ban)'}
+                        style="width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-family: 'Kanit';
+                        background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; 
+                        color: ${user.isBanned ? 'white' : '#c62828'};">
+                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดระงับการใช้งาน' : 'ระงับการใช้งาน (BAN)'}
                 </button>
             </div>
         `;
@@ -1479,7 +1477,7 @@ async function viewUserProfile(username) {
 
     } catch (err) {
         console.error(err);
-        Swal.fire({ title: 'ผิดพลาด', text: 'ไม่สามารถดึงข้อมูลได้', icon: 'error', target: document.getElementById('user-profile-modal') });
+        Swal.fire({ title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลโปรไฟล์ได้', icon: 'error', target: document.getElementById('user-profile-modal') });
     }
 }
 
