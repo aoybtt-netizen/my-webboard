@@ -63,12 +63,21 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     flex: 1; 
     display: flex; 
     flex-direction: column; 
-    overflow-y: auto;
-    width: 100%; /* ให้เต็มจอ */
+    height: 100vh;
+    overflow: hidden;
+    background: var(--light);
 }
 .top-bar { 
-    background: white; padding: 15px 25px; display: flex; align-items: center; 
-    justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    background: white; 
+    /* ✅ ใช้ padding-top หลบรอยบาก และปรับข้างให้เป็น 15px-20px */
+    padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    width: 100%; /* ✅ มั่นใจว่าเต็มความกว้าง */
+    box-sizing: border-box; /* ✅ คำนวณ padding รวมในความกว้างแล้ว */
+    z-index: 99;
 }
 .content-body { padding: 25px; }
 
@@ -120,23 +129,43 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
 
     <main class="main-content">
-        <header class="top-bar">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em;"></i>
-                <h2 id="content-title" style="margin:0; font-size: 1.2em;">คำขอเติมเงิน</h2>
-            </div>
-            <div id="admin-info">
-                <small>เจ้าของโซน: <b id="admin-name">Loading...</b></small>
-            </div>
-        </header>
-
-        <div class="content-body" id="main-display">
-            <div style="text-align:center; margin-top: 50px; color: #999;">
-                <i class="fas fa-spinner fa-spin fa-2x"></i>
-                <p>กำลังโหลดข้อมูล...</p>
-            </div>
+    <header class="top-bar">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em; color: var(--dark);"></i>
+            <h2 id="content-title" style="margin:0; font-size: 1.1em; font-weight: 600;">คำขอเติมเงิน</h2>
         </div>
-    </main>
+
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div id="admin-info" style="text-align: right; display: none; @media(min-width: 600px){ display: block; }">
+                <small style="color: #94a3b8; display: block; font-size: 0.7em;">เจ้าของโซน</small>
+                <b id="admin-name" style="font-size: 0.85em; color: var(--dark);">Loading...</b>
+            </div>
+            
+            <a href="index.html" style="
+                text-decoration: none; 
+                background: var(--light); 
+                color: var(--dark); 
+                width: 38px; 
+                height: 38px; 
+                border-radius: 10px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                border: 1px solid #e2e8f0;
+                transition: 0.2s;
+            " title="กลับหน้าหลัก">
+                <i class="fas fa-home"></i>
+            </a>
+        </div>
+    </header>
+
+    <div class="content-body" id="main-display" style="flex: 1; overflow-y: auto; padding: 20px;">
+        <div style="text-align:center; margin-top: 50px; color: #999;">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>กำลังโหลดข้อมูล...</p>
+        </div>
+    </div>
+</main>
 
     <script>
 	const socket = io();
