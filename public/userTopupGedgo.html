@@ -10,6 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script src="/socket.io/socket.io.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>GedGo! - เติมเงินสมาชิก</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -725,6 +726,8 @@ async function submitWithdraw() {
     const amount = parseFloat(document.getElementById('wd-amount').value);
     const bankInfo = document.getElementById('wd-bank').value.trim();
     const myName = localStorage.getItem('myUsername');
+    // ดึงพิกัด/โซนจาก localStorage เพื่อส่งไปให้ Server หาแอดมินที่ดูแล
+    const myLocation = localStorage.getItem('userLocation'); 
 
     if (!amount || amount <= 0 || !bankInfo) {
         return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุจำนวนเงินและบัญชีรับเงิน', 'error');
@@ -736,23 +739,34 @@ async function submitWithdraw() {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'ตกลง, ถอนเงิน',
+        cancelButtonText: 'ยกเลิก',
         confirmButtonColor: '#c62828'
     });
 
     if (confirm.isConfirmed) {
+        // แสดง Loading ระหว่างรอ Server ตอบกลับ
+        Swal.showLoading();
+
         try {
             const res = await fetch('/api/user/request-withdraw', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: myName, amount, bankInfo })
+                body: JSON.stringify({ 
+                    username: myName, 
+                    amount: amount, 
+                    bankInfo: bankInfo,
+                    location: myLocation // ส่งพิกัดไปด้วยเพื่อให้ระบบเลือกแอดมินถูกโซน
+                })
             });
             const data = await res.json();
 
             if (res.ok) {
-                Swal.fire('สำเร็จ', 'ส่งคำขอถอนเงินแล้ว โปรดรอแอดมินดำเนินการ', 'success')
-                .then(() => checkWithdrawStatus()); // สลับไปหน้าแชทค้างทันที
+                Swal.fire('สำเร็จ', 'ส่งคำขอถอนเงินแล้ว โปรดรอแอดมินดำเนินการโอนเงิน', 'success')
+                .then(() => {
+                    checkWithdrawStatus(); // เมื่อกด OK ให้สลับไปหน้าสถานะแชททันที
+                });
             } else {
-                Swal.fire('ผิดพลาด', data.error, 'error');
+                Swal.fire('ผิดพลาด', data.error || 'ไม่สามารถดำเนินการได้', 'error');
             }
         } catch(e) {
             Swal.fire('Error', 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้', 'error');
