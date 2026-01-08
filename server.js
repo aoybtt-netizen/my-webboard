@@ -3653,6 +3653,34 @@ app.get('/api/withdraw/chat-history', async (req, res) => {
     }
 });
 
+// API สำหรับดึงข้อมูลผู้ใช้ (เพื่อแสดงยอดเงินคงเหลือในหน้าถอนเงิน)
+app.get('/api/user-data', async (req, res) => {
+    try {
+        const { username } = req.query;
+        if (!username) return res.status(400).json({ error: "ระบุชื่อผู้ใช้งาน" });
+
+        const user = await getUserData(username); // เรียกใช้ฟังก์ชันที่มีอยู่แล้วใน server.js
+        if (!user) return res.status(404).json({ error: "ไม่พบผู้ใช้" });
+
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// 3. สำหรับ Admin: ดึงรายการถอนเงินที่รออยู่
+app.get('/api/admin/withdraw-requests', async (req, res) => {
+    try {
+        const { admin } = req.query;
+        const requests = await withdrawRequestsCollection
+            .find({ targetAdmin: admin, status: 'pending' })
+            .sort({ createdAt: -1 }).toArray();
+        res.json(requests);
+    } catch (err) {
+        res.status(500).send(err);
+    }
+});
+
 
 
 
