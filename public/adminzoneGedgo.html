@@ -188,16 +188,6 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     </div>
 	
 	
-	<div id="section-withdraw-list" style="display: none;">
-    <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: bold; color: #e74c3c;"><i class="fas fa-money-bill-wave"></i> คำขอถอนเงินสด</span>
-            <span id="withdraw-count-label" class="badge" style="background: #e74c3c; display:none;">0 รายการ</span>
-        </div>
-    </div>
-    <div id="withdraw-list-container">
-        </div>
-</div>
 
 
 </main>
@@ -239,11 +229,10 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         document.body.appendChild(storage);
     }
 	if (membersListSec) storage.appendChild(membersListSec);
-    // 3. ย้ายทุก Section ไปพักไว้ใน storage ก่อน (ของจะไม่โดนลบจากหน่วยความจำ)
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
-    if (kycListSec) storage.appendChild(kycListSec); // เก็บส่วน KYC ไว้ในที่ปลอดภัยด้วย
-
+    if (kycListSec) storage.appendChild(kycListSec);
+	if (withdrawListSec) storage.appendChild(withdrawListSec);
     // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element จริงถูกย้ายไปที่ storage ไม่ได้ถูกทำลาย)
     display.innerHTML = ''; 
 
@@ -266,7 +255,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">กำลังโหลด...</p>';
         loadTopupRequests(); 
 
-    } else if (type === 'withdraw') { // 🆕 เพิ่ม Logic หน้าถอนเงิน
+    } else if (type === 'withdraw') {
         title.innerText = 'รายการถอนเงิน (USD)';
         display.appendChild(withdrawListSec);
         display.appendChild(adminChatSec); // ใช้แชทตัวเดิมร่วมกันได้
@@ -1679,6 +1668,11 @@ function openWithdrawProcess(id, user, amount, bankInfo) {
             <div id="topup-list-container">
             </div>
         </div>
+		
+		<div id="section-withdraw-list" style="display: none;">
+    <div id="withdraw-list-container">
+        </div>
+</div>
 
 
         <div id="section-admin-chat" style="display: none;">
