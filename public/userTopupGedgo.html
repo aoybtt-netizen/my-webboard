@@ -10,7 +10,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script src="/socket.io/socket.io.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>GedGo! - เติมเงินสมาชิก</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -218,46 +217,35 @@ html {
     function switchTab(tab) {
     isHistoryMode = false;
     const title = document.getElementById('content-title');
-    const topupSec = document.getElementById('section-topup-form'); 
+    const topupSec = document.getElementById('section-topup-form');
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
+    const display = document.getElementById('main-display');
 
+    // จัดการ Class Active ของเมนู
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-    // ใช้ event.currentTarget หรือตรวจสอบตัวแปร event
-    if(typeof event !== 'undefined' && event) event.currentTarget.classList.add('active');
+    if(event) event.currentTarget.classList.add('active');
 
-    // ✅ แก้ไขตรงนี้: เช็คก่อนว่า chatSec มีอยู่จริงไหม ค่อยสั่งงาน
-    if (chatSec) {
-        const inputArea = chatSec.querySelector('div:last-child');
-        if(inputArea) inputArea.style.display = 'flex';
-        // ซ่อน Chat ไว้ก่อน เดี๋ยวถ้าเป็น tab topup ค่อยไปเปิดใน checkTopupStatus
-        chatSec.style.display = 'none'; 
-    }
-
-    // ซ่อนส่วนอื่นๆ รอไว้ก่อน
+    // ล้างหน้าจอหลักก่อนแสดงผลใหม่ (ยกเว้นส่วนที่เป็นแชทที่เราจะคุมเอง)
+    chatSec.style.display = 'none';
+    historySec.style.display = 'none';
     if(topupSec) topupSec.style.display = 'none';
-    if(historySec) historySec.style.display = 'none';
-
-    // --- เริ่มเงื่อนไขการแสดงผล ---
 
     if (tab === 'topup') {
         title.innerText = 'เติมเงิน';
-        // เรียก checkTopupStatus เพื่อดูว่าควรโชว์ฟอร์มหรือโชว์แชท
-        checkTopupStatus(); 
+        checkTopupStatus(); // เช็คว่ามีรายการเติมเงินค้างไหม
+    } 
+    else if (tab === 'withdraw') {
+        title.innerText = 'ถอนเงินสดออกจากระบบ';
+        checkWithdrawStatus(); // ✅ เช็คว่ามีรายการถอนเงินค้างไหม
+    } 
+    else if (tab === 'history') {
+        title.innerText = 'ประวัติธุรกรรม';
+        historySec.style.display = 'block';
+        loadHistory(); // โหลดประวัติทั้งเติมและถอน (หรือแยกตามความต้องการ)
+    }
 
-    } else if (tab === 'withdraw') { 
-        title.innerText = "ถอนเงินสดออกจากระบบ";
-        checkWithdrawStatus();
-    } else {
-        title.innerText = 'ประวัติการเติมเงิน';
-        if(historySec) historySec.style.display = 'block';
-        loadHistory();
-    }
-    
-    if (window.innerWidth <= 768 && typeof toggleSidebar === 'function') {
-        const sidebar = document.getElementById('sidebar');
-        if(sidebar && sidebar.classList.contains('active')) toggleSidebar();
-    }
+    if (window.innerWidth <= 768) toggleSidebar();
 }
 
         async function processTopup() {
@@ -668,59 +656,86 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
 
 
 
-// ฟอร์มกรอกข้อมูลถอนเงิน
+// 1. เช็คว่ามีรายการถอนเงินค้างไหม
+async function checkWithdrawStatus() {
+    const myName = localStorage.getItem('myUsername');
+    const display = document.getElementById('main-display');
+    const chatSec = document.getElementById('section-pending-chat');
+    
+    // โชว์ Loading
+    display.innerHTML = '<div style="text-align:center; padding:50px; color:#999;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบข้อมูลการถอน...</div>';
+
+    try {
+        const res = await fetch(`/api/user/withdraw-status?username=${myName}`);
+        const result = await res.json();
+
+        if (result.hasPending) {
+            // ✅ มีรายการค้าง -> โชว์แชท
+            renderWithdrawPending(result.data);
+        } else {
+            // ❌ ไม่มีรายการค้าง -> โชว์ฟอร์มกรอก
+            renderWithdrawForm();
+        }
+    } catch (e) {
+        console.error(e);
+        renderWithdrawForm();
+    }
+}
+
+// 2. แสดงฟอร์มกรอกข้อมูลถอนเงิน
 async function renderWithdrawForm() {
     const display = document.getElementById('main-display');
     const myName = localStorage.getItem('myUsername');
     
-    // ดึงยอดเงินปัจจุบัน
+    // ดึงยอดเงินล่าสุด
     let balance = 0;
     try {
-        const res = await fetch(`/api/user-data?username=${myName}`); // ใช้ API ดึงข้อมูล User เดิมของคุณ
+        const res = await fetch(`/api/user-data?username=${myName}`);
         const data = await res.json();
         balance = data.coins || 0;
     } catch(e) {}
 
     display.innerHTML = `
-        <div class="topup-card" style="max-width:500px; margin:0 auto;">
-            <div style="text-align:center; margin-bottom:20px; padding:20px; background:#fff5f5; border-radius:15px; border:1px solid #ffcdd2;">
-                <div style="color:#c62828;">ยอดเงินที่ถอนได้</div>
-                <div style="font-size:2em; font-weight:bold; color:#c62828;">${balance.toFixed(2)} USD</div>
+        <div class="topup-card" style="max-width:500px; margin:0 auto; border-top: 5px solid #c62828;">
+            <div style="text-align:center; margin-bottom:20px; padding:20px; background:#fff5f5; border-radius:15px;">
+                <div style="color:#c62828; font-size:0.9em;">ยอดเงินที่ถอนได้</div>
+                <div style="font-size:2.2em; font-weight:bold; color:#c62828;">${balance.toFixed(2)} <span style="font-size:0.5em;">USD</span></div>
             </div>
 
-            <div style="margin-bottom:15px;">
-                <label style="font-weight:bold;">จำนวนเงิน (USD)</label>
-                <input type="number" id="wd-amount" placeholder="0.00" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1.1em;">
+            <div class="amount-input-group" style="margin-top:0;">
+                <label style="display:block; text-align:left; font-weight:bold; margin-bottom:5px; font-size:0.9em;">จำนวนเงินที่ต้องการถอน</label>
+                <input type="number" id="wd-amount" class="amount-input" placeholder="0.00" style="border-color:#ffcdd2;">
             </div>
 
-            <div style="margin-bottom:20px;">
-                <label style="font-weight:bold;">โอนเข้าบัญชี (ธนาคาร/เลขบัญชี/ชื่อ)</label>
-                <textarea id="wd-bank" rows="3" placeholder="เช่น กสิกร 123-4-56789-0 นาย..." style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;"></textarea>
+            <div style="text-align:left; margin-bottom:20px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9em;">ระบุบัญชีธนาคาร (ชื่อ/เลขบัญชี/ธนาคาร)</label>
+                <textarea id="wd-bank" rows="3" placeholder="ตัวอย่าง: กสิกรไทย 123-4-56789-0 นายสมชาย" 
+                    style="width:100%; padding:12px; border:2px solid #eee; border-radius:12px; font-family:inherit; outline:none; box-sizing:border-box;"></textarea>
             </div>
 
-            <button onclick="submitWithdraw()" style="width:100%; padding:15px; background:#c62828; color:white; border:none; border-radius:10px; font-weight:bold; font-size:1.1em; cursor:pointer;">
-                แจ้งถอนเงิน
+            <button onclick="submitWithdraw()" class="btn-submit-topup" style="background:linear-gradient(135deg, #c62828, #e74c3c); box-shadow: 0 4px 15px rgba(198, 40, 40, 0.3);">
+                <i class="fas fa-paper-plane"></i> ยืนยันคำขอถอนเงิน
             </button>
         </div>
     `;
 }
 
-// ส่งข้อมูลไป Server
+// 3. ส่งคำขอถอนเงินไป Backend
 async function submitWithdraw() {
     const amount = parseFloat(document.getElementById('wd-amount').value);
-    const bankInfo = document.getElementById('wd-bank').value;
+    const bankInfo = document.getElementById('wd-bank').value.trim();
     const myName = localStorage.getItem('myUsername');
 
     if (!amount || amount <= 0 || !bankInfo) {
-        return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุจำนวนเงินและบัญชี', 'error');
+        return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุจำนวนเงินและบัญชีรับเงิน', 'error');
     }
 
     const confirm = await Swal.fire({
-        title: 'ยืนยันการถอน?',
-        text: `ยอดเงิน ${amount} USD จะถูกหักออกจากกระเป๋าทันที`,
+        title: 'ยืนยันการถอนเงิน?',
+        text: `ยอดเงิน ${amount.toFixed(2)} USD จะถูกหักออกจากกระเป๋าทันทีเพื่อรอการตรวจสอบ`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'ยืนยัน',
+        confirmButtonText: 'ตกลง, ถอนเงิน',
         confirmButtonColor: '#c62828'
     });
 
@@ -734,97 +749,48 @@ async function submitWithdraw() {
             const data = await res.json();
 
             if (res.ok) {
-                Swal.fire('สำเร็จ', 'ส่งคำขอถอนเงินแล้ว', 'success')
-                    .then(() => {
-            checkWithdrawStatus(); 
-        });
+                Swal.fire('สำเร็จ', 'ส่งคำขอถอนเงินแล้ว โปรดรอแอดมินดำเนินการ', 'success')
+                .then(() => checkWithdrawStatus()); // สลับไปหน้าแชทค้างทันที
             } else {
                 Swal.fire('ผิดพลาด', data.error, 'error');
             }
         } catch(e) {
-            Swal.fire('Connection Error', 'ติดต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+            Swal.fire('Error', 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้', 'error');
         }
     }
 }
 
-// 1. เช็คว่ามีรายการค้างไหม
-async function checkWithdrawStatus() {
-    const myName = localStorage.getItem('myUsername');
-    const display = document.getElementById('main-display');
-    
-    // โชว์ Loading ก่อน
-    display.innerHTML = '<div style="text-align:center; padding:50px; color:#999;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบข้อมูล...</div>';
-
-    try {
-        const res = await fetch(`/api/user/withdraw-status?username=${myName}`);
-        const result = await res.json();
-
-        if (result.hasPending) {
-            // ✅ ถ้ามีค้าง -> โชว์หน้าแชท (แต่เปลี่ยนข้อมูลเป็นถอนเงิน)
-            renderWithdrawPending(result.data);
-        } else {
-            // ❌ ถ้าไม่มี -> โชว์ฟอร์มกรอกปกติ
-            renderWithdrawForm();
-        }
-    } catch (e) {
-        console.error(e);
-        renderWithdrawForm(); // ถ้า Error ให้โชว์ฟอร์มไปก่อน
-    }
-}
-
-// 2. แปลงร่างหน้า Chat ให้เป็นข้อมูลถอนเงิน (ใช้ API Chat เดิมได้เลย!)
 function renderWithdrawPending(data) {
     const display = document.getElementById('main-display');
     const chatSec = document.getElementById('section-pending-chat');
     
-    // เคลียร์ Main Display แล้วเอา Chat Section มาแปะ
-    display.innerHTML = '';
-    display.appendChild(chatSec);
-    chatSec.style.display = 'flex'; // โชว์กล่องแชท
+    display.innerHTML = ''; // ล้างหน้าจอหลัก
+    chatSec.style.display = 'flex'; // เปิดส่วนแชท
     
-    // เปิดช่องพิมพ์
-    const inputArea = chatSec.querySelector('div:last-child');
-    if(inputArea) inputArea.style.display = 'flex';
+    currentRequestId = data._id; // เก็บ ID ไว้สำหรับส่งแชท
 
-    // 👇 ไฮไลท์สำคัญ: เปลี่ยนข้อมูลข้างบนแชท ให้เป็นรายละเอียดการถอนเงิน
-    const infoBox = document.getElementById('pending-info-box');
-    infoBox.innerHTML = `
-        <div style="text-align: center; color: #555;">
-            <div style="font-size: 3em; color: #e74c3c; margin-bottom: 10px;">
-                <i class="fas fa-clock"></i>
-            </div>
-            <h2 style="margin: 0; color: #333;">รอตรวจสอบการถอน</h2>
-            <p style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                แอดมินกำลังตรวจสอบยอดเงินและดำเนินการโอน<br>
-                กรุณารอสักครู่...
-            </p>
-            
-            <div style="background: white; border-radius: 12px; padding: 15px; margin: 15px 0; border: 1px dashed #e74c3c; text-align: left;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color:#666;">จำนวนเงินที่ถอน:</span>
-                    <b style="color:#e74c3c; font-size:1.1em;">${data.amount.toFixed(2)} USD</b>
+    // ปรับข้อมูลหัวแชทให้เป็นข้อมูลถอนเงิน
+    document.getElementById('admin-auto-reply-wrapper').innerHTML = `
+        <div style="margin-bottom: 15px; width: 100%;">
+            <div style="background: #fff5f5; border: 1px solid #ffcdd2; padding: 15px; border-radius: 12px; margin-bottom:10px;">
+                <div style="color: #c62828; font-weight: bold; text-align: center; margin-bottom: 10px;">
+                   <i class="fas fa-university"></i> ข้อมูลการถอนเงินของคุณ
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color:#666;">โอนเข้าบัญชี:</span>
-                    <b style="color:#333;">${data.bankInfo}</b>
-                </div>
-                <div style="font-size: 0.8em; color: #999; margin-top: 8px; text-align: right;">
-                    เวลาแจ้ง: ${new Date(data.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+                <div style="font-size: 0.9em; line-height: 1.6;">
+                    <b>จำนวนเงิน:</b> <span style="color:#c62828; font-weight:bold;">${data.amount.toFixed(2)} USD</span><br>
+                    <b>รับเงินทาง:</b> ${data.bankInfo.replace(/\n/g, '<br>')}<br>
+                    <b>สถานะ:</b> <span style="color:#f1c40f;">รอแอดมินโอนเงิน...</span>
                 </div>
             </div>
-            
-            <div style="font-size: 0.85em; color: #999; background: #eee; padding: 5px 10px; border-radius: 20px; display: inline-block;">
-                <i class="fas fa-comment-dots"></i> สอบถามเพิ่มเติมได้ที่แชทด้านล่าง
+            <div style="text-align:center; font-size:0.8em; color:#999;">
+                คุณสามารถส่งข้อความสอบถามแอดมินได้ที่ด้านล่าง
             </div>
         </div>
     `;
 
-    // เลื่อนแชทลงล่างสุดเสมอ
-    const chatBox = document.getElementById('realtime-chats');
-    chatBox.scrollTop = chatBox.scrollHeight;
+    loadChatHistory(data._id); // โหลดแชทเดิม
+    socket.emit('joinRequest', data._id); // เข้าห้อง Socket
 }
-
-
 
 
 

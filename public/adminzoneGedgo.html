@@ -130,8 +130,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         <i class="fas fa-wallet"></i> คำขอเติมเงิน
         <span class="badge" id="topup-count">0</span>
     </div>
-	<div class="menu-item" onclick="showContent('withdraw')">
-    <i class="fas fa-hand-holding-usd"></i> คำขอถอนเงิน
+	<div class="menu-item" id="menu-withdraw" onclick="showContent('withdraw-list')">
+    <i class="fas fa-money-bill-transfer"></i> รายการถอนเงิน 
+    <span class="badge" id="withdraw-badge" style="display:none; background: #e74c3c;">0</span>
 	</div>
     <div class="menu-item" onclick="showContent('kyc')">
         <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
@@ -185,6 +186,20 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
             <p>กำลังโหลดข้อมูล...</p>
         </div>
     </div>
+	
+	
+	<div id="section-withdraw-list" style="display: none;">
+    <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; color: #e74c3c;"><i class="fas fa-money-bill-wave"></i> คำขอถอนเงินสด</span>
+            <span id="withdraw-count-label" class="badge" style="background: #e74c3c; display:none;">0 รายการ</span>
+        </div>
+    </div>
+    <div id="withdraw-list-container">
+        </div>
+</div>
+
+
 </main>
 
     <script>
@@ -209,7 +224,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
 	const membersListSec = document.getElementById('section-members-list');
-    const withdrawListSec = document.getElementById('section-withdraw-list');
+    
     // --- ส่วนป้องกันข้อมูลหาย (รวม KYC เข้าไปในระบบเก็บของลับ) ---
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
@@ -228,7 +243,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
     if (kycListSec) storage.appendChild(kycListSec); // เก็บส่วน KYC ไว้ในที่ปลอดภัยด้วย
-	if (withdrawListSec) storage.appendChild(withdrawListSec);
+
     // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element จริงถูกย้ายไปที่ storage ไม่ได้ถูกทำลาย)
     display.innerHTML = ''; 
 
@@ -251,12 +266,18 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">กำลังโหลด...</p>';
         loadTopupRequests(); 
 
-    }else if (type === 'withdraw') { // ✅ เพิ่มเคสนี้
-        title.innerText = 'รายการคำขอถอนเงิน';
+    } else if (type === 'withdraw') { // 🆕 เพิ่ม Logic หน้าถอนเงิน
+        title.innerText = 'รายการถอนเงิน (USD)';
         display.appendChild(withdrawListSec);
+        display.appendChild(adminChatSec); // ใช้แชทตัวเดิมร่วมกันได้
+        
+        adminChatSec.style.display = 'none';
         withdrawListSec.style.display = 'block';
-        loadWithdrawRequests(); // เรียกฟังก์ชันโหลดข้อมูล
-    } else if (type === 'kyc') { // ✅ เพิ่ม Logic สำหรับหน้า KYC
+        
+        document.getElementById('withdraw-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดรายการถอน...</p>';
+        loadWithdrawRequests(); // ฟังก์ชันโหลดข้อมูลถอนเงิน
+
+    }else if (type === 'kyc') { // ✅ เพิ่ม Logic สำหรับหน้า KYC
         title.innerText = 'คำขอยืนยันตัวตน (20 เมตร)';
         // ดึงส่วน KYC จาก storage มาแสดงที่หน้าจอหลัก
         display.appendChild(kycListSec);
@@ -1577,79 +1598,71 @@ async function executeBanAction(username, days) {
 
 
 
-// โหลดรายการถอนเงิน
 async function loadWithdrawRequests() {
-    const container = document.getElementById('withdraw-list-container');
     const adminName = localStorage.getItem('myUsername');
-    container.innerHTML = '<p style="text-align:center; margin-top:20px;">กำลังโหลด...</p>';
-
     try {
-        const res = await fetch(`/api/admin/withdraw-list?admin=${adminName}`);
-        const requests = await res.json();
-
-        if (requests.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:50px;">ไม่มีคำขอถอนเงินใหม่</p>';
+        const res = await fetch(`/api/admin/withdraw-requests?admin=${adminName}`);
+        const data = await res.json();
+        
+        const container = document.getElementById('withdraw-list-container');
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">ไม่มีรายการถอนเงินค้างในโซนของคุณ</div>';
             return;
         }
 
-        container.innerHTML = requests.map(req => `
-            <div class="admin-card" style="border-left: 5px solid #e74c3c;">
-                <div style="flex:1;">
-                    <div style="font-size:1.1em; font-weight:bold;">@${req.username}</div>
-                    <div style="color:#c62828; font-weight:bold; font-size:1.2em;">ถอน: ${req.amount.toFixed(2)} USD</div>
-                    <div style="background:#f9f9f9; padding:8px; border-radius:8px; margin-top:5px; font-size:0.9em; color:#555;">
-                        🏦 ${req.bankInfo}
+        container.innerHTML = data.map(item => `
+            <div class="request-item" onclick="openWithdrawProcess('${item._id}', '${item.username}', ${item.amount}, '${encodeURIComponent(item.bankInfo)}')">
+                <div style="display:flex; justify-content:space-between;">
+                    <div>
+                        <div style="font-weight:bold;">@${item.username}</div>
+                        <div style="font-size:0.8em; color:#666;">${new Date(item.createdAt).toLocaleString()}</div>
                     </div>
-                    <small style="color:#999;">${new Date(req.createdAt).toLocaleString('th-TH')}</small>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:5px; min-width:100px;">
-                    <button onclick="processWithdraw('${req._id}', 'approved')" class="status-btn btn-approve">
-                        <i class="fas fa-check"></i> โอนแล้ว
-                    </button>
-                    <button onclick="processWithdraw('${req._id}', 'rejected')" class="status-btn btn-reject">
-                        <i class="fas fa-times"></i> ปฏิเสธ
-                    </button>
+                    <div style="text-align:right;">
+                        <div style="color:#e74c3c; font-weight:bold;">-${item.amount.toFixed(2)} USD</div>
+                        <div style="font-size:0.75em; color:#e74c3c;">รอโอนเงิน</div>
+                    </div>
                 </div>
             </div>
         `).join('');
-
-    } catch(e) {
-        container.innerHTML = '<p style="color:red; text-align:center;">โหลดข้อมูลผิดพลาด</p>';
+    } catch (e) {
+        console.error("Load Withdraw Error:", e);
     }
 }
 
-// อนุมัติ หรือ ปฏิเสธ
-async function processWithdraw(requestId, status) {
-    const actionName = status === 'approved' ? 'ยืนยันการโอนเงิน' : 'ปฏิเสธและคืนเงิน';
+// ฟังก์ชันเปิดแชทและจัดการการถอน
+function openWithdrawProcess(id, user, amount, bankInfo) {
+    currentRequestId = id;
+    const decodedBank = decodeURIComponent(bankInfo);
+
+    // ปรับ UI แชทให้เข้ากับการถอน
+    const adminChatSec = document.getElementById('section-admin-chat');
+    const withdrawListSec = document.getElementById('section-withdraw-list');
     
-    const confirm = await Swal.fire({
-        title: actionName + '?',
-        text: status === 'rejected' ? 'ยอดเงินจะถูกคืนกลับกระเป๋าสมาชิก' : 'กรุณาตรวจสอบสลิปการโอนเงินให้เรียบร้อย',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'ยืนยัน',
-        confirmButtonColor: status === 'approved' ? '#2e7d32' : '#c62828'
-    });
+    withdrawListSec.style.display = 'none';
+    adminChatSec.style.display = 'flex';
+    
+    document.getElementById('chat-user-name').innerText = `ถอนเงิน: @${user}`;
+    
+    // โชว์ข้อมูลบัญชีธนาคารในช่องแชท (เพื่อให้แอดมินก๊อปปี้ไปโอนได้ง่าย)
+    const chatDisplay = document.getElementById('chat-messages');
+    chatDisplay.innerHTML = `
+        <div style="background:#fff5f5; border:1px solid #ffcdd2; padding:15px; border-radius:12px; margin-bottom:15px; font-size:0.9em;">
+            <div style="font-weight:bold; color:#c62828; margin-bottom:5px;">📌 ข้อมูลการโอนเงิน</div>
+            <div style="background:white; padding:10px; border-radius:8px; border:1px dashed #c62828; user-select:all;">
+                ${decodedBank.replace(/\n/g, '<br>')}
+            </div>
+            <div style="margin-top:10px; font-weight:bold;">ยอดที่ต้องโอน: ${amount.toFixed(2)} USD</div>
+            <hr style="border:0; border-top:1px solid #ffcdd2; margin:10px 0;">
+            <div style="display:flex; gap:10px;">
+                <button onclick="confirmWithdraw('${id}', 'approved')" style="flex:1; background:#27ae60; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ยืนยันการโอนแล้ว</button>
+                <button onclick="confirmWithdraw('${id}', 'rejected')" style="flex:1; background:#e74c3c; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ยกเลิก/คืนเงิน</button>
+            </div>
+        </div>
+    `;
 
-    if (confirm.isConfirmed) {
-        try {
-            const adminName = localStorage.getItem('myUsername');
-            const res = await fetch('/api/admin/process-withdraw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ requestId, status, adminName })
-            });
-
-            if (res.ok) {
-                Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อย', 'success');
-                loadWithdrawRequests(); // รีโหลดรายการ
-            } else {
-                Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาด', 'error');
-            }
-        } catch(e) {
-            Swal.fire('Connection Error', 'เชื่อมต่อไม่ได้', 'error');
-        }
-    }
+    loadChatHistory(id); // โหลดประวัติแชทเดิม
+    socket.emit('joinRequest', id);
 }
 
 
@@ -1666,6 +1679,7 @@ async function processWithdraw(requestId, status) {
             <div id="topup-list-container">
             </div>
         </div>
+
 
         <div id="section-admin-chat" style="display: none;">
             <button onclick="showContent('topup')" style="background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 15px;">
@@ -1822,13 +1836,6 @@ async function processWithdraw(requestId, status) {
     <div id="members-list-container" style="display: flex; flex-direction: column; gap: 12px;">
     </div>
 </div>
-
-
-<div id="section-withdraw-list" style="display: none;">
-    <div id="withdraw-list-container" style="display: flex; flex-direction: column; gap: 15px;">
-        </div>
-</div>
-
 
 
 	
