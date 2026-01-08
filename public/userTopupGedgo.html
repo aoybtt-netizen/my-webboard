@@ -675,9 +675,9 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
             <div style="text-align: center;">
                 <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
                 <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
-                    รายการ${isWithdraw ? 'ถอนเงิน' : 'เติมเงิน'}นี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
+                    รายการนี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
                 </div>
-                <div style="font-size: 1.2em; font-weight: bold; margin: 5px 0; color: var(--dark);">${amount.toFixed(2)} USD</div>
+                <div style="font-size: 1.1em; font-weight: bold; margin: 5px 0;">ยอดเงิน: ${amount.toFixed(2)} USD</div>
             </div>
             
             <div style="border-top: 1px solid rgba(0,0,0,0.05); margin-top: 10px; padding-top: 10px; font-size: 0.85em; color: #666;">
@@ -691,7 +691,7 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
                 </div>
             </div>
 
-            <button onclick="switchTab('history')" style="width:100%; margin-top:12px; border:none; background:rgba(0,0,0,0.08); padding: 12px; border-radius: 8px; cursor:pointer; font-weight:bold; color:#555;">
+            <button onclick="switchTab('history')" style="width:100%; margin-top:12px; border:none; background:rgba(0,0,0,0.08); padding: 10px; border-radius: 8px; cursor:pointer; font-weight:bold; color:#555;">
                 <i class="fas fa-arrow-left"></i> กลับไปหน้าประวัติ
             </button>
         </div>
