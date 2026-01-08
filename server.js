@@ -34,6 +34,7 @@ let merchantTemplatesCollection;
 let topupChatsCollection;
 let topupRequestsCollection;
 let adminSettingsCollection;
+let withdrawCollection;
 
 const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb+srv://aoyfos:Webboard1234@cluster0.r3jl20m.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
@@ -346,6 +347,7 @@ async function connectDB() {
         topupRequestsCollection = db.collection('topup_requests');
         adminSettingsCollection = db.collection('admin_settings');
         topupChatsCollection = db.collection('topup_chats');
+		withdrawCollection = db.collection('withdraws');
 
         if (typeof seedInitialData === 'function') {
             await seedInitialData();
@@ -3419,6 +3421,34 @@ app.get('/api/topup/history', async (req, res) => {
 
 
 //ถอนเงิน
+// API: ดึงข้อมูลยอดเงินสมาชิก (สำหรับแสดงก่อนถอนเงิน)
+app.get('/api/user-data', async (req, res) => {
+    try {
+        const { username } = req.query;
+        
+        if (!username) {
+            return res.status(400).json({ error: "Missing username" });
+        }
+
+        // ค้นหา User ในฐานข้อมูล
+        const user = await usersCollection.findOne({ username: username });
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // ส่งข้อมูลกลับไปเฉพาะที่จำเป็น (ยอดเงิน)
+        res.json({
+            username: user.username,
+            coins: user.coins || 0,  // ยอดเงินคงเหลือ
+            // เพิ่มฟิลด์อื่นถ้าจำเป็น เช่น bankInfo เดิม
+        });
+
+    } catch (err) {
+        console.error("User Data Error:", err);
+        res.status(500).json({ error: "Server Error" });
+    }
+});
 // 1. API สมาชิกแจ้งถอนเงิน (หักเงินทันที)
 app.post('/api/user/request-withdraw', async (req, res) => {
     const { username, amount, bankInfo } = req.body;
