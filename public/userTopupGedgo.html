@@ -97,12 +97,13 @@ html {
 			<div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
             <a href="index.html" class="menu-item" style="padding:0;"><i class="fas fa-user-circle"></i> กลับหน้าแรก</a>
         </div>
-            <div class="menu-item active" onclick="switchTab('topup')">
-                <i class="fas fa-hand-holding-usd"></i> เติมเงิน
-            </div>
-			<div class="menu-item active" onclick="switchTab('topup')">
-                <i class="fas fa-hand-holding-usd"></i> ถอนเงิน
-            </div>
+            <div class="menu-item" id="menu-topup" onclick="switchTab('topup', 'TOPUP')">
+		<i class="fas fa-hand-holding-usd"></i> เติมเงิน
+		</div>
+
+		<div class="menu-item" id="menu-withdraw" onclick="switchTab('topup', 'WITHDRAW')">
+			<i class="fas fa-money-bill-transfer"></i> ถอนเงิน
+		</div>
             <div class="menu-item" onclick="switchTab('history')">
                 <i class="fas fa-file-invoice-dollar"></i> ประวัติการเติมเงิน
             </div>
@@ -233,13 +234,20 @@ html {
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
 
+    // ล้างสถานะ active จากทุกเมนู
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
     
-    // จัดการ UI ตามโหมด
     if (tab === 'topup') {
+        // จัดการสถานะ active ของปุ่มใน Sidebar
+        if(type === 'TOPUP') document.getElementById('menu-topup').classList.add('active');
+        if(type === 'WITHDRAW') document.getElementById('menu-withdraw').classList.add('active');
+
         title.innerText = (transactionType === 'TOPUP') ? 'เติมเงิน' : 'ถอนเงินสด';
-		document.getElementById('withdraw-bank-info').style.display = (transactionType === 'WITHDRAW') ? 'block' : 'none';
-		document.getElementById('form-icon').style.color = (transactionType === 'WITHDRAW') ? 'var(--danger)' : 'var(--primary)';
+        
+        // --- 2 บรรทัดที่คุณกังวล อยู่ตรงนี้ถูกต้องแล้ว ---
+        document.getElementById('withdraw-bank-info').style.display = (transactionType === 'WITHDRAW') ? 'block' : 'none';
+        document.getElementById('form-icon').style.color = (transactionType === 'WITHDRAW') ? 'var(--danger)' : 'var(--primary)';
+        
         // เปลี่ยนสีปุ่มและไอคอนตามโหมด
         const submitBtn = document.querySelector('.btn-submit-topup');
         if(transactionType === 'WITHDRAW') {
@@ -253,8 +261,12 @@ html {
         }
         
         historySec.style.display = 'none';
-        checkTransactionStatus(); // เปลี่ยนชื่อฟังก์ชันจาก checkTopupStatus
+        checkTransactionStatus(); 
     } else {
+        // กรณีหน้าประวัติ
+        const historyBtn = document.querySelector('div[onclick*="history"]');
+        if(historyBtn) historyBtn.classList.add('active');
+        
         title.innerText = 'ประวัติธุรกรรม';
         if(topupSec) topupSec.style.display = 'none';
         chatSec.style.display = 'none';
