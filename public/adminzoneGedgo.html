@@ -176,6 +176,12 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         </div>
     </header>
 
+    <div class="content-body" id="main-display">
+        <div style="text-align:center; margin-top: 50px; color: #999;">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>กำลังโหลดข้อมูล...</p>
+        </div>
+    </div>
 </main>
 
     <script>
@@ -1284,108 +1290,107 @@ socket.on('kyc-location-updated', (data) => {
 	
 	
 	
-	<div class="content-body" id="main-display">
-    
-    <div id="section-topup-list">
-        <div id="topup-list-container">
-            </div>
-    </div>
-
-    <div id="section-admin-chat" style="display: none;">
-        <button onclick="showContent('topup')" style="background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 15px;">
-            <i class="fas fa-arrow-left"></i> กลับไปรายการคำขอ
-        </button>
-
-        <div id="chat-box" style="background: #f1f3f5; padding: 20px; border-radius: 15px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
-            </div>
-
-        <div style="margin-top: 15px; display: flex; gap: 10px;">
-            <button class="status-btn btn-reject" style="flex: 1; padding: 15px;" onclick="processRequest('rejected')">ปฏิเสธคำขอ</button>
-            <button class="status-btn btn-approve" style="flex: 1; padding: 15px;" onclick="processRequest('approved')">อนุมัติและเติมเงิน</button>
-        </div>
-    </div>
-	
-	
-	<div id="section-kyc-list" style="display: none;">
-    <div id="kyc-list-container" style="display: flex; flex-direction: column; gap: 15px;">
-        </div>
-</div>
-
-<div id="kyc-image-modal" class="modal" onclick="this.style.display='none'" style="display:none; position:fixed; z-index:100000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center;">
-    <img id="kyc-modal-img" src="" style="max-width:95%; max-height:95%; border-radius:10px; box-shadow:0 0 20px rgba(255,255,255,0.2);">
-    <div style="position:absolute; top:20px; right:20px; color:white; font-size:2em; cursor:pointer;"><i class="fas fa-times"></i></div>
-</div>
-
-
-<div id="admin-kyc-detail-modal" class="modal" style="display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: white; overflow-y: auto;">
-    
-    <div style="position: sticky; top: 0; background: white; z-index: 10; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee;">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <button onclick="closeKYCDetail()" style="border: none; background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">รายละเอียดการยืนยันตัวตน</h3>
-        </div>
-        <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
-    </div>
-
-    <div style="padding: 20px; max-width: 500px; margin: 0 auto;">
+<div id="hidden-storage" style="display: none;">
         
-        <div id="det-user-img" style="width: 100%; height: 350px; background-size: cover; background-position: center; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; position: relative; border: 4px solid #fff;">
-            <div style="position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.6); color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; backdrop-filter: blur(5px);">
-                <i class="fas fa-camera"></i> รูปถ่ายปัจจุบัน
+        <div id="section-topup-list">
+            <div id="topup-list-container">
             </div>
         </div>
 
-        <div id="det-status-badge" style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid #c8e6c9; margin-bottom: 25px; background: #e8f5e9;">
-            <div id="det-icon-bg" style="background: #2e7d32; color: white; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
-                <i class="fas fa-check-double"></i>
-            </div>
-            <div style="text-align: left; flex: 1;">
-                <div id="det-title" style="font-weight: bold; color: #2e7d32; font-size: 1em;">สถานะ: รอดำเนินการ</div>
-                <div id="det-distance" style="font-size: 0.85em; color: #4caf50; font-weight: bold;">ห่างจากคุณ: 0.0 เมตร</div>
-            </div>
-            <i class="fas fa-shield-alt" style="color: #2e7d32; font-size: 1.5em; opacity: 0.5;"></i>
-        </div>
-
-        <div style="background: #f8fafc; border-radius: 20px; padding: 20px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
-            <h4 style="margin: 0 0 15px; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px;">ข้อมูลสมาชิก</h4>
-            <div style="display: grid; gap: 15px;">
-                <div>
-                    <small style="color: #94a3b8; display: block;">ชื่อ-นามสกุล</small>
-                    <span id="det-name" style="font-weight: bold; font-size: 1.1em;">-</span>
-                </div>
-                <div>
-                    <small style="color: #94a3b8; display: block;">เลขบัตรประชาชน</small>
-                    <span id="det-id" style="font-weight: bold;">-</span>
-                </div>
-                <div style="display: flex; gap: 20px;">
-                    <div style="flex: 1;">
-                        <small style="color: #94a3b8; display: block;">เบอร์โทรศัพท์</small>
-                        <span id="det-phone" style="font-weight: bold;">-</span>
-                    </div>
-                    <div style="flex: 1;">
-                        <small style="color: #94a3b8; display: block;">Username</small>
-                        <span id="det-username" style="font-weight: bold; color: var(--primary);">-</span>
-                    </div>
-                </div>
-                <div>
-                    <small style="color: #94a3b8; display: block;">ที่อยู่ตามพิกัด</small>
-                    <span id="det-address" style="font-size: 0.9em; color: #475569;">-</span>
-                </div>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 15px; padding-bottom: 30px;">
-            <button id="btn-det-reject" class="status-btn btn-reject" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold;">ปฏิเสธ</button>
-            <button id="btn-det-approve" class="status-btn btn-approve" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em;">
-                <i class="fas fa-check-circle"></i> อนุมัติการยืนยัน
+        <div id="section-admin-chat" style="display: none;">
+            <button onclick="showContent('topup')" style="background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 15px;">
+                <i class="fas fa-arrow-left"></i> กลับไปรายการคำขอ
             </button>
+
+            <div id="chat-box" style="background: #f1f3f5; padding: 20px; border-radius: 15px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+            </div>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="status-btn btn-reject" style="flex: 1; padding: 15px;" onclick="processRequest('rejected')">ปฏิเสธคำขอ</button>
+                <button class="status-btn btn-approve" style="flex: 1; padding: 15px;" onclick="processRequest('approved')">อนุมัติและเติมเงิน</button>
+            </div>
         </div>
+        
+        <div id="section-kyc-list" style="display: none;">
+            <div id="kyc-list-container" style="display: flex; flex-direction: column; gap: 15px;">
+            </div>
+        </div>
+
+    </div> 
+    <div id="kyc-image-modal" class="modal" onclick="this.style.display='none'" style="display:none; position:fixed; z-index:100000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center;">
+        <img id="kyc-modal-img" src="" style="max-width:95%; max-height:95%; border-radius:10px; box-shadow:0 0 20px rgba(255,255,255,0.2);">
+        <div style="position:absolute; top:20px; right:20px; color:white; font-size:2em; cursor:pointer;"><i class="fas fa-times"></i></div>
     </div>
-	
-	
-	<div style="background: white; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); margin-top: 20px;">
+
+    <div id="admin-kyc-detail-modal" class="modal" style="display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: white; overflow-y: auto;">
+        
+        <div style="position: sticky; top: 0; background: white; z-index: 10; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button onclick="closeKYCDetail()" style="border: none; background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">รายละเอียดการยืนยันตัวตน</h3>
+            </div>
+            <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+        </div>
+
+        <div style="padding: 20px; max-width: 500px; margin: 0 auto;">
+            
+            <div id="det-user-img" style="width: 100%; height: 350px; background-size: cover; background-position: center; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; position: relative; border: 4px solid #fff;">
+                <div style="position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.6); color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; backdrop-filter: blur(5px);">
+                    <i class="fas fa-camera"></i> รูปถ่ายปัจจุบัน
+                </div>
+            </div>
+
+            <div id="det-status-badge" style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid #c8e6c9; margin-bottom: 25px; background: #e8f5e9;">
+                <div id="det-icon-bg" style="background: #2e7d32; color: white; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div style="text-align: left; flex: 1;">
+                    <div id="det-title" style="font-weight: bold; color: #2e7d32; font-size: 1em;">สถานะ: รอดำเนินการ</div>
+                    <div id="det-distance" style="font-size: 0.85em; color: #4caf50; font-weight: bold;">ห่างจากคุณ: 0.0 เมตร</div>
+                </div>
+                <i class="fas fa-shield-alt" style="color: #2e7d32; font-size: 1.5em; opacity: 0.5;"></i>
+            </div>
+
+            <div style="background: #f8fafc; border-radius: 20px; padding: 20px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
+                <h4 style="margin: 0 0 15px; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px;">ข้อมูลสมาชิก</h4>
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <small style="color: #94a3b8; display: block;">ชื่อ-นามสกุล</small>
+                        <span id="det-name" style="font-weight: bold; font-size: 1.1em;">-</span>
+                    </div>
+                    <div>
+                        <small style="color: #94a3b8; display: block;">เลขบัตรประชาชน</small>
+                        <span id="det-id" style="font-weight: bold;">-</span>
+                    </div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1;">
+                            <small style="color: #94a3b8; display: block;">เบอร์โทรศัพท์</small>
+                            <span id="det-phone" style="font-weight: bold;">-</span>
+                        </div>
+                        <div style="flex: 1;">
+                            <small style="color: #94a3b8; display: block;">Username</small>
+                            <span id="det-username" style="font-weight: bold; color: var(--primary);">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <small style="color: #94a3b8; display: block;">ที่อยู่ตามพิกัด</small>
+                        <span id="det-address" style="font-size: 0.9em; color: #475569;">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px; padding-bottom: 30px;">
+                <button id="btn-det-reject" class="status-btn btn-reject" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold;">ปฏิเสธ</button>
+                <button id="btn-det-approve" class="status-btn btn-approve" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em;">
+                    <i class="fas fa-check-circle"></i> อนุมัติการยืนยัน
+                </button>
+            </div>
+        </div>
+        
+        
+        <div style="background: white; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); margin-top: 20px;">
             <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-comments" style="color: var(--primary);"></i> แชทนัดหมายกับสมาชิก
             </div>
@@ -1403,12 +1408,8 @@ socket.on('kyc-location-updated', (data) => {
                 </button>
             </div>
         </div>
-		
-</div>
-
-
-
-</div>
+            
+    </div>
 
 
 	
