@@ -925,9 +925,12 @@ app.get('/api/users-list', async (req, res) => {
 
         const mapUserResponse = (u) => ({ 
             name: u.username, 
+			fullName: u.fullName || '', // ✅ เพิ่มเพื่อให้โชว์ชื่อจริงได้
+			profileImg: u.profileImg || '', // ✅ เพิ่มเพื่อให้โชว์รูปได้
             coins: u.coins, 
             rating: u.rating, 
             isBanned: u.isBanned,
+			isVerified: u.isVerified || false,
             adminLevel: u.adminLevel || 0,
             country: u.country || 'N/A',
             assignedLocation: u.assignedLocation || null,

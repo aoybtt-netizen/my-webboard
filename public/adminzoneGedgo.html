@@ -134,9 +134,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
         <span class="badge" id="kyc-count">0</span>
     </div>
-	<div class="menu-item" onclick="showContent('history')">
-        <i class="fas fa-history"></i> สมาชิกในโซน
-    </div>
+	<div class="menu-item" onclick="showContent('members')">
+    <i class="fas fa-users"></i> รายชื่อสมาชิก
+	</div>
     <div class="menu-item" onclick="showContent('automessage')">
         <i class="fas fa-comment-dots"></i> ข้อความอัตโนมัติ (เลขบัญชี)
     </div>
@@ -205,6 +205,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     async function showContent(type) {
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
+	const membersListSec = document.getElementById('section-members-list');
     
     // --- ส่วนป้องกันข้อมูลหาย (รวม KYC เข้าไปในระบบเก็บของลับ) ---
     const topupListSec = document.getElementById('section-topup-list');
@@ -219,7 +220,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         storage.style.display = 'none';
         document.body.appendChild(storage);
     }
-
+	if (membersListSec) storage.appendChild(membersListSec);
     // 3. ย้ายทุก Section ไปพักไว้ใน storage ก่อน (ของจะไม่โดนลบจากหน่วยความจำ)
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
@@ -274,7 +275,12 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         title.innerText = 'ประวัติธุรกรรมในโซน';
         display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">กำลังโหลด...</p></div>`;
         loadAdminHistory(); 
-    }
+    }else if (type === 'members') {
+    title.innerText = 'รายชื่อสมาชิกในระบบ';
+    display.appendChild(membersListSec);
+    membersListSec.style.display = 'block';
+    loadMemberList(); 
+}
     
     if(window.innerWidth <= 768 && document.getElementById('sidebar')?.classList.contains('active')) {
         toggleSidebar();
@@ -1284,6 +1290,178 @@ socket.on('kyc-location-updated', (data) => {
 });
 
 
+async function loadMemberList() {
+    const container = document.getElementById('members-list-container');
+    const search = document.getElementById('member-search-input').value;
+    const adminName = localStorage.getItem('myUsername'); // ต้องส่งชื่อแอดมินไปเช็คโซน
+    
+    container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">กำลังโหลดข้อมูลสมาชิกในโซน...</p>';
+
+    try {
+        // ✅ เปลี่ยนมาใช้ API ตัวเดิมที่รองรับการเช็คโซน
+        const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${search}&limit=100`);
+        const data = await res.json();
+        const members = data.users; // API ตัวนี้ส่งกลับมาในรูปแบบ { users: [...] }
+
+        if (!members || members.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999;">ไม่พบรายชื่อสมาชิกในโซนของคุณ</p>';
+            return;
+        }
+
+        container.innerHTML = members.map(user => {
+            // ✅ ปรับชื่อตัวแปรให้ตรงกับที่ API mapUserResponse ส่งมา
+            const username = user.name; 
+            const coins = user.coins || 0;
+            const relation = user.relationType; // 'OWNED' หรือ 'REF'
+
+            return `
+                <div class="admin-card" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-left: 5px solid ${relation === 'OWNED' ? 'var(--primary)' : '#f1c40f'};">
+                    <img src="${user.profileImg || 'https://via.placeholder.com/50'}" 
+                         style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #eee;">
+                    
+                    <div style="flex: 1;">
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <strong style="font-size: 1em; color: var(--dark);">${username}</strong>
+                            <span style="font-size: 0.65em; padding: 2px 6px; border-radius: 10px; background: ${relation === 'OWNED' ? '#e8f5e9' : '#fff3e0'}; color: ${relation === 'OWNED' ? '#2e7d32' : '#e67e22'};">
+                                ${relation === 'OWNED' ? 'ในโซน' : 'อ้างอิง'}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.8em; color: var(--primary); font-weight: bold;">
+                            ยอดเงิน: ${coins.toFixed(2)} USD
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <button onclick="editMemberBalance('${username}', ${coins})" 
+                                style="border: none; background: #f1f5f9; padding: 5px 10px; border-radius: 5px; font-size: 0.75em; cursor: pointer; font-family:'Kanit';">
+                            <i class="fas fa-edit"></i> ปรับยอด
+                        </button>
+                        <button onclick="viewUserProfile('${username}')" 
+                                style="border: none; background: #e8f5e9; color: #2e7d32; padding: 5px 10px; border-radius: 5px; font-size: 0.75em; cursor: pointer; font-family:'Kanit';">
+                            <i class="fas fa-user"></i> โปรไฟล์
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = '<p style="text-align:center; color:red;">ไม่สามารถเชื่อมต่อ API ได้</p>';
+    }
+}
+
+// ฟังก์ชันเสริมสำหรับแอดมินจัดการยอดเงินโดยตรง
+async function editMemberBalance(username, currentBalance) {
+    const { value: newBalance } = await Swal.fire({
+        title: `ปรับยอดเงิน: @${username}`,
+        input: 'number',
+        inputLabel: 'ใส่จำนวนเงินใหม่ (USD)',
+        inputValue: currentBalance,
+        showCancelButton: true,
+        confirmButtonColor: 'var(--primary)',
+        inputValidator: (value) => {
+            if (!value || value < 0) return 'กรุณาใส่จำนวนเงินที่ถูกต้อง'
+        }
+    });
+
+    if (newBalance) {
+        // ส่ง API ไปอัปเดตยอดเงินที่ Server
+        // fetch('/api/admin/update-balance', { ... })
+        Swal.fire('สำเร็จ', `ปรับยอดเงินของ @${username} เป็น ${newBalance} USD แล้ว`, 'success');
+        loadMemberList();
+    }
+}
+
+
+async function viewUserProfile(username) {
+    // 1. แสดง Loading รอไว้ก่อน
+    Swal.fire({
+        title: 'กำลังดึงข้อมูลโปรไฟล์...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const adminName = localStorage.getItem('myUsername');
+        // เรียกใช้ API users-list โดยใช้ชื่อ search เป็น username ของคนนั้นๆ
+        const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${username}`);
+        const data = await res.json();
+        
+        // ค้นหา user ที่มีชื่อตรงเป๊ะ
+        const user = data.users.find(u => u.name === username);
+
+        if (!user) {
+            Swal.fire('ไม่พบผู้ใช้', 'ไม่สามารถดึงข้อมูลสมาชิกคนนี้ได้', 'error');
+            return;
+        }
+
+        Swal.close(); // ปิด Loading
+
+        const content = document.getElementById('user-profile-content');
+        
+        // 2. วาดหน้าโปรไฟล์
+        content.innerHTML = `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="position: relative; display: inline-block;">
+                    <img src="${user.profileImg || 'https://via.placeholder.com/120'}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 5px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    ${user.isVerified ? '<div style="position: absolute; bottom: 5px; right: 5px; background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.2);"><i class="fas fa-check-circle"></i></div>' : ''}
+                </div>
+                <h2 style="margin: 15px 0 5px; color: var(--dark); font-size: 1.4em;">@${user.name}</h2>
+                <div style="color: #64748b; font-size: 0.9em;">${user.fullName || 'ยังไม่ได้ระบุชื่อ-นามสกุล'}</div>
+            </div>
+
+            <div style="background: #f8fafc; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
+                <h4 style="margin: 0 0 15px 0; color: #475569; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px;">สรุปข้อมูลในระบบ</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <small style="color: #94a3b8; display: block;">ยอดเงินคงเหลือ</small>
+                        <strong style="color: var(--primary); font-size: 1.2em;">${user.coins.toFixed(2)} USD</strong>
+                    </div>
+                    <div>
+                        <small style="color: #94a3b8; display: block;">สถานะ KYC</small>
+                        <span style="font-weight: bold; color: ${user.isVerified ? '#2e7d32' : '#e74c3c'};">
+                            ${user.isVerified ? 'ยืนยันแล้ว' : 'ยังไม่ได้ยืนยัน'}
+                        </span>
+                    </div>
+                    <div>
+                        <small style="color: #94a3b8; display: block;">คะแนน (Rating)</small>
+                        <strong style="color: #f1c40f;"><i class="fas fa-star"></i> ${user.rating.toFixed(1)}</strong>
+                    </div>
+                    <div>
+                        <small style="color: #94a3b8; display: block;">งานสำเร็จแล้ว</small>
+                        <strong>${user.completedJobs} รายการ</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px;">
+                <button onclick="editMemberBalance('${user.name}', ${user.coins})" 
+                        style="background: var(--primary); color: white; border: none; padding: 18px; border-radius: 15px; font-weight: bold; font-family: 'Kanit'; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fas fa-wallet"></i> จัดการเติมเงิน / ปรับยอด
+                </button>
+                
+                <button onclick="toggleBanUser('${user.name}', ${user.isBanned})" 
+                        style="background: ${user.isBanned ? '#64748b' : '#ffebee'}; color: ${user.isBanned ? 'white' : '#c62828'}; border: 1px solid ${user.isBanned ? '#64748b' : '#ffcdd2'}; padding: 15px; border-radius: 15px; font-weight: bold; font-family: 'Kanit'; cursor: pointer;">
+                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดระงับผู้ใช้งานคนนี้' : 'ระงับการใช้งาน (Ban)'}
+                </button>
+            </div>
+        `;
+
+        document.getElementById('user-profile-modal').style.display = 'block';
+
+    } catch (err) {
+        console.error(err);
+        Swal.fire('ผิดพลาด', 'ไม่สามารถดึงข้อมูลโปรไฟล์ได้ในขณะนี้', 'error');
+    }
+}
+
+function closeUserProfile() {
+    document.getElementById('user-profile-modal').style.display = 'none';
+}
+
+
 
 
     </script>
@@ -1410,6 +1588,39 @@ socket.on('kyc-location-updated', (data) => {
         </div>
             
     </div>
+	
+	
+	
+	<div id="user-profile-modal" class="modal" style="display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100dvh; background: white; overflow-y: auto;">
+    
+    <div style="position: sticky; top: 0; background: white; z-index: 10; padding: calc(15px + env(safe-area-inset-top)) 20px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <button onclick="closeUserProfile()" style="border: none; background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">โปรไฟล์สมาชิก</h3>
+        </div>
+        <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+    </div>
+
+    <div id="user-profile-content" style="padding: 20px; max-width: 500px; margin: 0 auto; width: 100%;">
+        </div>
+</div>
+
+	
+	
+	<div id="section-members-list" style="display: none;">
+    <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+        <input type="text" id="member-search-input" placeholder="ค้นหา Username หรือชื่อ..." 
+               style="flex: 1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; outline: none;">
+        <button onclick="loadMemberList()" style="background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 12px; cursor: pointer;">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+
+    <div id="members-list-container" style="display: flex; flex-direction: column; gap: 12px;">
+        </div>
+</div>
 
 
 	
