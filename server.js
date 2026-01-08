@@ -3470,11 +3470,15 @@ app.post('/api/admin/save-settings', async (req, res) => {
     }
 });
 
-// 2.3 ดึงรายการคำขอทั้งหมดของแอดมินคนนี้ (ใช้แสดงในหน้าจอแอดมิน)
+// 2.3 ดึงรายการคำขอทั้งหมดของแอดมิน (ใช้แสดงในหน้าจอแอดมิน)
 app.get('/api/admin/topup-list', async (req, res) => {
     const { admin } = req.query;
-    const list = await topupRequestsCollection.find({ adminId: admin, status: 'pending' }).toArray();
-    res.json(list);
+    const requests = await topupRequestsCollection.find({ 
+        adminId: admin, 
+        status: 'pending' 
+    }).sort({ createdAt: -1 }).toArray();
+    
+    res.json(requests);
 });
 
 // 2.4 อนุมัติการเติมเงิน
