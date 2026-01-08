@@ -1444,9 +1444,9 @@ function closeUserProfile() {
 }
 
 
+// ✅ 1. ฟังก์ชันเลือกวันแบน (1, 3, 7, 15, 30 หรือถาวร)
 async function manageUserBan(username, isCurrentlyBanned) {
     if (isCurrentlyBanned) {
-        // กรณีถูกแบนอยู่ ให้ถามว่าจะปลดแบนไหม
         const result = await Swal.fire({
             title: 'ปลดระงับผู้ใช้งาน?',
             text: `คุณต้องการปลดแบนคุณ @${username} ใช่หรือไม่?`,
@@ -1460,7 +1460,6 @@ async function manageUserBan(username, isCurrentlyBanned) {
             executeBanAction(username, 0); // 0 = ปลดแบน
         }
     } else {
-        // กรณีไม่ถูกแบน ให้เลือกวัน
         const { value: days } = await Swal.fire({
             title: `ระงับการใช้งาน @${username}`,
             input: 'select',
@@ -1488,38 +1487,31 @@ async function manageUserBan(username, isCurrentlyBanned) {
     }
 }
 
-// ฟังก์ชันส่ง API ไปยัง Server
+// ✅ 2. ฟังก์ชันส่งข้อมูลไปที่ Server (ใช้ API /api/admin/toggle-ban ตัวเดิมของคุณ)
 async function executeBanAction(username, days) {
     Swal.fire({ title: 'กำลังดำเนินการ...', didOpen: () => Swal.showLoading() });
 
     try {
         const adminName = localStorage.getItem('myUsername');
-        
-        // ✅ ปรับชื่อตัวแปรให้ตรงกับ API (targetUser, shouldBan, requestBy, banDays)
         const res = await fetch('/api/admin/toggle-ban', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                targetUser: username,         // ชื่อสมาชิกที่จะแบน
-                shouldBan: days > 0,          // ถ้า days > 0 คือแบน (true), ถ้า 0 คือปลดแบน (false)
-                requestBy: adminName,         // ชื่อแอดมินผู้สั่งการ
-                banDays: days,                // จำนวนวัน (1, 3, 7, 15, 30, 9999)
-                lang: 'th'                    // ภาษาที่ใช้ตอบกลับ
+                targetUser: username,
+                shouldBan: days > 0, // ถ้าส่งวันมาคือแบน (true) ถ้า 0 คือปลดแบน (false)
+                requestBy: adminName,
+                banDays: days,
+                lang: 'th'
             })
         });
 
         const data = await res.json();
-
         if (res.ok && data.success) {
-            Swal.fire('สำเร็จ', 
-                days > 0 ? 'ระงับการใช้งานเรียบร้อยแล้ว' : 'ปลดแบนเรียบร้อยแล้ว', 
-                'success'
-            ).then(() => {
+            Swal.fire('สำเร็จ', days > 0 ? 'ระงับการใช้งานเรียบร้อยแล้ว' : 'ปลดแบนเรียบร้อยแล้ว', 'success').then(() => {
                 closeUserProfile(); // ปิดหน้าโปรไฟล์
-                loadMemberList();   // รีโหลดรายชื่อสมาชิกใหม่
+                loadMemberList();   // โหลดรายชื่อใหม่เพื่ออัปเดตสถานะ
             });
         } else {
-            // โชว์ Error ที่ส่งมาจาก API (เช่น "ระดับแอดมินของคุณไม่สูงพอ")
             Swal.fire('ไม่สามารถดำเนินการได้', data.error || 'เกิดข้อผิดพลาด', 'error');
         }
     } catch (err) {
