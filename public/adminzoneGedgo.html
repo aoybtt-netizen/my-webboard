@@ -578,34 +578,14 @@ async function loadAdminChatHistory(requestId) {
 
 // 2. ฟังก์ชันเปิดหน้าแชท
 async function openFullChat(requestId, username, amount) {
-    // 1. ประกาศตัวแปรรับค่า
+    // 1. จัดการ Socket และตัวแปรกลาง
     currentChatRequestId = requestId;
-    
-    // 2. จัดการความปลอดภัยของ DOM (ย้ายของเดิมกลับ Storage ก่อน)
-    const display = document.getElementById('main-display');
-    const topupListSec = document.getElementById('section-topup-list');
-    const adminChatSec = document.getElementById('section-admin-chat');
-    const kycListSec = document.getElementById('section-kyc-list');
-    const withdrawListSec = document.getElementById('section-withdraw-list');
-    
-    let storage = document.getElementById('hidden-storage');
-    if (!storage) { // สร้าง storage ถ้ายังไม่มี
-        storage = document.createElement('div');
-        storage.id = 'hidden-storage';
-        storage.style.display = 'none';
-        document.body.appendChild(storage);
-    }
-
-    // ย้ายทุกอย่างกลับไปพักในที่ปลอดภัยก่อนจะเขียนทับ display
-    if (topupListSec) storage.appendChild(topupListSec);
-    if (adminChatSec) storage.appendChild(adminChatSec);
-    if (kycListSec) storage.appendChild(kycListSec);
-    if (withdrawListSec) storage.appendChild(withdrawListSec);
-
-    // 3. แจ้ง Socket ให้เข้าห้องแชท
     socket.emit('joinRequest', requestId);
 
-    // 4. แสดงผล Modal ใหม่ลงใน display
+    // 2. สร้างโครงสร้าง Modal เต็มจอ (อ้างอิง Style จากหน้า KYC ที่คุณส่งมา)
+    // เราจะสร้าง Element ใหม่แล้วแปะทับลงไปใน body หรือ main-display ก็ได้ครับ
+    const display = document.getElementById('main-display');
+    
     display.innerHTML = `
     <div id="topup-full-modal" style="position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100dvh; background: white; overflow-y: auto; display: flex; flex-direction: column;">
         
@@ -651,7 +631,7 @@ async function openFullChat(requestId, username, amount) {
 
                 <div style="padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); background: white; display: flex; gap: 10px; align-items: center; border-top: 1px solid #eee;">
                     <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
-                    <button id="admin-image-btn" onclick="document.getElementById('admin-slip-input').click()" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; color: #64748b;">
+                    <button onclick="document.getElementById('admin-slip-input').click()" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer; color: #64748b;">
                         <i class="fas fa-image"></i>
                     </button>
                     <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none; font-family: 'Kanit', sans-serif;">
@@ -664,12 +644,8 @@ async function openFullChat(requestId, username, amount) {
     </div>
     `;
 
-    // 5. โหลดประวัติแชทเข้าสู่ #chat-box (ใส่ try-catch ป้องกัน error หยุด script)
-    try {
-        await loadAdminChatHistory(requestId);
-    } catch (e) {
-        console.error("โหลดประวัติแชทล้มเหลว:", e);
-    }
+    // 3. โหลดประวัติแชทเข้าสู่ #chat-box
+    await loadAdminChatHistory(requestId);
 }
 
 // ฟังก์ชันปิด Modal (เพื่อกลับไปหน้าหลัก)
