@@ -725,19 +725,18 @@ function closeFullChatModal() {
 
 
 //2.1
-async function processAction(status, username, initialAmount = 0, type = 'TOPUP') {
+async function processAction(status, username, initialAmount = 0, type = 'TOPUP', currency = 'USD') {
     let finalAmount = initialAmount;
     const isWithdraw = type === 'WITHDRAW';
     
-    // ตั้งค่าข้อความแจ้งเตือน
     const actionLabel = status === 'approved' 
         ? (isWithdraw ? 'ยืนยันการโอนเงินสดให้ลูกค้าเรียบร้อยแล้ว' : 'อนุมัติการเติมเงินเข้ากระเป๋า')
         : (isWithdraw ? 'ปฏิเสธและคืนเงินเข้ากระเป๋าลูกค้า' : 'ยกเลิกคำขอเติมเงิน');
 
     if (status === 'approved') {
         const confirmMsg = isWithdraw 
-            ? `คุณได้โอนเงินสดให้ @${username} จำนวน ${initialAmount.toFixed(2)} USD เรียบร้อยแล้วใช่หรือไม่? (ระบบจะโอนเหรียญเข้าแอดมิน)`
-            : `ยืนยันยอดเงินที่จะเติมให้ @${username} (USD):`;
+            ? `คุณได้โอนเงินสดให้ @${username} จำนวน ${initialAmount.toFixed(2)} ${currency} เรียบร้อยแล้วใช่หรือไม่? (ระบบจะโอนเหรียญเข้าแอดมิน)` 
+            : `ยืนยันยอดเงินที่จะเติมให้ @${username} (${currency}):`;
 
         if (!isWithdraw) {
             const inputAmount = prompt(confirmMsg, initialAmount);
@@ -758,7 +757,9 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
                 requestId: currentChatRequestId, 
                 status: status,
                 finalAmount: finalAmount,
-                adminName: localStorage.getItem('myUsername')
+                adminName: localStorage.getItem('myUsername'),
+                // ✅ ส่ง currency ไปให้ API ด้วย
+                currency: currency 
             })
         });
 
@@ -767,18 +768,17 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
             Swal.fire('สำเร็จ!', data.message, 'success');
             socket.emit('statusChanged', { requestId: currentChatRequestId, status: status });
             
-            // ส่ง System Message เข้าแชท
             const sysMsg = {
                 requestId: currentChatRequestId,
                 sender: 'System',
                 message: status === 'approved' 
-                    ? `✅ รายการ ${isWithdraw ? 'ถอนเงิน' : 'เติมเงิน'} สำเร็จ จำนวน ${finalAmount.toFixed(2)} USD` 
+                    ? `✅ รายการ ${isWithdraw ? 'ถอนเงิน' : 'เติมเงิน'} สำเร็จ จำนวน ${finalAmount.toFixed(2)} ${currency}` 
                     : `❌ รายการถูกปฏิเสธโดยแอดมิน`,
                 type: 'system'
             };
             socket.emit('sendMessage', sysMsg);
 
-            showContent('topup'); // กลับหน้ารวม
+            showContent('topup');
             updateBadges();
         } else {
             Swal.fire('ผิดพลาด', data.error || "เกิดข้อผิดพลาด", 'error');

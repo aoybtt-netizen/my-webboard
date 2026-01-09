@@ -3679,22 +3679,24 @@ app.get('/api/admin/topup-list', async (req, res) => {
 // --- API สำหรับแอดมินจัดการคำขอเติมเงิน (อนุมัติ/ปฏิเสธ) ---
 app.post('/api/admin/process-topup', async (req, res) => {
     try {
-        const { requestId, status, adminName, finalAmount } = req.body;
+        const { requestId, status, adminName, finalAmount, currency } = req.body;
         const topupReq = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
 
         if (!topupReq || topupReq.status !== 'pending') {
             return res.status(400).json({ error: "คำขอนี้ไม่พร้อมสำหรับการดำเนินการ" });
         }
 
+        // ✅ เลือกใช้สกุลเงินที่บันทึกไว้ใน Request หรือที่ส่งมาจากหน้าบ้าน
+        const currencyField = topupReq.currency || currency || 'usd';
         const amountToProcess = parseFloat(finalAmount || topupReq.amount);
 
         // --- ❌ กรณีปฏิเสธ (Rejected) ---
         if (status !== 'approved') {
-            // 🚩 ถ้าเป็นการถอนเงิน (WITHDRAW) แล้วถูกปฏิเสธ ต้องคืนเงินให้สมาชิก
             if (topupReq.type === 'WITHDRAW') {
+                // ✅ คืนเงินเข้า "กระเป๋าที่ถูกต้อง" (Dynamic Key: [currencyField])
                 await usersCollection.updateOne(
                     { username: topupReq.username }, 
-                    { $inc: { coins: topupReq.amount } } 
+                    { $inc: { [currencyField]: topupReq.amount } } 
                 );
             }
 
@@ -3702,23 +3704,26 @@ app.post('/api/admin/process-topup', async (req, res) => {
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
             );
-            return res.json({ success: true, message: "ปฏิเสธคำขอและคืนเงิน (ถ้ามี) เรียบร้อย" });
+            return res.json({ success: true, message: "ปฏิเสธคำขอและคืนเงินเรียบร้อย" });
         }
 
         // --- ✅ กรณีอนุมัติ (Approved) ---
         
         if (topupReq.type === 'TOPUP') {
-            // โหมดเติมเงิน: แอดมินจ่ายเหรียญให้สมาชิก
+            // โหมดเติมเงิน: หักเงินจากแอดมินใบนั้น และเพิ่มให้สมาชิกใบนั้น
             const adminUser = await usersCollection.findOne({ username: adminName });
-            if (!adminUser || (adminUser.coins || 0) < amountToProcess) {
-                return res.status(400).json({ error: "ยอดเงินแอดมินไม่เพียงพอ" });
+            const adminBalance = adminUser[currencyField] || 0;
+
+            if (!adminUser || adminBalance < amountToProcess) {
+                return res.status(400).json({ error: `ยอดเงิน ${currencyField} ของแอดมินไม่เพียงพอ` });
             }
-            await usersCollection.updateOne({ username: adminName }, { $inc: { coins: -amountToProcess } });
-            await usersCollection.updateOne({ username: topupReq.username }, { $inc: { coins: amountToProcess } });
+            
+            // ✅ หักแอดมิน เติมสมาชิก (ระบุฟิลด์ตาม currencyField)
+            await usersCollection.updateOne({ username: adminName }, { $inc: { [currencyField]: -amountToProcess } });
+            await usersCollection.updateOne({ username: topupReq.username }, { $inc: { [currencyField]: amountToProcess } });
         } else {
-            // โหมดถอนเงิน: แอดมินได้รับเหรียญจากสมาชิก (เพราะจ่ายเงินสดไปแล้ว)
-            // เหรียญสมาชิกถูกหักไปรอไว้แล้วตอนส่งคำขอ แอดมินแค่กดยืนยันเพื่อรับเหรียญนั้นเข้าตัว
-            await usersCollection.updateOne({ username: adminName }, { $inc: { coins: amountToProcess } });
+            // โหมดถอนเงิน: แอดมินได้รับเหรียญจากสมาชิกเข้ากระเป๋าตัวเอง
+            await usersCollection.updateOne({ username: adminName }, { $inc: { [currencyField]: amountToProcess } });
         }
 
         await topupRequestsCollection.updateOne(
@@ -3733,9 +3738,10 @@ app.post('/api/admin/process-topup', async (req, res) => {
             }
         );
 
-        res.json({ success: true, message: `อนุมัติรายการ ${topupReq.type} สำเร็จ` });
+        res.json({ success: true, message: `อนุมัติรายการ ${topupReq.type} (${currencyField}) สำเร็จ` });
 
     } catch (err) {
+        console.error("Process Topup Error:", err);
         res.status(500).json({ error: "เกิดข้อผิดพลาดในการประมวลผล" });
     }
 });
