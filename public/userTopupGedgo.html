@@ -150,9 +150,9 @@ html {
     <h3 id="amount-label">ระบุจำนวนเงิน</h3>
     
     <div class="amount-input-group">
-        <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
-        <div style="margin-top: 10px; font-weight: bold; color: var(--primary);">USD</div>
-    </div>
+    <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
+    <div id="input-currency-label" style="margin-top: 10px; font-weight: bold; color: var(--primary);">Loading...</div>
+	</div>
 
     <div id="withdraw-bank-info" style="display: none; margin-bottom: 20px; text-align: left;">
         <label style="font-size: 0.85em; color: #666; font-weight: bold;">ระบุบัญชีธนาคารรับเงิน (ชื่อ-เลขบัญชี-ธนาคาร):</label>
@@ -165,14 +165,12 @@ html {
 </div>
 
                 <div style="margin-top: 30px;">
-                    <h4><i class="fas fa-info-circle"></i> ขั้นตอนการเติมเงิน</h4>
-                    <ul style="color: #666; font-size: 0.85em; line-height: 1.8;">
-                        <li>ระบุจำนวนเงิน USD ที่ต้องการ</li>
-                        <li>ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด</li>
-                        <li>ชำระเงินตามวิธีที่เจ้าของโซนกำหนดในพื้นที่</li>
-                        <li>เมื่อเจ้าของโซนยืนยัน ยอดเงินจะเข้าบัญชีทันที</li>
-                    </ul>
-                </div>
+			<h4><i class="fas fa-info-circle"></i> ขั้นตอนการเติมเงิน</h4>
+			<ul style="color: #666; font-size: 0.85em; line-height: 1.8;">
+			<li>ระบุจำนวนเงิน <b id="step-currency-label">---</b> ที่ต้องการ</li>
+			<li>ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด</li>
+			</ul>
+			</div>
             </div>
 
             <div id="section-pending-chat" style="display: none; height: calc(100vh - 150px); flex-direction: column;">
@@ -369,6 +367,10 @@ html {
 
         // ✅ 1. อัปเดตตัวเลขยอดเงิน (มาจากกระเป๋าที่ถูกต้องแล้ว)
         document.getElementById('current-balance').innerText = (data.coins || 0).toFixed(2);
+		const inputLabel = document.getElementById('input-currency-label');
+		if(inputLabel) inputLabel.innerText = zoneCurrency;
+		const stepLabel = document.getElementById('step-currency-label');
+		if(stepLabel) stepLabel.innerText = zoneCurrency;
         
         // ✅ 2. อัปเดตป้ายสกุลเงิน (ที่เราเพิ่งสร้าง id ไว้)
         // ถ้า API ส่งมาว่า 'THB' ตรงนี้ก็จะเปลี่ยนจาก USD เป็น THB ทันที
@@ -756,7 +758,8 @@ async function submitTransactionRequest() {
                 adminId: result.adminId,
                 username: username,
                 amount: amount,
-                type: transactionType
+                type: transactionType,
+                currency: zoneCurrency
             });
             await checkTransactionStatus(); // รีเฟรชหน้าจอเพื่อเข้าสู่โหมดแชท
         } else {

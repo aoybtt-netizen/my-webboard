@@ -3520,8 +3520,10 @@ app.get('/api/rider/check-working-status', async (req, res) => {
 // 1.1 ส่งคำขอเติมเงิน
 app.post('/api/topup/request', async (req, res) => {
     try {
-        const { username, amount, location, type, bankInfo } = req.body; // รับ type และ bankInfo เพิ่ม
+        const { username, amount, location, type, bankInfo } = req.body;
         const locationObj = JSON.parse(decodeURIComponent(location));
+        
+        // 1. หาโซนรับผิดชอบ
         const zoneInfo = await findResponsibleAdmin(locationObj);
         
         if (!zoneInfo || !zoneInfo.zoneData.assignedAdmin) {
@@ -3531,24 +3533,39 @@ app.post('/api/topup/request', async (req, res) => {
         const adminId = zoneInfo.zoneData.assignedAdmin;
         const amountNum = parseFloat(amount);
 
-        // --- 🚩 เพิ่ม Logic สำหรับการถอนเงิน (WITHDRAW) ---
+        // ✅ 2. ระบุชื่อฟิลด์กระเป๋าเงิน (เช่น 'thb', 'brl', 'usd')
+        // ถ้าโซนไม่มีสกุลเงินระบุ ให้ใช้ 'coins' หรือ 'usd' เป็นค่า default
+        const currencyField = zoneInfo.zoneData.zoneCurrency || 'usd';
+
+        // --- Logic สำหรับการถอนเงิน (WITHDRAW) ---
         if (type === 'WITHDRAW') {
             const user = await usersCollection.findOne({ username });
-            if (!user || (user.coins || 0) < amountNum) {
-                return res.status(400).json({ error: "ยอดเงินของคุณไม่เพียงพอสำหรับการถอน" });
+            
+            // ✅ 3. เช็คเงินจากฟิลด์ที่ถูกต้อง (user[currencyField])
+            const currentBalance = user[currencyField] || 0;
+
+            if (!user || currentBalance < amountNum) {
+                return res.status(400).json({ error: `ยอดเงิน ${currencyField} ของคุณไม่เพียงพอสำหรับการถอน` });
             }
-            // หักเงินผู้ใช้ทันทีเพื่อ "Lock" เงินไว้ตรวจสอบ
-            await usersCollection.updateOne({ username }, { $inc: { coins: -amountNum } });
+            
+            // ✅ 4. หักเงินออกจากฟิลด์ที่ถูกต้อง (Dynamic Key)
+            // ใช้ [currencyField] เพื่อบอก MongoDB ว่าให้อัปเดตฟิลด์ชื่อนี้
+            await usersCollection.updateOne(
+                { username }, 
+                { $inc: { [currencyField]: -amountNum } } 
+            );
         }
 
         const newRequest = {
             username,
             amount: amountNum,
             adminId,
-            type: type || 'TOPUP', // ระบุว่าเป็น TOPUP หรือ WITHDRAW
-            bankInfo: bankInfo || null, // เก็บข้อมูลบัญชีถ้าเป็นการถอน
+            type: type || 'TOPUP',
+            bankInfo: bankInfo || null,
             status: 'pending',
-            createdAt: new Date()
+            createdAt: new Date(),
+            // ✅ 5. บันทึกสกุลเงินไว้ในประวัติด้วย เพื่อให้ Admin รู้ว่านี่คือยอดของสกุลอะไร
+            currency: currencyField 
         };
 
         const result = await topupRequestsCollection.insertOne(newRequest);
