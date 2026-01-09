@@ -1422,19 +1422,28 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
 app.get('/api/admin/my-zone-info', async (req, res) => {
     try {
         const adminUsername = req.query.admin;
-        // 1. หาข้อมูลโซนก่อนเพื่อดูว่าโซนนี้ใช้สกุลเงินอะไร
         const zone = await db.collection('zones').findOne({ assignedAdmin: adminUsername });
 
         if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
 
-        // 2. กำหนดชื่อฟิลด์กระเป๋าเงินตามสกุลเงินโซน (เช่น 'thb', 'usd')
-        const currencyKey = (zone.zoneCurrency || 'USD').toLowerCase();
+        // 🔍 DEBUG 1: เช็คว่าใน DB Zones ตั้งค่า Currency ไว้ยังไง
+        console.log("-----------------------------------------");
+        console.log(`[DEBUG ZONE] Admin: ${adminUsername}`);
+        console.log(`[DEBUG ZONE] Raw Currency in DB Zones: "${zone.zoneCurrency}"`);
 
-        // 3. ดึงข้อมูล Profile โดยระบุฟิลด์ coins และฟิลด์สกุลเงินท้องถิ่น
-        const adminProfile = await db.collection('users').findOne(
-            { username: adminUsername }
-            // หมายเหตุ: ไม่ต้องใส่ projection เพื่อให้ดึงฟิลด์ dynamic ได้ง่ายขึ้น
-        );
+        // 2. กำหนดชื่อฟิลด์กระเป๋าเงิน (ตรงนี้แหละที่สั่ง .toLowerCase())
+        const currencyKey = (zone.zoneCurrency || 'USD').toLowerCase();
+        console.log(`[DEBUG ZONE] Calculated Key for Wallet: "${currencyKey}"`);
+
+        const adminProfile = await db.collection('users').findOne({ username: adminUsername });
+
+        // 🔍 DEBUG 2: เช็คว่าในตัว User Admin มีฟิลด์ชื่ออะไรบ้าง และมีเงินเท่าไหร่
+        if (adminProfile) {
+            console.log(`[DEBUG ZONE] Admin Balance in "${currencyKey}":`, adminProfile[currencyKey]);
+            console.log(`[DEBUG ZONE] Does Admin have UPPERCASE "${currencyKey.toUpperCase()}":`, 
+                adminProfile[currencyKey.toUpperCase()] !== undefined ? "Yes" : "No");
+        }
+        console.log("-----------------------------------------");
 
         res.json({
             success: true,
@@ -1444,8 +1453,6 @@ app.get('/api/admin/my-zone-info', async (req, res) => {
                 zoneExchangeRate: zone.zoneExchangeRate || 1.0
             },
             adminCoins: adminProfile ? (adminProfile.coins || 0) : 0,
-            // ✅ ดึงเงินจากกระเป๋าที่ตรงกับโซน (เช่น adminProfile['thb']) 
-            // หากไม่มีให้แสดงเป็น 0
             zoneWallet: adminProfile ? (adminProfile[currencyKey] || 0) : 0 
         });
     } catch (err) { 
