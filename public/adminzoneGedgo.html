@@ -547,28 +547,28 @@ async function loadTopupRequests() {
         container.innerHTML = requests.map(req => {
             const reqType = (req.type || 'TOPUP').toUpperCase(); 
 			const isWithdraw = reqType === 'WITHDRAW';
-    
+			const currency = req.currency || 'USD';
 			const color = isWithdraw ? 'var(--danger)' : 'var(--primary)';
 			const label = isWithdraw ? 'ถอนเงินสด' : 'เติมเงิน';
 			const icon = isWithdraw ? 'fas fa-arrow-circle-up' : 'fas fa-arrow-circle-down';
 
             return `
-			<div class="admin-card" onclick="openFullChat('${req._id}', '${req.username}', ${req.amount}, '${reqType}', '${encodeURIComponent(req.bankInfo || "")}')" 
+            <div class="admin-card" onclick="openFullChat('${req._id}', '${req.username}', ${req.amount}, '${reqType}', '${encodeURIComponent(req.bankInfo || "")}', '${currency}')" 
              style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${color};">
-            <div>
-                <div style="font-size: 0.85em; color: ${color}; font-weight: bold; margin-bottom: 5px;">
-                    <i class="${icon}"></i> ${label}
+                <div>
+                    <div style="font-size: 0.85em; color: ${color}; font-weight: bold; margin-bottom: 5px;">
+                        <i class="${icon}"></i> ${label}
+                    </div>
+                    <strong style="font-size: 1.1em; color: var(--dark);">@${req.username}</strong><br>
+                    <span style="color:${color}; font-weight:bold; font-size: 1.2em;">${req.amount.toFixed(2)} ${currency}</span>
                 </div>
-                <strong style="font-size: 1.1em; color: var(--dark);">@${req.username}</strong><br>
-                <span style="color:${color}; font-weight:bold; font-size: 1.2em;">${req.amount.toFixed(2)} USD</span>
+                <div style="text-align:right; color:#999;">
+                    <small>${new Date(req.createdAt).toLocaleTimeString('th-TH')} น.</small><br>
+                    <i class="fas fa-chevron-right" style="margin-top: 10px; opacity: 0.3;"></i>
+                </div>
             </div>
-            <div style="text-align:right; color:#999;">
-                <small>${new Date(req.createdAt).toLocaleTimeString('th-TH')} น.</small><br>
-                <i class="fas fa-chevron-right" style="margin-top: 10px; opacity: 0.3;"></i>
-            </div>
-        </div>
-			`;
-		}).join('');
+            `;
+        }).join('');
     } catch (err) {
         container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
     }
@@ -631,7 +631,7 @@ async function loadAdminChatHistory(requestId) {
 
 
 // 2. ฟังก์ชันเปิดหน้าแชท
-async function openFullChat(requestId, username, amount, type, bankInfoEncoded) {
+async function openFullChat(requestId, username, amount, type, bankInfoEncoded, currency) {
     currentChatRequestId = requestId;
     const isWithdraw = type === 'WITHDRAW';
     const bankInfo = decodeURIComponent(bankInfoEncoded);
@@ -639,14 +639,12 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded) 
     
     socket.emit('joinRequest', requestId);
 
-    // --- 1. เตรียมข้อมูลที่จะแสดงผลแยกตามประเภทธุรกรรม ---
     const titleHeader = isWithdraw ? 'ตรวจสอบรายการถอนเงิน' : 'ตรวจสอบรายการเติมเงิน';
     const mainIcon = isWithdraw ? 'fas fa-money-bill-transfer' : 'fas fa-hand-holding-usd';
     const cardBorderColor = isWithdraw ? '#ffcdd2' : '#c8e6c9';
     const cardBgColor = isWithdraw ? '#fff5f5' : '#e8f5e9';
     const textStatusColor = isWithdraw ? '#c62828' : '#2e7d32';
 
-    // --- 2. สร้าง HTML สำหรับส่วนข้อมูลธนาคาร (ถ้าเป็นการถอนเงิน) ---
     let withdrawInfoHtml = "";
     if (isWithdraw) {
         withdrawInfoHtml = `
@@ -659,7 +657,6 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded) 
             </div>`;
     }
 
-    // --- 3. ประกอบ HTML หลักเข้าด้วยกัน ---
     const display = document.getElementById('main-display');
     display.innerHTML = `
     <div id="topup-full-modal" style="position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100dvh; background: white; overflow-y: auto; display: flex; flex-direction: column;">
@@ -685,36 +682,23 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded) 
                 </div>
                 <div style="text-align: left; flex: 1;">
                     <div style="font-weight: bold; color: ${textStatusColor}; font-size: 1em;">ยอดเงินรายการ (${type})</div>
-                    <div style="font-size: 1.2em; color: ${themeColor}; font-weight: bold;">${amount.toFixed(2)} USD</div>
+                    <div style="font-size: 1.2em; color: ${themeColor}; font-weight: bold;">${amount.toFixed(2)} ${currency}</div>
                 </div>
             </div>
 
             ${withdrawInfoHtml}
 
             <div style="display: flex; gap: 15px; margin-bottom: 30px;">
-                <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}', ${amount}, '${type}')" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold; cursor: pointer;">ปฏิเสธ</button>
-                <button class="status-btn btn-approve" onclick="processAction('approved', '${username}', ${amount}, '${type}')" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em; cursor: pointer; background: ${themeColor};">
+                <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}', ${amount}, '${type}', '${currency}')" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold; cursor: pointer;">ปฏิเสธ</button>
+                <button class="status-btn btn-approve" onclick="processAction('approved', '${username}', ${amount}, '${type}', '${currency}')" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em; cursor: pointer; background: ${themeColor};">
                     <i class="fas fa-check-circle"></i> ${isWithdraw ? 'ยืนยันโอนแล้ว' : 'อนุมัติเติมเงิน'}
                 </button>
             </div>
 
-            <div style="background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; overflow: hidden; margin-bottom: 40px;">
-                <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px; background: #f8fafc;">
-                    <i class="fas fa-comments" style="color: ${themeColor};"></i> แชทตรวจสอบหลักฐาน
-                </div>
-                <div id="chat-box" style="height: 350px; overflow-y: auto; padding: 15px; background: #f1f5f9; display: flex; flex-direction: column; gap: 10px;"></div>
-                <div style="padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee;">
-                     <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
-                     <button onclick="document.getElementById('admin-slip-input').click()" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;"><i class="fas fa-image"></i></button>
-                     <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
-                     <button onclick="sendAdminMessage()" style="background: ${themeColor}; color: white; border: none; width: 45px; height: 45px; border-radius: 10px;"><i class="fas fa-paper-plane"></i></button>
-                </div>
             </div>
-        </div>
     </div>
     `;
     
-    // โหลดแชทหลังจาก innerHTML เสร็จสิ้น
     await loadAdminChatHistory(requestId);
 }
 
