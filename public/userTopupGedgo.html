@@ -282,6 +282,7 @@ html {
             // Logic ส่งคำขอเติมเงินจะอยู่ตรงนี้
             alert(`ส่งคำขอเติมเงินจำนวน ${amount} USD เรียบร้อยแล้ว!`);
         }
+		
 
     async function loadHistory() {
     const myName = localStorage.getItem('myUsername');
@@ -298,19 +299,30 @@ html {
         }
 
         list.innerHTML = history.map(item => {
-            // 🚩 แยกประเภทธุรกรรม
             const isWithdraw = item.type === 'WITHDRAW';
             const typeLabel = isWithdraw ? 'ถอนเงิน' : 'เติมเงิน';
             const typeIcon = isWithdraw ? 'fa-money-bill-transfer' : 'fa-hand-holding-usd';
             const typeColor = isWithdraw ? 'var(--danger)' : 'var(--primary)';
             
-            // สถานะ
-            const statusColor = item.status === 'approved' ? '#2ecc71' : '#e74c3c';
-            const statusText = item.status === 'approved' ? 'สำเร็จ' : 'ปฏิเสธ';
+            // ✅ ดึงสกุลเงินจากข้อมูลใน Database (ถ้าไม่มีให้ Default เป็น USD)
+            // ใช้ค่าดิบ (Raw Value) ที่แอดมินระดับ 3 ตั้งค่ามา
+            const currency = item.currency || 'USD';
+
+            // จัดการสถานะและสี
+            let statusColor = '#f39c12'; // Default: Pending
+            let statusText = 'รออนุมัติ';
+
+            if (item.status === 'approved') {
+                statusColor = '#2ecc71';
+                statusText = 'สำเร็จ';
+            } else if (item.status === 'rejected') {
+                statusColor = '#e74c3c';
+                statusText = 'ปฏิเสธ';
+            }
 
             return `
                 <div class="history-item" 
-                     onclick="viewArchivedChat('${item._id}', ${item.amount}, '${item.status}', '${item.createdAt}', '${item.processedAt}', '${item.type || 'TOPUP'}')" 
+                     onclick="viewArchivedChat('${item._id}', ${item.amount}, '${item.status}', '${item.createdAt}', '${item.processedAt}', '${item.type || 'TOPUP'}', '${currency}')" 
                      style="cursor:pointer; transition: 0.2s; border-left: 5px solid ${statusColor}; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
                     
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -319,7 +331,7 @@ html {
                         </div>
                         <div style="text-align: left;">
                             <div style="font-size: 0.75em; color: ${typeColor}; font-weight: bold; text-transform: uppercase;">${typeLabel}</div>
-                            <b style="font-size: 1.1em; color: var(--dark);">${item.amount.toFixed(2)} USD</b><br>
+                            <b style="font-size: 1.1em; color: var(--dark);">${item.amount.toFixed(2)} ${currency}</b><br>
                             <small style="color:#999; font-size: 0.8em;">${new Date(item.createdAt).toLocaleString('th-TH')}</small>
                         </div>
                     </div>
@@ -334,6 +346,7 @@ html {
             `;
         }).join('');
     } catch (err) {
+        console.error("History Error:", err);
         list.innerHTML = '<p style="text-align: center; color: red;">โหลดข้อมูลล้มเหลว</p>';
     }
 }

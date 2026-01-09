@@ -3609,17 +3609,16 @@ app.get('/api/topup/status', async (req, res) => {
 app.get('/api/topup/history', async (req, res) => {
     try {
         const { username } = req.query;
-        if (!username) return res.status(400).send("Missing username");
+        if (!username) return res.status(400).json({ error: "No username" });
 
-        // ค้นหาคำขอที่สถานะไม่ใช่ pending และเรียงจากใหม่ไปเก่า
-        const history = await topupRequestsCollection
-            .find({ username: username, status: { $ne: 'pending' } })
-            .sort({ createdAt: -1 })
-            .toArray();
+        // ดึงรายการประวัติของ User คนนั้น เรียงจากใหม่ไปเก่า
+        const history = await db.collection('topupRequests').find({ 
+            username: username 
+        }).sort({ createdAt: -1 }).toArray();
 
         res.json(history);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
@@ -4479,7 +4478,6 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
 	// 1. เข้าร่วมห้องแชทตาม ID ของคำขอ (RequestId)
     socket.on('joinRequest', (requestId) => {
         socket.join(requestId);
-        console.log(`User joined room: ${requestId}`);
     });
 
     // 2. รับและส่งข้อความแชท
