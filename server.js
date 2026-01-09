@@ -1284,56 +1284,79 @@ app.post('/api/admin/set-zone-name', async (req, res) => {
 app.post('/api/admin/set-zone-currency', async (req, res) => {
     const { zoneId, currency, rate } = req.body;
 
-    // --- [DEBUG] เช็กค่าที่รับมาจากหน้าบ้าน ---
-    console.log("-----------------------------------------");
-    console.log("📥 [REQ RECEIVED] /api/admin/set-zone-currency");
-    console.log("ID โซนที่ส่งมา:", zoneId);
-    console.log("สกุลเงินที่เลือก:", currency);
-    console.log("เรทที่กรอกมา:", rate);
-
     try {
-        // ตรวจสอบความถูกต้องของข้อมูล
+        // 1. ตรวจสอบความถูกต้องของข้อมูลพื้นฐาน
         if (!zoneId || !currency || isNaN(rate)) {
-            console.log("❌ [DEBUG] ข้อมูลไม่ครบถ้วน หรือ Rate ไม่ใช่ตัวเลข");
-            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน หรือรูปแบบไม่ถูกต้อง' });
         }
 
-        const zoneIdInt = parseInt(zoneId); // แปลงให้เป็นตัวเลขตามโครงสร้างระบบคุณ
+        const zoneIdInt = parseInt(zoneId);
 
-        // อัปเดตข้อมูล และใช้ findOneAndUpdate เพื่อดึงข้อมูลหลังเปลี่ยนทันทีมาดีบัก
+        // 2. อัปเดตข้อมูลลง Database
         const result = await db.collection('zones').findOneAndUpdate(
             { id: zoneIdInt }, 
             { 
                 $set: { 
-                    zoneCurrency: currency,       // ใช้ชื่อให้สื่อถึงโซนเหมือน zoneFee
+                    zoneCurrency: currency,       
                     zoneExchangeRate: parseFloat(rate),
                     updatedAt: new Date()
                 } 
             },
-            { returnDocument: 'after' } // คำสั่งให้ส่งค่า "หลังอัปเดต" กลับมา
+            { returnDocument: 'after' } 
         );
 
+        // 3. ส่งผลลัพธ์กลับ
         if (result) {
-            // --- [DEBUG] ดูตัวแปรทั้งหมดที่ถูกบันทึกจริงใน Database ---
-            console.log("✅ [DATABASE UPDATED] บันทึกสำเร็จ!");
-            console.log("📦 ตัวแปรทั้งหมดในโซนนี้ปัจจุบัน:");
-            console.table(result); // แสดงผลเป็นตารางใน Console (ดูง่ายมาก)
-            console.log("-----------------------------------------");
-
             res.json({ 
                 success: true, 
                 message: 'อัปเดตสกุลเงินสำเร็จ',
-                updatedData: result // ส่งกลับไปเช็กที่หน้าบ้านด้วย
+                zoneCurrency: currency,
+                zoneExchangeRate: rate
             });
         } else {
-            console.log("⚠️ [DEBUG] ไม่พบโซน ID:", zoneIdInt);
             res.status(404).json({ success: false, message: 'ไม่พบโซนที่ระบุ' });
         }
     } catch (err) {
-        console.error("🔥 [SERVER ERROR]", err);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        console.error("Server Error:", err);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
     }
 });
+
+// 7.4 ระบบหัก USDT และ เพิ่มเงินโซน ให้แอดมิน
+app.post('/api/admin/convert-currency', async (req, res) => {
+    const { adminId, usdtToConvert, zoneId } = req.body;
+
+    try {
+        const zone = await db.collection('zones').findOne({ id: parseInt(zoneId) });
+        const admin = await db.collection('users').findOne({ id: adminId });
+
+        if (admin.usdtBalance < usdtToConvert) {
+            return res.status(400).json({ success: false, message: 'USDT ไม่เพียงพอ' });
+        }
+
+        const receiveAmount = usdtToConvert * zone.zoneExchangeRate;
+
+        // ธุรกรรมแบบ Atomic (หัก USDT และเพิ่มเงินโซน)
+        await db.collection('users').updateOne(
+            { id: adminId },
+            { 
+                $inc: { 
+                    usdtBalance: -usdtToConvert,      // หัก USDT
+                    zoneWallet: receiveAmount         // เพิ่มเงินในกระเป๋าโซนสำหรับกระจายต่อ
+                } 
+            }
+        );
+
+        res.json({ 
+            success: true, 
+            received: receiveAmount, 
+            currency: zone.zoneCurrency 
+        });
+
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+}); 
 
 
 
