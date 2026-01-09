@@ -116,19 +116,33 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-<nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <h3 style="margin:0; color:var(--secondary);">GedGo! Zone</h3>
-        <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
-    </div>
-	
-	<div style="margin-top: 15px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: left;">
-        <small style="color: var(--secondary); display: block; margin-bottom: 5px;">ทุนคงเหลือ (USDT)</small>
-        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;" id="sidebar-usdt-balance">0.00 USDT</div>
-        <button onclick="openExchangeModal()" style="width: 100%; background: var(--secondary); color: var(--dark); border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Kanit';">
-            💱 แปลงเป็นเงินโซน
+<div class="sidebar-header">
+    <h3 style="margin:0; color:var(--secondary);">GedGo! Zone</h3>
+    <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
+
+    <div style="margin-top: 15px; text-align: left; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+        
+        <div style="margin-bottom: 10px;">
+            <small style="color: rgba(255,255,255,0.5); font-size: 0.75em; display: block;">ทุนคงเหลือ (Master)</small>
+            <div style="font-size: 1.1em; font-weight: bold; color: #fff;">
+                <i class="fas fa-coins" style="color: #f1c40f; margin-right: 5px;"></i>
+                <span id="sidebar-usdt-balance">0.00</span> <small>USDT</small>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 12px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <small style="color: rgba(255,255,255,0.5); font-size: 0.75em; display: block;">ยอดเงินในโซน (Local)</small>
+            <div style="font-size: 1.1em; font-weight: bold; color: var(--secondary);">
+                <i class="fas fa-wallet" style="margin-right: 5px;"></i>
+                <span id="sidebar-zone-balance">0.00</span> <small id="sidebar-zone-currency">---</small>
+            </div>
+        </div>
+
+        <button onclick="openExchangeModal()" style="width: 100%; background: var(--secondary); color: var(--dark); border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Kanit'; font-size: 0.9em; transition: 0.3s;">
+            <i class="fas fa-exchange-alt"></i> แปลง USDT เป็นเงินโซน
         </button>
     </div>
+</div>
 	
     <div class="sidebar-menu">
     <div class="menu-item active" onclick="showContent('topup')">
@@ -1599,12 +1613,18 @@ async function fetchAdminZoneInfo(username) {
     try {
         const res = await fetch(`/api/admin/my-zone-info?admin=${username}`);
         const data = await res.json();
+        
         if(data.success) {
             currentZoneId = data.zone.id;
             zoneCurrency = data.zone.zoneCurrency;
             zoneRate = data.zone.zoneExchangeRate;
-            // แสดงผลยอดเหรียญ (coins) ใน sidebar
-            document.getElementById('sidebar-usdt-balance').innerText = `${data.adminCoins.toFixed(2)} USDT`;
+            
+            // 1. อัปเดตยอด USDT (Coins)
+            document.getElementById('sidebar-usdt-balance').innerText = data.adminCoins.toFixed(2);
+            
+            // 2. อัปเดตยอดเงินในโซน (Zone Wallet) - เพิ่มฟิลด์นี้เข้าไปใน API ด้วย
+            document.getElementById('sidebar-zone-balance').innerText = data.zoneWallet.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('sidebar-zone-currency').innerText = zoneCurrency;
         }
     } catch (e) { console.error("โหลดข้อมูลโซนไม่สำเร็จ", e); }
 }
@@ -1675,28 +1695,43 @@ async function openExchangeModal() {
 
 // ฟังก์ชันส่งไปบันทึกที่หลังบ้าน
 async function executeExchange(amount) {
+    const adminName = localStorage.getItem('myUsername');
+
     try {
-        Swal.fire({ title: 'กำลังประมวลผล...', didOpen: () => Swal.showLoading() });
-        const adminName = localStorage.getItem('myUsername');
-        
-        const res = await fetch('/api/admin/convert-currency', {
+        Swal.fire({
+            title: 'กำลังดำเนินการ...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const response = await fetch('/api/admin/convert-currency', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                adminId: adminName,
-                usdtToConvert: amount,
-                zoneId: currentZoneId
+                adminId: adminName,     // ส่ง Username
+                usdtToConvert: amount,  // จำนวน USDT (coins) ที่จะแลก
+                zoneId: currentZoneId   // รหัสโซน
             })
         });
 
-        const result = await res.json();
+        const result = await response.json();
+
         if (result.success) {
-            Swal.fire('สำเร็จ!', `แปลงเงินเรียบร้อย ได้รับ ${result.received} ${result.currency}`, 'success')
-            .then(() => location.reload());
+            Swal.fire({
+                icon: 'success',
+                title: 'แปลงเงินสำเร็จ!',
+                text: `ได้รับ ${result.received.toLocaleString()} ${result.currency} เข้ากระเป๋าโซนเรียบร้อย`,
+                confirmButtonColor: 'var(--primary)'
+            }).then(() => {
+                // รีโหลดข้อมูลโซนเพื่ออัปเดตยอดเงินใน Sidebar ทันที
+                fetchAdminZoneInfo(adminName); 
+            });
         } else {
             Swal.fire('ล้มเหลว', result.message, 'error');
         }
-    } catch (e) { Swal.fire('Error', 'การเชื่อมต่อขัดข้อง', 'error'); }
+    } catch (err) {
+        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    }
 }
 
 

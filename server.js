@@ -1324,35 +1324,39 @@ app.post('/api/admin/set-zone-currency', async (req, res) => {
 
 // 7.4 ระบบหัก USDT และ เพิ่มเงินโซน ให้แอดมิน
 app.post('/api/admin/convert-currency', async (req, res) => {
-    const { adminId, usdtToConvert, zoneId } = req.body; // adminId ตรงนี้คือ Username จากหน้าบ้าน
+    const { adminId, usdtToConvert, zoneId } = req.body;
 
     try {
-        const zone = await db.collection('zones').findOne({ id: parseInt(zoneId) });
-        
-        // แก้ตรงนี้: ค้นหาด้วย username แทน id
+        const zoneIdInt = parseInt(zoneId);
+        const amount = parseFloat(usdtToConvert);
+
+        // 1. ดึงข้อมูลโซนและแอดมิน
+        const zone = await db.collection('zones').findOne({ id: zoneIdInt });
         const admin = await db.collection('users').findOne({ username: adminId });
 
-        if (!admin) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลแอดมิน' });
+        if (!zone || !admin) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลโซนหรือแอดมิน' });
         }
 
-        if (admin.usdtBalance < usdtToConvert) {
-            return res.status(400).json({ success: false, message: 'USDT ไม่เพียงพอ' });
+        // 2. เช็กว่าเงิน (coins) พอไหม
+        if (admin.coins < amount) {
+            return res.status(400).json({ success: false, message: 'เหรียญ (USDT) ของคุณไม่เพียงพอ' });
         }
 
-        // ใช้ฟิลด์ zoneExchangeRate ที่เราบันทึกไว้ก่อนหน้านี้
-        const receiveAmount = usdtToConvert * zone.zoneExchangeRate;
+        // 3. คำนวณยอดเงินที่จะได้รับ (USDT * เรทของโซน)
+        const receiveAmount = amount * (zone.zoneExchangeRate || 1.0);
 
-        // อัปเดตยอดเงิน
+        // 4. บันทึกธุรกรรม (หัก coins และ เพิ่ม zoneWallet)
+        // zoneWallet คือกระเป๋าเงินท้องถิ่นที่เราจะเอาไว้เติมให้คนอื่นต่อ
         await db.collection('users').updateOne(
-			{ username: adminId },
-				{ 
-					$inc: { 
-						coins: -parseFloat(usdtToConvert), // เปลี่ยนจาก usdtBalance เป็น coins
-						zoneWallet: receiveAmount 
-					} 
-				}
-			);
+            { username: adminId },
+            { 
+                $inc: { 
+                    coins: -amount,           // หักกระเป๋าหลัก (USDT)
+                    zoneWallet: receiveAmount  // เพิ่มกระเป๋าโซน (Currency ท้องถิ่น)
+                } 
+            }
+        );
 
         res.json({ 
             success: true, 
@@ -1407,19 +1411,16 @@ app.get('/api/admin/my-zone-info', async (req, res) => {
 
         // เปลี่ยน usdtBalance เป็น coins
         const adminProfile = await db.collection('users').findOne(
-            { username: adminUsername },
-            { projection: { coins: 1 } } 
-        );
+			{ username: adminUsername },
+			{ projection: { coins: 1, zoneWallet: 1 } } // เพิ่ม zoneWallet
+		);
 
         res.json({
-            success: true,
-            zone: {
-                id: zone.id,
-                zoneCurrency: zone.zoneCurrency || 'THB',
-                zoneExchangeRate: zone.zoneExchangeRate || 35.0
-            },
-            adminCoins: adminProfile && adminProfile.coins ? adminProfile.coins : 0 // ใช้ coins
-        });
+    success: true,
+    zone: { ... },
+    adminCoins: adminProfile.coins || 0,
+    zoneWallet: adminProfile.zoneWallet || 0 // ส่งค่านี้ไปให้หน้าบ้าน
+});
     } catch (err) { res.status(500).json({ success: false }); }
 });
 
