@@ -1501,9 +1501,11 @@ async function viewUserProfile(username) {
             </div>
 
             <div style="background: white; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-					<span style="color: #666;"><i class="fas fa-coins" style="color: #f1c40f;"></i> ยอดเงินคงเหลือ</span>
-					<b style="font-size: 1.2em; color: var(--primary);">${user.coins.toFixed(2)} ${zoneCurrency || 'USD'}</b>
-				</div>
+    <span style="color: #666;"><i class="fas fa-coins" style="color: #f1c40f;"></i> ยอดเงินคงเหลือ</span>
+    <b style="font-size: 1.2em; color: var(--primary);">
+        ${user.coins.toFixed(2)} ${user.currency || zoneCurrency || 'USD'}
+    </b>
+</div>
 
             ${kycHtml}
 
