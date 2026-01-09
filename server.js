@@ -919,8 +919,25 @@ app.get('/api/users-list', async (req, res) => {
             return res.status(403).json({ error: 'สำหรับ Admin เท่านั้น' });
         }
         
-        // 2. ดึงข้อมูล User ทั้งหมด
+        // 2. ดึงข้อมูลพื้นฐาน
         const allUsers = await usersCollection.find({}).toArray();
+        const allZones = await db.collection('zones').find({}).toArray(); // ดึงโซนทั้งหมดมาเตรียมไว้
+
+        // ฟังก์ชันช่วยหาโซนที่ใกล้ที่สุด เพื่อดึงแค่ชื่อสกุลเงิน (ไม่มีการคำนวณเงิน)
+        const getCurrencyForUser = (u) => {
+            if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return 'USD';
+            
+            let minDistance = Infinity;
+            let closestZone = null;
+            allZones.forEach(zone => {
+                const dist = getDistanceFromLatLonInKm(u.lastLocation.lat, u.lastLocation.lng, zone.lat, zone.lng);
+                if (dist < minDistance) { 
+                    minDistance = dist; 
+                    closestZone = zone; 
+                }
+            });
+            return closestZone ? (closestZone.zoneCurrency || 'USD') : 'USD';
+        };
 
         // ฟังก์ชันช่วยในการจัดกลุ่มและคำนวณสถิติ
         const mapUserResponse = (u) => {
@@ -933,9 +950,8 @@ app.get('/api/users-list', async (req, res) => {
                 name: u.username, 
                 fullName: u.fullName || '', 
                 profileImg: u.profileImg || '', 
-                coins: u.coins || 0, 
-                // --- เพิ่มฟิลด์ currency ตรงนี้ ---
-                currency: u.zoneCurrency || 'USD', 
+                coins: u.coins || 0,                // ✅ ยอดเงินดิบ ห้ามแปลงเด็ดขาดตามคำสั่ง
+                currency: u.zoneCurrency || 'USD',  // ✅ ชื่อสกุลเงินที่หามาได้
                 
                 rating: averageRating,
                 ratingCount: totalRatingCount,
@@ -944,34 +960,46 @@ app.get('/api/users-list', async (req, res) => {
                 completedJobs: combinedCompleted,
                 isBanned: u.isBanned || false,
                 isVerified: u.isVerified || false,
-                relationType: u.relationType || 'OTHER'
+                relationType: u.relationType || 'OTHER',
+                idNumber: u.idNumber || '',
+                phone: u.phone || '',
+                address: u.address || ''
             };
         };
 
         let finalResults = [];
 
-        // --- Logic การคัดกรองตามระดับ Admin และโซน ---
+        // --- Logic การคัดกรองตามระดับ Admin ---
         if (requester.adminLevel >= 3) {
-            // Level 3: เห็นทุกคน ยกเว้นตัวเอง
-            finalResults = allUsers.filter(u => u.username !== requester.username);
+            // Level 3: เห็นทุกคน และระบุสกุลเงินตามพิกัดของ User
+            finalResults = allUsers
+                .filter(u => u.username !== requester.username)
+                .map(u => {
+                    u.zoneCurrency = getCurrencyForUser(u);
+                    return u;
+                });
         } else {
             // Level 1-2: เห็นเฉพาะในโซนตัวเอง
-            let myOwnedZones = await zonesCollection.find({ assignedAdmin: requester.username }).toArray();
+            let myOwnedZones = await db.collection('zones').find({ assignedAdmin: requester.username }).toArray();
             let myRefZones = (requester.adminLevel === 2) 
-                ? await zonesCollection.find({ "refLocation.sourceUser": requester.username }).toArray() 
+                ? await db.collection('zones').find({ "refLocation.sourceUser": requester.username }).toArray() 
                 : [];
-            const allZones = await zonesCollection.find({}).toArray();
 
             finalResults = allUsers.filter(u => {
                 if (u.username === requester.username) return false;
-                
-                // กรณี Admin Lv2 Search หาคนในประเทศเดียวกัน (ข้ามโซนได้)
+
+                // ระบุสกุลเงินให้ User ก่อนคัดกรอง
+                u.zoneCurrency = getCurrencyForUser(u);
+
+                // กรณี Admin Lv2 Search หาคนในประเทศเดียวกัน
                 if (requester.adminLevel === 2 && search && u.country === requester.country) {
                     return true; 
                 }
 
-                if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return false;
+                // ตรวจสอบว่า User อยู่ในโซนที่ Admin ดูแลหรือไม่
+                if (!u.lastLocation) return false;
                 
+                // หาโซนที่ใกล้ User ที่สุดอีกครั้งเพื่อเช็กสิทธิ์ Owned/Ref
                 let minDistance = Infinity;
                 let closestZone = null;
                 allZones.forEach(zone => {
@@ -980,7 +1008,6 @@ app.get('/api/users-list', async (req, res) => {
                 });
 
                 if (closestZone) {
-					u.zoneCurrency = closestZone.zoneCurrency || 'USD';
                     const isOwned = myOwnedZones.some(mz => mz.id === closestZone.id);
                     const isRef = myRefZones.some(mz => mz.id === closestZone.id);
                     if (isOwned) { u.relationType = 'OWNED'; return true; }
@@ -990,7 +1017,7 @@ app.get('/api/users-list', async (req, res) => {
             });
         }
 
-        // --- กรองด้วย Search Keyword ---
+        // --- กรองด้วย Search Keyword (เหมือนเดิม) ---
         if (search && search.trim() !== "") {
             const lowerSearch = search.toLowerCase();
             finalResults = finalResults.filter(u => 
@@ -999,23 +1026,18 @@ app.get('/api/users-list', async (req, res) => {
             );
         }
 
-        // นับจำนวนสรุปตามความสัมพันธ์
+        // --- สรุปยอดและ Pagination (เหมือนเดิม) ---
         const totalOwned = finalResults.filter(u => u.relationType === 'OWNED').length;
         const totalRef = finalResults.filter(u => u.relationType === 'REF').length;
         const totalOther = finalResults.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF').length;
 
-        // --- ทำ Pagination ---
         const pagedUsers = finalResults.slice(skip, skip + limitNum);
 
         res.json({
             users: pagedUsers.map(mapUserResponse),
             currentPage: pageNum,
             totalPages: Math.ceil(finalResults.length / limitNum),
-            counts: {
-                owned: totalOwned,
-                ref: totalRef,
-                other: totalOther
-            }
+            counts: { owned: totalOwned, ref: totalRef, other: totalOther }
         });
 
     } catch (err) {
