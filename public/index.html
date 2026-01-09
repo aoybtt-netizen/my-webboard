@@ -357,7 +357,10 @@
 
     <div style="color:#28a745; font-weight:bold; margin-top:10px; line-height: 1.1; background: #e8f5e9; padding: 8px; border-radius: 10px;">
         <div id="sidebar-coins">
-            <div id="sidebar-usd-display" style="font-size: 1em;">0 USD</div> 
+		
+            <div id="sidebar-usd-display" style="font-size: 1em;">0.00 USDT</div> 
+		<div id="sidebar-converted-display" style="font-size:0.7em; color:#6c757d; font-weight: normal;">(0.00 ---)</div>
+		
         </div>
     </div>
     
@@ -417,7 +420,10 @@
     <div class="header-tools">
         <div class="coin-badge" onclick="contactAdmin()" title="คลิกเพื่อดูประวัติการเงิน">
             <div id="header-coins-container" style="text-align: right; line-height: 1.1;">
-    <div id="header-usd-display" style="font-size:1.0em; color:#e67e22; font-weight: bold;">0 USD</div> 
+			
+			<div id="header-usd-display" style="font-size:1.0em; color:#e67e22; font-weight: bold;">0.00 USDT</div> 
+<div id="header-converted-display" style="font-size:0.75em; color:#6c757d; font-weight: normal;">(0.00 ---)</div>
+
 </div>
             <div id="coin-notif-dot" class="notif-dot hidden">!</div>
         </div>
@@ -1758,7 +1764,7 @@ window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Wind
 
 
 
-        async function startApp(name) {
+async function startApp(name) {
     myUsername = name;
 	
 	document.getElementById('geo-filter-btn').classList.remove('hidden');
@@ -1934,39 +1940,48 @@ async function updateUserInfo() {
 
         // --- 💵 ส่วนการจัดการยอดเงิน (สำคัญ) ---
 
-        // ฟอร์แมตยอดเงิน USDT (กระเป๋าหลัก)
+        // 1. ฟอร์แมตยอดเงินหลัก (USDT)
         const formattedUSDT = parseFloat(data.coins || 0).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
 
-        // ฟอร์แมตยอดเงินโซน (กระเป๋าที่แปลงแล้ว)
+        // 2. ฟอร์แมตยอดเงินโซน (BRL/THB)
         const formattedLocal = parseFloat(data.convertedCoins || 0).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
 
-        // ดึงสกุลเงิน (เช่น BRL, THB) จาก API (ที่เป็นตัวใหญ่แล้ว)
-        const currentSymbol = data.currencySymbol || 'USD';
+        // 3. ดึงชื่อสกุลเงิน (Raw Value จาก DB)
+        const currentSymbol = data.currencySymbol || '---';
+        const convertedDisplay = `(${formattedLocal} ${currentSymbol})`;
 
-        // อัปเดตยอดเงินใน Header และ Sidebar
-        const updateDisplay = (usdId, localId) => {
-            const usdEl = document.getElementById(usdId);
-            const localEl = document.getElementById(localId);
-            if (usdEl) usdEl.innerText = `${formattedUSDT} USDT`; // ✅ เปลี่ยนเป็น USDT
-            if (localEl) localEl.innerText = `(${formattedLocal} ${currentSymbol})`; // ✅ ใช้ค่าดิบตัวใหญ่
-        };
+        // --- อัปเดต UI (เปลี่ยนจาก USD เป็น USDT) ---
+        const headerUsd = document.getElementById('header-usd-display');
+        const headerConverted = document.getElementById('header-converted-display');
+        if (headerUsd) {
+            headerUsd.innerText = `${formattedUSDT} USDT`; // ✅ เปลี่ยนเป็น USDT แล้ว
+        }
+        if (headerConverted) {
+            headerConverted.innerText = convertedDisplay;
+        }
 
-        updateDisplay('header-usd-display', 'header-converted-display');
-        updateDisplay('sidebar-usd-display', 'sidebar-converted-display');
+        const sidebarUsd = document.getElementById('sidebar-usd-display');
+        const sidebarConverted = document.getElementById('sidebar-converted-display');
+        if (sidebarUsd) {
+            sidebarUsd.innerText = `${formattedUSDT} USDT`; // ✅ เปลี่ยนเป็น USDT แล้ว
+        }
+        if (sidebarConverted) {
+            sidebarConverted.innerText = convertedDisplay;
+        }
 
-        // 5. อัปเดตค่าธรรมเนียมโพสต์ใน Modal
+        // --- 5. อัปเดตค่าธรรมเนียมใน Modal ---
         const modalCostDisplay = document.getElementById('modal-cost-display');
         if (modalCostDisplay && data.postCost) {
             const postCostUSDT = data.postCost.totalCost || 0;
             currentCost = postCostUSDT;
 
-            // คำนวณเรทแฝงจากยอดเงินที่ส่งมาเพื่อความแม่นยำ
+            // คำนวณเรทแฝง
             const balanceUSDT = parseFloat(data.coins) || 0;
             const balanceLocal = parseFloat(String(data.convertedCoins).replace(/,/g, '')) || 0;
             const impliedRate = (balanceUSDT > 0) ? (balanceLocal / balanceUSDT) : 0;
@@ -1983,24 +1998,23 @@ async function updateUserInfo() {
             `;
         }
 
-        // 6. อัปเดตสถิติต่างๆ ใน Sidebar
+        // อัปเดตสถิติอื่นๆ ตามปกติ...
         const updateStat = (id, val) => {
             const el = document.getElementById(id);
             if (el) el.innerText = val || 0;
         };
-
         updateStat('sidebar-rating', (data.rating || 0).toFixed(2));
         updateStat('sidebar-total-posts', data.totalPosts);
         updateStat('sidebar-completed-jobs', data.completedJobs);
 
-        // 7. อัปเดตพิกัดและข้อมูลโซน
-        if (locationQuery) {
-            const locData = JSON.parse(decodeURIComponent(locationQuery.split('=')[1]));
-            updateZoneBackground(locData.lat, locData.lng);
-            fetchAndRenderAnnouncement(locData);
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) {
+            userDisplay.innerText = myUsername;
+            userDisplay.style.color = (myAdminLevel > 0) ? "#0033FF" : "#000000";
+            userDisplay.style.fontWeight = (myAdminLevel > 0) ? "bold" : "normal";
         }
 
-        loadPosts(); // โหลดโพสต์ใหม่หลังจากอัปเดตข้อมูลผู้ใช้
+        loadPosts(); 
 
     } catch (e) {
         console.error('Error fetching user info:', e);
