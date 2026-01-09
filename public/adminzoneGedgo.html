@@ -639,14 +639,12 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
     
     socket.emit('joinRequest', requestId);
 
-    // เตรียมข้อมูล UI
     const titleHeader = isWithdraw ? 'ตรวจสอบรายการถอนเงิน' : 'ตรวจสอบรายการเติมเงิน';
     const mainIcon = isWithdraw ? 'fas fa-money-bill-transfer' : 'fas fa-hand-holding-usd';
     const cardBorderColor = isWithdraw ? '#ffcdd2' : '#c8e6c9';
-    const cardBgColor = isWithdraw ? '#fff5f5' : '#e8f5e9';
+    const cardBgColor = isWithdraw ? '#fff5f5' : '#e8f5e9'; // แก้ไขตรงนี้แล้ว
     const textStatusColor = isWithdraw ? '#c62828' : '#2e7d32';
 
-    // ข้อมูลธนาคาร (กรณีถอนเงิน)
     let withdrawInfoHtml = "";
     if (isWithdraw) {
         withdrawInfoHtml = `
@@ -678,7 +676,7 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
 
         <div style="padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; box-sizing: border-box; flex: 1;">
             
-            <div style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid ${cardBorderColor}; margin-bottom: 25px; background: ${cardBgColor crack};">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid ${cardBorderColor}; margin-bottom: 25px; background: ${cardBgColor};">
                 <div style="background: ${themeColor}; color: white; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
                     <i class="${mainIcon}"></i>
                 </div>
@@ -713,7 +711,6 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
     </div>
     `;
     
-    // โหลดแชทหลังจากวาดหน้าจอเสร็จ
     await loadAdminChatHistory(requestId);
 }
 
