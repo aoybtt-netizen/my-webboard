@@ -1619,47 +1619,57 @@ async function openExchangeModal() {
 
     const adminName = localStorage.getItem('myUsername');
 
-    // ดึงข้อมูล USDT ล่าสุดก่อนเปิด Modal
-    const res = await fetch(`/api/admin/get-zone-detail/${currentZoneId}?adminId=${adminName}`);
-    const data = await res.json();
-    const myUsdt = data.admin.usdtBalance || 0;
+    try {
+        // 1. ดึงข้อมูลล่าสุด (ยอด coins จากหลังบ้าน)
+        const res = await fetch(`/api/admin/get-zone-detail/${currentZoneId}?adminId=${adminName}`);
+        const data = await res.json();
+        
+        // ตรวจสอบว่ามีข้อมูลส่งกลับมาไหม
+        if (!data.success) throw new Error(data.message);
 
-    const { value: usdtAmount } = await Swal.fire({
-        title: 'แปลง USDT เป็นเงินในโซน',
-        html: `
-            <div style="text-align:left; font-family:'Kanit',sans-serif;">
-				<p><b>เรทปัจจุบัน:</b> 1 USDT = ${zoneRate} ${zoneCurrency}</p>
-				<p><b>ยอดเหรียญของคุณ:</b> <span style="color:var(--primary)">${myUsdt.toFixed(2)} USDT</span></p>
-                <hr>
-                <label>จำนวน USDT ที่ต้องการแปลง:</label>
-                <input id="ex-usdt" type="number" step="0.01" class="swal2-input" placeholder="0.00" style="width:100%; margin:10px 0;">
-                <div id="ex-preview" style="background:#f1f5f9; padding:10px; border-radius:10px; text-align:center; font-weight:bold; color:var(--primary);">
-                    คุณจะได้รับ: 0.00 ${zoneCurrency}
+        // 2. กำหนดค่าตัวแปร (ดึงจาก data.admin.usdtBalance ที่หลังบ้านส่งมา)
+        const myUsdt = data.admin.usdtBalance || 0; 
+
+        const { value: usdtAmount } = await Swal.fire({
+            title: 'แปลง USDT เป็นเงินในโซน',
+            html: `
+                <div style="text-align:left; font-family:'Kanit',sans-serif;">
+                    <p><b>เรทปัจจุบัน:</b> 1 USDT = ${zoneRate} ${zoneCurrency}</p>
+                    <p><b>ยอดเหรียญของคุณ:</b> <span style="color:var(--primary)">${myUsdt.toFixed(2)} USDT</span></p>
+                    <hr>
+                    <label>จำนวน USDT ที่ต้องการแปลง:</label>
+                    <input id="ex-usdt" type="number" step="0.01" class="swal2-input" placeholder="0.00" style="width:100%; margin:10px 0;">
+                    <div id="ex-preview" style="background:#f1f5f9; padding:10px; border-radius:10px; text-align:center; font-weight:bold; color:var(--primary);">
+                        คุณจะได้รับ: 0.00 ${zoneCurrency}
+                    </div>
                 </div>
-            </div>
-        `,
-        didOpen: () => {
-            const input = document.getElementById('ex-usdt');
-            input.addEventListener('input', () => {
-                const val = parseFloat(input.value) || 0;
-                document.getElementById('ex-preview').innerText = `คุณจะได้รับ: ${(val * zoneRate).toLocaleString()} ${zoneCurrency}`;
-            });
-        },
-        showCancelButton: true,
-        confirmButtonText: 'ยืนยันการแปลง',
-        cancelButtonText: 'ยกเลิก',
-        confirmButtonColor: 'var(--primary)',
-        preConfirm: () => {
-            const val = parseFloat(document.getElementById('ex-usdt').value);
-            if (!val || val <= 0 || val > myUsdt) {
-                Swal.showValidationMessage('ยอดเงินไม่ถูกต้อง หรือ USDT ไม่พอ');
+            `,
+            didOpen: () => {
+                const input = document.getElementById('ex-usdt');
+                input.addEventListener('input', () => {
+                    const val = parseFloat(input.value) || 0;
+                    document.getElementById('ex-preview').innerText = `คุณจะได้รับ: ${(val * zoneRate).toLocaleString()} ${zoneCurrency}`;
+                });
+            },
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันการแปลง',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: 'var(--primary)',
+            preConfirm: () => {
+                const val = parseFloat(document.getElementById('ex-usdt').value);
+                if (!val || val <= 0 || val > myUsdt) {
+                    Swal.showValidationMessage('ยอดเงินไม่ถูกต้อง หรือ USDT ไม่พอ');
+                }
+                return val;
             }
-            return val;
-        }
-    });
+        });
 
-    if (usdtAmount) {
-        executeExchange(usdtAmount);
+        if (usdtAmount) {
+            executeExchange(usdtAmount);
+        }
+    } catch (e) {
+        console.error(e);
+        Swal.fire('ผิดพลาด', 'ไม่สามารถดึงยอดเงินล่าสุดได้', 'error');
     }
 }
 
