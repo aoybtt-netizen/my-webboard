@@ -1917,19 +1917,23 @@ async function updateUserInfo() {
         const formattedLocal = parseFloat(data.convertedCoins || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
         const formattedUSDT = parseFloat(data.coins || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
 
-        const convertedDisplay = `(${formattedLocal} ${data.currencySymbol})`;
+        const convertedDisplay = `${formattedLocal} ${data.currencySymbol}`;
 
         // อัปเดต Header
         const headerUsd = document.getElementById('header-usd-display');
         const headerConverted = document.getElementById('header-converted-display');
         if (headerUsd) headerUsd.innerText = `${formattedUSDT} USDT`; // เปลี่ยนเป็น USDT
-        if (headerConverted) headerConverted.innerText = convertedDisplay;
+        if (headerConverted) {
+				headerConverted.innerText = convertedDisplay;
+			}
 
         // อัปเดต Sidebar
         const sidebarUsd = document.getElementById('sidebar-usd-display');
         const sidebarConverted = document.getElementById('sidebar-converted-display');
         if (sidebarUsd) sidebarUsd.innerText = `${formattedUSDT} USDT`; // เปลี่ยนเป็น USDT
-        if (sidebarConverted) sidebarConverted.innerText = convertedDisplay;
+        if (sidebarConverted) {
+				sidebarConverted.innerText = convertedDisplay;
+			}
 
         // --- 3. อัปเดตส่วนอื่นๆ (คงเดิม) ---
         const updateField = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
