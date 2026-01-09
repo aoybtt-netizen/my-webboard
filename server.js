@@ -870,47 +870,38 @@ app.get('/api/profile-details', async (req, res) => {
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
+        // ค่า Default กรณีอยู่นอกพื้นที่
         let zoneName = "นอกพื้นที่บริการ";
         let zoneOwner = "ไม่มีผู้ดูแล";
         let currentCurrency = 'USD';
-        let currentBalance = user.coins || 0; 
+        let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
 
+        // ตรวจสอบพิกัดเพื่อหาโซน
         if (location) {
             const locationObj = JSON.parse(decodeURIComponent(location));
+            // ใช้ฟังก์ชันเดิมที่คุณมีเพื่อหา Admin/Zone
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
                 zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
                 zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล";
                 
+                // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
                 if (zoneInfo.zoneData.zoneCurrency) {
-                    // ✅ ระบุสกุลเงินจากโซน
-                    currentCurrency = zoneInfo.zoneData.zoneCurrency; 
+                    currentCurrency = zoneInfo.zoneData.zoneCurrency;
                     
-                    // ✅ 🔍 DEBUG POINT: เช็คการดึงเงินตามสกุลเงิน
-                    // เราต้องเช็คทั้งแบบ ตัวใหญ่ (BRL) และ ตัวเล็ก (brl) 
-                    // เพื่อดูว่าใน DB ของ User เก็บแบบไหน
-                    const fieldUpper = currentCurrency.toUpperCase();
-                    const fieldLower = currentCurrency.toLowerCase();
-                    
-                    // เลือกดึงจากตัวเล็กเป็นหลักตามมาตรฐานที่เราคุยกัน (brl)
-                    // แต่ถ้าหาไม่เจอ ให้ลองหาตัวใหญ่ (BRL) หรือถ้าไม่มีเลยให้เป็น 0
-                    currentBalance = user[fieldLower] !== undefined ? user[fieldLower] : (user[fieldUpper] || 0);
-
-                    console.log("-----------------------------------------");
-                    console.log(`[DEBUG PROFILE] User: @${username}`);
-                    console.log(`[DEBUG PROFILE] Zone Config: ${currentCurrency}`);
-                    console.log(`[DEBUG PROFILE] Val in DB (lower - "${fieldLower}"): ${user[fieldLower]}`);
-                    console.log(`[DEBUG PROFILE] Val in DB (upper - "${fieldUpper}"): ${user[fieldUpper]}`);
-                    console.log(`[DEBUG PROFILE] Final Selected Balance: ${currentBalance}`);
-                    console.log("-----------------------------------------");
+                    // ✅ 2. ดึงยอดเงินจาก "กระเป๋าที่ตรงกับสกุลเงิน" (เช่น user.THB)
+                    // ถ้าไม่มีให้เป็น 0 (ห้ามแปลงค่า ให้ดึงค่าดิบ)
+                    currentBalance = user[currentCurrency] || 0; 
                 }
             }
         }
 
+        // ส่งข้อมูลกลับไปหน้าบ้าน
         res.json({
-            coins: currentBalance,      
-            currency: currentCurrency,  
+            coins: currentBalance,      // ส่งยอดเงินของกระเป๋านั้นๆ
+            currency: currentCurrency,  // ส่งชื่อสกุลเงินไปด้วย
+            
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
@@ -920,7 +911,7 @@ app.get('/api/profile-details', async (req, res) => {
         });
 
     } catch (e) {
-        console.error("🚨 Profile API Error:", e);
+        console.error("Profile API Error:", e);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
@@ -1361,46 +1352,37 @@ app.post('/api/admin/set-zone-currency', async (req, res) => {
 // 7.4 ระบบหัก USDT และ เพิ่มเงินโซน ให้แอดมิน
 app.post('/api/admin/convert-currency', async (req, res) => {
     const { adminId, usdtToConvert, zoneId } = req.body;
-
     try {
         const zoneIdInt = parseInt(zoneId);
         const amount = parseFloat(usdtToConvert);
-
         const zone = await db.collection('zones').findOne({ id: zoneIdInt });
         const admin = await db.collection('users').findOne({ username: adminId });
-
         if (!zone || !admin) {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลโซนหรือแอดมิน' });
         }
-
         if (admin.coins < amount) {
             return res.status(400).json({ success: false, message: 'เหรียญ (USDT) ของคุณไม่เพียงพอ' });
         }
-
+        // ✅ 1. ดึงชื่อสกุลเงินของโซนมาเป็นชื่อฟิลด์ (เช่น 'thb')
         const currencyField = (zone.zoneCurrency || 'usd').toLowerCase(); 
         const receiveAmount = amount * (zone.zoneExchangeRate || 1.0);
-
-        // 🔍 DEBUG LOG: เช็คการแปลงเงิน
-        console.log("-----------------------------------------");
-        console.log(`[DEBUG] Convert Mode: Admin @${adminId}`);
-        console.log(`[DEBUG] From: ${amount} USDT`);
-        console.log(`[DEBUG] To Field: "${currencyField}" (Amount: ${receiveAmount})`);
-        console.log("-----------------------------------------");
-
+        // ✅ 2. บันทึกธุรกรรม โดยใช้ [currencyField] แทน zoneWallet
         await db.collection('users').updateOne(
             { username: adminId },
             { 
                 $inc: { 
-                    coins: -amount,
-                    [currencyField]: receiveAmount 
+                    coins: -amount,           // หักกระเป๋าหลัก (USDT)
+                    [currencyField]: receiveAmount  // ✨ เพิ่มเข้ากระเป๋าสกุลเงินโซนโดยตรง
                 } 
             }
         );
-
-        res.json({ success: true, received: receiveAmount, currency: currencyField });
-
+        res.json({ 
+            success: true, 
+            received: receiveAmount, 
+            currency: currencyField 
+        });
     } catch (err) {
-        console.error("🚨 Convert Error:", err);
+        console.error(err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
@@ -3682,42 +3664,11 @@ app.post('/api/admin/save-settings', async (req, res) => {
 // 2.3 ดึงรายการคำขอทั้งหมดของแอดมิน (ใช้แสดงในหน้าจอแอดมิน)
 app.get('/api/admin/topup-list', async (req, res) => {
     const { admin } = req.query;
-    try {
-        // 1. ดึงข้อมูลโซนของแอดมินคนนี้มาเช็คสกุลเงินที่ตั้งไว้
-        const zoneInfo = await db.collection('zones').findOne({ assignedAdmin: admin });
-        const configCurrency = zoneInfo ? zoneInfo.zoneCurrency : 'NOT SET';
-
-        // 2. ดึงรายการคำขอที่ค้างอยู่
-        const requests = await topupRequestsCollection.find({ 
-            adminId: admin, 
-            status: 'pending' 
-        }).sort({ createdAt: -1 }).toArray();
-        
-        // 🔍 [DEBUG LOG] สรุปสถานะโซนและรายการคำขอ
-        console.log("=========================================");
-        console.log(`[DEBUG] Admin: @${admin}`);
-        console.log(`[DEBUG] Zone Config Currency: "${configCurrency}"`); // ✅ เช็คว่าโซนตั้งค่าไว้อย่างไร
-        console.log(`[DEBUG] Found Pending Requests: ${requests.length}`);
-        
-        if (requests.length > 0) {
-            requests.forEach((req, i) => {
-                const reqCurrency = req.currency || 'MISSING!';
-                const matchStatus = (reqCurrency.toLowerCase() === configCurrency.toLowerCase()) 
-                    ? "✅ MATCH" 
-                    : "❌ MISMATCH!";
-
-                console.log(`   #${i + 1} User: @${req.username}`);
-                console.log(`       - Amount: ${req.amount}`);
-                console.log(`       - Request Currency: "${reqCurrency}" (${matchStatus})`);
-            });
-        }
-        console.log("=========================================");
-
-        res.json(requests);
-    } catch (err) {
-        console.error("🚨 List Error:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
+    const requests = await topupRequestsCollection.find({ 
+        adminId: admin, 
+        status: 'pending' 
+    }).sort({ createdAt: -1 }).toArray();
+    res.json(requests);
 });
 
 // 2.4 อนุมัติการเติมเงิน
@@ -3731,14 +3682,15 @@ app.post('/api/admin/process-topup', async (req, res) => {
             return res.status(400).json({ error: "คำขอนี้ไม่พร้อมสำหรับการดำเนินการ" });
         }
 
-        // ✅ เลือกใช้สกุลเงินที่บันทึกไว้ใน Request หรือที่ส่งมาจากหน้าบ้าน
-        const currencyField = topupReq.currency || currency || 'usd';
+        // ✅ แก้ไขจุดนี้: บังคับให้เป็นตัวพิมพ์เล็กทั้งหมด (.toLowerCase())
+        // เพื่อให้ตรงกับฟิลด์ใน Database ที่ระบบ Convert สร้างไว้ (เช่น 'brl', 'thb')
+        const currencyField = (topupReq.currency || currency || 'usd').toLowerCase();
         const amountToProcess = parseFloat(finalAmount || topupReq.amount);
 
         // --- ❌ กรณีปฏิเสธ (Rejected) ---
         if (status !== 'approved') {
             if (topupReq.type === 'WITHDRAW') {
-                // ✅ คืนเงินเข้า "กระเป๋าที่ถูกต้อง" (Dynamic Key: [currencyField])
+                // คืนเงินเข้ากระเป๋าที่ถูกต้อง (ใช้ชื่อฟิลด์ตัวเล็ก)
                 await usersCollection.updateOne(
                     { username: topupReq.username }, 
                     { $inc: { [currencyField]: topupReq.amount } } 
@@ -3755,19 +3707,22 @@ app.post('/api/admin/process-topup', async (req, res) => {
         // --- ✅ กรณีอนุมัติ (Approved) ---
         
         if (topupReq.type === 'TOPUP') {
-            // โหมดเติมเงิน: หักเงินจากแอดมินใบนั้น และเพิ่มให้สมาชิกใบนั้น
+            // โหมดเติมเงิน: หักเงินจากแอดมิน และเพิ่มให้สมาชิก
             const adminUser = await usersCollection.findOne({ username: adminName });
+            
+            // ดึงยอดเงินจากกระเป๋าที่ถูกต้อง (ใช้ชื่อฟิลด์ตัวเล็ก)
             const adminBalance = adminUser[currencyField] || 0;
 
             if (!adminUser || adminBalance < amountToProcess) {
-                return res.status(400).json({ error: `ยอดเงิน ${currencyField} ของแอดมินไม่เพียงพอ` });
+                // ส่ง Error แจ้งแอดมิน (โชว์ตัวใหญ่ให้แอดมินอ่านง่าย แต่ข้างหลังเช็คด้วยตัวเล็ก)
+                return res.status(400).json({ error: `ยอดเงิน ${currencyField.toUpperCase()} ของแอดมินไม่เพียงพอ` });
             }
             
-            // ✅ หักแอดมิน เติมสมาชิก (ระบุฟิลด์ตาม currencyField)
+            // หักแอดมิน เติมสมาชิก
             await usersCollection.updateOne({ username: adminName }, { $inc: { [currencyField]: -amountToProcess } });
             await usersCollection.updateOne({ username: topupReq.username }, { $inc: { [currencyField]: amountToProcess } });
         } else {
-            // โหมดถอนเงิน: แอดมินได้รับเหรียญจากสมาชิกเข้ากระเป๋าตัวเอง
+            // โหมดถอนเงิน: แอดมินได้รับเหรียญจากสมาชิกเข้ากระเป๋าตัวเอง (ใช้ชื่อฟิลด์ตัวเล็ก)
             await usersCollection.updateOne({ username: adminName }, { $inc: { [currencyField]: amountToProcess } });
         }
 
@@ -3783,7 +3738,8 @@ app.post('/api/admin/process-topup', async (req, res) => {
             }
         );
 
-        res.json({ success: true, message: `อนุมัติรายการ ${topupReq.type} (${currencyField}) สำเร็จ` });
+        // ตอบกลับสำเร็จ (โชว์ตัวใหญ่ใน Message)
+        res.json({ success: true, message: `อนุมัติรายการ ${topupReq.type} (${currencyField.toUpperCase()}) สำเร็จ` });
 
     } catch (err) {
         console.error("Process Topup Error:", err);
