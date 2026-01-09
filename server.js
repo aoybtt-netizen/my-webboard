@@ -1409,19 +1409,25 @@ app.get('/api/admin/my-zone-info', async (req, res) => {
 
         if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
 
-        // เปลี่ยน usdtBalance เป็น coins
         const adminProfile = await db.collection('users').findOne(
-			{ username: adminUsername },
-			{ projection: { coins: 1, zoneWallet: 1 } } // เพิ่ม zoneWallet
-		);
+            { username: adminUsername },
+            { projection: { coins: 1, zoneWallet: 1 } }
+        );
 
         res.json({
-    success: true,
-    zone: { ... },
-    adminCoins: adminProfile.coins || 0,
-    zoneWallet: adminProfile.zoneWallet || 0 // ส่งค่านี้ไปให้หน้าบ้าน
-});
-    } catch (err) { res.status(500).json({ success: false }); }
+            success: true,
+            zone: {
+                id: zone.id,
+                zoneCurrency: zone.zoneCurrency || 'USD',
+                zoneExchangeRate: zone.zoneExchangeRate || 1.0
+            },
+            adminCoins: adminProfile ? (adminProfile.coins || 0) : 0,
+            zoneWallet: adminProfile ? (adminProfile.zoneWallet || 0) : 0
+        });
+    } catch (err) { 
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server Error' }); 
+    }
 });
 
 
