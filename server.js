@@ -3674,21 +3674,35 @@ app.post('/api/admin/save-settings', async (req, res) => {
 app.get('/api/admin/topup-list', async (req, res) => {
     const { admin } = req.query;
     try {
+        // 1. ดึงข้อมูลโซนของแอดมินคนนี้มาเช็คสกุลเงินที่ตั้งไว้
+        const zoneInfo = await db.collection('zones').findOne({ assignedAdmin: admin });
+        const configCurrency = zoneInfo ? zoneInfo.zoneCurrency : 'NOT SET';
+
+        // 2. ดึงรายการคำขอที่ค้างอยู่
         const requests = await topupRequestsCollection.find({ 
             adminId: admin, 
             status: 'pending' 
         }).sort({ createdAt: -1 }).toArray();
         
-        // 🔍 DEBUG LOG: เช็ครายการที่ส่งให้แอดมิน
-        console.log(`[DEBUG] Fetching Topup-List for Admin: ${admin}`);
+        // 🔍 [DEBUG LOG] สรุปสถานะโซนและรายการคำขอ
+        console.log("=========================================");
+        console.log(`[DEBUG] Admin: @${admin}`);
+        console.log(`[DEBUG] Zone Config Currency: "${configCurrency}"`); // ✅ เช็คว่าโซนตั้งค่าไว้อย่างไร
+        console.log(`[DEBUG] Found Pending Requests: ${requests.length}`);
+        
         if (requests.length > 0) {
             requests.forEach((req, i) => {
-                console.log(`   #${i + 1} User: @${req.username} | Amount: ${req.amount} | Currency: ${req.currency || 'MISSING!'}`);
+                const reqCurrency = req.currency || 'MISSING!';
+                const matchStatus = (reqCurrency.toLowerCase() === configCurrency.toLowerCase()) 
+                    ? "✅ MATCH" 
+                    : "❌ MISMATCH!";
+
+                console.log(`   #${i + 1} User: @${req.username}`);
+                console.log(`       - Amount: ${req.amount}`);
+                console.log(`       - Request Currency: "${reqCurrency}" (${matchStatus})`);
             });
-        } else {
-            console.log(`   (No pending requests found)`);
         }
-        console.log("-----------------------------------------");
+        console.log("=========================================");
 
         res.json(requests);
     } catch (err) {
