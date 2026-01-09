@@ -251,6 +251,82 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 
+//API ADMIN HTML
+// 1. API ดึงรายชื่อสมาชิกทั้งหมด
+app.get('/api/admin/all-users', async (req, res) => {
+    try {
+        // ดึงสมาชิกทั้งหมด เรียงตามระดับแอดมินจากสูงไปต่ำ
+        const users = await db.collection('users').find({}).sort({ adminLevel: -1 }).toArray();
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ success: false, message: "ไม่สามารถดึงข้อมูลสมาชิกได้" });
+    }
+});
+
+// 2. API ดึงรายชื่อโซนทั้งหมด
+app.get('/api/admin/all-zones', async (req, res) => {
+    try {
+        const zones = await db.collection('zones').find({}).sort({ id: 1 }).toArray();
+        res.json(zones);
+    } catch (err) {
+        res.status(500).json({ success: false, message: "ไม่สามารถดึงข้อมูลโซนได้" });
+    }
+});
+
+// 3. 🔥 API หัวใจหลัก: Universal Update (แก้ไขได้ทุกฟิลด์)
+app.post('/api/admin/universal-update', async (req, res) => {
+    const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
+
+    try {
+        // --- 🛡️ ตรวจสอบสิทธิ์แอดมิน (Security Check) ---
+        const admin = await db.collection('users').findOne({ username: adminUsername });
+        if (!admin || admin.adminLevel < 3) {
+            return res.status(403).json({ success: false, message: "ปฏิเสธการเข้าถึง: ต้องเป็นแอดมินระดับ 3 เท่านั้น" });
+        }
+
+        // --- ⚙️ จัดการประเภทข้อมูล (Data Casting) ---
+        // ป้องกันปัญหาการบันทึกตัวเลขเป็นข้อความ (String) ซึ่งจะทำให้คำนวณเงินไม่ได้
+        let finalValue = newValue;
+
+        // ถ้าฟิลด์ที่ส่งมาเป็นตัวเลข ให้แปลงเป็น Number
+        const numericFields = ['coins', 'adminLevel', 'id', 'zoneExchangeRate', 'totalPosts', 'completedJobs', 'rating', 'BRL', 'THB', 'VND'];
+        if (numericFields.includes(field)) {
+            finalValue = field === 'adminLevel' || field === 'id' ? parseInt(newValue) : parseFloat(newValue);
+        }
+
+        // ถ้าเป็นค่า Boolean (การแบน)
+        if (field === 'isBanned') {
+            finalValue = (newValue === 'true' || newValue === true);
+        }
+
+        // --- 📝 ทำการอัปเดตลง Database ---
+        // กำหนดเงื่อนไขการหา: ถ้าแก้ user ให้หาจาก username, ถ้าแก้ zone ให้หาจาก id
+        const query = targetCollection === 'users' ? { username: targetId } : { id: parseInt(targetId) };
+
+        const result = await db.collection(targetCollection).updateOne(
+            query,
+            { 
+                $set: { 
+                    [field]: finalValue,
+                    lastModifiedBy: adminUsername, // เก็บประวัติว่าใครแก้
+                    updatedAt: new Date()
+                } 
+            }
+        );
+
+        if (result.matchedCount > 0) {
+            res.json({ success: true, message: `อัปเดต [${field}] เป็น [${finalValue}] เรียบร้อยแล้ว` });
+        } else {
+            res.status(404).json({ success: false, message: "ไม่พบข้อมูลที่ต้องการแก้ไข" });
+        }
+
+    } catch (err) {
+        console.error("Universal Update Error:", err);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" });
+    }
+});
+
+
 
 
 

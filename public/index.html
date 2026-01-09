@@ -3942,7 +3942,7 @@ socket.on('admin-review-request', (data) => {
             }, 5000);
         }
 		
-		async function fetchTopicsForCreate(lat = null, lng = null) {
+	async function fetchTopicsForCreate(lat = null, lng = null) {
         const select = document.getElementById('category-select');
         // แสดงสถานะกำลังโหลดใน Dropdown
         select.innerHTML = '<option>⏳ กำลังโหลดหัวข้อ...</option>';
@@ -4051,7 +4051,7 @@ function openAdminPinnedModal() {
 
         function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); } 
         
-    function getLocation(isPrimaryCheckin = false) {
+function getLocation(isPrimaryCheckin = false) {
     const btn = document.getElementById('geo-btn');
     const display = document.getElementById('location-display');
     const t = translations[currentLang]; // ตัวย่อสำหรับข้อความแปล

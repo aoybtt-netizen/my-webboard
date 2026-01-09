@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Super Control | ระบบจัดการหลังบ้าน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: var(--primary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+
+        h2 { margin-top: 0; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th { background: #fdfdfd; font-weight: 600; color: #7f8c8d; }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Kanit';
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+
+        .btn-edit { background: var(--accent); color: white; }
+        .btn-edit:hover { background: #2980b9; }
+        .btn-ban { background: #ecf0f1; color: var(--danger); }
+        .btn-ban.active { background: var(--danger); color: white; }
+
+        .currency-tag { color: #888; font-size: 0.8em; margin-left: 5px; }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            background: #ddd;
+            font-weight: bold;
+        }
+        .tab-btn.active { background: var(--accent); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1 style="margin:0; font-size: 1.5em;">🚀 Admin Super Control</h1>
+            <small>จัดการสมาชิกและโซนโดยตรง (Universal Editor)</small>
+        </div>
+        <button class="btn btn-edit" onclick="location.reload()"><i class="fas fa-sync"></i> รีเฟรชข้อมูล</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('members')">👥 สมาชิก</button>
+        <button class="tab-btn" onclick="switchTab('zones')">🌍 โซนพื้นที่</button>
+    </div>
+
+    <div id="section-members" class="card">
+        <h2><i class="fas fa-users"></i> รายชื่อสมาชิกในระบบ</h2>
+        <input type="text" class="search-box" id="userSearch" placeholder="ค้นหาชื่อผู้ใช้..." onkeyup="filterTable('userSearch', 'member-table')">
+        <table id="member-table">
+            <thead>
+                <tr>
+                    <th>ผู้ใช้งาน</th>
+                    <th>ยอดเงิน (USDT)</th>
+                    <th>กระเป๋าโซน</th>
+                    <th>ระดับ</th>
+                    <th>สถานะ</th>
+                    <th>จัดการ</th>
+                </tr>
+            </thead>
+            <tbody id="member-body">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="section-zones" class="card" style="display:none;">
+        <h2><i class="fas fa-map-marker-alt"></i> ตั้งค่าโซนและอัตราแลกเปลี่ยน</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>ชื่อโซน</th>
+                    <th>แอดมินดูแล</th>
+                    <th>สกุลเงิน</th>
+                    <th>เรท (1 USDT =)</th>
+                    <th>จัดการ</th>
+                </tr>
+            </thead>
+            <tbody id="zone-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const adminUser = localStorage.getItem('myUsername');
+
+    // 1. ฟังก์ชันสลับหน้าจอ
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('section-members').style.display = (tab === 'members') ? 'block' : 'none';
+        document.getElementById('section-zones').style.display = (tab === 'zones') ? 'block' : 'none';
+    }
+
+    // 2. ฟังก์ชันโหลดข้อมูลสมาชิก
+    async function loadMembers() {
+        try {
+            const res = await fetch('/api/admin/all-users'); // *** คุณต้องมี API นี้ ***
+            const users = await res.json();
+            const body = document.getElementById('member-body');
+            body.innerHTML = '';
+
+            users.forEach(u => {
+                body.innerHTML += `
+                    <tr>
+                        <td><b>${u.username}</b></td>
+                        <td><span onclick="universalEdit('users', '${u.username}', 'coins', ${u.coins})" style="cursor:pointer; color:var(--accent); font-weight:bold;">${(u.coins || 0).toFixed(2)}</span></td>
+                        <td>${(u[u.lastZoneCurrency] || 0).toFixed(2)} <small>${u.lastZoneCurrency || ''}</small></td>
+                        <td><button class="btn" onclick="universalEdit('users', '${u.username}', 'adminLevel', ${u.adminLevel})">Lv.${u.adminLevel || 0}</button></td>
+                        <td><span class="badge" style="background:${u.isBanned ? '#fadbd8' : '#d4efdf'}; color:${u.isBanned ? '#c0392b' : '#1e8449'};">${u.isBanned ? 'BANNED' : 'ACTIVE'}</span></td>
+                        <td>
+                            <button class="btn btn-ban ${u.isBanned ? 'active' : ''}" onclick="universalEdit('users', '${u.username}', 'isBanned', ${!u.isBanned})">
+                                <i class="fas fa-ban"></i> ${u.isBanned ? 'ปลดแบน' : 'แบน'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    // 3. ฟังก์ชันโหลดข้อมูลโซน
+    async function loadZones() {
+        try {
+            const res = await fetch('/api/admin/all-zones'); // *** คุณต้องมี API นี้ ***
+            const zones = await res.json();
+            const body = document.getElementById('zone-body');
+            body.innerHTML = '';
+
+            zones.forEach(z => {
+                body.innerHTML += `
+                    <tr>
+                        <td>${z.id}</td>
+                        <td><b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">${z.name}</b></td>
+                        <td>${z.assignedAdmin || '-'}</td>
+                        <td><button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${z.zoneCurrency}')">${z.zoneCurrency || 'USD'}</button></td>
+                        <td><button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">${z.zoneExchangeRate || 1.0}</button></td>
+                        <td>-</td>
+                    </tr>
+                `;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    // 4. 🔥 ฟังก์ชันหัวใจหลัก: Universal Edit
+    async function universalEdit(collection, id, field, currentVal) {
+        let inputType = 'text';
+        if (typeof currentVal === 'number') inputType = 'number';
+        if (typeof currentVal === 'boolean') {
+            confirmToggle(collection, id, field, currentVal);
+            return;
+        }
+
+        const { value: newVal } = await Swal.fire({
+            title: `แก้ไขฟิลด์: ${field}`,
+            input: inputType,
+            inputValue: currentVal,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึกข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (newVal !== undefined && newVal !== null) {
+            executeURLUpdate(collection, id, field, newVal);
+        }
+    }
+
+    async function confirmToggle(collection, id, field, currentVal) {
+        const res = await Swal.fire({
+            title: 'ยืนยันการเปลี่ยนสถานะ?',
+            text: `ต้องการเปลี่ยน ${field} เป็น ${!currentVal}`,
+            icon: 'warning',
+            showCancelButton: true
+        });
+        if (res.isConfirmed) executeURLUpdate(collection, id, field, !currentVal);
+    }
+
+    // ฟังก์ชันส่งข้อมูลไปหา API ตัวกลางที่เราเขียนไว้
+    async function executeURLUpdate(collection, id, field, newValue) {
+        try {
+            const response = await fetch('/api/admin/universal-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminUsername: adminUser,
+                    targetCollection: collection,
+                    targetId: id,
+                    field: field,
+                    newValue: newValue
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                Swal.fire('สำเร็จ', result.message, 'success');
+                loadMembers();
+                loadZones();
+            } else {
+                Swal.fire('ผิดพลาด', result.message, 'error');
+            }
+        } catch (e) { Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+    }
+
+    // 5. ฟังก์ชันค้นหาในตาราง
+    function filterTable(inputId, tableId) {
+        let input = document.getElementById(inputId);
+        let filter = input.value.toUpperCase();
+        let table = document.getElementById(tableId);
+        let tr = table.getElementsByTagName("tr");
+        for (let i = 1; i < tr.length; i++) {
+            let td = tr[i].getElementsByTagName("td")[0];
+            if (td) {
+                let textValue = td.textContent || td.innerText;
+                tr[i].style.display = (textValue.toUpperCase().indexOf(filter) > -1) ? "" : "none";
+            }
+        }
+    }
+
+    // เริ่มต้นโหลดข้อมูล
+    window.onload = () => {
+        if (!adminUser) { window.location.href = 'index.html'; return; }
+        loadMembers();
+        loadZones();
+    };
+</script>
+
+</body>
+</html>
