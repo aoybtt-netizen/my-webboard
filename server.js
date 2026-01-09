@@ -1324,25 +1324,32 @@ app.post('/api/admin/set-zone-currency', async (req, res) => {
 
 // 7.4 ระบบหัก USDT และ เพิ่มเงินโซน ให้แอดมิน
 app.post('/api/admin/convert-currency', async (req, res) => {
-    const { adminId, usdtToConvert, zoneId } = req.body;
+    const { adminId, usdtToConvert, zoneId } = req.body; // adminId ตรงนี้คือ Username จากหน้าบ้าน
 
     try {
         const zone = await db.collection('zones').findOne({ id: parseInt(zoneId) });
-        const admin = await db.collection('users').findOne({ id: adminId });
+        
+        // แก้ตรงนี้: ค้นหาด้วย username แทน id
+        const admin = await db.collection('users').findOne({ username: adminId });
+
+        if (!admin) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลแอดมิน' });
+        }
 
         if (admin.usdtBalance < usdtToConvert) {
             return res.status(400).json({ success: false, message: 'USDT ไม่เพียงพอ' });
         }
 
+        // ใช้ฟิลด์ zoneExchangeRate ที่เราบันทึกไว้ก่อนหน้านี้
         const receiveAmount = usdtToConvert * zone.zoneExchangeRate;
 
-        // ธุรกรรมแบบ Atomic (หัก USDT และเพิ่มเงินโซน)
+        // อัปเดตยอดเงิน
         await db.collection('users').updateOne(
-            { id: adminId },
+            { username: adminId }, // ใช้ username ในการ Update
             { 
                 $inc: { 
-                    usdtBalance: -usdtToConvert,      // หัก USDT
-                    zoneWallet: receiveAmount         // เพิ่มเงินในกระเป๋าโซนสำหรับกระจายต่อ
+                    usdtBalance: -parseFloat(usdtToConvert), 
+                    zoneWallet: receiveAmount // zoneWallet คือกระเป๋าเงินท้องถิ่นของโซนนั้น
                 } 
             }
         );
@@ -1354,9 +1361,10 @@ app.post('/api/admin/convert-currency', async (req, res) => {
         });
 
     } catch (err) {
+        console.error(err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
-}); 
+});
 
 // 7.5 
 app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
