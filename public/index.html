@@ -1948,7 +1948,7 @@ async function checkAndRedirectActiveJob(username) {
             maximumFractionDigits: 2
         });
 
-        const convertedDisplay = `(${formattedConvertedCoins} ${data.currencySymbol})`;
+        const convertedDisplay = `${formattedLocal} ${data.currencySymbol}`;
 
         const headerUsd = document.getElementById('header-usd-display');
         const headerConverted = document.getElementById('header-converted-display');
@@ -1958,8 +1958,8 @@ async function checkAndRedirectActiveJob(username) {
             headerUsd.style.fontSize = "1.0em"; 
         }
         if (headerConverted) {
-            headerConverted.innerText = convertedDisplay;
-        }
+			headerConverted.innerText = convertedDisplay;
+		}
 
         const sidebarUsd = document.getElementById('sidebar-usd-display');
         const sidebarConverted = document.getElementById('sidebar-converted-display');
@@ -1969,8 +1969,8 @@ async function checkAndRedirectActiveJob(username) {
             sidebarUsd.style.fontSize = "1.0em"; 
         }
         if (sidebarConverted) {
-            sidebarConverted.innerText = convertedDisplay;
-        }
+			sidebarConverted.innerText = convertedDisplay;
+		}
 
         const modalCostDisplay = document.getElementById('modal-cost-display');
         const postCostUSD = data.postCost.totalCost;
