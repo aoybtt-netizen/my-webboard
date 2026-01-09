@@ -1429,28 +1429,17 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
 app.get('/api/admin/my-zone-info', async (req, res) => {
     try {
         const adminUsername = req.query.admin;
+        
+        // 1. ดึงข้อมูลโซนที่แอดมินคนนี้รับผิดชอบ
         const zone = await db.collection('zones').findOne({ assignedAdmin: adminUsername });
 
         if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
 
-        // 🔍 DEBUG 1: เช็คว่าใน DB Zones ตั้งค่า Currency ไว้ยังไง
-        console.log("-----------------------------------------");
-        console.log(`[DEBUG ZONE] Admin: ${adminUsername}`);
-        console.log(`[DEBUG ZONE] Raw Currency in DB Zones: "${zone.zoneCurrency}"`);
+        // 2. กำหนดชื่อฟิลด์กระเป๋าเงินตามค่าที่ตั้งไว้ในโซน
+        const currencyKey = zone.zoneCurrency || 'USD';
 
-        // 2. กำหนดชื่อฟิลด์กระเป๋าเงิน (ตรงนี้แหละที่สั่ง .toLowerCase())
-        const currencyKey = (zone.zoneCurrency || 'USD').toLowerCase();
-        console.log(`[DEBUG ZONE] Calculated Key for Wallet: "${currencyKey}"`);
-
+        // 3. ดึงข้อมูลโปรไฟล์ของแอดมิน
         const adminProfile = await db.collection('users').findOne({ username: adminUsername });
-
-        // 🔍 DEBUG 2: เช็คว่าในตัว User Admin มีฟิลด์ชื่ออะไรบ้าง และมีเงินเท่าไหร่
-        if (adminProfile) {
-            console.log(`[DEBUG ZONE] Admin Balance in "${currencyKey}":`, adminProfile[currencyKey]);
-            console.log(`[DEBUG ZONE] Does Admin have UPPERCASE "${currencyKey.toUpperCase()}":`, 
-                adminProfile[currencyKey.toUpperCase()] !== undefined ? "Yes" : "No");
-        }
-        console.log("-----------------------------------------");
 
         res.json({
             success: true,
@@ -1460,10 +1449,11 @@ app.get('/api/admin/my-zone-info', async (req, res) => {
                 zoneExchangeRate: zone.zoneExchangeRate || 1.0
             },
             adminCoins: adminProfile ? (adminProfile.coins || 0) : 0,
+            // ✅ ดึงยอดเงินจากกระเป๋าที่ชื่อตรงกับสกุลเงิน
             zoneWallet: adminProfile ? (adminProfile[currencyKey] || 0) : 0 
         });
     } catch (err) { 
-        console.error(err);
+        console.error("My Zone Info Error:", err);
         res.status(500).json({ success: false, message: 'Server Error' }); 
     }
 });
