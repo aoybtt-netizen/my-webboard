@@ -3609,20 +3609,19 @@ app.get('/api/topup/status', async (req, res) => {
 app.get('/api/topup/history', async (req, res) => {
     try {
         const { username } = req.query;
-        if (!username) return res.status(400).json({ error: "Missing username" });
+        if (!username) return res.status(400).send("Missing username");
 
-        // ✅ ค้นหาประวัติทั้งหมด (รวม Pending) เรียงจากใหม่ไปเก่า
-        const history = await db.collection('topupRequests').find({ 
-            username: username 
-        }).sort({ createdAt: -1 }).toArray();
+        // ค้นหาคำขอที่สถานะไม่ใช่ pending และเรียงจากใหม่ไปเก่า
+        const history = await topupRequestsCollection
+            .find({ username: username, status: { $ne: 'pending' } })
+            .sort({ createdAt: -1 })
+            .toArray();
 
         res.json(history);
-    } catch (err) {
-        console.error("History API Error:", err);
-        res.status(500).json({ error: "Internal Server Error" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
-
 // ==========================================
 // [SECTION] สำหรับฝั่ง ADMIN (เจ้าของโซน)
 // ==========================================
