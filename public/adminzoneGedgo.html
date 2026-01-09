@@ -1597,14 +1597,14 @@ async function executeBanAction(username, days) {
 //แปลงค่าเงิน
 async function fetchAdminZoneInfo(username) {
     try {
-        // API ตัวนี้จะไปหาว่าแอดมินคนนี้ดูแลโซนไหน (สร้าง API นี้ที่หลังบ้านด้วย)
         const res = await fetch(`/api/admin/my-zone-info?admin=${username}`);
         const data = await res.json();
         if(data.success) {
             currentZoneId = data.zone.id;
             zoneCurrency = data.zone.zoneCurrency;
             zoneRate = data.zone.zoneExchangeRate;
-            document.getElementById('sidebar-usdt-balance').innerText = `${data.adminUsdt.toFixed(2)} USDT`;
+            // แสดงผลยอดเหรียญ (coins) ใน sidebar
+            document.getElementById('sidebar-usdt-balance').innerText = `${data.adminCoins.toFixed(2)} USDT`;
         }
     } catch (e) { console.error("โหลดข้อมูลโซนไม่สำเร็จ", e); }
 }
@@ -1628,8 +1628,8 @@ async function openExchangeModal() {
         title: 'แปลง USDT เป็นเงินในโซน',
         html: `
             <div style="text-align:left; font-family:'Kanit',sans-serif;">
-                <p><b>เรทปัจจุบัน:</b> 1 USDT = ${zoneRate} ${zoneCurrency}</p>
-                <p><b>คุณมี:</b> <span style="color:var(--primary)">${myUsdt.toFixed(2)} USDT</span></p>
+				<p><b>เรทปัจจุบัน:</b> 1 USDT = ${zoneRate} ${zoneCurrency}</p>
+				<p><b>ยอดเหรียญของคุณ:</b> <span style="color:var(--primary)">${myUsdt.toFixed(2)} USDT</span></p>
                 <hr>
                 <label>จำนวน USDT ที่ต้องการแปลง:</label>
                 <input id="ex-usdt" type="number" step="0.01" class="swal2-input" placeholder="0.00" style="width:100%; margin:10px 0;">

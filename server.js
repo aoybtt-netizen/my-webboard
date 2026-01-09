@@ -1345,14 +1345,14 @@ app.post('/api/admin/convert-currency', async (req, res) => {
 
         // อัปเดตยอดเงิน
         await db.collection('users').updateOne(
-            { username: adminId }, // ใช้ username ในการ Update
-            { 
-                $inc: { 
-                    usdtBalance: -parseFloat(usdtToConvert), 
-                    zoneWallet: receiveAmount // zoneWallet คือกระเป๋าเงินท้องถิ่นของโซนนั้น
-                } 
-            }
-        );
+			{ username: adminId },
+				{ 
+					$inc: { 
+						coins: -parseFloat(usdtToConvert), // เปลี่ยนจาก usdtBalance เป็น coins
+						zoneWallet: receiveAmount 
+					} 
+				}
+			);
 
         res.json({ 
             success: true, 
@@ -1411,28 +1411,17 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
 // 7.6 API สำหรับดึงข้อมูลโซนที่แอดมินรับผิดชอบ
 app.get('/api/admin/my-zone-info', async (req, res) => {
     try {
-        const adminUsername = req.query.admin; // รับค่าจาก ?admin=...
-
-        if (!adminUsername) {
-            return res.status(400).json({ success: false, message: 'ไม่มีชื่อแอดมินส่งมา' });
-        }
-
-        // 1. ค้นหาในคอลเลกชัน zones ว่าใครคือผู้ดูแล (assignedAdmin)
-        // หมายเหตุ: ตรวจสอบชื่อฟิลด์ใน DB ของคุณด้วยว่าใช้ assignedAdmin หรือไม่
+        const adminUsername = req.query.admin;
         const zone = await db.collection('zones').findOne({ assignedAdmin: adminUsername });
 
-        if (!zone) {
-            // ถ้าแอดมินคนนี้ยังไม่มีโซนที่รับผิดชอบ
-            return res.status(404).json({ success: false, message: 'แอดมินคนนี้ยังไม่มีโซนที่รับผิดชอบ' });
-        }
+        if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
 
-        // 2. ดึงยอด USDT ของแอดมินคนนี้จากคอลเลกชัน users
+        // เปลี่ยน usdtBalance เป็น coins
         const adminProfile = await db.collection('users').findOne(
             { username: adminUsername },
-            { projection: { usdtBalance: 1 } }
+            { projection: { coins: 1 } } 
         );
 
-        // 3. ส่งข้อมูลกลับไปให้หน้าบ้านตามโครงสร้างที่ตกลงกันไว้
         res.json({
             success: true,
             zone: {
@@ -1440,13 +1429,9 @@ app.get('/api/admin/my-zone-info', async (req, res) => {
                 zoneCurrency: zone.zoneCurrency || 'THB',
                 zoneExchangeRate: zone.zoneExchangeRate || 35.0
             },
-            adminUsdt: adminProfile && adminProfile.usdtBalance ? adminProfile.usdtBalance : 0
+            adminCoins: adminProfile && adminProfile.coins ? adminProfile.coins : 0 // ใช้ coins
         });
-
-    } catch (err) {
-        console.error("🔥 Error my-zone-info:", err);
-        res.status(500).json({ success: false, message: 'Server Error' });
-    }
+    } catch (err) { res.status(500).json({ success: false }); }
 });
 
 
