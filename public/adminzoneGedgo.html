@@ -124,7 +124,7 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
 <div style="padding: 15px; background: rgba(255,255,255,0.05); margin-top: 10px; border-radius: 8px;">
     <p style="font-size: 0.8em; margin: 0 0 5px 0; opacity: 0.8;">ยอดคงเหลือ: <span id="admin-usdt-balance">0.00</span> USDT</p>
-    <button onclick="openExchangeModal()" style="width: 100%; background: var(--secondary); color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+    <button onclick="openExchangeModal(currentZoneId)" style="width: 100%; background: var(--secondary); color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold;">
         💱 แปลงเป็นเงินโซน
     </button>
 </div>
@@ -1588,14 +1588,21 @@ async function executeBanAction(username, days) {
 }
 
 
-
+//แปลงค่าเงิน
 async function openExchangeModal(zoneId) {
-    // ดึง adminId จาก localStorage หรือตัวแปร global ที่คุณเก็บไว้ตอน Login
-    const adminId = currentUser.id; 
+    // ใช้ตัวแปรเดียวกับที่คุณค้นเจอในไฟล์เดิม
+    const adminName = localStorage.getItem('myUsername'); 
+
+    if (!adminName) {
+        Swal.fire('แจ้งเตือน', 'ไม่พบชื่อผู้ใช้งานในระบบ (myUsername) กรุณาเข้าสู่ระบบใหม่', 'warning');
+        return;
+    }
 
     try {
-        // ดึงข้อมูลรวดเดียวจบ (ทั้งโซนและยอดเงินแอดมิน)
-        const response = await fetch(`/api/admin/get-zone-detail/${zoneId}?adminId=${adminId}`);
+        Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
+
+        // ส่ง adminName ไปที่ API (แทน adminId)
+        const response = await fetch(`/api/admin/get-zone-detail/${zoneId}?adminId=${adminName}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -1603,12 +1610,11 @@ async function openExchangeModal(zoneId) {
             return;
         }
 
-        const { zone, admin } = data; // แยกข้อมูลออกมาใช้
+        const { zone, admin } = data;
         const currentRate = zone.rate;
         const currency = zone.currency;
         const myUsdt = admin.usdtBalance;
 
-        // เปิด Modal แลกเงิน
         const { value: usdtAmount } = await Swal.fire({
             title: `แปลงเงินโซน: ${zone.name}`,
             html: `
@@ -1616,7 +1622,7 @@ async function openExchangeModal(zoneId) {
                     <p><b>เรท:</b> 1 USDT = ${currentRate} ${currency}</p>
                     <p><b>กระเป๋า USDT ของคุณ:</b> <span style="color:#007bff;">${myUsdt.toFixed(2)} USDT</span></p>
                     <hr>
-                    <label>ระบุจำนวน USDT ที่ต้องการใช้แลก:</label>
+                    <label>ระบุจำนวน USDT ที่ต้องการแลก:</label>
                     <input id="ex-usdt" type="number" step="0.01" class="swal2-input" placeholder="0.00" style="width:100%; margin:10px 0;">
                     <p id="ex-preview" style="color:#28a745; font-weight:bold; font-size:1.2em; text-align:center; background:#f8f9fa; padding:10px; border-radius:8px;">
                         คุณจะได้รับ: 0.00 ${currency}
@@ -1645,12 +1651,34 @@ async function openExchangeModal(zoneId) {
         });
 
         if (usdtAmount) {
-            // ส่งไปทำงานต่อที่ API หลังบ้าน
             processExchange(zoneId, usdtAmount);
         }
 
     } catch (err) {
         Swal.fire('Error', 'ไม่สามารถเชื่อมต่อระบบได้', 'error');
+    }
+}
+
+async function processExchange(zoneId, usdtAmount) {
+    const adminName = localStorage.getItem('myUsername'); // ใช้ค่าเดิมที่ค้นเจอ
+
+    try {
+        Swal.fire({ title: 'กำลังประมวลผล...', didOpen: () => Swal.showLoading() });
+
+        const response = await fetch('/api/admin/convert-currency', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                adminId: adminName, // ส่งชื่อแอดมินไป
+                usdtToConvert: usdtAmount,
+                zoneId: zoneId
+            })
+        });
+
+        const result = await response.json();
+        // ... (ส่วนการแสดงผล Success/Error เหมือนเดิม)
+    } catch (err) {
+        Swal.fire('Error', 'การเชื่อมต่อล้มเหลว', 'error');
     }
 }
 

@@ -1362,7 +1362,7 @@ app.post('/api/admin/convert-currency', async (req, res) => {
 app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
     try {
         const zoneIdInt = parseInt(req.params.id);
-        const adminId = req.query.adminId; // รับ adminId มาจาก query string หรือ session
+        const adminUsername = req.query.adminId; // รับ Username ที่ส่งมาจากหน้าบ้าน
 
         // 1. ดึงข้อมูลโซน
         const zone = await db.collection('zones').findOne({ id: zoneIdInt });
@@ -1371,9 +1371,9 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบโซนที่ระบุ' });
         }
 
-        // 2. ดึงข้อมูลแอดมิน (เน้นยอดเงิน USDT และข้อมูลที่จำเป็น)
+        // 2. ค้นหาแอดมินด้วย username (แทนการใช้ id)
         const adminProfile = await db.collection('users').findOne(
-            { id: adminId },
+            { username: adminUsername }, // ใช้ฟิลด์ username ตามระบบของคุณ
             { projection: { nickname: 1, usdtBalance: 1, adminLevel: 1 } }
         );
 
@@ -1388,7 +1388,8 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
                 assignedAdmin: zone.assignedAdmin
             },
             admin: {
-                usdtBalance: adminProfile ? adminProfile.usdtBalance : 0,
+                // เช็กว่าเจอโปรไฟล์ไหม ถ้าเจอให้ส่งยอดจริงไป ถ้าไม่เจอให้ส่ง 0
+                usdtBalance: adminProfile && adminProfile.usdtBalance ? adminProfile.usdtBalance : 0,
                 nickname: adminProfile ? adminProfile.nickname : 'Unknown'
             }
         });
