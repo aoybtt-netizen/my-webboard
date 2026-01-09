@@ -3753,20 +3753,16 @@ app.post('/api/admin/process-topup', async (req, res) => {
 app.get('/api/admin/topup-history', async (req, res) => {
     try {
         const { admin } = req.query;
-        if (!admin) return res.status(400).json({ success: false, message: "ไม่พบชื่อแอดมิน" });
+        if (!admin) return res.status(400).send("Missing admin name");
 
-        // ค้นหารายการที่แอดมินคนนี้จัดการ และไม่ใช่สถานะรอ (Pending)
-        const history = await db.collection('topupRequests')
-            .find({ 
-                processedBy: admin, 
-                status: { $ne: 'pending' } 
-            })
-            .sort({ processedAt: -1 }) // เรียงตามเวลาที่กดปุ่มจัดการล่าสุด
+        // ค้นหาคำขอที่แอดมินคนนี้เป็นคนประมวลผล (processedBy)
+        const history = await topupRequestsCollection
+            .find({ processedBy: admin, status: { $ne: 'pending' } })
+            .sort({ processedAt: -1 }) // เรียงตามเวลาที่จัดการล่าสุด
             .toArray();
 
         res.json(history);
     } catch (e) {
-        console.error("Admin History API Error:", e);
         res.status(500).json({ error: e.message });
     }
 });
