@@ -1357,7 +1357,6 @@ app.post('/api/admin/convert-currency', async (req, res) => {
         const zoneIdInt = parseInt(zoneId);
         const amount = parseFloat(usdtToConvert);
 
-        // 1. ดึงข้อมูลโซนและแอดมิน
         const zone = await db.collection('zones').findOne({ id: zoneIdInt });
         const admin = await db.collection('users').findOne({ username: adminId });
 
@@ -1365,22 +1364,21 @@ app.post('/api/admin/convert-currency', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลโซนหรือแอดมิน' });
         }
 
-        // 2. เช็กว่าเงิน (coins) พอไหม
         if (admin.coins < amount) {
             return res.status(400).json({ success: false, message: 'เหรียญ (USDT) ของคุณไม่เพียงพอ' });
         }
 
-        // 3. คำนวณยอดเงินที่จะได้รับ (USDT * เรทของโซน)
+        // ✅ 1. ดึงชื่อสกุลเงินของโซนมาเป็นชื่อฟิลด์ (เช่น 'thb')
+        const currencyField = (zone.zoneCurrency || 'usd').toLowerCase(); 
         const receiveAmount = amount * (zone.zoneExchangeRate || 1.0);
 
-        // 4. บันทึกธุรกรรม (หัก coins และ เพิ่ม zoneWallet)
-        // zoneWallet คือกระเป๋าเงินท้องถิ่นที่เราจะเอาไว้เติมให้คนอื่นต่อ
+        // ✅ 2. บันทึกธุรกรรม โดยใช้ [currencyField] แทน zoneWallet
         await db.collection('users').updateOne(
             { username: adminId },
             { 
                 $inc: { 
                     coins: -amount,           // หักกระเป๋าหลัก (USDT)
-                    zoneWallet: receiveAmount  // เพิ่มกระเป๋าโซน (Currency ท้องถิ่น)
+                    [currencyField]: receiveAmount  // ✨ เพิ่มเข้ากระเป๋าสกุลเงินโซนโดยตรง
                 } 
             }
         );
@@ -1388,7 +1386,7 @@ app.post('/api/admin/convert-currency', async (req, res) => {
         res.json({ 
             success: true, 
             received: receiveAmount, 
-            currency: zone.zoneCurrency 
+            currency: currencyField 
         });
 
     } catch (err) {
@@ -1432,13 +1430,18 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
 app.get('/api/admin/my-zone-info', async (req, res) => {
     try {
         const adminUsername = req.query.admin;
+        // 1. หาข้อมูลโซนก่อนเพื่อดูว่าโซนนี้ใช้สกุลเงินอะไร
         const zone = await db.collection('zones').findOne({ assignedAdmin: adminUsername });
 
         if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
 
+        // 2. กำหนดชื่อฟิลด์กระเป๋าเงินตามสกุลเงินโซน (เช่น 'thb', 'usd')
+        const currencyKey = (zone.zoneCurrency || 'USD').toLowerCase();
+
+        // 3. ดึงข้อมูล Profile โดยระบุฟิลด์ coins และฟิลด์สกุลเงินท้องถิ่น
         const adminProfile = await db.collection('users').findOne(
-            { username: adminUsername },
-            { projection: { coins: 1, zoneWallet: 1 } }
+            { username: adminUsername }
+            // หมายเหตุ: ไม่ต้องใส่ projection เพื่อให้ดึงฟิลด์ dynamic ได้ง่ายขึ้น
         );
 
         res.json({
@@ -1449,7 +1452,9 @@ app.get('/api/admin/my-zone-info', async (req, res) => {
                 zoneExchangeRate: zone.zoneExchangeRate || 1.0
             },
             adminCoins: adminProfile ? (adminProfile.coins || 0) : 0,
-            zoneWallet: adminProfile ? (adminProfile.zoneWallet || 0) : 0
+            // ✅ ดึงเงินจากกระเป๋าที่ตรงกับโซน (เช่น adminProfile['thb']) 
+            // หากไม่มีให้แสดงเป็น 0
+            zoneWallet: adminProfile ? (adminProfile[currencyKey] || 0) : 0 
         });
     } catch (err) { 
         console.error(err);

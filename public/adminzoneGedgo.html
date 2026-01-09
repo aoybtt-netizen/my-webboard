@@ -132,9 +132,10 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 		<div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
             <small style="color: rgba(255,255,255,0.5); font-size: 0.7em;">LOCAL (<span id="sidebar-zone-currency">---</span>)</small>
             <div style="font-weight: bold; color: var(--secondary); font-size: 0.95em;">
-                <i class="fas fa-wallet" style="font-size: 0.8em;"></i>
-                <span id="sidebar-zone-balance">0.00</span>
-            </div>
+			<i class="fas fa-wallet" style="font-size: 0.8em;"></i>
+			<span id="sidebar-zone-balance">0.00</span> 
+			<span id="sidebar-zone-currency" style="margin-left: 2px;">USD</span>
+			</div>
         </div>
 		
     </div>
@@ -1612,22 +1613,41 @@ async function executeBanAction(username, days) {
 //แปลงค่าเงิน
 async function fetchAdminZoneInfo(username) {
     try {
+        // ดึงข้อมูลจาก API (ที่เราแก้ให้ดึงเงินตามกระเป๋าสกุลเงินโซนแล้ว)
         const res = await fetch(`/api/admin/my-zone-info?admin=${username}`);
         const data = await res.json();
         
         if(data.success) {
+            // ✅ อัปเดตตัวแปร Global เพื่อใช้ในส่วนอื่น (เช่น หน้า Chat/อนุมัติเงิน)
             currentZoneId = data.zone.id;
-            zoneCurrency = data.zone.zoneCurrency;
+            zoneCurrency = data.zone.zoneCurrency; // เช่น "THB"
             zoneRate = data.zone.zoneExchangeRate;
             
-            // 1. อัปเดตยอด USDT (Coins)
-            document.getElementById('sidebar-usdt-balance').innerText = data.adminCoins.toFixed(2);
+            // 1. อัปเดตยอด USDT (กระเป๋าหลัก coins)
+            const usdtElem = document.getElementById('sidebar-usdt-balance');
+            if(usdtElem) usdtElem.innerText = data.adminCoins.toFixed(2);
             
-            // 2. อัปเดตยอดเงินในโซน (Zone Wallet) - เพิ่มฟิลด์นี้เข้าไปใน API ด้วย
-            document.getElementById('sidebar-zone-balance').innerText = data.zoneWallet.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('sidebar-zone-currency').innerText = zoneCurrency;
+            // 2. อัปเดตยอดเงินในโซน (ดึงมาจากกระเป๋าเงินท้องถิ่น เช่น thb, brl)
+            const zoneBalanceElem = document.getElementById('sidebar-zone-balance');
+            if(zoneBalanceElem) {
+                // ใช้ toLocaleString เพื่อให้มีคอมม่า (เช่น 1,000.00) ตามที่คุณเขียนไว้
+                zoneBalanceElem.innerText = data.zoneWallet.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            // 3. อัปเดตป้ายชื่อสกุลเงิน (เช่น THB, BRL)
+            const zoneCurrencyElem = document.getElementById('sidebar-zone-currency');
+            if(zoneCurrencyElem) {
+                zoneCurrencyElem.innerText = zoneCurrency;
+            }
+
+            console.log(`Zone Loaded: ${zoneCurrency} (Rate: ${zoneRate})`);
         }
-    } catch (e) { console.error("โหลดข้อมูลโซนไม่สำเร็จ", e); }
+    } catch (e) { 
+        console.error("โหลดข้อมูลโซนไม่สำเร็จ", e); 
+    }
 }
 
 
