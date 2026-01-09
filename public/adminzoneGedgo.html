@@ -119,13 +119,21 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 <nav class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <h3 style="margin:0; color:var(--secondary);">GedGo! Zone</h3>
-        <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
+		
 		
 		<div style="margin-bottom: 10px;">
             <small style="color: rgba(255,255,255,0.5); font-size: 0.75em; display: block;">ทุนคงเหลือ (Master)</small>
             <div style="font-size: 1.1em; font-weight: bold; color: #fff;">
                 <i class="fas fa-coins" style="color: #f1c40f; margin-right: 5px;"></i>
                 <span id="sidebar-usdt-balance">0.00</span> <small>USDT</small>
+            </div>
+        </div>
+		
+		<div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
+            <small style="color: rgba(255,255,255,0.5); font-size: 0.7em;">LOCAL (<span id="sidebar-zone-currency">---</span>)</small>
+            <div style="font-weight: bold; color: var(--secondary); font-size: 0.95em;">
+                <i class="fas fa-wallet" style="font-size: 0.8em;"></i>
+                <span id="sidebar-zone-balance">0.00</span>
             </div>
         </div>
 		
