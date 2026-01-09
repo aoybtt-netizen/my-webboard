@@ -367,15 +367,6 @@
 </div>
 
     
-    <div style="margin: 0 15px 15px 15px; display: flex; align-items: center; gap: 10px;">
-    <label for="currency-select" style="font-size: 0.85em; color: #6c757d; margin-bottom:0;" data-i18n-key="label_currency">สกุลเงิน:</label>
-    <select id="currency-select" onchange="setPreferredCurrency(this.value)" style="flex-grow: 1; padding: 8px; border-radius: 5px; border:1px solid #ddd; font-family: 'Kanit';">
-        <option value="THB">฿ THB </option>
-        <option value="USD">$ USD </option>
-        <option value="EUR">€ EUR </option>
-        <option value="JPY">¥ JPY </option>
-    </select>
-</div>
 
 <div style="margin: 0 15px 15px 15px; display: flex; align-items: center; gap: 10px;">
     <label for="lang-select" style="font-size: 0.85em; color: #6c757d; margin-bottom:0;" data-i18n-key="label_language">ภาษา:</label>
@@ -1448,7 +1439,7 @@ if (homeBtn) {
         const notificationSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3');
         const ADMIN_USERNAME = 'Admin'; 
 
-        window.onload = () => {
+    window.onload = () => {
     
     // Cooldown Check for Rapid Refresh
     const lastRefreshTime = parseInt(localStorage.getItem('lastRefreshTime') || '0');
@@ -1804,17 +1795,6 @@ async function startApp(name) {
     updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
 }
     
-    // บันทึกสกุลเงินที่ผู้ใช้เลือก
-    function setPreferredCurrency(currency) {
-        currentCurrency = currency;
-        localStorage.setItem('preferredCurrency', currency);
-        updateUserInfo(); // รีเฟรชยอดเงินทันที
-		renderPostList();
-        
-        const translatedMsg = translations[currentLang]['notif_currency_change'].replace('[CURRENCY]', currency);
-
-        showNotification(translatedMsg, 'fas fa-money-bill');
-    }
 
      
 
