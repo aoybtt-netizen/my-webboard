@@ -1877,19 +1877,12 @@ async function updateUserInfo() {
     try {
         let locationQuery = '';
         const savedLoc = localStorage.getItem('userPrimaryLocation');
-        if (savedLoc) {
-            locationQuery = `&location=${encodeURIComponent(savedLoc)}`;
-        }
+        if (savedLoc) locationQuery = `&location=${encodeURIComponent(savedLoc)}`;
         
-        // --- Logic การเดาประเทศ ---
         const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         let myCountry = 'TH'; 
+        if (!userTimeZone.includes('Bangkok') && !userTimeZone.includes('Asia/Phnom_Penh')) myCountry = 'OTHER'; 
 
-        if (!userTimeZone.includes('Bangkok') && !userTimeZone.includes('Asia/Phnom_Penh')) {
-             myCountry = 'OTHER'; 
-        }
-
-        // เรียก API โดยส่งพารามิเตอร์ครบถ้วน
         const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}&lang=${currentLang}`);
         const data = await response.json();
 
@@ -1899,124 +1892,63 @@ async function updateUserInfo() {
             window.location.reload();
             return;
         }
+        if (data.error) return;
 
-        if (data.error) {
-            console.error(data.error);
-            return;
-        }
-        
         myAdminLevel = data.adminLevel || 0;
         myZoneId = data.userZoneId || null;
 
-        // 1. จัดการการแสดงผลชื่อและสีตามระดับแอดมิน
-        const userDisplay = document.getElementById('user-display');
-        if (userDisplay) {
-            userDisplay.innerText = myUsername;
-            userDisplay.style.color = (myAdminLevel > 0) ? "#0033FF" : "#000000";
-            userDisplay.style.fontWeight = (myAdminLevel > 0) ? "bold" : "normal";
+        // --- 1. จัดการชื่อผู้ใช้ (ระวังการประกาศตัวแปรซ้ำ) ---
+        const userDisplayElem = document.getElementById('user-display');
+        if (userDisplayElem) {
+            userDisplayElem.innerText = myUsername;
+            userDisplayElem.style.color = (myAdminLevel > 0) ? "#0033FF" : "#000000";
+            userDisplayElem.style.fontWeight = (myAdminLevel > 0) ? "bold" : "normal";
         }
                 
-        // 2. แสดงมงกุฎตามระดับ Admin Level
         const avatarEl = document.getElementById('user-avatar-display');
         if (avatarEl) {
             let stars = '';
-            if (myAdminLevel === 1) stars = '<div class="crown">👑</div>';
-            if (myAdminLevel === 2) stars = '<div class="crown">👑👑</div>';
-            if (myAdminLevel === 3) stars = '<div class="crown">👑👑👑</div>';
+            if (myAdminLevel === 1) stars = '<div style="font-size:14px; color:#ffc107;">👑</div>';
+            if (myAdminLevel === 2) stars = '<div style="font-size:14px; color:#ffc107;">👑👑</div>';
+            if (myAdminLevel === 3) stars = '<div style="font-size:14px; color:#ffc107;">👑👑👑</div>';
             avatarEl.innerHTML = `🐱${stars}`;
         }
         
-        // 3. แสดง/ซ่อนแผงควบคุมแอดมิน
-        const adminPanelDiv = document.getElementById('admin-panel');
-        if (adminPanelDiv) {
-            (myAdminLevel >= 1) ? adminPanelDiv.classList.remove('hidden') : adminPanelDiv.classList.add('hidden');
-        }
-        
-        // 4. แสดงปุ่มตั้งราคาโพสต์ (เฉพาะแอดมินระดับ 3)
-        const setCostBtn = document.querySelector('button[onclick="setPostCost()"]');
-        if (setCostBtn) {
-            setCostBtn.style.display = (myAdminLevel >= 3) ? 'block' : 'none';
-        }
+        // --- 2. จัดการยอดเงิน (แก้ให้ตรงตามฐานข้อมูล) ---
+        // ใช้ค่าตรงจาก API ไม่มีการคูณเพิ่ม
+        const formattedLocal = parseFloat(data.convertedCoins || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+        const formattedUSDT = parseFloat(data.coins || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
 
-        // --- 💵 ส่วนการจัดการยอดเงิน (สำคัญ) ---
+        const convertedDisplay = `(${formattedLocal} ${data.currencySymbol})`;
 
-        // 1. ฟอร์แมตยอดเงินหลัก (USDT)
-        const formattedUSDT = parseFloat(data.coins || 0).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-
-        // 2. ฟอร์แมตยอดเงินโซน (BRL/THB)
-        const formattedLocal = parseFloat(data.convertedCoins || 0).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-
-        // 3. ดึงชื่อสกุลเงิน (Raw Value จาก DB)
-        const currentSymbol = data.currencySymbol || '---';
-        const convertedDisplay = `(${formattedLocal} ${currentSymbol})`;
-
-        // --- อัปเดต UI (เปลี่ยนจาก USD เป็น USDT) ---
+        // อัปเดต Header
         const headerUsd = document.getElementById('header-usd-display');
         const headerConverted = document.getElementById('header-converted-display');
-        if (headerUsd) {
-            headerUsd.innerText = `${formattedUSDT} USDT`; // ✅ เปลี่ยนเป็น USDT แล้ว
-        }
-        if (headerConverted) {
-            headerConverted.innerText = convertedDisplay;
-        }
+        if (headerUsd) headerUsd.innerText = `${formattedUSDT} USDT`; // เปลี่ยนเป็น USDT
+        if (headerConverted) headerConverted.innerText = convertedDisplay;
 
+        // อัปเดต Sidebar
         const sidebarUsd = document.getElementById('sidebar-usd-display');
         const sidebarConverted = document.getElementById('sidebar-converted-display');
-        if (sidebarUsd) {
-            sidebarUsd.innerText = `${formattedUSDT} USDT`; // ✅ เปลี่ยนเป็น USDT แล้ว
-        }
-        if (sidebarConverted) {
-            sidebarConverted.innerText = convertedDisplay;
-        }
+        if (sidebarUsd) sidebarUsd.innerText = `${formattedUSDT} USDT`; // เปลี่ยนเป็น USDT
+        if (sidebarConverted) sidebarConverted.innerText = convertedDisplay;
 
-        // --- 5. อัปเดตค่าธรรมเนียมใน Modal ---
-        const modalCostDisplay = document.getElementById('modal-cost-display');
-        if (modalCostDisplay && data.postCost) {
-            const postCostUSDT = data.postCost.totalCost || 0;
-            currentCost = postCostUSDT;
+        // --- 3. อัปเดตส่วนอื่นๆ (คงเดิม) ---
+        const updateField = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+        updateField('sidebar-rating', (data.rating || 0).toFixed(2));
+        updateField('sidebar-total-posts', data.totalPosts || 0);
+        updateField('sidebar-completed-jobs', data.completedJobs || 0);
 
-            // คำนวณเรทแฝง
-            const balanceUSDT = parseFloat(data.coins) || 0;
-            const balanceLocal = parseFloat(String(data.convertedCoins).replace(/,/g, '')) || 0;
-            const impliedRate = (balanceUSDT > 0) ? (balanceLocal / balanceUSDT) : 0;
-
-            const formattedConvCost = (postCostUSDT * impliedRate).toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-
-            modalCostDisplay.innerHTML = `
-                ${postCostUSDT.toFixed(2)} USDT 
-                <span style="font-size:0.7em; color:#6c757d;">(${(data.postCost.systemFee || 0).toFixed(2)} System + ${(data.postCost.adminFee || 0).toFixed(2)} Admin)</span>
-                <span style="font-size:0.75em; color:#6c757d;">(${formattedConvCost} ${currentSymbol})</span>
-            `;
+        if (locationQuery) {
+            const locData = JSON.parse(decodeURIComponent(locationQuery.split('=')[1]));
+            updateZoneBackground(locData.lat, locData.lng);
+            fetchAndRenderAnnouncement(locData);
         }
 
-        // อัปเดตสถิติอื่นๆ ตามปกติ...
-        const updateStat = (id, val) => {
-            const el = document.getElementById(id);
-            if (el) el.innerText = val || 0;
-        };
-        updateStat('sidebar-rating', (data.rating || 0).toFixed(2));
-        updateStat('sidebar-total-posts', data.totalPosts);
-        updateStat('sidebar-completed-jobs', data.completedJobs);
-
-        if (userDisplay) {
-            userDisplay.innerText = myUsername;
-            userDisplay.style.color = (myAdminLevel > 0) ? "#0033FF" : "#000000";
-            userDisplay.style.fontWeight = (myAdminLevel > 0) ? "bold" : "normal";
-        }
-
-        loadPosts(); 
+        loadPosts();
 
     } catch (e) {
-        console.error('Error fetching user info:', e);
+        console.error('Error:', e);
     }
 }
 		

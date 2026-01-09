@@ -777,25 +777,23 @@ app.get('/api/admin/transactions', async (req, res) => {
 
 // 2. User Info
 app.get('/api/user-info', async (req, res) => {
-    // 1. รับค่าต่างๆ จาก Query ตามโครงสร้างเดิม
     const { username, currency, location, country, lang } = req.query; 
     const currentLang = lang || 'th'; 
-    
+    const targetCurrency = currency || 'USD'; 
+
     if (!username) return res.status(400).json({ error: 'No username' });
     
     const user = await getUserData(username);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // --- ส่วนเช็คการแบน (คงเดิมไว้ทั้งหมดตามที่คุณเขียน) ---
+    // --- ส่วนเช็คการแบน (คงเดิม) ---
     if (user.isBanned) {
         let banMessage = "❌ Your account is suspended.";
         if (user.banExpires) {
             const expireDate = new Date(user.banExpires);
             const dateStr = expireDate.toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US');
             const timeStr = expireDate.toLocaleTimeString(currentLang === 'th' ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' });
-            banMessage += (currentLang === 'th') 
-                ? ` until ${dateStr} Time ${timeStr}` 
-                : ` until ${dateStr} at ${timeStr}.`;
+            banMessage += (currentLang === 'th') ? ` until ${dateStr} Time ${timeStr}` : ` until ${dateStr} at ${timeStr}.`;
         } else {
             banMessage += " permanently.";
         }
@@ -804,55 +802,42 @@ app.get('/api/user-info', async (req, res) => {
     
     let userZoneId = null;
     let postCostData;
-    let targetCurrency = currency || 'USD'; // ค่า Default
-    let zoneRate = 1.0; // เรทเริ่มต้น
+    let zoneCurrency = 'USD'; // ค่าเริ่มต้น
     
     try {
         const locationObj = location ? JSON.parse(location) : null;
 
-        // อัปเดตพิกัดและประเทศ (คงเดิม)
+        // อัปเดตพิกัด (คงเดิม)
         if (locationObj && locationObj.lat && locationObj.lng) {
-            const updateFields = { 
-                lastLocation: locationObj, 
-                lastSeen: new Date() 
-            };
+            const updateFields = { lastLocation: locationObj, lastSeen: new Date() };
             if (country) updateFields.country = country; 
-
-            await db.collection('users').updateOne(
-                { username: username }, 
-                { $set: updateFields }
-            );
+            await usersCollection.updateOne({ username: username }, { $set: updateFields });
         }
 
-        // --- ส่วนคำนวณค่าธรรมเนียมและหาโซน ---
         postCostData = await getPostCostByLocation(locationObj);
         const zoneInfo = await findResponsibleAdmin(locationObj);
 
         if (zoneInfo && zoneInfo.zoneData) {
             userZoneId = zoneInfo.zoneData.id;
-            
-            // ✅ [จุดสำคัญ] เปลี่ยน targetCurrency และเรทตามโซนที่เจอจริง
-            // ใช้ค่าดิบ (Raw Value) จาก DB ไม่มีการแปลงตัวเล็ก
-            targetCurrency = zoneInfo.zoneData.zoneCurrency || 'USD';
-            zoneRate = zoneInfo.zoneData.zoneExchangeRate || 1.0;
+            // ✅ ดึงชื่อสกุลเงินของโซน (เช่น BRL)
+            zoneCurrency = zoneInfo.zoneData.zoneCurrency || 'USD';
         }
 
     } catch (e) {
-        console.error("Error calculating location cost/zone:", e);
+        console.error("Error:", e);
         postCostData = await getPostCostByLocation(null);
     }
     
-    // ✅ คำนวณยอดเงินท้องถิ่น (Local Currency) 
-    // โดยใช้ยอด USDT (coins) * เรทของโซนนั้นๆ
-    const convertedCoins = (user.coins || 0) * zoneRate;
+    // ✅ [จุดที่แก้ไข] ดึงยอดเงินดิบจากกระเป๋าที่ตรงกับโซน (ไม่ใช้การคูณเรท)
+    // ถ้าสมาชิกอยู่ในโซน BRL ระบบจะดึงค่าจาก user.BRL มาส่งให้โดยตรง
+    const localBalance = user[zoneCurrency] || 0;
 
-    // ส่ง Response กลับ (คงโครงสร้างเดิมแต่เปลี่ยนค่าตัวแปร)
     res.json({
-        coins: user.coins || 0, // ยอดหลัก USDT
-        convertedCoins: convertedCoins.toFixed(2), // ยอดวงเล็บตามโซน
-        currencySymbol: targetCurrency.toUpperCase(), // ตัวใหญ่เสมอ (BRL, THB)
+        coins: user.coins,             // ส่ง 100 (USDT)
+        convertedCoins: localBalance,  // ส่ง 100 (BRL - ค่าดิบจากกระเป๋า)
+        currencySymbol: zoneCurrency.toUpperCase(),
         postCost: postCostData,
-        rating: user.rating || 5.0,
+        rating: user.rating,
         adminLevel: user.adminLevel || 0,
         userZoneId: userZoneId,
         country: user.country || 'TH', 
