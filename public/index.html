@@ -2007,7 +2007,6 @@ async function updateUserInfo() {
         updateStat('sidebar-total-posts', data.totalPosts);
         updateStat('sidebar-completed-jobs', data.completedJobs);
 
-        const userDisplay = document.getElementById('user-display');
         if (userDisplay) {
             userDisplay.innerText = myUsername;
             userDisplay.style.color = (myAdminLevel > 0) ? "#0033FF" : "#000000";
