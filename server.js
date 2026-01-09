@@ -921,11 +921,11 @@ app.get('/api/users-list', async (req, res) => {
         
         // 2. ดึงข้อมูลพื้นฐาน
         const allUsers = await usersCollection.find({}).toArray();
-        const allZones = await db.collection('zones').find({}).toArray(); // ดึงโซนทั้งหมดมาเตรียมไว้
+        const allZones = await db.collection('zones').find({}).toArray(); 
 
-        // ฟังก์ชันช่วยหาโซนที่ใกล้ที่สุด เพื่อดึงแค่ชื่อสกุลเงิน (ไม่มีการคำนวณเงิน)
-        const getCurrencyForUser = (u) => {
-            if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return 'USD';
+        // ฟังก์ชันช่วยหาโซนที่ใกล้ที่สุด เพื่อดึง "ชื่อฟิลด์สกุลเงิน" (เช่น 'x', 'thb')
+        const getCurrencyKeyForUser = (u) => {
+            if (!u.lastLocation || !u.lastLocation.lat || !u.lastLocation.lng) return 'usd';
             
             let minDistance = Infinity;
             let closestZone = null;
@@ -936,22 +936,30 @@ app.get('/api/users-list', async (req, res) => {
                     closestZone = zone; 
                 }
             });
-            return closestZone ? (closestZone.zoneCurrency || 'USD') : 'USD';
+            // ส่งคืนชื่อสกุลเงิน (ซึ่งจะใช้เป็นชื่อฟิลด์ในตัว User)
+            return closestZone ? (closestZone.zoneCurrency || 'usd') : 'usd';
         };
 
-        // ฟังก์ชันช่วยในการจัดกลุ่มและคำนวณสถิติ
+        // ฟังก์ชันช่วยในการจัดกลุ่มและส่งข้อมูลกลับ
         const mapUserResponse = (u) => {
             const totalScore = (u.totalRatingScore || 0) + (u.merchantRatingScore || 0);
             const totalRatingCount = (u.ratingCount || 0) + (u.merchantRatingCount || 0);
             const averageRating = totalRatingCount > 0 ? (totalScore / totalRatingCount) : 0;
             const combinedCompleted = (u.completedJobs || 0) + (u.authorCompletedJobs || 0);
 
+            // ดึงชื่อฟิลด์สกุลเงินที่หามาได้ (เช่น 'x')
+            const currencyKey = u.zoneCurrencyKey || 'usd';
+
             return { 
                 name: u.username, 
                 fullName: u.fullName || '', 
                 profileImg: u.profileImg || '', 
-                coins: u.coins || 0,                // ✅ ยอดเงินดิบ ห้ามแปลงเด็ดขาดตามคำสั่ง
-                currency: u.zoneCurrency || 'USD',  // ✅ ชื่อสกุลเงินที่หามาได้
+                
+                // ✨ จุดสำคัญ: ดึงยอดเงินจากฟิลด์ที่ชื่อตรงกับสกุลเงินโซน ( u['x'] หรือ u['thb'] )
+                // จะได้ค่าดิบๆ จากฟิลด์นั้นเลย ไม่มีการคูณเลข
+                coins: u[currencyKey] || 0, 
+                
+                currency: currencyKey, // ส่งชื่อสกุลเงินไปแสดงเป็นป้ายหน่วย
                 
                 rating: averageRating,
                 ratingCount: totalRatingCount,
@@ -971,15 +979,13 @@ app.get('/api/users-list', async (req, res) => {
 
         // --- Logic การคัดกรองตามระดับ Admin ---
         if (requester.adminLevel >= 3) {
-            // Level 3: เห็นทุกคน และระบุสกุลเงินตามพิกัดของ User
             finalResults = allUsers
                 .filter(u => u.username !== requester.username)
                 .map(u => {
-                    u.zoneCurrency = getCurrencyForUser(u);
+                    u.zoneCurrencyKey = getCurrencyKeyForUser(u);
                     return u;
                 });
         } else {
-            // Level 1-2: เห็นเฉพาะในโซนตัวเอง
             let myOwnedZones = await db.collection('zones').find({ assignedAdmin: requester.username }).toArray();
             let myRefZones = (requester.adminLevel === 2) 
                 ? await db.collection('zones').find({ "refLocation.sourceUser": requester.username }).toArray() 
@@ -988,18 +994,15 @@ app.get('/api/users-list', async (req, res) => {
             finalResults = allUsers.filter(u => {
                 if (u.username === requester.username) return false;
 
-                // ระบุสกุลเงินให้ User ก่อนคัดกรอง
-                u.zoneCurrency = getCurrencyForUser(u);
+                // ระบุชื่อฟิลด์สกุลเงินให้ User ตามพิกัด
+                u.zoneCurrencyKey = getCurrencyKeyForUser(u);
 
-                // กรณี Admin Lv2 Search หาคนในประเทศเดียวกัน
                 if (requester.adminLevel === 2 && search && u.country === requester.country) {
                     return true; 
                 }
 
-                // ตรวจสอบว่า User อยู่ในโซนที่ Admin ดูแลหรือไม่
                 if (!u.lastLocation) return false;
                 
-                // หาโซนที่ใกล้ User ที่สุดอีกครั้งเพื่อเช็กสิทธิ์ Owned/Ref
                 let minDistance = Infinity;
                 let closestZone = null;
                 allZones.forEach(zone => {
@@ -1026,7 +1029,6 @@ app.get('/api/users-list', async (req, res) => {
             );
         }
 
-        // --- สรุปยอดและ Pagination (เหมือนเดิม) ---
         const totalOwned = finalResults.filter(u => u.relationType === 'OWNED').length;
         const totalRef = finalResults.filter(u => u.relationType === 'REF').length;
         const totalOther = finalResults.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF').length;
