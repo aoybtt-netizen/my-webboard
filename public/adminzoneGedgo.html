@@ -639,12 +639,14 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
     
     socket.emit('joinRequest', requestId);
 
+    // เตรียมข้อมูล UI
     const titleHeader = isWithdraw ? 'ตรวจสอบรายการถอนเงิน' : 'ตรวจสอบรายการเติมเงิน';
     const mainIcon = isWithdraw ? 'fas fa-money-bill-transfer' : 'fas fa-hand-holding-usd';
     const cardBorderColor = isWithdraw ? '#ffcdd2' : '#c8e6c9';
     const cardBgColor = isWithdraw ? '#fff5f5' : '#e8f5e9';
     const textStatusColor = isWithdraw ? '#c62828' : '#2e7d32';
 
+    // ข้อมูลธนาคาร (กรณีถอนเงิน)
     let withdrawInfoHtml = "";
     if (isWithdraw) {
         withdrawInfoHtml = `
@@ -676,7 +678,7 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
 
         <div style="padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; box-sizing: border-box; flex: 1;">
             
-            <div style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid ${cardBorderColor}; margin-bottom: 25px; background: ${cardBgColor};">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid ${cardBorderColor}; margin-bottom: 25px; background: ${cardBgColor crack};">
                 <div style="background: ${themeColor}; color: white; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
                     <i class="${mainIcon}"></i>
                 </div>
@@ -695,10 +697,23 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
                 </button>
             </div>
 
+            <div style="background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; overflow: hidden; margin-bottom: 40px;">
+                <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px; background: #f8fafc;">
+                    <i class="fas fa-comments" style="color: ${themeColor};"></i> แชทตรวจสอบหลักฐาน
+                </div>
+                <div id="chat-box" style="height: 350px; overflow-y: auto; padding: 15px; background: #f1f5f9; display: flex; flex-direction: column; gap: 10px;"></div>
+                <div style="padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee;">
+                     <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
+                     <button onclick="document.getElementById('admin-slip-input').click()" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;"><i class="fas fa-image"></i></button>
+                     <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+                     <button onclick="sendAdminMessage()" style="background: ${themeColor}; color: white; border: none; width: 45px; height: 45px; border-radius: 10px;"><i class="fas fa-paper-plane"></i></button>
+                </div>
             </div>
+        </div>
     </div>
     `;
     
+    // โหลดแชทหลังจากวาดหน้าจอเสร็จ
     await loadAdminChatHistory(requestId);
 }
 
