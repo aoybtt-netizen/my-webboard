@@ -1358,6 +1358,47 @@ app.post('/api/admin/convert-currency', async (req, res) => {
     }
 }); 
 
+// 7.5 
+app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
+    try {
+        const zoneIdInt = parseInt(req.params.id);
+        const adminId = req.query.adminId; // รับ adminId มาจาก query string หรือ session
+
+        // 1. ดึงข้อมูลโซน
+        const zone = await db.collection('zones').findOne({ id: zoneIdInt });
+
+        if (!zone) {
+            return res.status(404).json({ success: false, message: 'ไม่พบโซนที่ระบุ' });
+        }
+
+        // 2. ดึงข้อมูลแอดมิน (เน้นยอดเงิน USDT และข้อมูลที่จำเป็น)
+        const adminProfile = await db.collection('users').findOne(
+            { id: adminId },
+            { projection: { nickname: 1, usdtBalance: 1, adminLevel: 1 } }
+        );
+
+        // 3. รวมข้อมูลส่งกลับไป
+        res.json({
+            success: true,
+            zone: {
+                id: zone.id,
+                name: zone.zoneName,
+                currency: zone.zoneCurrency || 'USD',
+                rate: zone.zoneExchangeRate || 1.0,
+                assignedAdmin: zone.assignedAdmin
+            },
+            admin: {
+                usdtBalance: adminProfile ? adminProfile.usdtBalance : 0,
+                nickname: adminProfile ? adminProfile.nickname : 'Unknown'
+            }
+        });
+
+    } catch (err) {
+        console.error("🔥 Error fetching zone detail:", err);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 
 
 	// 8. Give Coins 

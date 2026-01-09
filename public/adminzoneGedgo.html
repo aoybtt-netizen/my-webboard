@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-	<meta name="apple-mobile-web-app-capable" content="yes">
-	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-	<meta name="apple-mobile-web-app-title" content="GedGo">
-	<meta name="mobile-web-app-capable" content="yes">
 	
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1593,50 +1589,68 @@ async function executeBanAction(username, days) {
 
 
 
-async function openExchangeModal() {
-    // 1. ดึงข้อมูลโซนและยอดเงิน USDT ปัจจุบันของแอดมิน
-    // (สมมติว่าคุณมีข้อมูล zoneConfig เก็บไว้อยู่แล้ว)
-    const currentRate = zoneConfig.zoneExchangeRate || 35.00;
-    const currency = zoneConfig.zoneCurrency || 'THB';
-    const myUsdt = 100.00; // ตัวอย่างยอด USDT ที่แอดมินมีจริง
+async function openExchangeModal(zoneId) {
+    // ดึง adminId จาก localStorage หรือตัวแปร global ที่คุณเก็บไว้ตอน Login
+    const adminId = currentUser.id; 
 
-    const { value: usdtAmount } = await Swal.fire({
-        title: 'แปลง USDT เป็นเงินในโซน',
-        html: `
-            <div style="text-align:left; font-family:'Kanit',sans-serif;">
-                <p><b>เรทปัจจุบัน:</b> 1 USDT = ${currentRate} ${currency}</p>
-                <p><b>ยอด USDT ของคุณ:</b> ${myUsdt.toFixed(2)} USDT</p>
-                <hr>
-                <label>ระบุจำนวน USDT ที่ต้องการแปลง:</label>
-                <input id="ex-usdt" type="number" class="swal2-input" placeholder="0.00" style="width:100%; margin:10px 0;">
-                <p id="ex-preview" style="color:var(--secondary); font-weight:bold; font-size:1.1em; text-align:center;">
-                    คุณจะได้รับ: 0.00 ${currency}
-                </p>
-            </div>
-        `,
-        didOpen: () => {
-            const input = document.getElementById('ex-usdt');
-            const preview = document.getElementById('ex-preview');
-            input.addEventListener('input', () => {
-                const val = parseFloat(input.value) || 0;
-                const result = val * currentRate;
-                preview.innerText = `คุณจะได้รับ: ${result.toLocaleString()} ${currency}`;
-            });
-        },
-        showCancelButton: true,
-        confirmButtonText: 'ยืนยันการแปลงเงิน',
-        cancelButtonText: 'ยกเลิก',
-        preConfirm: () => {
-            const val = parseFloat(document.getElementById('ex-usdt').value);
-            if (!val || val <= 0 || val > myUsdt) {
-                Swal.showValidationMessage('ยอด USDT ไม่ถูกต้อง หรือไม่เพียงพอ');
-            }
-            return val;
+    try {
+        // ดึงข้อมูลรวดเดียวจบ (ทั้งโซนและยอดเงินแอดมิน)
+        const response = await fetch(`/api/admin/get-zone-detail/${zoneId}?adminId=${adminId}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            Swal.fire('Error', data.message, 'error');
+            return;
         }
-    });
 
-    if (usdtAmount) {
-        processExchange(usdtAmount);
+        const { zone, admin } = data; // แยกข้อมูลออกมาใช้
+        const currentRate = zone.rate;
+        const currency = zone.currency;
+        const myUsdt = admin.usdtBalance;
+
+        // เปิด Modal แลกเงิน
+        const { value: usdtAmount } = await Swal.fire({
+            title: `แปลงเงินโซน: ${zone.name}`,
+            html: `
+                <div style="text-align:left; font-family:'Kanit',sans-serif;">
+                    <p><b>เรท:</b> 1 USDT = ${currentRate} ${currency}</p>
+                    <p><b>กระเป๋า USDT ของคุณ:</b> <span style="color:#007bff;">${myUsdt.toFixed(2)} USDT</span></p>
+                    <hr>
+                    <label>ระบุจำนวน USDT ที่ต้องการใช้แลก:</label>
+                    <input id="ex-usdt" type="number" step="0.01" class="swal2-input" placeholder="0.00" style="width:100%; margin:10px 0;">
+                    <p id="ex-preview" style="color:#28a745; font-weight:bold; font-size:1.2em; text-align:center; background:#f8f9fa; padding:10px; border-radius:8px;">
+                        คุณจะได้รับ: 0.00 ${currency}
+                    </p>
+                </div>
+            `,
+            didOpen: () => {
+                const input = document.getElementById('ex-usdt');
+                const preview = document.getElementById('ex-preview');
+                input.addEventListener('input', () => {
+                    const val = parseFloat(input.value) || 0;
+                    const result = val * currentRate;
+                    preview.innerText = `คุณจะได้รับ: ${result.toLocaleString()} ${currency}`;
+                });
+            },
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันการแปลงเงิน',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                const val = parseFloat(document.getElementById('ex-usdt').value);
+                if (!val || val <= 0 || val > myUsdt) {
+                    Swal.showValidationMessage('ยอด USDT ไม่ถูกต้อง หรือไม่เพียงพอ');
+                }
+                return val;
+            }
+        });
+
+        if (usdtAmount) {
+            // ส่งไปทำงานต่อที่ API หลังบ้าน
+            processExchange(zoneId, usdtAmount);
+        }
+
+    } catch (err) {
+        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อระบบได้', 'error');
     }
 }
 
