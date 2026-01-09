@@ -1368,29 +1368,30 @@ app.post('/api/admin/convert-currency', async (req, res) => {
             return res.status(400).json({ success: false, message: 'เหรียญ (USDT) ของคุณไม่เพียงพอ' });
         }
 
-        // ✅ 1. ดึงชื่อสกุลเงินของโซนมาเป็นชื่อฟิลด์ (เช่น 'thb')
         const currencyField = (zone.zoneCurrency || 'usd').toLowerCase(); 
         const receiveAmount = amount * (zone.zoneExchangeRate || 1.0);
 
-        // ✅ 2. บันทึกธุรกรรม โดยใช้ [currencyField] แทน zoneWallet
+        // 🔍 DEBUG LOG: เช็คการแปลงเงิน
+        console.log("-----------------------------------------");
+        console.log(`[DEBUG] Convert Mode: Admin @${adminId}`);
+        console.log(`[DEBUG] From: ${amount} USDT`);
+        console.log(`[DEBUG] To Field: "${currencyField}" (Amount: ${receiveAmount})`);
+        console.log("-----------------------------------------");
+
         await db.collection('users').updateOne(
             { username: adminId },
             { 
                 $inc: { 
-                    coins: -amount,           // หักกระเป๋าหลัก (USDT)
-                    [currencyField]: receiveAmount  // ✨ เพิ่มเข้ากระเป๋าสกุลเงินโซนโดยตรง
+                    coins: -amount,
+                    [currencyField]: receiveAmount 
                 } 
             }
         );
 
-        res.json({ 
-            success: true, 
-            received: receiveAmount, 
-            currency: currencyField 
-        });
+        res.json({ success: true, received: receiveAmount, currency: currencyField });
 
     } catch (err) {
-        console.error(err);
+        console.error("🚨 Convert Error:", err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
@@ -3672,12 +3673,28 @@ app.post('/api/admin/save-settings', async (req, res) => {
 // 2.3 ดึงรายการคำขอทั้งหมดของแอดมิน (ใช้แสดงในหน้าจอแอดมิน)
 app.get('/api/admin/topup-list', async (req, res) => {
     const { admin } = req.query;
-    const requests = await topupRequestsCollection.find({ 
-        adminId: admin, 
-        status: 'pending' 
-    }).sort({ createdAt: -1 }).toArray();
-    
-    res.json(requests);
+    try {
+        const requests = await topupRequestsCollection.find({ 
+            adminId: admin, 
+            status: 'pending' 
+        }).sort({ createdAt: -1 }).toArray();
+        
+        // 🔍 DEBUG LOG: เช็ครายการที่ส่งให้แอดมิน
+        console.log(`[DEBUG] Fetching Topup-List for Admin: ${admin}`);
+        if (requests.length > 0) {
+            requests.forEach((req, i) => {
+                console.log(`   #${i + 1} User: @${req.username} | Amount: ${req.amount} | Currency: ${req.currency || 'MISSING!'}`);
+            });
+        } else {
+            console.log(`   (No pending requests found)`);
+        }
+        console.log("-----------------------------------------");
+
+        res.json(requests);
+    } catch (err) {
+        console.error("🚨 List Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
 
 // 2.4 อนุมัติการเติมเงิน
