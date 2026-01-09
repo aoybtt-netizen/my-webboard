@@ -116,33 +116,30 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-<div class="sidebar-header" style="padding: 20px 15px;">
-    <h3 style="margin:0; color:var(--secondary); font-size: 1.3em;">GedGo! Zone</h3>
-    <small style="opacity:0.6; display: block; margin-bottom: 12px;">แผงควบคุมเจ้าของโซน</small>
-
-    <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: left;">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <small style="color: rgba(255,255,255,0.5); font-size: 0.7em;">MASTER (USDT)</small>
-            <div style="font-weight: bold; color: #fff; font-size: 0.95em;">
-                <i class="fas fa-coins" style="color: #f1c40f; font-size: 0.8em;"></i>
-                <span id="sidebar-usdt-balance">0.00</span>
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <h3 style="margin:0; color:var(--secondary);">GedGo! Zone</h3>
+        <small style="opacity:0.6;">แผงควบคุมเจ้าของโซน</small>
+		
+		<div style="margin-bottom: 10px;">
+            <small style="color: rgba(255,255,255,0.5); font-size: 0.75em; display: block;">ทุนคงเหลือ (Master)</small>
+            <div style="font-size: 1.1em; font-weight: bold; color: #fff;">
+                <i class="fas fa-coins" style="color: #f1c40f; margin-right: 5px;"></i>
+                <span id="sidebar-usdt-balance">0.00</span> <small>USDT</small>
             </div>
         </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
-            <small style="color: rgba(255,255,255,0.5); font-size: 0.7em;">LOCAL (<span id="sidebar-zone-currency">---</span>)</small>
-            <div style="font-weight: bold; color: var(--secondary); font-size: 0.95em;">
-                <i class="fas fa-wallet" style="font-size: 0.8em;"></i>
-                <span id="sidebar-zone-balance">0.00</span>
-            </div>
-        </div>
-
-        <button onclick="openExchangeModal()" style="width: 100%; background: var(--secondary); color: var(--dark); border: none; padding: 7px; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: 'Kanit'; font-size: 0.8em; display: flex; align-items: center; justify-content: center; gap: 5px;">
-            <i class="fas fa-exchange-alt" style="font-size: 0.9em;"></i> แลกเปลี่ยนเงินตรา
+		
+    </div>
+	
+	
+	
+	<div style="margin-top: 15px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: left;">
+        <small style="color: var(--secondary); display: block; margin-bottom: 5px;">ทุนคงเหลือ (USDT)</small>
+        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;" id="sidebar-usdt-balance">0.00 USDT</div>
+        <button onclick="openExchangeModal()" style="width: 100%; background: var(--secondary); color: var(--dark); border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Kanit';">
+            💱 แปลงเป็นเงินโซน
         </button>
     </div>
-</div>
 	
     <div class="sidebar-menu">
     <div class="menu-item active" onclick="showContent('topup')">
