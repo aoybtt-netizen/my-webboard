@@ -3161,7 +3161,9 @@ async function fetchAndRenderAllZones() {
                         <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px;">
                             <button onclick="deleteZone(${zone.id}, '${safeName}')" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">ลบโซน</button>
                             <button onclick="openAdminAssignModal('${zone.id}', '${safeName}')" style="background:#ffc107; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">ผู้ดูแล</button>
-                            
+                            <button onclick="openCurrencySelectModal('${zone.id}', '${safeName}')" style="background:#17a2b8; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">
+							💰 สกุลเงิน
+							</button>
                             <button onclick="openZoneRefSelectModal('${zone.id}')" style="background:#6f42c1; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8em;">
                                 📍 จุดอ้างอิง
                             </button>
@@ -5456,6 +5458,71 @@ window.addEventListener('load', async () => {
         console.log("Check working status error");
     }
 });
+
+
+
+//ตั้งค่าสกุลเงินโซน
+// ฟังก์ชันเปิดหน้าต่างเลือกสกุลเงิน
+async function openCurrencySelectModal(zoneId, zoneName) {
+    const { value: formValues } = await Swal.fire({
+        title: `ตั้งค่าสกุลเงิน: ${zoneName}`,
+        html:
+            `<div style="text-align:left; font-family:'Kanit',sans-serif;">` +
+            `<label style="display:block; margin-bottom:5px;">เลือกสกุลเงินหลักของโซน:</label>` +
+            `<select id="swal-currency" class="swal2-input" style="width:100%; margin:0 0 15px 0;">` +
+                `<option value="THB">฿ THB (บาทไทย)</option>` +
+                `<option value="BRL">R$ BRL (เรียลบราซิล)</option>` +
+                `<option value="USD">$ USD (ดอลลาร์)</option>` +
+                `<option value="VND">₫ VND (ดองเวียดนาม)</option>` +
+            `</select>` +
+            `<label style="display:block; margin-bottom:5px;">อัตราแลกเปลี่ยน (1 USDT = ?):</label>` +
+            `<input id="swal-rate" type="number" step="0.01" class="swal2-input" placeholder="เช่น 35.00 หรือ 5.00" style="width:100%; margin:0;">` +
+            `<p style="font-size:0.75em; color:#666; margin-top:5px;">* ค่านี้จะใช้สำหรับแสดงผลและคำนวณเงินในโซนนี้เท่านั้น</p>` +
+            `</div>`,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึก',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => {
+            return {
+                currency: document.getElementById('swal-currency').value,
+                rate: document.getElementById('swal-rate').value
+            }
+        }
+    });
+
+    if (formValues) {
+        if (!formValues.rate || formValues.rate <= 0) {
+            Swal.fire('ผิดพลาด', 'กรุณาระบุอัตราแลกเปลี่ยนที่ถูกต้อง', 'error');
+            return;
+        }
+        
+        // ส่งข้อมูลไปบันทึกที่ Server (ตัวอย่าง API)
+        saveZoneCurrency(zoneId, formValues.currency, formValues.rate);
+    }
+}
+
+// ฟังก์ชันส่งข้อมูลไปหลังบ้าน
+async function saveZoneCurrency(zoneId, currency, rate) {
+    try {
+        const response = await fetch('/api/admin/set-zone-currency', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ zoneId, currency, rate })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            Swal.fire('สำเร็จ', `อัปเดตโซนเป็น ${currency} เรียบร้อยแล้ว`, 'success');
+            // อาจจะเพิ่มการ reload ข้อมูลโซนใหม่เพื่อให้แสดงผลสัญลักษณ์เงินที่เปลี่ยนไป
+        } else {
+            Swal.fire('ล้มเหลว', result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('ผิดพลาด', 'ไม่สามารถติดต่อ Server ได้', 'error');
+    }
+}
 
 
 /*<button id="bottom-zone-btn" class="sticky-bottom-btn" onclick="openZoneOwnerModal()">
