@@ -924,12 +924,9 @@ app.get('/api/users-list', async (req, res) => {
 
         // ฟังก์ชันช่วยในการจัดกลุ่มและคำนวณสถิติ
         const mapUserResponse = (u) => {
-            // คำนวณคะแนนเฉลี่ย (รวมจาก RiderRating + MerchantRating)
             const totalScore = (u.totalRatingScore || 0) + (u.merchantRatingScore || 0);
             const totalRatingCount = (u.ratingCount || 0) + (u.merchantRatingCount || 0);
             const averageRating = totalRatingCount > 0 ? (totalScore / totalRatingCount) : 0;
-
-            // รวมจำนวนงานที่สำเร็จ (Rider Completed + Merchant Completed)
             const combinedCompleted = (u.completedJobs || 0) + (u.authorCompletedJobs || 0);
 
             return { 
@@ -937,25 +934,17 @@ app.get('/api/users-list', async (req, res) => {
                 fullName: u.fullName || '', 
                 profileImg: u.profileImg || '', 
                 coins: u.coins || 0, 
+                // --- เพิ่มฟิลด์ currency ตรงนี้ ---
+                currency: u.zoneCurrency || 'USD', 
                 
-                // --- สถิติจริงที่ดึงมาจาก Socket/API ที่คุณใช้ ---
                 rating: averageRating,
                 ratingCount: totalRatingCount,
-                totalPosts: u.totalPosts || 0,        // งานที่เขาเคยโพสต์
-                totalJobs: u.totalJobs || 0,          // งานที่เขากดรับ/ดำเนินการ
-                completedJobs: combinedCompleted,      // งานที่จบสำเร็จจริง (ทั้ง 2 ฝ่าย)
-
+                totalPosts: u.totalPosts || 0,
+                totalJobs: u.totalJobs || 0,
+                completedJobs: combinedCompleted,
                 isBanned: u.isBanned || false,
                 isVerified: u.isVerified || false,
-                adminLevel: u.adminLevel || 0,
-                country: u.country || 'N/A',
-                assignedLocation: u.assignedLocation || null,
-                relationType: u.relationType || 'OTHER',
-                
-                // ข้อมูล KYC สำหรับหน้าโปรไฟล์ Admin
-                idNumber: u.idNumber || '',
-                phone: u.phone || '',
-                address: u.address || ''
+                relationType: u.relationType || 'OTHER'
             };
         };
 
@@ -991,6 +980,7 @@ app.get('/api/users-list', async (req, res) => {
                 });
 
                 if (closestZone) {
+					u.zoneCurrency = closestZone.zoneCurrency || 'USD';
                     const isOwned = myOwnedZones.some(mz => mz.id === closestZone.id);
                     const isRef = myRefZones.some(mz => mz.id === closestZone.id);
                     if (isOwned) { u.relationType = 'OWNED'; return true; }

@@ -1401,7 +1401,7 @@ async function loadMemberList() {
                             ${user.isBanned ? '<small style="background:#ffebee; color:red; padding:1px 5px; border-radius:5px; font-size:0.6em;">BANNED</small>' : ''}
                         </div>
                         <div style="font-size: 0.8em; color: var(--primary); font-weight: bold;">
-							Balance: ${coins.toFixed(2)} ${zoneCurrency || 'USD'}
+							Balance: ${user.coins.toFixed(2)} ${user.currency || zoneCurrency}
 						</div>
                     </div>
 
