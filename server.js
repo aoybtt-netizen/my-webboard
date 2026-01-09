@@ -870,38 +870,47 @@ app.get('/api/profile-details', async (req, res) => {
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // ค่า Default กรณีอยู่นอกพื้นที่
         let zoneName = "นอกพื้นที่บริการ";
         let zoneOwner = "ไม่มีผู้ดูแล";
         let currentCurrency = 'USD';
-        let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
+        let currentBalance = user.coins || 0; 
 
-        // ตรวจสอบพิกัดเพื่อหาโซน
         if (location) {
             const locationObj = JSON.parse(decodeURIComponent(location));
-            // ใช้ฟังก์ชันเดิมที่คุณมีเพื่อหา Admin/Zone
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
                 zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
                 zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล";
                 
-                // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
                 if (zoneInfo.zoneData.zoneCurrency) {
-                    currentCurrency = zoneInfo.zoneData.zoneCurrency;
+                    // ✅ ระบุสกุลเงินจากโซน
+                    currentCurrency = zoneInfo.zoneData.zoneCurrency; 
                     
-                    // ✅ 2. ดึงยอดเงินจาก "กระเป๋าที่ตรงกับสกุลเงิน" (เช่น user.THB)
-                    // ถ้าไม่มีให้เป็น 0 (ห้ามแปลงค่า ให้ดึงค่าดิบ)
-                    currentBalance = user[currentCurrency] || 0; 
+                    // ✅ 🔍 DEBUG POINT: เช็คการดึงเงินตามสกุลเงิน
+                    // เราต้องเช็คทั้งแบบ ตัวใหญ่ (BRL) และ ตัวเล็ก (brl) 
+                    // เพื่อดูว่าใน DB ของ User เก็บแบบไหน
+                    const fieldUpper = currentCurrency.toUpperCase();
+                    const fieldLower = currentCurrency.toLowerCase();
+                    
+                    // เลือกดึงจากตัวเล็กเป็นหลักตามมาตรฐานที่เราคุยกัน (brl)
+                    // แต่ถ้าหาไม่เจอ ให้ลองหาตัวใหญ่ (BRL) หรือถ้าไม่มีเลยให้เป็น 0
+                    currentBalance = user[fieldLower] !== undefined ? user[fieldLower] : (user[fieldUpper] || 0);
+
+                    console.log("-----------------------------------------");
+                    console.log(`[DEBUG PROFILE] User: @${username}`);
+                    console.log(`[DEBUG PROFILE] Zone Config: ${currentCurrency}`);
+                    console.log(`[DEBUG PROFILE] Val in DB (lower - "${fieldLower}"): ${user[fieldLower]}`);
+                    console.log(`[DEBUG PROFILE] Val in DB (upper - "${fieldUpper}"): ${user[fieldUpper]}`);
+                    console.log(`[DEBUG PROFILE] Final Selected Balance: ${currentBalance}`);
+                    console.log("-----------------------------------------");
                 }
             }
         }
 
-        // ส่งข้อมูลกลับไปหน้าบ้าน
         res.json({
-            coins: currentBalance,      // ส่งยอดเงินของกระเป๋านั้นๆ
-            currency: currentCurrency,  // ส่งชื่อสกุลเงินไปด้วย
-            
+            coins: currentBalance,      
+            currency: currentCurrency,  
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
@@ -911,7 +920,7 @@ app.get('/api/profile-details', async (req, res) => {
         });
 
     } catch (e) {
-        console.error("Profile API Error:", e);
+        console.error("🚨 Profile API Error:", e);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
