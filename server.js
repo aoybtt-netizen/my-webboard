@@ -3609,15 +3609,16 @@ app.get('/api/topup/status', async (req, res) => {
 app.get('/api/topup/history', async (req, res) => {
     try {
         const { username } = req.query;
-        if (!username) return res.status(400).json({ error: "No username" });
+        if (!username) return res.status(400).json({ error: "Missing username" });
 
-        // ดึงรายการประวัติของ User คนนั้น เรียงจากใหม่ไปเก่า
+        // ✅ ค้นหาประวัติทั้งหมด (รวม Pending) เรียงจากใหม่ไปเก่า
         const history = await db.collection('topupRequests').find({ 
             username: username 
         }).sort({ createdAt: -1 }).toArray();
 
         res.json(history);
     } catch (err) {
+        console.error("History API Error:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });

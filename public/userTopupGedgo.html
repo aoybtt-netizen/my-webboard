@@ -287,6 +287,8 @@ html {
     async function loadHistory() {
     const myName = localStorage.getItem('myUsername');
     const list = document.getElementById('history-list');
+    if (!list) return;
+
     list.innerHTML = '<p style="text-align: center; color: #999;">กำลังโหลดประวัติ...</p>';
 
     try {
@@ -302,21 +304,20 @@ html {
             const isWithdraw = item.type === 'WITHDRAW';
             const typeLabel = isWithdraw ? 'ถอนเงิน' : 'เติมเงิน';
             const typeIcon = isWithdraw ? 'fa-money-bill-transfer' : 'fa-hand-holding-usd';
-            const typeColor = isWithdraw ? 'var(--danger)' : 'var(--primary)';
+            const typeColor = isWithdraw ? '#e74c3c' : '#3498db'; // สีแดงสำหรับถอน สีฟ้าสำหรับเติม
             
-            // ✅ ดึงสกุลเงินจากข้อมูลใน Database (ถ้าไม่มีให้ Default เป็น USD)
-            // ใช้ค่าดิบ (Raw Value) ที่แอดมินระดับ 3 ตั้งค่ามา
+            // ✅ ดึงค่าสกุลเงินจาก Database (ถ้าไม่มีให้ใช้ USD เป็นค่าเริ่มต้น)
             const currency = item.currency || 'USD';
 
-            // จัดการสถานะและสี
-            let statusColor = '#f39c12'; // Default: Pending
+            // 🚩 จัดการสีและข้อความตามสถานะจริง
+            let statusColor = '#f39c12'; // สีส้มสำหรับ Pending
             let statusText = 'รออนุมัติ';
 
             if (item.status === 'approved') {
-                statusColor = '#2ecc71';
+                statusColor = '#2ecc71'; // สีเขียว
                 statusText = 'สำเร็จ';
             } else if (item.status === 'rejected') {
-                statusColor = '#e74c3c';
+                statusColor = '#e74c3c'; // สีแดง
                 statusText = 'ปฏิเสธ';
             }
 
@@ -331,7 +332,7 @@ html {
                         </div>
                         <div style="text-align: left;">
                             <div style="font-size: 0.75em; color: ${typeColor}; font-weight: bold; text-transform: uppercase;">${typeLabel}</div>
-                            <b style="font-size: 1.1em; color: var(--dark);">${item.amount.toFixed(2)} ${currency}</b><br>
+                            <b style="font-size: 1.1em; color: #2c3e50;">${item.amount.toFixed(2)} ${currency}</b><br>
                             <small style="color:#999; font-size: 0.8em;">${new Date(item.createdAt).toLocaleString('th-TH')}</small>
                         </div>
                     </div>
@@ -346,7 +347,7 @@ html {
             `;
         }).join('');
     } catch (err) {
-        console.error("History Error:", err);
+        console.error("Load History UI Error:", err);
         list.innerHTML = '<p style="text-align: center; color: red;">โหลดข้อมูลล้มเหลว</p>';
     }
 }
