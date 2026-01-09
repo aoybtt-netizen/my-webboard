@@ -777,66 +777,64 @@ app.get('/api/admin/transactions', async (req, res) => {
 
 // 2. User Info
 app.get('/api/user-info', async (req, res) => {
-    // 1. รับค่า country เพิ่มเข้ามา (ส่งมาจาก Frontend)
+    // 1. รับค่าต่างๆ จาก Query ตามโครงสร้างเดิม
     const { username, currency, location, country, lang } = req.query; 
-	const currentLang = lang || 'th'; // ป้องกันค่าว่าง 
-    const targetCurrency = currency || DEFAULT_CURRENCY; 
-
+    const currentLang = lang || 'th'; 
+    
     if (!username) return res.status(400).json({ error: 'No username' });
     
     const user = await getUserData(username);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.isBanned) {
-    // กำหนดหัวข้อหลักเป็นภาษาอังกฤษตามที่คุณต้องการ
-    let banMessage = "❌ Your account is suspended.";
-    
-    if (user.banExpires) {
-        const expireDate = new Date(user.banExpires);
-        // เลือก Format ตาม lang ที่ส่งมา (ถ้า th จะเห็นเป็นวันที่ไทย ถ้า en จะเห็นสากล)
-        const dateStr = expireDate.toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US');
-        const timeStr = expireDate.toLocaleTimeString(currentLang === 'th' ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' });
-        
-        // คอมเมนต์ไทย: ต่อท้ายด้วยวันเวลาหมดอายุ
-        banMessage += (currentLang === 'th') 
-            ? ` until ${dateStr} Time ${timeStr}` 
-            : ` until ${dateStr} at ${timeStr}.`;
-    } else {
-        // คอมเมนต์ไทย: กรณีแบนถาวร
-        banMessage += " permanently.";
-    }
 
-    return res.status(403).json({ error: banMessage });
-}
+    // --- ส่วนเช็คการแบน (คงเดิมไว้ทั้งหมดตามที่คุณเขียน) ---
+    if (user.isBanned) {
+        let banMessage = "❌ Your account is suspended.";
+        if (user.banExpires) {
+            const expireDate = new Date(user.banExpires);
+            const dateStr = expireDate.toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US');
+            const timeStr = expireDate.toLocaleTimeString(currentLang === 'th' ? 'th-TH' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+            banMessage += (currentLang === 'th') 
+                ? ` until ${dateStr} Time ${timeStr}` 
+                : ` until ${dateStr} at ${timeStr}.`;
+        } else {
+            banMessage += " permanently.";
+        }
+        return res.status(403).json({ error: banMessage });
+    }
     
     let userZoneId = null;
     let postCostData;
+    let targetCurrency = currency || 'USD'; // ค่า Default
+    let zoneRate = 1.0; // เรทเริ่มต้น
     
     try {
         const locationObj = location ? JSON.parse(location) : null;
 
-        // อัปเดตพิกัดล่าสุด และ [NEW] ประเทศ ลง Database
+        // อัปเดตพิกัดและประเทศ (คงเดิม)
         if (locationObj && locationObj.lat && locationObj.lng) {
             const updateFields = { 
                 lastLocation: locationObj, 
                 lastSeen: new Date() 
             };
-            
-            // ถ้ามีการส่งค่า country มา ให้บันทึกด้วย
-            if (country) {
-                updateFields.country = country; 
-            }
+            if (country) updateFields.country = country; 
 
-            await usersCollection.updateOne(
+            await db.collection('users').updateOne(
                 { username: username }, 
                 { $set: updateFields }
             );
         }
 
-        // ... (ส่วนคำนวณค่าธรรมเนียมเดิม) ...
+        // --- ส่วนคำนวณค่าธรรมเนียมและหาโซน ---
         postCostData = await getPostCostByLocation(locationObj);
         const zoneInfo = await findResponsibleAdmin(locationObj);
-        if (zoneInfo.zoneData) {
+
+        if (zoneInfo && zoneInfo.zoneData) {
             userZoneId = zoneInfo.zoneData.id;
+            
+            // ✅ [จุดสำคัญ] เปลี่ยน targetCurrency และเรทตามโซนที่เจอจริง
+            // ใช้ค่าดิบ (Raw Value) จาก DB ไม่มีการแปลงตัวเล็ก
+            targetCurrency = zoneInfo.zoneData.zoneCurrency || 'USD';
+            zoneRate = zoneInfo.zoneData.zoneExchangeRate || 1.0;
         }
 
     } catch (e) {
@@ -844,18 +842,21 @@ app.get('/api/user-info', async (req, res) => {
         postCostData = await getPostCostByLocation(null);
     }
     
-    // ... (ส่วน return response เดิม) ...
-    const convertedCoins = convertUSD(user.coins, targetCurrency);
+    // ✅ คำนวณยอดเงินท้องถิ่น (Local Currency) 
+    // โดยใช้ยอด USDT (coins) * เรทของโซนนั้นๆ
+    const convertedCoins = (user.coins || 0) * zoneRate;
+
+    // ส่ง Response กลับ (คงโครงสร้างเดิมแต่เปลี่ยนค่าตัวแปร)
     res.json({
-        coins: user.coins,
-        convertedCoins: convertedCoins.toFixed(2),
-        currencySymbol: targetCurrency.toUpperCase(),
+        coins: user.coins || 0, // ยอดหลัก USDT
+        convertedCoins: convertedCoins.toFixed(2), // ยอดวงเล็บตามโซน
+        currencySymbol: targetCurrency.toUpperCase(), // ตัวใหญ่เสมอ (BRL, THB)
         postCost: postCostData,
-        rating: user.rating,
+        rating: user.rating || 5.0,
         adminLevel: user.adminLevel || 0,
         userZoneId: userZoneId,
         country: user.country || 'TH', 
-		totalPosts: user.totalPosts || 0,     
+        totalPosts: user.totalPosts || 0,     
         completedJobs: user.completedJobs || 0
     });
 });
