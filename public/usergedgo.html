@@ -435,8 +435,15 @@
         document.getElementById('count-job').innerText = data.completedJobs || 0;
 		document.getElementById('count-rating').innerText = data.rating || 0;
         
-        const usdAmount = data.coins || 0;
-        document.getElementById('display-balance-usd').innerText = `${usdAmount.toFixed(2)} USD`;
+        // ✅ แก้ไข: อัปเดตยอดเงินตามสกุลเงินที่ API ส่งมา (BRL, THB, USD)
+        const balance = data.coins || 0;
+        const currency = data.currency || 'USD';
+        
+        // อัปเดตตัวเลขพร้อมหน่วยเงินที่ถูกต้อง
+        const balanceElem = document.getElementById('display-balance-usd');
+        if (balanceElem) {
+            balanceElem.innerText = `${balance.toFixed(2)} ${currency}`;
+        }
         
         // 2. แสดงข้อมูลโซนและเจ้าของโซน
         document.getElementById('display-zone-name').innerText = data.zoneName;
