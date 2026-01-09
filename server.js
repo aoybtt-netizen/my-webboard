@@ -1408,6 +1408,47 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
     }
 });
 
+// 7.6 API สำหรับดึงข้อมูลโซนที่แอดมินรับผิดชอบ
+app.get('/api/admin/my-zone-info', async (req, res) => {
+    try {
+        const adminUsername = req.query.admin; // รับค่าจาก ?admin=...
+
+        if (!adminUsername) {
+            return res.status(400).json({ success: false, message: 'ไม่มีชื่อแอดมินส่งมา' });
+        }
+
+        // 1. ค้นหาในคอลเลกชัน zones ว่าใครคือผู้ดูแล (assignedAdmin)
+        // หมายเหตุ: ตรวจสอบชื่อฟิลด์ใน DB ของคุณด้วยว่าใช้ assignedAdmin หรือไม่
+        const zone = await db.collection('zones').findOne({ assignedAdmin: adminUsername });
+
+        if (!zone) {
+            // ถ้าแอดมินคนนี้ยังไม่มีโซนที่รับผิดชอบ
+            return res.status(404).json({ success: false, message: 'แอดมินคนนี้ยังไม่มีโซนที่รับผิดชอบ' });
+        }
+
+        // 2. ดึงยอด USDT ของแอดมินคนนี้จากคอลเลกชัน users
+        const adminProfile = await db.collection('users').findOne(
+            { username: adminUsername },
+            { projection: { usdtBalance: 1 } }
+        );
+
+        // 3. ส่งข้อมูลกลับไปให้หน้าบ้านตามโครงสร้างที่ตกลงกันไว้
+        res.json({
+            success: true,
+            zone: {
+                id: zone.id,
+                zoneCurrency: zone.zoneCurrency || 'THB',
+                zoneExchangeRate: zone.zoneExchangeRate || 35.0
+            },
+            adminUsdt: adminProfile && adminProfile.usdtBalance ? adminProfile.usdtBalance : 0
+        });
+
+    } catch (err) {
+        console.error("🔥 Error my-zone-info:", err);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 
 
 	// 8. Give Coins 
