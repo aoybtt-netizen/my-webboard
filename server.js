@@ -1370,42 +1370,31 @@ app.post('/api/admin/convert-currency', async (req, res) => {
 app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
     try {
         const zoneIdInt = parseInt(req.params.id);
-        const adminUsername = req.query.adminId; // รับ Username ที่ส่งมาจากหน้าบ้าน
+        const adminUsername = req.query.adminId;
 
-        // 1. ดึงข้อมูลโซน
         const zone = await db.collection('zones').findOne({ id: zoneIdInt });
+        if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
 
-        if (!zone) {
-            return res.status(404).json({ success: false, message: 'ไม่พบโซนที่ระบุ' });
-        }
-
-        // 2. ค้นหาแอดมินด้วย username (แทนการใช้ id)
         const adminProfile = await db.collection('users').findOne(
-            { username: adminUsername }, // ใช้ฟิลด์ username ตามระบบของคุณ
-            { projection: { nickname: 1, usdtBalance: 1, adminLevel: 1 } }
+            { username: adminUsername },
+            { projection: { nickname: 1, coins: 1 } } // *** เปลี่ยนจาก usdtBalance เป็น coins ***
         );
 
-        // 3. รวมข้อมูลส่งกลับไป
         res.json({
             success: true,
             zone: {
                 id: zone.id,
                 name: zone.zoneName,
                 currency: zone.zoneCurrency || 'USD',
-                rate: zone.zoneExchangeRate || 1.0,
-                assignedAdmin: zone.assignedAdmin
+                rate: zone.zoneExchangeRate || 1.0
             },
             admin: {
-                // เช็กว่าเจอโปรไฟล์ไหม ถ้าเจอให้ส่งยอดจริงไป ถ้าไม่เจอให้ส่ง 0
-                usdtBalance: adminProfile && adminProfile.usdtBalance ? adminProfile.usdtBalance : 0,
+                // *** เปลี่ยนจาก usdtBalance เป็น coins ***
+                usdtBalance: adminProfile && adminProfile.coins ? adminProfile.coins : 0, 
                 nickname: adminProfile ? adminProfile.nickname : 'Unknown'
             }
         });
-
-    } catch (err) {
-        console.error("🔥 Error fetching zone detail:", err);
-        res.status(500).json({ success: false, message: 'Server Error' });
-    }
+    } catch (err) { res.status(500).json({ success: false }); }
 });
 
 // 7.6 API สำหรับดึงข้อมูลโซนที่แอดมินรับผิดชอบ
