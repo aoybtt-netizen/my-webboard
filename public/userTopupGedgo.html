@@ -121,8 +121,8 @@ html {
                 <h2 id="content-title" style="margin:0; font-size: 1.2em;">เติมเงิน</h2>
             </div>
             <div>
-                ยอดเงินปัจจุบัน: <b id="current-balance">0.00</b> USD
-            </div>
+			ยอดเงินปัจจุบัน: <b id="current-balance">0.00</b> <span id="currency-label">USD</span>
+			</div>
         </header>
 
         <div class="container" style="padding-bottom: 0;">
@@ -342,7 +342,13 @@ html {
 
     window.onload = async () => {
     const myName = localStorage.getItem('myUsername');
-	await checkTopupStatus();
+    // เรียกฟังก์ชันเช็คสถานะธุรกรรม (ชื่อต้องตรงกับที่คุณประกาศด้านล่าง)
+    if (typeof checkTransactionStatus === 'function') {
+        await checkTransactionStatus();
+    } else if (typeof checkTopupStatus === 'function') {
+        await checkTopupStatus();
+    }
+
     if (!myName) {
         window.location.href = 'index.html';
         return;
@@ -352,22 +358,33 @@ html {
         const savedLoc = localStorage.getItem('userPrimaryLocation');
         let locationParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
 
-        // ดึงข้อมูลผ่าน API ตัวเดิมที่เราใช้กับหน้าโปรไฟล์
+        // เรียก API ที่เราเพิ่งแก้ด้านบน
         const res = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
         const data = await res.json();
 
         if (data.error) throw new Error(data.error);
+        if (typeof zoneCurrency !== 'undefined') {
+            zoneCurrency = data.currency || 'USD';
+        }
 
-        // 1. อัปเดตยอดเงิน
+        // ✅ 1. อัปเดตตัวเลขยอดเงิน (มาจากกระเป๋าที่ถูกต้องแล้ว)
         document.getElementById('current-balance').innerText = (data.coins || 0).toFixed(2);
         
-        // 2. อัปเดตข้อมูลโซนและเจ้าของโซน (นี่คือส่วนที่สำคัญ!)
+        // ✅ 2. อัปเดตป้ายสกุลเงิน (ที่เราเพิ่งสร้าง id ไว้)
+        // ถ้า API ส่งมาว่า 'THB' ตรงนี้ก็จะเปลี่ยนจาก USD เป็น THB ทันที
+        const currencyLabel = document.getElementById('currency-label');
+        if (currencyLabel) {
+            currencyLabel.innerText = data.currency || 'USD';
+        }
+
+        // ✅ 3. อัปเดตข้อมูลโซน
         document.getElementById('display-zone-name').innerText = data.zoneName || "นอกพื้นที่บริการ";
         document.getElementById('display-zone-admin').innerText = data.zoneOwner || "ไม่มีผู้ดูแล";
 
     } catch (err) {
         console.error("Load Topup Info Error:", err);
-        document.getElementById('display-zone-name').innerText = "โหลดข้อมูลล้มเหลว";
+        const zoneDisplay = document.getElementById('display-zone-name');
+        if(zoneDisplay) zoneDisplay.innerText = "โหลดข้อมูลล้มเหลว";
     }
 };
 

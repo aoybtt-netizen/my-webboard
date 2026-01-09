@@ -870,31 +870,44 @@ app.get('/api/profile-details', async (req, res) => {
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
+        // ค่า Default กรณีอยู่นอกพื้นที่
         let zoneName = "นอกพื้นที่บริการ";
         let zoneOwner = "ไม่มีผู้ดูแล";
+        let currentCurrency = 'USD';
+        let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
 
-        // ใช้ Logic เดิมที่คุณมีในการหาโซน
+        // ตรวจสอบพิกัดเพื่อหาโซน
         if (location) {
             const locationObj = JSON.parse(decodeURIComponent(location));
+            // ใช้ฟังก์ชันเดิมที่คุณมีเพื่อหา Admin/Zone
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
-                // ดึงชื่อโซนและชื่อแอดมินจากข้อมูลโซนที่คุณมี
                 zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
-                zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล"; 
+                zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล";
+                
+                // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
+                if (zoneInfo.zoneData.zoneCurrency) {
+                    currentCurrency = zoneInfo.zoneData.zoneCurrency;
+                    
+                    // ✅ 2. ดึงยอดเงินจาก "กระเป๋าที่ตรงกับสกุลเงิน" (เช่น user.THB)
+                    // ถ้าไม่มีให้เป็น 0 (ห้ามแปลงค่า ให้ดึงค่าดิบ)
+                    currentBalance = user[currentCurrency] || 0; 
+                }
             }
         }
 
-        // ส่งข้อมูลที่หน้า Profile ต้องใช้กลับไป
+        // ส่งข้อมูลกลับไปหน้าบ้าน
         res.json({
-            coins: user.coins || 0,
+            coins: currentBalance,      // ส่งยอดเงินของกระเป๋านั้นๆ
+            currency: currentCurrency,  // ส่งชื่อสกุลเงินไปด้วย
+            
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
             email: user.email || "ยังไม่ระบุ",
             zoneName: zoneName,
-            zoneOwner: zoneOwner,
-            currencySymbol: "THB" // หรือดึงจากระบบแปลงค่าเงินของคุณ
+            zoneOwner: zoneOwner
         });
 
     } catch (e) {
