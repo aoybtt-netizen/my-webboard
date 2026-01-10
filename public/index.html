@@ -4601,8 +4601,8 @@ window.savePostCost = savePostCost;
 
         // --- ส่วนเดิมของคุณ (รักษาไว้เพื่อไม่ให้กระทบระบบเงิน) ---
         if (modalCostRow) modalCostRow.style.color = "#e67e22"; // คืนค่าสีส้มปกติถ้าไม่ฟรี
-        const postCostUSD = data.postCost.totalCost;
-        const systemFee = data.postCost.systemFee !== undefined ? data.postCost.systemFee : 0;
+        const postCostUSDT = data.postCost.totalCost;
+        const systemZone = data.postCost.systemZone !== undefined ? data.postCost.systemZone : 0;
         const adminFee = data.postCost.adminFee !== undefined ? data.postCost.adminFee : 0;
         
         let impliedRate = 1;
@@ -4612,19 +4612,21 @@ window.savePostCost = savePostCost;
         if (balanceUSD > 0) {
             impliedRate = balanceConverted / balanceUSD;
         } else {
-            impliedRate = (data.currencySymbol === 'USD') ? 1 : 0;
+            impliedRate = (data.currencySymbol === 'USD' || data.currencySymbol === 'USDT') ? 1 : 0;
         }
 
-        const convertedCostVal = postCostUSD * impliedRate;
+        const convertedCostVal = postCostUSDT * impliedRate;
         const formattedConvertedCost = convertedCostVal.toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
 
         if (modalCostDisplay) {
+            // 🚩 [จุดที่แก้ไข] เปลี่ยน USD -> USDT, เปลี่ยน System -> System Zone และเอาวงเล็บหลังออก
             modalCostDisplay.innerHTML = 
-                `${postCostUSD.toFixed(2)} 
-                <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee.toFixed(2)} System + ${adminFee.toFixed(2)} Admin)</span>`;
+                `${postCostUSDT.toFixed(2)} USDT 
+                <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemZone.toFixed(2)} System Zone + ${adminFee.toFixed(2)} Admin)</span>
+                <span style="font-size:0.85em; color:#6c757d; font-weight: normal; margin-left: 5px;">${formattedConvertedCost} ${data.currencySymbol}</span>`;
         }
 
     } catch(e) {
