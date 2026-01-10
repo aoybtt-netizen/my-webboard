@@ -152,22 +152,22 @@
     </div>
 
     <div id="section-zones" class="card" style="display:none;">
-        <h2><i class="fas fa-map-marker-alt"></i> ตั้งค่าโซนและอัตราแลกเปลี่ยน</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>ชื่อโซน</th>
-                    <th>แอดมินดูแล</th>
-                    <th>สกุลเงิน</th>
-                    <th>เรท (1 USDT =)</th>
-                    <th>จัดการ</th>
-                </tr>
-            </thead>
-            <tbody id="zone-body">
-                </tbody>
-        </table>
-    </div>
+    <h2><i class="fas fa-map-marker-alt"></i> ตั้งค่าโซนและอัตราแลกเปลี่ยน</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ชื่อโซน</th>
+                <th>แอดมินดูแล</th>
+                <th>สกุลเงิน</th>
+                <th>เรท (1 USDT =)</th>
+                <th>ระบบ (USDT)</th> <th>แอดมินโซน (USDT)</th> <th>จัดการ</th>
+            </tr>
+        </thead>
+        <tbody id="zone-body">
+            </tbody>
+    </table>
+</div>
 </div>
 
 <script>
@@ -211,20 +211,49 @@
     // 3. ฟังก์ชันโหลดข้อมูลโซน
     async function loadZones() {
         try {
-            const res = await fetch('/api/admin/all-zones'); // *** คุณต้องมี API นี้ ***
+            const res = await fetch('/api/admin/all-zones');
             const zones = await res.json();
             const body = document.getElementById('zone-body');
             body.innerHTML = '';
 
             zones.forEach(z => {
+                // เช็คสถานะฟรี เพื่อแสดงผลให้ชัดเจน
+                const freeBadge = z.isFree ? '<span class="badge" style="background:#d4efdf; color:#1e8449;">FREE</span>' : '';
+
                 body.innerHTML += `
                     <tr>
                         <td>${z.id}</td>
-                        <td><b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">${z.name}</b></td>
+                        <td>
+                            <b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">
+                                ${z.name}
+                            </b> ${freeBadge}
+                        </td>
                         <td>${z.assignedAdmin || '-'}</td>
-                        <td><button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${z.zoneCurrency}')">${z.zoneCurrency || 'USD'}</button></td>
-                        <td><button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">${z.zoneExchangeRate || 1.0}</button></td>
-                        <td>-</td>
+                        <td>
+                            <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${z.zoneCurrency}')">
+                                ${z.zoneCurrency || 'USD'}
+                            </button>
+                        </td>
+                        <td>
+                            <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">
+                                ${z.zoneExchangeRate || 1.0}
+                            </button>
+                        </td>
+                        <td>
+                            <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
+                                ${(z.systemZone || 0).toFixed(2)}
+                            </button>
+                        </td>
+                        <td>
+                            <button class="btn" style="color:var(--accent); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'zoneFee', ${z.zoneFee || 0})">
+                                ${(z.zoneFee || 0).toFixed(2)}
+                            </button>
+                        </td>
+                        <td>
+                            <button class="btn btn-ban ${z.isFree ? 'active' : ''}" onclick="universalEdit('zones', ${z.id}, 'isFree', ${z.isFree || false})">
+                                <i class="fas fa-magic"></i> ${z.isFree ? 'ปิดโหมดฟรี' : 'เปิดโหมดฟรี'}
+                            </button>
+                        </td>
                     </tr>
                 `;
             });

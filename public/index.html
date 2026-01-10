@@ -4315,23 +4315,34 @@ async function savePostCost() {
     
     const systemFee = parseFloat(document.getElementById('system-fee-input').value);
     const adminFee = parseFloat(document.getElementById('admin-fee-input').value);
-    // ดึงค่าว่าติ๊ก "ฟรี" ไว้หรือไม่
     const isFree = document.getElementById('is-free-zone-input').checked; 
     
+    // 🚩 จุดที่ 1: ต้องระบุว่าเราจะเซ็ตค่านี้ให้ "โซนไหน"
+    // คุณอาจจะใช้ค่า myZoneId (ถ้าแอดมินแก้โซนตัวเอง) 
+    // หรือดึงจากตัวแปร global ที่เก็บค่าโซนที่กำลังเปิดดูอยู่ในขณะนั้น
+    const targetZoneId = myZoneId; 
+
     const t = translations[currentLang];
     
     if (isNaN(systemFee) || isNaN(adminFee) || systemFee < 0 || adminFee < 0) {
         alert(t['alert_invalid_fee']);
         return;
     }
+
+    // ตรวจสอบว่ามี zoneId หรือไม่ก่อนส่ง
+    if (!targetZoneId) {
+        alert("ไม่พบรหัสโซน (Zone ID) กรุณาลองใหม่");
+        return;
+    }
     
     const res = await fetch('/api/admin/set-cost', {
-        method:'POST', 
-        headers:{'Content-Type':'application/json'}, 
-        body:JSON.stringify({ 
-            systemFee, 
-            adminFee, 
-            isFree, // ส่งค่านี้ไปที่ Server
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+            systemFee,  // ค่านี้จะไปเข้าฟิลด์ systemZone ที่ฝั่ง Server
+            adminFee,   // ค่านี้จะไปเข้าฟิลด์ zoneFee ที่ฝั่ง Server
+            isFree, 
+            zoneId: targetZoneId, // 🚩 จุดที่ 2: เพิ่มการส่ง zoneId ไปที่ Server
             requestBy: myUsername 
         })
     });

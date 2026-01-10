@@ -273,7 +273,7 @@ app.get('/api/admin/all-zones', async (req, res) => {
     }
 });
 
-// 3. 🔥 API หัวใจหลัก: Universal Update (แก้ไขได้ทุกฟิลด์)
+// 3. 🔥 API หัวใจหลัก: Universal Update (เวอร์ชันอัปเดตเพื่อรองรับระบบโซน)
 app.post('/api/admin/universal-update', async (req, res) => {
     const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
 
@@ -285,17 +285,32 @@ app.post('/api/admin/universal-update', async (req, res) => {
         }
 
         // --- ⚙️ จัดการประเภทข้อมูล (Data Casting) ---
-        // ป้องกันปัญหาการบันทึกตัวเลขเป็นข้อความ (String) ซึ่งจะทำให้คำนวณเงินไม่ได้
         let finalValue = newValue;
 
-        // ถ้าฟิลด์ที่ส่งมาเป็นตัวเลข ให้แปลงเป็น Number
-        const numericFields = ['coins', 'adminLevel', 'id', 'zoneExchangeRate', 'totalPosts', 'completedJobs', 'rating', 'BRL', 'THB', 'VND'];
+        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็นตัวเลข (เพิ่ม systemZone และ zoneFee)
+        const numericFields = [
+            'coins', 'adminLevel', 'id', 'zoneExchangeRate', 
+            'totalPosts', 'completedJobs', 'rating', 
+            'BRL', 'THB', 'VND', 'systemZone', 'zoneFee'
+        ];
+
         if (numericFields.includes(field)) {
-            finalValue = field === 'adminLevel' || field === 'id' ? parseInt(newValue) : parseFloat(newValue);
+            // แยกกรณี parseInt สำหรับ ID/Level และ parseFloat สำหรับยอดเงิน/เรท
+            if (field === 'adminLevel' || field === 'id') {
+                finalValue = parseInt(newValue);
+            } else {
+                finalValue = parseFloat(newValue);
+            }
+            
+            // ป้องกันค่า NaN ถ้าใส่ข้อมูลมาผิดประเภท
+            if (isNaN(finalValue)) {
+                return res.status(400).json({ success: false, message: "ค่าที่ระบุต้องเป็นตัวเลขเท่านั้น" });
+            }
         }
 
-        // ถ้าเป็นค่า Boolean (การแบน)
-        if (field === 'isBanned') {
+        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็น Boolean (เพิ่ม isFree ของโซนเข้าไปด้วย)
+        const booleanFields = ['isBanned', 'isFree'];
+        if (booleanFields.includes(field)) {
             finalValue = (newValue === 'true' || newValue === true);
         }
 
@@ -308,7 +323,7 @@ app.post('/api/admin/universal-update', async (req, res) => {
             { 
                 $set: { 
                     [field]: finalValue,
-                    lastModifiedBy: adminUsername, // เก็บประวัติว่าใครแก้
+                    lastModifiedBy: adminUsername, 
                     updatedAt: new Date()
                 } 
             }
@@ -1254,25 +1269,50 @@ app.get('/api/check-active-job', async (req, res) => {
     }
 });
 
-// 7. Set Cost
 app.post('/api/admin/set-cost', async (req, res) => {
-    const requester = await getUserData(req.body.requestBy);
-    if (requester.adminLevel < 3) return res.status(403).json({ error: 'Admin Level 3 only' });
-    
-    const systemFee = parseFloat(req.body.systemFee);
-    const adminFee = parseFloat(req.body.adminFee);
-    const isFree = req.body.isFree === true; // รับค่า boolean
-    
-    if (isNaN(systemFee) || isNaN(adminFee) || systemFee < 0 || adminFee < 0) {
-        return res.status(400).json({ error: 'Invalid fee values.' });
+    try {
+        const { requestBy, zoneId, systemFee, adminFee, isFree } = req.body;
+
+        // 1. ตรวจสอบสิทธิ์แอดมินระดับ 3
+        const requester = await getUserData(requestBy);
+        if (!requester || requester.adminLevel < 3) {
+            return res.status(403).json({ error: 'Admin Level 3 only' });
+        }
+
+        // 2. ตรวจสอบค่าที่ส่งมา
+        const systemZoneValue = parseFloat(systemFee); // เราจะบันทึกในชื่อ systemZone
+        const zoneFeeValue = parseFloat(adminFee);     // ส่วนของแอดมินโซน
+        const targetZoneId = parseInt(zoneId);
+
+        if (isNaN(systemZoneValue) || isNaN(zoneFeeValue) || !targetZoneId) {
+            return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน หรือค่าธรรมเนียมไม่ถูกต้อง' });
+        }
+
+        // 3. บันทึกลงใน Collection: zones (ผูกกับโซนนั้นๆ)
+        const updateData = { 
+            systemZone: systemZoneValue, // เปลี่ยนชื่อจาก systemFee เป็น systemZone ตามที่ต้องการ
+            zoneFee: zoneFeeValue,       // ค่าธรรมเนียมส่วนของแอดมินโซน
+            isFree: isFree === true      // สถานะโพสต์ฟรีเฉพาะโซน
+        };
+
+        const result = await db.collection('zones').updateOne(
+            { id: targetZoneId }, 
+            { $set: updateData }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'ไม่พบโซนที่ระบุ' });
+        }
+
+        // 4. แจ้งเตือนการอัปเดตผ่าน Socket (ส่งข้อมูลโซนที่เปลี่ยนไป)
+        io.emit('zone-config-update', { zoneId: targetZoneId, ...updateData });
+
+        res.json({ success: true, message: `อัปเดตค่าธรรมเนียมโซน ${targetZoneId} เรียบร้อย`, updateData });
+
+    } catch (err) {
+        console.error("Set Cost Error:", err);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-    
-    // บันทึกทั้งค่าธรรมเนียมและสถานะฟรี
-    const newConfig = { systemFee, adminFee, isFree };
-    
-    await configCollection.updateOne({ id: 'main_config' }, { $set: newConfig });
-    io.emit('config-update', newConfig);
-    res.json({ success: true, newConfig });
 });
 
 // 7.1
@@ -2033,7 +2073,16 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const isZoneFree = responsibleData.zoneData ? (responsibleData.zoneData.isFree === true) : false;
     const isFreePostFinal = isGlobalFree || isZoneFree;
 
-    let finalAdminFee = globalDefaultAdminFee;
+    // ดึงค่า systemZone จากโซน ถ้าไม่มีให้ใช้ค่า Global เป็นตัวสำรอง
+    let currentSystemZone = 0;
+    if (responsibleData.zoneData && responsibleData.zoneData.systemZone !== undefined) {
+        currentSystemZone = parseFloat(responsibleData.zoneData.systemZone);
+    } else {
+        currentSystemZone = globalConfig ? (globalConfig.systemFee || 5) : 5; 
+    }
+
+    // ส่วนของค่าธรรมเนียมแอดมินโซน (adminFee)
+    let finalAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
     let feeNote = `Default Fee`;
     if (responsibleData.zoneData && responsibleData.zoneData.zoneFee !== undefined && responsibleData.zoneData.zoneFee !== null) {
         finalAdminFee = parseFloat(responsibleData.zoneData.zoneFee);
@@ -2042,22 +2091,43 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         feeNote = `Default Fee (${responsibleData.zoneName})`;
     }
 
-    const totalCost = globalSystemFee + finalAdminFee;
+    // รวมยอดเป็น totalCost โดยใช้ currentSystemZone
+    const totalCost = currentSystemZone + finalAdminFee;
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
-    // --- ส่วนการจัดการเงิน (รักษาของเดิมไว้ทั้งหมด) ---
+    // --- ส่วนการจัดการเงิน ---
     if (author !== 'Admin' && !isFreePostFinal) {
-        if (user.coins < totalCost) return res.status(400).json({ error: 'เหรียญไม่พอ' });
-        await updateUser(author, { coins: user.coins - totalCost });
         
-        if (globalSystemFee > 0) {
-            const adminUser = await getUserData('Admin');
-            await updateUser('Admin', { coins: adminUser.coins + globalSystemFee });
-            await transactionsCollection.insertOne({
-                id: Date.now(), type: 'POST_REVENUE', amount: globalSystemFee, fromUser: author, toUser: 'Admin',
-                note: `ค่าธรรมเนียมระบบ: ${topicName}`, postTitle: topicName, timestamp: Date.now()
+        const zoneCurrency = responsibleData.zoneData?.zoneCurrency || 'USD';
+        const zoneRate = responsibleData.zoneData?.zoneExchangeRate || 1.0;
+        const totalCostLocal = totalCost * zoneRate;
+
+        const userLocalBalance = user[zoneCurrency] || 0;
+
+        if (userLocalBalance < totalCostLocal) {
+            return res.status(400).json({ 
+                error: `⛔ ยอดเงินไม่เพียงพอในสกุล ${zoneCurrency} (ต้องการ ${totalCostLocal.toFixed(2)})` 
             });
         }
+
+        // หักเงินสมาชิก
+        await usersCollection.updateOne(
+            { username: author },
+            { $inc: { [zoneCurrency]: -totalCostLocal } }
+        );
+
+        // จ่ายให้ Admin กลางตามค่า currentSystemZone
+        if (currentSystemZone > 0) {
+            const adminUser = await getUserData('Admin');
+            await updateUser('Admin', { coins: adminUser.coins + currentSystemZone });
+            await transactionsCollection.insertOne({
+                id: Date.now(), type: 'POST_REVENUE', amount: currentSystemZone, fromUser: author, toUser: 'Admin',
+                note: `ค่าธรรมเนียมระบบ (${responsibleData.zoneName}): ${topicName}`, 
+                postTitle: topicName, timestamp: Date.now()
+            });
+        }
+
+        // จ่ายให้แอดมินโซน
         if (finalAdminFee > 0) {
             const receiverUser = await getUserData(feeReceiver);
             await updateUser(feeReceiver, { coins: receiverUser.coins + finalAdminFee });
@@ -2066,8 +2136,14 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
                 note: `ค่าดูแล: ${feeNote}`, postTitle: topicName, timestamp: Date.now() + 1
             });
         }
+
+        // อัปเดต Real-time
+        const updatedUser = await getUserData(author);
+        io.emit('balance-update', { user: author, [zoneCurrency]: updatedUser[zoneCurrency] });
+        
         const newAdmin = await getUserData('Admin');
         io.emit('balance-update', { user: 'Admin', coins: newAdmin.coins });
+
         if (feeReceiver !== 'Admin') {
             const newReceiver = await getUserData(feeReceiver);
             io.emit('balance-update', { user: feeReceiver, coins: newReceiver.coins });
@@ -2120,18 +2196,23 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     console.log(`📈 Merchant Task Created: ${author} (mercNum +1)`);
 }
     
-    // (ส่วนการแจ้งเตือนรักษาไว้เหมือนเดิม)
     if (author !== 'Admin') {
-        let msgText = isFreePostFinal ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCost} USD`;
+        // ดึงค่าใหม่ที่คำนวณไว้ด้านบนมาใช้
+        const zoneCurrency = responsibleData.zoneData?.zoneCurrency || 'USD';
+        const zoneRate = responsibleData.zoneData?.zoneExchangeRate || 1.0;
+        const totalCostLocal = totalCost * zoneRate;
+
+        let msgText = isFreePostFinal 
+            ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` 
+            : `💸 หักค่าธรรมเนียม ${totalCostLocal.toFixed(2)} ${zoneCurrency}`;
+
         const notifMsg = { 
             sender: 'System', target: author, msgKey: 'SYS_FEE', 
-            msgData: { topicName: topicName, cost: isFreePostFinal ? 0 : totalCost }, 
+            msgData: { topicName: topicName, cost: isFreePostFinal ? 0 : totalCostLocal }, 
             msg: msgText, timestamp: Date.now() + 2 
         };
         await messagesCollection.insertOne(notifMsg);
         io.to(author).emit('private-message', { ...notifMsg, to: author });
-        const updatedUser = await getUserData(author);
-        io.emit('balance-update', { user: author, coins: updatedUser.coins });
     }
 
     io.emit('new-post', newPost); 
