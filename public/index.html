@@ -1222,6 +1222,7 @@ async function updateZoneBackground(lat, lng) {
         'alert_register_success': 'สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...',
 		'alert_login_empty': 'กรุณากรอกทั้งชื่อและรหัสผ่าน',
         'alert_save_success': 'บันทึกข้อมูลเรียบร้อย!',
+		'btn_topup': 'เติมเงิน - ถอนเงิน',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1420,6 +1421,7 @@ async function updateZoneBackground(lat, lng) {
         'alert_register_success': 'Registration successful! Logging in...',
 		'alert_login_empty': 'Please enter both username and password',
         'alert_save_success': 'Information saved successfully!',
+		'btn_topup': 'Deposit - Withdraw',
     },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
@@ -1613,6 +1615,7 @@ async function updateZoneBackground(lat, lng) {
         'alert_register_success': 'Registro bem-sucedido! Entrando no sistema...',
 		'alert_login_empty': 'Por favor, insira o usuário e a senha',
         'alert_save_success': 'Informações salvas com sucesso!',
+		'btn_topup': 'Depositar - Sacar',
     }
 };
 
@@ -2489,7 +2492,6 @@ function getTransactionDetail(t) {
     
     return `(${detail})`;
 }
-
         // --- TRANSACTION LOGIC ---
         
         async function openTransactionModal(page = 1) {
@@ -2497,21 +2499,17 @@ function getTransactionDetail(t) {
             
             document.getElementById('user-list-modal').classList.remove('hidden');
             
-            // 1. แปลหัวข้อ Modal
             document.getElementById('user-list-title').innerText = translations[currentLang]['admin_tx_title'];
             document.getElementById('user-list-desc').innerText = translations[currentLang]['admin_tx_desc'];
             
-            // 2. เตรียม Container และซ่อนส่วนที่ไม่จำเป็น
             const container = document.getElementById('user-list-container');
             container.innerHTML = "Loading...";
             
             document.getElementById('user-search-input').style.display = 'none';
             document.getElementById('pagination-controls').style.display = 'none';
 
-            // ⭐ [ส่วนที่หายไป] ดึงข้อมูลจาก Server
             const res = await fetch(`/api/admin/transactions?requestBy=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
             
-            // ตรวจสอบสถานะการเชื่อมต่อ
             if (res.status !== 200) {
                  container.innerHTML = "<p style='color:red;'>Error loading transactions</p>";
                  return;
@@ -2520,7 +2518,6 @@ function getTransactionDetail(t) {
             const data = await res.json();
             const transactions = data.transactions;
 
-            // ตรวจสอบว่ามีข้อมูลไหม
             if (transactions.length === 0 && data.currentPage > 1) {
                 return openTransactionModal(1);
             } else if (transactions.length === 0) {
@@ -2529,17 +2526,15 @@ function getTransactionDetail(t) {
                 return;
             }
 
-            // 3. แสดงผลรายการ
             container.innerHTML = transactions.map(t => {
                 const isRevenue = t.type === 'POST_REVENUE' || t.type === 'ADMIN_DEDUCT'; 
                 
                 let typeText;
-                // เลือกข้อความตามประเภทธุรกรรม
                 if (t.type === 'POST_REVENUE') {
                     typeText = translations[currentLang]['admin_tx_revenue']; 
                 } else if (t.type === 'ADMIN_DEDUCT') {
                     typeText = translations[currentLang]['admin_tx_deduct']; 
-                } else { // ADMIN_GIVE
+                } else {
                     typeText = translations[currentLang]['admin_tx_transfer_out']; 
                 }
 
@@ -2547,7 +2542,6 @@ function getTransactionDetail(t) {
                 const amountSign = isRevenue ? '+' : '';
                 const relatedUser = isRevenue ? t.fromUser : t.toUser;
                 
-                // คำนำหน้า (จาก/ให้)
                 const fromToPrefix = isRevenue 
                     ? translations[currentLang]['tx_from'] 
                     : translations[currentLang]['tx_to'];
@@ -2565,11 +2559,9 @@ function getTransactionDetail(t) {
                 `;
             }).join('');
             
-            // 4. อัปเดตปุ่มเปลี่ยนหน้า
             updatePaginationUI(data, 'adminTx');
             adminTxPage = data.currentPage;
             
-            // 5. แปลภาษาปุ่ม Pagination
             document.getElementById('list-prev-btn').innerText = translations[currentLang]['btn_prev'];
             document.getElementById('list-next-btn').innerText = translations[currentLang]['btn_next'];
         }
@@ -2583,7 +2575,7 @@ function getTransactionDetail(t) {
     document.getElementById('coin-notif-dot').classList.add('hidden'); 
     
     const container = document.getElementById('user-list-container');
-    container.innerHTML = "กำลังโหลด...";
+    container.innerHTML = "Loading...";
     
     document.getElementById('user-search-input').style.display = 'none';
     document.getElementById('pagination-controls').style.display = 'none';
@@ -2591,19 +2583,18 @@ function getTransactionDetail(t) {
     const res = await fetch(`/api/member/transactions?username=${myUsername}&page=${page}&limit=${PAGE_LIMIT}`);
     
     if(res.status !== 200) {
-        container.innerHTML = "<p style='color:red;'>ไม่สามารถโหลดประวัติได้</p>";
+        container.innerHTML = "<p style='color:red;'>Unable to load history.</p>";
         return;
     }
     
     const data = await res.json();
     const transactions = data.transactions;
 
-    // --- [เพิ่มส่วนปุ่มเติมเงินตรงนี้] ---
     const topUpBtnHtml = `
     <div style="padding: 10px 0; margin-bottom: 10px; border-bottom: 2px solid #f0f0f0;">
         <button onclick="window.location.href='userTopupGedgo.html'" 
                 style="width: 100%; padding: 12px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 10px rgba(17,153,142,0.2);">
-            <i class="fas fa-plus-circle"></i> ${translations[currentLang]['btn_topup'] || 'เติมเงิน-ถอนเงิน'}
+            <i class="fas fa-plus-circle"></i> ${translations[currentLang]['btn_topup']}
         </button>
     </div>
 `;
