@@ -781,7 +781,7 @@ window.onload = async function() {
         window.location.href = 'index.html';
         return;
     }
-	await updateMerchantHeaderBalance();
+	await fetchAndRefreshMerchantBalance();
     // 🚩 เริ่มการดีบั๊ก
     await debugMerchantStatus();
 
