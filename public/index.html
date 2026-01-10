@@ -363,7 +363,9 @@
         </div>
     </div>
     
-    <div style="font-size: 10px; color: #aaa; margin-top: 5px;">คลิกเพื่อดูรายละเอียดสมาชิก <i class="fas fa-chevron-right"></i></div>
+    <div data-i18n-key="click_user_detail" style="font-size: 10px; color: #aaa; margin-top: 5px;">
+    คลิกเพื่อดูรายละเอียดสมาชิก <i class="fas fa-chevron-right"></i>
+</div>
 </div>
 
     
@@ -379,8 +381,8 @@
     
     <button class="sidebar-btn" id="home-btn" onclick="switchView('home')" data-i18n-key="home">🏠 หน้าหลัก</button>
     <button class="sidebar-btn create-btn" onclick="openCreateModal()" data-i18n-key="create_post">+ สร้างหัวข้องาน</button>
-	<button class="sidebar-btn" onclick="window.location.href='merchant.html'" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; font-weight: bold; border: none;">
-    🏪 สำหรับร้านค้ากำลังทำระบบ...
+	<button data-i18n-key="btn_merchant_mode" class="sidebar-btn" onclick="window.location.href='merchant.html'" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; font-weight: bold; border: none;">
+    🏪 สำหรับร้านค้า
 </button>
 	
 	<button class="sidebar-btn my-active-posts-btn" onclick="showMyActivePosts()">
@@ -396,7 +398,7 @@
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
     <div style="font-size:0.8em; color:gray; margin-bottom:5px;" data-i18n-key="admin_section">ส่วนของแอดมิน</div>
     <button class="sidebar-btn admin-btn" onclick="openAdminAnnouncementModal()" id="admin-announcement-btn" data-i18n-key="admin_set_announcement">📢 ตั้งค่าประกาศ</button>
-	<button class="sidebar-btn admin-btn" onclick="adminpanel()">หน้าแอดมิน</button>
+	<button data-i18n-key="btn_admin_panel" class="sidebar-btn admin-btn" onclick="adminpanel()">หน้าแอดมิน</button>
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
@@ -1121,12 +1123,12 @@ async function updateZoneBackground(lat, lng) {
         'tx_post_fee_prefix': 'ค่าธรรมเนียมตั้งกระทู้',
         'tx_handover_success': '✅ ปิดดีล/ส่งงานสำเร็จ',
         
-        'admin_tx_title': 'ประวัติธุรกรรมเหรียญ USD',
+        'admin_tx_title': 'ประวัติธุรกรรมเหรียญ ',
         'admin_tx_desc': 'รายได้และรายการโอนเหรียญทั้งหมด (ใหม่สุดขึ้นก่อน)',
         'admin_tx_revenue': '💸 รายได้ (ค่าธรรมเนียม)',
         'admin_tx_deduct': '🧲 ดึงเหรียญคืน',
         'admin_tx_transfer_out': '➡️ โอนออก',
-        'member_tx_title': 'ประวัติการทำธุรกรรม USD',
+        'member_tx_title': 'ประวัติการทำธุรกรรม ',
         'member_tx_desc': 'การเพิ่มและลดเหรียญทั้งหมดของคุณ (ใหม่สุดขึ้นก่อน)',
 
         'SYS_FEE': (data) => `💸 คุณได้สร้างกระทู้ในหมวด "${data.topicName}" และถูกหัก ${data.cost} USD`,
@@ -1190,6 +1192,9 @@ async function updateZoneBackground(lat, lng) {
 		'msg_user_not_found': '❌ ไม่พบสมาชิกชื่อ "[NAME]"',
         'msg_no_members': 'ไม่มีรายชื่อสมาชิก',
         'label_banned': '(ถูกระงับ)',
+		'click_user_detail': 'คลิกเพื่อดูรายละเอียดสมาชิก',
+        'btn_merchant_mode': '🏪 สำหรับร้านค้า',
+        'btn_admin_panel': 'หน้าแอดมิน',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1243,7 +1248,7 @@ async function updateZoneBackground(lat, lng) {
         'geo_display_coord': '📍 Coordinates:',
         'geo_error_permission': '🚫 Permission denied: (GPS)Please allow access to location in browser settings.',
         'geo_error_general': '🚨 Cannot retrieve location',
-        'prompt_fee': 'Fee (USD):',
+        'prompt_fee': 'Fee ():',
 
         'btn_prev': '⬅️',
         'btn_next': '➡️',
@@ -1357,7 +1362,10 @@ async function updateZoneBackground(lat, lng) {
 		'msg_user_not_found': '❌ User "[NAME]" not found',
         'msg_no_members': 'No members found',
         'label_banned': '(BANNED)',
-    },'pt': {
+		'click_user_detail': 'Click to view member details',
+        'btn_merchant_mode': '🏪 For Merchant',
+        'btn_admin_panel': 'Admin Panel',
+    },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
         'label_language': 'Idioma:',
@@ -1426,8 +1434,8 @@ async function updateZoneBackground(lat, lng) {
         'chat_placeholder': 'Digite uma mensagem...',
         'chat_send': 'Enviar',
         
-        'prompt_transfer_admin': 'Digite a quantidade em USD para transferir para',
-        'prompt_deduct_admin': 'Digite a quantidade em USD para deduzir de',
+        'prompt_transfer_admin': 'Digite a quantidade em  para transferir para',
+        'prompt_deduct_admin': 'Digite a quantidade em  para deduzir de',
 
         'admin_topic_title': '⚙️ Gerenciar Tópicos',
         'th_topic_name': 'Nome do Tópico (ID)',
@@ -1451,12 +1459,12 @@ async function updateZoneBackground(lat, lng) {
         'tx_post_fee_prefix': 'Taxa de Criação de Postagem',
         'tx_handover_success': '✅ Acordo Encerrado/Entrega Concluída',
         
-        'admin_tx_title': 'Histórico de Transações USD',
+        'admin_tx_title': 'Histórico de Transações ',
         'admin_tx_desc': 'Todas as receitas e transferências (mais recentes primeiro)',
         'admin_tx_revenue': '💸 Receita (Taxa de Postagem)',
         'admin_tx_deduct': '🧲 Moedas Deduzidas',
         'admin_tx_transfer_out': '➡️ Moedas Transferidas',
-        'member_tx_title': 'Histórico de Transações USD',
+        'member_tx_title': 'Histórico de Transações ',
         'member_tx_desc': 'Seu histórico completo de moedas (mais recentes primeiro)',
 
         'SYS_FEE': (data) => `💸 Você criou uma postagem na categoria "${data.topicName}" e foi cobrado em ${data.cost} USD`,
@@ -1519,6 +1527,9 @@ async function updateZoneBackground(lat, lng) {
         'msg_user_not_found': '❌ Usuário "[NAME]" não encontrado',
         'msg_no_members': 'Nenhum membro encontrado',
         'label_banned': '(BANIDO)',
+		'click_user_detail': 'Clique para ver detalhes do membro',
+        'btn_merchant_mode': '🏪 Para Comerciante',
+        'btn_admin_panel': 'Painel do Administrador',
     }
 };
 
