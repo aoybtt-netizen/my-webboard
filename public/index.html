@@ -3231,8 +3231,9 @@ async function fetchAndRenderAllZones() {
                         
                         ${freeZoneHtml} <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-top: 10px;">
                             <label style="font-size: 0.9em; white-space: nowrap;">Zone fee(USD):</label>
-                            <input type="number" id="fee-input-${zone.id}" value="${currentFeeVal}" placeholder="${placeholder}" 
-                                        style="width: 80px; padding: 5px; margin-bottom: 0;">     
+                            <span id="fee-display-${zone.id}" style="font-weight: bold; color: var(--primary);">
+							${currentFeeVal || '0.00'}
+							</span>     
       
                         </div>
                     </div>
