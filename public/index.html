@@ -3997,9 +3997,15 @@ socket.on('admin-review-request', (data) => {
     
     // แสดงสถานะกำลังโหลดค่าธรรมเนียม
     const modalCostDisplay = document.getElementById('modal-cost-display');
-    if (modalCostDisplay) {
-        modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ กำลังค้นหาเขตพื้นที่และคำนวณค่าธรรมเนียม...</span>';
-    }
+	if (modalCostDisplay && data.postCost) {
+	modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ กำลังค้นหาเขตพื้นที่และคำนวณค่าธรรมเนียม...</span>';
+    const postCostUSDT = data.postCost.totalCost || 0;
+    currentCost = postCostUSDT; // เก็บยอดหลักไว้หักเงิน
+
+    // 1. ดึงข้อมูลยอดเงินจาก API ที่ส่งมา (coins คือ USDT, convertedCoins คือเงินโซน)
+    const balanceUSDT = parseFloat(data.coins) || 0;
+    const balanceLocal = parseFloat(String(data.convertedCoins).replace(/,/g, '')) || 0;
+	}
 
     // โหลดหัวข้อ (เหมือนเดิม)
     fetchTopicsForCreate(null, null);
