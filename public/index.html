@@ -831,14 +831,12 @@ async function assignAdminToZone(zoneId, adminUsername, zoneName) {
             document.getElementById('admin-assign-modal').classList.add('hidden');
             openAdminZoneModal(); // Refresh the main zone list
         } else {
-        // ถ้า data.error มีค่า ให้โชว์ค่านั้น ถ้าไม่มีให้โชว์คำแปล 'มอบหมายไม่สำเร็จ'
-        const errorMsg = data.error || translations[currentLang].alert_assign_fail;
-        alert(`❌ Error: ${errorMsg}`);
-		}
-		} catch (e) {
-    // ใช้คำแปล 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์'
-			alert(translations[currentLang].alert_server_error);
-			console.error('Error assigning admin:', e);
+            alert(`❌ Error: ${data.error || 'มอบหมายไม่สำเร็จ'}`);
+        }
+    } catch (e) {
+        alert(translations[currentLang].alert_server_error);
+        console.error('Error assigning admin:', e);
+    }
 }
 
 window.openAdminAssignModal = openAdminAssignModal;
