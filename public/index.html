@@ -1993,12 +1993,17 @@ async function checkAndRedirectActiveJob(username) {
         });
         
         if (modalCostDisplay) {
-            const systemFee = (data.postCost?.systemFee || 0).toFixed(2);
-            const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
-            modalCostDisplay.innerHTML = 
-                `$
-                <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee} System + ${adminFee} Admin)</span>`;
-        }
+			// เปลี่ยนจาก systemFee เป็น systemZone
+			const systemZone = (data.postCost?.systemZone || 0).toFixed(2); 
+			const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
+			const totalCostUSDT = (data.postCost?.totalCost || 0).toFixed(2);
+
+			// ปรับการแสดงผล: เปลี่ยน USD เป็น USDT และใช้ค่า systemZone
+		modalCostDisplay.innerHTML = 
+        `${totalCostUSDT} USDT 
+        <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemZone} System + ${adminFee} Admin)</span>
+        <span style="font-size:0.85em; color:#6c757d; font-weight: normal; margin-left: 5px;">${formattedConvertedCost} ${data.currencySymbol}</span>`;
+		}
         
         const sidebarRating = document.getElementById('sidebar-rating');
         if (sidebarRating) {

@@ -663,6 +663,9 @@ async function getPostCostByLocation(location) {
     const isGlobalFree = globalConfig ? (globalConfig.isFree === true) : false;
 
     const responsibleData = await findResponsibleAdmin(location);
+	const systemZone = responsibleData.zoneData && responsibleData.zoneData.systemZone !== undefined 
+        ? responsibleData.zoneData.systemZone 
+        : (globalConfig.systemFee || 0);
     
     // ⭐ เช็คสถานะฟรีรายโซน
     const isZoneFree = responsibleData.zoneData ? (responsibleData.zoneData.isFree === true) : false;
@@ -677,6 +680,7 @@ async function getPostCostByLocation(location) {
     return {
         totalCost: totalCost,
         systemFee: globalSystemFee,
+		systemZone: systemZone,
         adminFee: finalAdminFee,
         feeReceiver: responsibleData.username,
         // ⭐ ส่งค่าสรุปไปให้หน้าบ้านด้วย
