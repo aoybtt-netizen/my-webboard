@@ -497,7 +497,7 @@
         <h2 id="create-modal-title" data-i18n-key="title_create">สร้างหัวข้องาน</h2>
         
         <p style="color:#e67e22;" id="modal-cost-row"> 
-            <span data-i18n-key="cost_fee">ค่าธรรมเนียม:</span> <span id="modal-cost-display">0 USD</span>
+            <span data-i18n-key="cost_fee">ค่าธรรมเนียม:</span> <span id="modal-cost-display">0 </span>
         </p>
         
         <input type="text" id="title-input" class="hidden" placeholder="⭐ ชื่อกระทู้พิเศษ (Admin)" style="margin-bottom: 15px;" data-i18n-key="placeholder_title_admin">
@@ -1994,13 +1994,11 @@ async function checkAndRedirectActiveJob(username) {
         
         if (modalCostDisplay) {
             const systemFee = (data.postCost?.systemFee || 0).toFixed(2);
-			const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
-			const totalCostDisplay = (postCostUSD || 0).toFixed(2);
-            
+            const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
             modalCostDisplay.innerHTML = 
-                `${postCostUSD.toFixed(2)} USD 
+                `${postCostUSD.toFixed(2)} USDT 
                 <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee} System + ${adminFee} Admin)</span>
-                <span style="font-size:0.75em; color:#6c757d; font-weight: normal;">(${formattedConvertedCost} ${data.currencySymbol})</span>`;
+                <span style="font-size:0.85em; color:#6c757d; font-weight: normal; margin-left: 5px;">${formattedConvertedCost} ${data.currencySymbol}</span>`;
         }
         
         const sidebarRating = document.getElementById('sidebar-rating');
