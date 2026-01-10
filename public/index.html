@@ -1762,16 +1762,23 @@ if (homeBtn) {
     // 3. ถ้าไม่มีพิกัด (เข้าครั้งแรก) และไม่ใช่ Admin -> บังคับเช็คอิน
     // ใช้ setTimeout เล็กน้อยเพื่อให้มั่นใจว่าหน้าเว็บโหลดพร้อมก่อนแสดง confirm
     setTimeout(() => {
-        if (confirm(t['prompt_set_primary_location'] || 'คุณเข้าสู่ระบบครั้งแรก กรุณาระบุตำแหน่งปัจจุบันเพื่อดูข้อมูลพื้นที่')) {
-            // ใช้ getLocation (แบบไม่มี callback) เพื่อให้มันบันทึกพิกัดและเรียก loadPosts ให้
-            getLocation(true); // true = isPrimaryCheckin
-        } else {
-            // ถ้าผู้ใช้ปฏิเสธ ให้โหลดค่ากลาง (ไม่มีพิกัด)
-            alert('คุณเลือกที่จะไม่แชร์ตำแหน่ง ระบบจะแสดงข้อมูลกลาง');
-            fetchAndRenderAnnouncement(null);
-            loadPosts();
-            if (callback) callback();
-        }
+        const confirmMsg = translations[currentLang].prompt_set_primary_location;
+		const deniedMsg = translations[currentLang].alert_location_denied;
+
+		if (confirm(confirmMsg)) {
+		// ใช้ getLocation (แบบไม่มี callback) เพื่อให้มันบันทึกพิกัดและเรียก loadPosts ให้
+			getLocation(true); // true = isPrimaryCheckin
+		} else {
+		// ถ้าผู้ใช้ปฏิเสธ ให้โหลดค่ากลาง (ไม่มีพิกัด)
+		alert(deniedMsg);
+    
+		if (typeof fetchAndRenderAnnouncement === 'function') {
+        fetchAndRenderAnnouncement(null);
+		}
+    
+    loadPosts();
+    if (callback) callback();
+}
     }, 500);
 }
 
