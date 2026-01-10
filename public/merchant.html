@@ -494,15 +494,24 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <div style="float: left; cursor: pointer;" onclick="toggleMerchantSidebar()">
-            <i class="fas fa-bars"></i>
-        </div>
-        <h2 style="margin: 0; display: inline-block;">GedGo Merchant</h2>
-        <div style="float: right; cursor: pointer;" onclick="safeNavigateHome()">
-    <i class="fas fa-home"></i>
-</div>
+
+    <div class="header" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;">
+    <div style="cursor: pointer; width: 30px;" onclick="toggleMerchantSidebar()">
+        <i class="fas fa-bars"></i>
     </div>
+
+    <div style="text-align: center; flex-grow: 1;">
+        <h2 style="margin: 0; font-size: 1.2em; line-height: 1.2;">GedGo Merchant</h2>
+        <div id="merchant-balance-display" style="font-size: 0.85em; color: #27ae60; font-weight: bold; margin-top: 2px;">
+            0.00 Loading...
+        </div>
+    </div>
+
+    <div style="cursor: pointer; width: 30px; text-align: right;" onclick="safeNavigateHome()">
+        <i class="fas fa-home"></i>
+    </div>
+</div>
+
 
     <div id="merchant-sidebar" class="merchant-sidebar">
         <div class="sidebar-header">
@@ -752,13 +761,27 @@ async function loadActiveMerchantTasks() {
 
 
 
+function updateMerchantHeaderBalance(data) {
+    const balanceEl = document.getElementById('merchant-balance-display');
+    if (balanceEl && data) {
+        // ใช้ค่า convertedCoins (ซึ่งเราแก้ API ให้ดึงจากกระเป๋าโซนตรงๆ ไว้แล้ว)
+        const formattedBalance = parseFloat(data.convertedCoins || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        const symbol = data.currencySymbol || 'USDT';
+        
+        balanceEl.innerText = `${formattedBalance} ${symbol}`;
+    }
+}
+
 window.onload = async function() {
     if (!myUsername) {
         console.error("🛑 ไม่พบ Username ในระบบ");
         window.location.href = 'index.html';
         return;
     }
-
+	updateMerchantHeaderBalance();
     // 🚩 เริ่มการดีบั๊ก
     await debugMerchantStatus();
 

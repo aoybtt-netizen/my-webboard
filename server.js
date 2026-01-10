@@ -998,6 +998,40 @@ app.get('/api/profile-details', async (req, res) => {
 });
 
 
+// 2.2 ดึงสกุลเงินจากโซนและจำนวนเงิน
+app.get('/api/merchant/balance', async (req, res) => {
+    try {
+        const { username } = req.query;
+        if (!username) return res.status(400).json({ error: 'Require username' });
+
+        const user = await usersCollection.findOne({ username });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // 1. ตรวจสอบพิกัดล่าสุดของผู้ใช้ (เพื่อหาโซน)
+        const location = user.lastLocation || null; 
+        const zoneInfo = await findResponsibleAdmin(location);
+
+        // 2. ระบุสกุลเงินของโซน (ถ้าไม่มีพิกัดหรือหาโซนไม่เจอ ให้ใช้ USDT เป็นค่าเริ่มต้น)
+        const zoneCurrency = zoneInfo.zoneData?.zoneCurrency || 'USDT';
+
+        // 3. ดึงยอดเงินดิบจากกระเป๋าสกุลเงินนั้น (เช่น user.THB หรือ user.BRL)
+        const balance = user[zoneCurrency] || 0;
+
+        res.json({
+            success: true,
+            balance: balance,
+            currency: zoneCurrency,
+            zoneName: zoneInfo.zoneName
+        });
+
+    } catch (err) {
+        console.error("Merchant balance API error:", err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
+
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
     try {
