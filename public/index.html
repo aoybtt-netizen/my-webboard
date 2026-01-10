@@ -1226,6 +1226,7 @@ async function updateZoneBackground(lat, lng) {
 		'no_active_posts': 'คุณไม่มีกระทู้ที่กำลังดำเนินการอยู่',
         'error_fetch_posts': 'เกิดข้อผิดพลาดในการดึงรายการกระทู้',
 		'no_closed_posts': 'คุณยังไม่มีกระทู้ที่ถูกปิด',
+		'alert_empty_content': 'กรุณาใส่รายละเอียด',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1428,6 +1429,7 @@ async function updateZoneBackground(lat, lng) {
 		'no_active_posts': 'You currently have no active posts.',
         'error_fetch_posts': 'Error fetching post list',
 		'no_closed_posts': 'You have no closed posts yet.',
+		'alert_empty_content': 'Please enter the details',
     },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
@@ -1625,6 +1627,7 @@ async function updateZoneBackground(lat, lng) {
 		'no_active_posts': 'Você não tem postagens ativas no momento.',
         'error_fetch_posts': 'Erro ao buscar a lista de postagens',
 		'no_closed_posts': 'Você ainda não tem postagens encerradas.',
+		'alert_empty_content': 'Por favor, insira os detalhes',
     }
 };
 
@@ -3185,18 +3188,13 @@ async function openAdminZoneModal() {
 function openAllZoneManagement() {
         document.getElementById('zone-management-choice-modal').classList.add('hidden');
         
-        // เปิด Modal แสดงรายการและแสดง Loading
         document.getElementById('assigned-zone-modal').classList.remove('hidden');
-        document.getElementById('assigned-zone-list').innerHTML = ''; // เคลียร์ค่าเก่า
+        document.getElementById('assigned-zone-list').innerHTML = '';
         document.getElementById('assigned-zone-loading').style.display = 'block';
         document.getElementById('display-ref-location').innerText = 'Loading...';
-
-        // ส่งคำสั่งไปขอข้อมูลจาก Server
         socket.emit('get-assigned-zones');
     }
 	
-	// --- Socket Listener รับข้อมูลโซน ---
-    // [index.html] แก้ไขในส่วน Socket Listener
 
     socket.on('receive-assigned-zones', (data) => {
         const listContainer = document.getElementById('assigned-zone-list');
@@ -3275,12 +3273,10 @@ function closeZoneChoiceModal() {
     document.getElementById('zone-management-choice-modal').classList.add('hidden');
 }
 
-// 2. ปิด Modal
 function closeAdminZoneModal() {
     document.getElementById('admin-zone-modal').classList.add('hidden');
 }
 
-// 3. ฟังก์ชันสลับหน้าจอ (Navigation)
 function backToZoneMenu() {
     document.getElementById('view-zone-menu').classList.remove('hidden');
     document.getElementById('view-zone-add').classList.add('hidden');
@@ -3291,7 +3287,6 @@ function goToAddZone() {
     document.getElementById('view-zone-menu').classList.add('hidden');
     document.getElementById('view-zone-add').classList.remove('hidden');
     
-    // ล้างค่า Input
     document.getElementById('zone-lat-input-new').value = '';
     document.getElementById('zone-lng-input-new').value = '';
     document.getElementById('zone-name-input-new').value = '';
@@ -3300,7 +3295,6 @@ function goToAddZone() {
 function goToManageZone() {
     document.getElementById('view-zone-menu').classList.add('hidden');
     document.getElementById('view-zone-list').classList.remove('hidden');
-    // โหลดรายการโซนทันทีที่เข้าหน้านี้
     fetchAndRenderAllZones(); 
 }
 
@@ -3328,7 +3322,7 @@ async function addZoneConfigNew() {
         const data = await res.json();
         if (data.success) {
             alert('✅ เพิ่มโซนสำเร็จ!');
-            backToZoneMenu(); // กลับไปหน้าเมนูหลังบันทึกเสร็จ
+            backToZoneMenu();
         } else {
             alert(`❌ Error: ${data.error}`);
         }
@@ -3337,7 +3331,7 @@ async function addZoneConfigNew() {
     }
 }
 
-// 5. ฟังก์ชันดึงรายการโซน (Logic เดิมแต่ย้ายมาเรียกตอนกดปุ่ม Manage)
+// 5. ฟังก์ชันดึงรายการโซน
 async function fetchAndRenderAllZones() {
     const listContainer = document.getElementById('zone-list-container');
     listContainer.innerHTML = '<p style="text-align:center;">⏳ กำลังโหลด...</p>';
@@ -3372,7 +3366,7 @@ async function fetchAndRenderAllZones() {
                     `;
                 }
 
-                // Input แก้ไขชื่อโซน (โค้ดเดิม)
+                // Input แก้ไขชื่อโซน
                 let nameInputHtml = `
                     <div style="margin-top:5px; display:flex; gap:5px;">
                         <input type="text" id="name-input-${zone.id}" value="${name.includes('Zone ID:')?'':name}" placeholder="แก้ไขชื่อโซน" style="width:100px; padding:2px;">
@@ -3438,7 +3432,7 @@ async function fetchAndRenderAllZones() {
                 const currentFeeVal = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? zone.zoneFee : '';
                 const placeholder = (zone.zoneFee !== undefined && zone.zoneFee !== null) ? '' : 'ค่ากลาง';
                 
-                // ⭐ [NEW] ตรวจสอบสถานะฟรีของโซนนี้
+                // ตรวจสอบสถานะฟรีของโซนนี้
                 const isFreeChecked = zone.isFree === true ? 'checked' : '';
                 const freeZoneHtml = `
                     <div style="margin-top: 10px; background: #e8f5e9; padding: 10px; border-radius: 5px; border: 1px dashed #28a745; display: flex; align-items: center; gap: 10px;">
@@ -3501,7 +3495,6 @@ async function fetchAndRenderAllZones() {
     }
 }
 
-// ต้องผูกฟังก์ชันนี้กับ Window object
 window.openAssignedZoneMap = openAssignedZoneMap;
 
 	async function setZoneName(e, zoneId) {
@@ -3518,14 +3511,13 @@ window.openAssignedZoneMap = openAssignedZoneMap;
     e.target.disabled = true;
 
     try {
-        // *** ใช้ myUsername ที่ถูกกำหนดไว้แล้ว ***
         const res = await fetch('/api/admin/set-zone-name', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 zoneId: zoneId, 
                 newZoneName: newName,
-                requestBy: myUsername // ส่ง Username ของผู้ใช้ปัจจุบัน
+                requestBy: myUsername 
             })
         });
 
@@ -3533,7 +3525,7 @@ window.openAssignedZoneMap = openAssignedZoneMap;
         
         if (data.success) {
             alert(`✅ Change zone name. ID ${zoneId} to ${newName} success!`);
-            openAdminZoneModal(); // รีเฟรชรายการ
+            openAdminZoneModal();
         } else {
             alert(`❌ Error: ${data.error || 'Changing the zone name failed.'}`);
         }
@@ -3550,7 +3542,6 @@ async function saveZoneFee(zoneId) {
     const input = document.getElementById(`fee-input-${zoneId}`);
     const feeValue = input.value.trim();
     
-    // ⭐ [NEW] ดึงค่าจาก Checkbox ของโซนนี้
     const isFree = document.getElementById(`is-free-input-${zoneId}`).checked;
     
     try {
@@ -3560,7 +3551,7 @@ async function saveZoneFee(zoneId) {
             body: JSON.stringify({ 
                 zoneId: zoneId, 
                 fee: feeValue === '' ? null : feeValue, 
-                isFree: isFree, // ⭐ ส่งค่าสถานะฟรีไปด้วย
+                isFree: isFree,
                 requestBy: myUsername 
             })
         });
@@ -3569,7 +3560,7 @@ async function saveZoneFee(zoneId) {
         
         if (data.success) {
             alert('✅ Fees and zone status have been successfully.');
-            openAssignedZoneMap(); // รีเฟรชรายการ
+            openAssignedZoneMap();
         } else {
             alert(`❌ Error: ${data.error}`);
         }
@@ -3577,7 +3568,6 @@ async function saveZoneFee(zoneId) {
         alert('❌ Connection Error');
     }
 }
-// อย่าลืม export ให้ html เรียกใช้ได้
 window.saveZoneFee = saveZoneFee;
 
 async function uploadZoneBg(zoneId) {
@@ -3595,8 +3585,7 @@ async function uploadZoneBg(zoneId) {
     formData.append('image', file);
 
     try {
-        // เปลี่ยนข้อความปุ่มให้รู้ว่ากำลังโหลด
-        const btn = event.target; // ปุ่มที่กด
+        const btn = event.target;
         const originalText = btn.innerText;
         btn.innerText = '⏳...';
         btn.disabled = true;
@@ -3610,7 +3599,7 @@ async function uploadZoneBg(zoneId) {
 
         if (data.success) {
             alert('✅ Background image uploaded successfully!');
-            openAssignedZoneMap(); // รีเฟรชหน้าเพื่อแสดงรูปใหม่
+            openAssignedZoneMap();
         } else {
             alert(`❌ Error: ${data.error}`);
         }
@@ -3635,7 +3624,7 @@ async function deleteZone(zoneId, zoneName) {
 
     try {
         const res = await fetch('/api/admin/delete-zone', {
-            method: 'POST', // หรือ DELETE
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 zoneId: zoneId, 
@@ -3646,7 +3635,7 @@ async function deleteZone(zoneId, zoneName) {
         const data = await res.json();
         if (data.success) {
             alert('✅ ลบโซนสำเร็จ');
-            openAdminZoneModal(); // รีเฟรชรายการ
+            openAdminZoneModal(); 
         } else {
             alert(`❌ ลบไม่สำเร็จ: ${data.error}`);
         }
@@ -3655,7 +3644,6 @@ async function deleteZone(zoneId, zoneName) {
     }
 }
 
-// อย่าลืมผูกกับ window
 window.deleteZone = deleteZone;
 
 		async function addZoneConfig() {
@@ -3674,7 +3662,7 @@ window.deleteZone = deleteZone;
     }
 
     try {
-        const res = await fetch('/api/admin/add-zone', { // เปลี่ยนเป็น Endpoint ใหม่
+        const res = await fetch('/api/admin/add-zone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -3690,12 +3678,11 @@ window.deleteZone = deleteZone;
         if (data.success) {
             alert(t['alert_zone_add_success']);
             
-            // Clear inputs and refresh list
             document.getElementById('zone-lat-input').value = '';
             document.getElementById('zone-lng-input').value = '';
             document.getElementById('zone-name-input').value = '';
 
-            openAdminZoneModal(); // Refresh the list of zones
+            openAdminZoneModal();
         } else {
             alert(`❌ Error: ${data.error || 'เพิ่มโซนไม่สำเร็จ'}`);
         }
@@ -3729,7 +3716,7 @@ window.addZoneConfig = addZoneConfig;
     const parsedAmount = parseFloat(amount);
 
     try {
-        const res = await fetch('/api/admin/deduct-coins', { // ตรวจสอบ URL ให้ตรงกับ Server
+        const res = await fetch('/api/admin/deduct-coins', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername })
@@ -3753,29 +3740,16 @@ window.addZoneConfig = addZoneConfig;
 }
 window.deductCoinInChat = deductCoinInChat;
 
-//Verify
-
-
-
-
-
-
-
 	
 
 
 
 
         
-        // --- SOCKET LOGIC ---
-		socket.on('announcement-update', (data) => {
+    // --- SOCKET LOGIC ---
+	socket.on('announcement-update', (data) => {
 			const locationToSend = currentLocationData || null;
-			fetchAndRenderAnnouncement(locationToSend);
-    
-    // ถ้าคุณต้องการให้ Admin เห็นผลทันทีหลังจากบันทึก
-    if (myUsername === data.admin) {
-        // อาจจะไม่ต้องทำอะไรแล้ว เพราะ fetchAndRenderAnnouncement จะจัดการให้
-    }
+			fetchAndRenderAnnouncement(locationToSend); 
 		});
 
 		socket.on('force-logout', (msg) => {
@@ -3800,13 +3774,11 @@ window.deductCoinInChat = deductCoinInChat;
                 if (data.status) postStatusMap[postId].data.status = data.status; // อัปเดต status (finished)
                 if (data.isOccupied !== undefined) postStatusMap[postId].isOccupied = data.isOccupied;
                 
-                // ถ้ารับ data.post กลับมาด้วยให้อัปเดตเลย (เผื่อมี acceptedViewer)
                 if (data.post) postStatusMap[postId].data = data.post;
                 
-                // หรือถ้าไม่มี ให้โหลดใหม่ทั้งหมดเพื่อความชัวร์ (แนะนำ)
                 loadPosts(); 
             } else {
-                 loadPosts(); // กรณีเป็นโพสต์ใหม่ที่ยังไม่เคยโหลด
+                 loadPosts(); 
             }
         });
         
@@ -3830,7 +3802,6 @@ window.deductCoinInChat = deductCoinInChat;
 	socket.on('deduct-result', (data) => {
     if (data.success) {
         alert(data.message);
-        // อาจจะรีเฟรชหน้าเพื่อดูยอดเงินใหม่
     } else {
         alert(data.message);
     }
@@ -3914,13 +3885,11 @@ window.deductCoinInChat = deductCoinInChat;
 		
 	async function fetchTopicsForCreate(lat = null, lng = null) {
         const select = document.getElementById('category-select');
-        // แสดงสถานะกำลังโหลดใน Dropdown
         select.innerHTML = '<option>⏳ Loading...</option>';
         select.disabled = true;
 
         try {
             let url = '/api/topics';
-            // ถ้ามีพิกัด ให้แนบไปกับ URL
             if (lat && lng) {
                 url += `?lat=${lat}&lng=${lng}`;
             }
@@ -3954,65 +3923,48 @@ window.deductCoinInChat = deductCoinInChat;
     function openCreateModal() {
     if (!myUsername) return document.getElementById('login-modal').classList.remove('hidden');
     
-    // Reset ค่าต่างๆ (เหมือนเดิม)
     document.getElementById('title-input').value = '';
     document.getElementById('content').value = '';
     document.getElementById('post-image').value = '';
     document.getElementById('location-display').innerHTML = '';
     
-    // Reset ปุ่ม Location (เหมือนเดิม)
     const btn = document.getElementById('geo-btn');
     btn.classList.remove('active');
     btn.innerHTML = translations[currentLang]['geo_btn'];
     
-    // แสดงสถานะกำลังโหลดค่าธรรมเนียม
     const modalCostDisplay = document.getElementById('modal-cost-display');
     if (modalCostDisplay) {
         modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ Searching for areas and calculating fees...</span>';
     }
 
-    // โหลดหัวข้อ (เหมือนเดิม)
     fetchTopicsForCreate(null, null);
 
     document.getElementById('create-modal').classList.remove('hidden');
     
-    // ปิด Sidebar ถ้าเปิดอยู่
     if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
 
-    // สั่งให้ดึงพิกัดและคำนวณค่าธรรมเนียมทันที!
     getLocation(); 
 }
 
 // ----------------------------------------------------
 
-// ฟังก์ชัน openAdminPinnedModal()
 function openAdminPinnedModal() {
-    // ตรวจสอบสิทธิ์ Admin
-    if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');
-    
-    // ซ่อนค่าธรรมเนียม
+    if (myUsername !== 'Admin') return alert('❌ คุณไม่ใช่ Admin');   
     document.getElementById('modal-cost-row').classList.add('hidden');
-
-    // กำหนด Title ของ Modal (ใช้ key: 'admin_create_pinned')
     document.getElementById('create-modal-title').innerText = translations[currentLang]['admin_create_pinned'];
-
-    // แสดงช่องกรอก Title (สำหรับ Admin Pinned Post)
     const titleInput = document.getElementById('title-input');
     titleInput.classList.remove('hidden'); 
     titleInput.value = ''; 
-    // กำหนด placeholder ให้ถูกต้อง
     titleInput.placeholder = translations[currentLang]['placeholder_title_admin']; 
     
-    // เรียก setLanguage เพื่อแปลทุกองค์ประกอบใน modal อีกครั้ง
     setLanguage(currentLang); 
     
-    // รีเซ็ต Location และอัปเดตข้อความปุ่มอีกครั้ง
     currentLocationData = null;
     document.getElementById('geo-btn').classList.remove('active');
     document.getElementById('geo-btn').innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`;
     document.getElementById('location-display').innerHTML = '';
     
-    refreshModalPostCost(null); // แสดงค่าธรรมเนียมเริ่มต้น (ไม่ใส่ location)
+    refreshModalPostCost(null);
     
     // แสดง Modal
     document.getElementById('create-modal').classList.remove('hidden'); 
@@ -4024,7 +3976,7 @@ function openAdminPinnedModal() {
 function getLocation(isPrimaryCheckin = false) {
     const btn = document.getElementById('geo-btn');
     const display = document.getElementById('location-display');
-    const t = translations[currentLang]; // ตัวย่อสำหรับข้อความแปล
+    const t = translations[currentLang];
 
     if (!navigator.geolocation) {
         alert(t['geo_not_supported']); 
@@ -4032,21 +3984,20 @@ function getLocation(isPrimaryCheckin = false) {
     }
 
     btn.classList.remove('active');
-    btn.innerHTML = t['geo_searching']; // กำลังค้นหา...
+    btn.innerHTML = t['geo_searching'];
     display.innerHTML = '';
     
     navigator.geolocation.getCurrentPosition(async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
 
-        // 1. อัปเดตพื้นหลังทันทีที่ได้พิกัด (เพื่อความรวดเร็ว)
+        // 1. อัปเดตพื้นหลังทันทีที่ได้พิกัด
         updateZoneBackground(lat, lng);
         
         // 2. ดึงหัวข้อตามพื้นที่
         await fetchTopicsForCreate(lat, lng);
 
         try {
-            // 3. หาชื่อสถานที่ (Reverse Geocoding)
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${currentLang}`); 
             const data = await res.json();
             
@@ -4063,40 +4014,33 @@ function getLocation(isPrimaryCheckin = false) {
                 localStorage.setItem('userPrimaryLocation', JSON.stringify(currentLocationData));
                 filterLocation = userPrimaryLocation;
                 
-                // ✅ เปลี่ยนจาก loadPosts() เป็น updateUserInfo() 
-                // เพื่อส่งพิกัดไปให้ Server -> Server จะคืนค่า userZoneId กลับมา -> แล้วค่อยโหลดกระทู้
                 updateUserInfo(); 
             } else {
-                // ถ้าแค่เปลี่ยนจุดกรองชั่วคราว (ไม่ใช่จุดหลัก) ให้โหลดกระทู้ใหม่เลย
                 loadPosts(); 
             }
             // -----------------------------------------------------
 
-            // อัปเดตประกาศและค่าธรรมเนียม
             fetchAndRenderAnnouncement(currentLocationData);
             refreshModalPostCost(currentLocationData);
             
-            // อัปเดต UI ปุ่มและข้อความ
             btn.innerHTML = t['geo_success_name']; 
             btn.classList.add('active');
             display.innerHTML = `${t['geo_display_name']} <b>${placeName}</b>`; 
             
         } catch (e) {
-            // กรณีหาชื่อสถานที่ไม่ได้ (Error จาก Nominatim)
             console.error("Geocoding error:", e);
             currentLocationData = { lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
 
-            // ยังคงต้องทำ Logic Check-in แม้จะหาชื่อไม่เจอ
+           
             if (isPrimaryCheckin) {
                 userPrimaryLocation = currentLocationData;
                 localStorage.setItem('userPrimaryLocation', JSON.stringify(currentLocationData));
                 filterLocation = userPrimaryLocation;
-                updateUserInfo(); // ✅ เรียก updateUserInfo เช่นกัน
+                updateUserInfo();
             } else {
                 loadPosts();
             }
 
-            // เรียกฟังก์ชันที่เหลือโดยใช้ข้อมูลที่มี (lat, lng)
             fetchAndRenderAnnouncement(currentLocationData);
             refreshModalPostCost(currentLocationData);
 
@@ -4112,15 +4056,11 @@ function getLocation(isPrimaryCheckin = false) {
         }
         
         alert(errorMessage);
-        // รีเซ็ตปุ่มกลับสู่ข้อความตั้งต้น
         btn.innerHTML = `📍 ${translations[currentLang]['geo_btn'].replace('📍', '').trim()}`; 
     });
 }
 
 
-    
-
-    // ฟังก์ชันช่วยแทรกข้อความตรงตำแหน่ง Cursor
     function insertAtCursor(myField, myValue) {
         if (myField.selectionStart || myField.selectionStart == '0') {
             var startPos = myField.selectionStart;
@@ -4148,7 +4088,7 @@ function getLocation(isPrimaryCheckin = false) {
     const category = document.getElementById('category-select').value;
 	
 	if (myUsername !== 'Admin' && !currentLocationData) {
-        alert("⛔ กรุณากด '📍 ระบุตำแหน่งปัจจุบัน' ก่อนสร้างกระทู้");
+        alert("⛔ Please click '📍 Specify current location' before creating a post.");
         document.getElementById('geo-btn').scrollIntoView({ behavior: 'smooth' });
         document.getElementById('geo-btn').style.border = "2px solid red";
         setTimeout(() => document.getElementById('geo-btn').style.border = "1px solid #28a745", 2000);
@@ -4162,10 +4102,12 @@ function getLocation(isPrimaryCheckin = false) {
         if (!titleVal) return alert("Admin กรุณาระบุชื่อกระทู้พิเศษ");
     } else {
         titleVal = ""; 
-        if (!content) return alert("กรุณาใส่รายละเอียดกระทู้");
+        if (!content) {
+			return alert(translations[currentLang].alert_empty_content);
+		}
     }
 
-    // --- 2. ล็อกปุ่มทันทีเพื่อป้องกันการกดย้ำ ---
+    // --- 2. ล็อกปุ่มเพื่อป้องกันการกดย้ำ ---
     if (createBtn) {
         createBtn.disabled = true;
         createBtn.style.opacity = '0.5';
@@ -4201,12 +4143,12 @@ function getLocation(isPrimaryCheckin = false) {
             
             currentView = 'home';
             loadPosts(); 
-            showNotification('✅ สร้างกระทู้สำเร็จ!', 'fas fa-check-circle', 3000);
+            showNotification('✅ Create post!', 'fas fa-check-circle', 3000);
         } 
     } catch (error) {
         console.error("Create post error:", error);
     } finally {
-        // --- 3. เริ่มนับถอยหลัง 15 วินาที แล้วค่อยคืนค่าปุ่ม ---
+        // เริ่มนับถอยหลัง
         setTimeout(() => {
             if (createBtn) {
                 createBtn.disabled = false;
@@ -4228,10 +4170,9 @@ function getLocation(isPrimaryCheckin = false) {
     } else if (currentView === 'my_closed') {
         showMyClosedPosts(currentPostPage);
     } else if (currentView === 'closed') {
-        // หน้ารวมกระทู้ปิด (ของ Admin)
+        
         loadPosts(); 
     } else {
-        // หน้าแรก (Home)
         loadPosts();
     }
 }); 
@@ -4246,8 +4187,7 @@ function getLocation(isPrimaryCheckin = false) {
         async function setPostCost(){ 
     if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
     
-    // 1. ดึงค่าเดิมมาแสดงใน Modal
-    const res = await fetch('/api/user-info?username=Admin&currency=USD'); // ใช้ Admin เพื่อดึง config ล่าสุด
+    const res = await fetch('/api/user-info?username=Admin&currency=USD');
     const data = await res.json();
     const { systemFee, adminFee } = data.postCost;
     
@@ -4259,7 +4199,6 @@ function getLocation(isPrimaryCheckin = false) {
     adminInput.value = adminFee;
     totalDisplay.innerText = (systemFee + adminFee).toFixed(2) + ' USD';
 
-    // 2. Add Event Listeners for real-time total update
     const updateTotal = () => {
         const s = parseFloat(systemInput.value) || 0;
         const a = parseFloat(adminInput.value) || 0;
@@ -4280,9 +4219,6 @@ async function savePostCost() {
     const adminFee = parseFloat(document.getElementById('admin-fee-input').value);
     const isFree = document.getElementById('is-free-zone-input').checked; 
     
-    // 🚩 จุดที่ 1: ต้องระบุว่าเราจะเซ็ตค่านี้ให้ "โซนไหน"
-    // คุณอาจจะใช้ค่า myZoneId (ถ้าแอดมินแก้โซนตัวเอง) 
-    // หรือดึงจากตัวแปร global ที่เก็บค่าโซนที่กำลังเปิดดูอยู่ในขณะนั้น
     const targetZoneId = myZoneId; 
 
     const t = translations[currentLang];
@@ -4292,9 +4228,8 @@ async function savePostCost() {
         return;
     }
 
-    // ตรวจสอบว่ามี zoneId หรือไม่ก่อนส่ง
     if (!targetZoneId) {
-        alert("ไม่พบรหัสโซน (Zone ID) กรุณาลองใหม่");
+        alert("Zone ID not found. Please try again.");
         return;
     }
     
@@ -4302,10 +4237,10 @@ async function savePostCost() {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            systemFee,  // ค่านี้จะไปเข้าฟิลด์ systemZone ที่ฝั่ง Server
-            adminFee,   // ค่านี้จะไปเข้าฟิลด์ zoneFee ที่ฝั่ง Server
+            systemFee,
+            adminFee,
             isFree, 
-            zoneId: targetZoneId, // 🚩 จุดที่ 2: เพิ่มการส่ง zoneId ไปที่ Server
+            zoneId: targetZoneId,
             requestBy: myUsername 
         })
     });
@@ -4405,7 +4340,7 @@ window.savePostCost = savePostCost;
             alert(`${t['admin_error_topic']} ${result.message}`);
         }
     } catch (error) {
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        alert('An error occurred while connecting to the server.');
     }
 }
 
@@ -4439,7 +4374,7 @@ window.savePostCost = savePostCost;
              alert(`${t['admin_error_topic']} ${result.message}`);
         }
     } catch (error) {
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        alert('An error occurred while connecting to the server.');
     }
 }
 
@@ -4520,13 +4455,13 @@ window.savePostCost = savePostCost;
 
     async function checkAndGo(postId) {
         const res = await fetch(`/api/posts/${postId}`);
-        if (res.status === 404) { alert('❌ ไม่พบกระทู้นี้ (อาจถูกลบไปแล้ว)'); return; }
+        if (res.status === 404) { alert('❌ This thread was not found (it may have been deleted).'); return; }
         const post = await res.json();
         
         if (post.isClosed) {
             if (myUsername === 'Admin') {
-                if(confirm('🔒 กระทู้นี้ปิดแล้ว (คุณเข้าได้เพราะเป็น Admin) ต้องการไปต่อไหม?')) { location.href = `post.html?id=${post.id}`; }
-            } else { alert('⛔ กระทู้นี้ถูกปิดการใช้งานแล้ว'); }
+                if(confirm('🔒 This thread is closed (you can access it because you are an admin). Do you want to continue?')) { location.href = `post.html?id=${post.id}`; }
+            } else { alert('⛔ This thread has been disabled.'); }
         } else { location.href = `post.html?id=${post.id}`; }
     }
 	
@@ -4551,7 +4486,7 @@ window.savePostCost = savePostCost;
         // ⭐ NEW LOGIC: เช็คว่าโซนนี้ฟรีหรือไม่จาก API
         if (data.postCost.isFree === true) {
             if (modalCostDisplay) {
-                modalCostDisplay.innerHTML = `<b style="color: #28a745; font-size: 1.2em;">FREE! (โซนนี้โพสต์ฟรี)</b>`;
+                modalCostDisplay.innerHTML = `<b style="color: #28a745; font-size: 1.2em;">FREE! (This zone is for free posting.)</b>`;
                 if (modalCostRow) modalCostRow.style.color = "#28a745"; // เปลี่ยนแถวเป็นสีเขียว
             }
             return; // จบการทำงาน ไม่ต้องคำนวณอัตราแลกเปลี่ยนต่อ
@@ -4593,14 +4528,14 @@ window.savePostCost = savePostCost;
     socket.on('private-history', (history) => {
         const box = document.getElementById('private-chat-messages');
         box.innerHTML = ''; 
-        if (history.length === 0) box.innerHTML = '<div class="system-msg">เริ่มการสนทนาใหม่</div>';
+        if (history.length === 0) box.innerHTML = '<div class="system-msg">Start a new conversation.</div>';
         else history.forEach(data => appendMessage(data));
         box.scrollTop = box.scrollHeight;
     });
 
     socket.on('private-message', (data) => {
     // 1. ดักจับการแจ้งเตือน "ความคิดเห็นใหม่"
-    if (data.target === myUsername && data.sender === 'System' && data.msg.includes('ความคิดเห็นใหม่')) {
+    if (data.target === myUsername && data.sender === 'System' && data.msg.includes('New comment')) {
         showCommentNotification(data.msg, data.postId);
         return;
     }
@@ -4696,24 +4631,6 @@ window.savePostCost = savePostCost;
 });
 
 
-socket.on('verify-result', (data) => {
-    if (data.success) {
-        // ✅ กรณีผ่าน: แจ้งเตือนด้วยสีเขียว หรือ SweetAlert
-        alert("🎉 " + data.message);
-        
-        // อาจจะสั่งรีเฟรชหน้าจอ หรือเปลี่ยนไอคอน Verify ให้เป็นสีฟ้า/ติ๊กถูก
-        if(document.getElementById('verify-status-icon')) {
-            document.getElementById('verify-status-icon').style.color = '#007bff';
-            document.getElementById('verify-status-text').innerText = 'Verified Member';
-        }
-    } else {
-        // ❌ กรณีไม่ผ่าน: แจ้งเหตุผลที่แอดมินระบุมา
-        alert("❌ Verification Rejected\nReason: " + data.message);
-        
-        // ย้อนกลับไปหน้าเริ่มต้นเพื่อให้สมาชิกแก้ไขข้อมูล
-        showVerifyStep(0); 
-    }
-});
 
 
     function appendMessage(data) {
