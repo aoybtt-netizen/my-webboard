@@ -370,9 +370,11 @@
 
 <div style="margin: 0 15px 15px 15px; display: flex; align-items: center; gap: 10px;">
     <label for="lang-select" style="font-size: 0.85em; color: #6c757d; margin-bottom:0;" data-i18n-key="label_language">ภาษา:</label>
+    <div style="display: flex; align-items: center; gap: 10px;">
     <select id="lang-select" onchange="setLanguage(this.value)" style="flex-grow: 1; padding: 8px; border-radius: 5px; border:1px solid #ddd; font-family: 'Kanit';">
         <option value="th">🇹🇭 ไทย</option>
         <option value="en">🇺🇸 English</option>
+        <option value="pt">🇧🇷 Português (Brasil)</option>
     </select>
 </div>
     
@@ -1356,6 +1358,168 @@ async function updateZoneBackground(lat, lng) {
 		'msg_user_not_found': '❌ User "[NAME]" not found',
         'msg_no_members': 'No members found',
         'label_banned': '(BANNED)',
+    }'pt': {
+        'app_title': 'Webboard',
+        'label_currency': 'Moeda:',
+        'label_language': 'Idioma:',
+        'menu': '☰ Menu',
+        'home': '🏠 Início',
+        'create_post': '+ Criar Trabalho',
+        'my_active_posts': 'Meus Trabalhos Ativos',
+        'my_closed_posts': 'Meus Trabalhos Encerrados',
+        'logout': 'Sair',
+        'admin_section': 'Seção do Administrador',
+        'admin_set_announcement': '📢 Definir Anúncio',
+        'admin_closed_posts': '🗄️ Postagens Encerradas',
+        'admin_manage_topics': '⚙️ Gerenciar Tópicos',
+        'admin_manage_zones': '🗺️ Gerenciar Zonas',
+        'admin_set_cost': '🏷️ Definir Taxas',
+        'admin_user_list': '👥 Lista de Membros',
+        'btn_add_topic': 'Adicionar Tópico',
+        'btn_close': 'Fechar',
+        
+        'admin_zone_title': '🗺️ Gerenciar Zonas de Cobertura',
+        'admin_zone_desc': 'Insira as coordenadas Lat/Lng para adicionar um centro de zona (Apenas Admin Nível 3).',
+        'admin_existing_zones': 'Zonas Existentes',
+        'admin_add_new_zone': '+ Adicionar Nova Zona',
+        'btn_add_zone': 'Adicionar Zona',
+        'alert_invalid_zone': '❌ Por favor, insira valores numéricos válidos para Latitude e Longitude.', 
+        'alert_zone_add_success': '✅ Zona adicionada com sucesso!',
+        'admin_no_zones_found': '⚠️ Nenhuma zona de cobertura definida ainda',
+        'admin_error_fetch_zones': '❌ Falha ao buscar lista de zonas',
+        'admin_error_connection': '❌ Erro de conexão',
+        'assigned_map_title': '🗺️ Suas Zonas Atribuídas',
+        'assigned_no_zones': '⚠️ Você ainda não tem zonas atribuídas.',
+        
+        'page_title': '📌 Trabalho',
+        'title_create': 'Criar Nova Postagem',
+        'cost_fee': 'Taxa:',
+        'placeholder_title_admin': '⭐ Título Especial (Admin)',
+        'placeholder_content': 'Detalhes da postagem...',
+        'geo_btn': '📍 Obter Localização Atual (Check In)',
+        'label_image_max': 'Imagem (Máx 5MB):',
+        'post_btn': 'Postar',
+        'cancel_btn': 'Cancelar',
+        'notif_currency_change': '✅ Moeda alterada para [CURRENCY]',
+        
+        'geo_not_supported': 'Seu navegador não suporta geolocalização.',
+        'geo_searching': '⏳ Buscando localização...',
+        'geo_success_name': '✅ Localização encontrada',
+        'geo_success_coord': '✅ Coordenadas recuperadas',
+        'geo_display_name': '📍',
+        'geo_display_coord': '📍 Coordenadas:',
+        'geo_error_permission': '🚫 Permissão negada: Por favor, permita o acesso à localização nas configurações do navegador.',
+        'geo_error_general': '🚨 Não foi possível recuperar a localização',
+        'prompt_fee': 'Taxa (USD):',
+
+        'btn_prev': '⬅️',
+        'btn_next': '➡️',
+        'post_btn_prev': '⬅️',
+        'post_btn_next': '➡️',
+        'login_title': 'Bem-vindo',
+        'login_placeholder': 'Apelido...',
+        'login_btn': 'Entrar',
+        'create_note': '* A criação de uma postagem incorre em uma taxa definida pelo Admin.',
+        'modal_user_list_title': '👥 Membros',
+        'modal_user_list_desc': 'Lista de todos os membros no sistema (e saldo restante)',
+        'search_placeholder': '🔍 Buscar usuário...',
+        'chat_with': '💬 Conversar com:',
+        'chat_placeholder': 'Digite uma mensagem...',
+        'chat_send': 'Enviar',
+        
+        'prompt_transfer_admin': 'Digite a quantidade em USD para transferir para',
+        'prompt_deduct_admin': 'Digite a quantidade em USD para deduzir de',
+
+        'admin_topic_title': '⚙️ Gerenciar Tópicos',
+        'th_topic_name': 'Nome do Tópico (ID)',
+        'th_action': 'Ação',
+        'header_add_topic': '+ Adicionar Novo Tópico',
+        'placeholder_new_topic': 'Nome do novo tópico...',
+        
+        'post_not_found': 'Postagem não encontrada',
+        'closed_or_finished': '⛔ Esta postagem está encerrada/concluída.',
+        'room_occupied': '⚠️ Esta postagem está sendo visualizada. Por favor, aguarde...',
+        
+        'prompt_confirm_ban': 'Tem certeza que deseja BANIR o membro: [USERNAME]?',
+        'prompt_confirm_unban': 'Tem certeza que deseja DESBANIR o membro: [USERNAME]?',
+        'notif_user_banned': '❌ [USERNAME] foi banido',
+        'notif_user_unbanned': '✅ [USERNAME] foi desbanido',
+        
+        'tx_paid': 'Pago',
+        'tx_received': 'Recebido',
+        'tx_from': 'De',
+        'tx_to': 'Para',
+        'tx_post_fee_prefix': 'Taxa de Criação de Postagem',
+        'tx_handover_success': '✅ Acordo Encerrado/Entrega Concluída',
+        
+        'admin_tx_title': 'Histórico de Transações USD',
+        'admin_tx_desc': 'Todas as receitas e transferências (mais recentes primeiro)',
+        'admin_tx_revenue': '💸 Receita (Taxa de Postagem)',
+        'admin_tx_deduct': '🧲 Moedas Deduzidas',
+        'admin_tx_transfer_out': '➡️ Moedas Transferidas',
+        'member_tx_title': 'Histórico de Transações USD',
+        'member_tx_desc': 'Seu histórico completo de moedas (mais recentes primeiro)',
+
+        'SYS_FEE': (data) => `💸 Você criou uma postagem na categoria "${data.topicName}" e foi cobrado em ${data.cost} USD`,
+        'SYS_TRANSFER': (data) => `💰 O Admin transferiu ${data.amount} USD para você`,
+        'SYS_DEDUCT': (data) => `💸 O Admin deduziu ${data.amount} USD da sua conta`,
+        'SYS_NEW_COMMENT': (data) => `💬 Novo comentário na postagem "${data.postTitle}"`,
+        'tx_detail_create_post': 'Taxa de Criação: [TITLE]',
+        'tx_detail_admin_give': 'Transferir para [USER]',
+        'tx_detail_admin_deduct': 'Deduzir de [USER]',
+        'tx_detail_handover': 'Entrega de Trabalho: [TITLE]',
+        'admin_warn_empty_topic': 'Por favor, insira o nome do tópico.',
+        'admin_confirm_delete_topic': 'Tem certeza que deseja excluir o tópico "[NAME]"?',
+        'admin_success_add_topic': 'Tópico adicionado com sucesso.',
+        'admin_success_delete_topic': 'Tópico excluído com sucesso.',
+        'admin_error_topic': 'Ocorreu um erro: ',
+        'confirm_delete_post': 'Tem certeza que deseja excluir esta postagem?',
+
+        'btn_checkin': '📍 Definir Distância',
+        'status_all': '(Mostrar Tudo)',
+        'prompt_distance': 'Digite o raio de distância (km):',
+        'alert_invalid_num': 'Por favor, insira um número válido.',
+        'status_locating': 'Localizando...',
+        'msg_no_post_range': '❌ Nenhuma postagem encontrada dentro de',
+        'btn_show_all': 'Mostrar Tudo',
+        'error_geo_not_supported': 'Navegador não suporta Geolocalização',
+        'error_geo_failed': 'Falha na localização',
+        'admin_success_set_cost': '✅ Taxa definida com sucesso!', 
+        'admin_error_set_cost': '❌ Falha ao definir taxa',
+        
+        'admin_assigned_to': 'Admin Responsável',
+        'btn_assign_admin': 'Atribuir Admin',
+        'modal_assign_title': '👨‍💼 Selecionar Admin da Zona',
+        'btn_select': 'Selecionar',
+        'admin_no_admins_found': '⚠️ Nenhum Admin (Nível 1+) encontrado',
+        'admin_error_fetch_admins': '❌ Falha ao buscar lista de Admins',
+        'confirm_assign_admin': 'Deseja atribuir [ADMIN] à Zona [ZONE]?',
+        'alert_admin_assign_success': '✅ [ADMIN] atribuído à Zona [ZONE] com sucesso!',
+        
+        'admin_set_cost_title': '🏷️ Definir Taxas de Postagem',
+        'label_system_fee': 'Taxa do Sistema (para Admin N3):',
+        'label_admin_fee': 'Taxa do Administrador (para Admin N1/N2):',
+        'total_fee_display': 'Taxa Total:',
+        'btn_save': 'Salvar',
+        'alert_invalid_fee': '❌ Por favor, insira valores de taxa válidos.',
+        'announcement_prefix': '📢',
+        'modal_announcement_desc': 'Este anúncio será exibido acima da lista de postagens.',
+        'label_announcement_text': 'Texto do Anúncio:',
+        'placeholder_announcement_input': 'Mensagem para anunciar (deixe em branco para remover)',
+        'label_zone_name': 'Nome da Zona (para o proprietário):',
+        'placeholder_zone_name': 'Ex: Cidade A',
+        'alert_invalid_zone_name': '❌ Por favor, insira um nome para a zona.',
+        
+        'inbox_title': "💬 Mensagens Privadas",
+        'inbox_desc_recent': "Contatos recentes",
+        'inbox_no_history': "Nenhum histórico de conversa",
+        'admin_label': "(Admin)",
+        'admin_searching': "⏳ Procurando o administrador da sua zona...",
+        'admin_recommended_label': "Administrador recomendado perto de você",
+        'admin_start_chat': "Começar Chat Agora!",
+        'msg_user_not_found': '❌ Usuário "[NAME]" não encontrado',
+        'msg_no_members': 'Nenhum membro encontrado',
+        'label_banned': '(BANIDO)',
     }
 };
 
@@ -1364,6 +1528,9 @@ async function updateZoneBackground(lat, lng) {
         if (!translations[lang]) return;
         currentLang = lang;
         localStorage.setItem('preferredLanguage', lang);
+		let msg = "กำลังเปลี่ยนภาษา...";
+		if (lang === 'en') msg = "Changing language...";
+		if (lang === 'pt') msg = "Alterando o idioma...";
         
         // 1. แปลข้อความทั่วไปที่มี data-i18n-key
         document.querySelectorAll('[data-i18n-key]').forEach(element => {
