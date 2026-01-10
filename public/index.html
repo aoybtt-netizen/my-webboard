@@ -1996,9 +1996,8 @@ async function checkAndRedirectActiveJob(username) {
             const systemFee = (data.postCost?.systemFee || 0).toFixed(2);
             const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
             modalCostDisplay.innerHTML = 
-                `${postCostUSD.toFixed(2)} USDT 
-                <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee} System + ${adminFee} Admin)</span>
-                <span style="font-size:0.85em; color:#6c757d; font-weight: normal; margin-left: 5px;">${formattedConvertedCost} ${data.currencySymbol}</span>`;
+                `$
+                <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee} System + ${adminFee} Admin)</span>`;
         }
         
         const sidebarRating = document.getElementById('sidebar-rating');
@@ -3900,7 +3899,7 @@ socket.on('admin-review-request', (data) => {
     
     const modalCostDisplay = document.getElementById('modal-cost-display');
     if (modalCostDisplay) {
-        modalCostDisplay.innerHTML = `${totalCost.toFixed(2)} USD <span style="font-size:0.75em; color:#6c757d;">(กำลังอัปเดต...)</span>`; 
+        modalCostDisplay.innerHTML = `${totalCost.toFixed(2)} <span style="font-size:0.75em; color:#6c757d;">(กำลังอัปเดต...)</span>`; 
     }
     updateUserInfo(); 
     
