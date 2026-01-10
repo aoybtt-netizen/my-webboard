@@ -263,7 +263,11 @@
     // 4. 🔥 ฟังก์ชันหัวใจหลัก: Universal Edit
     async function universalEdit(collection, id, field, currentVal) {
         let inputType = 'text';
-        if (typeof currentVal === 'number') inputType = 'number';
+		let inputAttr = {};
+        if (typeof currentVal === 'number') {
+				inputType = 'number';
+				inputAttr = { step: 'any' }; 
+			}
         if (typeof currentVal === 'boolean') {
             confirmToggle(collection, id, field, currentVal);
             return;
@@ -272,7 +276,7 @@
         const { value: newVal } = await Swal.fire({
             title: `แก้ไขฟิลด์: ${field}`,
             input: inputType,
-			inputAttributes: inputAttributes,
+			inputAttributes: inputAttr,
             inputValue: currentVal,
             showCancelButton: true,
             confirmButtonText: 'บันทึกข้อมูล',
