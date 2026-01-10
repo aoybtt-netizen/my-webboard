@@ -3997,15 +3997,14 @@ socket.on('admin-review-request', (data) => {
     
     // แสดงสถานะกำลังโหลดค่าธรรมเนียม
     const modalCostDisplay = document.getElementById('modal-cost-display');
-	if (modalCostDisplay && data.postCost) {
-	modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ กำลังค้นหาเขตพื้นที่และคำนวณค่าธรรมเนียม...</span>';
-    const postCostUSDT = data.postCost.totalCost || 0;
-    currentCost = postCostUSDT; // เก็บยอดหลักไว้หักเงิน
-
-    // 1. ดึงข้อมูลยอดเงินจาก API ที่ส่งมา (coins คือ USDT, convertedCoins คือเงินโซน)
-    const balanceUSDT = parseFloat(data.coins) || 0;
-    const balanceLocal = parseFloat(String(data.convertedCoins).replace(/,/g, '')) || 0;
-	}
+    if (modalCostDisplay) {
+        modalCostDisplay.innerHTML = `
+            <div style="color:#e67e22; font-size:0.9em;">
+                <i class="fas fa-spinner fa-spin"></i> 
+                <span>กำลังเช็คพื้นที่และคำนวณค่าธรรมเนียม (USDT / LOCAL)...</span>
+            </div>
+        `;
+    }
 
     // โหลดหัวข้อ (เหมือนเดิม)
     fetchTopicsForCreate(null, null);
@@ -4583,7 +4582,7 @@ window.savePostCost = savePostCost;
         const modalCostDisplay = document.getElementById('modal-cost-display');
         const modalCostRow = document.getElementById('modal-cost-row'); // อ้างอิงแถวเพื่อเปลี่ยนสี
 
-        // ⭐ NEW LOGIC: เช็คว่าโซนนี้ฟรีหรือไม่จาก API
+        // เช็คว่าโซนนี้ฟรีหรือไม่จาก API
         if (data.postCost.isFree === true) {
             if (modalCostDisplay) {
                 modalCostDisplay.innerHTML = `<b style="color: #28a745; font-size: 1.2em;">FREE! (โซนนี้โพสต์ฟรี)</b>`;
@@ -4605,7 +4604,7 @@ window.savePostCost = savePostCost;
         if (balanceUSD > 0) {
             impliedRate = balanceConverted / balanceUSD;
         } else {
-            impliedRate = (data.currencySymbol === 'USD') ? 1 : 0;
+            impliedRate = (data.currencySymbol === 'USDT' || data.currencySymbol === 'USD') ? 1 : (data.zoneRate || 0);
         }
 
         const convertedCostVal = postCostUSD * impliedRate;
@@ -4616,9 +4615,9 @@ window.savePostCost = savePostCost;
 
         if (modalCostDisplay) {
             modalCostDisplay.innerHTML = 
-                `${postCostUSD.toFixed(2)} USD 
+                `${postCostUSDT.toFixed(2)} USDT 
                 <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(${systemFee.toFixed(2)} System + ${adminFee.toFixed(2)} Admin)</span>
-                <span style="font-size:0.75em; color:#6c757d; font-weight: normal;">(${formattedConvertedCost} ${data.currencySymbol})</span>`;
+                <span style="font-size:0.85em; color:#6c757d; font-weight: normal; margin-left: 5px;">${formattedConvertedCost} ${data.currencySymbol}</span>`;
         }
 
     } catch(e) {
