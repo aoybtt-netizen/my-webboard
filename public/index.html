@@ -2968,7 +2968,7 @@ async function showMyClosedPosts(page = 1) {
             });
 
             if (filteredPosts.length === 0) {
-                 list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>ไม่มีกระทู้ในหมวดหมู่นี้</h3></div>`;
+                 list.innerHTML = `<div style="text-align:center; margin-top:50px; color:gray;"><h3>Waiting....</h3></div>`;
                  paginationDiv.style.display = 'none'; 
                  return;
             }
@@ -3010,7 +3010,7 @@ async function showMyClosedPosts(page = 1) {
     // 2. เตรียมสถานะการคุย (Occupied)
     let occupiedClass = (isOccupied && !post.isPinned) ? 'occupied' : '';
     let occupiedText = isOccupied
-        ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(กำลังคุย 💬)</span>`
+        ? `<span style="color:#d9534f; font-weight:bold; margin-left:10px;">(Talking... 💬)</span>`
         : '';
 
     // 3. เตรียมคะแนนและผู้รับงาน
@@ -3038,7 +3038,7 @@ async function showMyClosedPosts(page = 1) {
     // 5. จัดการการคลิก (Redirect)
     let action = '';
     if (post.isClosed && myUsername !== 'Admin' && myUsername !== post.author) {
-        action = "alert('⛔ กระทู้นี้ถูกปิดแล้ว')";
+        action = "alert('⛔ Closed')";
     } else {
         if (post.isMerchantTask) {
             action = `location.href='riderjobmerchant.html?view_id=${post.id}'`;
@@ -3053,7 +3053,7 @@ async function showMyClosedPosts(page = 1) {
     // 7. จัดการการแสดงพิกัดและระยะทาง
     let locationHtml = '';
     if (post.location && post.location.lat && post.location.lng) {
-        let displayText = post.isMerchantTask ? "พิกัดร้าน" : (post.location.name || "พิกัด");
+        let displayText = post.isMerchantTask ? "Location" : (post.location.name || "Location");
 
         if (typeof filterLocation !== 'undefined' && filterLocation && !post.isClosed) {
             const dist = getDistanceFromLatLonInKm(
@@ -3443,13 +3443,13 @@ async function fetchAndRenderAllZones() {
                 const freeZoneHtml = `
                     <div style="margin-top: 10px; background: #e8f5e9; padding: 10px; border-radius: 5px; border: 1px dashed #28a745; display: flex; align-items: center; gap: 10px;">
                         <input type="checkbox" id="is-free-input-${zone.id}" ${isFreeChecked} style="width: 18px; height: 18px; cursor: pointer;">
-                        <label for="is-free-input-${zone.id}" style="font-size: 0.9em; font-weight: bold; color: #155724; cursor: pointer;">✨ เปิดใช้งานโซนโพสต์ฟรี (Zone Free)</label>
+                        <label for="is-free-input-${zone.id}" style="font-size: 0.9em; font-weight: bold; color: #155724; cursor: pointer;">✨ Enable the free posting zone. (Zone Free)</label>
                     </div>
                 `;
 
                 const bgPreview = zone.bgImage 
                     ? `<div style="margin-top:5px;"><img src="${zone.bgImage}" style="max-height:100px; border-radius:5px; border:1px solid #ddd;"></div>` 
-                    : '<div style="margin-top:5px; color:gray; font-size:0.8em;">(ยังไม่มีรูปพื้นหลัง)</div>';
+                    : '<div style="margin-top:5px; color:gray; font-size:0.8em;">(There is no background image yet.)</div>';
 
                 const currentName = name.includes('Zone ID:') ? '' : name;
                 const nameInputHtml = `
@@ -3464,7 +3464,7 @@ async function fetchAndRenderAllZones() {
 
                 const bgUploadHtml = `
                     <div style="margin-top: 10px; background: #fff3cd; padding: 10px; border-radius: 5px; border: 1px solid #ffc107;">
-                        <label style="font-size: 0.9em; font-weight: bold; display:block;">🖼️ รูปพื้นหลังโซน:</label>
+                        <label style="font-size: 0.9em; font-weight: bold; display:block;">🖼️ Zone background image:</label>
                         ${bgPreview}
                         <div style="display:flex; gap:5px; margin-top:5px;">
                             <input type="file" id="bg-file-${zone.id}" accept="image/*" style="font-size:0.8em; width:100%;">
@@ -3511,7 +3511,7 @@ window.openAssignedZoneMap = openAssignedZoneMap;
     const newName = input.value.trim();
 
     if (!newName) {
-        alert(t['alert_invalid_zone_name'] || '❌ กรุณาใส่ชื่อโซน');
+        alert(t['alert_invalid_zone_name'] || '❌ Please enter the zone name.');
         return;
     }
     
@@ -3532,13 +3532,13 @@ window.openAssignedZoneMap = openAssignedZoneMap;
         const data = await res.json();
         
         if (data.success) {
-            alert(`✅ เปลี่ยนชื่อโซน ID ${zoneId} เป็น ${newName} สำเร็จ!`);
+            alert(`✅ Change zone name. ID ${zoneId} to ${newName} success!`);
             openAdminZoneModal(); // รีเฟรชรายการ
         } else {
-            alert(`❌ Error: ${data.error || 'เปลี่ยนชื่อโซนไม่สำเร็จ'}`);
+            alert(`❌ Error: ${data.error || 'Changing the zone name failed.'}`);
         }
     } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        alert('❌ An error occurred while connecting to the server.');
         console.error('Error setting zone name:', e);
     } finally {
         e.target.disabled = false;
@@ -3568,7 +3568,7 @@ async function saveZoneFee(zoneId) {
         const data = await res.json();
         
         if (data.success) {
-            alert('✅ บันทึกค่าธรรมเนียมและสถานะโซนเรียบร้อย');
+            alert('✅ Fees and zone status have been successfully.');
             openAssignedZoneMap(); // รีเฟรชรายการ
         } else {
             alert(`❌ Error: ${data.error}`);
@@ -3585,7 +3585,7 @@ async function uploadZoneBg(zoneId) {
     const file = fileInput.files[0];
     
     if (!file) {
-        alert('❌ กรุณาเลือกไฟล์รูปภาพก่อน');
+        alert('❌ Please select an image file first.');
         return;
     }
 
@@ -3609,7 +3609,7 @@ async function uploadZoneBg(zoneId) {
         const data = await res.json();
 
         if (data.success) {
-            alert('✅ อัปโหลดรูปพื้นหลังสำเร็จ!');
+            alert('✅ Background image uploaded successfully!');
             openAssignedZoneMap(); // รีเฟรชหน้าเพื่อแสดงรูปใหม่
         } else {
             alert(`❌ Error: ${data.error}`);
@@ -3620,7 +3620,7 @@ async function uploadZoneBg(zoneId) {
 
     } catch (e) {
         console.error(e);
-        alert('❌ เกิดข้อผิดพลาดในการอัปโหลด');
+        alert('❌ An error occurred during the upload.');
     }
 }
 window.uploadZoneBg = uploadZoneBg;
@@ -3754,288 +3754,12 @@ window.addZoneConfig = addZoneConfig;
 window.deductCoinInChat = deductCoinInChat;
 
 //Verify
-// ฟังก์ชันเมื่อกดปุ่ม Verify Identity จากเมนู
-/*<button class="sidebar-btn" onclick="openVerifyModal()" style="background: #28a745; color: white;">
-    <i class="fas fa-user-shield"></i> <span data-i18n-key="menu_verify">Verify Identity</span>
-</button>*/
-function openVerifyModal() {
-    // ปิด Sidebar ก่อน (ถ้ามี)
-    if (typeof toggleSidebar === "function") toggleSidebar();
-    // 1. ถาม Server ว่าตอนนี้ฉันอยู่ที่ Step ไหน?
-    socket.emit('get-verify-step', {}, (response) => {
-        if (response.success) {
-            const step = response.step;
-
-            // ปิด Modal ทั้งหมดก่อนเพื่อป้องกันการซ้อนกัน
-            document.getElementById('verify-info-modal').classList.add('hidden');
-            document.getElementById('verify-confirm-modal').classList.add('hidden');
-
-            if (step === 10) {
-                // Step 1: จ่ายเงินแล้ว -> เปิดหน้าให้กดเช็คระยะทาง (Step 2)
-                document.getElementById('verify-confirm-modal').classList.remove('hidden');
-                console.log("📍 User at Step 1: Opening Proximity Check");
-            } else if (step === 20) {
-                // Step 2: ระยะผ่านแล้ว -> อาจจะแสดงหน้า "รอแอดมินอนุมัติ"
-                alert("คุณผ่านขั้นตอนตรวจสอบระยะทางแล้ว กรุณารอแอดมินกดยืนยันครับ");
-            } else {
-                // Step 0 หรือยังไม่ได้เริ่ม: เปิดหน้าคำอธิบายและการจ่ายเงิน
-                document.getElementById('verify-info-modal').classList.remove('hidden');
-                console.log("📍 User at Step 0: Opening Info Modal");
-            }
-        } else {
-            // กรณี Error หรือหาข้อมูลไม่เจอ ให้เริ่มที่หน้าแรก
-            document.getElementById('verify-info-modal').classList.remove('hidden');
-        }
-    });
-}
-
-// ฟังก์ชันปิดหน้าคำอธิบาย
-function closeVerifyInfo() {
-    document.getElementById('verify-info-modal').classList.add('hidden');
-}
-
-// ฟังก์ชันเมื่อกด Confirm จากหน้าแรก เพื่อไปหน้ากรอกข้อมูล
-function proceedToVerifyForm() {
-    const confirmPay = confirm("Send Request Confirm 50 USD payment?");
-    if (confirmPay) {
-        sendRequestVerify();
-    }
-}
-
-// ฟังก์ชันปิดหน้ากรอกข้อมูล (ใช้กับปุ่ม Cancel ในหน้าสอง)
-function closeVerifyConfirm() {
-    document.getElementById('verify-confirm-modal').classList.add('hidden');
-}
-
-// ฟังก์ชันส่งข้อมูล (หน้าสอง)
-async function submitIdentityData(event) { // รับ event เข้ามา
-    // 1. ดักจับปุ่มที่กดไว้ก่อน (ป้องกัน event หาย)
-    const btn = event.currentTarget || event.target;
-    
-    const fullName = document.getElementById('verify-fullname').value.trim();
-    const phone = document.getElementById('verify-phone').value.trim();
-    const address = document.getElementById('verify-address').value.trim();
-    const idCardFile = document.getElementById('verify-id-card').files[0];
-    const selfieFile = document.getElementById('verify-selfie').files[0];
-
-    if (!fullName || !phone || !address || !idCardFile || !selfieFile) {
-        alert("Please complete all fields and upload both photos.");
-        return;
-    }
-
-    const toBase64 = file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-
-    try {
-        // เปลี่ยนสถานะปุ่ม
-        btn.disabled = true;
-        const originalText = btn.innerText;
-        btn.innerText = "⌛ Uploading & Locating...";
-
-        // แปลงไฟล์ภาพ
-        const idCardBase64 = await toBase64(idCardFile);
-        const selfieBase64 = await toBase64(selfieFile);
-
-        // ดึงพิกัดปัจจุบัน
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const payload = {
-                fullName,
-                phone,
-                address,
-                idCardImage: idCardBase64,
-                selfieImage: selfieBase64,
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
-
-            console.log("Sending data to server...");
-            
-            // ส่งข้อมูลผ่าน Socket
-            socket.emit('submit-final-verification', payload, (response) => {
-                if (response.success) {
-                    alert("✅ Data submitted successfully! Please show your original ID to the Admin.");
-                    closeVerifyConfirm();
-                } else {
-                    alert("❌ Error: " + response.message);
-                    btn.disabled = false;
-                    btn.innerText = originalText;
-                }
-            });
-
-        }, (err) => {
-            alert("📍 GPS Error: Please enable GPS to confirm your location.");
-            btn.disabled = false;
-            btn.innerText = originalText;
-        }, { enableHighAccuracy: true, timeout: 10000 });
-
-    } catch (err) {
-        console.error(err);
-        alert("🚨 Image processing failed. File might be too large.");
-        btn.disabled = false;
-        btn.innerText = "Submit for Review";
-    }
-}
 
 
 
-socket.on('notify-admin-verify', (data) => {
-    // เช็คว่า adminTarget ที่ Server ส่งมา ตรงกับชื่อเราไหม (ป้องกัน Modal เด้งผิดคน)
-    // โดยเปรียบเทียบกับชื่อที่คุณใช้ login ในหน้า admin
-    
-    const myName = typeof currentUser !== 'undefined' ? currentUser.username : ""; 
-    
-    // ถ้าชื่อแอดมินเป้าหมายไม่ตรงกับเรา ไม่ต้องแสดง modal
-    if (data.adminTarget !== myName && myName !== "") {
-        return; 
-    }
-
-    // แสดง Modal ตามปกติ
-    const modalContent = document.querySelector('#admin-members-verify-modal .modal-box div');
-    modalContent.innerHTML = `
-        <p><strong>👤 สมาชิก:</strong> ${data.member}</p>
-        <p><strong>🛡️ แอดมินผู้รับผิดชอบ:</strong> ${data.adminTarget}</p>
-        <p><strong>📍 โซน:</strong> ${data.zone}</p>
-    `;
-    adminZoneVerify();
-});
-
-
-function adminZoneVerify(){
-	//<button class="sidebar-btn admin-btn" onclick="adminZoneVerify()">Verify Members</button> 
-    document.getElementById('admin-members-verify-modal').classList.remove('hidden');
-}
-
-function adminCloseZoneVerify(){
-	document.getElementById('admin-members-verify-modal').classList.add('hidden');
-}
-
-function adminOnGPSVerify(){
-		if (navigator.geolocation) {
-    // ใช้ watchPosition เพื่อให้ส่งพิกัดอัตโนมัติเมื่อมีการเคลื่อนที่
-    navigator.geolocation.watchPosition((position) => {
-        const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-        };
-        
-        // ส่งไปที่ Server (ถ้าเป็นแอดมิน)
-        if (typeof socket !== 'undefined' && socket.connected) {
-            socket.emit('update-admin-live-location', coords);
-        }
-    }, (err) => {
-        console.warn("GPS error:", err);
-    }, {
-        enableHighAccuracy: true, // ใช้ GPS ความแม่นยำสูง
-        distanceFilter: 10 // ส่งข้อมูลใหม่ทุกๆ การเคลื่อนที่ 10 เมตร (ช่วยประหยัดแบต)
-    });
-}
-}
 
 
 
-function proceedToVerifyForm() {
-    // 1. แจ้งเตือนก่อนเริ่มกระบวนการ
-    const confirmPayment = confirm("ยืนยันการดำเนินการ?\n- ค่าธรรมเนียม 50 USD (หักจากบัญชี)\n- คุณต้องอยู่ห่างจากแอดมินไม่เกิน 10 เมตร\n\nConfirm identity verification?\n- Fee: 50 USD\n- Proximity: Within 10m of Admin.");
-    
-    if (confirmPayment) {
-        // ถ้ากดยืนยัน ให้เรียกฟังก์ชันเช็คโซนและหักเงิน
-        sendRequestVerify();
-    }
-}
-
-function sendRequestVerify() {
-    navigator.geolocation.getCurrentPosition((position) => {
-        const myCoords = { 
-            lat: position.coords.latitude, 
-            lng: position.coords.longitude 
-        };
-        
-        // 🔥 ต้องส่ง myCoords เข้าไปใน emit ด้วย
-        socket.emit('send-request-verify', myCoords, (response) => {
-            if (response.success) {
-                alert(`ส่งข้อมูลให้แอดมิน ${response.adminName} แล้ว`);
-            }
-        });
-    }, (err) => {
-        alert("กรุณาเปิด GPS ก่อนทำรายการ");
-    });
-}
-
-function checkZoneOwnership() {
-    navigator.geolocation.getCurrentPosition((position) => {
-        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
-        socket.emit('find-zone-admin', coords, (response) => {
-            if (response.success) {
-                alert(`✅ Step 2: ผ่าน! ระยะห่าง ${response.adminDistance} ม. รอแอดมินกดยืนยันหน้าจอของเขา`);
-            } else {
-                alert(`❌ ${response.message}`);
-            }
-        });
-    });
-}
-
-
-function processApproval(status) {
-    if (!currentReviewUser) return;
-    
-    const reason = (status === 'REJECT') ? prompt("Enter reason for rejection:") : "";
-    if (status === 'REJECT' && reason === null) return;
-
-    socket.emit('admin-action-verify', {
-        targetUser: currentReviewUser,
-        status: status,
-        reason: reason
-    }, (res) => {
-        if (res.success) {
-            alert("Verification " + status + " successful.");
-            document.getElementById('admin-review-modal').classList.add('hidden');
-        } else {
-            alert(res.message);
-        }
-    });
-}
-
-
-
-socket.on('admin-review-request', (data) => {
-    // 1. เล่นเสียงแจ้งเตือน (ถ้ามี)
-    // new Audio('/notification.mp3').play();
-
-    currentReviewUser = data.fromUser; // username ของสมาชิก
-    
-    // 2. แสดง Modal และข้อมูล
-    const modal = document.getElementById('admin-review-modal');
-    const content = document.getElementById('review-content');
-    
-    modal.classList.remove('hidden');
-    
-    // 3. ใส่ข้อมูลสมาชิก (รวมถึงรูปภาพที่ส่งมา)
-    content.innerHTML = `
-        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 5px solid #007bff;">
-            <strong>From User:</strong> ${data.fromUser}<br>
-            <strong>Distance:</strong> <span style="color: green;">${data.distance} meters</span>
-        </div>
-        <div>
-            <strong>Full Name:</strong> <p>${data.identityData.fullName}</p>
-            <strong>Phone:</strong> <p>${data.identityData.phone}</p>
-            <strong>Address:</strong> <p>${data.identityData.address}</p>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <div style="flex: 1;">
-                <strong>ID Card:</strong>
-                <img src="${data.identityData.idCardImage}" style="width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open(this.src)">
-            </div>
-            <div style="flex: 1;">
-                <strong>Selfie:</strong>
-                <img src="${data.identityData.selfieImage}" style="width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open(this.src)">
-            </div>
-        </div>
-    `;
-});
 
 	
 
@@ -4115,19 +3839,14 @@ socket.on('admin-review-request', (data) => {
         // Socket Balance Update ---
         socket.on('balance-update', (data) => {
     if (data.user === myUsername) {
-        // เรียก updateUserInfo() เพื่อให้เกิดการ fetch ข้อมูลใหม่
-        // และแสดงผล 2 สกุลเงินอย่างถูกต้อง
         updateUserInfo();
         
-        // 💡 [Note] เนื่องจาก updateUserInfo ถูกเรียกแล้ว และ Server ส่งแค่ USD มาใน socket event นี้
-        // การเรียก updateUserInfo จึงเป็นวิธีที่ง่ายที่สุดในการรับค่า convertedCoins มาแสดงผล 2 สกุลเงิน
 
         if (data.coins) {
              const formattedUSD = parseFloat(data.coins).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
              });
-             // ใช้ formattedUSD ในการแจ้งเตือน
              showNotification(`Update Balance: You have a balance. ${formattedUSD} USD`, 'fas fa-coins', 4000);
         }
     }
@@ -4170,7 +3889,7 @@ socket.on('admin-review-request', (data) => {
             }
             if (!document.getElementById('user-list-modal').classList.contains('hidden')) {
                 const title = document.getElementById('user-list-title').innerText;
-                if (title.includes('สมาชิกทั้งหมด')) {
+                if (title.includes('All Member List')) {
                     const searchInput = document.getElementById('user-search-input');
                     openAllUserList(searchInput ? searchInput.value : '');
                 }
@@ -4196,7 +3915,7 @@ socket.on('admin-review-request', (data) => {
 	async function fetchTopicsForCreate(lat = null, lng = null) {
         const select = document.getElementById('category-select');
         // แสดงสถานะกำลังโหลดใน Dropdown
-        select.innerHTML = '<option>⏳ กำลังโหลดหัวข้อ...</option>';
+        select.innerHTML = '<option>⏳ Loading...</option>';
         select.disabled = true;
 
         try {
@@ -4213,7 +3932,7 @@ socket.on('admin-review-request', (data) => {
             
             if (topics.length === 0) {
                 const opt = document.createElement('option');
-                opt.text = "ไม่มีหมวดหมู่";
+                opt.text = "No category";
                 select.add(opt);
             } else {
                 topics.forEach(t => {
@@ -4225,7 +3944,7 @@ socket.on('admin-review-request', (data) => {
             }
         } catch (err) {
             console.error('Error loading topics:', err);
-            select.innerHTML = '<option>❌ โหลดล้มเหลว</option>';
+            select.innerHTML = '<option>❌ Load failed.</option>';
         } finally {
             select.disabled = false;
         }
@@ -4249,7 +3968,7 @@ socket.on('admin-review-request', (data) => {
     // แสดงสถานะกำลังโหลดค่าธรรมเนียม
     const modalCostDisplay = document.getElementById('modal-cost-display');
     if (modalCostDisplay) {
-        modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ กำลังค้นหาเขตพื้นที่และคำนวณค่าธรรมเนียม...</span>';
+        modalCostDisplay.innerHTML = '<span style="color:#e67e22; font-size:0.9em;">⏳ Searching for areas and calculating fees...</span>';
     }
 
     // โหลดหัวข้อ (เหมือนเดิม)
@@ -4331,7 +4050,7 @@ function getLocation(isPrimaryCheckin = false) {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${currentLang}`); 
             const data = await res.json();
             
-            let placeName = data.address.city || data.address.town || data.address.village || data.address.state || (currentLang === 'th' ? 'ไม่ทราบชื่อสถานที่' : 'Unknown location name');
+            let placeName = data.address.city || data.address.town || data.address.village || data.address.state || (currentLang === 'th' ? 'Unknown location name' : 'Unknown location name');
             if(data.address.road) placeName = `${data.address.road}, ${placeName}`;
 
             currentLocationData = { lat, lng, name: placeName };
