@@ -1013,6 +1013,11 @@ app.get('/api/merchant/balance', async (req, res) => {
 
         const user = await usersCollection.findOne({ username });
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+		
+		const storeData = await db.collection('merchant_locations').findOne({ 
+            owner: username, 
+            isStore: true 
+        });
 
         const location = user.lastLocation || null; 
         
@@ -1034,7 +1039,8 @@ app.get('/api/merchant/balance', async (req, res) => {
             success: true,
             balance: balance,
             currency: zoneCurrency,
-            zoneName: zoneName
+            zoneName: zoneName,
+            storeName: storeData ? storeData.label : "GedGo Merchant"
         });
 
     } catch (err) {

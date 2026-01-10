@@ -501,8 +501,8 @@
     </div>
 
     <div style="text-align: center; flex-grow: 1;">
-        <h2 style="margin: 0; font-size: 1.2em; line-height: 1.2;">GedGo Merchant</h2>
-        <div id="merchant-balance-display" style="font-size: 1.0em; color: #fadb41; font-weight: bold; margin-top: 2px;">
+        <h2 id="merchant-name-display" style="margin: 0; font-size: 1.2em; line-height: 1.2;">GedGo Merchant</h2>
+        <div id="merchant-balance-display" style="font-size: 0.85em; color: #27ae60; font-weight: bold; margin-top: 2px;">
             0.00 Loading...
         </div>
     </div>
@@ -764,14 +764,22 @@ async function loadActiveMerchantTasks() {
 // 1. ประกาศฟังก์ชันแสดงผลก่อน (ต้องอยู่ด้านบนเพื่อให้ fetch เรียกใช้ได้)
 function updateMerchantHeaderBalance(data) {
     const balanceEl = document.getElementById('merchant-balance-display');
-    if (balanceEl && data) {
-        const amount = data.balance !== undefined ? data.balance : 0;
-        const formattedBalance = parseFloat(amount).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-        const symbol = data.currency || 'USDT';
-        balanceEl.innerHTML = `${formattedBalance} <small>${symbol}</small>`;
+    const nameEl = document.getElementById('merchant-name-display');
+
+    if (data) {
+        if (nameEl) {
+            nameEl.innerText = data.storeName || "GedGo Merchant";
+        }
+
+        if (balanceEl) {
+            const amount = data.balance !== undefined ? data.balance : 0;
+            const formattedBalance = parseFloat(amount).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            const symbol = data.currency || 'USDT';
+            balanceEl.innerHTML = `${formattedBalance} <small>${symbol}</small>`;
+        }
     }
 }
 
