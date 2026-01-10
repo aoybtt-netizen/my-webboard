@@ -272,6 +272,7 @@
         const { value: newVal } = await Swal.fire({
             title: `แก้ไขฟิลด์: ${field}`,
             input: inputType,
+			inputAttributes: inputAttributes,
             inputValue: currentVal,
             showCancelButton: true,
             confirmButtonText: 'บันทึกข้อมูล',
