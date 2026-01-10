@@ -2177,7 +2177,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
             await transactionsCollection.insertOne({
                 id: Date.now(), type: 'POST_REVENUE', amount: currentSystemZone, 
                 currency: zoneCurrency, fromUser: author, toUser: 'Admin',
-                note: `ค่าระบบ (${responsibleData.zoneName}): ${topicName}`, 
+                note: `Fee (${responsibleData.zoneName}): ${topicName}`, 
                 timestamp: Date.now()
             });
         }
@@ -2191,7 +2191,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
             await transactionsCollection.insertOne({
                 id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, 
                 currency: zoneCurrency, fromUser: author, toUser: feeReceiver,
-                note: `ค่าดูแลโซน: ${responsibleData.zoneName}`, 
+                note: `Zone fee: ${responsibleData.zoneName}`, 
                 timestamp: Date.now() + 1
             });
         }
