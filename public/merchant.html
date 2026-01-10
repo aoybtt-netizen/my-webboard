@@ -761,18 +761,17 @@ async function loadActiveMerchantTasks() {
 
 
 
-function updateMerchantHeaderBalance(data) {
-    const balanceEl = document.getElementById('merchant-balance-display');
-    if (balanceEl && data) {
-        const amount = data.balance !== undefined ? data.balance : 0;
+async function fetchAndRefreshMerchantBalance() {
+    try {
+        const res = await fetch(`/api/merchant/balance?username=${encodeURIComponent(myUsername)}`);
+        const data = await res.json();
         
-        const formattedBalance = parseFloat(amount).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-        // ใช้ค่า currency ที่ส่งมาจาก API (เช่น THB, BRL)
-        const symbol = data.currency || 'USDT';        
-        balanceEl.innerHTML = `${formattedBalance} <small>${symbol}</small>`;
+        if (data.success) {
+            // ส่ง data ที่ได้จาก API เข้าไปในฟังก์ชันแสดงผลที่คุณเขียนไว้
+            updateMerchantHeaderBalance(data);
+        }
+    } catch (e) {
+        console.error("❌ โหลดราคามีปัญหา:", e);
     }
 }
 
@@ -782,7 +781,7 @@ window.onload = async function() {
         window.location.href = 'index.html';
         return;
     }
-	updateMerchantHeaderBalance();
+	await updateMerchantHeaderBalance();
     // 🚩 เริ่มการดีบั๊ก
     await debugMerchantStatus();
 
