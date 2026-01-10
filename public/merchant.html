@@ -764,14 +764,15 @@ async function loadActiveMerchantTasks() {
 function updateMerchantHeaderBalance(data) {
     const balanceEl = document.getElementById('merchant-balance-display');
     if (balanceEl && data) {
-        // ใช้ค่า convertedCoins (ซึ่งเราแก้ API ให้ดึงจากกระเป๋าโซนตรงๆ ไว้แล้ว)
-        const formattedBalance = parseFloat(data.convertedCoins || 0).toLocaleString(undefined, {
+        const amount = data.balance !== undefined ? data.balance : 0;
+        
+        const formattedBalance = parseFloat(amount).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
-        const symbol = data.currencySymbol || 'USDT';
-        
-        balanceEl.innerText = `${formattedBalance} ${symbol}`;
+        // ใช้ค่า currency ที่ส่งมาจาก API (เช่น THB, BRL)
+        const symbol = data.currency || 'USDT';        
+        balanceEl.innerHTML = `${formattedBalance} <small>${symbol}</small>`;
     }
 }
 
