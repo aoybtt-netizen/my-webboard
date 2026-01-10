@@ -2197,10 +2197,6 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 }
     
     if (author !== 'Admin') {
-        // ดึงค่าใหม่ที่คำนวณไว้ด้านบนมาใช้
-        const zoneCurrency = responsibleData.zoneData?.zoneCurrency || 'USD';
-        const zoneRate = responsibleData.zoneData?.zoneExchangeRate || 1.0;
-        const totalCostLocal = totalCost * zoneRate;
 
         let msgText = isFreePostFinal 
             ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` 
