@@ -2075,11 +2075,21 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
     // ดึงค่า systemZone จากโซน ถ้าไม่มีให้ใช้ค่า Global เป็นตัวสำรอง
     let currentSystemZone = parseFloat(responsibleData.zoneData?.systemZone ?? globalConfig?.systemFee ?? 0);
+    if (responsibleData.zoneData && responsibleData.zoneData.systemZone !== undefined) {
+        currentSystemZone = parseFloat(responsibleData.zoneData.systemZone);
+    } else {
+        currentSystemZone = globalConfig ? (globalConfig.systemFee || 0) : 0; 
+    }
 
-    let finalAdminFee = parseFloat(responsibleData.zoneData?.zoneFee ?? globalConfig?.adminFee ?? 0);
+    let finalAdminFee = 0;
+    if (responsibleData.zoneData && responsibleData.zoneData.zoneFee !== undefined) {
+        finalAdminFee = parseFloat(responsibleData.zoneData.zoneFee);
+    } else {
+        finalAdminFee = globalConfig ? (globalConfig.adminFee || 0) : 0;
+    }
 
     // 2. รวมยอดจ่าย (เป็นหน่วยเงินโซนตรงๆ)
-    const totalCostLocal = currentSystemZone + finalAdminFee; 
+    const totalCostLocal = currentSystemZone + finalAdminFee;
     const zoneCurrency = responsibleData.zoneData?.zoneCurrency || 'USD';
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
@@ -2087,35 +2097,57 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     if (author !== 'Admin' && !isFreePostFinal) {
         const userLocalBalance = user[zoneCurrency] || 0;
 
+        // เช็คเงินในกระเป๋าสกุลโซนนั้นๆ
         if (userLocalBalance < totalCostLocal) {
-            return res.status(400).json({ error: `⛔ ยอดเงิน ${zoneCurrency} ไม่เพียงพอ` });
+            return res.status(400).json({ 
+                error: `⛔ ยอดเงิน ${zoneCurrency} ไม่เพียงพอ (ต้องการ ${totalCostLocal.toFixed(2)})` 
+            });
         }
 
-        // 1. หักเงินสมาชิก (สกุลเงินโซน)
-        await usersCollection.updateOne({ username: author }, { $inc: { [zoneCurrency]: -totalCostLocal } });
+        // 3. หักเงินสมาชิกจากกระเป๋าโซน
+        await usersCollection.updateOne(
+            { username: author },
+            { $inc: { [zoneCurrency]: -totalCostLocal } }
+        );
 
-        // 2. โอนให้ Admin (คุณ) - เข้ากระเป๋าสกุลเงินโซนนั้นๆ
+        // 4. โอนเงินให้ Admin (คุณ) เข้ากระเป๋าสกุลเงินนั้นๆ
         if (currentSystemZone > 0) {
-            await usersCollection.updateOne({ username: 'Admin' }, { $inc: { [zoneCurrency]: currentSystemZone } });
+            await usersCollection.updateOne(
+                { username: 'Admin' },
+                { $inc: { [zoneCurrency]: currentSystemZone } }
+            );
             await transactionsCollection.insertOne({
                 id: Date.now(), type: 'POST_REVENUE', amount: currentSystemZone, 
                 currency: zoneCurrency, fromUser: author, toUser: 'Admin',
-                note: `ค่าระบบ (${responsibleData.zoneName}): ${topicName}`, timestamp: Date.now()
+                note: `ค่าระบบ (${responsibleData.zoneName}): ${topicName}`, 
+                timestamp: Date.now()
             });
         }
 
-        // 3. โอนให้แอดมินโซน - เข้ากระเป๋าสกุลเงินโซนนั้นๆ
+        // 5. โอนเงินให้แอดมินโซน เข้ากระเป๋าสกุลเงินนั้นๆ
         if (finalAdminFee > 0) {
-            await usersCollection.updateOne({ username: feeReceiver }, { $inc: { [zoneCurrency]: finalAdminFee } });
+            await usersCollection.updateOne(
+                { username: feeReceiver },
+                { $inc: { [zoneCurrency]: finalAdminFee } }
+            );
             await transactionsCollection.insertOne({
                 id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, 
                 currency: zoneCurrency, fromUser: author, toUser: feeReceiver,
-                note: `ค่าดูแลโซน: ${responsibleData.zoneName}`, timestamp: Date.now() + 1
+                note: `ค่าดูแลโซน: ${responsibleData.zoneName}`, 
+                timestamp: Date.now() + 1
             });
         }
 
-        // แจ้งเตือนยอดเงินใหม่ (Socket)
-        io.emit('balance-update', { user: author, [zoneCurrency]: userLocalBalance - totalCostLocal });
+        // อัปเดต Real-time (ส่งยอดกระเป๋าที่เปลี่ยนแปลงไปหาทุกคน)
+        const updatedUser = await getUserData(author);
+        const adminUser = await getUserData('Admin');
+        const receiverUser = await getUserData(feeReceiver);
+
+        io.emit('balance-update', { user: author, [zoneCurrency]: updatedUser[zoneCurrency] });
+        io.emit('balance-update', { user: 'Admin', [zoneCurrency]: adminUser[zoneCurrency] });
+        if (feeReceiver !== 'Admin') {
+            io.emit('balance-update', { user: feeReceiver, [zoneCurrency]: receiverUser[zoneCurrency] });
+        }
         io.to('Admin').emit('admin-new-transaction');
     }
 
@@ -2170,7 +2202,9 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         const zoneRate = responsibleData.zoneData?.zoneExchangeRate || 1.0;
         const totalCostLocal = totalCost * zoneRate;
 
-        let msgText = isFreePostFinal ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCostLocal.toFixed(2)} ${zoneCurrency}`;
+        let msgText = isFreePostFinal 
+            ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` 
+            : `💸 หักค่าธรรมเนียม ${totalCostLocal.toFixed(2)} ${zoneCurrency}`;
 
         const notifMsg = { 
             sender: 'System', target: author, msgKey: 'SYS_FEE', 
