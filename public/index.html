@@ -4382,12 +4382,7 @@ function getLocation(isPrimaryCheckin = false) {
 }
 
 
-    // Event Listener สำหรับเลือก Emoji ตอนสร้างกระทู้
-    document.querySelector('#picker-create').addEventListener('emoji-click', event => {
-        const textarea = document.getElementById('content');
-        insertAtCursor(textarea, event.detail.unicode);
-        // ไม่ต้องปิด picker เผื่ออยากกดหลายตัว
-    });
+    
 
     // ฟังก์ชันช่วยแทรกข้อความตรงตำแหน่ง Cursor
     function insertAtCursor(myField, myValue) {
