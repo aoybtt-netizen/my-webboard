@@ -455,16 +455,16 @@
     <div class="modal-box" style="text-align:center;">
         <h2 data-i18n-key="login_title">ยินดีต้อนรับ</h2>
         
-        <input type="text" id="username-input" placeholder="ชื่อใอดี..." autofocus style="margin-bottom: 10px;">
-        <input type="password" id="password-input" placeholder="รหัสผ่าน..." style="margin-bottom: 10px;">
+        <input type="text" id="username-input" data-i18n-placeholder="placeholder_username" placeholder="ชื่อไอดี..." autofocus style="margin-bottom: 10px;">
+		<input type="password" id="password-input" data-i18n-placeholder="placeholder_password" placeholder="รหัสผ่าน..." style="margin-bottom: 10px;">
         
         <div style="display: flex; gap: 10px;">
-            <button class="sidebar-btn" onclick="login()" style="flex: 1; background: #11998e; color: white;">เข้าสู่ระบบ</button>
-            <button class="sidebar-btn" onclick="register()" style="flex: 1; background: #f39c12; color: white;">สมัครสมาชิก</button>
+            <button data-i18n-key="btn_login" class="sidebar-btn" onclick="login()" style="flex: 1; background: #11998e; color: white;">เข้าสู่ระบบ</button>
+			<button data-i18n-key="btn_register" class="sidebar-btn" onclick="register()" style="flex: 1; background: #f39c12; color: white;">สมัครสมาชิก</button>
         </div>
 
         <div style="margin: 25px 0; border-top: 1px solid #eee; position: relative;">
-            <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #999; font-size: 0.85em;">หรือใช้บัญชี Google</span>
+            <span data-i18n-key="or_google" style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #999; font-size: 0.85em;">หรือใช้บัญชี Google</span>
         </div>
 
         <div id="g_id_onload"
@@ -477,19 +477,19 @@
 
 <div id="set-password-modal" class="modal-overlay hidden">
     <div class="modal-box">
-        <h3>🔒 กำหนดรหัสผ่านของคุณ</h3>
-        <p>เนื่องจากเป็นครั้งแรกที่คุณใช้รหัสผ่าน กรุณากำหนดรหัสเพื่อความปลอดภัย</p>
-        <input type="password" id="new-password-input" placeholder="กำหนดรหัสผ่านใหม่...">
-        <button class="sidebar-btn create-btn" onclick="submitNewPassword()">ยืนยันรหัสผ่าน</button>
+        <h3 data-i18n-key="modal_set_pw_title">🔒 กำหนดรหัสผ่านของคุณ</h3>
+        <p data-i18n-key="modal_set_pw_desc">เนื่องจากเป็นครั้งแรกที่คุณใช้รหัสผ่าน กรุณากำหนดรหัสเพื่อความปลอดภัย</p>
+        <input type="password" id="new-password-input" data-i18n-placeholder="placeholder_new_pw" placeholder="กำหนดรหัสผ่านใหม่...">
+        <button class="sidebar-btn create-btn" data-i18n-key="btn_confirm_pw" onclick="submitNewPassword()">ยืนยันรหัสผ่าน</button>
     </div>
 </div>
 
 <div id="google-setup-modal" class="modal-overlay hidden">
     <div class="modal-box">
-        <h3>👤 ตั้งชื่อสมาชิกของคุณ</h3>
-        <p>ยินดีต้อนรับจาก Google! กรุณาตั้งชื่อเล่นที่ต้องการ (ห้ามซ้ำ)</p>
-        <input type="text" id="google-username-input" placeholder="ชื่อเล่นที่ต้องการ...">
-        <button class="sidebar-btn create-btn" onclick="submitGoogleSetup()">เริ่มใช้งาน</button>
+        <h3 data-i18n-key="modal_google_title">👤 ตั้งชื่อสมาชิกของคุณ</h3>
+        <p data-i18n-key="modal_google_desc">ยินดีต้อนรับจาก Google! กรุณาตั้งชื่อเล่นที่ต้องการ (ห้ามซ้ำ)</p>
+        <input type="text" id="google-username-input" data-i18n-placeholder="placeholder_google_name" placeholder="ชื่อเล่นที่ต้องการ...">
+        <button class="sidebar-btn create-btn" data-i18n-key="btn_start_usage" onclick="submitGoogleSetup()">เริ่มใช้งาน</button>
     </div>
 </div>
 
@@ -518,13 +518,16 @@
         </div>
 		
 		<div style="position: relative; margin-bottom: 15px;">
-            <textarea id="content" rows="5" placeholder="รายละเอียด..." required data-i18n-key="placeholder_content" style="margin-bottom: 5px;"></textarea>
+            <textarea 
+				id="content" 
+				rows="5" 
+				data-i18n-placeholder="placeholder_content" 
+				placeholder="พิมพ์รายละเอียด..." 
+				required 
+				style="margin-bottom: 5px;">
+				</textarea>
             
-            <button type="button" class="sidebar-btn" onclick="toggleEmojiPicker('create')" style="width: auto; padding: 5px 10px; font-size: 1.2em;">😊</button>
             
-            <div id="emoji-picker-container-create" style="display: none; position: absolute; z-index: 100; bottom: 50px; left: 0;">
-                <emoji-picker id="picker-create"></emoji-picker>
-            </div>
         </div>
         
         <div style="display:flex; justify-content:flex-end; gap:10px;">
@@ -532,8 +535,8 @@
             <button class="sidebar-btn create-btn" onclick="createPost()" style="width:auto;" data-i18n-key="post_btn">โพสต์</button>
         </div>
         <div style="font-size:0.8em; color:gray; margin-top:10px;" data-i18n-key="create_note">
-            * การสร้างกระทู้จะหักค่าธรรมเนียมตามที่ Admin กำหนด
-        </div>
+				* การสร้างกระทู้จะหักค่าธรรมเนียมตามที่ Admin กำหนด
+			</div>
     </div>
 </div>
 
@@ -564,7 +567,7 @@
         <div id="detail-badges" style="margin-bottom: 15px;"></div>
         
         <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
-            💵 <span id="detail-coins" style="color:#28a745;">0.00</span> USD
+            💵 <span id="detail-coins" style="color:#28a745;">0.00</span> 
         </div>
         <div style="color:gray; font-size: 0.9em; margin-bottom: 10px;">
             ⭐ Rating: <span id="detail-rating">0.00</span> / 5.0
@@ -753,7 +756,9 @@ function onGoogleLoginSuccess(response) {
 		let currentZoneToAssign = null;
 		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
 	async function openAdminAssignModal(zoneId, zoneName, lat, lng) {
-    if (myAdminLevel < 2) return alert('❌ คุณไม่มีสิทธิ์ใช้งานส่วนนี้');
+    if (myAdminLevel < 2) {
+			return alert(translations[currentLang].alert_no_permission);
+		}
 	if (myAdminLevel === 2) {
 		document.getElementById('assign-zone-name-display').innerText = `Zone: ${zoneName} (${lat.toFixed(6)}, ${lng.toFixed(6)})`;
 		const res = await fetch(`/api/admin/admins-list?requestBy=${myUsername}`);
@@ -826,12 +831,14 @@ async function assignAdminToZone(zoneId, adminUsername, zoneName) {
             document.getElementById('admin-assign-modal').classList.add('hidden');
             openAdminZoneModal(); // Refresh the main zone list
         } else {
-            alert(`❌ Error: ${data.error || 'มอบหมายไม่สำเร็จ'}`);
-        }
-    } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-        console.error('Error assigning admin:', e);
-    }
+        // ถ้า data.error มีค่า ให้โชว์ค่านั้น ถ้าไม่มีให้โชว์คำแปล 'มอบหมายไม่สำเร็จ'
+        const errorMsg = data.error || translations[currentLang].alert_assign_fail;
+        alert(`❌ Error: ${errorMsg}`);
+		}
+		} catch (e) {
+    // ใช้คำแปล 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์'
+			alert(translations[currentLang].alert_server_error);
+			console.error('Error assigning admin:', e);
 }
 
 window.openAdminAssignModal = openAdminAssignModal;
@@ -916,7 +923,7 @@ async function saveZoneRefFromAdmin(targetAdmin) {
     // [COOLDOWN CHECK]
     if (now - lastFilterTime < FILTER_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((FILTER_COOLDOWN_MS - (now - lastFilterTime)) / 1000);
-        alert(`❌ กรุณารอ ${remainingSeconds} วินาที ก่อนกดซ้ำ`);
+        alert(translations[currentLang].alert_cooldown(remainingSeconds));
         return;
     }
 
@@ -941,7 +948,7 @@ async function saveZoneRefFromAdmin(targetAdmin) {
     // --- ✨ [ส่วนที่ 1: โชว์ตัวเลขทันทีที่กรอกเสร็จ] ✨ ---
     const statusElem = document.getElementById('filter-status');
     const containerElem = document.getElementById('filter-showds');
-    const kmText = currentLang === 'th' ? 'กม.' : 'km';
+    const kmText = currentLang === 'th' ? 'km.' : 'km';
 
     if (statusElem && containerElem) {
         // แสดงกล่องขึ้นมา
@@ -1195,6 +1202,24 @@ async function updateZoneBackground(lat, lng) {
 		'click_user_detail': 'คลิกเพื่อดูรายละเอียดสมาชิก',
         'btn_merchant_mode': '🏪 สำหรับร้านค้า',
         'btn_admin_panel': 'หน้าแอดมิน',
+		'placeholder_username': 'ชื่อไอดี...',
+        'placeholder_password': 'รหัสผ่าน...',
+        'btn_login': 'เข้าสู่ระบบ',
+        'btn_register': 'สมัครสมาชิก',
+        'or_google': 'หรือใช้บัญชี Google',
+		'modal_set_pw_title': '🔒 กำหนดรหัสผ่านของคุณ',
+        'modal_set_pw_desc': 'เนื่องจากเป็นครั้งแรกที่คุณใช้รหัสผ่าน กรุณากำหนดรหัสเพื่อความปลอดภัย',
+        'placeholder_new_pw': 'กำหนดรหัสผ่านใหม่...',
+        'btn_confirm_pw': 'ยืนยันรหัสผ่าน',
+        
+        'modal_google_title': '👤 ตั้งชื่อสมาชิกของคุณ',
+        'modal_google_desc': 'ยินดีต้อนรับจาก Google! กรุณาตั้งชื่อเล่นที่ต้องการ (ห้ามซ้ำ)',
+        'placeholder_google_name': 'ชื่อเล่นที่ต้องการ...',
+        'btn_start_usage': 'เริ่มใช้งาน',
+		'alert_no_permission': '❌ คุณไม่มีสิทธิ์ใช้งานส่วนนี้',
+		'alert_assign_fail': 'มอบหมายไม่สำเร็จ',
+        'alert_server_error': '❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์',
+		'alert_cooldown': (s) => `❌ กรุณารอ ${s} วินาที ก่อนกดซ้ำ`,
     },
     'en': {
         'app_title': 'Webboard',
@@ -1365,6 +1390,24 @@ async function updateZoneBackground(lat, lng) {
 		'click_user_detail': 'Click to view member details',
         'btn_merchant_mode': '🏪 For Merchant',
         'btn_admin_panel': 'Admin Panel',
+		'placeholder_username': 'Username...',
+        'placeholder_password': 'Password...',
+        'btn_login': 'Login',
+        'btn_register': 'Register',
+        'or_google': 'or use Google Account',
+		'modal_set_pw_title': '🔒 Set Your Password',
+        'modal_set_pw_desc': 'Since this is your first time using a password, please set one for security.',
+        'placeholder_new_pw': 'Enter new password...',
+        'btn_confirm_pw': 'Confirm Password',
+        
+        'modal_google_title': '👤 Set Your Username',
+        'modal_google_desc': 'Welcome from Google! Please choose a nickname (must be unique).',
+        'placeholder_google_name': 'Desired nickname...',
+        'btn_start_usage': 'Start Now',
+		'alert_no_permission': '❌ You do not have permission to access this section',
+		'alert_assign_fail': 'Assignment failed',
+        'alert_server_error': '❌ Server connection error',
+		'alert_cooldown': (s) => `❌ Please wait ${s} seconds before clicking again`,
     },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
@@ -1530,6 +1573,24 @@ async function updateZoneBackground(lat, lng) {
 		'click_user_detail': 'Clique para ver detalhes do membro',
         'btn_merchant_mode': '🏪 Para Comerciante',
         'btn_admin_panel': 'Painel do Administrador',
+		'placeholder_username': 'Usuário...',
+        'placeholder_password': 'Senha...',
+        'btn_login': 'Entrar',
+        'btn_register': 'Registrar',
+        'or_google': 'ou use a conta do Google',
+		'modal_set_pw_title': '🔒 Defina sua Senha',
+        'modal_set_pw_desc': 'Como é a sua primeira vez usando uma senha, defina uma para sua segurança.',
+        'placeholder_new_pw': 'Definir nova senha...',
+        'btn_confirm_pw': 'Confirmar Senha',
+        
+        'modal_google_title': '👤 Defina seu Nome de Usuário',
+        'modal_google_desc': 'Bem-vindo pelo Google! Por favor, escolha um apelido (deve ser único).',
+        'placeholder_google_name': 'Apelido desejado...',
+        'btn_start_usage': 'Começar',
+		'alert_no_permission': '❌ Você não tem permissão para acessar esta seção',
+		'alert_assign_fail': 'Falha na atribuição',
+        'alert_server_error': '❌ Erro de conexão com o servidor',
+		'alert_cooldown': (s) => `❌ Por favor, aguarde ${s} segundos antes de clicar novamente`,
     }
 };
 
@@ -4322,11 +4383,6 @@ function getLocation(isPrimaryCheckin = false) {
     });
 }
 
-		function toggleEmojiPicker(type) {
-        const pickerId = type === 'create' ? 'emoji-picker-container-create' : 'emoji-picker-container-chat';
-        const container = document.getElementById(pickerId);
-        container.style.display = container.style.display === 'none' ? 'block' : 'none';
-    }
 
     // Event Listener สำหรับเลือก Emoji ตอนสร้างกระทู้
     document.querySelector('#picker-create').addEventListener('emoji-click', event => {
