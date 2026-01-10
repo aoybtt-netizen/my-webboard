@@ -1214,6 +1214,14 @@ async function updateZoneBackground(lat, lng) {
 		'alert_cooldown': (s) => `❌ กรุณารอ ${s} วินาที ก่อนกดซ้ำ`,
 		'prompt_set_primary_location': 'คุณเข้าสู่ระบบครั้งแรก กรุณาระบุตำแหน่งปัจจุบันเพื่อดูข้อมูลพื้นที่',
         'alert_location_denied': 'คุณเลือกที่จะไม่แชร์ตำแหน่ง ระบบจะแสดงข้อมูลกลาง',
+		'alert_password_short': (min) => `รหัสผ่านต้องมีอย่างน้อย ${min} ตัวอักษร`,
+		'alert_password_set_success': 'ตั้งรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบอีกครั้ง',
+		'alert_enter_username': 'กรุณาตั้งชื่อสมาชิก',
+		'alert_fill_all': 'กรุณากรอกทั้งชื่อและรหัสผ่านเพื่อสมัครสมาชิก',
+        'alert_username_short': (min) => `ชื่อเล่นต้องมีอย่างน้อย ${min} ตัวอักษร`,
+        'alert_register_success': 'สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...',
+		'alert_login_empty': 'กรุณากรอกทั้งชื่อและรหัสผ่าน',
+        'alert_save_success': 'บันทึกข้อมูลเรียบร้อย!',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1404,6 +1412,14 @@ async function updateZoneBackground(lat, lng) {
 		'alert_cooldown': (s) => `❌ Please wait ${s} seconds before clicking again`,
 		'prompt_set_primary_location': 'First time login? Please set your current location to view local information.',
         'alert_location_denied': 'Location sharing declined. Showing global information.',
+		'alert_password_short': (min) => `Password must be at least ${min} characters long`,
+		'alert_password_set_success': 'Password set successfully! Please log in again.',
+		'alert_enter_username': 'Please enter a username',
+		'alert_fill_all': 'Please enter both username and password to register',
+        'alert_username_short': (min) => `Username must be at least ${min} characters long`,
+        'alert_register_success': 'Registration successful! Logging in...',
+		'alert_login_empty': 'Please enter both username and password',
+        'alert_save_success': 'Information saved successfully!',
     },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
@@ -1589,6 +1605,14 @@ async function updateZoneBackground(lat, lng) {
 		'alert_cooldown': (s) => `❌ Por favor, aguarde ${s} segundos antes de clicar novamente`,
 		'prompt_set_primary_location': 'Primeiro acesso? Por favor, defina sua localização atual para ver informações locais.',
         'alert_location_denied': 'Compartilhamento de localização recusado. Mostrando informações globais.',
+		'alert_password_short': (min) => `A senha deve ter pelo menos ${min} caracteres`,
+		'alert_password_set_success': 'Senha definida com sucesso! Por favor, faça login novamente.',
+		'alert_enter_username': 'Por favor, insira um nome de usuário',
+		'alert_fill_all': 'Por favor, insira o usuário e a senha para se registrar',
+        'alert_username_short': (min) => `O apelido deve ter pelo menos ${min} caracteres`,
+        'alert_register_success': 'Registro bem-sucedido! Entrando no sistema...',
+		'alert_login_empty': 'Por favor, insira o usuário e a senha',
+        'alert_save_success': 'Informações salvas com sucesso!',
     }
 };
 
@@ -1798,7 +1822,9 @@ async function submitNewPassword() {
     const password = document.getElementById('new-password-input').value;
     const username = document.getElementById('username-input').value.trim();
 
-    if (password.length < 4) return alert("รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร");
+    if (password.length < 4) {
+		return alert(translations[currentLang].alert_password_short(4));
+	}
 
     const res = await fetch('/api/auth/set-password', {
         method: 'POST',
@@ -1808,7 +1834,7 @@ async function submitNewPassword() {
     const data = await res.json();
 
     if (data.success) {
-        alert("ตั้งรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบอีกครั้ง");
+        alert(translations[currentLang].alert_password_set_success);       
         document.getElementById('set-password-modal').classList.add('hidden');
         location.reload();
     } else {
@@ -1819,7 +1845,9 @@ async function submitNewPassword() {
 // --- 2. สำหรับยูสเซอร์ Google ใหม่: ตั้งชื่อสมาชิกครั้งแรก ---
 async function submitGoogleSetup() {
     const username = document.getElementById('google-username-input').value.trim();
-    if (!username) return alert("กรุณาตั้งชื่อสมาชิก");
+    if (!username) {
+        return alert(translations[currentLang].alert_enter_username);
+    }
 
     const res = await fetch('/api/auth/google-register', {
         method: 'POST',
@@ -1845,8 +1873,12 @@ async function register() {
     const username = document.getElementById('username-input').value.trim();
     const password = document.getElementById('password-input').value;
 
-    if (!username || !password) return alert("กรุณากรอกทั้งชื่อและรหัสผ่านเพื่อสมัครสมาชิก");
-    if (username.length < 3) return alert("ชื่อเล่นต้องมีอย่างน้อย 3 ตัวอักษร");
+    if (!username || !password) {
+		return alert(translations[currentLang].alert_fill_all);
+	}
+    if (username.length < 3) {
+		return alert(translations[currentLang].alert_username_short(3));
+	}
 
     const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -1857,7 +1889,7 @@ async function register() {
     const data = await res.json();
 
     if (data.success) {
-        alert("สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...");
+        alert(translations[currentLang].alert_register_success);
         localStorage.setItem('myUsername', data.user.username);
         startApp(data.user.username);
     } else {
@@ -1871,7 +1903,9 @@ async function login() {
     const username = document.getElementById('username-input').value.trim();
     const password = document.getElementById('password-input').value;
 
-    if (!username || !password) return alert("กรุณากรอกทั้งชื่อและรหัสผ่าน");
+    if (!username || !password) {
+		return alert(translations[currentLang].alert_login_empty);
+	}
 
     const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -1900,7 +1934,7 @@ async function saveNewAccount(name, pwd) {
     });
     const data = await res.json();
     if (data.success) {
-        alert("บันทึกข้อมูลเรียบร้อย!");
+        alert(translations[currentLang].alert_save_success);
         login(); // ลอง Login อีกรอบด้วยข้อมูลใหม่
     } else {
         alert(data.error);
