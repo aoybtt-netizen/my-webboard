@@ -2032,191 +2032,108 @@ app.post('/api/posts/:id/handover', async (req, res) => {
 
 // 15. Create Post (เวอร์ชันรองรับ Merchant โดยเฉพาะ)
 app.post('/api/posts', upload.single('image'), async (req, res) => {
-    // 🚩 รับค่าที่ส่งมาจากหน้า Merchant
-    const { author, category, content, location, title, budget, stops } = req.body;
-    const isMerchantTask = req.body.isMerchantTask === 'true' || req.body.isMerchantTask === true;
+    try {
+        const { author, category, content, location, title, budget, stops } = req.body;
+        const isMerchantTask = req.body.isMerchantTask === 'true' || req.body.isMerchantTask === true;
 
-    // 1. ตรวจสอบเงื่อนไขพื้นฐาน (รักษาของเดิมไว้ทั้งหมด)
-    if (author !== 'Admin') {
-        if (!location || location === 'null' || location === 'undefined') {
-            return res.status(400).json({ error: '⛔ กรุณาระบุตำแหน่ง (เช็คอิน) ก่อนสร้างกระทู้' });
+        // 1. ตรวจสอบเงื่อนไขพื้นฐาน
+        if (author !== 'Admin') {
+            if (!location || location === 'null' || location === 'undefined') {
+                return res.status(400).json({ error: '⛔ กรุณาระบุตำแหน่ง (เช็คอิน) ก่อนสร้างกระทู้' });
+            }
         }
-    }
-    if (await isUserBanned(author)) return res.status(403).json({ error: '⛔ คุณถูกระงับสิทธิ์การสร้างกระทู้' });
-    if (author !== 'Admin') {
-    const activePost = await postsCollection.findOne({ author: author, isClosed: false });
+        if (await isUserBanned(author)) return res.status(403).json({ error: '⛔ คุณถูกระงับสิทธิ์การสร้างกระทู้' });
 
-    if (activePost) {
-        if (isMerchantTask !== true) {
-            return res.status(400).json({ 
-                error: `⛔ คุณมีกระทู้เปิดอยู่แล้ว 1 กระทู้ กรุณาปิดกระทู้เก่าก่อนสร้างใหม่` 
-				});
-			}
-		}
-	}
-    
-    const imageUrl = req.file ? req.file.path : null;
-    const user = await getUserData(author);
-    const topicObj = await topicsCollection.findOne({ id: category });
-    const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป"; 
-    
-	let finalTitle = (author === 'Admin' && title) ? title.trim() : (title && title !== "undefined" ? title : topicName);
+        const imageUrl = req.file ? req.file.path : null;
+        const user = await usersCollection.findOne({ username: author });
+        if (!user) return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' });
 
-    // --- ส่วนคำนวณค่าธรรมเนียม (รักษาของเดิมไว้ทั้งหมด) ---
-    const globalConfig = await configCollection.findOne({ id: 'main_config' });
-    const globalSystemFee = globalConfig ? (globalConfig.systemFee || 5) : 5;
-    const globalDefaultAdminFee = globalConfig ? (globalConfig.adminFee || 5) : 5;
-    const isGlobalFree = globalConfig ? (globalConfig.isFree === true) : false;
+        const topicObj = await topicsCollection.findOne({ id: category });
+        const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป";
+        let finalTitle = (author === 'Admin' && title) ? title.trim() : (title && title !== "undefined" ? title : topicName);
 
-    const responsibleData = await findResponsibleAdmin(location ? JSON.parse(location) : null);
-    const feeReceiver = responsibleData.username;
-    const isZoneFree = responsibleData.zoneData ? (responsibleData.zoneData.isFree === true) : false;
-    const isFreePostFinal = isGlobalFree || isZoneFree;
+        // 2. คำนวณค่าธรรมเนียมตามโซน
+        const responsibleData = await findResponsibleAdmin(location ? JSON.parse(location) : null);
+        const feeReceiver = responsibleData.username;
+        const globalConfig = await configCollection.findOne({ id: 'main_config' });
+        
+        const isGlobalFree = globalConfig?.isFree === true;
+        const isZoneFree = responsibleData.zoneData?.isFree === true;
+        const isFreePostFinal = isGlobalFree || isZoneFree;
 
-    // ดึงค่า systemZone จากโซน ถ้าไม่มีให้ใช้ค่า Global เป็นตัวสำรอง
-    let currentSystemZone = 0;
-    if (responsibleData.zoneData && responsibleData.zoneData.systemZone !== undefined) {
-        currentSystemZone = parseFloat(responsibleData.zoneData.systemZone);
-    } else {
-        currentSystemZone = globalConfig ? (globalConfig.systemFee || 0) : 0; 
-    }
+        // ดึงค่า systemZone และ zoneFee (ใช้ค่าจากโซนตรงๆ ไม่คูณเรท)
+        let currentSystemZone = parseFloat(responsibleData.zoneData?.systemZone || globalConfig?.systemFee || 0);
+        let finalAdminFee = parseFloat(responsibleData.zoneData?.zoneFee || globalConfig?.adminFee || 0);
 
-    let finalAdminFee = 0;
-    if (responsibleData.zoneData && responsibleData.zoneData.zoneFee !== undefined) {
-        finalAdminFee = parseFloat(responsibleData.zoneData.zoneFee);
-    } else {
-        finalAdminFee = globalConfig ? (globalConfig.adminFee || 0) : 0;
-    }
-
-    // 2. รวมยอดจ่าย (เป็นหน่วยเงินโซนตรงๆ)
-    const totalCostLocal = currentSystemZone + finalAdminFee;
-    const zoneCurrency = responsibleData.zoneData?.zoneCurrency || 'USD';
-    const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
-
-    // --- ส่วนการจัดการเงิน ---
-    if (author !== 'Admin' && !isFreePostFinal) {
-        const userLocalBalance = user[zoneCurrency] || 0;
-
-        // เช็คเงินในกระเป๋าสกุลโซนนั้นๆ
-        if (userLocalBalance < totalCostLocal) {
-            return res.status(400).json({ 
-                error: `⛔ ยอดเงิน ${zoneCurrency} ไม่เพียงพอ (ต้องการ ${totalCostLocal.toFixed(2)})` 
-            });
-        }
-
-        // 3. หักเงินสมาชิกจากกระเป๋าโซน
-        await usersCollection.updateOne(
-            { username: author },
-            { $inc: { [zoneCurrency]: -totalCostLocal } }
-        );
-
-        // 4. โอนเงินให้ Admin (คุณ) เข้ากระเป๋าสกุลเงินนั้นๆ
-        if (currentSystemZone > 0) {
-            await usersCollection.updateOne(
-                { username: 'Admin' },
-                { $inc: { [zoneCurrency]: currentSystemZone } }
-            );
-            await transactionsCollection.insertOne({
-                id: Date.now(), type: 'POST_REVENUE', amount: currentSystemZone, 
-                currency: zoneCurrency, fromUser: author, toUser: 'Admin',
-                note: `ค่าระบบ (${responsibleData.zoneName}): ${topicName}`, 
-                timestamp: Date.now()
-            });
-        }
-
-        // 5. โอนเงินให้แอดมินโซน เข้ากระเป๋าสกุลเงินนั้นๆ
-        if (finalAdminFee > 0) {
-            await usersCollection.updateOne(
-                { username: feeReceiver },
-                { $inc: { [zoneCurrency]: finalAdminFee } }
-            );
-            await transactionsCollection.insertOne({
-                id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, 
-                currency: zoneCurrency, fromUser: author, toUser: feeReceiver,
-                note: `ค่าดูแลโซน: ${responsibleData.zoneName}`, 
-                timestamp: Date.now() + 1
-            });
-        }
-
-        // อัปเดต Real-time (ส่งยอดกระเป๋าที่เปลี่ยนแปลงไปหาทุกคน)
-        const updatedUser = await getUserData(author);
-        const adminUser = await getUserData('Admin');
-        const receiverUser = await getUserData(feeReceiver);
-
-        io.emit('balance-update', { user: author, [zoneCurrency]: updatedUser[zoneCurrency] });
-        io.emit('balance-update', { user: 'Admin', [zoneCurrency]: adminUser[zoneCurrency] });
-        if (feeReceiver !== 'Admin') {
-            io.emit('balance-update', { user: feeReceiver, [zoneCurrency]: receiverUser[zoneCurrency] });
-        }
-        io.to('Admin').emit('admin-new-transaction');
-    }
-
-    // ==================================================================
-    // 🚩 เตรียมข้อมูล Merchant (แก้ไขการดึงชื่อร้านและพิกัด)
-    // ==================================================================
-    let parsedStops = stops ? (typeof stops === 'string' ? JSON.parse(stops) : stops) : null;
-    let storeName = author; // กันพลาดให้เป็นชื่อคนโพสต์ไว้ก่อน
-    let storeCoords = location ? JSON.parse(location) : null;
-
-    if (isMerchantTask && parsedStops && parsedStops.length > 0) {
-        // ใช้ชื่อจากจุดรับงาน (Pickup) เป็นชื่อร้าน
-        storeName = parsedStops[0].label || author; 
-        // ใช้พิกัดร้านที่ปักไว้เป็นพิกัดหลักของโพสต์
-        storeCoords = { lat: parsedStops[0].lat, lng: parsedStops[0].lng };
-    }
-
-    const newPost = { 
-        id: Date.now(), 
-        title: finalTitle, 
-        topicId: category, 
-        content, 
-        author, 
-        location: storeCoords, 
-        imageUrl: imageUrl, 
-        comments: [], 
-        isClosed: false, 
-        isPinned: (author === 'Admin'),
-        zoneId: postZoneId,
-        isFreePost: isFreePostFinal,
-
-        // 🚩 ข้อมูลสำหรับการแสดงผล
-        isMerchantTask: isMerchantTask,
-        storeName: storeName, // ชื่อร้านค้า (ไม่โชว์ชื่อคนโพสต์)
-        budget: budget,
-        stops: parsedStops
-    };
-
-    await postsCollection.insertOne(newPost);
-    await usersCollection.updateOne({ username: author }, { $inc: { totalPosts: 1 } });
-	if (isMerchantTask) {
-    await usersCollection.updateOne(
-        { username: author },
-        { $inc: { mercNum: 1 } } // บวก 1 เมื่อร้านค้าสร้างงาน
-    );
-    console.log(`📈 Merchant Task Created: ${author} (mercNum +1)`);
-}
-    
-    if (author !== 'Admin') {
-        // ดึงค่าใหม่ที่คำนวณไว้ด้านบนมาใช้
+        const totalCostLocal = currentSystemZone + finalAdminFee;
         const zoneCurrency = responsibleData.zoneData?.zoneCurrency || 'USD';
-        const zoneRate = responsibleData.zoneData?.zoneExchangeRate || 1.0;
-        const totalCostLocal = totalCost * zoneRate;
+        const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
-        let msgText = isFreePostFinal 
-            ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` 
-            : `💸 หักค่าธรรมเนียม ${totalCostLocal.toFixed(2)} ${zoneCurrency}`;
+        // 3. จัดการเรื่องเงิน
+        if (author !== 'Admin' && !isFreePostFinal) {
+            const userLocalBalance = user[zoneCurrency] || 0;
 
-        const notifMsg = { 
-            sender: 'System', target: author, msgKey: 'SYS_FEE', 
-            msgData: { topicName: topicName, cost: isFreePostFinal ? 0 : totalCostLocal }, 
-            msg: msgText, timestamp: Date.now() + 2 
+            if (userLocalBalance < totalCostLocal) {
+                return res.status(400).json({ error: `⛔ ยอดเงิน ${zoneCurrency} ไม่เพียงพอ` });
+            }
+
+            // --- หักเงินสมาชิก ---
+            await usersCollection.updateOne({ username: author }, { $inc: { [zoneCurrency]: -totalCostLocal } });
+
+            // --- โอนให้ Admin (คุณ) ---
+            if (currentSystemZone > 0) {
+                await usersCollection.updateOne({ username: 'Admin' }, { $inc: { [zoneCurrency]: currentSystemZone } });
+                await transactionsCollection.insertOne({
+                    id: Date.now(), type: 'POST_REVENUE', amount: currentSystemZone, 
+                    currency: zoneCurrency, fromUser: author, toUser: 'Admin',
+                    note: `ค่าระบบ (${responsibleData.zoneName}): ${topicName}`, timestamp: Date.now()
+                });
+            }
+
+            // --- โอนให้แอดมินโซน ---
+            if (finalAdminFee > 0) {
+                await usersCollection.updateOne({ username: feeReceiver }, { $inc: { [zoneCurrency]: finalAdminFee } });
+                await transactionsCollection.insertOne({
+                    id: Date.now() + 1, type: 'ADMIN_FEE', amount: finalAdminFee, 
+                    currency: zoneCurrency, fromUser: author, toUser: feeReceiver,
+                    note: `ค่าดูแลโซน: ${responsibleData.zoneName}`, timestamp: Date.now() + 1
+                });
+            }
+
+            // ส่ง Socket Update ยอดเงิน (ใช้ค่าคำนวณสด ไม่ต้องดึง User ใหม่เพื่อกันพัง)
+            io.emit('balance-update', { user: author, [zoneCurrency]: userLocalBalance - totalCostLocal });
+            io.to('Admin').emit('admin-new-transaction');
+        }
+
+        // 4. บันทึกโพสต์
+        let parsedStops = stops ? (typeof stops === 'string' ? JSON.parse(stops) : stops) : null;
+        let storeCoords = location ? JSON.parse(location) : null;
+        const newPost = { 
+            id: Date.now(), title: finalTitle, topicId: category, content, author, 
+            location: storeCoords, imageUrl, isClosed: false, isPinned: (author === 'Admin'),
+            zoneId: postZoneId, isFreePost: isFreePostFinal, isMerchantTask, budget, stops: parsedStops
         };
-        await messagesCollection.insertOne(notifMsg);
-        io.to(author).emit('private-message', { ...notifMsg, to: author });
-    }
 
-    io.emit('new-post', newPost); 
-    res.json({ success: true, post: newPost });
+        await postsCollection.insertOne(newPost);
+        await usersCollection.updateOne({ username: author }, { $inc: { totalPosts: 1 } });
+
+        // 5. ส่งแจ้งเตือน (Notification)
+        if (author !== 'Admin') {
+            let msgText = isFreePostFinal ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` : `💸 หักค่าธรรมเนียม ${totalCostLocal.toFixed(2)} ${zoneCurrency}`;
+            const notifMsg = { 
+                sender: 'System', target: author, msg: msgText, timestamp: Date.now() + 2 
+            };
+            await messagesCollection.insertOne(notifMsg);
+            io.to(author).emit('private-message', notifMsg);
+        }
+
+        io.emit('new-post', newPost);
+        res.json({ success: true, post: newPost }); // <--- ต้องส่งก้อนนี้กลับไปเสมอ
+
+    } catch (err) {
+        console.error("Critical Post Error:", err);
+        if (!res.headersSent) res.status(500).json({ error: "เซิร์ฟเวอร์ขัดข้อง" });
+    }
 });
 
 // 16. Delete Post
