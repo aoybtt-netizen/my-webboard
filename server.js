@@ -1002,31 +1002,45 @@ app.get('/api/profile-details', async (req, res) => {
 app.get('/api/merchant/balance', async (req, res) => {
     try {
         const { username } = req.query;
-        if (!username) return res.status(400).json({ error: 'Require username' });
+        if (!username || username === 'undefined') {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        // 🚩 ตรวจสอบว่า DB พร้อมใช้งานหรือไม่
+        if (typeof usersCollection === 'undefined') {
+            return res.status(500).json({ success: false, error: 'Database not initialized' });
+        }
 
         const user = await usersCollection.findOne({ username });
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-        // 1. ตรวจสอบพิกัดล่าสุดของผู้ใช้ (เพื่อหาโซน)
         const location = user.lastLocation || null; 
-        const zoneInfo = await findResponsibleAdmin(location);
+        
+        // 🚩 ตรวจสอบว่าฟังก์ชันหาโซนมีอยู่จริงหรือไม่
+        let zoneCurrency = 'USDT';
+        let zoneName = 'Global';
 
-        // 2. ระบุสกุลเงินของโซน (ถ้าไม่มีพิกัดหรือหาโซนไม่เจอ ให้ใช้ USDT เป็นค่าเริ่มต้น)
-        const zoneCurrency = zoneInfo.zoneData?.zoneCurrency || 'USDT';
+        if (typeof findResponsibleAdmin === 'function') {
+            const zoneInfo = await findResponsibleAdmin(location);
+            if (zoneInfo && zoneInfo.zoneData) {
+                zoneCurrency = zoneInfo.zoneData.zoneCurrency || 'USDT';
+                zoneName = zoneInfo.zoneName || 'Zone';
+            }
+        }
 
-        // 3. ดึงยอดเงินดิบจากกระเป๋าสกุลเงินนั้น (เช่น user.THB หรือ user.BRL)
         const balance = user[zoneCurrency] || 0;
 
         res.json({
             success: true,
             balance: balance,
             currency: zoneCurrency,
-            zoneName: zoneInfo.zoneName
+            zoneName: zoneName
         });
 
     } catch (err) {
-        console.error("Merchant balance API error:", err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        // 🚩 ตัวนี้จะช่วยให้คุณเห็น Error จริงใน Terminal ของ Node.js
+        console.error("🔴 Merchant Balance API Crash:", err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

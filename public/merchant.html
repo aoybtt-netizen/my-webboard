@@ -762,16 +762,34 @@ async function loadActiveMerchantTasks() {
 
 
 async function fetchAndRefreshMerchantBalance() {
+    // 🚩 ดึง username ใหม่จาก localStorage ป้องกันค่าว่าง
+    const username = localStorage.getItem('myUsername');
+    const balanceEl = document.getElementById('merchant-balance-display');
+
+    if (!username) {
+        console.warn("⚠️ ไม่พบ username สำหรับดึงยอดเงิน");
+        return;
+    }
+
     try {
-        const res = await fetch(`/api/merchant/balance?username=${encodeURIComponent(myUsername)}`);
+        const res = await fetch(`/api/merchant/balance?username=${encodeURIComponent(username)}`);
+        
+        // 🚩 ตรวจสอบว่า Server ตอบกลับมาเป็น JSON หรือไม่ (ป้องกัน 502 พ่น HTML ออกมา)
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Server Error: ${res.status} - ${errorText}`);
+        }
+
         const data = await res.json();
         
         if (data.success) {
-            // ส่ง data ที่ได้จาก API เข้าไปในฟังก์ชันแสดงผลที่คุณเขียนไว้
             updateMerchantHeaderBalance(data);
+        } else {
+            console.error("❌ API ตอบกลับมาว่าไม่สำเร็จ:", data.error);
         }
     } catch (e) {
-        console.error("❌ โหลดราคามีปัญหา:", e);
+        console.error("❌ โหลดราคามีปัญหา:", e.message);
+        if (balanceEl) balanceEl.innerText = "Error loading";
     }
 }
 
