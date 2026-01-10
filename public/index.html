@@ -1984,7 +1984,6 @@ async function fetchAndRenderAnnouncement(locationData = null) {
 async function openAdminAnnouncementModal() {
     if (myAdminLevel < 1) return alert('❌ ต้องเป็น Admin Level 1 ขึ้นไปเท่านั้น');
     
-    // ส่ง requestBy ไปด้วย เพื่อขอประกาศของตัวเอง
     let currentText = '';
     try {
         const res = await fetch(`/api/admin/get-announcement?requestBy=${myUsername}`);
@@ -2016,17 +2015,17 @@ async function saveAdminAnnouncement() {
         const data = await res.json();
         
         if (data.success) {
-            alert('✅ ตั้งค่าประกาศเรียบร้อย');
+            alert('✅ success');
             document.getElementById('admin-announcement-modal').classList.add('hidden');
-            renderAnnouncement(announcementText); // อัปเดต UI ทันที
+            renderAnnouncement(announcementText);
         } else {
-            alert(`❌ ตั้งค่าประกาศไม่สำเร็จ: ${data.error}`);
+            alert(`❌ Error Announcement: ${data.error}`);
         }
     } catch (e) {
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ Server');
+        alert('❌ A connection error occurred Server');
     }
 }
-window.saveAdminAnnouncement = saveAdminAnnouncement; // ผูกกับ Window
+window.saveAdminAnnouncement = saveAdminAnnouncement;
 
 
 
@@ -2042,7 +2041,6 @@ async function startApp(name) {
     document.getElementById('login-modal').classList.add('hidden');
     socket.emit('register', myUsername);
     
-    //  โหลดสกุลเงินที่ผู้ใช้เลือกจาก localStorage ก่อนที่จะเรียก updateUserInfo()
     const preferred = localStorage.getItem('preferredCurrency');
     if (preferred) {
         currentCurrency = preferred;
@@ -2056,20 +2054,16 @@ async function startApp(name) {
 
     const adminPanelDiv = document.getElementById('admin-panel');
     
-    // ✅ [CLEANED] เรียกฟังก์ชันที่จำเป็นเพียงครั้งเดียว
     checkNewTransaction();
     loadUnreadStatus(); 
 
-    // ใส่ await เพื่อรอให้ดึง Level แอดมินเสร็จก่อน
     await updateUserInfo(); 
 	checkPrimaryLocationAndLoad();
 	fetchAndRenderAnnouncement();
     
-    // พอ updateUserInfo ทำงานเสร็จ ตัวแปร myAdminLevel จะมีค่าถูกต้อง
-    // แล้วค่อยโหลดกระทู้ ปุ่มจะถูกสร้างเงื่อนไขได้ถูกต้อง
     loadPosts(); 
     
-    updateActivePostCount(); // อัปเดตตัวเลขกระทู้ของฉัน
+    updateActivePostCount();
 }
     
 
@@ -2084,26 +2078,20 @@ async function checkAndRedirectActiveJob(username) {
         const data = await res.json();
         
         if (data.success) {
-            // 🚩 ลำดับที่ 1: เช็ค mercNum สำหรับร้านค้า (Merchant)
-            // ถ้าเป็นเจ้าของ และมีงานค้าง (mercNum > 0) ให้ดีดไปหน้า merchant ทันที
             if (data.isOwner && data.mercNum > 0) {
-                console.log(`📌 พบงานร้านค้าค้างอยู่ (${data.mercNum} งาน): ส่งไปหน้า Merchant`);
                 window.location.replace('merchant.html');
                 return;
             }
 
-            // 🚩 ลำดับที่ 2: ระบบ Lock สำหรับ Rider หรือ งานทั่วไป (Handover)
             if (data.workingJobId) {
                 const jobId = data.workingJobId.toString();
                 const type = data.jobType;
 
-                // กรณีงานทั่วไป
                 if (type === 'handover') {
                     window.location.replace(`post.html?id=${jobId}`);
                     return;
                 }
 
-                // กรณีไรเดอร์ที่กำลังวิ่งงานร้านค้า (ไม่ใช่เจ้าของ)
                 if (type === 'merchant' && !data.isOwner) {
                     window.location.replace(`riderjobmerchant.html?view_id=${jobId}`);
                     return;
@@ -2125,35 +2113,29 @@ async function checkAndRedirectActiveJob(username) {
             
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
 
-        // updateUserInfo Function ---
-   async function updateUserInfo() {
+    
+async function updateUserInfo() {
     if (!myUsername) return;
 
     try {
         let locationQuery = '';
         const savedLoc = localStorage.getItem('userPrimaryLocation');
         if (savedLoc) {
-             // ส่งไปแบบ JSON String
              locationQuery = `&location=${encodeURIComponent(savedLoc)}`;
         }
         
-        // ---Logic การเดาประเทศ ---
         const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        let myCountry = 'TH'; // ค่า Default เป็นไทย
+        let myCountry = 'TH';
 
-        // ถ้า Timezone ไม่ใช่โซนไทย/อินโดจีน ให้กำหนดเป็น 'OTHER' (หรือค่าอื่นตามต้องการ)
         if (!userTimeZone.includes('Bangkok') && !userTimeZone.includes('Asia/Phnom_Penh')) {
              myCountry = 'OTHER'; 
         }
 
-        // --- [แก้ไขจุดที่ 2] เพิ่ม &country=${myCountry} เข้าไปใน URL ---
         const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}&lang=${currentLang}`);
         
         const data = await response.json();
 
         if (response.status === 403) {
-            // ถ้า Server ตอบกลับมาเป็น 403 (Forbidden) หมายถึงโดนแบน
-            // ระบบจะแสดง alert ข้อความการแบนที่มีวันเวลาหมดอายุ (จากที่คุณเขียนไว้ใน API)
             alert(data.error);
             localStorage.removeItem('myUsername');
             window.location.reload();
@@ -2165,19 +2147,17 @@ async function checkAndRedirectActiveJob(username) {
             return;
         }
         
-        // ... (ส่วนที่เหลือถูกต้องแล้วครับ ใช้โค้ดเดิมต่อได้เลย) ...
         myAdminLevel = data.adminLevel || 0;
         myZoneId = data.userZoneId || null;
 
-        // 2. จัดการการแสดงผลชื่อ
         const userDisplay = document.getElementById('user-display');
         if (userDisplay) {
-            userDisplay.innerText = myUsername; // ใส่ชื่อ
+            userDisplay.innerText = myUsername;
             if (myAdminLevel > 0) {
-                userDisplay.style.color = "#0033FF"; // สีน้ำเงิน
-                userDisplay.style.fontWeight = "bold"; // ตัวหนา
+                userDisplay.style.color = "#0033FF";
+                userDisplay.style.fontWeight = "bold";
             } else {
-                userDisplay.style.color = "#000000"; // สีดำปกติ
+                userDisplay.style.color = "#000000";
                 userDisplay.style.fontWeight = "normal";
             }
         }
@@ -2270,12 +2250,10 @@ async function checkAndRedirectActiveJob(username) {
         });
         
         if (modalCostDisplay) {
-			// เปลี่ยนจาก systemFee เป็น systemZone
 			const systemZone = (data.postCost?.systemZone || 0).toFixed(2); 
 			const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
 			const totalCostUSDT = (data.postCost?.totalCost || 0).toFixed(2);
 
-			// ปรับการแสดงผล: เปลี่ยน USD เป็น USDT และใช้ค่า systemZone
 		modalCostDisplay.innerHTML = 
         `<span style="font-size:1.0em; color:#2364cc; font-weight:normal;">(${systemZone} + ${adminFee} ${data.currencySymbol})</span>`;
 		}
@@ -2285,7 +2263,6 @@ async function checkAndRedirectActiveJob(username) {
 			sidebarRating.innerText = (data.rating || 0).toFixed(2);
 			}
 
-        // 🎯 [เพิ่มส่วนนี้เข้าไป] อัปเดตสถิติโพสต์และจบงานใน Sidebar
         const sidebarTotalPosts = document.getElementById('sidebar-total-posts');
         if (sidebarTotalPosts) {
             sidebarTotalPosts.innerText = data.totalPosts || 0;
@@ -2296,8 +2273,6 @@ async function checkAndRedirectActiveJob(username) {
             sidebarCompletedJobs.innerText = data.completedJobs || 0;
         }
         
-        //const userDisplay = document.getElementById('user-display');
-        //if (userDisplay) userDisplay.innerText = myUsername;
         
         if (locationQuery) {
                 const locData = JSON.parse(decodeURIComponent(locationQuery.split('=')[1]));
@@ -2321,31 +2296,25 @@ async function checkAndRedirectActiveJob(username) {
 async function toggleBanUser(targetUser, currentStatus) {
     if (myAdminLevel < 1) return;
 
-    // ถ้าสถานะปัจจุบันคือโดนแบนอยู่แล้ว (จะกดเพื่อปลดแบน)
     if (currentStatus === true) {
         if (!confirm(`Are you sure you want to unban the member?: ${targetUser} `)) return;
-        executeBanStatus(targetUser, false, 0); // ปลดแบนทันที ไม่ต้องเลือกวัน
+        executeBanStatus(targetUser, false, 0);
         return;
     }
 
-    // --- กรณีจะสั่งแบน (ปิดหน้าต่างเดิม เปิดหน้าต่างเลือกเวลา) ---
     currentBanTarget = targetUser;
     document.getElementById('ban-target-name').innerText = targetUser;
-    
-    // 1. ปิดหน้าต่างรายละเอียดสมาชิก
-    document.getElementById('user-detail-modal').classList.add('hidden');
-    
-    // 2. เปิดหน้าต่างเลือกเวลาแบน
+    document.getElementById('user-detail-modal').classList.add('hidden');    
     document.getElementById('ban-selection-modal').classList.remove('hidden');
 }
 
-// ฟังก์ชันช่วยแสดงช่องกรอกวันเอง (ใน Modal ใหม่)
+
 function toggleCustomBanInputNew() {
     const val = document.getElementById('ban-days-select-new').value;
     document.getElementById('custom-ban-days-new').style.display = (val === 'custom') ? 'block' : 'none';
 }
 
-// ฟังก์ชันยืนยันและส่ง API
+
 async function confirmAndSendBan() {
     const select = document.getElementById('ban-days-select-new');
     let banDays = 0;
@@ -2367,7 +2336,7 @@ async function confirmAndSendBan() {
     executeBanStatus(currentBanTarget, true, banDays);
 }
 
-// ฟังก์ชันส่งคำสั่งไปที่ Server (ตัวกลาง)
+
 async function executeBanStatus(targetUser, shouldBan, banDays) {
     try {
         const res = await fetch('/api/admin/toggle-ban', {
@@ -2385,7 +2354,6 @@ async function executeBanStatus(targetUser, shouldBan, banDays) {
         const data = await res.json();
         if (data.success) {
             document.getElementById('ban-selection-modal').classList.add('hidden');
-            // รีเฟรชรายชื่อ
             openAllUserList(document.getElementById('user-search-input').value, currentUserPage);
         } else {
             alert(`❌ Error: ${data.error}`);
@@ -2399,7 +2367,6 @@ async function executeBanStatus(targetUser, shouldBan, banDays) {
 function toggleCustomBanInput() {
     const select = document.getElementById('ban-days-select');
     const customInput = document.getElementById('custom-ban-days');
-    // ถ้าเลือก "custom" ให้โชว์ช่องกรอกตัวเลข ถ้าไม่เลือกให้ซ่อน
     customInput.style.display = (select.value === 'custom') ? 'block' : 'none';
 }
 
@@ -2448,8 +2415,8 @@ async function setAdminLevel(targetUser, newLevel) {
         const data = await res.json();
         if (data.success) {
             alert(`✅ Successfully completed: ${targetUser} Promote ${levelName} `);
-            allUsersCache = []; // ล้าง Cache รายชื่อ
-            openAllUserList();  // รีเฟรชหน้ารายชื่อ
+            allUsersCache = [];
+            openAllUserList();
         } else {
             alert(`❌ Failed: ${data.error}`);
         }
@@ -2499,11 +2466,11 @@ async function setAdminLevel(targetUser, newLevel) {
             nextBtn.disabled = data.currentPage === data.totalPages;
         }
 		
-		// ฟังก์ชันสร้างรายละเอียดธุรกรรมตามภาษา
+
 function getTransactionDetail(t) {
     const lang = currentLang;
     const tr = translations[lang];
-    let detail = t.note; // ค่าเริ่มต้นใช้ของเดิม (เผื่อข้อมูลเก่า)
+    let detail = t.note;
 
     if (t.type === 'POST_REVENUE' && t.postTitle) {
         detail = tr['tx_detail_create_post'].replace('[TITLE]', t.postTitle);
@@ -2512,7 +2479,7 @@ function getTransactionDetail(t) {
     } else if (t.type === 'ADMIN_DEDUCT') {
         detail = tr['tx_detail_admin_deduct'].replace('[USER]', t.fromUser);
     } else if (t.type === 'HANDOVER') {
-        // พยายามดึงชื่อกระทู้จาก note เดิม ถ้าไม่มี postTitle เก็บไว้
+        
         let title = t.postTitle;
         if (!title && t.note.includes(':')) {
             title = t.note.split(':').pop().trim();
