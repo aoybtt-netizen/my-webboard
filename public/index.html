@@ -1223,6 +1223,9 @@ async function updateZoneBackground(lat, lng) {
 		'alert_login_empty': 'กรุณากรอกทั้งชื่อและรหัสผ่าน',
         'alert_save_success': 'บันทึกข้อมูลเรียบร้อย!',
 		'btn_topup': 'เติมเงิน - ถอนเงิน',
+		'no_active_posts': 'คุณไม่มีกระทู้ที่กำลังดำเนินการอยู่',
+        'error_fetch_posts': 'เกิดข้อผิดพลาดในการดึงรายการกระทู้',
+		'no_closed_posts': 'คุณยังไม่มีกระทู้ที่ถูกปิด',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1422,6 +1425,9 @@ async function updateZoneBackground(lat, lng) {
 		'alert_login_empty': 'Please enter both username and password',
         'alert_save_success': 'Information saved successfully!',
 		'btn_topup': 'Deposit - Withdraw',
+		'no_active_posts': 'You currently have no active posts.',
+        'error_fetch_posts': 'Error fetching post list',
+		'no_closed_posts': 'You have no closed posts yet.',
     },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
@@ -1616,6 +1622,9 @@ async function updateZoneBackground(lat, lng) {
 		'alert_login_empty': 'Por favor, insira o usuário e a senha',
         'alert_save_success': 'Informações salvas com sucesso!',
 		'btn_topup': 'Depositar - Sacar',
+		'no_active_posts': 'Você não tem postagens ativas no momento.',
+        'error_fetch_posts': 'Erro ao buscar a lista de postagens',
+		'no_closed_posts': 'Você ainda não tem postagens encerradas.',
     }
 };
 
@@ -2774,13 +2783,10 @@ async function loadMyZoneClosedPosts(page) {
         // ⭐ [FIXED] ใช้ translations key สำหรับชื่อหน้า
         pageTitle.innerText = `📝 ${translations[currentLang]['my_active_posts']}`;
         
-        if (data.totalItems === 0) {
-            postListDiv.innerHTML = `<div style="text-align:center; padding: 50px; color:#6c757d; font-size:1.2em;">
-                                        ${currentLang === 'th' ? 'คุณไม่มีกระทู้ที่กำลังดำเนินการอยู่' : 'You currently have no active posts.'}
-                                     </div>`;
-            paginationDiv.style.display = 'none';
-            return;
-        }
+        postListDiv.innerHTML = `
+    <div style="text-align:center; padding: 50px; color:#6c757d; font-size:1.2em;">
+        ${translations[currentLang].no_active_posts}
+    </div>`;
 
         data.posts.forEach((post) => {
             const statusInfo = postStatusMap[post.id];
@@ -2804,7 +2810,12 @@ async function loadMyZoneClosedPosts(page) {
         
     } catch (e) {
         console.error('Error fetching my active posts:', e);
-        showNotification('เกิดข้อผิดพลาดในการดึงรายการกระทู้', 'fas fa-exclamation-triangle', 3000, '#dc3545');
+        showNotification(
+    translations[currentLang].error_fetch_posts, 
+    'fas fa-exclamation-triangle', 
+    3000, 
+    '#dc3545'
+);
     }
 }
 
@@ -2845,13 +2856,15 @@ async function showMyClosedPosts(page = 1) {
         postListDiv.innerHTML = '';
         
         // ⭐ [FIXED] ใช้ translations key สำหรับชื่อหน้า และแปลคำว่า 'รายการ' / 'items'
-        const itemText = currentLang === 'th' ? 'รายการ' : 'items';
+        const itemText = currentLang === 'th' ? 'List' : 'items';
         pageTitle.innerText = `🗄️ ${translations[currentLang]['my_closed_posts']} (${data.totalItems} ${itemText})`;
         
         if (data.totalItems === 0) {
-            postListDiv.innerHTML = `<div style="text-align:center; padding: 50px; color:#6c757d; font-size:1.2em;">
-                                        ${currentLang === 'th' ? 'คุณยังไม่มีกระทู้ที่ถูกปิด' : 'You have no closed posts yet.'}
-                                     </div>`;
+            postListDiv.innerHTML = `
+    <div style="text-align:center; padding: 50px; color:#bbb;">
+        <i class="fas fa-folder-open" style="font-size: 3em; margin-bottom: 15px; display: block;"></i>
+        <span style="font-size: 1.1em;">${translations[currentLang].no_closed_posts}</span>
+    </div>`;
             paginationDiv.style.display = 'none';
             return;
         }
@@ -2879,7 +2892,12 @@ async function showMyClosedPosts(page = 1) {
 
     } catch (e) {
         console.error('Error fetching my closed posts:', e);
-        showNotification('เกิดข้อผิดพลาดในการดึงรายการกระทู้', 'fas fa-exclamation-triangle', 3000, '#dc3545');
+        showNotification(
+    translations[currentLang].error_fetch_posts, 
+    'fas fa-exclamation-triangle', 
+    3000, 
+    '#dc3545'
+);
     }
 	toggleSidebar();
 }
