@@ -2001,7 +2001,7 @@ async function checkAndRedirectActiveJob(username) {
 			// ปรับการแสดงผล: เปลี่ยน USD เป็น USDT และใช้ค่า systemZone
 		modalCostDisplay.innerHTML = 
         `
-        <span style="font-size:1.2em; color:#2364cc; font-weight:normal;">(${systemZone} System + ${adminFee} Admin)</span>`;
+        <span style="font-size:1.0em; color:#2364cc; font-weight:normal;">(${systemZone} System + ${adminFee} Admin ${data.currencySymbol})</span>`;
 		}
         
         const sidebarRating = document.getElementById('sidebar-rating');
@@ -4623,7 +4623,7 @@ window.savePostCost = savePostCost;
         if (modalCostDisplay) {
             // 🚩 [จุดที่แก้ไข] เปลี่ยน USD -> USDT, เปลี่ยน System -> System Zone และเอาวงเล็บหลังออก
             modalCostDisplay.innerHTML = 
-                `<span style="font-size:1.2em; color:#2364cc; font-weight:normal;">(${systemZone.toFixed(2)} System Zone + ${adminFee.toFixed(2)} Admin)</span>`;
+                `<span style="font-size:1.0em; color:#2364cc; font-weight:normal;">(${systemZone.toFixed(2)} System Zone + ${adminFee.toFixed(2)} Admin ${data.currencySymbol})</span>`;
         }
 
     } catch(e) {
