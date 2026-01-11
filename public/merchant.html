@@ -637,6 +637,9 @@
 	
 	let activeTaskInSidebar = null;
 	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
+	
+	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+	const t = translations[currentLang];
 
 async function loadOrderTemplates() {
     const res = await fetch(`/api/merchant/templates?username=${myUsername}`);
@@ -681,6 +684,13 @@ const translations = {
         'rider_none': 'ยังไม่มี',
         'progress_prefix': 'คืบหน้า:',
         'unit_stop': 'จุด',
+		'no_active_tasks': 'ไม่มีงานที่กำลังดำเนินการอยู่',
+        'error_loading_tasks': 'ไม่สามารถโหลดข้อมูลได้',
+		'err_no_username': '🛑 ไม่พบ Username ในระบบ กรุณาเข้าสู่ระบบใหม่',
+        'lbl_store_name': 'ใส่ชื่อร้านหรือบริษัทของคุณ',
+        'plh_enter_name': 'ระบุชื่อ...',
+        'modal_title_base': '🏠 บันทึกพิกัดร้าน (Base)',
+        'btn_confirm_base': 'ยืนยันพิกัดร้าน',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -714,6 +724,13 @@ const translations = {
         'rider_none': 'None',
         'progress_prefix': 'Progress:',
         'unit_stop': 'stops',
+		'no_active_tasks': 'No active tasks at the moment',
+        'error_loading_tasks': 'Failed to load task data',
+		'err_no_username': '🛑 Username not found. Please login again.',
+        'lbl_store_name': 'Enter your store or company name',
+        'plh_enter_name': 'Enter name...',
+        'modal_title_base': '🏠 Save Store Location (Base)',
+        'btn_confirm_base': 'Confirm Base Location',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -747,6 +764,13 @@ const translations = {
         'rider_none': 'Ninguém',
         'progress_prefix': 'Progresso:',
         'unit_stop': 'paradas',
+		'no_active_tasks': 'Não há tarefas em andamento',
+        'error_loading_tasks': 'Não foi possível carregar os dados',
+		'err_no_username': '🛑 Usuário não encontrado. Por favor, faça login novamente.',
+        'lbl_store_name': 'Digite o nome da sua loja ou empresa',
+        'plh_enter_name': 'Digite o nome...',
+        'modal_title_base': '🏠 Salvar Local da Loja (Base)',
+        'btn_confirm_base': 'Confirmar Localização Base',
     }
 };
 
@@ -898,11 +922,11 @@ async function loadActiveMerchantTasks() {
 
             listContainer.innerHTML = finalHtml;
         } else {
-            listContainer.innerHTML = '<div style="text-align:center; padding: 30px; color: #999;">ไม่มีงานที่กำลังดำเนินการอยู่</div>';
+            listContainer.innerHTML = `<div style="text-align:center; padding: 30px; color: #999;">${t.no_active_tasks}</div>`;
         }
     } catch (e) {
         console.error(e);
-        listContainer.innerHTML = '<p style="color:red; text-align:center;">ไม่สามารถโหลดข้อมูลได้</p>';
+        listContainer.innerHTML = `<p style="color:red; text-align:center;">${t.error_loading_tasks}</p>`;
     }
 }
 
@@ -947,15 +971,17 @@ async function fetchAndRefreshMerchantBalance() {
     }
 }
 
+
 // 3. ส่วนการทำงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
     const myUsername = localStorage.getItem('myUsername');
 
     if (!myUsername) {
-        console.error("🛑 ไม่พบ Username ในระบบ");
-        window.location.href = 'index.html';
-        return;
-    }
+    console.error(t.err_no_username);
+    // อาจจะแสดง Swal แจ้งเตือนก่อนเด้งไป index ก็ได้ครับ
+    window.location.href = 'index.html';
+    return;
+	}
 
     // ✅ เรียกตัว Fetch (ซึ่งจะไปเรียก updateMerchantHeaderBalance อีกที)
     await fetchAndRefreshMerchantBalance();
@@ -990,15 +1016,15 @@ function openSaveStoreModal() {
     
     document.getElementById('map-modal').classList.remove('hidden');
     document.getElementById('map-extra-info').classList.remove('hidden');
-	document.getElementById('map-label-name').innerHTML = '<i class="fas fa-store"></i> ใส่ชื่อร้านหรือบริษัทของคุณ';
+	document.getElementById('map-label-name').innerHTML = `<i class="fas fa-store"></i> ${t.lbl_store_name}`;
     
     // ปลดล็อคให้ตั้งชื่อร้านเองได้
     const nameInput = document.getElementById('map-loc-name');
-    nameInput.readOnly = false;
-    nameInput.placeholder = "ระบุชื่อ...";
+	nameInput.readOnly = false;
+	nameInput.placeholder = t.plh_enter_name;
 
-    document.querySelector('#map-modal h3').innerText = "🏠 บันทึกพิกัดร้าน (Base)";
-    document.querySelector('#map-modal .btn-submit:first-child').innerText = "ยืนยันพิกัดร้าน";
+    document.querySelector('#map-modal h3').innerText = t.modal_title_base;
+	document.querySelector('#map-modal .btn-submit:first-child').innerText = t.btn_confirm_base;
     
     initMap();
     if (existingStore && merchantMap) {
