@@ -690,6 +690,8 @@ const translations = {
         'plh_enter_name': 'ระบุชื่อ...',
         'modal_title_base': '🏠 บันทึกพิกัดร้าน (Base)',
         'btn_confirm_base': 'ยืนยันพิกัดร้าน',
+		'modal_title_dropoff': '📍 ปักหมุดจุดส่งงาน',
+        'btn_select_location': 'เลือกจุดนี้',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -730,6 +732,8 @@ const translations = {
         'plh_enter_name': 'Enter name...',
         'modal_title_base': '🏠 Save Store Location (Base)',
         'btn_confirm_base': 'Confirm Base Location',
+		'modal_title_dropoff': '📍 Pin Delivery Point',
+        'btn_select_location': 'Select this location',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -770,6 +774,8 @@ const translations = {
         'plh_enter_name': 'Digite o nome...',
         'modal_title_base': '🏠 Salvar Local da Loja (Base)',
         'btn_confirm_base': 'Confirmar Localização Base',
+		'modal_title_dropoff': '📍 Marcar Ponto de Entrega',
+        'btn_select_location': 'Selecionar este local',
     }
 };
 
@@ -1043,8 +1049,8 @@ function openStopMap(id) {
     document.getElementById('map-modal').classList.remove('hidden');
     document.getElementById('map-extra-info').classList.add('hidden');
     
-    document.querySelector('#map-modal h3').innerText = "📍 ปักหมุดจุดส่งงาน";
-    document.querySelector('#map-modal .btn-submit:first-child').innerText = "เลือกจุดนี้";
+    document.querySelector('#map-modal h3').innerText = translations[currentLang].modal_title_dropoff;
+	document.querySelector('#map-modal .btn-submit:first-child').innerText = translations[currentLang].btn_select_location;
     
     initMap();
     // 🚩 เพิ่มบรรทัดนี้: บังคับคำนวณขนาดใหม่
