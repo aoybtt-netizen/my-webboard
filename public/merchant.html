@@ -638,8 +638,7 @@
 	let activeTaskInSidebar = null;
 	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
 	
-	let currentLang = localStorage.getItem('preferredLanguage') || 'th';
-	let t = translations[currentLang];
+	
 
 async function loadOrderTemplates() {
     const res = await fetch(`/api/merchant/templates?username=${myUsername}`);
@@ -974,6 +973,8 @@ async function fetchAndRefreshMerchantBalance() {
 
 // 3. ส่วนการทำงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
+	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+	const t = translations[currentLang];
     const myUsername = localStorage.getItem('myUsername');
 
     if (!myUsername) {
@@ -996,6 +997,8 @@ window.onload = async function() {
 
 // ฟังก์ชันบันทึกพิกัดร้าน (บันทึกแค่จุดเดียวเป็นฐาน)
 function openSaveStoreModal() {
+	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+	const t = translations[currentLang];
     toggleMerchantSidebar();
     
     // 🔍 1. ค้นหาพิกัดร้านโดยใช้ Flag 'isStore' แทนการใช้ชื่อ
