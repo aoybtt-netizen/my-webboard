@@ -671,6 +671,16 @@ const translations = {
         'btn_post_job': 'โพสต์งานเข้าระบบ',
         'btn_voice_order': 'พูดสั่ง',
         'link_save_order_template': 'บันทึกเป็นออเดอร์',
+		'status_checking': 'กำลังตรวจสอบสถานะงาน...',
+        'btn_confirm_rate': '✅ จบงาน & ให้คะแนน',
+        'status_delivering': '🛵 ไรเดอร์กำลังดำเนินการ...',
+        'status_requesting': (user) => `Rider <b>${user}</b> ของานนี้...`,
+        'status_waiting': '⌛ รอไรเดอร์รับงาน...',
+		'post_time_prefix': 'เมื่อ',
+        'lbl_rider': 'ผู้รับงาน:',
+        'rider_none': 'ยังไม่มี',
+        'progress_prefix': 'คืบหน้า:',
+        'unit_stop': 'จุด',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -694,6 +704,16 @@ const translations = {
         'btn_post_job': 'Post Job',
         'btn_voice_order': 'Voice',
         'link_save_order_template': 'Save as Order Template',
+		'status_checking': 'Checking task status...',
+        'btn_confirm_rate': '✅ Finish & Rate',
+        'status_delivering': '🛵 Delivery in progress...',
+        'status_requesting': (user) => `Rider <b>${user}</b> is requesting...`,
+        'status_waiting': '⌛ Waiting for rider...',
+		'post_time_prefix': 'at',
+        'lbl_rider': 'Rider:',
+        'rider_none': 'None',
+        'progress_prefix': 'Progress:',
+        'unit_stop': 'stops',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -717,6 +737,16 @@ const translations = {
         'btn_post_job': 'Publicar Trabalho',
         'btn_voice_order': 'Voz',
         'link_save_order_template': 'Salvar como Modelo de Pedido',
+		'status_checking': 'Verificando status...',
+        'btn_confirm_rate': '✅ Finalizar e Avaliar',
+        'status_delivering': '🛵 Entrega em andamento...',
+        'status_requesting': (user) => `Entregador <b>${user}</b> solicitou...`,
+        'status_waiting': '⌛ Aguardando entregador...',
+		'post_time_prefix': 'em',
+        'lbl_rider': 'Entregador:',
+        'rider_none': 'Ninguém',
+        'progress_prefix': 'Progresso:',
+        'unit_stop': 'paradas',
     }
 };
 
@@ -785,7 +815,8 @@ function toggleTaskForm() {
 // ฟังก์ชันโหลดงานที่ร้านค้ากดยังไม่จบ
 async function loadActiveMerchantTasks() {
     const listContainer = document.getElementById('active-tasks-list');
-    listContainer.innerHTML = '<p style="text-align:center; color:#999;">กำลังตรวจสอบสถานะงาน...</p>';
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const t = translations[currentLang];
 
     try {
         const res = await fetch(`/api/merchant/tasks?username=${myUsername}`);
@@ -808,23 +839,24 @@ async function loadActiveMerchantTasks() {
                 let actionBtnHtml = '';
                 
                 if (post.acceptedBy) {
-                    if (canConfirm) {
-                        actionBtnHtml = `<button onclick="event.stopPropagation(); confirmAndRate('${post.id}', '${post.acceptedBy}')" 
-							style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">
-						✅ จบงาน & ให้คะแนน
-						</button>`;
-					} else {
-                        actionBtnHtml = '<small style="color: #11998e; font-weight: bold;">🛵 ไรเดอร์กำลังดำเนินการ...</small>';
-                    }
-                } else if (post.pendingRider) {
-                    actionBtnHtml = `
-                        <div style="text-align:right;">
-                            <small style="display:block; margin-bottom:5px; color:#eb9123;">Rider <b>${post.pendingRider}</b> ของานนี้...</small>
-                            
-                        </div>`;
-                } else {
-                    actionBtnHtml = '<small style="color: #999;">⌛ รอไรเดอร์รับงาน...</small>';
-                }
+        if (canConfirm) {
+            actionBtnHtml = `<button onclick="event.stopPropagation(); confirmAndRate('${post.id}', '${post.acceptedBy}')" 
+                style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">
+                ${t.btn_confirm_rate}
+            </button>`;
+        } else {
+            actionBtnHtml = `<small style="color: #11998e; font-weight: bold;">${t.status_delivering}</small>`;
+        }
+    } else if (post.pendingRider) {
+        actionBtnHtml = `
+            <div style="text-align:right;">
+                <small style="display:block; margin-bottom:5px; color:#eb9123;">
+                    ${t.status_requesting(post.pendingRider)}
+                </small>
+            </div>`;
+    } else {
+        actionBtnHtml = `<small style="color: #999;">${t.status_waiting}</small>`;
+    }
 
                 const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
 
@@ -835,31 +867,31 @@ async function loadActiveMerchantTasks() {
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
-                <small style="color: #999; margin-left: 5px;">เมื่อ ${postTime}</small>
+                <small style="color: #999; margin-left: 5px;">${t.post_time_prefix} ${postTime}</small>
                 <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
             </div>
             <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
         </div>
         
         <div style="font-size: 0.85em; color: #666; margin: 10px 0; display: flex; align-items: center;">
-            👤 ผู้รับงาน: <span style="color: #11998e; font-weight: 600; margin-left: 4px;">${post.acceptedBy || 'ยังไม่มี'}</span>
-            
-            <div id="notif-box-${post.id}" class="notif-inline-wrapper">
-                <i class="fas fa-comment-dots msg-icon-small"></i>
-                <div class="dot-on-icon-small"></div>
-            </div>
+        👤 ${t.lbl_rider} <span style="color: #11998e; font-weight: 600; margin-left: 4px;">${post.acceptedBy || t.rider_none}</span>
+        
+        <div id="notif-box-${post.id}" class="notif-inline-wrapper">
+            <i class="fas fa-comment-dots msg-icon-small"></i>
+            <div class="dot-on-icon-small"></div>
         </div>
+    </div>
                         
                         <div class="task-progress-bar" style="height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 5px;">
                             <div class="progress-fill" style="width: ${progressPercent}%; height: 100%; background: #11998e; transition: 0.5s;"></div>
                         </div>
                         
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                            <small style="color: #888; font-weight: bold;">
-                                คืบหน้า: ${completedStops}/${totalStops} จุด
-                            </small>
-                            ${actionBtnHtml}
-                        </div>
+        <small style="color: #888; font-weight: bold;">
+            ${t.progress_prefix} ${completedStops}/${totalStops} ${t.unit_stop}
+        </small>
+        ${actionBtnHtml}
+    </div>
                     </div>
                 `;
             });
