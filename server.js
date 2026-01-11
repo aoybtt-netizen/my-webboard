@@ -2358,7 +2358,7 @@ app.post('/api/posts/:id/handover', async (req, res) => {
 
 // 15. Create Post (เวอร์ชันรองรับ Merchant โดยเฉพาะ)
 app.post('/api/posts', upload.single('image'), async (req, res) => {
-    // 🚩 รับค่าที่ส่งมาจากหน้า Merchant
+    const lang = req.body.lang || 'th'; 
     const { author, category, content, location, title, budget, stops } = req.body;
     const isMerchantTask = req.body.isMerchantTask === 'true' || req.body.isMerchantTask === true;
 
