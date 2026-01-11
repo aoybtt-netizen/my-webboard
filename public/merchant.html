@@ -716,6 +716,38 @@ const translations = {
         'coords_not_set': 'พิกัด: ยังไม่ได้ระบุ',
         'btn_select_map': 'เลือกบนแผนที่',
         'btn_from_book': 'จากสมุดที่อยู่',
+		'lbl_pickup_only': '🟢 จุดรับงาน (Pickup)',
+        'lbl_dropoff_indexed': (index) => `📍 จุดส่งงานที่ ${index}`,
+        'task_title_summary': (cat, count) => `${cat} (ส่ง ${count} จุด)`,
+        'err_label_lat_required': 'กรุณาระบุชื่อสถานที่และบันทึกพิกัดก่อน',
+        'no_saved_data': 'ยังไม่มีข้อมูลที่บันทึกไว้',
+        'tag_store': '(ร้านค้า)',
+        'lbl_coords_short': 'พิกัด:',
+		'btn_wait_time': (time) => `<i class="fas fa-hourglass-half"></i> รอสักครู่ (${time}s)`,
+        'err_min_stops_post': '❌ กรุณาเพิ่มจุดรับ-ส่งงานอย่างน้อย 1 จุด',
+        'lbl_pickup_simple': 'จุดรับงาน',
+        'lbl_dropoff_indexed_simple': (index) => `จุดส่งที่ ${index}`,
+        'err_pin_required_all': '❌ กรุณาปักหมุดพิกัดให้ครบทุกจุดก่อนโพสต์งาน',
+        'msg_post_success': '🚀 โพสต์งานเข้าระบบเรียบร้อยแล้ว!',
+        'err_voice_failed': 'เกิดข้อผิดพลาดในการรับเสียง หรือไม่มีการอนุญาตใช้ไมค์',
+        'btn_voice_start': '<i class="fas fa-play"></i> แตะเพื่อเริ่มพูดสั่งงาน',
+		'btn_voice_listening': '<i class="fas fa-spinner fa-spin"></i> กำลังฟัง...',
+		'key_order': 'ออเดอร์',
+        'key_doc': 'เอกสาร',
+        'key_mail': 'ส่งจดหมาย',
+        'cat_general': 'ส่งอาหารสินค้าทั่วไป',
+        'cat_doc': 'ส่งเอกสาร',
+        'unit_stop_voice': 'จุด',
+		'err_voice_not_supported': 'เบราว์เซอร์นี้ไม่รองรับเสียง',
+        'msg_voice_retry_simple': 'กรุณาลองพูดใหม่อีกครั้ง',
+		'sum_pickup': 'ต้นทาง/จุดรับ',
+        'sum_dropoff': (i) => `จุดส่งที่ ${i}`,
+        'sum_no_coords': 'ไม่พบพิกัด',
+		'status_pickup_ai': '✅ จุดรับงาน (AI)',
+        'status_dropoff_ai': (i) => `✅ จุดส่งงานที่ ${i} (AI)`,
+        'lbl_coords_short': 'พิกัด:','status_pickup_ai': '✅ จุดรับงาน (AI)',
+        'status_dropoff_ai': (i) => `✅ จุดส่งงานที่ ${i} (AI)`,
+        'lbl_coords_short': 'พิกัด:',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -781,6 +813,36 @@ const translations = {
         'coords_not_set': 'Coords: Not specified',
         'btn_select_map': 'Select on Map',
         'btn_from_book': 'From Address Book',
+		'lbl_pickup_only': '🟢 Pickup Point',
+        'lbl_dropoff_indexed': (index) => `📍 Drop-off Point ${index}`,
+        'task_title_summary': (cat, count) => `${cat} (${count} stops)`,
+        'err_label_lat_required': 'Please specify location name and save coordinates first',
+        'no_saved_data': 'No saved data found',
+        'tag_store': '(Store)',
+        'lbl_coords_short': 'Coords:',
+		'btn_wait_time': (time) => `<i class="fas fa-hourglass-half"></i> Please wait (${time}s)`,
+        'err_min_stops_post': '❌ Please add at least 1 pickup/drop-off point',
+        'lbl_pickup_simple': 'Pickup Point',
+        'lbl_dropoff_indexed_simple': (index) => `Drop-off Point ${index}`,
+        'err_pin_required_all': '❌ Please pin all locations before posting',
+        'msg_post_success': '🚀 Job posted successfully!',
+        'err_voice_failed': 'Voice recognition error or microphone permission denied',
+        'btn_voice_start': '<i class="fas fa-play"></i> Tap to start voice command',
+		'btn_voice_listening': '<i class="fas fa-spinner fa-spin"></i> Listening...',
+		'key_order': 'order',
+        'key_doc': 'document',
+        'key_mail': 'mail',
+        'cat_general': 'General Delivery',
+        'cat_doc': 'Document Delivery',
+        'unit_stop_voice': 'stops',
+		'err_voice_not_supported': 'This browser does not support voice',
+        'msg_voice_retry_simple': 'Please try speaking again',
+		'sum_pickup': 'Pickup Point',
+        'sum_dropoff': (i) => `Drop-off Point ${i}`,
+        'sum_no_coords': 'No coordinates found',
+		'status_pickup_ai': '✅ Pickup Point (AI)',
+        'status_dropoff_ai': (i) => `✅ Drop-off Point ${i} (AI)`,
+        'lbl_coords_short': 'Coords:',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -846,6 +908,36 @@ const translations = {
         'coords_not_set': 'Coords: Não especificado',
         'btn_select_map': 'Ver no Mapa',
         'btn_from_book': 'Do Livro de Endereços',
+		'lbl_pickup_only': '🟢 Ponto de Retirada',
+        'lbl_dropoff_indexed': (index) => `📍 Ponto de Entrega ${index}`,
+        'task_title_summary': (cat, count) => `${cat} (${count} paradas)`,
+        'err_label_lat_required': 'Por favor, especifique o nome e salve as coordenadas primeiro',
+        'no_saved_data': 'Nenhum dado salvo encontrado',
+        'tag_store': '(Loja)',
+        'lbl_coords_short': 'Coords:',
+		'btn_wait_time': (time) => `<i class="fas fa-hourglass-half"></i> Aguarde (${time}s)`,
+        'err_min_stops_post': '❌ Por favor, adicione pelo menos 1 ponto de coleta/entrega',
+        'lbl_pickup_simple': 'Ponto de Coleta',
+        'lbl_dropoff_indexed_simple': (index) => `Ponto de Entrega ${index}`,
+        'err_pin_required_all': '❌ Por favor, marque todos os locais antes de postar',
+        'msg_post_success': '🚀 Trabalho postado com sucesso!',
+        'err_voice_failed': 'Erro no reconhecimento de voz ou permissão de microfone negada',
+        'btn_voice_start': '<i class="fas fa-play"></i> Toque para iniciar comando de voz',
+		'btn_voice_listening': '<i class="fas fa-spinner fa-spin"></i> Ouvindo...',
+		'key_order': 'pedido',
+        'key_doc': 'documento',
+        'key_mail': 'correio',
+        'cat_general': 'Entrega Geral',
+        'cat_doc': 'Entrega de Documentos',
+        'unit_stop_voice': 'paradas',
+		'err_voice_not_supported': 'Este navegador não suporta voz',
+        'msg_voice_retry_simple': 'Por favor, tente falar novamente',
+		'sum_pickup': 'Ponto de Coleta',
+        'sum_dropoff': (i) => `Ponto de Entrega ${i}`,
+        'sum_no_coords': 'Coordenadas não encontradas',
+		'status_pickup_ai': '✅ Ponto de Coleta (IA)',
+        'status_dropoff_ai': (i) => `✅ Ponto de Entrega ${i} (IA)`,
+        'lbl_coords_short': 'Coords:',
     }
 };
 
@@ -1437,12 +1529,12 @@ function reorderStops() {
         
         if (isPickup) {
             if (displayNum) displayNum.innerText = ""; 
-            label.innerHTML = "🟢 จุดรับงาน (Pickup)";
+            label.innerHTML = translations[currentLang].lbl_pickup_only;
             label.style.color = "#27ae60";
             stop.style.borderLeftColor = "#27ae60";
         } else {
             if (displayNum) displayNum.innerText = index; // จุดส่งที่ 1, 2, 3...
-            label.innerHTML = `📍 จุดส่งงานที่ ${index}`;
+            label.innerHTML = translations[currentLang].lbl_dropoff_indexed(index);
             label.style.color = "#11998e";
             stop.style.borderLeftColor = "#11998e";
         }
@@ -1464,7 +1556,7 @@ function reorderStops() {
     const deliveryStops = totalStops > 1 ? totalStops - 1 : 0;
     
     // 🚩 ประกาศตัวแปรเก็บข้อความหัวข้อ
-    const finalTitle = `${category} (ส่ง ${deliveryStops} จุด)`;
+    const finalTitle = translations[currentLang].task_title_summary(category, deliveryStops);
     
     const previewEl = document.getElementById('title-preview');
     if (previewEl) {
@@ -1479,10 +1571,10 @@ function reorderStops() {
         const label = document.getElementById(`label-${id}`).value;
         const lat = document.getElementById(`lat-${id}`).value;
         const lng = document.getElementById(`lng-${id}`).value;
-        if (!label || !lat) return alert("กรุณาระบุชื่อสถานที่และบันทึกพิกัดก่อน");
+        if (!label || !lat) return alert(translations[currentLang].err_label_lat_required);
         
         mySavedLocations.push({ label, lat, lng });
-        alert("บันทึกลงสมุดที่อยู่เรียบร้อย!");
+        alert(translations[currentLang].msg_save_success_simple);
     }
 
     function showSavedLocationsModal(stopId) {
@@ -1495,7 +1587,7 @@ function reorderStops() {
     const selectableLocations = mySavedLocations; 
 
     if (selectableLocations.length === 0) {
-        listContent.innerHTML = "<p style='text-align:center; color:#999;'>ยังไม่มีข้อมูลที่บันทึกไว้</p>";
+        listContent.innerHTML = `<p style='text-align:center; color:#999;'>${translations[currentLang].no_saved_data}</p>`;
     } else {
         selectableLocations.forEach((loc) => {
             const originalIndex = mySavedLocations.findIndex(l => l._id === loc._id);
@@ -1503,13 +1595,14 @@ function reorderStops() {
             // 🚩 เพิ่มไอคอนแยกประเภท (ร้านค้าใช้ไอคอนบ้าน / ลูกค้าใช้หมุด)
             const iconClass = loc.isStore ? 'fa-store' : 'fa-map-pin';
             const iconColor = loc.isStore ? '#11998e' : '#f39c12';
-            const storeTag = loc.isStore ? ' <span style="font-size:0.7em; background:#e8f5e9; color:#11998e; padding:2px 6px; border-radius:10px; font-weight:normal;">(ร้านค้า)</span>' : '';
+			const storeTagText = translations[currentLang].tag_store;
+            const storeTag = loc.isStore ? ` <span style="font-size:0.7em; background:#e8f5e9; color:#11998e; padding:2px 6px; border-radius:10px; font-weight:normal;">${storeTagText}</span>` : '';
 
             listContent.innerHTML += `
                 <div onclick="selectLocation(${originalIndex})" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;">
                     <i class="fas ${iconClass}" style="color:${iconColor}; width: 20px;"></i> 
                     <b>${loc.label}</b> ${storeTag}<br>
-                    <small style="color:#888;">พิกัด: ${parseFloat(loc.lat).toFixed(4)}, ${parseFloat(loc.lng).toFixed(4)}</small>
+                    <small style="color:#888;">${translations[currentLang].lbl_coords_short} ${parseFloat(loc.lat).toFixed(4)}, ${parseFloat(loc.lng).toFixed(4)}</small>
                 </div>`;
         });
     }
@@ -1525,7 +1618,8 @@ function reorderStops() {
     document.getElementById(`lng-${id}`).value = selected.lng;
     
     // อัปเดตพิกัดตัวเทาๆ
-    document.getElementById(`coords-display-${id}`).innerText = `พิกัด: ${parseFloat(selected.lat).toFixed(5)}, ${parseFloat(selected.lng).toFixed(5)}`;
+    document.getElementById(`coords-display-${id}`).innerText = 
+    `${translations[currentLang].lbl_coords_short} ${parseFloat(selected.lat).toFixed(5)}, ${parseFloat(selected.lng).toFixed(5)}`;
     closeSavedModal();
 }
 
@@ -1554,7 +1648,7 @@ function reorderStops() {
             btn.style.cursor = "pointer";
             btn.innerHTML = originalContent; // คืนค่าปุ่มเดิม
         } else {
-            btn.innerHTML = `<i class="fas fa-hourglass-half"></i> รอสักครู่ (${timeLeft}s)`;
+            btn.innerHTML = translations[currentLang].btn_wait_time(timeLeft);
             timeLeft--;
         }
     }, 1000);
@@ -1570,7 +1664,7 @@ function reorderStops() {
         btn.disabled = false;
         btn.style.opacity = "1";
         btn.innerHTML = originalContent;
-        return alert("❌ กรุณาเพิ่มจุดรับ-ส่งงานอย่างน้อย 1 จุด");
+        return alert(translations[currentLang].err_min_stops_post);
     }
 
     let hasError = false;
@@ -1588,7 +1682,9 @@ function reorderStops() {
 
         stops.push({
             step: index + 1,
-            label: label || (index === 0 ? "จุดรับงาน" : `จุดส่งที่ ${index}`),
+            label: label || (index === 0 
+			? translations[currentLang].lbl_pickup_simple 
+			: translations[currentLang].lbl_dropoff_indexed_simple(index)),
             phone: phone,
             lat: parseFloat(lat),
             lng: parseFloat(lng),
@@ -1601,7 +1697,7 @@ function reorderStops() {
         btn.disabled = false;
         btn.style.opacity = "1";
         btn.innerHTML = originalContent;
-        return alert("❌ กรุณาปักหมุดพิกัดให้ครบทุกจุดก่อนโพสต์งาน");
+        return alert(translations[currentLang].err_pin_required_all);
     }
 
     const formData = new FormData();
@@ -1624,7 +1720,7 @@ function reorderStops() {
         const data = await res.json();
 
         if (data.success) {
-            alert("🚀 โพสต์งานเข้าระบบเรียบร้อยแล้ว!");
+            alert(translations[currentLang].msg_post_success);
 			await fetchAndRefreshMerchantBalance();
             toggleTaskForm(); 
             await loadActiveMerchantTasks(); 
@@ -1639,7 +1735,7 @@ function reorderStops() {
             btn.style.opacity = "1";
             btn.innerHTML = originalContent; 
         } else {
-            alert("❌ เกิดข้อผิดพลาด: " + data.error);
+            alert("❌ An error occurred.: " + data.error);
             // กรณี error จาก server ให้เปิดปุ่มให้กดใหม่ได้
             clearInterval(timer);
             btn.disabled = false;
@@ -1648,7 +1744,7 @@ function reorderStops() {
         }
     } catch (error) {
         console.error("Post Error:", error);
-        alert("❌ ไม่สามารถเชื่อมต่อกับ Server ได้");
+        alert("❌ Unable to connect to the server.");
         clearInterval(timer);
         btn.disabled = false;
         btn.style.opacity = "1";
@@ -1660,58 +1756,66 @@ function reorderStops() {
 	
 	// ตรวจสอบเบราว์เซอร์ว่ารองรับเสียงไหม
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
 if (SpeechRecognition) {
     const recognition = new SpeechRecognition();
-    recognition.lang = 'th-TH'; // ภาษาไทย
     recognition.interimResults = false;
 
     function startVoiceCommand() {
+        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+
+        if (currentLang === 'pt') {
+            recognition.lang = 'pt-BR'; // ภาษาโปรตุเกส (บราซิล)
+        } else if (currentLang === 'en') {
+            recognition.lang = 'en-US'; // ภาษาอังกฤษ
+        } else {
+            recognition.lang = 'th-TH'; // ภาษาไทย
+        }
+
         recognition.start();
-        document.getElementById('voice-btn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังฟัง...';
+
+        // อัปเดต UI ปุ่ม
+        document.getElementById('voice-btn').innerHTML = translations[currentLang].btn_voice_listening;
         document.getElementById('voice-btn').style.background = "#e67e22";
     }
 
     recognition.onresult = (event) => {
         const text = event.results[0][0].transcript;
-        console.log("ข้อความที่ได้รับ:", text);
-        processVoiceOrder(text); // ส่งไปประมวลผล
+        processVoiceOrder(text);
         resetVoiceBtn();
     };
 
     recognition.onerror = () => {
-        alert("เกิดข้อผิดพลาดในการรับเสียง หรือไม่มีการอนุญาตใช้ไมค์");
+        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+        alert(translations[currentLang].err_voice_failed);
         resetVoiceBtn();
     };
 
     function resetVoiceBtn() {
-        document.getElementById('voice-btn').innerHTML = '<i class="fas fa-play"></i> แตะเพื่อเริ่มพูดสั่งงาน';
+        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+        document.getElementById('voice-btn').innerHTML = translations[currentLang].btn_voice_start;
         document.getElementById('voice-btn').style.background = "#f39c12";
     }
 }
 
 // --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
-// ฟังก์ชันวิเคราะห์คำพูดและสร้างออเดอร์
 function processVoiceOrder(speechText) {
-    console.log("AI กำลังวิเคราะห์ประโยคจริง:", speechText);
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     
-    // ล้างค่าเก่าก่อนวิเคราะห์ใหม่
     lastVoiceAnalysis = null;
 
-    // ลบช่องว่างในประโยคเพื่อให้หาคีย์เวิร์ดง่ายขึ้น
-    const cleanSpeech = speechText.replace(/\s+/g, '');
+    const cleanSpeech = (currentLang === 'th') 
+        ? speechText.replace(/\s+/g, '') 
+        : speechText.toLowerCase().replace(/\s+/g, '');
 
-    // 🚩 1. ตรวจสอบว่ามีคำว่า "ออเดอร์" อยู่ในคำพูดหรือไม่
-    if (cleanSpeech.includes("ออเดอร์")) {
-        // แยกเอาคำหลังจากคำว่า "ออเดอร์" มาวิเคราะห์หา Template
-        const parts = cleanSpeech.split("ออเดอร์");
-        const orderKeyword = parts[1]; // เอาส่วนที่อยู่หลังคำว่า ออเดอร์
+    if (cleanSpeech.includes(translations[currentLang].key_order)) {
+        const parts = cleanSpeech.split(translations[currentLang].key_order);
+        const orderKeyword = parts[1];
 
         if (orderKeyword) {
-            // ค้นหาใน Template สำเร็จรูป โดยเช็คว่าคำที่ต่อท้ายตรงกับ voiceKeyword ไหม
             const foundTemplate = myOrderTemplates.find(t => orderKeyword.includes(t.voiceKeyword));
 
             if (foundTemplate) {
-                console.log("🎯 พบออเดอร์สำเร็จรูปจากคำสั่งเสียง:", foundTemplate.templateName);
                 lastVoiceAnalysis = {
                     category: foundTemplate.category,
                     title: foundTemplate.templateName,
@@ -1721,32 +1825,27 @@ function processVoiceOrder(speechText) {
                     isFullTemplate: true
                 };
                 showVoiceSummaryModal();
-                return; // จบการทำงานทันที
+                return;
             }
         }
-        console.log("🔍 มีคำว่าออเดอร์แต่ไม่พบรหัสงานที่ตรงกัน กำลังวิเคราะห์แบบปกติ...");
     }
 
-    // --- 2. ถ้าไม่มีคำว่า "ออเดอร์" หรือไม่พบ Template ให้รัน Logic วิเคราะห์แยกส่วนตามปกติของคุณ ---
-
-    // วิเคราะห์ประเภทงาน (Category)
-    let category = "ส่งอาหารสินค้าทั่วไป"; 
-    if (speechText.includes("เอกสาร") || speechText.includes("ส่งจดหมาย")) {
-        category = "ส่งเอกสาร";
+    let category = translations[currentLang].cat_general; 
+    if (speechText.includes(translations[currentLang].key_doc) || 
+        speechText.includes(translations[currentLang].key_mail)) {
+        category = translations[currentLang].cat_doc;
     }
 
-    // วิเคราะห์งบประมาณ (Price)
     let budget = "0";
     const allNumbers = speechText.match(/\d+/g);
     if (allNumbers && allNumbers.length > 0) {
         budget = allNumbers[allNumbers.length - 1];
     }
 
-    // วิเคราะห์พิกัด (Locations)
     let foundStops = [];
     
     mySavedLocations.forEach(loc => {
-        const keyword = (loc.voiceKeyword || loc.label).replace(/\s+/g, '');
+        const keyword = (loc.voiceKeyword || loc.label).replace(/\s+/g, '').toLowerCase();
         if (cleanSpeech.includes(keyword)) {
             foundStops.push({
                 ...loc,
@@ -1759,7 +1858,7 @@ function processVoiceOrder(speechText) {
 
     lastVoiceAnalysis = {
         category: category,
-        title: `${category} ${foundStops.length} จุด`,
+        title: `${category} ${foundStops.length} ${translations[currentLang].unit_stop_voice}`,
         stops: foundStops,
         budget: budget
     };
@@ -1768,33 +1867,51 @@ function processVoiceOrder(speechText) {
 }
 
 
-// ฟังก์ชันใช้เสียงกรอก Keyword ในหน้าปักหมุด
-function startVoiceForKeyword(btn) { // รับค่า btn มาโดยตรง
-    if (!SpeechRecognition) return alert("เบราว์เซอร์นี้ไม่รองรับเสียง");
+function startVoiceForKeyword(btn) {
+    // 1. ดึงภาษาปัจจุบันมาตรวจสอบก่อน
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+
+    if (!SpeechRecognition) return alert(translations[currentLang].err_voice_not_supported);
     
     const voiceRec = new SpeechRecognition();
-    voiceRec.lang = 'th-TH';
+
+    // 2. ปรับ "หูฟัง" ตามภาษาที่เลือก
+    if (currentLang === 'pt') {
+        voiceRec.lang = 'pt-BR'; // ภาษาโปรตุเกส (บราซิล)
+    } else if (currentLang === 'en') {
+        voiceRec.lang = 'en-US'; // ภาษาอังกฤษ
+    } else {
+        voiceRec.lang = 'th-TH'; // ภาษาไทย
+    }
     
     const originalContent = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; // เริ่มหมุน
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
     
     voiceRec.start();
     
     voiceRec.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        document.getElementById('map-loc-voice').value = text.replace(/\s+/g, '');
-        btn.innerHTML = originalContent; // หยุดหมุนเมื่อได้ผลลัพธ์
+        let text = event.results[0][0].transcript;
+        
+        if (currentLang === 'th') {
+            text = text.replace(/\s+/g, '');
+        } else {
+            text = text.trim();
+        }
+
+        document.getElementById('map-loc-voice').value = text;
+        btn.innerHTML = originalContent;
     };
     
     voiceRec.onerror = () => {
-        btn.innerHTML = originalContent; // หยุดหมุนเมื่อ Error
-        alert("กรุณาลองพูดใหม่อีกครั้ง");
+        btn.innerHTML = originalContent;
+        alert(translations[currentLang].msg_voice_retry_simple);
     };
 }
 
 
 
 function showVoiceSummaryModal() {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th'; // ดึงภาษาปัจจุบัน
     const data = lastVoiceAnalysis;
     if (!data) return;
 
@@ -1809,7 +1926,11 @@ function showVoiceSummaryModal() {
             const isPickup = (i === 0);
             const icon = isPickup ? "fa-store" : "fa-box";
             const color = isPickup ? "#27ae60" : "#11998e";
-            const typeText = isPickup ? "ต้นทาง/จุดรับ" : `จุดส่งที่ ${i}`;
+            
+            // 🚩 แก้ไขจุดนี้: ใช้คำแปลตามภาษาที่เลือก
+            const typeText = isPickup 
+                ? translations[currentLang].sum_pickup 
+                : translations[currentLang].sum_dropoff(i);
 
             stopsContainer.innerHTML += `
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 12px; background: white; border-radius: 10px; border: 1px solid ${isPickup ? color : '#eee'};">
@@ -1824,7 +1945,8 @@ function showVoiceSummaryModal() {
             `;
         });
     } else {
-        stopsContainer.innerHTML = `<div style="color: red; text-align: center;">ไม่พบพิกัด</div>`;
+        // 🚩 แก้ไขจุดนี้: ข้อความแจ้งเตือนเมื่อไม่พบพิกัด
+        stopsContainer.innerHTML = `<div style="color: red; text-align: center;">${translations[currentLang].sum_no_coords}</div>`;
     }
 
     document.getElementById('voice-summary-modal').classList.remove('hidden');
@@ -1832,6 +1954,7 @@ function showVoiceSummaryModal() {
 
 
 function confirmVoiceSummary() {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const data = lastVoiceAnalysis;
     if (!data) return;
 
@@ -1860,22 +1983,24 @@ function confirmVoiceSummary() {
                 const statusLabel = document.getElementById(`loc-status-${currentId}`);
                 const coordsDisplay = document.getElementById(`coords-display-${currentId}`);
 
-                // เติมข้อมูล (ตรวจสอบว่ามี Element จริงก่อนตั้งค่า)
+                // เติมข้อมูล
                 if (labelInput) labelInput.value = stop.label;
                 if (latInput) latInput.value = stop.lat;
                 if (lngInput) lngInput.value = stop.lng;
                 if (phoneInput) phoneInput.value = stop.phone || "";
 
+                // 🚩 แปลคำว่า "พิกัด"
                 if (coordsDisplay) {
-                    coordsDisplay.innerText = `พิกัด: ${parseFloat(stop.lat).toFixed(5)}, ${parseFloat(stop.lng).toFixed(5)}`;
+                    coordsDisplay.innerText = `${translations[currentLang].lbl_coords_short} ${parseFloat(stop.lat).toFixed(5)}, ${parseFloat(stop.lng).toFixed(5)}`;
                 }
                 
+                // 🚩 แปลสถานะ AI (จุดรับ/จุดส่ง)
                 if (statusLabel) {
                     if (index === 0) {
-                        statusLabel.innerText = "✅ จุดรับงาน (AI)";
+                        statusLabel.innerText = translations[currentLang].status_pickup_ai;
                         statusLabel.style.color = "#27ae60";
                     } else {
-                        statusLabel.innerText = `✅ จุดส่งงานที่ ${index} (AI)`;
+                        statusLabel.innerText = translations[currentLang].status_dropoff_ai(index);
                         statusLabel.style.color = "#11998e";
                     }
                 }
@@ -1889,7 +2014,6 @@ function confirmVoiceSummary() {
     setTimeout(() => reorderStops(), 50); 
     
     closeVoiceSummary();
-    console.log("✅ ข้อมูลจาก AI ถูกกรอกลงฟอร์มเรียบร้อย");
 }
 
 function closeVoiceSummary() {
