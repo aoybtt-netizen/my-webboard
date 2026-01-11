@@ -2930,7 +2930,7 @@ function requestExtension() {
         }
 	
 	const currentLang = localStorage.getItem('userLang') || 'th';
-	const t = translations[currentLang];
+	const t = postTranslations[currentLang];
         // เริ่มแสดง Popup
 			Swal.fire({
     title: t.swal_add_time_title,
