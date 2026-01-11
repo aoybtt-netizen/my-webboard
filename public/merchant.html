@@ -638,8 +638,8 @@
 	let activeTaskInSidebar = null;
 	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
 	
-	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-	const t = translations[currentLang];
+	let currentLang = localStorage.getItem('preferredLanguage') || 'th';
+	let t = translations[currentLang];
 
 async function loadOrderTemplates() {
     const res = await fetch(`/api/merchant/templates?username=${myUsername}`);
