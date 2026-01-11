@@ -1132,36 +1132,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// API สำหรับดึงค่าภาษาเฉพาะของ User
-app.get('/api/user-language', async (req, res) => {
-    const { username, lang } = req.query; 
-    const currentLang = lang || 'th'; 
-
-    try {
-        if (!username) return res.status(400).json({ error: 'No username' });
-
-        const user = await usersCollection.findOne({ username: username });
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        // 🔍 DEBUG: ดูว่า Client ส่งอะไรมา และใน DB มีอะไร
-        console.log(`[Language API] Request from: ${username}`);
-        console.log(`[Language API] Client sent lang: ${lang}`);
-        console.log(`[Language API] DB saved lang: ${user.language}`);
-
-        const finalLang = user.language || currentLang;
-
-        res.json({
-            success: true,
-            userLanguage: finalLang,
-            username: user.username
-        });
-
-    } catch (e) {
-        console.error("User Info API Error:", e);
-        res.status(500).json({ success: false });
-    }
-});
-
 // 1. Admin Transactions
 app.get('/api/admin/transactions', async (req, res) => {
     if (req.query.requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });

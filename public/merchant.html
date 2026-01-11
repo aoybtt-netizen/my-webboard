@@ -678,53 +678,40 @@ const translations = {
 };
 
 
-async function applyMerchantTranslations() {
-    const myName = localStorage.getItem('myUsername');
-    const localLang = localStorage.getItem('userLang') || 'th';
-    const localCurrency = localStorage.getItem('userCurrency') || 'USD';
+function applyMerchantTranslations() {
+    // 🚩 ดึงค่าจาก localStorage (เช็คทุกชื่อคีย์ที่พี่น่าจะเคยใช้)
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
-    // 🔍 DEBUG: เช็คค่าเริ่มต้นในเครื่อง
-    console.log(`[i18n] Initial localLang: ${localLang}`);
+    console.log(`[i18n] Using local language setting: ${currentLang}`);
 
-    if (myName) {
-        try {
-            const res = await fetch(`/api/user-language?username=${myName}&currency=${localCurrency}&lang=${localLang}`);
-            const data = await res.json();
-            
-            if (data.success && data.userLanguage) {
-                // 🔍 DEBUG: เช็คว่า Server ส่งอะไรกลับมา
-                console.log(`[i18n] Server responded with lang: ${data.userLanguage}`);
-
-                if (localLang !== data.userLanguage) {
-                    console.log(`[i18n] Updating local storage: ${localLang} -> ${data.userLanguage}`);
-                    localStorage.setItem('userLang', data.userLanguage);
-                }
-            }
-        } catch (err) {
-            console.error("[i18n] Fetch error:", err);
-        }
-    }
-
-    // ตัดสินใจใช้ภาษาสุดท้าย
-    const finalLang = localStorage.getItem('userLang') || 'th';
-    console.log(`[i18n] Final Language being applied: ${finalLang}`);
-
-    // --- ส่วนการรันระบบแปลภาษา ---
+    // 1. แปลข้อความทั่วไปที่มี data-i18n-key
     document.querySelectorAll('[data-i18n-key]').forEach(el => {
         const key = el.getAttribute('data-i18n-key');
-        if (translations[finalLang] && translations[finalLang][key]) {
+        if (translations[currentLang] && translations[currentLang][key]) {
+            
+            // รักษาไอคอน <i> ไว้เหมือนเดิม
             const icon = el.querySelector('i');
             if (icon) {
-                el.innerHTML = '';
-                el.appendChild(icon);
-                el.innerHTML += ' ' + translations[finalLang][key];
+                const translatedText = translations[currentLang][key];
+                el.innerHTML = ''; // ล้างข้อมูลเก่า
+                el.appendChild(icon); // ใส่ไอคอนกลับไป
+                el.insertAdjacentHTML('beforeend', ' ' + translatedText); // เติมข้อความแปล
             } else {
-                el.innerText = translations[finalLang][key];
+                el.innerText = translations[currentLang][key];
             }
+        }
+    });
+
+    // 2. แปลพวก Placeholder (ช่องกรอกข้อมูล)
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[currentLang] && translations[currentLang][key]) {
+            el.placeholder = translations[currentLang][key];
         }
     });
 }
 
+// สั่งรันตอนโหลดหน้าจอ
 window.addEventListener('DOMContentLoaded', () => {
     applyMerchantTranslations();
 });
