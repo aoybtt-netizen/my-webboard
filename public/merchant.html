@@ -851,9 +851,7 @@ async function fetchAndRefreshMerchantBalance() {
 // 3. ส่วนการทำงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
     
-	window.addEventListener('DOMContentLoaded', () => {
-    applyMerchantTranslations();
-	});
+    await applyMerchantTranslations();
     const myUsername = localStorage.getItem('myUsername');
 
     if (!myUsername) {
