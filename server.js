@@ -102,6 +102,24 @@ const serverTranslations = {
         'ban_hierarchy_err': '⛔ ไม่สามารถแบน/ปลดแบน ผู้ที่มีระดับเท่ากันหรือสูงกว่าได้ (Level {level})',
         'ban_zone_missing': '⛔ ไม่สามารถตรวจสอบโซนได้ เนื่องจากขาดข้อมูลพิกัด (Location)',
         'ban_zone_mismatch': '⛔ ไม่อนุญาตให้แบนข้ามโซน (คุณ: {zoneA} / เป้าหมาย: {zoneB})',
+		'sys_starting': 'ระบบกำลังเริ่มต้น กรุณารอสักครู่...',
+        'error_username_taken': 'ชื่อนี้มีผู้ใช้แล้ว กรุณาใช้ชื่ออื่น',
+        'error_user_not_found': 'ไม่พบผู้ใช้งาน',
+        'error_invalid_password': 'รหัสผ่านไม่ถูกต้อง',
+		'error_username_exists': 'ชื่อนี้ถูกใช้ไปแล้ว กรุณาใช้ชื่ออื่น',
+        'error_server_fault': 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์',
+        'error_fetch_members': 'ไม่สามารถดึงข้อมูลสมาชิกได้',
+        'error_fetch_zones': 'ไม่สามารถดึงข้อมูลโซนได้',
+        'error_admin_l3_required': 'ปฏิเสธการเข้าถึง: ต้องเป็นแอดมินระดับ 3 เท่านั้น',
+		'cat_delivery': 'หาไรเดอร์ส่งของหรือทำธุระแทน',
+        'cat_transport': 'หาไรเดอร์รับ-ส่งคน',
+        'cat_general': 'หาคนทำงานทั่วไป',
+        'cat_heavy': 'หาคนทำงานหนักทั่วไป',
+		'msg_job_timeout': '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ',
+		'zone_outside_service': 'นอกพื้นที่บริการ',
+        'zone_no_owner': 'ไม่มีผู้ดูแล',
+        'zone_anonymous': 'โซนนิรนาม',
+        'user_email_not_set': 'ยังไม่ระบุ',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -120,6 +138,59 @@ const serverTranslations = {
         'ban_hierarchy_err': '⛔ Cannot ban/unban user with equal or higher level (Level {level})',
         'ban_zone_missing': '⛔ Cannot verify zone (Missing location data)',
         'ban_zone_mismatch': '⛔ Cross-zone ban is not allowed (You: {zoneA} / Target: {zoneB})',
+		'sys_starting': 'System is starting, please wait...',
+        'error_username_taken': 'Username is already taken, please choose another.',
+        'error_user_not_found': 'User not found',
+        'error_invalid_password': 'Invalid password',
+		'error_username_exists': 'Username already exists, please use another name.',
+        'error_server_fault': 'Internal server error occurred.',
+        'error_fetch_members': 'Unable to fetch member data.',
+        'error_fetch_zones': 'Unable to fetch zone data.',
+        'error_admin_l3_required': 'Access Denied: Admin Level 3 required.',
+		'cat_delivery': 'Delivery & Errands',
+        'cat_transport': 'Ride Hailing / Transport',
+        'cat_general': 'General Tasks',
+        'cat_heavy': 'General Manual Labor',
+		'msg_job_timeout': '⛔ Delivery timeout! The post has been closed automatically.',
+		'zone_outside_service': 'Outside Service Area',
+        'zone_no_owner': 'No Administrator',
+        'zone_anonymous': 'Anonymous Zone',
+        'user_email_not_set': 'Not specified',
+    },'pt': {
+        'post_not_found': 'Postagem não encontrada',
+        'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
+        'room_occupied': '⚠️ Outro usuário está visualizando esta postagem. Por favor, aguarde...',
+        'deduct_perm_denied': '⛔ Acesso negado: Requer Admin Nível 1 ou superior',
+        'deduct_invalid_amt': '⛔ Quantidade de moedas inválida',
+        'deduct_user_not_found': '⛔ Usuário não encontrado',
+        'deduct_insufficient': '⛔ O destino não possui moedas suficientes',
+        'deduct_hierarchy_err': '⛔ Não é possível retirar moedas de usuários com nível igual ou superior (Nível {level})',
+        'deduct_zone_missing': '⛔ Não é possível verificar a zona devido à falta de localização (GPS)',
+        'deduct_zone_mismatch': '⛔ Não é permitido retirar moedas de outra zona (Você: {zoneA} / Alvo: {zoneB})',
+        'ban_perm_denied': '⛔ Acesso negado: Requer Admin Nível 1 ou superior',
+        'ban_cannot_admin': '⛔ Não é possível banir a conta de Admin principal',
+        'ban_user_not_found': '⛔ Usuário não encontrado',
+        'ban_hierarchy_err': '⛔ Não é possível banir/desbanir usuários com nível igual ou superior (Nível {level})',
+        'ban_zone_missing': '⛔ Não é possível verificar a zona devido à falta de localização (GPS)',
+        'ban_zone_mismatch': '⛔ Não é permitido banir usuários de outra zona (Você: {zoneA} / Alvo: {zoneB})',
+		'sys_starting': 'O sistema está iniciando, por favor aguarde...',
+        'error_username_taken': 'Este nome de usuário já existe, por favor escolha outro.',
+        'error_user_not_found': 'Usuário não encontrado',
+        'error_invalid_password': 'Senha incorreta',
+		'error_username_exists': 'Este nome já está em uso, por favor use outro.',
+        'error_server_fault': 'Ocorreu um erro interno no servidor.',
+        'error_fetch_members': 'Não foi possível buscar os dados dos membros.',
+        'error_fetch_zones': 'Não foi possível buscar os dados da zona.',
+        'error_admin_l3_required': 'Acesso Negado: Requer Admin Nível 3.',
+		'cat_delivery': 'Entregas e Tarefas',
+        'cat_transport': 'Transporte de Pessoas',
+        'cat_general': 'Serviços Gerais',
+        'cat_heavy': 'Trabalho Pesado em Geral',
+		'msg_job_timeout': '⛔ Tempo de entrega esgotado! A postagem foi encerrada automaticamente.',
+		'zone_outside_service': 'Fora da Área de Serviço',
+        'zone_no_owner': 'Sem Administrador',
+        'zone_anonymous': 'Zona Anônima',
+        'user_email_not_set': 'Não especificado',
     }
 };
 
@@ -133,7 +204,7 @@ function translateServerMsg(key, lang = 'th') {
 // ==========================================
 app.use((req, res, next) => {
     if (!usersCollection) {
-        return res.status(503).send("ระบบกำลังเริ่มต้น กรุณารอสักครู่...");
+        return res.status(503).send(serverTranslations[lang].sys_starting);
     }
     next();
 });
@@ -165,7 +236,7 @@ app.post('/api/auth/google-register', async (req, res) => {
 
     // เช็คว่าชื่อซ้ำไหม
     const exists = await usersCollection.findOne({ username: username });
-    if (exists) return res.json({ success: false, error: 'ชื่อนี้มีผู้ใช้แล้ว กรุณาใช้ชื่ออื่น' });
+    if (exists) return res.json({ success: false, error: serverTranslations[lang].error_username_taken });
 
     const newUser = {
         username: username,
@@ -186,7 +257,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await usersCollection.findOne({ username });
 
-    if (!user) return res.json({ success: false, error: 'ไม่พบผู้ใช้งาน' });
+    if (!user) return res.json({ success: false, error: serverTranslations[lang].error_user_not_found });
 
     // ถ้าเป็นยูสเก่าที่ยังไม่มีรหัสผ่าน
     if (!user.password) {
@@ -197,7 +268,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (isMatch) {
         res.json({ success: true, user });
     } else {
-        res.json({ success: false, error: 'รหัสผ่านไม่ถูกต้อง' });
+        res.json({ success: false, error: serverTranslations[lang].error_invalid_password });
     }
 });
 
@@ -222,7 +293,7 @@ app.post('/api/auth/register', async (req, res) => {
         // 1. ตรวจสอบว่าชื่อซ้ำไหม
         const existingUser = await usersCollection.findOne({ username: username });
         if (existingUser) {
-            return res.status(400).json({ success: false, error: "ชื่อนี้ถูกใช้ไปแล้ว กรุณาใช้ชื่ออื่น" });
+            return res.status(400).json({ success: false, error: serverTranslations[lang].error_username_exists });
         }
 
         // 2. Hash รหัสผ่าน
@@ -246,7 +317,7 @@ app.post('/api/auth/register', async (req, res) => {
         
     } catch (err) {
         console.error("Register Error:", err);
-        res.status(500).json({ success: false, error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+        res.status(500).json({ success: false, error: serverTranslations[lang].error_server_fault });
     }
 });
 
@@ -259,7 +330,7 @@ app.get('/api/admin/all-users', async (req, res) => {
         const users = await db.collection('users').find({}).sort({ adminLevel: -1 }).toArray();
         res.json(users);
     } catch (err) {
-        res.status(500).json({ success: false, message: "ไม่สามารถดึงข้อมูลสมาชิกได้" });
+        res.status(500).json({ success: false, message: serverTranslations[lang].error_fetch_members });
     }
 });
 
@@ -269,7 +340,7 @@ app.get('/api/admin/all-zones', async (req, res) => {
         const zones = await db.collection('zones').find({}).sort({ id: 1 }).toArray();
         res.json(zones);
     } catch (err) {
-        res.status(500).json({ success: false, message: "ไม่สามารถดึงข้อมูลโซนได้" });
+        res.status(500).json({ success: false, message: serverTranslations[lang].error_fetch_zones });
     }
 });
 
@@ -281,7 +352,7 @@ app.post('/api/admin/universal-update', async (req, res) => {
         // --- 🛡️ ตรวจสอบสิทธิ์แอดมิน (Security Check) ---
         const admin = await db.collection('users').findOne({ username: adminUsername });
         if (!admin || admin.adminLevel < 3) {
-            return res.status(403).json({ success: false, message: "ปฏิเสธการเข้าถึง: ต้องเป็นแอดมินระดับ 3 เท่านั้น" });
+            return res.status(403).json({ success: false, message: serverTranslations[lang].error_admin_l3_required });
         }
 
         // --- ⚙️ จัดการประเภทข้อมูล (Data Casting) ---
@@ -350,7 +421,7 @@ app.post('/api/admin/universal-update', async (req, res) => {
 // API สำหรับอัปโหลดสลิปไปที่ Cloudinary
 app.post('/api/upload-slip', uploadSlip.single('slip'), (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ error: 'ไม่พบไฟล์' });
+        if (!req.file) return res.status(400).json({ error: 'File not found.' });
         // ส่ง URL ของ Cloudinary กลับไป
         res.json({ success: true, url: req.file.path });
     } catch (err) {
@@ -523,10 +594,10 @@ async function seedInitialData() {
     // 2. Topics
     if (await topicsCollection.countDocuments() === 0) {
         await topicsCollection.insertMany([
-            { id: 'general', name: 'หัวข้อทั่วไป' },
-            { id: 'tech', name: 'เทคโนโลยี' },
-            { id: 'game', name: 'เกม/บันเทิง' },
-            { id: 'sale', name: 'ซื้อขาย/แลกเปลี่ยน' }
+            { id: 'general', name: translations[currentLang].cat_delivery },
+			{ id: 'tech',    name: translations[currentLang].cat_transport },
+			{ id: 'game',    name: translations[currentLang].cat_general },
+			{ id: 'sale',    name: translations[currentLang].cat_heavy }
         ]);
         console.log("Initialized Topics");
     }
@@ -715,7 +786,6 @@ async function processJobTimeout(postId, io) {
                 { username: { $in: usersToUnlock } },
                 { $set: { working: null, status: 'idle' } }
             );
-            console.log(`🔓 ปลดล็อก User สำเร็จ: ${userUpdate.modifiedCount} คน`);
 
             // 🚩 2. ปิดกระทู้
             await postsCollection.updateOne(
@@ -724,7 +794,8 @@ async function processJobTimeout(postId, io) {
             );
 
             // 🚩 3. ส่งสัญญาณเตะ
-            const kickMsg = { message: '⛔ หมดเวลาส่งงาน! ระบบได้ปิดกระทู้อัตโนมัติ' };
+            const kickMsg = { message: serverTranslations[lang].msg_job_timeout };
+			io.to(room).emit('system_kick', kickMsg);
             
             // ส่งรายตัว (ต้องมั่นใจว่า socket.join(username) ไว้แล้ว)
             usersToUnlock.forEach(user => {
@@ -952,8 +1023,8 @@ app.get('/api/profile-details', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         // ค่า Default กรณีอยู่นอกพื้นที่
-        let zoneName = "นอกพื้นที่บริการ";
-        let zoneOwner = "ไม่มีผู้ดูแล";
+        let zoneName = translations[currentLang].zone_outside_service;
+		let zoneOwner = translations[currentLang].zone_no_owner;
         let currentCurrency = 'USD';
         let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
 
@@ -964,8 +1035,8 @@ app.get('/api/profile-details', async (req, res) => {
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
-                zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
-                zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล";
+                zoneName = zoneInfo.zoneData.name || translations[currentLang].zone_anonymous;
+				zoneOwner = zoneInfo.zoneData.assignedAdmin || translations[currentLang].zone_no_owner;
                 
                 // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
                 if (zoneInfo.zoneData.zoneCurrency) {
@@ -986,7 +1057,7 @@ app.get('/api/profile-details', async (req, res) => {
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
-            email: user.email || "ยังไม่ระบุ",
+            const userEmailDisplay = user.email || translations[currentLang].user_email_not_set,
             zoneName: zoneName,
             zoneOwner: zoneOwner
         });
@@ -1343,7 +1414,7 @@ app.post('/api/admin/set-cost', async (req, res) => {
         const targetZoneId = parseInt(zoneId);
 
         if (isNaN(systemZoneValue) || isNaN(zoneFeeValue) || !targetZoneId) {
-            return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน หรือค่าธรรมเนียมไม่ถูกต้อง' });
+            return res.status(400).json({ error: 'Incomplete information.' });
         }
 
         // 3. บันทึกลงใน Collection: zones (ผูกกับโซนนั้นๆ)
@@ -1359,7 +1430,7 @@ app.post('/api/admin/set-cost', async (req, res) => {
         );
 
         if (result.matchedCount === 0) {
-            return res.status(404).json({ error: 'ไม่พบโซนที่ระบุ' });
+            return res.status(404).json({ error: 'The specified zone was not found.' });
         }
 
         // 4. แจ้งเตือนการอัปเดตผ่าน Socket (ส่งข้อมูลโซนที่เปลี่ยนไป)
