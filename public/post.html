@@ -2928,17 +2928,16 @@ function requestExtension() {
             alert(postTranslations[currentLang].user_err_system_incomplete);
             return;
         }
-
-		
-		const currentLang = localStorage.getItem('userLang') || 'th';
-		const t = postTranslations[currentLang];
+	
+	const currentLang = localStorage.getItem('userLang') || 'th';
+	const t = translations[currentLang];
         // เริ่มแสดง Popup
-        Swal.fire({
-			title: t.swal_add_time_title,
-			text: t.swal_add_time_text,
-			icon: 'question',
-			input: 'radio',
-			inputOptions: {
+			Swal.fire({
+    title: t.swal_add_time_title,
+    text: t.swal_add_time_text,
+    icon: 'question',
+    input: 'radio',
+    inputOptions: {
         '10': `10 ${t.time_unit_min}`,
         '20': `20 ${t.time_unit_min}`,
         '30': `30 ${t.time_unit_min}`
@@ -2949,19 +2948,19 @@ function requestExtension() {
     showCancelButton: true,
     confirmButtonText: t.btn_send_request,
     cancelButtonText: t.btn_cancel
-	}).then((result) => {
-    if (result.isConfirmed) {
-        const minutes = parseInt(result.value);
+			}).then((result) => {
+				
+				if (result.isConfirmed) {
+					const minutes = parseInt(result.value);
 
-        // ส่งคำขอไปหา Server พร้อมระบุภาษาเพื่อให้ Server แจ้งเตือนอีกฝั่งถูกภาษา
-        socket.emit('request-extend-time', { 
+					// ส่งคำขอไปหา Server
+					socket.emit('request-extend-time', { 
             postId, 
             minutes, 
             lang: currentLang 
         });
-        
-        // แสดงสถานะการส่ง
-        Swal.fire({
+					
+				Swal.fire({
             title: t.msg_request_sent,
             text: t.msg_waiting_accept,
             icon: 'info'
