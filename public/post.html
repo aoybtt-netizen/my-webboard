@@ -2993,20 +2993,10 @@ function requestExtension() {
 			}).then((result) => {
 				
 				if (result.isConfirmed) {
-					const minutes = parseInt(result.value);
-
-					// ส่งคำขอไปหา Server
-					socket.emit('request-extend-time', { 
-            postId, 
-            minutes, 
-            lang: currentLang 
-        });
-					
-				Swal.fire({
-            title: t.msg_request_sent,
-            text: t.msg_waiting_accept,
-            icon: 'info'
-        });
+                const minutes = parseInt(result.value);
+                socket.emit('request-extend-time', { postId, minutes });
+                
+                Swal.fire(t.swal_request_sent, t.swal_waiting_accept, 'info');
             }
         });
 
@@ -3016,18 +3006,19 @@ function requestExtension() {
 }
 
 socket.on('receive-extension-request', (data) => {
+    const t = postTranslations[currentLang];
     const { minutes, requester } = data;
+
     Swal.fire({
-        title: 'Add time request!',
-        text: `${requester} Add time request ${minutes} m`,
+        title: t.swal_receive_time_title,
+        text: t.swal_receive_time_body(requester, minutes),
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Accept (Add time)',
-        cancelButtonText: 'Reject',
+        confirmButtonText: t.btn_accept_time,
+        cancelButtonText: t.btn_reject_time,
         confirmButtonColor: '#27ae60',
         cancelButtonColor: '#d33'
     }).then((result) => {
-        // ส่งคำตอบกลับไป Server (True = อนุมัติ, False = ปฏิเสธ)
         socket.emit('reply-extension-request', { 
             postId, 
             minutes, 
@@ -3036,20 +3027,22 @@ socket.on('receive-extension-request', (data) => {
     });
 });
 
-
+// เมื่อเพิ่มเวลาสำเร็จ
 socket.on('time-extended-success', (data) => {
+    const t = postTranslations[currentLang];
     const { newDeadline, addedMinutes } = data;
     
     Swal.fire({
-        icon: 'success', // เพิ่ม icon ให้สวยงาม
-        title: 'Add time success!', 
-        text: `Add time ${addedMinutes} m`,
+        icon: 'success',
+        title: t.swal_extend_success, 
+        text: t.swal_extend_added(addedMinutes),
         timer: 2000,
         showConfirmButton: false
     });
     
-    // เริ่มนับถอยหลังใหม่ด้วย Deadline ใหม่
-    startCountdown(newDeadline); 
+    if (typeof startCountdown === 'function') {
+        startCountdown(newDeadline); 
+    }
 });
 
 socket.on('extension-rejected', () => {
