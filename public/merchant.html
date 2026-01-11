@@ -680,50 +680,41 @@ const translations = {
 
 async function applyMerchantTranslations() {
     const myName = localStorage.getItem('myUsername');
-    let currentLang = localStorage.getItem('userLang') || 'th';
+    // ดึงค่าภาษาที่มีอยู่ในเครื่องตอนนี้ส่งไปถาม Server ด้วย
+    const localLang = localStorage.getItem('userLang') || 'th';
+    const localCurrency = localStorage.getItem('userCurrency') || 'USD';
 
-    // 🚩 1. ดึงค่าภาษาล่าสุดจาก Server เฉพาะเจาะจง
+    // 🚩 เรียกใช้ API ตามรูปแบบที่พี่ต้องการ
     if (myName) {
         try {
-            const res = await fetch(`/api/user-language?username=${myName}`);
+            // ส่งค่าไปครบๆ ทั้ง username, currency, และ lang
+            const res = await fetch(`/api/user-language?username=${myName}&currency=${localCurrency}&lang=${localLang}`);
             const data = await res.json();
-            if (data.success && data.language) {
-                currentLang = data.language;
-                localStorage.setItem('userLang', currentLang); // อัปเดตเครื่องให้ตรงกับ DB
+            
+            if (data.success && data.userLanguage) {
+                // ✅ ถ้าภาษาใน Server ไม่ตรงกับในเครื่อง ให้ใช้ตาม Server
+                localStorage.setItem('userLang', data.userLanguage);
             }
         } catch (err) {
-            console.warn("ใช้ภาษาจากเครื่องแทน เนื่องจากดึงจาก Server ไม่สำเร็จ");
+            console.error("ดึงข้อมูลภาษาล้มเหลว:", err);
         }
     }
 
-    // 🚩 2. เริ่มกระบวนการเปลี่ยนภาษาในหน้าจอ
-    const elements = document.querySelectorAll('[data-i18n-key]');
-    elements.forEach(el => {
+    // --- ส่วนการรันระบบแปลภาษา (เหมือนเดิม) ---
+    const finalLang = localStorage.getItem('userLang') || 'th';
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
         const key = el.getAttribute('data-i18n-key');
-        if (translations[currentLang] && translations[currentLang][key]) {
-            
-            // รักษา Icon (<i>) ไว้เหมือนเดิม
+        if (translations[finalLang] && translations[finalLang][key]) {
             const icon = el.querySelector('i');
             if (icon) {
-                const textNode = document.createTextNode(' ' + translations[currentLang][key]);
-                el.innerHTML = ''; 
+                el.innerHTML = '';
                 el.appendChild(icon);
-                el.appendChild(textNode);
+                el.innerHTML += ' ' + translations[finalLang][key];
             } else {
-                el.innerText = translations[currentLang][key];
+                el.innerText = translations[finalLang][key];
             }
         }
     });
-
-    // แปล Placeholder
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const key = el.getAttribute('data-i18n-placeholder');
-        if (translations[currentLang] && translations[currentLang][key]) {
-            el.placeholder = translations[currentLang][key];
-        }
-    });
-
-    console.log("Language sync with server: " + currentLang);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
