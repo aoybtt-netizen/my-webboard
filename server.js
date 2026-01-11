@@ -142,6 +142,11 @@ const serverTranslations = {
         'msg_set_loc_mid': ' เรียบร้อย\n📍 ',
 		'err_db_save': 'ไม่สามารถบันทึกได้',
         'err_db_update': 'ไม่สามารถอัปเดตข้อมูลได้',
+		'err_post_not_found_final': 'ไม่พบโพสต์',
+        'err_empty_chat': 'กรุณาพิมพ์ข้อความ',
+		'err_job_not_found_alt': 'ไม่พบงาน',
+        'err_no_permission': 'ไม่มีสิทธิ์จัดการงานนี้',
+        'err_bypass_no_rider': 'ไม่สามารถ Bypass ได้เนื่องจากยังไม่มีไรเดอร์รับงาน',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -200,6 +205,11 @@ const serverTranslations = {
         'msg_set_loc_mid': ' successfully.\n📍 ',
 		'err_db_save': 'Unable to save data',
         'err_db_update': 'Unable to update data',
+		'err_post_not_found_final': 'Post not found',
+        'err_empty_chat': 'Please type a message',
+		'err_job_not_found_alt': 'Job not found',
+        'err_no_permission': 'No permission to manage this job',
+        'err_bypass_no_rider': 'Cannot bypass: No rider has accepted this job yet',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -257,6 +267,11 @@ const serverTranslations = {
         'msg_set_loc_mid': ' com sucesso.\n📍 ',
 		'err_db_save': 'Não foi possível salvar os dados',
         'err_db_update': 'Não foi possível atualizar os dados',
+		'err_post_not_found_final': 'Postagem não encontrada',
+        'err_empty_chat': 'Por favor, digite uma mensagem',
+		'err_job_not_found_alt': 'Trabalho não encontrado',
+        'err_no_permission': 'Sem permissão para gerenciar este trabalho',
+        'err_bypass_no_rider': 'Não é possível ignorar: Nenhum entregador aceitou este trabalho ainda',
     }
 };
 
@@ -3370,7 +3385,12 @@ app.get('/api/posts/:id/comments', async (req, res) => {
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบโพสต์' });
+        if (!post) {
+			return res.status(404).json({ 
+			success: false, 
+			error: serverTranslations[lang].err_post_not_found_final 
+			});
+		}
         
         // ส่งคอมเมนต์ออกไป ถ้าไม่มีให้ส่งอาเรย์ว่าง
         res.json(post.comments || []);
@@ -3384,7 +3404,11 @@ app.post('/api/posts/:id/comments', async (req, res) => {
     const postId = parseInt(req.params.id);
     const { author, text } = req.body;
 
-    if (!text) return res.status(400).json({ error: 'กรุณาพิมพ์ข้อความ' });
+    if (!text) {
+		return res.status(400).json({ 
+        error: serverTranslations[lang].err_empty_chat 
+		});
+	}
 
     try {
         const newComment = {
@@ -3422,10 +3446,6 @@ app.get('/api/rider-stats/:username', async (req, res) => {
             ],
             status: { $in: ['finished', 'success', 'completed', 'closed_permanently', 'rating_pending'] } 
         });
-
-        // ตรวจสอบใน Terminal ว่ารอบนี้นับได้เลขอะไร
-        console.log(`📊 Stats for ${username}: Found ${completedJobs} jobs`);
-
         res.json({
             success: true,
             stats: {
@@ -3446,21 +3466,29 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
     const { postId, stopIndex } = req.params;
     const { author } = req.body;
 
-    console.log(`\n--- ⏩ Start Bypass Debug ---`);
-    console.log(`📦 PostID: ${postId} | 📍 StopIndex: ${stopIndex} | 👤 Merchant: ${author}`);
 
     try {
         // 1. ค้นหางาน
         const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+        if (!post) {
+			return res.status(404).json({ 
+			success: false, 
+			error: serverTranslations[lang].err_job_not_found_alt 
+			});
+		}
         
-        if (post.author !== author) return res.status(403).json({ success: false, error: 'ไม่มีสิทธิ์จัดการงานนี้' });
+        if (post.author !== author) {
+				return res.status(403).json({ 
+				success: false, 
+				error: serverTranslations[lang].err_no_permission 
+			});
+		}
 		if (!post.acceptedBy) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'ไม่สามารถ Bypass ได้เนื่องจากยังไม่มีไรเดอร์รับงาน' 
-            });
-        }
+			return res.status(400).json({ 
+			success: false, 
+			error: serverTranslations[lang].err_bypass_no_rider 
+			});
+		}
         // 2. เตรียมอัปเดตสถานะจุด
         const updateKey = `stops.${stopIndex}.status`;
         let updateData = { [updateKey]: 'success' };
@@ -3471,7 +3499,6 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
         const allFinished = currentStops.every(s => s.status === 'success');
 
         if (allFinished) {
-            console.log(`🚩 All stops finished via Bypass. Closing job...`);
             updateData.status = 'closed_permanently';
             updateData.isClosed = true;
             updateData.finishTimestamp = Date.now();
@@ -3483,7 +3510,6 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
                     { username: riderName },
                     { $set: { riderWorking: null } }
                 );
-                console.log(`✅ Unlocked Rider: ${riderName} (riderWorking = null)`);
                 
                 // อัปเดตสถิติไรเดอร์ (optional)
                 await usersCollection.updateOne(
