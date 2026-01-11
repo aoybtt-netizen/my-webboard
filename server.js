@@ -4426,6 +4426,10 @@ app.post('/api/admin/delete-kyc', async (req, res) => {
 // Socket.io Logic
 // ==========================================
 io.on('connection', (socket) => {
+	socket.on('set-language', (lang) => {
+        socket.lang = lang || 'th'; 
+        console.log(`Socket ${socket.id} set language to: ${socket.lang}`);
+    });
 	
 	socket.on('join-post', (postId) => {
         const roomName = `post-${postId}`;
@@ -4561,11 +4565,9 @@ io.on('connection', (socket) => {
 });
 
 	socket.on('share-map-access', ({ postId }) => {
+	const lang = socket.lang || 'th';
     console.log(`Owner shared map for post: ${postId}`);
-    
-    // ส่งสัญญาณไปหาทุกคนที่อยู่ในห้อง 'post-ID' นั้นๆ
     io.to(`post-${postId}`).emit('map-access-granted', {
-			const lang = socket.lang || 'th';
 			postId: postId,
 			message: serverTranslations[lang].msg_map_access
 	});
