@@ -4565,6 +4565,7 @@ io.on('connection', (socket) => {
     
     // ส่งสัญญาณไปหาทุกคนที่อยู่ในห้อง 'post-ID' นั้นๆ
     io.to(`post-${postId}`).emit('map-access-granted', {
+			const lang = socket.lang || 'th';
 			postId: postId,
 			message: serverTranslations[lang].msg_map_access
 	});
