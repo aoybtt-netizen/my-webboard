@@ -789,10 +789,10 @@ async function seedInitialData() {
     // 2. Topics
     if (await topicsCollection.countDocuments() === 0) {
         await topicsCollection.insertMany([
-            { id: 'general', name: translations[currentLang].cat_delivery },
-			{ id: 'tech',    name: translations[currentLang].cat_transport },
-			{ id: 'game',    name: translations[currentLang].cat_general },
-			{ id: 'sale',    name: translations[currentLang].cat_heavy }
+            { id: 'general', name: 'Topic1' },
+            { id: 'tech', name: 'Topic2' },
+            { id: 'game', name: 'Topic3' },
+            { id: 'sale', name: 'Topic4' }
         ]);
         console.log("Initialized Topics");
     }
@@ -1214,6 +1214,7 @@ app.get('/api/user-info', async (req, res) => {
 
 // 2.1 API ใหม่สำหรับหน้า Profile โดยเฉพาะ เพื่อไม่ให้กระทบระบบหลัก
 app.get('/api/profile-details', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { username, location } = req.query;
         if (!username) return res.status(400).json({ error: 'No username' });
@@ -1222,8 +1223,8 @@ app.get('/api/profile-details', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         // ค่า Default กรณีอยู่นอกพื้นที่
-        let zoneName = translations[currentLang].zone_outside_service;
-		let zoneOwner = translations[currentLang].zone_no_owner;
+        let zoneName = serverTranslations[currentLang].zone_outside_service;
+		let zoneOwner = serverTranslations[currentLang].zone_no_owner;
         let currentCurrency = 'USD';
         let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
 
@@ -1234,8 +1235,8 @@ app.get('/api/profile-details', async (req, res) => {
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
-                zoneName = zoneInfo.zoneData.name || translations[currentLang].zone_anonymous;
-				zoneOwner = zoneInfo.zoneData.assignedAdmin || translations[currentLang].zone_no_owner;
+                zoneName = zoneInfo.zoneData.name || serverTranslations[currentLang].zone_anonymous;
+				zoneOwner = zoneInfo.zoneData.assignedAdmin || serverTranslations[currentLang].zone_no_owner;
                 
                 // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
                 if (zoneInfo.zoneData.zoneCurrency) {
@@ -5278,6 +5279,7 @@ socket.on('submit-kyc', async (kycData) => {
 
 // ✅ รับสัญญาณการอัปเดตสถานะ KYC จาก Server
 socket.on('kyc-status-updated', (data) => {
+	const lang = socket.lang || 'th';
     const myName = localStorage.getItem('myUsername');
     
     // 1. ตรวจสอบก่อนว่าข้อมูลที่ส่งมาเป็นของชื่อผู้ใช้เราจริงๆ หรือไม่
@@ -5287,8 +5289,8 @@ socket.on('kyc-status-updated', (data) => {
     if (data.status === 'approved') {
 			Swal.fire({
 			icon: 'success',
-			title: translations[currentLang].kyc_success_title,
-			text: translations[currentLang].kyc_success_text(data.adminName),
+			title: serverTranslations[currentLang].kyc_success_title,
+			text:serverTranslations[currentLang].kyc_success_text(data.adminName),
             confirmButtonColor: '#11998e'
 			}).then(() => {
             // อัปเดต UI ของหน้าจอทันที
@@ -5307,8 +5309,8 @@ socket.on('kyc-status-updated', (data) => {
     else if (data.status === 'deleted') {
 			Swal.fire({
 			icon: 'warning',
-			title: translations[currentLang].kyc_rejected_title,
-			text: data.message || translations[currentLang].kyc_rejected_text,
+			title: serverTranslations[currentLang].kyc_rejected_title,
+			text: data.message || serverTranslations[currentLang].kyc_rejected_text,
             confirmButtonColor: '#e74c3c'
 			}).then(() => {
             // ล้างค่าสถานะในเครื่อง
