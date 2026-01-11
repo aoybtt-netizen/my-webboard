@@ -140,6 +140,8 @@ const serverTranslations = {
         'err_no_username': 'ไม่พบชื่อผู้ใช้',
 		'msg_set_loc_prefix': '✅ กำหนดพิกัดให้ ',
         'msg_set_loc_mid': ' เรียบร้อย\n📍 ',
+		'err_db_save': 'ไม่สามารถบันทึกได้',
+        'err_db_update': 'ไม่สามารถอัปเดตข้อมูลได้',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -196,6 +198,8 @@ const serverTranslations = {
         'err_no_username': 'User not found',
 		'msg_set_loc_prefix': '✅ Location set for ',
         'msg_set_loc_mid': ' successfully.\n📍 ',
+		'err_db_save': 'Unable to save data',
+        'err_db_update': 'Unable to update data',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -251,6 +255,8 @@ const serverTranslations = {
         'err_no_username': 'Usuário não encontrado',
 		'msg_set_loc_prefix': '✅ Localização definida para ',
         'msg_set_loc_mid': ' com sucesso.\n📍 ',
+		'err_db_save': 'Não foi possível salvar os dados',
+        'err_db_update': 'Não foi possível atualizar os dados',
     }
 };
 
@@ -3287,8 +3293,11 @@ app.post('/api/merchant/locations', async (req, res) => {
         const result = await merchantLocationsCollection.insertOne(newLocation);
         res.json({ success: true, location: { ...newLocation, _id: result.insertedId } });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'ไม่สามารถบันทึกได้' });
-    }
+        res.status(500).json({ 
+        success: false, 
+        error: serverTranslations[lang].err_db_save 
+    });
+}
 });
 
 // API: แก้ไขข้อมูลพิกัด (ปรับปรุง)
@@ -3310,8 +3319,10 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
             }
         );
         res.json({ success: true });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: 'ไม่สามารถอัปเดตข้อมูลได้' }); 
+    } res.status(500).json({ 
+        success: false, 
+        error: serverTranslations[lang].err_db_update 
+    });
     }
 });
 
@@ -3321,7 +3332,7 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
 // API: ดึงงานของร้านค้า (Merchant) เฉพาะที่ยังไม่จบกระบวนการ
 app.get('/api/merchant/tasks', async (req, res) => {
     const username = req.query.username;
-    if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้' });
+    if (!username) return res.status(400).json({ success: false, error: 'Username not found.' });
 
     try {
         const posts = await postsCollection.find({ 
