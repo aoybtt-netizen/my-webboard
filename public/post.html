@@ -2965,9 +2965,9 @@ function requestExtension() {
             icon: 'question',
             input: 'radio',
             inputOptions: {
-                '10': `10 ${t.time_unit_m}`,
-                '20': `20 ${t.time_unit_m}`,
-                '30': `30 ${t.time_unit_m}`
+                '10': '10 m',
+                '20': '20 m',
+                '30': '30 m'
             },
             inputValidator: (value) => {
                 if (!value) return t.err_select_time;
