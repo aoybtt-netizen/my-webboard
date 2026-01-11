@@ -126,6 +126,14 @@ const serverTranslations = {
         'err_checkin': '⛔ กรุณาระบุตำแหน่ง (เช็คอิน) ก่อนสร้างกระทู้',
         'err_banned': '⛔ คุณถูกระงับสิทธิ์การสร้างกระทู้',
         'err_limit': '⛔ คุณมีกระทู้เปิดอยู่แล้ว 1 กระทู้ กรุณาปิดกระทู้เก่าก่อนสร้างใหม่',
+		'err_insufficient': '⛔ ยอดเงิน ',
+        'err_insufficient_mid': ' ไม่เพียงพอ (ต้องการ ',
+        'err_insufficient_end': ')',
+        'msg_post_free': '✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)',
+        'msg_deduct_prefix': '💸 หักค่าธรรมเนียม ',
+		'err_empty_content': 'กรุณากรอกข้อความ',
+        'err_closed_perm': '⛔ กระทู้นี้ปิดถาวรแล้ว',
+        'err_restricted_chat': '⛔ เฉพาะผู้เกี่ยวข้องที่ส่งข้อความได้',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -168,6 +176,14 @@ const serverTranslations = {
         'err_checkin': '⛔ Please check-in (get location) before creating a post',
         'err_banned': '⛔ You are banned from creating posts',
         'err_limit': '⛔ You already have 1 active post. Please close it before creating a new one.',
+		'err_insufficient': '⛔ Insufficient ',
+        'err_insufficient_mid': ' balance (Need ',
+        'err_insufficient_end': ')',
+        'msg_post_free': '✨ Posted successfully! (Free of charge)',
+        'msg_deduct_prefix': '💸 Service fee deducted: ',
+		'err_empty_content': 'Please enter a message',
+        'err_closed_perm': '⛔ This post is permanently closed',
+        'err_restricted_chat': '⛔ Restricted access: Only involved parties can message',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -209,6 +225,14 @@ const serverTranslations = {
         'err_checkin': '⛔ Por favor, faça o check-in antes de criar uma postagem',
         'err_banned': '⛔ Você está proibido de criar postagens',
         'err_limit': '⛔ Você já tem 1 postagem ativa. Feche-a antes de criar uma nova.',
+		'err_insufficient': '⛔ Saldo em ',
+        'err_insufficient_mid': ' insuficiente (Necessário ',
+        'err_insufficient_end': ')',
+        'msg_post_free': '✨ Postado com sucesso! (Taxa grátis)',
+        'msg_deduct_prefix': '💸 Taxa de serviço deduzida: ',
+		'err_empty_content': 'Por favor, digite uma mensagem',
+        'err_closed_perm': '⛔ Esta postagem está fechada permanentemente',
+        'err_restricted_chat': '⛔ Acesso restrito: Apenas os envolvidos podem enviar mensagens',
     }
 };
 
@@ -2256,10 +2280,14 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
         // เช็คเงินในกระเป๋าสกุลโซนนั้นๆ
         if (userLocalBalance < totalCostLocal) {
-            return res.status(400).json({ 
-                error: `⛔ ยอดเงิน ${zoneCurrency} ไม่เพียงพอ (ต้องการ ${totalCostLocal.toFixed(2)})` 
-            });
-        }
+				const errorMsg = serverTranslations[lang].err_insufficient + 
+                     zoneCurrency + 
+                     serverTranslations[lang].err_insufficient_mid + 
+                     totalCostLocal.toFixed(2) + 
+                     serverTranslations[lang].err_insufficient_end;
+
+				return res.status(400).json({ error: errorMsg });
+			}
 
         // 3. หักเงินสมาชิกจากกระเป๋าโซน
         await usersCollection.updateOne(
@@ -2356,8 +2384,8 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     if (author !== 'Admin') {
 
         let msgText = isFreePostFinal 
-            ? `✨ โพสต์สำเร็จ! (ฟรีค่าธรรมเนียม)` 
-            : `💸 หักค่าธรรมเนียม ${totalCostLocal.toFixed(2)} ${zoneCurrency}`;
+			? serverTranslations[lang].msg_post_free 
+			: serverTranslations[lang].msg_deduct_prefix + totalCostLocal.toFixed(2) + " " + zoneCurrency;
 
         const notifMsg = { 
             sender: 'System', target: author, msgKey: 'SYS_FEE', 
@@ -2396,7 +2424,7 @@ app.put('/api/posts/:id/close', async (req, res) => {
         // 2. ตรวจสอบสิทธิ์
         const requester = await getUserData(requestBy);
         if (requestBy !== post.author && (!requester || requester.adminLevel < 1)) {
-            return res.status(403).json({ error: 'ไม่มีสิทธิ์ปิดกระทู้นี้' });
+            return res.status(403).json({ error: 'You do not have the right to close this thread.' });
         }
 
         // 3. อัปเดตทั้ง status และ isClosed (เพื่อให้สอดคล้องกับ API อื่น)
@@ -2415,7 +2443,7 @@ app.put('/api/posts/:id/close', async (req, res) => {
             target: post.author, 
             msgKey: 'POST_CLOSED', 
             msgData: { title: post.title }, 
-            msg: `🔒 กระทู้ "${post.title}" ถูกปิดแล้ว`, 
+            msg: `🔒 Topic "${post.title}" closed`, 
             timestamp: Date.now() 
         };
         await messagesCollection.insertOne(notifMsg);
@@ -2505,7 +2533,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
             
         io.to('Admin').emit('admin-new-transaction');
 
-        return res.json({ success: true, message: '✅ ดึงเงินคืนสำเร็จ (Force Deduct)' });
+        return res.json({ success: true, message: '✅ Refund successful. (Force Deduct)' });
     }
 
     // CASE B: Admin Level 1-2 -> ส่งคำขอให้ User ยืนยัน
@@ -2514,7 +2542,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
         const targetSocket = [...io.sockets.sockets.values()].find(s => s.username === targetUser);
         
         if (!targetSocket) {
-             return res.json({ success: false, error: '❌ ผู้ใช้งานไม่ออนไลน์ ไม่สามารถส่งคำขอยืนยันได้' });
+             return res.json({ success: false, error: '❌ The user is offline and the verification request cannot be submitted.' });
         }
 
         // ส่ง Event ไปยัง Client ของ User
@@ -2523,7 +2551,7 @@ app.post('/api/admin/deduct-coins', async (req, res) => {
             requester: requestBy
         });
 
-        return res.json({ success: true, waitConfirm: true, message: `⏳ ส่งคำขอไปยัง ${targetUser} แล้ว กรุณารอการยืนยัน` });
+        return res.json({ success: true, waitConfirm: true, message: `⏳ Send a request to ${targetUser} Please wait for confirmation.` });
     }
 });
 
@@ -2596,15 +2624,15 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
     if (shouldBan) {
         if (banExpires) {
             const dateStr = banExpires.toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US');
-            expiryMsg = currentLang === 'th' ? ` จนถึงวันที่ ${dateStr}` : ` until ${dateStr}`;
+            expiryMsg = currentLang === 'th' ? ` To ${dateStr}` : ` until ${dateStr}`;
         } else {
-            expiryMsg = currentLang === 'th' ? ` แบบถาวร` : ` permanently`;
+            expiryMsg = currentLang === 'th' ? ` Ban` : ` permanently`;
         }
     }
 
     const kickMsg = shouldBan 
-        ? (currentLang === 'th' ? `❌ บัญชีของคุณถูกระงับการใช้งาน${expiryMsg}` : `❌ Your account has been suspended${expiryMsg}`) 
-        : (currentLang === 'th' ? '✅ บัญชีของคุณได้รับการปลดแบนแล้ว' : '✅ Your account has been unbanned.');
+        ? (currentLang === 'th' ? `❌ Your account has been suspended.${expiryMsg}` : `❌ Your account has been suspended${expiryMsg}`) 
+        : (currentLang === 'th' ? '✅ Your account has been unbanned.' : '✅ Your account has been unbanned.');
 
     // =========================================================
     // การเตะออกจากระบบ (Action)
@@ -2753,7 +2781,9 @@ app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => 
     const post = await postsCollection.findOne({ id: postId });
     if (!post) return res.status(404).json({ error: 'No posts found' });
 
-    if (!finalContent && !imageUrl) return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
+    if (!finalContent && !imageUrl) {
+		return res.status(400).json({ error: serverTranslations[lang].err_empty_content });
+	}
 
     const isOwner = (author === post.author);
     const isAcceptedViewer = (author === post.acceptedViewer);
@@ -2761,13 +2791,13 @@ app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => 
     const isAdmin = (author === 'Admin');
 
     if (post.status === 'closed_permanently' && !isAdmin) {
-        return res.status(403).json({ error: '⛔ กระทู้นี้ปิดถาวรแล้ว' });
-    }
+			return res.status(403).json({ error: serverTranslations[lang].err_closed_perm });
+	}
 
     // ปรับเงื่อนไขให้ครอบคลุม Rider ที่รับงานด้วย (acceptedBy)
     if (post.isClosed && !isOwner && !isAcceptedViewer && !isAcceptedBy && !isAdmin && post.status !== 'finished') {
-        return res.status(403).json({ error: '⛔ เฉพาะผู้เกี่ยวข้องที่ส่งข้อความได้' });
-    }
+		return res.status(403).json({ error: serverTranslations[lang].err_restricted_chat });
+	}
 
     // 🚩 ใช้ชื่อฟิลด์ 'text' ให้ตรงกับระบบใหม่ หรือจะใช้ 'content' ก็ได้แต่ต้องแก้ให้ตรงกัน
     // ในที่นี้ผมใช้ 'text' เพื่อให้เข้ากับโค้ด Merchant ที่เราเขียนไปก่อนหน้านี้ครับ
