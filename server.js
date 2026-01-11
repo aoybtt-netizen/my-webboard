@@ -1135,7 +1135,7 @@ app.use((req, res, next) => {
 // API สำหรับดึงค่าภาษาเฉพาะของ User
 app.get('/api/user-language', async (req, res) => {
     // 🚩 เรียกตัวแปรแบบที่พี่ส่งมา (ดึงจาก Query ทั้งหมด)
-    const { username, lang } = req.query; 
+    const { username, currency, location, country, lang } = req.query; 
     
     // กำหนดค่า Default ภาษา (กันตาย)
     const currentLang = lang || 'th'; 
@@ -1151,7 +1151,7 @@ app.get('/api/user-language', async (req, res) => {
             success: true,
             // 🚩 ส่งภาษาที่ User เลือกไว้จริงๆ ใน Database กลับไป (ถ้าไม่มีให้ใช้ที่ส่งมาจากหน้าบ้าน)
             userLanguage: user.language || currentLang,
-            username: user.username,
+            username: user.username
         });
 
     } catch (e) {
