@@ -679,28 +679,23 @@ const translations = {
 
 
 function applyMerchantTranslations() {
-    // 1. ดึงภาษาที่ผู้ใช้เลือกไว้จาก localStorage
+    // ดึงค่าภาษาจาก localStorage (ถ้าไม่มีให้เป็น 'th')
     const currentLang = localStorage.getItem('userLang') || 'th';
     
-    // 2. แปลข้อความทั่วไป (data-i18n-key)
+    // วนลูปเปลี่ยนข้อความตาม data-i18n-key
     document.querySelectorAll('[data-i18n-key]').forEach(el => {
         const key = el.getAttribute('data-i18n-key');
         if (translations[currentLang] && translations[currentLang][key]) {
-            // ถ้าเป็น element ที่มี icon ให้ใช้ innerHTML หรือครอบ span ไว้
             el.innerText = translations[currentLang][key];
         }
     });
-
-    // 3. แปลพวก Placeholder ในช่องกรอกข้อมูล
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const key = el.getAttribute('data-i18n-placeholder');
-        if (translations[currentLang] && translations[currentLang][key]) {
-            el.placeholder = translations[currentLang][key];
-        }
-    });
+    
+    console.log("Merchant language applied: " + currentLang);
 }
 	
-
+window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+});
 	
 	
 	// ฟังก์ชัน เปิด/ปิด Sidebar
@@ -869,7 +864,6 @@ window.onload = async function() {
 
     // ✅ เรียกตัว Fetch (ซึ่งจะไปเรียก updateMerchantHeaderBalance อีกที)
     await fetchAndRefreshMerchantBalance();
-	applyMerchantTranslations();
     // ส่วนที่เหลือของคุณ
     if (typeof debugMerchantStatus === 'function') await debugMerchantStatus();
     if (typeof loadSavedLocations === 'function') await loadSavedLocations();   
