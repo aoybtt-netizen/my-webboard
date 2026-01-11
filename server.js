@@ -421,6 +421,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 // API สำหรับ Google ตั้งชื่อสมาชิกใหม่ (เช็คชื่อซ้ำ)
 app.post('/api/auth/google-register', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const { username, googleData } = req.body;
 
     // เช็คว่าชื่อซ้ำไหม
@@ -443,6 +444,7 @@ app.post('/api/auth/google-register', async (req, res) => {
 
 //API สำหรับ "Login แบบปกติ" (ชื่อ + รหัสผ่าน)
 app.post('/api/auth/login', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const { username, password } = req.body;
     const user = await usersCollection.findOne({ username });
 
@@ -476,6 +478,7 @@ app.post('/api/auth/set-password', async (req, res) => {
 
 // Route สำหรับสมัครสมาชิกใหม่
 app.post('/api/auth/register', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { username, password } = req.body;
 
@@ -514,6 +517,7 @@ app.post('/api/auth/register', async (req, res) => {
 //API ADMIN HTML
 // 1. API ดึงรายชื่อสมาชิกทั้งหมด
 app.get('/api/admin/all-users', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         // ดึงสมาชิกทั้งหมด เรียงตามระดับแอดมินจากสูงไปต่ำ
         const users = await db.collection('users').find({}).sort({ adminLevel: -1 }).toArray();
@@ -525,6 +529,7 @@ app.get('/api/admin/all-users', async (req, res) => {
 
 // 2. API ดึงรายชื่อโซนทั้งหมด
 app.get('/api/admin/all-zones', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const zones = await db.collection('zones').find({}).sort({ id: 1 }).toArray();
         res.json(zones);
@@ -535,6 +540,7 @@ app.get('/api/admin/all-zones', async (req, res) => {
 
 // 3. 🔥 API หัวใจหลัก: Universal Update (เวอร์ชันอัปเดตเพื่อรองรับระบบโซน)
 app.post('/api/admin/universal-update', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
 
     try {
@@ -983,8 +989,7 @@ async function processJobTimeout(postId, io) {
             );
 
             // 🚩 3. ส่งสัญญาณเตะ
-            const kickMsg = { message: serverTranslations[lang].msg_job_timeout };
-			io.to(room).emit('system_kick', kickMsg);
+            const kickMsg = { message: '⛔ Time up.' };
             
             // ส่งรายตัว (ต้องมั่นใจว่า socket.join(username) ไว้แล้ว)
             usersToUnlock.forEach(user => {
@@ -2331,6 +2336,7 @@ app.get('/api/posts/:id/viewer-status', async (req, res) => {
 
 // 14. Handover
 app.post('/api/posts/:id/handover', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
     const { viewer, requestBy } = req.body;
     const post = await postsCollection.findOne({ id: postId });
@@ -2923,6 +2929,7 @@ app.get('/api/my-active-count', async (req, res) => {
 
 // 23. Add Comment (เวอร์ชันปรับปรุงให้รองรับหน้า Merchant)
 app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => {
+	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
     // 🚩 ปรับตรงนี้: รับได้ทั้ง content (แบบเก่า) และ text (แบบใหม่จาก Merchant)
     const { content, text, author } = req.body;
@@ -3280,6 +3287,7 @@ async function calculateNewRating(username, newScore) {
 
 // API กำหนดพิกัดอ้างอิงให้ Admin Level 2 (เฉพาะ Level 3 ทำได้)
 app.post('/api/admin/set-assigned-location', async (req, res) => {
+	const lang = req.body.lang || 'th';
     // รับค่า addressName เพิ่มเข้ามาด้วย
     const { targetUser, lat, lng, addressName, requestBy } = req.body;
 
@@ -3326,7 +3334,7 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 //ส่วนของร้านค้าาาาา
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
-
+	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id); // แปลงเป็นตัวเลข
     const { username } = req.body;
 
@@ -3389,6 +3397,7 @@ app.post('/api/merchant/reset-mercnum', async (req, res) => {
 
 // 2. API: ดึงพิกัดทั้งหมดของร้านค้า
 app.get('/api/merchant/locations', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const username = req.query.username; // รับชื่อจาก Query String
     if (!username) {
 		return res.status(400).json({ success: false, error: serverTranslations[lang].err_no_username });
@@ -3404,6 +3413,7 @@ app.get('/api/merchant/locations', async (req, res) => {
 
 // 3. API: บันทึกพิกัดใหม่ (ปรับปรุง)
 app.post('/api/merchant/locations', async (req, res) => {
+	const lang = req.body.lang || 'th';
     // 🚩 รับ isStore เพิ่มเข้ามา
     const { username, label, voiceKeyword, lat, lng, phone, isStore } = req.body;
 
@@ -3430,6 +3440,7 @@ app.post('/api/merchant/locations', async (req, res) => {
 
 // API: แก้ไขข้อมูลพิกัด (ปรับปรุง)
 app.put('/api/merchant/locations/:id', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { label, voiceKeyword, lat, lng, phone, isStore } = req.body;
         await merchantLocationsCollection.updateOne(
@@ -3496,6 +3507,7 @@ app.get('/api/merchant/tasks', async (req, res) => {
 
 	// API: ดึงข้อความแชท/คอมเมนต์ ของโพสต์นั้นๆ
 app.get('/api/posts/:id/comments', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
@@ -3515,6 +3527,7 @@ app.get('/api/posts/:id/comments', async (req, res) => {
 
 // API: ส่งข้อความแชท/คอมเมนต์ เข้าไปในโพสต์
 app.post('/api/posts/:id/comments', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
     const { author, text } = req.body;
 
@@ -3577,6 +3590,7 @@ app.get('/api/rider-stats/:username', async (req, res) => {
 
 // API: ร้านค้ากดบายพาสจุดส่ง
 app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const { postId, stopIndex } = req.params;
     const { author } = req.body;
 
@@ -3670,6 +3684,7 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
 
 // API: ร้านค้ายืนยันจบงาน และให้คะแนนไรเดอร์
 app.post('/api/posts/:postId/finish-job', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const { postId } = req.params;
     const { rating, author } = req.body; 
 
@@ -3738,6 +3753,7 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
 
 // บันทึกออเดอร์สำเร็จรูป (Templates)
 app.post('/api/merchant/templates', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const { username, templateName, voiceKeyword, category, budget, stops, content } = req.body;
     try {
         const newTemplate = {
@@ -3770,6 +3786,7 @@ app.get('/api/merchant/templates', async (req, res) => {
 
 // API: ลบออเดอร์สำเร็จรูป (Template)
 app.delete('/api/merchant/templates/:id', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const templateId = req.params.id;
         
@@ -3797,6 +3814,7 @@ app.delete('/api/merchant/templates/:id', async (req, res) => {
 
 // API: ไรเดอร์เช็คอินพิกัดรายจุด และปิดงานอัตโนมัติ
 app.post('/api/posts/:id/checkin', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
     const { stopIndex, riderName, lat, lng } = req.body;
 
@@ -3901,6 +3919,7 @@ app.post('/api/posts/:id/apply', async (req, res) => {
 
 // API: ร้านค้ากดยืนยันรับ Rider คนนี้
 app.post('/api/posts/:id/approve-rider', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
@@ -3953,6 +3972,7 @@ app.post('/api/posts/:id/reject-rider', async (req, res) => {
 
 // API: ไรเดอร์ให้คะแนนร้านค้า (ปลดล็อคสถานะ working)
 app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
+	const lang = req.body.lang || 'th';
     const { postId } = req.params;
     const { rating, riderName } = req.body;
 
@@ -4049,6 +4069,7 @@ app.get('/api/rider/check-working-status', async (req, res) => {
 
 // 1.1 ส่งคำขอเติมเงิน
 app.post('/api/topup/request', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { username, amount, location, type, bankInfo } = req.body;
         const locationObj = JSON.parse(decodeURIComponent(location));
@@ -4110,6 +4131,7 @@ app.post('/api/topup/request', async (req, res) => {
 
 // 1.2 เช็คสถานะคำขอที่ค้างอยู่ (เพื่อสลับไปหน้าแชทอัตโนมัติ)
 app.get('/api/topup/status', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { username } = req.query;
         const pending = await topupRequestsCollection.findOne({ username, status: 'pending' });
@@ -4208,6 +4230,7 @@ app.get('/api/admin/topup-list', async (req, res) => {
 
 // 2.4 อนุมัติการเติมเงิน
 app.post('/api/admin/process-topup', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { requestId, status, adminName, finalAmount, currency } = req.body;
         const topupReq = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
@@ -4352,6 +4375,7 @@ app.get('/api/admin/kyc-list', async (req, res) => {
 
 // --- API สำหรับ อนุมัติ หรือ ปฏิเสธ KYC ---
 app.post('/api/admin/process-kyc', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { requestId, status, adminName } = req.body;
 
@@ -4385,6 +4409,7 @@ app.post('/api/admin/process-kyc', async (req, res) => {
 
 // ✅ API สำหรับแอดมินลบคำขอยืนยันตัวตน (ปฏิเสธและลบ)
 app.post('/api/admin/delete-kyc', async (req, res) => {
+	const lang = req.body.lang || 'th';
     try {
         const { requestId, username } = req.body;
 
@@ -4666,6 +4691,7 @@ io.on('connection', (socket) => {
 });
 
     socket.on('reply-offer', async (data) => {
+	const lang = socket.lang || 'th';
     // 1. รับค่า timeLimit (มิลลิวินาที) เพิ่มเข้ามาจาก data
     const { postId, accepted, viewer, owner, requireProximity, timeLimit } = data; 
 
@@ -4822,6 +4848,7 @@ socket.on('reply-extension-request', async (data) => {
 
     // --- Finish Job Logic ---
     socket.on('request-finish-job', async (data) => {
+	const lang = socket.lang || 'th';
     const { postId } = data;
     const post = await postsCollection.findOne({ id: parseInt(postId) });
     if (!post) return;
@@ -5097,7 +5124,7 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
 
 // 1. ส่งคำขอโทร (Offer)
 socket.on('call-user', ({ userToCall, signalData, fromUser }) => {
-    // ค้นหา Socket ID ของปลายสาย
+    const lang = socket.lang || 'th';
     const targetSocket = [...io.sockets.sockets.values()].find(s => s.username === userToCall);
     if (targetSocket) {
         io.to(targetSocket.id).emit('call-incoming', { signal: signalData, from: fromUser });
@@ -5217,6 +5244,7 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 //KYC
 socket.on('submit-kyc', async (kycData) => {
+	const lang = socket.lang || 'th';
     try {
         const { username, fullName, idNumber, phone, address, coords, adminName, userImg } = kycData; // รับ userImg มาด้วย
         
