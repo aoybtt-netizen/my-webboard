@@ -150,6 +150,9 @@ const serverTranslations = {
 		'msg_finish_unlock': '✅ จบงานและปลดล็อคไรเดอร์เรียบร้อย',
         'err_template_save': 'ไม่สามารถบันทึกเทมเพลตได้',
         'err_delete_not_found': 'ไม่พบข้อมูลที่ต้องการลบ',
+		'msg_job_complete_wait': '🎉 ส่งงานครบทุกจุดแล้ว! รอร้านค้ายืนยัน',
+        'msg_checkin_success': 'บันทึกการเช็คอินเรียบร้อย',
+		'err_no_rider_request': 'ไม่มีคำขอจาก Rider',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -216,6 +219,9 @@ const serverTranslations = {
 		'msg_finish_unlock': '✅ Job finished and rider unlocked successfully.',
         'err_template_save': 'Unable to save template.',
         'err_delete_not_found': 'Data to be deleted not found.',
+		'msg_job_complete_wait': '🎉 All points delivered! Waiting for merchant confirmation.',
+        'msg_checkin_success': 'Check-in recorded successfully.',
+		'err_no_rider_request': 'No pending request from Rider',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -281,6 +287,9 @@ const serverTranslations = {
 		'msg_finish_unlock': '✅ Trabalho finalizado e entregador desbloqueado com sucesso.',
         'err_template_save': 'Não foi possível salvar o modelo.',
         'err_delete_not_found': 'Dados para exclusão não encontrados.',
+		'msg_job_complete_wait': '🎉 Entrega concluída em todos os pontos! Aguardando confirmação do lojista.',
+        'msg_checkin_success': 'Check-in registrado com sucesso.',
+		'err_no_rider_request': 'Não há solicitação pendente do entregador',
     }
 };
 
@@ -3730,13 +3739,21 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
             // 🔔 ส่งสัญญาณบอกร้านค้าว่าไรเดอร์ส่งครบแล้ว (เพิ่อให้อัปเดต UI อัตโนมัติ)
             io.emit('update-job-status', { postId: postId, status: 'finished' });
             
-            return res.json({ success: true, isFinished: true, message: '🎉 ส่งงานครบทุกจุดแล้ว! รอร้านค้ายืนยัน' });
+            return res.json({ 
+				success: true, 
+				isFinished: true, 
+				message: serverTranslations[lang].msg_job_complete_wait 
+			});
         }
 
         // 🔔 ส่งสัญญาณอัปเดตจุดรายทาง (เพื่อให้ Progress Bar เลื่อน)
         io.emit('update-job-status', { postId: postId, stopIndex: stopIndex, status: 'success' });
 
-        res.json({ success: true, isFinished: false, message: 'บันทึกการเช็คอินเรียบร้อย' });
+        res.json({ 
+				success: true, 
+				isFinished: false, 
+				message: serverTranslations[lang].msg_checkin_success 
+			});
     } catch (error) {
         res.status(500).json({ success: false, error: 'Server Error' });
     }
@@ -3749,7 +3766,7 @@ app.post('/api/posts/:id/rate', async (req, res) => {
 
     try {
         const user = await usersCollection.findOne({ username: targetUser });
-        if (!user) return res.status(404).json({ success: false, error: 'ไม่พบผู้ใช้' });
+        if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
 
         // คำนวณคะแนนเฉลี่ยใหม่
         const currentRating = user.rating || 0;
@@ -3764,7 +3781,7 @@ app.post('/api/posts/:id/rate', async (req, res) => {
             }
         );
 
-        res.json({ success: true, message: 'บันทึกคะแนนเรียบร้อย' });
+        res.json({ success: true, message: 'Scores have been successfully recorded.' });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Rating Error' });
     }
@@ -3792,7 +3809,12 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
-        if (!post || !post.pendingRider) return res.json({ success: false, error: 'ไม่มีคำขอจาก Rider' });
+				if (!post || !post.pendingRider) {
+					return res.json({ 
+					success: false, 
+					error: serverTranslations[lang].err_no_rider_request 
+				});
+			}
 
         const acceptedRider = post.pendingRider;
 
@@ -3842,7 +3864,10 @@ app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
     try {
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) {
-            return res.status(404).json({ success: false, error: 'ไม่พบงาน' });
+					return res.status(404).json({ 
+					success: false, 
+					error: serverTranslations[lang].err_job_not_found_alt 
+				});
         }
 
         // 1. บันทึกคะแนนลงในงาน
