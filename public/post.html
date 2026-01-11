@@ -2951,48 +2951,32 @@ function checkShowExtendButton() {
 }
 
 function requestExtension() {
-
-    try {
-        if (typeof Swal === 'undefined') {
-            console.error(postTranslations[currentLang].err_lib_swal_missing);
-            alert(postTranslations[currentLang].user_err_system_incomplete);
-            return;
-        }
-
-        if (typeof socket === 'undefined') {
-            console.error(postTranslations[currentLang].err_lib_socket_missing);
-            alert(postTranslations[currentLang].user_err_system_incomplete);
-            return;
-        }
-
-        if (typeof postId === 'undefined' || !postId) {
-            console.error(postTranslations[currentLang].err_var_postid_missing);
-            alert(postTranslations[currentLang].user_err_system_incomplete);
-            return;
-        }
-	
-	const currentLang = localStorage.getItem('userLang') || 'th';
 	const t = postTranslations[currentLang];
-        // เริ่มแสดง Popup
-			Swal.fire({
-    title: t.swal_add_time_title,
-    text: t.swal_add_time_text,
-    icon: 'question',
-    input: 'radio',
-    inputOptions: {
-        '10': `10 ${t.time_unit_min}`,
-        '20': `20 ${t.time_unit_min}`,
-        '30': `30 ${t.time_unit_min}`
-    },
-    inputValidator: (value) => {
-        if (!value) return t.err_select_time;
-    },
-    showCancelButton: true,
-    confirmButtonText: t.btn_send_request,
-    cancelButtonText: t.btn_cancel
-			}).then((result) => {
-				
-				if (result.isConfirmed) {
+    try {
+        if (typeof Swal === 'undefined' || typeof socket === 'undefined' || !postId) {
+            // ใช้ Error handling เดิมที่พี่มี
+            console.error("System dependency missing");
+            return;
+        }
+
+        Swal.fire({
+            title: t.swal_add_time_title,
+            text: t.swal_add_time_text,
+            icon: 'question',
+            input: 'radio',
+            inputOptions: {
+                '10': `10 ${t.time_unit_m}`,
+                '20': `20 ${t.time_unit_m}`,
+                '30': `30 ${t.time_unit_m}`
+            },
+            inputValidator: (value) => {
+                if (!value) return t.err_select_time;
+            },
+            showCancelButton: true,
+            confirmButtonText: t.btn_send_request,
+            cancelButtonText: t.btn_cancel
+        }).then((result) => {
+            if (result.isConfirmed) {
                 const minutes = parseInt(result.value);
                 socket.emit('request-extend-time', { postId, minutes });
                 
