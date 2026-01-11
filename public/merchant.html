@@ -668,7 +668,7 @@ const translations = {
         'opt_big_parcel': 'ส่งพัสดุ/ของชิ้นใหญ่',
         'lbl_task_desc': 'รายละเอียดเพิ่มเติม (เช่น จำนวนกล่อง, ขนาด)',
         'plh_task_desc': 'ระบุรายละเอียดเพื่อให้ไรเดอร์ประเมินงาน...',
-        'lbl_task_budget': 'งบประมาณจ้างงาน (บาท)',
+        'lbl_task_budget': 'งบประมาณจ้างงาน',
         'plh_task_budget': 'ระบุยอดเงินที่คุณต้องการจ้าง...',
         'btn_add_stop': 'เพิ่มจุดรับ-ส่งงาน',
         'btn_post_job': 'โพสต์งานเข้าระบบ',
@@ -703,6 +703,19 @@ const translations = {
         'err_pin_all_points': 'กรุณาปักหมุดพิกัดในออเดอร์ให้ครบก่อนบันทึก',
         'msg_save_success': '✨ บันทึกออเดอร์สำเร็จรูปเรียบร้อย!',
         'msg_save_failed': 'บันทึกไม่สำเร็จ',
+		'lbl_coords': 'พิกัด:',
+        'err_voice_unsupported': 'ไม่รองรับคำสั่งเสียงบนเบราว์เซอร์นี้',
+        'msg_try_again': 'กรุณาลองใหม่อีกครั้ง',
+        'err_no_pin': 'กรุณาปักหมุดบนแผนที่ก่อนกดยืนยัน',
+        'err_no_location_name': 'กรุณาระบุชื่อเรียกพิกัด',
+        'msg_save_success_simple': 'บันทึกเรียบร้อย!',
+		'lbl_pickup_full': '🟢 จุดรับงาน (Pickup)',
+        'lbl_dropoff_full': '📍 จุดส่งงาน (Drop-off)',
+        'plh_place_name': 'ชื่อสถานที่...',
+        'plh_phone_contact': 'เบอร์โทรติดต่อ (ระบุหรือไม่ก็ได้)...',
+        'coords_not_set': 'พิกัด: ยังไม่ได้ระบุ',
+        'btn_select_map': 'เลือกบนแผนที่',
+        'btn_from_book': 'จากสมุดที่อยู่',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -720,7 +733,7 @@ const translations = {
         'opt_big_parcel': 'Big Parcel / Large Items',
         'lbl_task_desc': 'Additional Details (e.g., quantity, size)',
         'plh_task_desc': 'Enter details for rider evaluation...',
-        'lbl_task_budget': 'Budget (Baht)',
+        'lbl_task_budget': 'Budget',
         'plh_task_budget': 'Enter your offer price...',
         'btn_add_stop': 'Add Stop Point',
         'btn_post_job': 'Post Job',
@@ -755,6 +768,19 @@ const translations = {
         'err_pin_all_points': 'Please pin all locations in the order before saving',
         'msg_save_success': '✨ Order template saved successfully!',
         'msg_save_failed': 'Save failed',
+		'lbl_coords': 'Coords:',
+        'err_voice_unsupported': 'Voice commands not supported on this browser',
+        'msg_try_again': 'Please try again',
+        'err_no_pin': 'Please pin a location on the map first',
+        'err_no_location_name': 'Please specify a location name',
+        'msg_save_success_simple': 'Saved successfully!',
+		'lbl_pickup_full': '🟢 Pickup Point',
+        'lbl_dropoff_full': '📍 Drop-off Point',
+        'plh_place_name': 'Location name...',
+        'plh_phone_contact': 'Contact phone (Optional)...',
+        'coords_not_set': 'Coords: Not specified',
+        'btn_select_map': 'Select on Map',
+        'btn_from_book': 'From Address Book',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -772,7 +798,7 @@ const translations = {
         'opt_big_parcel': 'Pacote Grande / Itens Grandes',
         'lbl_task_desc': 'Detalhes Adicionais (ex: quantidade, tamanho)',
         'plh_task_desc': 'Insira detalhes para avaliação do entregador...',
-        'lbl_task_budget': 'Orçamento (Baht)',
+        'lbl_task_budget': 'Orçamento',
         'plh_task_budget': 'Insira o valor oferecido...',
         'btn_add_stop': 'Adicionar Ponto de Parada',
         'btn_post_job': 'Publicar Trabalho',
@@ -807,6 +833,19 @@ const translations = {
         'err_pin_all_points': 'Por favor, marque todos os locais no pedido antes de salvar',
         'msg_save_success': '✨ Modelo de pedido salvo com sucesso!',
         'msg_save_failed': 'Falha ao salvar',
+		'lbl_coords': 'Coords:',
+        'err_voice_unsupported': 'Comandos de voz não suportados neste navegador',
+        'msg_try_again': 'Por favor, tente novamente',
+        'err_no_pin': 'Por favor, marque um local no mapa primeiro',
+        'err_no_location_name': 'Por favor, especifique um nome para o local',
+        'msg_save_success_simple': 'Salvo com sucesso!',
+		'lbl_pickup_full': '🟢 Ponto de Retirada',
+        'lbl_dropoff_full': '📍 Ponto de Entrega',
+        'plh_place_name': 'Nome do local...',
+        'plh_phone_contact': 'Telefone de contato (Opcional)...',
+        'coords_not_set': 'Coords: Não especificado',
+        'btn_select_map': 'Ver no Mapa',
+        'btn_from_book': 'Do Livro de Endereços',
     }
 };
 
@@ -1225,7 +1264,7 @@ function selectOrderTemplate(index) {
             document.getElementById(`lat-${currentId}`).value = stop.lat;
             document.getElementById(`lng-${currentId}`).value = stop.lng;
             document.getElementById(`coords-display-${currentId}`).innerText = 
-                `พิกัด: ${parseFloat(stop.lat).toFixed(5)}, ${parseFloat(stop.lng).toFixed(5)}`;
+    `${translations[currentLang].lbl_coords} ${parseFloat(stop.lat).toFixed(5)}, ${parseFloat(stop.lng).toFixed(5)}`;
             reorderStops();
         }, 0);
     });
@@ -1237,7 +1276,7 @@ function selectOrderTemplate(index) {
 
 // 5. ฟังก์ชันใช้เสียงกรอกคีย์เวิร์ดในหน้าบันทึกเทมเพลต
 function startVoiceForTemplate(btn) {
-    if (!SpeechRecognition) return alert("ไม่รองรับเสียง");
+    if (!SpeechRecognition) return alert(translations[currentLang].err_voice_unsupported);
     const vRec = new SpeechRecognition();
     vRec.lang = 'th-TH';
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -1249,7 +1288,7 @@ function startVoiceForTemplate(btn) {
     };
     vRec.onerror = () => {
         btn.innerHTML = '<i class="fas fa-microphone"></i>';
-        alert("ลองใหม่อีกครั้ง");
+        alert(translations[currentLang].msg_try_again);
     };
 }
 
@@ -1279,7 +1318,7 @@ async function loadSavedLocations() {
 let isStoreMode = false; 
 
 async function confirmMapLocation() {
-    if (!selectedLat || !selectedLng) return alert("กรุณาปักหมุดบนแผนที่");
+    if (!selectedLat || !selectedLng) return alert(translations[currentLang].err_no_pin);
 
     if (mapMode === 'stop') {
         const id = currentTargetStopId;
@@ -1291,17 +1330,16 @@ async function confirmMapLocation() {
             latInput.value = selectedLat;
             lngInput.value = selectedLng;
             if (coordsDisplay) {
-                coordsDisplay.innerText = `พิกัด: ${selectedLat.toFixed(5)}, ${selectedLng.toFixed(5)}`;
+                coordsDisplay.innerText = `${translations[currentLang].lbl_coords} ${selectedLat.toFixed(5)}, ${selectedLng.toFixed(5)}`;
             }
             closeMapModal();
-            console.log(`📍 บันทึกพิกัดจุดส่ง ${id} สำเร็จ`);
         }
         return;
     }
 
     // ส่วนที่เหลือสำหรับบันทึกลงสมุดที่อยู่ (Book Mode)
     const name = document.getElementById('map-loc-name').value.trim();
-    if (!name) return alert("กรุณาระบุชื่อเรียกพิกัด");
+    if (!name) return alert(translations[currentLang].err_no_location_name);
 
     const payload = {
         username: myUsername,
@@ -1328,7 +1366,7 @@ async function confirmMapLocation() {
 
     const data = await res.json();
     if (data.success) {
-        alert("บันทึกเรียบร้อย!");
+        alert(translations[currentLang].msg_save_success_simple);
         isStoreMode = false; // รีเซ็ตค่า
         await loadSavedLocations();
         closeMapModal();
@@ -1347,7 +1385,9 @@ function closeMapModal() {
     const isPickup = (document.querySelectorAll('.stop-item').length === 0);
     const themeColor = isPickup ? "#27ae60" : "#11998e";
     const bgColor = isPickup ? "#b5f7b8" : "#baffff";
-    const labelTitle = isPickup ? "🟢 จุดรับงาน (Pickup)" : "📍 จุดส่งงาน (Drop-off)";
+    const labelTitle = isPickup 
+    ? translations[currentLang].lbl_pickup_full 
+    : translations[currentLang].lbl_dropoff_full;
 
     const stopHtml = `
         <div class="stop-item" id="stop-${stopCount}" style="border-left: 6px solid ${themeColor}; background-color: ${bgColor}; padding: 15px; border-radius: 12px; margin-bottom: 12px; position: relative;">
@@ -1355,18 +1395,28 @@ function closeMapModal() {
             
             <label style="color: ${themeColor}; font-weight: bold;">${labelTitle} <span class="stop-display-number"></span></label>
 
-            <input type="text" placeholder="ชื่อสถานที่..." class="stop-label" id="label-${stopCount}" 
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px;">
+            <input type="text" 
+            placeholder="${translations[currentLang].plh_place_name}" 
+            class="stop-label" id="label-${stopCount}" 
+            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px;">
             
-            <input type="tel" placeholder="เบอร์โทรติดต่อ (ระบุหรือไม่ก็ได้)..." id="phone-${stopCount}" 
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 5px;">
+            <input type="tel" 
+            placeholder="${translations[currentLang].plh_phone_contact}" 
+            id="phone-${stopCount}" 
+            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 5px;">
 
-            <div id="coords-display-${stopCount}" style="font-size: 0.7em; color: #999; margin-bottom: 10px;">พิกัด: ยังไม่ได้ระบุ</div>
+            <div id="coords-display-${stopCount}" style="font-size: 0.7em; color: #999; margin-bottom: 10px;">
+            ${translations[currentLang].coords_not_set}
+        </div>
             
             <div style="display: flex; gap: 6px;">
-                <button class="btn-add-contacmap" onclick="openStopMap(${stopCount})"><i class="fas fa-map"></i> เลือกบนแผนที่</button>
-                <button class="btn-add-contac" onclick="showSavedLocationsModal(${stopCount})"><i class="fas fa-bookmark"></i> จากสมุดที่อยู่</button>
-            </div>
+            <button class="btn-add-contacmap" onclick="openStopMap(${stopCount})">
+                <i class="fas fa-map"></i> ${translations[currentLang].btn_select_map}
+            </button>
+            <button class="btn-add-contac" onclick="showSavedLocationsModal(${stopCount})">
+                <i class="fas fa-bookmark"></i> ${translations[currentLang].btn_from_book}
+            </button>
+        </div>
 
             <input type="hidden" id="lat-${stopCount}">
             <input type="hidden" id="lng-${stopCount}">
