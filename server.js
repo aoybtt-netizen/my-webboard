@@ -3561,7 +3561,10 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
 
     try {
         const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบงานนี้' });
+        if (!post) return res.status(404).json({ 
+				success: false, 
+				error: serverTranslations[lang].err_post_not_found_final 
+			});
 
         const riderName = post.acceptedBy || post.acceptedViewer;
 
