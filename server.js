@@ -1214,7 +1214,7 @@ app.get('/api/user-info', async (req, res) => {
 
 // 2.1 API ใหม่สำหรับหน้า Profile โดยเฉพาะ เพื่อไม่ให้กระทบระบบหลัก
 app.get('/api/profile-details', async (req, res) => {
-	const lang = req.body.lang || 'th';
+	const lang = req.query.lang || 'th';
     try {
         const { username, location } = req.query;
         if (!username) return res.status(400).json({ error: 'No username' });
