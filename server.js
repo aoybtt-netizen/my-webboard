@@ -1214,16 +1214,18 @@ app.get('/api/user-info', async (req, res) => {
 
 // 2.1 API ใหม่สำหรับหน้า Profile โดยเฉพาะ เพื่อไม่ให้กระทบระบบหลัก
 app.get('/api/profile-details', async (req, res) => {
+	const lang = req.query.lang || 'th';
     try {
         const { username, location } = req.query;
         if (!username) return res.status(400).json({ error: 'No username' });
 
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
-
+		
+		const t = serverTranslations[lang] || serverTranslations['th'];
         // ค่า Default กรณีอยู่นอกพื้นที่
-        let zoneName = "นอกพื้นที่บริการ";
-        let zoneOwner = "ไม่มีผู้ดูแล";
+        let zoneName = t.zone_outside_service;
+        let zoneOwner = t.zone_no_owner;
         let currentCurrency = 'USD';
         let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
 
@@ -1234,8 +1236,8 @@ app.get('/api/profile-details', async (req, res) => {
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
-                zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
-                zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล";
+                zoneName = zoneInfo.zoneData.name || t.zone_anonymous;
+                zoneOwner = zoneInfo.zoneData.assignedAdmin || t.zone_no_owner;
                 
                 // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
                 if (zoneInfo.zoneData.zoneCurrency) {
@@ -1256,7 +1258,7 @@ app.get('/api/profile-details', async (req, res) => {
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
-            email: user.email || "ยังไม่ระบุ",
+            email: user.email || "Not yet specified.",
             zoneName: zoneName,
             zoneOwner: zoneOwner
         });
