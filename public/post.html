@@ -1408,14 +1408,14 @@ function sendFloatingComment() {
 
 function sendLocationInChat() {
     if (!navigator.geolocation) {
-		alert(translations[currentLang].err_no_geolocation);
+		alert(postTranslations[currentLang].err_no_geolocation);
 		return;
 	}
 
     const input = document.getElementById('floating-comment-input');
     const originalPlaceholder = input.placeholder;
 
-    input.placeholder = translations[currentLang].msg_fetching_gps;
+    input.placeholder = postTranslations[currentLang].msg_fetching_gps;
     input.disabled = true; 
 
     navigator.geolocation.getCurrentPosition(
@@ -1435,7 +1435,7 @@ function sendLocationInChat() {
         },
        (error) => {
 			console.error(error);
-			alert(translations[currentLang].err_gps_failed + error.message);
+			alert(postTranslations[currentLang].err_gps_failed + error.message);
 			input.disabled = false;
             input.placeholder = originalPlaceholder;
         },
@@ -1840,7 +1840,7 @@ window.openGoogleMapsApp = function() {
     }
 
     mapIframe.src = mapDirectionsUrl;
-    showNotification(translations[currentLang].msg_calculating_route, 'fas fa-route', 4000);
+    showNotification(postTranslations[currentLang].msg_calculating_route, 'fas fa-route', 4000);
 }
 
 	socket.on('viewer-location-update', (data) => {
@@ -2002,7 +2002,7 @@ socket.on('viewer-left-location', (data) => {
         if (post.isClosed) {
 			commentForm.style.display = 'none';
 			closedMsg.style.display = 'block';
-			closedMsg.innerHTML = translations[currentLang].msg_post_closed;
+			closedMsg.innerHTML = postTranslations[currentLang].msg_post_closed;
 		} else if (isAdmin) {
             manualCloseBtn.style.display = 'block';
         }
@@ -2019,15 +2019,15 @@ socket.on('viewer-left-location', (data) => {
 				commentForm.style.display = 'none';
 				if (floatingInputArea) floatingInputArea.style.display = 'none';
 				closedMsg.style.display = 'block';
-				closedMsg.innerHTML = translations[currentLang].msg_post_closed_perm;
+				closedMsg.innerHTML = postTranslations[currentLang].msg_post_closed_perm;
 		} else if (post.status === 'finished') {
         // 🤝 สถานะส่งมอบงาน (ยังไม่ปิดถาวร)
         if (!isParticipant) {
 			commentForm.style.display = 'none';
 			if (floatingInputArea) floatingInputArea.style.display = 'none';
 			closedMsg.style.display = 'block';
-			const title = translations[currentLang].msg_restricted_chat_title;
-			const desc = translations[currentLang].msg_restricted_chat_desc;
+			const title = postTranslations[currentLang].msg_restricted_chat_title;
+			const desc = postTranslations[currentLang].msg_restricted_chat_desc;
 			closedMsg.innerHTML = `<div style="background:#fff3cd; padding:10px;"><h2>${title}</h2><p>${desc}</p></div>`;
 		} else {
             // คู่สัญญา: แชทได้ปกติ + โชว์ปุ่มจบงาน
@@ -2035,8 +2035,8 @@ socket.on('viewer-left-location', (data) => {
             
             const statusAlert = document.getElementById('status-alert') || document.createElement('div');
 				statusAlert.id = 'status-alert';
-				const hTitle = translations[currentLang].status_handover_title;
-				const hDesc = translations[currentLang].status_handover_desc;
+				const hTitle = postTranslations[currentLang].status_handover_title;
+				const hDesc = postTranslations[currentLang].status_handover_desc;
 
 				statusAlert.innerHTML = `
 				<div style="background:#d1ecf1; color:#0c5460; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #bee5eb; text-align:center; font-size:0.9em;">
@@ -2423,9 +2423,9 @@ actionsEl.classList.remove('hidden');
     });
 
     document.getElementById('handover-modal').classList.add('hidden');
-    const msg = translations[currentLang].msg_request_sent_prefix + 
+    const msg = postTranslations[currentLang].msg_request_sent_prefix + 
             viewer + 
-            translations[currentLang].msg_request_sent_suffix;
+            postTranslations[currentLang].msg_request_sent_suffix;
 
 		showNotification(msg, 'fas fa-hourglass-half');
 }
@@ -2655,11 +2655,11 @@ function updateExtendButtonVisibility() {
     // 4. แจ้งเตือนแบบบังคับ และเปลี่ยนหน้า
     Swal.fire({
         icon: 'error',
-		title: translations[currentLang].swal_timeout_title,
-		text: data.message || translations[currentLang].swal_timeout_text,
+		title: postTranslations[currentLang].swal_timeout_title,
+		text: data.message || postTranslations[currentLang].swal_timeout_text,
 		allowOutsideClick: false,
 		allowEscapeKey: false,
-		confirmButtonText: translations[currentLang].btn_go_home,
+		confirmButtonText: postTranslations[currentLang].btn_go_home,
         confirmButtonColor: '#d33'
     }).then((result) => {
         if (result.isConfirmed) {
@@ -2707,7 +2707,7 @@ function updateExtendButtonVisibility() {
 
 
                     if (distToWorker > 50) {
-						return alert(translations[currentLang].err_distance_lock(distToWorker.toFixed(0)));
+						return alert(postTranslations[currentLang].err_distance_lock(distToWorker.toFixed(0)));
 					}
 
                 } else {
@@ -2728,7 +2728,7 @@ function updateExtendButtonVisibility() {
 
 
                     if (distToPost > 50 && distToOwner > 50) {
-							return alert(translations[currentLang].err_distance_dual);
+							return alert(postTranslations[currentLang].err_distance_dual);
 						}
                 }
 
@@ -2912,20 +2912,20 @@ function requestExtension() {
 
     try {
         if (typeof Swal === 'undefined') {
-            console.error(translations[currentLang].err_lib_swal_missing);
-            alert(translations[currentLang].user_err_system_incomplete);
+            console.error(postTranslations[currentLang].err_lib_swal_missing);
+            alert(postTranslations[currentLang].user_err_system_incomplete);
             return;
         }
 
         if (typeof socket === 'undefined') {
-            console.error(translations[currentLang].err_lib_socket_missing);
-            alert(translations[currentLang].user_err_system_incomplete);
+            console.error(postTranslations[currentLang].err_lib_socket_missing);
+            alert(postTranslations[currentLang].user_err_system_incomplete);
             return;
         }
 
         if (typeof postId === 'undefined' || !postId) {
-            console.error(translations[currentLang].err_var_postid_missing);
-            alert(translations[currentLang].user_err_system_incomplete);
+            console.error(postTranslations[currentLang].err_var_postid_missing);
+            alert(postTranslations[currentLang].user_err_system_incomplete);
             return;
         }
 
