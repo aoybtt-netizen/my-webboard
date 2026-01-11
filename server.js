@@ -153,6 +153,11 @@ const serverTranslations = {
 		'msg_job_complete_wait': '🎉 ส่งงานครบทุกจุดแล้ว! รอร้านค้ายืนยัน',
         'msg_checkin_success': 'บันทึกการเช็คอินเรียบร้อย',
 		'err_no_rider_request': 'ไม่มีคำขอจาก Rider',
+		'err_no_zone_service': 'ไม่อยู่ในพื้นที่บริการ',
+        'err_withdraw_insufficient': 'ยอดเงิน ',
+        'err_withdraw_insufficient_tail': ' ของคุณไม่เพียงพอสำหรับการถอน',
+        'bank_info_default': 'โปรดรอแอดมินแจ้งเลขบัญชีในแชท',
+        'bank_desc_default': 'กำลังรอการตรวจสอบหลักฐาน',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -222,6 +227,11 @@ const serverTranslations = {
 		'msg_job_complete_wait': '🎉 All points delivered! Waiting for merchant confirmation.',
         'msg_checkin_success': 'Check-in recorded successfully.',
 		'err_no_rider_request': 'No pending request from Rider',
+		'err_no_zone_service': 'Not in service area',
+        'err_withdraw_insufficient': 'Your ',
+        'err_withdraw_insufficient_tail': ' balance is insufficient for withdrawal',
+        'bank_info_default': 'Please wait for admin to provide bank details in chat',
+        'bank_desc_default': 'Waiting for verification',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -290,6 +300,11 @@ const serverTranslations = {
 		'msg_job_complete_wait': '🎉 Entrega concluída em todos os pontos! Aguardando confirmação do lojista.',
         'msg_checkin_success': 'Check-in registrado com sucesso.',
 		'err_no_rider_request': 'Não há solicitação pendente do entregador',
+		'err_no_zone_service': 'Fora da área de serviço',
+        'err_withdraw_insufficient': 'Seu saldo em ',
+        'err_withdraw_insufficient_tail': ' é insuficiente para saque',
+        'bank_info_default': 'Por favor, aguarde o admin informar os dados bancários no chat',
+        'bank_desc_default': 'Aguardando verificação de comprovante',
     }
 };
 
@@ -3962,8 +3977,8 @@ app.post('/api/topup/request', async (req, res) => {
         const zoneInfo = await findResponsibleAdmin(locationObj);
         
         if (!zoneInfo || !zoneInfo.zoneData.assignedAdmin) {
-            return res.status(400).json({ error: "ไม่อยู่ในพื้นที่บริการ" });
-        }
+				return res.status(400).json({ error: serverTranslations[lang].err_no_zone_service });
+			}
 
         const adminId = zoneInfo.zoneData.assignedAdmin;
         const amountNum = parseFloat(amount);
@@ -3980,8 +3995,11 @@ app.post('/api/topup/request', async (req, res) => {
             const currentBalance = user[currencyField] || 0;
 
             if (!user || currentBalance < amountNum) {
-                return res.status(400).json({ error: `ยอดเงิน ${currencyField} ของคุณไม่เพียงพอสำหรับการถอน` });
-            }
+					const errorMsg = serverTranslations[lang].err_withdraw_insufficient + 
+						currencyField + 
+						serverTranslations[lang].err_withdraw_insufficient_tail;
+					return res.status(400).json({ error: errorMsg });
+				}
             
             // ✅ 4. หักเงินออกจากฟิลด์ที่ถูกต้อง (Dynamic Key)
             // ใช้ [currencyField] เพื่อบอก MongoDB ว่าให้อัปเดตฟิลด์ชื่อนี้
@@ -4027,9 +4045,9 @@ app.get('/api/topup/status', async (req, res) => {
                 amount: pending.amount, // ส่งจำนวนเงิน
                 bankInfo: pending.bankInfo, // ส่งข้อมูลบัญชี (ถ้ามี)
                 adminMessage: {
-                    bankInfo: settings ? settings.bankInfo : "โปรดรอแอดมินแจ้งเลขบัญชีในแชท",
-                    desc: settings ? settings.desc : "กำลังรอการตรวจสอบหลักฐาน"
-                }
+						bankInfo: settings ? settings.bankInfo : serverTranslations[lang].bank_info_default,
+						desc: settings ? settings.desc : serverTranslations[lang].bank_desc_default
+					}
             });
         } else {
             res.json({ hasPending: false });
