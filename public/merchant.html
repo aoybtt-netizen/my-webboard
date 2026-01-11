@@ -678,19 +678,52 @@ const translations = {
 };
 
 
-function applyMerchantTranslations() {
-    // ดึงค่าภาษาจาก localStorage (ถ้าไม่มีให้เป็น 'th')
-    const currentLang = localStorage.getItem('userLang') || 'th';
-    
-    // วนลูปเปลี่ยนข้อความตาม data-i18n-key
-    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+async function applyMerchantTranslations() {
+    const myName = localStorage.getItem('myUsername');
+    let currentLang = localStorage.getItem('userLang') || 'th';
+
+    // 🚩 1. ดึงค่าภาษาล่าสุดจาก Server เฉพาะเจาะจง
+    if (myName) {
+        try {
+            const res = await fetch(`/api/user-language?username=${myName}`);
+            const data = await res.json();
+            if (data.success && data.language) {
+                currentLang = data.language;
+                localStorage.setItem('userLang', currentLang); // อัปเดตเครื่องให้ตรงกับ DB
+            }
+        } catch (err) {
+            console.warn("ใช้ภาษาจากเครื่องแทน เนื่องจากดึงจาก Server ไม่สำเร็จ");
+        }
+    }
+
+    // 🚩 2. เริ่มกระบวนการเปลี่ยนภาษาในหน้าจอ
+    const elements = document.querySelectorAll('[data-i18n-key]');
+    elements.forEach(el => {
         const key = el.getAttribute('data-i18n-key');
         if (translations[currentLang] && translations[currentLang][key]) {
-            el.innerText = translations[currentLang][key];
+            
+            // รักษา Icon (<i>) ไว้เหมือนเดิม
+            const icon = el.querySelector('i');
+            if (icon) {
+                const textNode = document.createTextNode(' ' + translations[currentLang][key]);
+                el.innerHTML = ''; 
+                el.appendChild(icon);
+                el.appendChild(textNode);
+            } else {
+                el.innerText = translations[currentLang][key];
+            }
         }
     });
-    
-    console.log("Merchant language applied: " + currentLang);
+
+    // แปล Placeholder
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[currentLang] && translations[currentLang][key]) {
+            el.placeholder = translations[currentLang][key];
+        }
+    });
+
+    console.log("Language sync with server: " + currentLang);
 }
 	
 	

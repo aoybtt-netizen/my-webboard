@@ -1132,6 +1132,26 @@ app.use((req, res, next) => {
     next();
 });
 
+// API สำหรับดึงค่าภาษาเฉพาะของ User
+app.get('/api/user-language', async (req, res) => {
+    try {
+        const { username } = req.query;
+        if (!username) return res.status(400).json({ error: 'Require username' });
+
+        const user = await usersCollection.findOne({ username: username });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // ส่งเฉพาะภาษา กลับไป (ถ้าไม่มีใน DB ให้ Default เป็น 'th')
+        res.json({ 
+            success: true, 
+            language: user.language || 'th' 
+        });
+    } catch (e) {
+        console.error("Fetch Language Error:", e);
+        res.status(500).json({ success: false });
+    }
+});
+
 // 1. Admin Transactions
 app.get('/api/admin/transactions', async (req, res) => {
     if (req.query.requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
