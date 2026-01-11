@@ -165,6 +165,11 @@ const serverTranslations = {
         'msg_approve_success_prefix': 'อนุมัติรายการ ',
         'msg_approve_success_suffix': ' สำเร็จ',
         'err_process_failed': 'เกิดข้อผิดพลาดในการประมวลผล',
+		'msg_op_approved': 'ดำเนินการ อนุมัติ เรียบร้อยแล้ว',
+        'msg_op_rejected': 'ดำเนินการ ปฏิเสธ เรียบร้อยแล้ว',
+        'msg_kyc_deleted_socket': 'คำขอของคุณถูกปฏิเสธโดยแอดมิน กรุณาส่งข้อมูลใหม่อีกครั้ง',
+        'msg_delete_success': 'ลบคำขอเรียบร้อยแล้ว',
+        'err_delete_not_found_kyc': 'ไม่พบคำขอที่ต้องการลบ',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -246,6 +251,11 @@ const serverTranslations = {
         'msg_approve_success_prefix': 'Approved ',
         'msg_approve_success_suffix': ' successfully',
         'err_process_failed': 'Processing error occurred',
+		'msg_op_approved': 'Operation: Approved successfully',
+        'msg_op_rejected': 'Operation: Rejected successfully',
+        'msg_kyc_deleted_socket': 'Your request was rejected by admin. Please resubmit your information.',
+        'msg_delete_success': 'Request deleted successfully',
+        'err_delete_not_found_kyc': 'Request to be deleted not found',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -326,6 +336,11 @@ const serverTranslations = {
         'msg_approve_success_prefix': 'Aprovado ',
         'msg_approve_success_suffix': ' com sucesso',
         'err_process_failed': 'Ocorreu um erro no processamento',
+		'msg_op_approved': 'Operação: Aprovada com sucesso',
+        'msg_op_rejected': 'Operação: Rejeitada com sucesso',
+        'msg_kyc_deleted_socket': 'Sua solicitação foi rejeitada pelo administrador. Por favor, envie seus dados novamente.',
+        'msg_delete_success': 'Solicitação excluída com sucesso',
+        'err_delete_not_found_kyc': 'Solicitação para exclusão não encontrada',
     }
 };
 
@@ -4313,7 +4328,11 @@ app.post('/api/admin/process-kyc', async (req, res) => {
             );
         }
 
-        res.json({ message: `ดำเนินการ ${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} เรียบร้อยแล้ว` });
+        const msg = status === 'approved' 
+			? serverTranslations[lang].msg_op_approved 
+			: serverTranslations[lang].msg_op_rejected;
+
+			res.json({ message: msg });
     } catch (err) {
         console.error("❌ Process KYC Error:", err);
         res.status(500).json({ error: "Failed to process request" });
@@ -4338,17 +4357,17 @@ app.post('/api/admin/delete-kyc', async (req, res) => {
         await db.collection('kyc_chats').deleteMany({ requestId: username });
 
         if (result.deletedCount === 1) {
-            // 3. ส่งสัญญาณ Socket บอกสมาชิกคนนั้นว่าคำขอถูกลบแล้วนะ (ให้เขากลับไปหน้ากรอกฟอร์ม)
-            io.emit('kyc-status-updated', {
-                username: username,
-                status: 'deleted',
-                message: 'คำขอของคุณถูกปฏิเสธโดยแอดมิน กรุณาส่งข้อมูลใหม่อีกครั้ง'
-            });
+    // ส่งสัญญาณ Socket
+    io.emit('kyc-status-updated', {
+        username: username,
+        status: 'deleted',
+        message: serverTranslations[lang].msg_kyc_deleted_socket
+		});
 
-            res.json({ success: true, message: "ลบคำขอเรียบร้อยแล้ว" });
-        } else {
-            res.status(404).json({ error: "ไม่พบคำขอที่ต้องการลบ" });
-        }
+			res.json({ success: true, message: serverTranslations[lang].msg_delete_success });
+			} else {
+				res.status(404).json({ error: serverTranslations[lang].err_delete_not_found_kyc });
+			}
     } catch (err) {
         console.error("❌ Delete KYC Error:", err);
         res.status(500).json({ error: "Internal Server Error" });
