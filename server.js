@@ -170,6 +170,19 @@ const serverTranslations = {
         'msg_kyc_deleted_socket': 'คำขอของคุณถูกปฏิเสธโดยแอดมิน กรุณาส่งข้อมูลใหม่อีกครั้ง',
         'msg_delete_success': 'ลบคำขอเรียบร้อยแล้ว',
         'err_delete_not_found_kyc': 'ไม่พบคำขอที่ต้องการลบ',
+		'msg_map_access': 'เจ้าของกระทู้อนุญาตให้ดูแผนที่แล้ว',
+        'log_handover_success': '✅ ปิดดีล/ส่งงานสำเร็จ: กระทู้ ',
+        'msg_deal_accepted_owner_prefix': '🎉 ',
+        'msg_deal_accepted_owner_suffix': ' รับงานแล้ว!',
+        'msg_deal_accepted_viewer': '✅ ยอมรับงานแล้ว!',
+		'err_finish_timeout': '❌ ไม่สามารถจบงานได้ เนื่องจากหมดเวลาแล้ว!',
+		'msg_force_leave_reset': '⚠️ เจ้าของกระทู้รีเซ็ตห้องสนทนา คุณถูกเชิญออก',
+		'err_call_offline': '❌ ปลายสายไม่ได้ออนไลน์อยู่ในขณะนี้',
+		'msg_admin_kyc_new': (name) => `มีคำขอ KYC ใหม่จากคุณ ${name}`,
+		'kyc_success_title': 'ยืนยันตัวตนสำเร็จ!',
+        'kyc_success_text': (admin) => `บัญชีของคุณได้รับการตรวจสอบและยืนยันโดย ${admin} เรียบร้อยแล้ว`,
+        'kyc_rejected_title': 'คำขอถูกปฏิเสธ',
+        'kyc_rejected_text': 'ข้อมูลของคุณไม่ผ่านการตรวจสอบ กรุณาส่งข้อมูลใหม่อีกครั้ง',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -256,6 +269,19 @@ const serverTranslations = {
         'msg_kyc_deleted_socket': 'Your request was rejected by admin. Please resubmit your information.',
         'msg_delete_success': 'Request deleted successfully',
         'err_delete_not_found_kyc': 'Request to be deleted not found',
+		'msg_map_access': 'The author has granted access to the map.',
+        'log_handover_success': '✅ Handover Success: Post ',
+        'msg_deal_accepted_owner_prefix': '🎉 ',
+        'msg_deal_accepted_owner_suffix': ' has accepted the job!',
+        'msg_deal_accepted_viewer': '✅ Job accepted!',
+		'err_finish_timeout': '❌ Unable to finish job: Time has expired!',
+		'msg_force_leave_reset': '⚠️ The author has reset the chat room. You have been removed.',
+		'err_call_offline': '❌ The recipient is currently offline.',
+		'msg_admin_kyc_new': (name) => `New KYC request from ${name}`,
+		'kyc_success_title': 'Verification Successful!',
+        'kyc_success_text': (admin) => `Your account has been verified by ${admin} successfully.`,
+        'kyc_rejected_title': 'Request Rejected',
+        'kyc_rejected_text': 'Your information did not pass verification. Please resubmit your data.',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -341,6 +367,19 @@ const serverTranslations = {
         'msg_kyc_deleted_socket': 'Sua solicitação foi rejeitada pelo administrador. Por favor, envie seus dados novamente.',
         'msg_delete_success': 'Solicitação excluída com sucesso',
         'err_delete_not_found_kyc': 'Solicitação para exclusão não encontrada',
+		'msg_map_access': 'O autor concedeu acesso ao mapa.',
+        'log_handover_success': '✅ Entrega Concluída: Postagem ',
+        'msg_deal_accepted_owner_prefix': '🎉 ',
+        'msg_deal_accepted_owner_suffix': ' aceitou o trabalho!',
+        'msg_deal_accepted_viewer': '✅ Trabalho aceito!',
+		'err_finish_timeout': '❌ Não é possível concluir o trabalho: O tempo expirou!',
+		'msg_force_leave_reset': '⚠️ O autor redefiniu a sala de chat. Você foi removido.',
+		'err_call_offline': '❌ O destinatário não está online no momento.',
+		'kyc_success_title': 'Verificação Concluída!',
+        'kyc_success_text': (admin) => `Sua conta foi verificada por ${admin} com sucesso.`,
+        'kyc_rejected_title': 'Solicitação Rejeitada',
+        'kyc_rejected_text': 'Seus dados não passaram na verificação. Por favor, envie novamente.',
+		'msg_admin_kyc_new': (name) => `Nova solicitação de KYC de ${name}`,
     }
 };
 
@@ -4420,7 +4459,7 @@ io.on('connection', (socket) => {
         socket.join(username);
         socket.username = username;
         if (await isUserBanned(username)) {
-            socket.emit('force-logout', '⛔ บัญชีถูกระงับ');
+            socket.emit('force-logout', '⛔ The account has been suspended.');
             return;
         }
         const occupiedPosts = Object.keys(postViewers).map(postId => ({ postId: parseInt(postId), isOccupied: true }));
@@ -4506,12 +4545,9 @@ io.on('connection', (socket) => {
         socket.join(roomName);
         socket.emit('access-granted', { post: postWithStats, isAdmin: false });
 
-        // 🌟 เพิ่มส่วนนี้: ส่งพิกัดเจ้าของให้ผู้รับงาน (Viewer) ทันทีที่เข้าห้องสำเร็จ
-        // เพื่อให้ ownerLastLocation ในเครื่อง Client ไม่เป็น null
         const ownerUser = await usersCollection.findOne({ username: post.author });
         if (ownerUser && (ownerUser.lastLocation || ownerUser.currentLocation)) {
             socket.emit('update-owner-location', ownerUser.lastLocation || ownerUser.currentLocation);
-            console.log(`✅ Sent owner location to ${username} on join`);
         }
         
     } else {
@@ -4523,11 +4559,10 @@ io.on('connection', (socket) => {
     console.log(`Owner shared map for post: ${postId}`);
     
     // ส่งสัญญาณไปหาทุกคนที่อยู่ในห้อง 'post-ID' นั้นๆ
-    // ใช้ชื่อห้องให้ตรงกับตอน join (คือ post-${postId})
     io.to(`post-${postId}`).emit('map-access-granted', {
-        postId: postId,
-        message: "เจ้าของกระทู้อนุญาตให้ดูแผนที่แล้ว"
-    });
+			postId: postId,
+			message: serverTranslations[lang].msg_map_access
+	});
 });
 
 	
@@ -4649,28 +4684,33 @@ io.on('connection', (socket) => {
 		
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         await transactionsCollection.insertOne({
-            id: Date.now(), type: 'HANDOVER', amount: 0, fromUser: owner, toUser: viewer,
-            note: `✅ ปิดดีล/ส่งงานสำเร็จ: กระทู้ ${post.title}`, timestamp: Date.now()
-        });
+			id: Date.now(), 
+			type: 'HANDOVER', 
+			amount: 0, 
+			fromUser: owner, 
+			toUser: viewer,
+			note: serverTranslations[lang].log_handover_success + post.title,
+			timestamp: Date.now()
+		});
         
         io.emit('post-list-update', { postId: post.id, status: 'finished' });
         
         // ส่งข้อมูลกลับไปหา Owner
         io.to(owner).emit('deal-result', { 
-            success: true, 
-            viewer, 
-            msg: `🎉 ${viewer} รับงานแล้ว!`,
-            requireProximity: requireProximity,
-            jobDeadline: deadline 
-        });
+			success: true, 
+			viewer, 
+			msg: serverTranslations[lang].msg_deal_accepted_owner_prefix + viewer + serverTranslations[lang].msg_deal_accepted_owner_suffix,
+			requireProximity: requireProximity,
+			jobDeadline: deadline 
+		});
 
         // ส่งข้อมูลกลับไปหา Viewer
         io.to(viewer).emit('deal-result', { 
-            success: true, 
-            msg: `✅ ยอมรับงานแล้ว!`, 
-            requireProximity: requireProximity,
-            jobDeadline: deadline 
-        });
+			success: true, 
+			msg: serverTranslations[lang].msg_deal_accepted_viewer, 
+			requireProximity: requireProximity,
+			jobDeadline: deadline 
+		});
 
         // ส่งพิกัดล่าสุด
         const ownerUser = await usersCollection.findOne({ username: owner });
@@ -4692,7 +4732,7 @@ io.on('connection', (socket) => {
         }
 
     } else {
-        io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} ปฏิเสธ` });
+        io.to(owner).emit('deal-result', { success: false, viewer, msg: `❌ ${viewer} reject` });
     }
 });
 
@@ -4781,7 +4821,9 @@ socket.on('reply-extension-request', async (data) => {
     // --- [NEW] เพิ่มการตรวจสอบเวลาตรงนี้ ---
     if (post.jobDeadline && Date.now() > post.jobDeadline) {
          // ถ้าเวลาปัจจุบัน เกินเวลา Deadline
-         socket.emit('force-close-job', { message: '❌ ไม่สามารถจบงานได้ เนื่องจากหมดเวลาแล้ว!' });
+         socket.emit('force-close-job', { 
+			message: serverTranslations[lang].err_finish_timeout 
+			});
          return; // หยุดการทำงานทันที (ไม่ส่ง receive-finish-request ไปหาอีกฝั่ง)
     }
     // -------------------------------------
@@ -4809,7 +4851,6 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
                 { username: { $in: [post.author, post.acceptedViewer] } },
                 { $set: { working: null } }
             );
-			console.log(`🔓 Unlocked working status for ${post.author} and ${post.acceptedViewer}`);
             // 🎯 3. [เพิ่มใหม่] นับจำนวน "จบงาน" ให้กับทั้ง 2 ฝ่าย
             // เพิ่มให้เจ้าของกระทู้ (Employer)
             await usersCollection.updateOne(
@@ -4825,7 +4866,7 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
                 );
             }
 
-            console.log(`📊 Updated completedJobs for ${post.author} and ${post.acceptedViewer}`);
+            
             
             io.emit('update-post-status');
             io.to(`post-${postId}`).emit('start-rating-phase');
@@ -4948,18 +4989,24 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
         const roomName = `post-${postId}`;
         const roomRef = io.sockets.adapter.rooms.get(roomName);
         if (roomRef) {
-            for (const socketId of roomRef) {
-                const clientSocket = io.sockets.sockets.get(socketId);
-                if (clientSocket && clientSocket.username !== post.author && clientSocket.username !== 'Admin') {
-                    clientSocket.emit('force-leave', '⚠️ เจ้าของกระทู้รีเซ็ตห้องสนทนา คุณถูกเชิญออก');
-                    clientSocket.leave(roomName);
-                    clientSocket.viewingPostId = null;
-                }
-            }
-        }
+			for (const socketId of roomRef) {
+			const clientSocket = io.sockets.sockets.get(socketId);
+			// เช็คให้ชัวร์ว่ามี clientSocket และมีการระบุภาษา (lang) ของ socket นั้นๆ
+			if (clientSocket && clientSocket.username !== post.author && clientSocket.username !== 'Admin') {
+            
+            // ดึงภาษาจาก socket ของผู้ใช้คนนั้น (ถ้ามีการเก็บไว้) 
+            // หรือใช้ lang กลางของระบบ
+            const userLang = clientSocket.lang || 'th'; 
+
+            clientSocket.emit('force-leave', serverTranslations[userLang].msg_force_leave_reset);
+            clientSocket.leave(roomName);
+            clientSocket.viewingPostId = null;
+				}
+			}
+		}
         delete postViewers[postId];
         broadcastPostStatus(postId, false);
-        socket.emit('restart-success', '✅ รีสตาร์ทห้องสำเร็จ (Kick All)');
+        socket.emit('restart-success', '✅ (Kick All)');
     });
 
     socket.on('force-logout', (msg) => {
@@ -5047,8 +5094,8 @@ socket.on('call-user', ({ userToCall, signalData, fromUser }) => {
     if (targetSocket) {
         io.to(targetSocket.id).emit('call-incoming', { signal: signalData, from: fromUser });
     } else {
-        socket.emit('call-failed', '❌ ปลายสายไม่ได้ออนไลน์อยู่ในขณะนี้');
-    }
+    socket.emit('call-failed', serverTranslations[lang].err_call_offline);
+}
 });
 
 // 2. รับสาย (Answer)
@@ -5179,15 +5226,14 @@ socket.on('submit-kyc', async (kycData) => {
         };
 
         await db.collection('kycRequests').insertOne(newRequest);
-        console.log(`📩 KYC Submitted from ${socket.username} to Admin: ${adminName}`);
 
         // 3. ส่งแจ้งเตือน Real-time ไปที่แอดมินทุกคน
         // ใช้ io.emit เพื่อให้แอดมินที่เปิดหน้าจออยู่ได้รับทราบทันที
         io.emit('admin-notification', {
-            type: 'KYC_REQUEST',
-            message: `มีคำขอ KYC ใหม่จากคุณ ${fullName}`,
-            adminId: adminName // เพื่อให้ฝั่ง Admin เช็คว่าใช่ของตัวเองไหม
-        });
+			type: 'KYC_REQUEST',
+			message: serverTranslations[lang].msg_admin_kyc_new(fullName),
+			adminId: adminName 
+		});
 
     } catch (err) {
         console.error("❌ KYC Submit Backend Error:", err);
@@ -5203,12 +5249,12 @@ socket.on('kyc-status-updated', (data) => {
 
     // 2. กรณีแอดมิน "อนุมัติ" (Approved)
     if (data.status === 'approved') {
-        Swal.fire({
-            icon: 'success',
-            title: 'ยืนยันตัวตนสำเร็จ!',
-            text: `บัญชีของคุณได้รับการตรวจสอบและยืนยันโดย ${data.adminName} เรียบร้อยแล้ว`,
+			Swal.fire({
+			icon: 'success',
+			title: translations[currentLang].kyc_success_title,
+			text: translations[currentLang].kyc_success_text(data.adminName),
             confirmButtonColor: '#11998e'
-        }).then(() => {
+			}).then(() => {
             // อัปเดต UI ของหน้าจอทันที
             updateKYCMenuUI('approved', data.adminName);
             
@@ -5223,12 +5269,12 @@ socket.on('kyc-status-updated', (data) => {
 	
     // 3. กรณีแอดมิน "ปฏิเสธและลบคำขอ" (Deleted)
     else if (data.status === 'deleted') {
-        Swal.fire({
-            icon: 'warning',
-            title: 'คำขอถูกปฏิเสธ',
-            text: data.message || 'ข้อมูลของคุณไม่ผ่านการตรวจสอบ กรุณาส่งข้อมูลใหม่อีกครั้ง',
+			Swal.fire({
+			icon: 'warning',
+			title: translations[currentLang].kyc_rejected_title,
+			text: data.message || translations[currentLang].kyc_rejected_text,
             confirmButtonColor: '#e74c3c'
-        }).then(() => {
+			}).then(() => {
             // ล้างค่าสถานะในเครื่อง
             localStorage.removeItem('kyc_status');
             localStorage.removeItem('kyc_id_request');
