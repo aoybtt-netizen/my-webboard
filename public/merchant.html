@@ -549,17 +549,18 @@
     <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="toggleMerchantSidebar()"></div>
 
     <div class="container" style="margin-bottom: 0;">
-        <div class="add-job-card" onclick="toggleTaskForm()">
-            <i class="fas fa-plus-circle"></i> สร้างงานจ้างขนส่งใหม่
-        </div>
-		
-		<div>
+    <div class="add-job-card" onclick="toggleTaskForm()">
+        <i class="fas fa-plus-circle"></i> 
+        <span data-i18n-key="btn_create_job_main">สร้างงานจ้างขนส่งใหม่</span>
+    </div>
+    
+    <div>
         <small onclick="openListOrderModal()" style="color: #f39c12; cursor: pointer; margin-right: 15px;">
-            <i class="fas fa-history"></i> ออเดอร์ที่บันทึก
+            <i class="fas fa-history"></i> 
+            <span data-i18n-key="link_saved_orders">ออเดอร์ที่บันทึก</span>
         </small>
     </div>
-	
-    </div>
+</div>
 	
 
     <div class="container" id="active-tasks-container">
@@ -569,58 +570,55 @@
     </div>
 
     <div class="container hidden" id="task-form-container">
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: #11998e;">📝 รายละเอียดงานใหม่</h3>
-                <span onclick="toggleTaskForm()" style="cursor:pointer; font-size: 1.5em; color: #999;">&times;</span>
-            </div>
-            <hr>
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: #11998e;">
+                <i class="fas fa-edit"></i> <span data-i18n-key="form_new_job_title">รายละเอียดงานใหม่</span>
+            </h3>
+            <span onclick="toggleTaskForm()" style="cursor:pointer; font-size: 1.5em; color: #999;">&times;</span>
+        </div>
+        <hr>
 
-            <label>ประเภทงาน</label>
-            <select id="task-category" onchange="updateTitlePreview()">
-                <option value="ส่งอาหารสินค้าทั่วไป">ส่งอาหาร/สินค้าทั่วไป</option>
-                <option value="ส่งเอกสาร">รับส่งเอกสาร</option>
-                <option value="ส่งพัสดุ/ของชิ้นใหญ่">ส่งพัสดุ/ของชิ้นใหญ่</option>
-            </select>
+        <label data-i18n-key="lbl_task_category">ประเภทงาน</label>
+        <select id="task-category" onchange="updateTitlePreview()">
+            <option value="ส่งอาหารสินค้าทั่วไป" data-i18n-key="opt_general">ส่งอาหาร/สินค้าทั่วไป</option>
+            <option value="ส่งเอกสาร" data-i18n-key="opt_document">รับส่งเอกสาร</option>
+            <option value="ส่งพัสดุ/ของชิ้นใหญ่" data-i18n-key="opt_big_parcel">ส่งพัสดุ/ของชิ้นใหญ่</option>
+        </select>
 
-            <label>รายละเอียดเพิ่มเติม (เช่น จำนวนกล่อง, ขนาด)</label>
-            <textarea id="task-desc" placeholder="ระบุรายละเอียดเพื่อให้ไรเดอร์ประเมินงาน..." rows="3"></textarea>
+        <label data-i18n-key="lbl_task_desc">รายละเอียดเพิ่มเติม (เช่น จำนวนกล่อง, ขนาด)</label>
+        <textarea id="task-desc" data-i18n-placeholder="plh_task_desc" placeholder="ระบุรายละเอียดเพื่อให้ไรเดอร์ประเมินงาน..." rows="3"></textarea>
 
-            <label>งบประมาณจ้างงาน (บาท)</label>
-            <input type="number" id="task-budget" placeholder="ระบุยอดเงินที่คุณต้องการจ้าง..." oninput="updateTitlePreview()">
+        <label data-i18n-key="lbl_task_budget">งบประมาณจ้างงาน (บาท)</label>
+        <input type="number" id="task-budget" data-i18n-placeholder="plh_task_budget" placeholder="ระบุยอดเงินที่คุณต้องการจ้าง..." oninput="updateTitlePreview()">
 
-            <div id="stops-container">
-                </div>
+        <div id="stops-container"></div>
 
-            <button class="btn-add-stopp" onclick="addNewStop()">
-                <i class="fas fa-plus"></i> เพิ่มจุดรับ-ส่งงาน
+        <button class="btn-add-stopp" onclick="addNewStop()">
+            <i class="fas fa-plus"></i> <span data-i18n-key="btn_add_stop">เพิ่มจุดรับ-ส่งงาน</span>
+        </button>
+
+        <div style="margin-top: 15px; background: #e8f5e9; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #11998e;">
+            <span id="title-preview" style="font-weight: bold; color: #11998e; font-size: 0.95em;">-</span>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 15px;">
+            <button id="submit-btn" class="btn-submit" style="flex: 2; height: 50px; border-radius: 12px;" onclick="postMerchantTask()">
+                <i class="fas fa-paper-plane"></i> <span data-i18n-key="btn_post_job">โพสต์งานเข้าระบบ</span>
             </button>
 
-			<div style="margin-top: 15px; background: #e8f5e9; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #11998e;">
-			<span id="title-preview" style="font-weight: bold; color: #11998e; font-size: 0.95em;">-</span>
-			</div>
-
-			<div style="display: flex; gap: 8px; margin-top: 15px;">
-            <button id="submit-btn" class="btn-submit" 
-			style="flex: 2; height: 50px; border-radius: 12px;" 
-			onclick="postMerchantTask()">
-			<i class="fas fa-paper-plane"></i> โพสต์งานเข้าระบบ
-			</button>
-
-            <button id="voice-btn" class="btn-submit" 
-			style="flex: 1; background: #f39c12; border-radius: 12px; height: 50px;" 
-			onclick="startVoiceCommand()">
-			<i class="fas fa-microphone"></i> พูดสั่ง
-			</button>
-			</div>
-			
-			<div style="text-align: right; margin-top: 10px;">
-			<small onclick="openSaveTemplateModal()" style="color: #11998e; cursor: pointer;">
-			<i class="fas fa-save"></i> บันทึกเป็นออเดอร์
-			</small>
-			</div>
+            <button id="voice-btn" class="btn-submit" style="flex: 1; background: #f39c12; border-radius: 12px; height: 50px;" onclick="startVoiceCommand()">
+                <i class="fas fa-microphone"></i> <span data-i18n-key="btn_voice_order">พูดสั่ง</span>
+            </button>
+        </div>
+        
+        <div style="text-align: right; margin-top: 10px;">
+            <small onclick="openSaveTemplateModal()" style="color: #11998e; cursor: pointer;">
+                <i class="fas fa-save"></i> <span data-i18n-key="link_save_order_template">บันทึกเป็นออเดอร์</span>
+            </small>
         </div>
     </div>
+</div>
 
     <script>
 	const socket = io();
@@ -658,6 +656,21 @@ const translations = {
         'menu_all_orders': 'ออเดอร์ที่บันทึกไว้ทั้งหมด',
         'menu_voice_commands': 'การสั่งงานด้วยเสียง',
         'menu_info_usage': 'ข้อควรจำ',
+		'btn_create_job_main': 'สร้างงานจ้างขนส่งใหม่',
+        'link_saved_orders': 'ออเดอร์ที่บันทึก',
+		'form_new_job_title': 'รายละเอียดงานใหม่',
+        'lbl_task_category': 'ประเภทงาน',
+        'opt_general': 'ส่งอาหาร/สินค้าทั่วไป',
+        'opt_document': 'รับส่งเอกสาร',
+        'opt_big_parcel': 'ส่งพัสดุ/ของชิ้นใหญ่',
+        'lbl_task_desc': 'รายละเอียดเพิ่มเติม (เช่น จำนวนกล่อง, ขนาด)',
+        'plh_task_desc': 'ระบุรายละเอียดเพื่อให้ไรเดอร์ประเมินงาน...',
+        'lbl_task_budget': 'งบประมาณจ้างงาน (บาท)',
+        'plh_task_budget': 'ระบุยอดเงินที่คุณต้องการจ้าง...',
+        'btn_add_stop': 'เพิ่มจุดรับ-ส่งงาน',
+        'btn_post_job': 'โพสต์งานเข้าระบบ',
+        'btn_voice_order': 'พูดสั่ง',
+        'link_save_order_template': 'บันทึกเป็นออเดอร์',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -666,6 +679,21 @@ const translations = {
         'menu_all_orders': 'All Saved Orders',
         'menu_voice_commands': 'Voice Commands',
         'menu_info_usage': 'Important Notes',
+		'btn_create_job_main': 'Create New Delivery Job',
+        'link_saved_orders': 'Saved Orders',
+		'form_new_job_title': 'New Job Details',
+        'lbl_task_category': 'Task Category',
+        'opt_general': 'Food / General Goods',
+        'opt_document': 'Document Delivery',
+        'opt_big_parcel': 'Big Parcel / Large Items',
+        'lbl_task_desc': 'Additional Details (e.g., quantity, size)',
+        'plh_task_desc': 'Enter details for rider evaluation...',
+        'lbl_task_budget': 'Budget (Baht)',
+        'plh_task_budget': 'Enter your offer price...',
+        'btn_add_stop': 'Add Stop Point',
+        'btn_post_job': 'Post Job',
+        'btn_voice_order': 'Voice',
+        'link_save_order_template': 'Save as Order Template',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -674,6 +702,21 @@ const translations = {
         'menu_all_orders': 'Todos os Pedidos Salvos',
         'menu_voice_commands': 'Comandos de Voz',
         'menu_info_usage': 'Notas Importantes',
+		'btn_create_job_main': 'Criar Novo Trabalho',
+        'link_saved_orders': 'Pedidos Salvos',
+		'form_new_job_title': 'Detalhes do Novo Trabalho',
+        'lbl_task_category': 'Categoria do Trabalho',
+        'opt_general': 'Comida / Mercadorias em Geral',
+        'opt_document': 'Entrega de Documentos',
+        'opt_big_parcel': 'Pacote Grande / Itens Grandes',
+        'lbl_task_desc': 'Detalhes Adicionais (ex: quantidade, tamanho)',
+        'plh_task_desc': 'Insira detalhes para avaliação do entregador...',
+        'lbl_task_budget': 'Orçamento (Baht)',
+        'plh_task_budget': 'Insira o valor oferecido...',
+        'btn_add_stop': 'Adicionar Ponto de Parada',
+        'btn_post_job': 'Publicar Trabalho',
+        'btn_voice_order': 'Voz',
+        'link_save_order_template': 'Salvar como Modelo de Pedido',
     }
 };
 
@@ -707,6 +750,12 @@ function applyMerchantTranslations() {
         const key = el.getAttribute('data-i18n-placeholder');
         if (translations[currentLang] && translations[currentLang][key]) {
             el.placeholder = translations[currentLang][key];
+        }
+    });
+	document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (t && t[key]) {
+            el.placeholder = t[key];
         }
     });
 }
