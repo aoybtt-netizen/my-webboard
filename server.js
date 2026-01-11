@@ -517,13 +517,16 @@ app.post('/api/auth/register', async (req, res) => {
 //API ADMIN HTML
 // 1. API ดึงรายชื่อสมาชิกทั้งหมด
 app.get('/api/admin/all-users', async (req, res) => {
-	const lang = req.body.lang || 'th';
     try {
         // ดึงสมาชิกทั้งหมด เรียงตามระดับแอดมินจากสูงไปต่ำ
         const users = await db.collection('users').find({}).sort({ adminLevel: -1 }).toArray();
         res.json(users);
-    } catch (err) {
-        res.status(500).json({ success: false, message: serverTranslations[lang].error_fetch_members });
+    } catch (error) {
+    console.error("🚨 Fetch Members Error:", error); // ดูบั๊กที่หน้าจอเซิร์ฟเวอร์
+    res.status(500).json({ 
+        success: false, 
+        message: "ไม่สามารถดึงข้อมูลสมาชิกได้" 
+    });
     }
 });
 
@@ -533,8 +536,12 @@ app.get('/api/admin/all-zones', async (req, res) => {
     try {
         const zones = await db.collection('zones').find({}).sort({ id: 1 }).toArray();
         res.json(zones);
-    } catch (err) {
-        res.status(500).json({ success: false, message: serverTranslations[lang].error_fetch_zones });
+    } catch (error) {
+    console.error("🚨 Fetch Members Error:", error); // ดูบั๊กที่หน้าจอเซิร์ฟเวอร์
+    res.status(500).json({ 
+        success: false, 
+        message: "ไม่สามารถดึงข้อมูลสมาชิกได้" 
+    });
     }
 });
 
@@ -1214,18 +1221,16 @@ app.get('/api/user-info', async (req, res) => {
 
 // 2.1 API ใหม่สำหรับหน้า Profile โดยเฉพาะ เพื่อไม่ให้กระทบระบบหลัก
 app.get('/api/profile-details', async (req, res) => {
-	const lang = req.query.lang || 'th';
     try {
         const { username, location } = req.query;
         if (!username) return res.status(400).json({ error: 'No username' });
 
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
-		
-		const t = serverTranslations[lang] || serverTranslations['th'];
+
         // ค่า Default กรณีอยู่นอกพื้นที่
-        let zoneName = t.zone_outside_service;
-        let zoneOwner = t.zone_no_owner;
+        let zoneName = "นอกพื้นที่บริการ";
+        let zoneOwner = "ไม่มีผู้ดูแล";
         let currentCurrency = 'USD';
         let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
 
@@ -1236,8 +1241,8 @@ app.get('/api/profile-details', async (req, res) => {
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
-                zoneName = zoneInfo.zoneData.name || t.zone_anonymous;
-                zoneOwner = zoneInfo.zoneData.assignedAdmin || t.zone_no_owner;
+                zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
+                zoneOwner = zoneInfo.zoneData.assignedAdmin || "ไม่มีผู้ดูแล";
                 
                 // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
                 if (zoneInfo.zoneData.zoneCurrency) {
@@ -1258,7 +1263,7 @@ app.get('/api/profile-details', async (req, res) => {
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
-            email: user.email || "Not yet specified.",
+            email: user.email || "ยังไม่ระบุ",
             zoneName: zoneName,
             zoneOwner: zoneOwner
         });
@@ -3336,25 +3341,26 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 //ส่วนของร้านค้าาาาา
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    // 🚩 ลองใส่ console.log เพื่อดูว่าค่ามาถึง Server หรือไม่
+    console.log("🗑️ Delete Request - ID:", req.params.id, "User:", req.body.username);
+
     const postId = parseInt(req.params.id); // แปลงเป็นตัวเลข
     const { username } = req.body;
 
-		if (!username) {
-			return res.status(400).json({ success: false, error: serverTranslations[lang].err_no_username_req });
-		}
+    if (!username) return res.status(400).json({ success: false, error: 'The username was not found in... Request' });
 
     try {
         // ค้นหาโดยระบุเลข ID ให้ชัดเจน
         const post = await postsCollection.findOne({ id: postId });
         
         if (!post) {
-			return res.status(404).json({ success: false, error: serverTranslations[lang].err_job_not_found });
-		}
+            console.log("❌ No jobs found. ID:", postId);
+            return res.status(404).json({ success: false, error: 'No jobs found.' });
+        }
 
         if (post.acceptedBy) {
-			return res.status(400).json({ success: false, error: serverTranslations[lang].err_already_accepted });
-		}
+            return res.status(400).json({ success: false, error: 'A rider has already accepted the job, so it can t be deleted.' });
+        }
 
         await postsCollection.deleteOne({ id: postId });
         
@@ -3364,6 +3370,7 @@ app.delete('/api/merchant/tasks/:id', async (req, res) => {
             { $inc: { mercNum: -1 } }
         );
 
+        console.log(`✅ ลบงานสำเร็จและลดแต้มให้ ${username}`);
         res.json({ success: true });
     } catch (err) {
         console.error("🚨 Server Error:", err);
@@ -3399,11 +3406,8 @@ app.post('/api/merchant/reset-mercnum', async (req, res) => {
 
 // 2. API: ดึงพิกัดทั้งหมดของร้านค้า
 app.get('/api/merchant/locations', async (req, res) => {
-	const lang = req.body.lang || 'th';
     const username = req.query.username; // รับชื่อจาก Query String
-    if (!username) {
-		return res.status(400).json({ success: false, error: serverTranslations[lang].err_no_username });
-	}
+    if (!username) return res.status(400).json({ success: false, error: 'Username not found.' });
 
     try {
         const locations = await merchantLocationsCollection.find({ owner: username }).toArray();
@@ -3442,7 +3446,6 @@ app.post('/api/merchant/locations', async (req, res) => {
 
 // API: แก้ไขข้อมูลพิกัด (ปรับปรุง)
 app.put('/api/merchant/locations/:id', async (req, res) => {
-	const lang = req.body.lang || 'th';
     try {
         const { label, voiceKeyword, lat, lng, phone, isStore } = req.body;
         await merchantLocationsCollection.updateOne(
@@ -3461,11 +3464,8 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (e) { 
-        res.status(500).json({ 
-        success: false, 
-        error: serverTranslations[lang].err_db_update 
-    }); 
-}
+        res.status(500).json({ success: false, error: 'The information cannot be updated.' }); 
+    }
 });
 
 
@@ -3509,16 +3509,10 @@ app.get('/api/merchant/tasks', async (req, res) => {
 
 	// API: ดึงข้อความแชท/คอมเมนต์ ของโพสต์นั้นๆ
 app.get('/api/posts/:id/comments', async (req, res) => {
-	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
     try {
         const post = await postsCollection.findOne({ id: postId });
-        if (!post) {
-			return res.status(404).json({ 
-			success: false, 
-			error: serverTranslations[lang].err_post_not_found_final 
-			});
-		}
+        if (!post) return res.status(404).json({ success: false, error: 'No posts found.' });
         
         // ส่งคอมเมนต์ออกไป ถ้าไม่มีให้ส่งอาเรย์ว่าง
         res.json(post.comments || []);
@@ -3788,7 +3782,6 @@ app.get('/api/merchant/templates', async (req, res) => {
 
 // API: ลบออเดอร์สำเร็จรูป (Template)
 app.delete('/api/merchant/templates/:id', async (req, res) => {
-	const lang = req.body.lang || 'th';
     try {
         const templateId = req.params.id;
         
@@ -3800,10 +3793,7 @@ app.delete('/api/merchant/templates/:id', async (req, res) => {
         if (result.deletedCount === 1) {
             res.json({ success: true });
         } else {
-            res.json({ 
-				success: false, 
-				error: serverTranslations[lang].err_delete_not_found 
-			});
+            res.json({ success: false, error: 'The data you wish to delete was not found.' });
         }
     } catch (error) {
         console.error("Delete Template Error:", error);
@@ -4133,7 +4123,6 @@ app.post('/api/topup/request', async (req, res) => {
 
 // 1.2 เช็คสถานะคำขอที่ค้างอยู่ (เพื่อสลับไปหน้าแชทอัตโนมัติ)
 app.get('/api/topup/status', async (req, res) => {
-	const lang = req.body.lang || 'th';
     try {
         const { username } = req.query;
         const pending = await topupRequestsCollection.findOne({ username, status: 'pending' });
@@ -4149,9 +4138,9 @@ app.get('/api/topup/status', async (req, res) => {
                 amount: pending.amount, // ส่งจำนวนเงิน
                 bankInfo: pending.bankInfo, // ส่งข้อมูลบัญชี (ถ้ามี)
                 adminMessage: {
-						bankInfo: settings ? settings.bankInfo : serverTranslations[lang].bank_info_default,
-						desc: settings ? settings.desc : serverTranslations[lang].bank_desc_default
-					}
+                    bankInfo: settings ? settings.bankInfo : "Please wait for the admin to provide the account number in the chat.",
+                    desc: settings ? settings.desc : "Awaiting verification of evidence."
+                }
             });
         } else {
             res.json({ hasPending: false });
