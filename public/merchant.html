@@ -519,26 +519,32 @@
             <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
         </div>
         <div class="sidebar-menu">
-            <div class="menu-item" onclick="openSaveStoreModal()">
-                <i class="fas fa-store"></i> บันทึกพิกัดร้าน (Base)
-            </div>
-            <div class="menu-item" onclick="openAddLocationModal()">
-                <i class="fas fa-map-marked-alt"></i> เพิ่มบันทึกพิกัดส่งงาน
-            </div>
-            <hr>
-            <div class="menu-item" onclick="openManageLocationsModal()">
-                <i class="fas fa-list"></i> พิกัดที่บันทึกไว้ทั้งหมด
-            </div>
-			<div class="menu-item" onclick="openListOrderModal()">
-                <i class="fas fa-list"></i> ออเดอร์ที่บันทึกไว้ทั้งหมด
-            </div>
-			<div class="menu-item" onclick="HowToVoiceCommands()">
-                <i class="fas fa-microphone-alt"></i> การสั่งงานด้วยเสียง
-            </div>
-			<div class="menu-item" onclick="infouse()">
-                <i class="fas fa-info"></i> ข้อควรจำ
-            </div>
-        </div>
+    <div class="menu-item" onclick="openSaveStoreModal()">
+        <i class="fas fa-store"></i> 
+        <span data-i18n-key="menu_save_store">บันทึกพิกัดร้าน (Base)</span>
+    </div>
+    <div class="menu-item" onclick="openAddLocationModal()">
+        <i class="fas fa-map-marked-alt"></i> 
+        <span data-i18n-key="menu_add_location">เพิ่มบันทึกพิกัดส่งงาน</span>
+    </div>
+    <hr>
+    <div class="menu-item" onclick="openManageLocationsModal()">
+        <i class="fas fa-list"></i> 
+        <span data-i18n-key="menu_all_locations">พิกัดที่บันทึกไว้ทั้งหมด</span>
+    </div>
+    <div class="menu-item" onclick="openListOrderModal()">
+        <i class="fas fa-list"></i> 
+        <span data-i18n-key="menu_all_orders">ออเดอร์ที่บันทึกไว้ทั้งหมด</span>
+    </div>
+    <div class="menu-item" onclick="HowToVoiceCommands()">
+        <i class="fas fa-microphone-alt"></i> 
+        <span data-i18n-key="menu_voice_commands">การสั่งงานด้วยเสียง</span>
+    </div>
+    <div class="menu-item" onclick="infouse()">
+        <i class="fas fa-info"></i> 
+        <span data-i18n-key="menu_info_usage">ข้อควรจำ</span>
+    </div>
+</div>
     </div>
     <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="toggleMerchantSidebar()"></div>
 
@@ -642,7 +648,54 @@ async function loadOrderTemplates() {
     }
 }
 
-	
+
+
+const translations = {
+    'th': {
+        'm_center': 'GedGo - ศูนย์จัดการร้านค้า',
+        'm_sidebar_title': 'จัดการพิกัด',
+        'm_save_base': 'บันทึกพิกัดร้าน (Base)',
+        'm_add_loc': 'เพิ่มบันทึกพิกัดส่งงาน',
+        'm_create_job': 'สร้างงานจ้างขนส่งใหม่',
+    },
+    'en': {
+        'm_center': 'GedGo - Merchant Center',
+        'm_sidebar_title': 'Manage Locations',
+        'm_save_base': 'Save Store Location (Base)',
+        'm_add_loc': 'Add Delivery Location',
+        'm_create_job': 'Create New Delivery Job',
+    },
+    'pt': {
+        'm_center': 'GedGo - Central do Comerciante',
+        'm_sidebar_title': 'Gerenciar Locais',
+        'm_save_base': 'Salvar Local da Loja (Base)',
+        'm_add_loc': 'Adicionar Local de Entrega',
+        'm_create_job': 'Criar Novo Trabalho',
+    }
+};
+
+
+function applyMerchantTranslations() {
+    // 1. ดึงภาษาที่ผู้ใช้เลือกไว้จาก localStorage
+    const currentLang = localStorage.getItem('userLang') || 'th';
+    
+    // 2. แปลข้อความทั่วไป (data-i18n-key)
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+        const key = el.getAttribute('data-i18n-key');
+        if (translations[currentLang] && translations[currentLang][key]) {
+            // ถ้าเป็น element ที่มี icon ให้ใช้ innerHTML หรือครอบ span ไว้
+            el.innerText = translations[currentLang][key];
+        }
+    });
+
+    // 3. แปลพวก Placeholder ในช่องกรอกข้อมูล
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[currentLang] && translations[currentLang][key]) {
+            el.placeholder = translations[currentLang][key];
+        }
+    });
+}
 	
 
 	
@@ -813,7 +866,7 @@ window.onload = async function() {
 
     // ✅ เรียกตัว Fetch (ซึ่งจะไปเรียก updateMerchantHeaderBalance อีกที)
     await fetchAndRefreshMerchantBalance();
-
+	applyMerchantTranslations();
     // ส่วนที่เหลือของคุณ
     if (typeof debugMerchantStatus === 'function') await debugMerchantStatus();
     if (typeof loadSavedLocations === 'function') await loadSavedLocations();   
