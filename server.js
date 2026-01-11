@@ -1134,20 +1134,28 @@ app.use((req, res, next) => {
 
 // API สำหรับดึงค่าภาษาเฉพาะของ User
 app.get('/api/user-language', async (req, res) => {
+    // 🚩 เรียกตัวแปรแบบที่พี่ส่งมา (ดึงจาก Query ทั้งหมด)
+    const { username, lang } = req.query; 
+    
+    // กำหนดค่า Default ภาษา (กันตาย)
+    const currentLang = lang || 'th'; 
+
     try {
-        const { username } = req.query;
-        if (!username) return res.status(400).json({ error: 'Require username' });
+        if (!username) return res.status(400).json({ error: 'No username' });
 
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // ส่งเฉพาะภาษา กลับไป (ถ้าไม่มีใน DB ให้ Default เป็น 'th')
-        res.json({ 
-            success: true, 
-            language: user.language || 'th' 
+        // ✅ ส่งข้อมูลกลับไปแบบครบๆ
+        res.json({
+            success: true,
+            // 🚩 ส่งภาษาที่ User เลือกไว้จริงๆ ใน Database กลับไป (ถ้าไม่มีให้ใช้ที่ส่งมาจากหน้าบ้าน)
+            userLanguage: user.language || currentLang,
+            username: user.username,
         });
+
     } catch (e) {
-        console.error("Fetch Language Error:", e);
+        console.error("User Info API Error:", e);
         res.status(500).json({ success: false });
     }
 });

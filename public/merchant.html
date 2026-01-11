@@ -725,6 +725,10 @@ async function applyMerchantTranslations() {
 
     console.log("Language sync with server: " + currentLang);
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+});
 	
 	
 	
@@ -883,8 +887,6 @@ async function fetchAndRefreshMerchantBalance() {
 
 // 3. ส่วนการทำงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
-    
-    await applyMerchantTranslations();
     const myUsername = localStorage.getItem('myUsername');
 
     if (!myUsername) {
