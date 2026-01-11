@@ -147,6 +147,9 @@ const serverTranslations = {
 		'err_job_not_found_alt': 'ไม่พบงาน',
         'err_no_permission': 'ไม่มีสิทธิ์จัดการงานนี้',
         'err_bypass_no_rider': 'ไม่สามารถ Bypass ได้เนื่องจากยังไม่มีไรเดอร์รับงาน',
+		'msg_finish_unlock': '✅ จบงานและปลดล็อคไรเดอร์เรียบร้อย',
+        'err_template_save': 'ไม่สามารถบันทึกเทมเพลตได้',
+        'err_delete_not_found': 'ไม่พบข้อมูลที่ต้องการลบ',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -210,6 +213,9 @@ const serverTranslations = {
 		'err_job_not_found_alt': 'Job not found',
         'err_no_permission': 'No permission to manage this job',
         'err_bypass_no_rider': 'Cannot bypass: No rider has accepted this job yet',
+		'msg_finish_unlock': '✅ Job finished and rider unlocked successfully.',
+        'err_template_save': 'Unable to save template.',
+        'err_delete_not_found': 'Data to be deleted not found.',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -272,6 +278,9 @@ const serverTranslations = {
 		'err_job_not_found_alt': 'Trabalho não encontrado',
         'err_no_permission': 'Sem permissão para gerenciar este trabalho',
         'err_bypass_no_rider': 'Não é possível ignorar: Nenhum entregador aceitou este trabalho ainda',
+		'msg_finish_unlock': '✅ Trabalho finalizado e entregador desbloqueado com sucesso.',
+        'err_template_save': 'Não foi possível salvar o modelo.',
+        'err_delete_not_found': 'Dados para exclusão não encontrados.',
     }
 };
 
@@ -3612,7 +3621,10 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
         io.to(postId.toString()).emit('job-finished-complete', { postId, rating });
         io.emit('update-post-status'); 
 
-        res.json({ success: true, message: 'จบงานและปลดล็อคไรเดอร์เรียบร้อย' });
+        res.json({ 
+			success: true, 
+			message: serverTranslations[lang].msg_finish_unlock 
+		});
 
     } catch (error) {
         console.error("Finish Job Error:", error);
@@ -3634,7 +3646,10 @@ app.post('/api/merchant/templates', async (req, res) => {
         await merchantTemplatesCollection.insertOne(newTemplate);
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'ไม่สามารถบันทึกเทมเพลตได้' });
+        res.status(500).json({ 
+			success: false, 
+			error: serverTranslations[lang].err_template_save 
+		});
     }
 });
 
@@ -3662,7 +3677,10 @@ app.delete('/api/merchant/templates/:id', async (req, res) => {
         if (result.deletedCount === 1) {
             res.json({ success: true });
         } else {
-            res.json({ success: false, error: 'ไม่พบข้อมูลที่ต้องการลบ' });
+            res.json({ 
+				success: false, 
+				error: serverTranslations[lang].err_delete_not_found 
+			});
         }
     } catch (error) {
         console.error("Delete Template Error:", error);
