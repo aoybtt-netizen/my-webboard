@@ -1134,10 +1134,7 @@ app.use((req, res, next) => {
 
 // API สำหรับดึงค่าภาษาเฉพาะของ User
 app.get('/api/user-language', async (req, res) => {
-    // 🚩 เรียกตัวแปรแบบที่พี่ส่งมา (ดึงจาก Query ทั้งหมด)
-    const { username, currency, location, country, lang } = req.query; 
-    
-    // กำหนดค่า Default ภาษา (กันตาย)
+    const { username, lang } = req.query; 
     const currentLang = lang || 'th'; 
 
     try {
@@ -1146,11 +1143,16 @@ app.get('/api/user-language', async (req, res) => {
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // ✅ ส่งข้อมูลกลับไปแบบครบๆ
+        // 🔍 DEBUG: ดูว่า Client ส่งอะไรมา และใน DB มีอะไร
+        console.log(`[Language API] Request from: ${username}`);
+        console.log(`[Language API] Client sent lang: ${lang}`);
+        console.log(`[Language API] DB saved lang: ${user.language}`);
+
+        const finalLang = user.language || currentLang;
+
         res.json({
             success: true,
-            // 🚩 ส่งภาษาที่ User เลือกไว้จริงๆ ใน Database กลับไป (ถ้าไม่มีให้ใช้ที่ส่งมาจากหน้าบ้าน)
-            userLanguage: user.language || currentLang,
+            userLanguage: finalLang,
             username: user.username
         });
 
