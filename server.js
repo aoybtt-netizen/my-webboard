@@ -3334,11 +3334,12 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
             }
         );
         res.json({ success: true });
-    } res.status(500).json({ 
+    } catch (e) { 
+        res.status(500).json({ 
         success: false, 
         error: serverTranslations[lang].err_db_update 
-    });
-    
+    }); 
+}
 });
 
 
