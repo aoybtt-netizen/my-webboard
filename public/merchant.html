@@ -693,9 +693,6 @@ function applyMerchantTranslations() {
     console.log("Merchant language applied: " + currentLang);
 }
 	
-window.addEventListener('DOMContentLoaded', () => {
-    applyMerchantTranslations();
-});
 	
 	
 	// ฟังก์ชัน เปิด/ปิด Sidebar
@@ -853,7 +850,10 @@ async function fetchAndRefreshMerchantBalance() {
 
 // 3. ส่วนการทำงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
-    // ดึง username มาเช็คก่อน
+    
+	window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+	});
     const myUsername = localStorage.getItem('myUsername');
 
     if (!myUsername) {
