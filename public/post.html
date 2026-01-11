@@ -2929,33 +2929,43 @@ function requestExtension() {
             return;
         }
 
-
+		
+		const currentLang = localStorage.getItem('userLang') || 'th';
+		const t = postTranslations[currentLang];
         // เริ่มแสดง Popup
         Swal.fire({
-            title: 'Add time request',
-            text: 'select request time',
-            icon: 'question',
-            input: 'radio',
-            inputOptions: {
-                '10': '10 m',
-                '20': '20 m',
-                '30': '30 m'
-            },
-            inputValidator: (value) => {
-                if (!value) return 'Please select time!';
-            },
-            showCancelButton: true,
-            confirmButtonText: 'Send request',
-            cancelButtonText: 'Cancle'
-        }).then((result) => {
-            
-            if (result.isConfirmed) {
-                const minutes = parseInt(result.value);
+			title: t.swal_add_time_title,
+			text: t.swal_add_time_text,
+			icon: 'question',
+			input: 'radio',
+			inputOptions: {
+        '10': `10 ${t.time_unit_min}`,
+        '20': `20 ${t.time_unit_min}`,
+        '30': `30 ${t.time_unit_min}`
+    },
+    inputValidator: (value) => {
+        if (!value) return t.err_select_time;
+    },
+    showCancelButton: true,
+    confirmButtonText: t.btn_send_request,
+    cancelButtonText: t.btn_cancel
+	}).then((result) => {
+    if (result.isConfirmed) {
+        const minutes = parseInt(result.value);
 
-                // ส่งคำขอไปหา Server
-                socket.emit('request-extend-time', { postId, minutes });
-                
-                Swal.fire('Request time Send...', 'Waiting Accept...', 'info');
+        // ส่งคำขอไปหา Server พร้อมระบุภาษาเพื่อให้ Server แจ้งเตือนอีกฝั่งถูกภาษา
+        socket.emit('request-extend-time', { 
+            postId, 
+            minutes, 
+            lang: currentLang 
+        });
+        
+        // แสดงสถานะการส่ง
+        Swal.fire({
+            title: t.msg_request_sent,
+            text: t.msg_waiting_accept,
+            icon: 'info'
+        });
             }
         });
 
