@@ -1114,6 +1114,11 @@ setInterval(runPostCleanup, 5 * 60 * 1000);
 // ==========================================
 // API Endpoints
 // ==========================================
+app.use((req, res, next) => {
+    // ดึงภาษาจาก Body, Query หรือ Header (ถ้าไม่มีให้เป็น 'th' เสมอ)
+    req.lang = req.body.lang || req.query.lang || req.headers['accept-language'] || 'th';
+    next();
+});
 
 // 1. Admin Transactions
 app.get('/api/admin/transactions', async (req, res) => {
