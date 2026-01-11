@@ -120,6 +120,12 @@ const serverTranslations = {
         'zone_no_owner': 'ไม่มีผู้ดูแล',
         'zone_anonymous': 'โซนนิรนาม',
         'user_email_not_set': 'ยังไม่ระบุ',
+		'log_handover': '✅ ปิดดีล/ส่งงานสำเร็จ: กระทู้ ',
+        'msg_deal_done': '🎉 คุณได้รับงาน/ปิดดีลในกระทู้ ',
+        'msg_suffix': ' เรียบร้อยแล้ว!',
+        'err_checkin': '⛔ กรุณาระบุตำแหน่ง (เช็คอิน) ก่อนสร้างกระทู้',
+        'err_banned': '⛔ คุณถูกระงับสิทธิ์การสร้างกระทู้',
+        'err_limit': '⛔ คุณมีกระทู้เปิดอยู่แล้ว 1 กระทู้ กรุณาปิดกระทู้เก่าก่อนสร้างใหม่',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -156,6 +162,12 @@ const serverTranslations = {
         'zone_no_owner': 'No Administrator',
         'zone_anonymous': 'Anonymous Zone',
         'user_email_not_set': 'Not specified',
+		'log_handover': '✅ Handover Success: Post ',
+        'msg_deal_done': '🎉 You have successfully accepted the job in ',
+        'msg_suffix': ' !',
+        'err_checkin': '⛔ Please check-in (get location) before creating a post',
+        'err_banned': '⛔ You are banned from creating posts',
+        'err_limit': '⛔ You already have 1 active post. Please close it before creating a new one.',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -191,6 +203,12 @@ const serverTranslations = {
         'zone_no_owner': 'Sem Administrador',
         'zone_anonymous': 'Zona Anônima',
         'user_email_not_set': 'Não especificado',
+		'log_handover': '✅ Entrega Concluída: Postagem ',
+        'msg_deal_done': '🎉 Você aceitou o trabalho em ',
+        'msg_suffix': ' com sucesso!',
+        'err_checkin': '⛔ Por favor, faça o check-in antes de criar uma postagem',
+        'err_banned': '⛔ Você está proibido de criar postagens',
+        'err_limit': '⛔ Você já tem 1 postagem ativa. Feche-a antes de criar uma nova.',
     }
 };
 
@@ -1819,7 +1837,7 @@ app.post('/api/admin/set-rating', async (req, res) => {
     const { targetUser, rating, requestBy } = req.body;
     if (requestBy !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     const newRating = parseFloat(rating);
-    if (isNaN(newRating) || newRating < 0 || newRating > 5) return res.status(400).json({ error: 'คะแนนไม่ถูกต้อง' });
+    if (isNaN(newRating) || newRating < 0 || newRating > 5) return res.status(400).json({ error: 'The score is incorrect.' });
     
     await updateUser(targetUser, { rating: newRating, ratingCount: 1 });
     io.emit('rating-update', { user: targetUser, rating: newRating });
@@ -1931,10 +1949,10 @@ app.post('/api/admin/topics/manage', async (req, res) => {
         
         if (result.matchedCount > 0) {
             // io.emit('topic-update', { id: id, newName: name }); // ยกเลิกการ emit ทั่วไป
-            return res.json({ success: true, message: 'แก้ไขหัวข้อสำเร็จ' });
+            return res.json({ success: true, message: 'Title edited successfully.' });
         } else {
             // อาจจะไม่พบ หรือแอดมินพยายามแก้ไขหัวข้อของคนอื่น
-            return res.status(404).json({ success: false, error: 'ไม่พบหัวข้อหรือคุณไม่มีสิทธิ์แก้ไข' });
+            return res.status(404).json({ success: false, error: 'The topic was not found or you do not have permission to edit.' });
         }
     }
     
@@ -1946,10 +1964,10 @@ app.post('/api/admin/topics/manage', async (req, res) => {
 
         if (result.deletedCount > 0) {
             // io.emit('topic-delete', { id: id }); // ยกเลิกการ emit ทั่วไป
-            return res.json({ success: true, message: 'ลบหัวข้อสำเร็จ' });
+            return res.json({ success: true, message: 'Topic successfully deleted.' });
         } else {
              // อาจจะไม่พบ หรือแอดมินพยายามลบหัวข้อของคนอื่น
-            return res.status(404).json({ success: false, error: 'ไม่พบหัวข้อหรือคุณไม่มีสิทธิ์ลบ' });
+            return res.status(404).json({ success: false, error: 'The topic was not found or you do not have permission to edit.' });
         }
     }
     
@@ -2071,7 +2089,7 @@ app.get('/api/posts/:id', async (req, res) => {
         const post = await postsCollection.findOne({ id: id });
         
         if (!post) {
-            return res.status(404).json({ success: false, error: 'ไม่พบกระทู้' });
+            return res.status(404).json({ success: false, error: 'No thread found.' });
         }
 
         // --- ระบบปิดกระทู้อัตโนมัติ (1 ชม.) ---
@@ -2147,15 +2165,23 @@ app.post('/api/posts/:id/handover', async (req, res) => {
     await postsCollection.updateOne({ id: postId }, { $set: { isClosed: true } });
 
     await transactionsCollection.insertOne({
-        id: Date.now(), type: 'HANDOVER', amount: 0, fromUser: requestBy, toUser: viewer,
-        note: `✅ ปิดดีล/ส่งงานสำเร็จ: กระทู้ ${post.title}`, timestamp: Date.now()
-    });
+    id: Date.now(), 
+    type: 'HANDOVER', 
+    amount: 0, 
+    fromUser: requestBy, 
+    toUser: viewer,
+    note: serverTranslations[lang].log_handover + post.title, // ใช้การบวก String
+    timestamp: Date.now()
+	});
 
     io.emit('update-post-status', { id: post.id, isClosed: true });
     io.to(viewer).emit('private-message', {
-        sender: 'System', target: viewer, msg: `🎉 คุณได้รับงาน/ปิดดีลในกระทู้ "${post.title}" เรียบร้อยแล้ว!`,
-        timestamp: Date.now(), postId: post.id
-    });
+    sender: 'System', 
+    target: viewer, 
+    msg: serverTranslations[lang].msg_deal_done + `"${post.title}"` + serverTranslations[lang].msg_suffix,
+    timestamp: Date.now(), 
+    postId: post.id
+	});
     res.json({ success: true });
 });
 
@@ -2167,18 +2193,20 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
     // 1. ตรวจสอบเงื่อนไขพื้นฐาน (รักษาของเดิมไว้ทั้งหมด)
     if (author !== 'Admin') {
-        if (!location || location === 'null' || location === 'undefined') {
-            return res.status(400).json({ error: '⛔ กรุณาระบุตำแหน่ง (เช็คอิน) ก่อนสร้างกระทู้' });
-        }
-    }
-    if (await isUserBanned(author)) return res.status(403).json({ error: '⛔ คุณถูกระงับสิทธิ์การสร้างกระทู้' });
+		if (!location || location === 'null' || location === 'undefined') {
+			return res.status(400).json({ error: serverTranslations[lang].err_checkin });
+		}
+	}
+    if (await isUserBanned(author)) {
+			return res.status(403).json({ error: serverTranslations[lang].err_banned });
+		}
     if (author !== 'Admin') {
     const activePost = await postsCollection.findOne({ author: author, isClosed: false });
 
     if (activePost) {
         if (isMerchantTask !== true) {
-            return res.status(400).json({ 
-                error: `⛔ คุณมีกระทู้เปิดอยู่แล้ว 1 กระทู้ กรุณาปิดกระทู้เก่าก่อนสร้างใหม่` 
+			return res.status(400).json({ 
+			error: serverTranslations[lang].err_limit 
 				});
 			}
 		}
@@ -2187,7 +2215,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const imageUrl = req.file ? req.file.path : null;
     const user = await getUserData(author);
     const topicObj = await topicsCollection.findOne({ id: category });
-    const topicName = topicObj ? topicObj.name : "หัวข้อทั่วไป"; 
+    const topicName = topicObj ? topicObj.name : "General"; 
     
 	let finalTitle = (author === 'Admin' && title) ? title.trim() : (title && title !== "undefined" ? title : topicName);
 
