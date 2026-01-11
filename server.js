@@ -1057,7 +1057,7 @@ app.get('/api/profile-details', async (req, res) => {
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
-            const userEmailDisplay = user.email || translations[currentLang].user_email_not_set,
+            email: user.email || "Not yet specified.",
             zoneName: zoneName,
             zoneOwner: zoneOwner
         });
@@ -1436,7 +1436,7 @@ app.post('/api/admin/set-cost', async (req, res) => {
         // 4. แจ้งเตือนการอัปเดตผ่าน Socket (ส่งข้อมูลโซนที่เปลี่ยนไป)
         io.emit('zone-config-update', { zoneId: targetZoneId, ...updateData });
 
-        res.json({ success: true, message: `อัปเดตค่าธรรมเนียมโซน ${targetZoneId} เรียบร้อย`, updateData });
+        res.json({ success: true, message: `Update ${targetZoneId} success`, updateData });
 
     } catch (err) {
         console.error("Set Cost Error:", err);
@@ -1462,7 +1462,7 @@ app.post('/api/admin/set-zone-fee', async (req, res) => {
 
     // ตรวจสอบสิทธิ์ (เหมือนเดิม)
     if (requester.adminLevel < 3 && zone.assignedAdmin !== requestBy) {
-        return res.status(403).json({ error: 'คุณไม่ใช่ผู้ดูแลโซนนี้' });
+        return res.status(403).json({ error: 'You are not the administrator of this zone.' });
     }
 
     // จัดการเรื่องค่าธรรมเนียม (เหมือนเดิม)
@@ -1516,7 +1516,7 @@ app.post('/api/admin/set-zone-name', async (req, res) => {
     // 3. ตรวจสอบสิทธิ์: ต้องเป็น Admin L3 หรือเป็น Assigned Admin (เจ้าของโซน) ของโซนนี้
     if (requester.adminLevel < 3 && zone.assignedAdmin !== requestBy) {
         // แก้ไข: ส่ง 403 และข้อความที่ชัดเจนขึ้น
-        return res.status(403).json({ success: false, error: 'คุณไม่ใช่ผู้ดูแลโซนนี้ หรือไม่มีสิทธิ์แก้ไขชื่อโซนนี้' });
+        return res.status(403).json({ success: false, error: 'You are not the administrator of this zone.' });
     }
 
     try {
@@ -1591,11 +1591,11 @@ app.post('/api/admin/convert-currency', async (req, res) => {
         const admin = await db.collection('users').findOne({ username: adminId });
 
         if (!zone || !admin) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลโซนหรือแอดมิน' });
+            return res.status(404).json({ success: false, message: 'No zone or administrator information found.' });
         }
 
         if (admin.coins < amount) {
-            return res.status(400).json({ success: false, message: 'เหรียญ (USDT) ของคุณไม่เพียงพอ' });
+            return res.status(400).json({ success: false, message: 'Not enough money.' });
         }
 
         // ✅ แก้ไข: ใช้ค่าตรงๆ จาก DB (เช่น "BRL") ไม่มีการแปลงตัวเล็ก
@@ -1632,7 +1632,7 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
         const adminUsername = req.query.adminId;
 
         const zone = await db.collection('zones').findOne({ id: zoneIdInt });
-        if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
+        if (!zone) return res.status(404).json({ success: false, message: 'Zone not found.' });
 
         const adminProfile = await db.collection('users').findOne(
             { username: adminUsername },
