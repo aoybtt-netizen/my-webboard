@@ -134,6 +134,12 @@ const serverTranslations = {
 		'err_empty_content': 'กรุณากรอกข้อความ',
         'err_closed_perm': '⛔ กระทู้นี้ปิดถาวรแล้ว',
         'err_restricted_chat': '⛔ เฉพาะผู้เกี่ยวข้องที่ส่งข้อความได้',
+		'err_no_username_req': 'ไม่พบชื่อผู้ใช้ใน Request',
+        'err_job_not_found': 'ไม่พบงานในระบบ',
+        'err_already_accepted': 'มีไรเดอร์รับงานไปแล้ว ลบไม่ได้',
+        'err_no_username': 'ไม่พบชื่อผู้ใช้',
+		'msg_set_loc_prefix': '✅ กำหนดพิกัดให้ ',
+        'msg_set_loc_mid': ' เรียบร้อย\n📍 ',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -184,6 +190,12 @@ const serverTranslations = {
 		'err_empty_content': 'Please enter a message',
         'err_closed_perm': '⛔ This post is permanently closed',
         'err_restricted_chat': '⛔ Restricted access: Only involved parties can message',
+		'err_no_username_req': 'Username missing in request',
+        'err_job_not_found': 'Job not found in system',
+        'err_already_accepted': 'A rider has already accepted this job. Cannot delete.',
+        'err_no_username': 'User not found',
+		'msg_set_loc_prefix': '✅ Location set for ',
+        'msg_set_loc_mid': ' successfully.\n📍 ',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -233,6 +245,12 @@ const serverTranslations = {
 		'err_empty_content': 'Por favor, digite uma mensagem',
         'err_closed_perm': '⛔ Esta postagem está fechada permanentemente',
         'err_restricted_chat': '⛔ Acesso restrito: Apenas os envolvidos podem enviar mensagens',
+		'err_no_username_req': 'Nome de usuário ausente na requisição',
+        'err_job_not_found': 'Trabalho não encontrado no sistema',
+        'err_already_accepted': 'Um entregador já aceitou este trabalho. Não é possível excluir.',
+        'err_no_username': 'Usuário não encontrado',
+		'msg_set_loc_prefix': '✅ Localização definida para ',
+        'msg_set_loc_mid': ' com sucesso.\n📍 ',
     }
 };
 
@@ -2989,7 +3007,7 @@ app.post('/api/admin/assign-zone', async (req, res) => {
             zone = await zonesCollection.findOne({ id: parseInt(zoneId) });
         }
     } catch (err) {
-        return res.status(400).json({ error: 'รูปแบบ ID ไม่ถูกต้อง' });
+        return res.status(400).json({ error: 'The ID format is incorrect.' });
     }
 
     if (!zone) {
@@ -3161,33 +3179,38 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
         } 
     });
 
-    res.json({ success: true, message: `✅ กำหนดพิกัดให้ ${targetUser} เรียบร้อย\n📍 ${addressName || ''}` });
+		res.json({ 
+				success: true, 
+				message: serverTranslations[lang].msg_set_loc_prefix + 
+				targetUser + 
+				serverTranslations[lang].msg_set_loc_mid + 
+				(addressName || '') 
+		});
 });
 
 
 //ส่วนของร้านค้าาาาา
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
-    // 🚩 ลองใส่ console.log เพื่อดูว่าค่ามาถึง Server หรือไม่
-    console.log("🗑️ Delete Request - ID:", req.params.id, "User:", req.body.username);
 
     const postId = parseInt(req.params.id); // แปลงเป็นตัวเลข
     const { username } = req.body;
 
-    if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้ใน Request' });
+		if (!username) {
+			return res.status(400).json({ success: false, error: serverTranslations[lang].err_no_username_req });
+		}
 
     try {
         // ค้นหาโดยระบุเลข ID ให้ชัดเจน
         const post = await postsCollection.findOne({ id: postId });
         
         if (!post) {
-            console.log("❌ ไม่พบงาน ID:", postId);
-            return res.status(404).json({ success: false, error: 'ไม่พบงานในระบบ' });
-        }
+			return res.status(404).json({ success: false, error: serverTranslations[lang].err_job_not_found });
+		}
 
         if (post.acceptedBy) {
-            return res.status(400).json({ success: false, error: 'มีไรเดอร์รับงานไปแล้ว ลบไม่ได้' });
-        }
+			return res.status(400).json({ success: false, error: serverTranslations[lang].err_already_accepted });
+		}
 
         await postsCollection.deleteOne({ id: postId });
         
@@ -3197,11 +3220,10 @@ app.delete('/api/merchant/tasks/:id', async (req, res) => {
             { $inc: { mercNum: -1 } }
         );
 
-        console.log(`✅ ลบงานสำเร็จและลดแต้มให้ ${username}`);
         res.json({ success: true });
     } catch (err) {
         console.error("🚨 Server Error:", err);
-        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดที่ Server' });
+        res.status(500).json({ success: false, error: 'An error occurred at Server' });
     }
 });
 
@@ -3234,7 +3256,9 @@ app.post('/api/merchant/reset-mercnum', async (req, res) => {
 // 2. API: ดึงพิกัดทั้งหมดของร้านค้า
 app.get('/api/merchant/locations', async (req, res) => {
     const username = req.query.username; // รับชื่อจาก Query String
-    if (!username) return res.status(400).json({ success: false, error: 'ไม่พบชื่อผู้ใช้' });
+    if (!username) {
+		return res.status(400).json({ success: false, error: serverTranslations[lang].err_no_username });
+	}
 
     try {
         const locations = await merchantLocationsCollection.find({ owner: username }).toArray();
