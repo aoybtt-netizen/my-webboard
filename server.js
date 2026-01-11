@@ -158,6 +158,13 @@ const serverTranslations = {
         'err_withdraw_insufficient_tail': ' ของคุณไม่เพียงพอสำหรับการถอน',
         'bank_info_default': 'โปรดรอแอดมินแจ้งเลขบัญชีในแชท',
         'bank_desc_default': 'กำลังรอการตรวจสอบหลักฐาน',
+		'err_req_not_ready': 'คำขอนี้ไม่พร้อมสำหรับการดำเนินการ',
+        'msg_reject_refund': 'ปฏิเสธคำขอและคืนเงินเรียบร้อย',
+        'err_admin_insufficient': 'ยอดเงิน ',
+        'err_admin_insufficient_tail': ' ของแอดมินไม่เพียงพอ',
+        'msg_approve_success_prefix': 'อนุมัติรายการ ',
+        'msg_approve_success_suffix': ' สำเร็จ',
+        'err_process_failed': 'เกิดข้อผิดพลาดในการประมวลผล',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -232,6 +239,13 @@ const serverTranslations = {
         'err_withdraw_insufficient_tail': ' balance is insufficient for withdrawal',
         'bank_info_default': 'Please wait for admin to provide bank details in chat',
         'bank_desc_default': 'Waiting for verification',
+		'err_req_not_ready': 'This request is not ready for processing',
+        'msg_reject_refund': 'Request rejected and refund processed successfully',
+        'err_admin_insufficient': 'Admin has insufficient ',
+        'err_admin_insufficient_tail': ' balance',
+        'msg_approve_success_prefix': 'Approved ',
+        'msg_approve_success_suffix': ' successfully',
+        'err_process_failed': 'Processing error occurred',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -305,6 +319,13 @@ const serverTranslations = {
         'err_withdraw_insufficient_tail': ' é insuficiente para saque',
         'bank_info_default': 'Por favor, aguarde o admin informar os dados bancários no chat',
         'bank_desc_default': 'Aguardando verificação de comprovante',
+		'err_req_not_ready': 'Esta solicitação não está pronta para processamento',
+        'msg_reject_refund': 'Solicitação rejeitada e reembolso processado com sucesso',
+        'err_admin_insufficient': 'Saldo do administrador em ',
+        'err_admin_insufficient_tail': ' é insuficiente',
+        'msg_approve_success_prefix': 'Aprovado ',
+        'msg_approve_success_suffix': ' com sucesso',
+        'err_process_failed': 'Ocorreu um erro no processamento',
     }
 };
 
@@ -4133,8 +4154,8 @@ app.post('/api/admin/process-topup', async (req, res) => {
         const topupReq = await topupRequestsCollection.findOne({ _id: new ObjectId(requestId) });
 
         if (!topupReq || topupReq.status !== 'pending') {
-            return res.status(400).json({ error: "คำขอนี้ไม่พร้อมสำหรับการดำเนินการ" });
-        }
+			return res.status(400).json({ error: serverTranslations[lang].err_req_not_ready });
+		}
 
         // ✅ แก้ไข: ใช้ค่าเดิมจาก Database หรือที่ส่งมาตรงๆ (เช่น 'BRL', 'THB')
         // ไม่มีการใช้ .toLowerCase() เพื่อให้ตรงกับกระเป๋าเงินตัวพิมพ์ใหญ่
@@ -4155,7 +4176,7 @@ app.post('/api/admin/process-topup', async (req, res) => {
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
             );
-            return res.json({ success: true, message: "ปฏิเสธคำขอและคืนเงินเรียบร้อย" });
+            return res.json({ success: true, message: serverTranslations[lang].msg_reject_refund });
         }
 
         // --- ✅ กรณีอนุมัติ (Approved) ---
@@ -4168,9 +4189,11 @@ app.post('/api/admin/process-topup', async (req, res) => {
             const adminBalance = adminUser ? (adminUser[currencyField] || 0) : 0;
 
             if (!adminUser || adminBalance < amountToProcess) {
-                // แจ้งเตือนยอดเงินไม่พอ โดยใช้ชื่อสกุลเงินที่ส่งมา
-                return res.status(400).json({ error: `ยอดเงิน ${currencyField} ของแอดมินไม่เพียงพอ` });
-            }
+						const errorMsg = serverTranslations[lang].err_admin_insufficient + 
+						currencyField + 
+						serverTranslations[lang].err_admin_insufficient_tail;
+						return res.status(400).json({ error: errorMsg });
+			}
             
             // หักแอดมิน เติมสมาชิก (ใช้ Dynamic Key ตาม currencyField)
             await usersCollection.updateOne({ username: adminName }, { $inc: { [currencyField]: -amountToProcess } });
@@ -4193,12 +4216,17 @@ app.post('/api/admin/process-topup', async (req, res) => {
         );
 
         // ตอบกลับสำเร็จโดยใช้ชื่อสกุลเงินเดิม
-        res.json({ success: true, message: `อนุมัติรายการ ${topupReq.type} (${currencyField}) สำเร็จ` });
+        res.json({ 
+				success: true, 
+				message: serverTranslations[lang].msg_approve_success_prefix + 
+				topupReq.type + " (" + currencyField + ")" + 
+				serverTranslations[lang].msg_approve_success_suffix 
+			});
 
     } catch (err) {
-        console.error("Process Topup Error:", err);
-        res.status(500).json({ error: "เกิดข้อผิดพลาดในการประมวลผล" });
-    }
+    console.error("Process Topup Error:", err);
+    res.status(500).json({ error: serverTranslations[lang].err_process_failed });
+}
 });
 
 // API สำหรับดึงประวัติที่แอดมินจัดการ (Approved / Rejected)
