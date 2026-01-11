@@ -3338,7 +3338,7 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
         success: false, 
         error: serverTranslations[lang].err_db_update 
     });
-    }
+    
 });
 
 
