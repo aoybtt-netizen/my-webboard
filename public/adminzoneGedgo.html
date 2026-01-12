@@ -647,18 +647,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 
-    async function showContent(type) {
+async function showContent(type) {
     const display = document.getElementById('main-display');
     const title = document.getElementById('content-title');
-	const membersListSec = document.getElementById('section-members-list');
-    
-    // --- ส่วนป้องกันข้อมูลหาย (รวม KYC เข้าไปในระบบเก็บของลับ) ---
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+
+    // 1. ดึงอ้างอิง Section ต่างๆ (รวม Members เข้ามาด้วย)
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
-    const kycListSec = document.getElementById('section-kyc-list'); // เพิ่มอ้างอิงส่วน KYC
-	const membersListSec = document.getElementById('section-members-list');
+    const kycListSec = document.getElementById('section-kyc-list');
+    const membersListSec = document.getElementById('section-members-list'); // ดึงส่วนรายชื่อสมาชิก
 
-    // 2. สร้าง/ดึง "ที่เก็บของลับ"
+    // 2. สร้าง/ดึง "ที่เก็บของลับ" (Storage)
     let storage = document.getElementById('hidden-storage');
     if (!storage) {
         storage = document.createElement('div');
@@ -667,13 +667,13 @@ window.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(storage);
     }
 
-    // 3. ย้ายทุก Section ไปพักไว้ใน storage ก่อน (ของจะไม่โดนลบจากหน่วยความจำ)
+    // 3. 🚩 ย้ายทุก Section ไปพักไว้ใน storage (ป้องกันของหายเมื่อสั่งล้างหน้าจอ)
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
     if (kycListSec) storage.appendChild(kycListSec);
-	if (membersListSec) storage.appendChild(membersListSec);
+    if (membersListSec) storage.appendChild(membersListSec); // ✅ เก็บสมาชิกไว้ในที่ปลอดภัย
 
-    // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element จริงถูกย้ายไปที่ storage ไม่ได้ถูกทำลาย)
+    // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element ถูกย้ายไปเก็บที่ Storage ไม่ได้ถูกทำลาย)
     display.innerHTML = ''; 
 
     // จัดการสถานะปุ่มเมนู (Active)
@@ -684,31 +684,29 @@ window.addEventListener('DOMContentLoaded', () => {
     // --- ส่วนการแสดงผลตามประเภท (Switch View) ---
 
     if (type === 'topup') {
-        title.innerText = translations[currentLang].title_transactionsss;
+        title.innerText = translations[currentLang].title_transactions;
+        // ดึงของจาก storage กลับมาแสดง
         if (topupListSec) display.appendChild(topupListSec);
-        display.appendChild(topupListSec);
-        display.appendChild(adminChatSec);
+        if (adminChatSec) display.appendChild(adminChatSec);
 
         adminChatSec.style.display = 'none';
         topupListSec.style.display = 'block';
         
-        document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Loadding...</p>';
+        document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Loading...</p>';
         loadTopupRequests(); 
 
-    } else if (type === 'kyc') { // ✅ เพิ่ม Logic สำหรับหน้า KYC
-        title.innerText = translations[currentLang].title_kyc_verificationnn;
+    } else if (type === 'kyc') {
+        title.innerText = translations[currentLang].title_kyc_verification;
+        // ดึงส่วน KYC จาก storage มาแสดง
         if (kycListSec) display.appendChild(kycListSec);
-        display.appendChild(kycListSec);
-        
         kycListSec.style.display = 'block';
         
-        // แสดงสถานะกำลังโหลด
-        document.getElementById('kyc-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> Checking coordinates and loading data...</p>';
-        loadKYCRequests(); // เรียกฟังก์ชันโหลดข้อมูล (ที่ต้องเขียนเพิ่ม)
+        document.getElementById('kyc-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> Loading KYC data...</p>';
+        loadKYCRequests();
 
     } else if (type === 'automessage') {
         title.innerText = translations[currentLang].title_auto_msg_settings;
-        display.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">loading data...</p>';
+        display.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">Loading settings...</p>';
         try {
             const adminName = localStorage.getItem('myUsername');
             const res = await fetch(`/api/admin/get-settings?admin=${adminName}`);
@@ -720,19 +718,22 @@ window.addEventListener('DOMContentLoaded', () => {
 
     } else if (type === 'history') {
         title.innerText = translations[currentLang].title_zone_history;
-        display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">loading...</p></div>`;
+        display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">Loading history...</p></div>`;
         loadAdminHistory(); 
-    }else if (type === 'members') {
-    title.innerText = translations[currentLang].title_zone_members;
-    if (membersListSec) {
+
+    } else if (type === 'members') {
+        title.innerText = translations[currentLang].title_zone_members;
+        // ✅ ดึงรายชื่อสมาชิกจาก storage กลับมาแสดง
+        if (membersListSec) {
             display.appendChild(membersListSec);
             membersListSec.style.display = 'block';
-            loadMemberList();
+            loadMemberList(); 
         } else {
-            display.innerHTML = '<p style="color:red; text-align:center;">Error: Member Section not found!</p>';
+            display.innerHTML = '<p style="text-align:center; color:red;">Error: Members section not found!</p>';
         }
-}
+    }
     
+    // ปิด Sidebar อัตโนมัติบนมือถือ
     if(window.innerWidth <= 768 && document.getElementById('sidebar')?.classList.contains('active')) {
         toggleSidebar();
     }
