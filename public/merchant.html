@@ -666,6 +666,7 @@ const translations = {
         'opt_general': 'ส่งอาหาร/สินค้าทั่วไป',
         'opt_document': 'รับส่งเอกสาร',
         'opt_big_parcel': 'ส่งพัสดุ/ของชิ้นใหญ่',
+		'preview_format': (cat, num) => `${cat} (ส่ง ${num} จุด)`,
         'lbl_task_desc': 'รายละเอียดเพิ่มเติม (เช่น จำนวนกล่อง, ขนาด)',
         'plh_task_desc': 'ระบุรายละเอียดเพื่อให้ไรเดอร์ประเมินงาน...',
         'lbl_task_budget': 'งบประมาณจ้างงาน',
@@ -862,6 +863,7 @@ const translations = {
         'opt_general': 'Food / General Goods',
         'opt_document': 'Document Delivery',
         'opt_big_parcel': 'Big Parcel / Large Items',
+		'preview_format': (cat, num) => `${cat} (${num} stops)`,
         'lbl_task_desc': 'Additional Details (e.g., quantity, size)',
         'plh_task_desc': 'Enter details for rider evaluation...',
         'lbl_task_budget': 'Budget',
@@ -1058,6 +1060,7 @@ const translations = {
         'opt_general': 'Comida / Mercadorias em Geral',
         'opt_document': 'Entrega de Documentos',
         'opt_big_parcel': 'Pacote Grande / Itens Grandes',
+		'preview_format': (cat, num) => `${cat} (${num} paradas)`,
         'lbl_task_desc': 'Detalhes Adicionais (ex: quantidade, tamanho)',
         'plh_task_desc': 'Insira detalhes para avaliação do entregador...',
         'lbl_task_budget': 'Orçamento',
@@ -1845,11 +1848,25 @@ function reorderStops() {
     }
 
 function updateTitlePreview() {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const categoryKey = document.getElementById('task-category').value;
+    
+    // หาชื่อประเภทงาน
     const categoryName = translations[currentLang][`opt_${categoryKey}`] || categoryKey;
+    
+    // คำนวณจำนวนจุด
     const totalStops = document.querySelectorAll('.stop-item').length;
     const deliveryStops = totalStops > 1 ? totalStops - 1 : 0;
-    const finalTitle = translations[currentLang].preview_format(categoryName, deliveryStops);
+    
+    let finalTitle = "";
+    
+    // 🚩 เช็คก่อนว่า preview_format เป็นฟังก์ชันจริงๆ ใช่ไหม
+    if (typeof translations[currentLang].preview_format === 'function') {
+        finalTitle = translations[currentLang].preview_format(categoryName, deliveryStops);
+    } else {
+        // ถ้าไม่ใช่ฟังก์ชัน (หรือลืมเขียน) ให้แสดงผลแบบพื้นฐานกัน Error
+        finalTitle = `${categoryName} (${deliveryStops})`;
+    }
     
     const previewEl = document.getElementById('title-preview');
     if (previewEl) {
