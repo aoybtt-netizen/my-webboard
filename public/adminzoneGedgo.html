@@ -866,6 +866,7 @@ function confirmTopup(user, amount) {
 }
 
     window.onload = async () => {
+	applyMerchantTranslations();
     const myUsername = localStorage.getItem('myUsername');
     if (!myUsername) { 
         window.location.href = 'index.html'; 
