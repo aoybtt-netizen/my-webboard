@@ -273,6 +273,26 @@ const translations = {
         'loading_job_info': 'กำลังโหลดข้อมูลงาน...',
         'btn_back': 'กลับ',
         'btn_accept_job': 'กดรับงานนี้',
+		'btn_processing': 'กำลังดำเนินการส่ง (ห้ามออกจากหน้านี้)',
+        'alert_pending_job': '⚠️ คุณมีงานที่ต้องส่งให้เสร็จ กรุณาดำเนินการให้เรียบร้อยก่อนออกจากหน้านี้',
+        'msg_already_taken': 'งานนี้มีผู้รับไปแล้ว',
+        'btn_waiting_merchant': 'รอร้านค้าตอบรับ...',
+        'btn_accept_job': 'กดรับงานนี้',
+		'marker_your_pos': 'ตำแหน่งของคุณ',
+        'marker_pickup': '🏠 จุดรับงาน',
+        'marker_dropoff_num': (i) => `📍 จุดส่งที่ ${i}`,
+        'status_success': '✅ เสร็จสิ้น',
+        'status_current': '⭐ เป้าหมายปัจจุบัน',
+        'status_locked': '🔒 รอตามลำดับ',
+        'label_pickup': '🟢 จุดรับงาน',
+        'label_dropoff_num': (i) => `📍 จุดส่งงานที่ ${i}`,
+        'btn_checkin_now': 'เช็คอินยืนยันตำแหน่ง',
+        'btn_checkin_wait': 'กรุณาทำตามลำดับ',
+        'btn_call': 'โทรหา',
+        'btn_nav': 'นำทาง',
+        'lbl_merchant': 'ผู้จ้างงาน:',
+        'lbl_job_details': 'รายละเอียดงาน:',
+        'lbl_no_details': 'ไม่มีรายละเอียดเพิ่มเติม',
     },
     'en': {
         'header_job_details': 'Merchant Job Details',
@@ -284,6 +304,26 @@ const translations = {
         'loading_job_info': 'Loading job details...',
         'btn_back': 'Back',
         'btn_accept_job': 'Accept this Job',
+		'btn_processing': 'Submitting... (Do not leave this page)',
+        'alert_pending_job': '⚠️ You have a pending task. Please complete it before leaving.',
+        'msg_already_taken': 'This job has already been taken.',
+        'btn_waiting_merchant': 'Waiting for merchant approval...',
+        'btn_accept_job': 'Accept this Job',
+		'marker_your_pos': 'Your Location',
+        'marker_pickup': '🏠 Pickup Point',
+        'marker_dropoff_num': (i) => `📍 Drop-off ${i}`,
+        'status_success': '✅ Done',
+        'status_current': '⭐ Current Target',
+        'status_locked': '🔒 Locked (Wait)',
+        'label_pickup': '🟢 Pickup Point',
+        'label_dropoff_num': (i) => `📍 Drop-off Point ${i}`,
+        'btn_checkin_now': 'Confirm Check-in',
+        'btn_checkin_wait': 'Follow Sequence',
+        'btn_call': 'Call',
+        'btn_nav': 'Nav',
+        'lbl_merchant': 'Merchant:',
+        'lbl_job_details': 'Job Details:',
+        'lbl_no_details': 'No additional details',
     },
     'pt': {
         'header_job_details': 'Detalhes do Pedido',
@@ -295,6 +335,26 @@ const translations = {
         'loading_job_info': 'Carregando detalhes...',
         'btn_back': 'Voltar',
         'btn_accept_job': 'Aceitar este Trabalho',
+		'btn_processing': 'Processando... (Não saia desta página)',
+        'alert_pending_job': '⚠️ Você tem uma tarefa pendente. Por favor, conclua-a antes de sair.',
+        'msg_already_taken': 'Este trabalho já foi aceito.',
+        'btn_waiting_merchant': 'Aguardando aprovação do lojista...',
+        'btn_accept_job': 'Aceitar este Trabalho',
+		'marker_your_pos': 'Sua Localização',
+        'marker_pickup': '🏠 Ponto de Retirada',
+        'marker_dropoff_num': (i) => `📍 Entrega ${i}`,
+        'status_success': '✅ Concluído',
+        'status_current': '⭐ Destino Atual',
+        'status_locked': '🔒 Bloqueado',
+        'label_pickup': '🟢 Ponto de Retirada',
+        'label_dropoff_num': (i) => `📍 Ponto de Entrega ${i}`,
+        'btn_checkin_now': 'Confirmar Check-in',
+        'btn_checkin_wait': 'Siga a ordem',
+        'btn_call': 'Ligar',
+        'btn_nav': 'Navegar',
+        'lbl_merchant': 'Lojista:',
+        'lbl_job_details': 'Detalhes:',
+        'lbl_no_details': 'Sem detalhes adicionais',
     }
 };
 
@@ -334,13 +394,13 @@ window.addEventListener('DOMContentLoaded', () => {
 		
 		// 🚩 เช็คว่าถ้าไม่มี ID งาน ให้ดีดกลับหน้าแรกทันที ไม่ต้องรอ Loading
 if (!jobId) {
-    alert("ไม่พบรหัสงาน");
+    alert("Job code not found.");
     window.location.href = 'index.html';
 }
 
 // 🚩 เช็คว่าถ้ายังไม่ Login ให้ไปหน้า Login
 if (!myUsername) {
-    alert("กรุณาเข้าสู่ระบบก่อน");
+    alert("Please log in first.");
     window.location.href = 'login.html'; 
 }
 
@@ -390,7 +450,7 @@ function updateFooterButtons(post) {
                 if (backBtn) backBtn.style.display = 'none';
                 
                 acceptBtn.style.display = 'block';
-                acceptBtn.innerHTML = '<i class="fas fa-motorcycle fa-beat"></i> กำลังดำเนินการส่ง (ห้ามออกจากหน้านี้)';
+                acceptBtn.innerHTML = `<i class="fas fa-motorcycle fa-beat"></i> ${translations[currentLang].btn_processing}`;
                 acceptBtn.style.background = "#2ecc71";
                 acceptBtn.style.width = "100%"; // ขยายเต็มเพื่อความสวยงาม
                 acceptBtn.disabled = true;
@@ -399,7 +459,7 @@ function updateFooterButtons(post) {
                 window.history.pushState(null, null, window.location.href);
                 window.onpopstate = function() {
                     window.history.go(1);
-                    alert("⚠️ คุณมีงานที่ต้องส่งให้เสร็จ กรุณาดำเนินการให้เรียบร้อยก่อนออกจากหน้านี้ครับ");
+                    alert(translations[currentLang].alert_pending_job);
                 };
 
             } else if (post.status === 'closed_permanently') {
@@ -416,7 +476,7 @@ function updateFooterButtons(post) {
             
             const msg = document.createElement('small');
             msg.style.color = "#999";
-            msg.innerText = "งานนี้มีผู้รับไปแล้ว";
+            msg.innerText = translations[currentLang].msg_already_taken;
             footerContainer.appendChild(msg);
             window.onpopstate = null;
         }
@@ -425,7 +485,7 @@ function updateFooterButtons(post) {
         // --- กรณี: เราส่งคำขอไปแล้ว ---
         if (backBtn) backBtn.style.display = 'block';
         acceptBtn.style.display = 'block';
-        acceptBtn.innerHTML = '<i class="fas fa-clock"></i> รอร้านค้าตอบรับ...';
+        acceptBtn.innerHTML = `<i class="fas fa-clock"></i> ${translations[currentLang].btn_waiting_merchant}`;
         acceptBtn.style.background = "#f39c12";
         acceptBtn.disabled = true;
         window.onpopstate = null;
@@ -441,7 +501,7 @@ function updateFooterButtons(post) {
         if (backBtn) backBtn.style.display = 'block';
         acceptBtn.style.display = 'block';
         acceptBtn.disabled = false;
-        acceptBtn.innerHTML = 'กดรับงานนี้';
+        acceptBtn.innerHTML = translations[currentLang].btn_accept_job;
         acceptBtn.style.background = ""; // กลับไปใช้สีตาม CSS (ปุ่มเขียว)
         acceptBtn.style.width = ""; // กลับไปใช้ขนาดปกติ
         window.onpopstate = null;
@@ -502,10 +562,10 @@ function drawPathOnMap(riderLat, riderLng) {
     if (riderLat && riderLng) {
         const riderPos = [riderLat, riderLng];
         points.push(riderPos);
-        markers.push(L.marker(riderPos, { 
-            icon: L.divIcon({ html: '<i class="fas fa-motorcycle fa-2x" style="color:#3498db;"></i>', className: 'custom-div-icon' }) 
-        }).bindPopup("ตำแหน่งของคุณ"));
-    }
+				markers.push(L.marker(riderPos, { 
+				icon: L.divIcon({ html: '<i class="fas fa-motorcycle fa-2x" style="color:#3498db;"></i>', className: 'custom-div-icon' }) 
+			}).bindPopup(translations[currentLang].marker_your_pos));
+	}
 
     // เพิ่มจุดรับ-ส่งงาน (Stops) ทั้งหมด
     currentPostData.stops.forEach((stop, index) => {
@@ -517,11 +577,11 @@ function drawPathOnMap(riderLat, riderLng) {
         const iconShape = isPickup ? "fa-store" : "fa-box";
         
         markers.push(L.marker(pos, {
-            icon: L.divIcon({ 
-                html: `<i class="fas ${iconShape} fa-2x" style="color:${iconColor};"></i>`, 
-                className: 'custom-div-icon' 
-            })
-        }).bindPopup(isPickup ? "🏠 จุดรับงาน" : `📍 จุดส่งที่ ${index}`));
+			icon: L.divIcon({ 
+				html: `<i class="fas ${iconShape} fa-2x" style="color:${iconColor};"></i>`, 
+				className: 'custom-div-icon' 
+			})
+		}).bindPopup(isPickup ? translations[currentLang].marker_pickup : translations[currentLang].marker_dropoff_num(index)));
     });
 
     // วาดเส้นเชื่อมโยง (Polyline)
@@ -538,10 +598,11 @@ function drawPathOnMap(riderLat, riderLng) {
 
 
     function renderJob(post) {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th'; // ดึงภาษาปัจจุบัน
     const container = document.getElementById('job-details');
     currentPostData = post; 
 
-    // 🚩 1. ค้นหาคิวปัจจุบัน: จุดแรกที่สถานะยังเป็น 'pending'
+    // 🚩 1. ค้นหาคิวปัจจุบัน
     const nextPendingIndex = post.stops.findIndex(s => s.status === 'pending');
 
     let stopsHtml = '';
@@ -555,12 +616,12 @@ function drawPathOnMap(riderLat, riderLng) {
             ` <a href="tel:${stop.phone}" onclick="event.stopPropagation();" style="font-size: 0.85em; color: #007bff; text-decoration: underline; font-weight: normal;">(📞 ${stop.phone})</a>` 
             : '';
 
-        // --- ส่วนที่ 2: แยก Logic ปุ่มเช็คอินออกมาข้างนอก (แก้ปัญหา Editor สีเพี้ยน) ---
+        // --- ส่วนที่ 2: ปุ่มเช็คอิน (ดึงคำแปล) ---
         let checkinBtnHtml = '';
         if (!isDone) {
             const btnColor = isCurrentTarget ? '#27ae60' : '#ccc';
             const btnCursor = isCurrentTarget ? 'pointer' : 'not-allowed';
-            const btnText = isCurrentTarget ? 'เช็คอินยืนยันตำแหน่ง' : 'กรุณาทำตามลำดับ';
+            const btnText = isCurrentTarget ? translations[currentLang].btn_checkin_now : translations[currentLang].btn_checkin_wait;
             const isDisabled = !isCurrentTarget ? 'disabled' : '';
 
             checkinBtnHtml = `
@@ -571,17 +632,20 @@ function drawPathOnMap(riderLat, riderLng) {
                 </button>`;
         }
 
-        // --- ส่วนที่ 3: ประกอบร่าง HTML ของแต่ละ Stop ---
+        // --- ส่วนที่ 3: ประกอบร่าง HTML (ดึงคำแปลสถานะและหัวข้อ) ---
+        const statusText = isDone ? translations[currentLang].status_success : (isCurrentTarget ? translations[currentLang].status_current : translations[currentLang].status_locked);
+        const labelText = isPickup ? translations[currentLang].label_pickup : translations[currentLang].label_dropoff_num(index);
+
         stopsHtml += `
         <div class="stop-point ${isPickup ? 'pickup' : ''}" style="${isDone ? 'opacity: 0.7; border-left-color: #ccc;' : ''}">
             <div class="status-tag ${isDone ? 'status-success' : 'status-pending'}" 
                  style="background: ${isDone ? '#27ae60' : (isCurrentTarget ? '#f39c12' : '#eee')}; 
                         color: ${isDone || isCurrentTarget ? 'white' : '#888'};">
-                ${isDone ? '✅ เสร็จสิ้น' : (isCurrentTarget ? '⭐ เป้าหมายปัจจุบัน' : '🔒 รอตามลำดับ')}
+                ${statusText}
             </div>
 
             <b style="color: ${isPickup ? '#27ae60' : '#11998e'};">
-                ${isPickup ? '🟢 จุดรับงาน' : `📍 จุดส่งงานที่ ${index}`}
+                ${labelText}
             </b>
             
             <div style="margin-top: 5px; font-size: 1.1em; font-weight: 600;">
@@ -590,10 +654,10 @@ function drawPathOnMap(riderLat, riderLng) {
             
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <button class="btn-action btn-call" onclick="window.location.href='tel:${stop.phone}'">
-                    <i class="fas fa-phone"></i> โทรหา
+                    <i class="fas fa-phone"></i> ${translations[currentLang].btn_call}
                 </button>
                 <button class="btn-action btn-nav" onclick="openNav(${stop.lat}, ${stop.lng})">
-                    <i class="fas fa-directions"></i> นำทาง
+                    <i class="fas fa-directions"></i> ${translations[currentLang].btn_nav}
                 </button>
             </div>
 
@@ -602,19 +666,19 @@ function drawPathOnMap(riderLat, riderLng) {
         `;
     });
 
-    // 🚩 2. แสดงผลทั้งหมดลงในหน้าจอ
+    // 🚩 2. แสดงผลทั้งหมด (ดึงคำแปลส่วน Merchant Card)
     container.innerHTML = `
         <div class="merchant-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <small style="color: #888;">ผู้จ้างงาน:</small><br>
+                    <small style="color: #888;">${translations[currentLang].lbl_merchant}</small><br>
                     <b style="font-size: 1.2em;"><i class="fas fa-store"></i> ${post.storeName || post.author}</b>
                 </div>
                 <div class="budget-badge">฿ ${post.budget}</div>
             </div>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-            <small style="color: #888;">รายละเอียดงาน:</small>
-            <div style="margin-top: 5px;">${post.content || 'ไม่มีรายละเอียดเพิ่มเติม'}</div>
+            <small style="color: #888;">${translations[currentLang].lbl_job_details}</small>
+            <div style="margin-top: 5px;">${post.content || translations[currentLang].lbl_no_details}</div>
         </div>
 
         <div class="timeline">
