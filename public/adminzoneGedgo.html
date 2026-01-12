@@ -679,7 +679,7 @@ async function showContent(type) {
     // --- ส่วนการแสดงผลตามประเภท (Switch View) ---
 
     if (type === 'topup') {
-        title.innerText = translations[currentLang].title_transactions;
+        title.innerText = translations[currentLang].title_transactionsss;
         // ดึงของจาก storage กลับมาแสดง
         if (topupListSec) display.appendChild(topupListSec);
         if (adminChatSec) display.appendChild(adminChatSec);
@@ -691,7 +691,7 @@ async function showContent(type) {
         loadTopupRequests(); 
 
     } else if (type === 'kyc') {
-        title.innerText = translations[currentLang].title_kyc_verification;
+        title.innerText = translations[currentLang].title_kyc_verificationnn;
         // ดึงส่วน KYC จาก storage มาแสดง
         if (kycListSec) display.appendChild(kycListSec);
         kycListSec.style.display = 'block';
