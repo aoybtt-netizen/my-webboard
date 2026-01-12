@@ -428,6 +428,42 @@ const translations = {
         'lbl_not_specified': 'ยังไม่ระบุ',
         'menu_history': 'ประวัติธุรกรรม',
         'menu_logout': 'ออกจากระบบ',
+		'btn_submit_kyc': 'ส่งข้อมูลยืนยันตัวตน',
+        'lbl_data_unavailable': 'ข้อมูลไม่พร้อมใช้งาน',
+        'msg_kyc_pending_html': (name) => `คำขอของคุณส่งไปที่ <b>${name}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`,
+        'msg_kyc_approved_html': (name) => `ยืนยันตัวตนเรียบร้อยโดย <b>${name}</b>`,
+        'log_kyc_error': 'เช็กสถานะ KYC ไม่สำเร็จ:',
+        'conf_logout': 'ยืนยันการออกจากระบบ?',
+        'lbl_file_selected': 'เลือกไฟล์แล้ว ✅',
+        'btn_submit_checking_dist': '<i class="fas fa-lock"></i> ส่งข้อมูล (ตรวจสอบระยะทาง...)',
+        'btn_submit_ready': '<i class="fas fa-paper-plane"></i> ส่งข้อมูลยืนยันตัวตน',
+		'btn_ready_to_send': '<i class="fas fa-check-circle"></i> ส่งข้อมูลให้ตรวจสอบ',
+        'btn_incomplete_data': '<i class="fas fa-lock"></i> กรุณากรอกข้อมูลให้ครบ',
+        'swal_confirm_submit_title': 'ยืนยันการส่งข้อมูล?',
+        'swal_confirm_submit_text': 'ข้อมูลพิกัดปัจจุบันของคุณจะถูกส่งให้แอดมินตรวจสอบ',
+        'btn_check_again': 'ตรวจสอบอีกครั้ง',
+        'swal_gps_not_support_title': 'ผิดพลาด',
+        'swal_gps_not_support_text': 'บราวเซอร์ไม่รองรับ GPS',
+        'swal_checking_coords': 'กำลังตรวจสอบพิกัด...',
+		'default_admin_name': 'แอดมินประจำโซน',
+        'swal_no_admin_title': 'ไม่พบแอดมินเจ้าของพื้นที่',
+        'swal_no_admin_text': 'กรุณารอให้ระบบระบุโซนการใช้งานของคุณก่อนส่งคำขอ',
+        'swal_send_success_title': 'ส่งข้อมูลเรียบร้อย',
+        'swal_send_success_text': (name) => `คำขอและพิกัดของคุณถูกส่งไปยัง ${name} แล้ว`,
+        'status_sent_to_admin_html': (name) => `ส่งถึง <b>${name}</b> แล้ว (พิกัดถูกแนบไปกับคำขอ)`,
+        'swal_gps_fail_title': 'พิกัดผิดพลาด',
+        'swal_gps_fail_text': 'ไม่สามารถดึงตำแหน่งได้ กรุณาเปิด GPS',
+		'kyc_status_pending': 'รอดำเนินการตรวจสอบ',
+        'kyc_sent_to_html': (name) => `ส่งถึง: <b>${name}</b>`,
+        'kyc_tap_details': 'แตะเพื่อดูรายละเอียดที่ส่งไป',
+        'kyc_badge_waiting': 'Waiting',
+        'kyc_status_approved': 'ยืนยันตัวตนเรียบร้อย',
+        'kyc_verified_by': (name) => `ยืนยันโดย: ${name}`,
+        'kyc_trusted_account': 'บัญชีของคุณมีความน่าเชื่อถือสูง',
+		'swal_update_loc_success': 'อัปเดตพิกัดนัดพบแล้ว',
+        'chat_loc_updated': '📍 อัปเดตพิกัดนัดพบใหม่แล้ว',
+        'swal_gps_error_title': 'ผิดพลาด',
+        'swal_gps_error_text': 'ดึงพิกัดไม่ได้ กรุณาเปิด GPS',
     },
     'en': {
         'lbl_current_zone_area': 'Current Operating Area',
@@ -444,6 +480,42 @@ const translations = {
         'lbl_not_specified': 'Not specified',
         'menu_history': 'Transaction History',
         'menu_logout': 'Log Out',
+		'btn_submit_kyc': 'Submit Verification Data',
+        'lbl_data_unavailable': 'Data Unavailable',
+        'msg_kyc_pending_html': (name) => `Your request has been sent to <b>${name}</b>.<br>Please wait for admin response to schedule an appointment.`,
+        'msg_kyc_approved_html': (name) => `Identity verified by <b>${name}</b>`,
+        'log_kyc_error': 'Failed to check KYC status:',
+        'conf_logout': 'Confirm Log Out?',
+        'lbl_file_selected': 'File Selected ✅',
+        'btn_submit_checking_dist': '<i class="fas fa-lock"></i> Submit (Checking Distance...)',
+        'btn_submit_ready': '<i class="fas fa-paper-plane"></i> Submit Verification Data',
+		'btn_ready_to_send': '<i class="fas fa-check-circle"></i> Submit for Review',
+        'btn_incomplete_data': '<i class="fas fa-lock"></i> Please complete all fields',
+        'swal_confirm_submit_title': 'Confirm Submission?',
+        'swal_confirm_submit_text': 'Your current location data will be sent to the admin for verification',
+        'btn_check_again': 'Check Again',
+        'swal_gps_not_support_title': 'Error',
+        'swal_gps_not_support_text': 'Browser does not support GPS',
+        'swal_checking_coords': 'Checking coordinates...',
+		'default_admin_name': 'Zone Admin',
+        'swal_no_admin_title': 'Admin Not Found',
+        'swal_no_admin_text': 'Please wait for the system to identify your zone before submitting.',
+        'swal_send_success_title': 'Data Sent',
+        'swal_send_success_text': (name) => `Your request and coordinates have been sent to ${name}`,
+        'status_sent_to_admin_html': (name) => `Sent to <b>${name}</b> (Coordinates attached)`,
+        'swal_gps_fail_title': 'GPS Error',
+        'swal_gps_fail_text': 'Unable to fetch location. Please enable GPS.',
+		'kyc_status_pending': 'Verification Pending',
+        'kyc_sent_to_html': (name) => `Sent to: <b>${name}</b>`,
+        'kyc_tap_details': 'Tap to view submitted details',
+        'kyc_badge_waiting': 'Waiting',
+        'kyc_status_approved': 'Identity Verified',
+        'kyc_verified_by': (name) => `Verified by: ${name}`,
+        'kyc_trusted_account': 'Your account is highly trusted',
+		'swal_update_loc_success': 'Meeting coordinates updated',
+        'chat_loc_updated': '📍 New meeting coordinates updated',
+        'swal_gps_error_title': 'Error',
+        'swal_gps_error_text': 'Unable to fetch coordinates. Please enable GPS',
     },
     'pt': {
         'lbl_current_zone_area': 'Área de Operação Atual',
@@ -460,6 +532,42 @@ const translations = {
         'lbl_not_specified': 'Não especificado',
         'menu_history': 'Histórico de Transações',
         'menu_logout': 'Sair',
+		'btn_submit_kyc': 'Enviar Dados de Verificação',
+        'lbl_data_unavailable': 'Dados Indisponíveis',
+        'msg_kyc_pending_html': (name) => `Seu pedido foi enviado para <b>${name}</b>.<br>Aguarde a resposta do administrador para agendar o encontro.`,
+        'msg_kyc_approved_html': (name) => `Identidade verificada por <b>${name}</b>`,
+        'log_kyc_error': 'Falha ao verificar status do KYC:',
+        'conf_logout': 'Confirmar encerramento de sessão?',
+        'lbl_file_selected': 'Arquivo Selecionado ✅',
+        'btn_submit_checking_dist': '<i class="fas fa-lock"></i> Enviar (Verificando Distância...)',
+        'btn_submit_ready': '<i class="fas fa-paper-plane"></i> Enviar Dados de Verificação',
+		'btn_ready_to_send': '<i class="fas fa-check-circle"></i> Enviar para Revisão',
+        'btn_incomplete_data': '<i class="fas fa-lock"></i> Por favor, preencha todos os campos',
+        'swal_confirm_submit_title': 'Confirmar Envio?',
+        'swal_confirm_submit_text': 'Seus dados de localização atual serão enviados ao administrador para verificação',
+        'btn_check_again': 'Verificar Novamente',
+        'swal_gps_not_support_title': 'Erro',
+        'swal_gps_not_support_text': 'O navegador não suporta GPS',
+        'swal_checking_coords': 'Verificando coordenadas...',
+		'default_admin_name': 'Admin da Zona',
+        'swal_no_admin_title': 'Admin não encontrado',
+        'swal_no_admin_text': 'Aguarde o sistema identificar sua zona antes de enviar.',
+        'swal_send_success_title': 'Dados enviados',
+        'swal_send_success_text': (name) => `Seu pedido e coordenadas foram enviados para ${name}`,
+        'status_sent_to_admin_html': (name) => `Enviado para <b>${name}</b> (Coordenadas anexadas)`,
+        'swal_gps_fail_title': 'Erro de GPS',
+        'swal_gps_fail_text': 'Não foi possível obter a localização. Ative o GPS.',
+		'kyc_status_pending': 'Verificação Pendente',
+        'kyc_sent_to_html': (name) => `Enviado para: <b>${name}</b>`,
+        'kyc_tap_details': 'Toque para ver detalhes enviados',
+        'kyc_badge_waiting': 'Aguardando',
+        'kyc_status_approved': 'Identidade Verificada',
+        'kyc_verified_by': (name) => `Verificado por: ${name}`,
+        'kyc_trusted_account': 'Sua conta é altamente confiável',
+		'swal_update_loc_success': 'Coordenadas de encontro atualizadas',
+        'chat_loc_updated': '📍 Novas coordenadas de encontro atualizadas',
+        'swal_gps_error_title': 'Erro',
+        'swal_gps_error_text': 'Não foi possível obter as coordenadas. Ative o GPS',
     }
 };
 
@@ -512,7 +620,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if(isNear) {
             btn.disabled = false;
             btn.classList.add('btn-active');
-            btn.innerText = "ส่งข้อมูลยืนยันตัวตน";
+            btn.innerText = translations[currentLang].btn_submit_kyc;
         }
     }
 
@@ -560,7 +668,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
         console.error("Load Profile Error:", err);
-        document.getElementById('display-zone-name').innerText = "ข้อมูลไม่พร้อมใช้งาน";
+        document.getElementById('display-zone-name').innerText = translations[currentLang].lbl_data_unavailable;
     }
 
     checkProximity();
@@ -586,25 +694,21 @@ async function checkKYCStatusFromServer() {
             }
 
             document.getElementById('admin-status-text').innerHTML = 
-                data.status === 'pending' 
-                ? `คำขอของคุณส่งไปที่ <b>${data.adminName}</b> แล้ว<br>กรุณารอแอดมินตอบกลับเพื่อยืนยันนัดพบ`
-                : `ยืนยันตัวตนเรียบร้อยโดย <b>${data.adminName}</b>`;
+					data.status === 'pending' 
+					? translations[currentLang].msg_kyc_pending_html(data.adminName)
+					: translations[currentLang].msg_kyc_approved_html(data.adminName);
 
-            // 2. อัปเดต UI เมนูหน้าโปรไฟล์
             updateKYCMenuUI(data.status, data.adminName);
             
-            // 3. บันทึกสถานะลง localStorage (เฉพาะ status เพื่อให้ Script ส่วนอื่นทำงานต่อได้)
             localStorage.setItem('kyc_status', data.status);
             
-            // 4. เข้าร่วมห้องแชทเผื่อไว้เลย
             socket.emit('joinRequest', myName);
         } else {
-            // ถ้าไม่มีข้อมูล (status: 'none')
             localStorage.removeItem('kyc_status');
             updateKYCMenuUI('normal'); 
         }
     } catch (err) {
-        console.error("เช็คสถานะ KYC ไม่สำเร็จ:", err);
+        console.error(translations[currentLang].log_kyc_error, err);
     }
 }
 checkKYCStatusFromServer();
@@ -612,7 +716,7 @@ checkKYCStatusFromServer();
 
 
     function logout() {
-        if(confirm('ยืนยันการออกจากระบบ?')) {
+        if(confirm(translations[currentLang].conf_logout)) {
             localStorage.clear();
             window.location.href = 'index.html';
         }
@@ -626,7 +730,7 @@ function previewImg(input) {
         box.style.borderColor = "#11998e";
         box.style.background = "#e8f5e9";
         box.querySelector('i').style.color = "#11998e";
-        box.querySelector('p').innerText = "เลือกไฟล์แล้ว ✅";
+        box.querySelector('p').innerText = translations[currentLang].lbl_file_selected;
     }
 }
 
@@ -636,11 +740,11 @@ function updateKycStatus(isNear) {
     if(isNear) {
         btn.disabled = false;
         btn.classList.add('btn-active');
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งข้อมูลยืนยันตัวตน';
+        btn.innerHTML = translations[currentLang].btn_submit_ready;
     } else {
         btn.disabled = true;
         btn.classList.remove('btn-active');
-        btn.innerHTML = '<i class="fas fa-lock"></i> ส่งข้อมูล (ตรวจสอบระยะทาง...)';
+        btn.innerHTML = translations[currentLang].btn_submit_checking_dist;
     }
 }
 
@@ -712,30 +816,34 @@ function validateKYC() {
     // ตรวจสอบข้อมูลครบถ้วน
     if (name.trim() !== "" && idNum.length === 13 && phone.length >= 10 && address.trim() !== "" && file > 0) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-check-circle"></i> ส่งข้อมูลให้ตรวจสอบ';
+        btn.innerHTML = translations[currentLang].btn_ready_to_send;
     } else {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-lock"></i> กรุณากรอกข้อมูลให้ครบ';
+        btn.innerHTML = translations[currentLang].btn_incomplete_data;
     }
 }
 
 async function submitKYC() {
     const confirm = await Swal.fire({
-        title: 'ยืนยันการส่งข้อมูล?',
-        text: "ข้อมูลพิกัดปัจจุบันของคุณจะถูกส่งให้แอดมินตรวจสอบ",
+        title: translations[currentLang].swal_confirm_submit_title,
+		text: translations[currentLang].swal_confirm_submit_text,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#11998e',
-        cancelButtonText: 'ตรวจสอบอีกครั้ง'
+        cancelButtonText: translations[currentLang].btn_check_again
     });
 
     if (confirm.isConfirmed) {
         if (!navigator.geolocation) {
-            return Swal.fire('ผิดพลาด', 'บราวเซอร์ไม่รองรับ GPS', 'error');
+            return Swal.fire(
+				translations[currentLang].swal_gps_not_support_title, 
+				translations[currentLang].swal_gps_not_support_text, 
+				'error'
+			);
         }
 
         Swal.fire({
-            title: 'กำลังตรวจสอบพิกัด...',
+            title: translations[currentLang].swal_checking_coords,
             allowOutsideClick: false,
             didOpen: () => { Swal.showLoading(); }
         });
@@ -757,19 +865,19 @@ async function submitKYC() {
             
             if (imgContainer && imgContainer.style.backgroundImage) {
                 const rawBase64 = imgContainer.style.backgroundImage.slice(5, -2);
-                Swal.update({ title: 'กำลังลดขนาดรูปภาพ...' });
+                Swal.update({ title: 'Resizing the image...' });
                 userImgData = await resizeImage(rawBase64, 800, 0.6); 
             }
             
             const adminNameElement = document.getElementById('display-zone-admin');
-            let adminName = adminNameElement ? adminNameElement.innerText : "แอดมินประจำโซน";
+            let adminName = adminNameElement ? adminNameElement.innerText : translations[currentLang].default_admin_name;
 
-            if (adminName === "รอการเชื่อมต่อ" || adminName === "กำลังค้นหาโซน...") {
+            if (adminName === "Waiting for connection." || adminName === "Searching for zone...") {
                 return Swal.fire({
-                    icon: 'warning',
-                    title: 'ไม่พบแอดมินเจ้าของพื้นที่',
-                    text: 'กรุณารอให้ระบบระบุโซนการใช้งานของคุณก่อนส่งคำขอ',
-                    confirmButtonColor: '#11998e'
+						icon: 'warning',
+						title: translations[currentLang].swal_no_admin_title,
+						text: translations[currentLang].swal_no_admin_text,
+						confirmButtonColor: '#11998e'
                 });
             }
 
@@ -787,9 +895,9 @@ async function submitKYC() {
 
             // 5. แสดงสถานะสำเร็จและสลับหน้า
             Swal.fire({
-                icon: 'success',
-                title: 'ส่งข้อมูลเรียบร้อย',
-                text: `คำขอและพิกัดของคุณถูกส่งไปยัง ${adminName} แล้ว`,
+				icon: 'success',
+				title: translations[currentLang].swal_send_success_title,
+				text: translations[currentLang].swal_send_success_text(adminName),
                 confirmButtonColor: '#11998e'
             }).then(() => {
 				localStorage.setItem('kyc_status', 'pending');
@@ -813,13 +921,16 @@ async function submitKYC() {
 				document.getElementById('sum-phone').innerText = phone;
 				document.getElementById('sum-address').innerText = address; // เพิ่มบรรทัดนี้ด้วย
 				document.getElementById('summary-img-preview').style.backgroundImage = `url(${userImgData})`;
-				document.getElementById('admin-status-text').innerHTML = `ส่งถึง <b>${adminName}</b> แล้ว (พิกัดถูกแนบไปกับคำขอ)`;
+				document.getElementById('admin-status-text').innerHTML = translations[currentLang].status_sent_to_admin_html(adminName);
                 
                 updateKYCMenuUI('pending', adminName);
             });
 
         }, (err) => {
-            Swal.fire('พิกัดผิดพลาด', 'ไม่สามารถดึงตำแหน่งได้ กรุณาเปิด GPS', 'error');
+            Swal.fire(
+					translations[currentLang].swal_gps_fail_title, 
+					translations[currentLang].swal_gps_fail_text, 
+					'error');
         });
     }
 }
@@ -887,6 +998,7 @@ function previewKYCImg(input) {
 
 // ฟังก์ชันสำหรับเปลี่ยนหน้าตาเมนู KYC ตามสถานะ
 function updateKYCMenuUI(status, adminName = "") {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const container = document.getElementById('kyc-menu-container');
     if (!container) return;
 
@@ -897,11 +1009,11 @@ function updateKYCMenuUI(status, adminName = "") {
                     <i class="fas fa-clock"></i>
                 </div>
                 <div style="text-align: left; flex: 1;">
-                    <div style="font-weight: bold; color: #af8600;">รอดำเนินการตรวจสอบ</div>
-                    <div style="font-size: 0.75em; color: #666;">ส่งถึง: <b>${adminName}</b></div>
-                    <div style="font-size: 0.7em; color: #999;">แตะเพื่อดูรายละเอียดที่ส่งไป</div>
+                    <div style="font-weight: bold; color: #af8600;">${translations[currentLang].kyc_status_pending}</div>
+                    <div style="font-size: 0.75em; color: #666;">${translations[currentLang].kyc_sent_to_html(adminName)}</div>
+                    <div style="font-size: 0.7em; color: #999;">${translations[currentLang].kyc_tap_details}</div>
                 </div>
-                <span style="font-size: 0.65em; background: #f39c12; color: white; padding: 2px 8px; border-radius: 10px; font-weight: bold;">Waiting</span>
+                <span style="font-size: 0.65em; background: #f39c12; color: white; padding: 2px 8px; border-radius: 10px; font-weight: bold;">${translations[currentLang].kyc_badge_waiting}</span>
             </div>
         `;
     } else if (status === 'approved') {
@@ -911,9 +1023,9 @@ function updateKYCMenuUI(status, adminName = "") {
                     <i class="fas fa-check-double"></i>
                 </div>
                 <div style="text-align: left; flex: 1;">
-                    <div style="font-weight: bold; color: #2e7d32;">ยืนยันตัวตนเรียบร้อย</div>
-                    <div style="font-size: 0.75em; color: #4caf50;">ยืนยันโดย: ${adminName}</div>
-                    <div style="font-size: 0.7em; color: #666;">บัญชีของคุณมีความน่าเชื่อถือสูง</div>
+                    <div style="font-weight: bold; color: #2e7d32;">${translations[currentLang].kyc_status_approved}</div>
+                    <div style="font-size: 0.75em; color: #4caf50;">${translations[currentLang].kyc_verified_by(adminName)}</div>
+                    <div style="font-size: 0.7em; color: #666;">${translations[currentLang].kyc_trusted_account}</div>
                 </div>
                 <i class="fas fa-shield-alt" style="color: #2e7d32; font-size: 1.2em;"></i>
             </div>
@@ -955,7 +1067,7 @@ async function loadKYCUserChatHistory(requestId) {
             history.forEach(msg => appendKYCUserChatMessage(msg));
         }
     } catch (err) {
-        console.warn("ยังไม่มีประวัติแชท KYC");
+        console.warn("There is no chat history yet KYC");
     }
 }
 
@@ -978,7 +1090,7 @@ function appendKYCUserChatMessage(msg) {
                 ${msg.message}
             </div>
             <small style="font-size: 0.6em; color: #94a3b8; margin-top: 2px;">
-                ${isMe ? 'คุณ' : 'แอดมิน'}
+                ${isMe ? 'You' : 'Admin'}
             </small>
         </div>
     `;
@@ -998,7 +1110,7 @@ socket.on('receiveMessage', (msg) => {
 function updateCurrentLocation() {
     const myName = localStorage.getItem('myUsername');
     
-    Swal.fire({ title: 'กำลังอัปเดตพิกัด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'Updating location...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     navigator.geolocation.getCurrentPosition((pos) => {
         const newCoords = {
@@ -1012,13 +1124,21 @@ function updateCurrentLocation() {
             coords: newCoords
         });
 
-        Swal.fire({ icon: 'success', title: 'อัปเดตพิกัดนัดพบแล้ว', timer: 1500, showConfirmButton: false });
+        Swal.fire({ 
+				icon: 'success', 
+				title: translations[currentLang].swal_update_loc_success, 
+				timer: 1500, 
+				showConfirmButton: false 
+			});
         
         // ส่งข้อความแจ้งในแชทด้วยว่าอัปเดตพิกัดแล้ว
-        sendKYCUserMessage("📍 อัปเดตพิกัดนัดพบใหม่แล้วครับ/ค่ะ");
+        sendKYCUserMessage(translations[currentLang].chat_loc_updated);
         
     }, (err) => {
-        Swal.fire('ผิดพลาด', 'ดึงพิกัดไม่ได้ กรุณาเปิด GPS', 'error');
+        Swal.fire(
+			translations[currentLang].swal_gps_error_title, 
+			translations[currentLang].swal_gps_error_text, 
+			'error');
     });
 }
 
@@ -1035,7 +1155,7 @@ function updateCurrentLocation() {
     <div class="sidebar-header">
         <div style="font-size: 40px;">👤</div>
         <div id="sidebar-user" style="font-weight:bold; margin-top:5px;">Guest</div>
-        <small style="opacity:0.7;">สมาชิก GedGo!</small>
+        <small style="opacity:0.7;">Member GedGo!</small>
     </div>
 
     <div class="sidebar-menu">
@@ -1055,7 +1175,7 @@ function updateCurrentLocation() {
 
     <div style="padding: 20px; border-top: 1px solid #eee;">
         <div class="nav-item" onclick="logout()" style="color: var(--danger);">
-            <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+            <i class="fas fa-sign-out-alt"></i> Log Out
         </div>
     </div>
 </nav>
