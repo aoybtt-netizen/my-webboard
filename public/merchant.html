@@ -581,10 +581,10 @@
 
         <label data-i18n-key="lbl_task_category">ประเภทงาน</label>
         <select id="task-category" onchange="updateTitlePreview()">
-            <option value="ส่งอาหารสินค้าทั่วไป" data-i18n-key="opt_general">ส่งอาหาร/สินค้าทั่วไป</option>
-            <option value="ส่งเอกสาร" data-i18n-key="opt_document">รับส่งเอกสาร</option>
-            <option value="ส่งพัสดุ/ของชิ้นใหญ่" data-i18n-key="opt_big_parcel">ส่งพัสดุ/ของชิ้นใหญ่</option>
-        </select>
+			<option value="general" data-i18n-key="opt_general">ส่งอาหาร/สินค้าทั่วไป</option>
+			<option value="document" data-i18n-key="opt_document">รับส่งเอกสาร</option>
+			<option value="big_parcel" data-i18n-key="opt_big_parcel">ส่งพัสดุ/ของชิ้นใหญ่</option>
+		</select>
 
         <label data-i18n-key="lbl_task_desc">รายละเอียดเพิ่มเติม (เช่น จำนวนกล่อง, ขนาด)</label>
         <textarea id="task-desc" data-i18n-placeholder="plh_task_desc" placeholder="ระบุรายละเอียดเพื่อให้ไรเดอร์ประเมินงาน..." rows="3"></textarea>
@@ -1844,21 +1844,19 @@ function reorderStops() {
         reorderStops();
     }
 
-    function updateTitlePreview() {
-    const category = document.getElementById('task-category').value;
+function updateTitlePreview() {
+    const categoryKey = document.getElementById('task-category').value;
+    const categoryName = translations[currentLang][`opt_${categoryKey}`] || categoryKey;
     const totalStops = document.querySelectorAll('.stop-item').length;
-    
     const deliveryStops = totalStops > 1 ? totalStops - 1 : 0;
-    
-    // 🚩 ประกาศตัวแปรเก็บข้อความหัวข้อ
-    const finalTitle = translations[currentLang].task_title_summary(category, deliveryStops);
+    const finalTitle = translations[currentLang].preview_format(categoryName, deliveryStops);
     
     const previewEl = document.getElementById('title-preview');
     if (previewEl) {
         previewEl.innerText = finalTitle;
     }
 
-    return finalTitle; // ตอนนี้จะใช้งานได้แล้ว
+    return finalTitle;
 }
 
     // 3. ระบบสมุดที่อยู่ (Saved Locations)
