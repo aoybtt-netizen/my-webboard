@@ -744,10 +744,45 @@ const translations = {
         'sum_dropoff': (i) => `จุดส่งที่ ${i}`,
         'sum_no_coords': 'ไม่พบพิกัด',
 		'status_pickup_ai': '✅ จุดรับงาน (AI)',
-        'status_dropoff_ai': (i) => `✅ จุดส่งงานที่ ${i} (AI)`,
-        'lbl_coords_short': 'พิกัด:','status_pickup_ai': '✅ จุดรับงาน (AI)',
-        'status_dropoff_ai': (i) => `✅ จุดส่งงานที่ ${i} (AI)`,
-        'lbl_coords_short': 'พิกัด:',
+        'status_pickup_ai': (i) => `✅ จุดส่งงานที่ ${i} (AI)`,
+		'lbl_store_base_name': 'พิกัดร้านของฉัน',
+        'no_saved_locations': 'ไม่มีพิกัดส่งงานที่บันทึกไว้',
+        'no_phone': 'ไม่มีเบอร์',
+        'confirm_delete_loc': (name) => `ต้องการลบ "${name}" หรือไม่?`,
+        'msg_delete_success': 'ลบข้อมูลเรียบร้อย',
+		'modal_title_edit': '✏️ แก้ไขพิกัด',
+        'btn_save_edit': 'บันทึกการแก้ไข',
+        'warn_no_location': 'ไม่สามารถดึงตำแหน่งได้ หรือผู้ใช้ไม่อนุญาต',
+		'sidebar_job_prefix': 'งาน:',
+        'sidebar_rider_interested': 'ไรเดอร์สนใจรับงานนี้',
+        'sidebar_score_unit': 'คะแนน',
+        'sidebar_stat_jobs': 'งานที่รับ',
+        'sidebar_stat_level': 'ระดับ',
+        'sidebar_level_best': 'ดีมาก',
+        'sidebar_btn_approve': 'ตกลงให้งาน',
+        'sidebar_btn_reject': 'ปฏิเสธ',
+        'sidebar_assigned_msg': (name) => `มอบหมายงานให้คุณ ${name} แล้ว`,
+        'sidebar_track_info': 'คุณสามารถติดตามพิกัดและแชทคุยได้ใน Tab อื่น',
+        'status_waiting_rider': '⌛ กำลังรอไรเดอร์เข้ามารับงาน...',
+		'sidebar_pickup_label': '🏠 รับของ',
+        'sidebar_dropoff_label': (i) => `📍 จุดส่งที่ ${i}`,
+        'btn_delete_task': 'ยกเลิกและลบงานนี้',
+        'delete_task_note': '* คุณสามารถลบงานได้เฉพาะช่วงที่ยังไม่มีไรเดอร์รับงานเท่านั้น',
+		'chat_loading': 'กำลังโหลดข้อความ...',
+        'err_chat_send_failed': 'ส่งข้อความไม่สำเร็จ กรุณาลองใหม่',
+		'swal_del_title': 'ยืนยันการลบงาน?',
+        'swal_del_text': 'งานจะถูกลบออกจากระบบและคืนสถานะว่างงานให้คุณ',
+        'swal_del_btn': 'ใช่, ลบงานเลย',
+        'swal_cancel': 'ยกเลิก',
+        'swal_del_success_title': 'ลบสำเร็จ!',
+        'swal_del_success_text': 'สถานะของคุณถูกรีเซ็ตแล้ว',
+        'err_no_user_title': 'ผิดพลาด',
+        'err_no_user_text': 'ไม่พบชื่อผู้ใช้ กรุณาล็อกอินใหม่',
+        'confirm_approve_rider': 'คุณต้องการตกลงให้ Rider คนนี้รับงานใช่หรือไม่?',
+        'alert_approve_success': '✅ มอบหมายงานสำเร็จ!',
+        'confirm_reject_rider': 'ต้องการปฏิเสธคำขอจากไรเดอร์คนนี้ใช่หรือไม่?',
+        'alert_reject_success': 'ปฏิเสธคำขอแล้ว',
+        'err_generic': 'เกิดข้อผิดพลาด',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -842,7 +877,44 @@ const translations = {
         'sum_no_coords': 'No coordinates found',
 		'status_pickup_ai': '✅ Pickup Point (AI)',
         'status_dropoff_ai': (i) => `✅ Drop-off Point ${i} (AI)`,
-        'lbl_coords_short': 'Coords:',
+		'lbl_store_base_name': 'My Store Location',
+        'no_saved_locations': 'No saved delivery locations',
+        'no_phone': 'No phone number',
+        'confirm_delete_loc': (name) => `Do you want to delete "${name}"?`,
+        'msg_delete_success': 'Location deleted successfully',
+		'modal_title_edit': '✏️ Edit Location',
+        'btn_save_edit': 'Save Changes',
+        'warn_no_location': 'Unable to get location or permission denied',
+		'sidebar_job_prefix': 'Task:',
+        'sidebar_rider_interested': 'Rider is interested',
+        'sidebar_score_unit': 'Points',
+        'sidebar_stat_jobs': 'Jobs taken',
+        'sidebar_stat_level': 'Level',
+        'sidebar_level_best': 'Excellent',
+        'sidebar_btn_approve': 'Approve',
+        'sidebar_btn_reject': 'Reject',
+        'sidebar_assigned_msg': (name) => `Assigned to ${name}`,
+        'sidebar_track_info': 'You can track location and chat in other tabs',
+        'status_waiting_rider': '⌛ Waiting for riders...',
+		'sidebar_pickup_label': '🏠 Pickup',
+        'sidebar_dropoff_label': (i) => `📍 Drop-off ${i}`,
+        'btn_delete_task': 'Cancel and Delete Task',
+        'delete_task_note': '* You can only delete tasks before a rider accepts them.',
+		'chat_loading': 'Loading messages...',
+        'err_chat_send_failed': 'Failed to send message. Please try again.',
+		'swal_del_title': 'Confirm Task Deletion?',
+        'swal_del_text': 'The task will be removed and your status will be reset.',
+        'swal_del_btn': 'Yes, delete it',
+        'swal_cancel': 'Cancel',
+        'swal_del_success_title': 'Deleted!',
+        'swal_del_success_text': 'Your status has been reset.',
+        'err_no_user_title': 'Error',
+        'err_no_user_text': 'Username not found. Please log in again.',
+        'confirm_approve_rider': 'Do you want to assign this task to this Rider?',
+        'alert_approve_success': '✅ Assigned successfully!',
+        'confirm_reject_rider': 'Do you want to reject this rider\'s request?',
+        'alert_reject_success': 'Request rejected.',
+        'err_generic': 'Error occurred',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -937,14 +1009,49 @@ const translations = {
         'sum_no_coords': 'Coordenadas não encontradas',
 		'status_pickup_ai': '✅ Ponto de Coleta (IA)',
         'status_dropoff_ai': (i) => `✅ Ponto de Entrega ${i} (IA)`,
-        'lbl_coords_short': 'Coords:',
+		'lbl_store_base_name': 'Localização da Minha Loja',
+        'no_saved_locations': 'Nenhum local de entrega salvo',
+        'no_phone': 'Sem telefone',
+        'confirm_delete_loc': (name) => `Deseja excluir "${name}"?`,
+        'msg_delete_success': 'Local excluído com sucesso',
+		'modal_title_edit': '✏️ Editar Localização',
+        'btn_save_edit': 'Salvar Alterações',
+        'warn_no_location': 'Não foi possível obter a localização ou permissão negada',
+		'sidebar_job_prefix': 'Tarefa:',
+        'sidebar_rider_interested': 'Entregador interessado',
+        'sidebar_score_unit': 'Pontos',
+        'sidebar_stat_jobs': 'Trabalhos',
+        'sidebar_stat_level': 'Nível',
+        'sidebar_level_best': 'Excelente',
+        'sidebar_btn_approve': 'Aceitar',
+        'sidebar_btn_reject': 'Recusar',
+        'sidebar_assigned_msg': (name) => `Atribuído a ${name}`,
+        'sidebar_track_info': 'Pode rastrear a localização e conversar em outras abas',
+        'status_waiting_rider': '⌛ Aguardando entregadores...',
+		'sidebar_pickup_label': '🏠 Retirada',
+        'sidebar_dropoff_label': (i) => `📍 Entrega ${i}`,
+        'btn_delete_task': 'Cancelar e Excluir Trabalho',
+        'delete_task_note': '* Você só pode excluir trabalhos antes que um entregador aceite.',
+		'chat_loading': 'Carregando mensagens...',
+        'err_chat_send_failed': 'Falha ao enviar mensagem. Tente novamente.',
+		'swal_del_title': 'Confirmar exclusão?',
+        'swal_del_text': 'O trabalho será removido e seu status será redefinido.',
+        'swal_del_btn': 'Sim, excluir',
+        'swal_cancel': 'Cancelar',
+        'swal_del_success_title': 'Excluído!',
+        'swal_del_success_text': 'Seu status foi redefinido.',
+        'err_no_user_title': 'Erro',
+        'err_no_user_text': 'Usuário não encontrado. Por favor, faça login novamente.',
+        'confirm_approve_rider': 'Deseja atribuir este trabalho a este entregador?',
+        'alert_approve_success': '✅ Atribuído com sucesso!',
+        'confirm_reject_rider': 'Deseja rejeitar a solicitação deste entregador?',
+        'alert_reject_success': 'Solicitação rejeitada.',
+        'err_generic': 'Ocorreu um erro',
     }
 };
 
 
 function applyMerchantTranslations() {
-    // 🚩 ดึงค่าจาก localStorage (เช็คทุกชื่อคีย์ที่พี่น่าจะเคยใช้)
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
     console.log(`[i18n] Using local language setting: ${currentLang}`);
 
@@ -1006,7 +1113,6 @@ function toggleTaskForm() {
 // ฟังก์ชันโหลดงานที่ร้านค้ากดยังไม่จบ
 async function loadActiveMerchantTasks() {
     const listContainer = document.getElementById('active-tasks-list');
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const t = translations[currentLang];
 
     try {
@@ -1762,7 +1868,6 @@ if (SpeechRecognition) {
     recognition.interimResults = false;
 
     function startVoiceCommand() {
-        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
         if (currentLang === 'pt') {
             recognition.lang = 'pt-BR'; // ภาษาโปรตุเกส (บราซิล)
@@ -1786,13 +1891,11 @@ if (SpeechRecognition) {
     };
 
     recognition.onerror = () => {
-        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
         alert(translations[currentLang].err_voice_failed);
         resetVoiceBtn();
     };
 
     function resetVoiceBtn() {
-        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
         document.getElementById('voice-btn').innerHTML = translations[currentLang].btn_voice_start;
         document.getElementById('voice-btn').style.background = "#f39c12";
     }
@@ -1800,7 +1903,6 @@ if (SpeechRecognition) {
 
 // --- หัวใจของระบบ: การแยกคำสั่งเสียง ---
 function processVoiceOrder(speechText) {
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     
     lastVoiceAnalysis = null;
 
@@ -1868,8 +1970,6 @@ function processVoiceOrder(speechText) {
 
 
 function startVoiceForKeyword(btn) {
-    // 1. ดึงภาษาปัจจุบันมาตรวจสอบก่อน
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
     if (!SpeechRecognition) return alert(translations[currentLang].err_voice_not_supported);
     
@@ -1911,7 +2011,6 @@ function startVoiceForKeyword(btn) {
 
 
 function showVoiceSummaryModal() {
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th'; // ดึงภาษาปัจจุบัน
     const data = lastVoiceAnalysis;
     if (!data) return;
 
@@ -1954,7 +2053,6 @@ function showVoiceSummaryModal() {
 
 
 function confirmVoiceSummary() {
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const data = lastVoiceAnalysis;
     if (!data) return;
 
@@ -2037,12 +2135,12 @@ function renderManageList() {
 
     // 🚩 กรองเอาเฉพาะพิกัดลูกค้า (ไม่ใช่พิกัดร้าน) มาแสดงในหน้ารวม
     const filteredList = mySavedLocations.filter(loc => 
-        loc.isStore !== true && loc.label.trim() !== "พิกัดร้านของฉัน"
-    );
+		loc.isStore !== true && loc.label.trim() !== translations[currentLang].lbl_store_base_name
+	);
 
     if (filteredList.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 20px; color: #999;">ไม่มีพิกัดส่งงานที่บันทึกไว้</div>`;
-        return;
+		container.innerHTML = `<div style="text-align:center; padding: 20px; color: #999;">${translations[currentLang].no_saved_locations}</div>`;
+		return;
     }
 
     filteredList.forEach((loc) => {
@@ -2051,7 +2149,7 @@ function renderManageList() {
             <div class="manage-item" style="cursor: pointer;" onclick="editLocation(${actualIndex})">
                 <div class="manage-info">
                     <strong style="color: #11998e;">${loc.label}</strong><br>
-                    <small><i class="fas fa-phone"></i> ${loc.phone || 'ไม่มีเบอร์'}</small>
+                    <small><i class="fas fa-phone"></i> ${loc.phone || translations[currentLang].no_phone}</small>
                 </div>
                 <div class="manage-actions">
                     <button class="btn-delete" onclick="event.stopPropagation(); deleteLocation(${actualIndex})">
@@ -2065,7 +2163,7 @@ function renderManageList() {
 // 3. ฟังก์ชันลบพิกัด
 async function deleteLocation(index) {
     const loc = mySavedLocations[index];
-    if (confirm(`ต้องการลบ "${loc.label}" หรือไม่?`)) {
+    if (confirm(translations[currentLang].confirm_delete_loc(loc.label))) {
         const res = await fetch(`/api/merchant/locations/${loc._id}`, {
             method: 'DELETE'
         });
@@ -2073,7 +2171,7 @@ async function deleteLocation(index) {
         if (data.success) {
             mySavedLocations.splice(index, 1);
             renderManageList();
-            alert("ลบข้อมูลเรียบร้อย");
+            alert(translations[currentLang].msg_delete_success);
         }
     }
 }
@@ -2089,8 +2187,8 @@ function editLocation(index) {
     document.getElementById('map-modal').classList.remove('hidden');
     
     // เปลี่ยนหัวข้อและชื่อปุ่ม
-    document.querySelector('#map-modal h3').innerText = "✏️ แก้ไขพิกัด";
-    document.querySelector('#map-modal .btn-submit').innerText = "บันทึกการแก้ไข";
+    document.querySelector('#map-modal h3').innerText = translations[currentLang].modal_title_edit;
+	document.querySelector('#map-modal .btn-submit').innerText = translations[currentLang].btn_save_edit;
 
     // เรียกใช้ฟังก์ชันสร้างแผนที่
     initMap();
@@ -2143,7 +2241,7 @@ function goToCurrentLocation() {
             updateMarker(lat, lng);
             setTimeout(() => merchantMap.invalidateSize(), 200);
         }, (err) => {
-            console.warn("ไม่สามารถดึงตำแหน่งได้ หรือผู้ใช้ไม่อนุญาต");
+            console.warn(translations[currentLang].warn_no_location);
         });
     }
 }
@@ -2168,30 +2266,32 @@ function closeManageModal() {
 
 
 	async function openRightSidebar(postId) {
+    
     try {
         const res = await fetch(`/api/posts/${postId}`);
         const data = await res.json();
         if (!data.success) return;
 
         activeTaskInSidebar = data.post;
-        document.getElementById('sidebar-task-title').innerText = `งาน: ${activeTaskInSidebar.title}`;
+        // 🚩 แปลหัวข้อ Sidebar
+        document.getElementById('sidebar-task-title').innerText = `${translations[currentLang].sidebar_job_prefix} ${activeTaskInSidebar.title}`;
         
-        // 🚩 แก้ไขจุดที่เคย Error: เช็คว่าถ้าเปิดมาแล้วอยู่ที่หน้าแชทพอดี ให้ล้างแจ้งเตือนเลย
         if (typeof currentTab !== 'undefined' && currentTab === 'chat') {
             clearUnreadBadge(postId);
         }
 
-        // จัดการหน้าแจ้งเตือน (Tab Notif)
         const notifList = document.getElementById('notif-list');
         notifList.innerHTML = ''; 
         
         if (activeTaskInSidebar.pendingRider) {
-			const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.pendingRider}`);
-			const statsData = await statsRes.json();
-			const stats = statsData.stats;
+            const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.pendingRider}`);
+            const statsData = await statsRes.json();
+            const stats = statsData.stats;
+            
+            // 🚩 แปลส่วนไรเดอร์สนใจงาน
             notifList.innerHTML = `
             <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12;">
-                <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ไรเดอร์สนใจรับงานนี้</b>
+                <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ${translations[currentLang].sidebar_rider_interested}</b>
                 
                 <div class="rider-profile-box">
                     <div style="width: 50px; height: 50px; background: #ddd; border-radius: 50%; overflow: hidden;">
@@ -2200,47 +2300,49 @@ function closeManageModal() {
                     <div style="flex-grow: 1;">
                         <div style="font-weight:bold; color:#333;">${stats.username}</div>
                         <div style="color:#f1c40f; font-size: 0.85em;">
-                            <i class="fas fa-star"></i> ${stats.rating.toFixed(1)} คะแนน
+                            <i class="fas fa-star"></i> ${stats.rating.toFixed(1)} ${translations[currentLang].sidebar_score_unit}
                         </div>
                     </div>
                 </div>
 
                 <div style="display: flex; margin-top: 10px; background: white; border-radius: 10px; padding: 10px;">
                     <div class="stat-item">
-                    <span class="stat-value">${stats.totalJobs || 0}</span>
-                    <span class="stat-label">งานที่รับ</span>
-					</div>
+                        <span class="stat-value">${stats.totalJobs || 0}</span>
+                        <span class="stat-label">${translations[currentLang].sidebar_stat_jobs}</span>
+                    </div>
                     <div style="width: 1px; background: #eee;"></div>
                     <div class="stat-item">
-                        <span class="stat-value">ดีมาก</span>
-                        <span class="stat-label">ระดับ</span>
+                        <span class="stat-value">${translations[currentLang].sidebar_level_best}</span>
+                        <span class="stat-label">${translations[currentLang].sidebar_stat_level}</span>
                     </div>
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">ตกลงให้งาน</button>
-                    <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">ปฏิเสธ</button>
+                    <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
+                    <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
                 </div>
             </div>
-        `;
-    } else if (activeTaskInSidebar.acceptedBy) {
-        notifList.innerHTML = `
-            <div style="text-align:center; padding: 20px;">
-                <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
-                <p style="color:#27ae60; font-weight:bold;">มอบหมายงานให้คุณ ${activeTaskInSidebar.acceptedBy} แล้ว</p>
-                <small style="color:#999;">คุณสามารถติดตามพิกัดและแชทคุยได้ใน Tab อื่น</small>
-            </div>
-        `;
-    } else {
-        notifList.innerHTML = `<p style="text-align:center; padding:30px; color:#999;">⌛ กำลังรอไรเดอร์เข้ามารับงาน...</p>`;
-    }
+            `;
+        } else if (activeTaskInSidebar.acceptedBy) {
+            // 🚩 แปลส่วนมอบหมายงานสำเร็จ
+            notifList.innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                    <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
+                    <p style="color:#27ae60; font-weight:bold;">${translations[currentLang].sidebar_assigned_msg(activeTaskInSidebar.acceptedBy)}</p>
+                    <small style="color:#999;">${translations[currentLang].sidebar_track_info}</small>
+                </div>
+            `;
+        } else {
+            // 🚩 แปลสถานะรอไรเดอร์ (พี่ใส่ตัวแปรไว้แล้ว ผมแค่ดึงมาแสดงผล)
+            notifList.innerHTML = `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].status_waiting_rider}</p>`;
+        }
 
-    renderSidebarDetails();
-    loadSidebarChat(postId);
-    socket.emit('join-post', postId);
-    document.getElementById('right-sidebar').classList.add('active');
-    document.getElementById('right-sidebar-overlay').classList.remove('hidden');
-    switchTab('notif');  // เริ่มที่หน้าแจ้งเตือนเสมอ
+        renderSidebarDetails();
+        loadSidebarChat(postId);
+        socket.emit('join-post', postId);
+        document.getElementById('right-sidebar').classList.add('active');
+        document.getElementById('right-sidebar-overlay').classList.remove('hidden');
+        switchTab('notif');  
     } catch (e) {
         console.error("Sidebar Error:", e);
     }
@@ -2303,6 +2405,9 @@ function renderSidebarDetails() {
     // 1. วาดรายการจุดส่ง (ลำดับงาน)
     activeTaskInSidebar.stops.forEach((stop, i) => {
         const isDone = stop.status === 'success';
+		const stopTitle = (i === 0) 
+        ? translations[currentLang].sidebar_pickup_label 
+        : translations[currentLang].sidebar_dropoff_label(i);
         
         const bypassBtn = !isDone ? `
             <button onclick="bypassCheckIn('${activeTaskInSidebar.id}', ${i})" 
@@ -2312,31 +2417,31 @@ function renderSidebarDetails() {
         ` : '';
 
         html += `
-            <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; opacity: ${isDone ? 0.6 : 1}">
-                <i class="fas ${isDone ? 'fa-check-circle' : 'fa-circle'}" style="color: ${isDone ? '#27ae60' : '#ccc'}"></i>
-                <div style="flex-grow: 1;">
-                    <div style="font-weight: bold; font-size: 0.9em;">${i === 0 ? '🏠 รับของ' : '📍 จุดส่งที่ '+i}</div>
-                    <div style="font-size: 0.85em; color: #666;">${stop.label || stop.locationName || ''}</div>
-                </div>
-                ${bypassBtn}
+        <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; opacity: ${isDone ? 0.6 : 1}">
+            <i class="fas ${isDone ? 'fa-check-circle' : 'fa-circle'}" style="color: ${isDone ? '#27ae60' : '#ccc'}"></i>
+            <div style="flex-grow: 1;">
+                <div style="font-weight: bold; font-size: 0.9em;">${stopTitle}</div>
+                <div style="font-size: 0.85em; color: #666;">${stop.label || stop.locationName || ''}</div>
             </div>
-        `;
-    });
+            ${bypassBtn}
+        </div>
+		`;
+	});
 
     // 🚩 2. ส่วนที่เพิ่มใหม่: ปุ่มลบงาน (แสดงเฉพาะเมื่อยังไม่มีใครรับงาน)
     // เงื่อนไข: ไม่มีคนรับ (acceptedBy) หรือ สถานะเป็น undefined
     if (!activeTaskInSidebar.acceptedBy || activeTaskInSidebar.status === 'undefined') {
-        html += `
-            <div style="padding: 20px; text-align: center; background: #fff;">
-                <button onclick="deleteMerchantTask('${activeTaskInSidebar.id}')" 
-                    style="width: 100%; background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit', sans-serif; font-weight: bold; cursor: pointer; transition: 0.3s;">
-                    <i class="fas fa-trash-alt"></i> ยกเลิกและลบงานนี้
-                </button>
-                <p style="font-size: 0.75em; color: #999; margin-top: 8px;">
-                    * คุณสามารถลบงานได้เฉพาะช่วงที่ยังไม่มีไรเดอร์รับงานเท่านั้น
-                </p>
-            </div>
-        `;
+    html += `
+        <div style="padding: 20px; text-align: center; background: #fff;">
+            <button onclick="deleteMerchantTask('${activeTaskInSidebar.id}')" 
+                style="width: 100%; background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 8px; font-family: 'Kanit', sans-serif; font-weight: bold; cursor: pointer; transition: 0.3s;">
+                <i class="fas fa-trash-alt"></i> ${translations[currentLang].btn_delete_task}
+            </button>
+            <p style="font-size: 0.75em; color: #999; margin-top: 8px;">
+                ${translations[currentLang].delete_task_note}
+            </p>
+        </div>
+    `;
     }
 
     container.innerHTML = html;
@@ -2345,7 +2450,7 @@ function renderSidebarDetails() {
 // ระบบแชท (ใช้ Logic เดียวกับ post.html)
 async function loadSidebarChat(postId) {
     const chatBox = document.getElementById('chat-box');
-    chatBox.innerHTML = '<small style="color:#999">กำลังโหลดข้อความ...</small>';
+    chatBox.innerHTML = `<small style="color:#999">${translations[currentLang].chat_loading}</small>`;
     
     const res = await fetch(`/api/posts/${postId}/comments`); // สมมติใช้ API เดิมของระบบแชท
     const comments = await res.json();
@@ -2383,28 +2488,33 @@ async function sendSidebarChat() {
             input.value = ''; 
         }
     } catch (e) {
-        console.error("ส่งข้อความไม่สำเร็จ", e);
+        console.error(translations[currentLang].err_chat_send_failed, e);
     }
 }
 
 
+// 1. ฟังก์ชันลบงาน
 async function deleteMerchantTask(postId) {
-	closeRightSidebar();
-    // 🚩 ดึงชื่อใหม่อีกครั้งกันพลาด
+    closeRightSidebar();
+    
     const currentUsername = localStorage.getItem('myUsername'); 
     
     if (!currentUsername) {
-        return Swal.fire('ผิดพลาด', 'ไม่พบชื่อผู้ใช้ กรุณาล็อกอินใหม่', 'error');
+        return Swal.fire(
+            translations[currentLang].err_no_user_title, 
+            translations[currentLang].err_no_user_text, 
+            'error'
+        );
     }
 
     const confirmDelete = await Swal.fire({
-        title: 'ยืนยันการลบงาน?',
-        text: "งานจะถูกลบออกจากระบบและคืนสถานะว่างงานให้คุณ",
+        title: translations[currentLang].swal_del_title,
+        text: translations[currentLang].swal_del_text,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e74c3c',
-        confirmButtonText: 'ใช่, ลบงานเลย',
-        cancelButtonText: 'ยกเลิก'
+        confirmButtonText: translations[currentLang].swal_del_btn,
+        cancelButtonText: translations[currentLang].swal_cancel
     });
 
     if (confirmDelete.isConfirmed) {
@@ -2412,10 +2522,9 @@ async function deleteMerchantTask(postId) {
             const res = await fetch(`/api/merchant/tasks/${postId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUsername }) // ส่งชื่อที่ดึงมาใหม่
+                body: JSON.stringify({ username: currentUsername })
             });
 
-            // 🚩 ตรวจสอบว่า HTTP Status คือ 200 หรือไม่
             if (!res.ok) {
                 const errorData = await res.json();
                 throw new Error(errorData.error || 'Network response was not ok');
@@ -2423,7 +2532,11 @@ async function deleteMerchantTask(postId) {
 
             const data = await res.json();
             if (data.success) {
-                Swal.fire('ลบสำเร็จ!', 'สถานะของคุณถูกรีเซ็ตแล้ว', 'success');
+                Swal.fire(
+                    translations[currentLang].swal_del_success_title, 
+                    translations[currentLang].swal_del_success_text, 
+                    'success'
+                );
                 closeRightSidebar();
                 loadActiveMerchantTasks();
             }
@@ -2434,33 +2547,37 @@ async function deleteMerchantTask(postId) {
     }
 }
 
-
+// 2. ฟังก์ชันอนุมัติไรเดอร์
 async function approveRider(postId) {
-    if (!confirm("คุณต้องการตกลงให้ Rider คนนี้รับงานใช่หรือไม่?")) return;
+    if (!confirm(translations[currentLang].confirm_approve_rider)) return;
     
     try {
         const res = await fetch(`/api/posts/${postId}/approve-rider`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-            alert("✅ มอบหมายงานสำเร็จ!");
-            loadActiveMerchantTasks(); // โหลดรายการใหม่
+            alert(translations[currentLang].alert_approve_success);
+            loadActiveMerchantTasks();
         }
-    } catch (e) { alert("Error"); }
+    } catch (e) { 
+        alert(translations[currentLang].err_generic); 
+    }
 }
 
-// ฟังก์ชันปฏิเสธไรเดอร์
+// 3. ฟังก์ชันปฏิเสธไรเดอร์
 async function rejectRider(postId) {
-    if (!confirm("ต้องการปฏิเสธคำขอจากไรเดอร์คนนี้ใช่หรือไม่?")) return;
+    if (!confirm(translations[currentLang].confirm_reject_rider)) return;
     
     try {
         const res = await fetch(`/api/posts/${postId}/reject-rider`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-            alert("ปฏิเสธคำขอแล้ว");
-            closeRightSidebar(); // ปิดแถบขวา
-            loadActiveMerchantTasks(); // โหลดรายการงานใหม่
+            alert(translations[currentLang].alert_reject_success);
+            closeRightSidebar();
+            loadActiveMerchantTasks();
         }
-    } catch (e) { alert("เกิดข้อผิดพลาด"); }
+    } catch (e) { 
+        alert(translations[currentLang].err_generic); 
+    }
 }
 
 
