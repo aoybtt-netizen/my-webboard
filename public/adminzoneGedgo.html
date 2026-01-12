@@ -612,27 +612,21 @@ const translations = {
 };
 
 function applyMerchantTranslations() {
-    console.log(`[i18n] Applying translations for: ${currentLang}`);
-
-    // ใช้ data-i18n-key เป็นหลักตัวเดียวพอครับ
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
     document.querySelectorAll('[data-i18n-key]').forEach(el => {
         const key = el.getAttribute('data-i18n-key');
-        const translatedText = translations[currentLang]?.[key];
-
+        const translatedText = translations[lang]?.[key];
         if (translatedText) {
-            // 🚩 กรณีที่ 1: ถ้าเป็นช่องกรอกข้อมูล (Input / Textarea) ให้เปลี่ยนที่ Placeholder
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                 el.placeholder = translatedText;
             } 
-            // 🚩 กรณีที่ 2: ถ้าเป็น Element ทั่วไปที่มีไอคอน <i> อยู่ข้างใน
             else {
                 const icon = el.querySelector('i');
                 if (icon) {
-                    el.innerHTML = ''; // ล้างข้อมูลเก่า
-                    el.appendChild(icon); // ใส่ไอคอนกลับที่เดิม
-                    el.insertAdjacentHTML('beforeend', ' ' + translatedText); // เติมข้อความ
+                    el.innerHTML = '';
+                    el.appendChild(icon);
+                    el.insertAdjacentHTML('beforeend', ' ' + translatedText);
                 } else {
-                    // 🚩 กรณีที่ 3: ข้อความทั่วไปที่ไม่มีไอคอน
                     el.innerText = translatedText;
                 }
             }
