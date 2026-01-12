@@ -275,6 +275,94 @@ const translations = {
         'label_topup': 'เติมเงิน',
         'status_approved': 'อนุมัติแล้ว',
         'status_rejected': 'ปฏิเสธแล้ว',
+		'chat_system_info': 'ข้อมูลเริ่มต้นจากระบบ',
+        'chat_topup_amount': (amt) => `ยอดแจ้งเติม: ${amt} USD`,
+        'chat_history_title': (user) => `ประวัติ: ${user}`,
+        'chat_status_label': 'สถานะ:',
+        'chat_approved': 'อนุมัติแล้ว',
+        'chat_rejected': 'ปฏิเสธแล้ว',
+        'chat_time_request': 'เวลาส่งคำขอ:',
+        'chat_time_processed': 'เวลาที่ดำเนินการ:',
+        'chat_locked_msg': 'รายการนี้ถูกดำเนินการเสร็จสิ้นแล้ว',
+		'kyc_waiting': 'รอการตรวจเอกสารยืนยันตัวตน',
+        'btn_check_doc': 'ตรวจเอกสาร',
+        'confirm_topup_msg': (amt, user) => `อนุมัติเงิน ${amt} USD ให้คุณ ${user}?`,
+        'msg_approve_success': 'อนุมัติสำเร็จ',
+		'form_payment_title': 'ตั้งค่าการรับเงิน',
+        'lbl_bank_info': 'เลขบัญชี / พร้อมเพย์:',
+        'lbl_topup_instructions': 'คำอธิบายขั้นตอนการเติมเงิน:',
+        'btn_save_db': 'บันทึกข้อมูลลงฐานข้อมูล',
+        'def_topup_desc': 'กรุณาโอนเงินตามยอดที่ระบุ และแนบสลิปในแชท',
+		'msg_save_success': 'บันทึกลงระบบเรียบร้อยแล้ว สมาชิกจะเห็นข้อมูลนี้ทันที!',
+        'msg_save_error': 'เกิดข้อผิดพลาดในการบันทึก',
+		'no_new_items': 'ไม่มีรายการใหม่',
+        'load_failed': 'โหลดข้อมูลล้มเหลว',
+        'time_suffix': ' น.',
+		'confirm_approve_action': (amt, user) => `ยืนยันเติมเงิน ${amt} USD ให้คุณ ${user}?`,
+        'confirm_reject_action': (user) => `ปฏิเสธคำขอของคุณ ${user}?`,
+		'title_check_withdraw': 'ตรวจสอบรายการถอนเงิน',
+        'title_check_topup': 'ตรวจสอบรายการเติมเงิน',
+        'lbl_from_member': 'จากสมาชิก:',
+        'lbl_amount_type': (type) => `ยอดเงินรายการ (${type})`,
+        'lbl_customer_bank': 'บัญชีรับเงินของลูกค้า:',
+        'lbl_withdraw_warning': '* โปรดโอนเงินสดให้ลูกค้าตามยอดด้านบนก่อนกดอนุมัติ',
+        'btn_reject': 'ปฏิเสธ',
+        'btn_confirm_transfer': 'ยืนยันโอนแล้ว',
+        'btn_approve_topup': 'อนุมัติเติมเงิน',
+        'lbl_chat_verify': 'แชทตรวจสอบหลักฐาน',
+        'plh_chat_input': 'พิมพ์ข้อความ...',
+		'action_approve_withdraw': 'ยืนยันการโอนเงินสดให้ลูกค้าเรียบร้อยแล้ว',
+        'action_approve_topup': 'อนุมัติการเติมเงินเข้ากระเป๋า',
+        'action_reject_withdraw': 'ปฏิเสธและคืนเงินเข้ากระเป๋าลูกค้า',
+        'action_reject_topup': 'ยกเลิกคำขอเติมเงิน',
+        'confirm_withdraw_final': (user, amt, curr) => `คุณได้โอนเงินสดให้ @${user} จำนวน ${amt} ${curr} เรียบร้อยแล้วใช่หรือไม่? (ระบบจะโอนเหรียญเข้าแอดมิน)`,
+        'confirm_topup_final': (user, curr) => `ยืนยันยอดเงินที่จะเติมให้ @${user} (${curr}):`,
+        'confirm_general_action': (label) => `คุณต้องการ ${label} ใช่หรือไม่?`,
+        'swal_success': 'สำเร็จ!',
+        'swal_error': 'ผิดพลาด',
+        'sys_msg_success': (type, amt, curr) => `✅ รายการ ${type} สำเร็จ จำนวน ${amt} ${curr}`,
+        'sys_msg_rejected': '❌ รายการถูกปฏิเสธโดยแอดมิน',
+        'withdraw_type': 'ถอนเงิน',
+        'topup_type': 'เติมเงิน',
+        'err_server_connect': 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้',
+		'confirm_generic': (action) => `คุณต้องการ ${action} คำขอนี้ใช่หรือไม่?`,
+        'alert_success': 'ดำเนินการสำเร็จ!',
+		'lbl_current_dist': (d) => `ระยะห่างปัจจุบัน: ${d} เมตร`,
+        'status_ready': 'สถานะ: พร้อมอนุมัติ (อยู่ในระยะ)',
+        'status_too_far': 'สถานะ: ไกลเกินไป (ต้องเข้าใกล้ 20ม.)',
+		'confirm_delete_request': (user) => `คุณต้องการปฏิเสธและ "ลบ" คำขอของ @${user} ใช่หรือไม่?\n(สมาชิกจะต้องส่งข้อมูลมาใหม่อีกครั้ง)`,
+        'alert_delete_success': 'ลบคำขอเรียบร้อยแล้ว',
+		'swal_check_gps': 'กำลังเช็กพิกัดของคุณ...',
+        'swal_dist_pass': 'ผ่านเงื่อนไขระยะห่าง',
+        'swal_dist_fail': 'ไม่ผ่านเงื่อนไขระยะห่าง',
+        'swal_dist_current': (d) => `ระยะห่างปัจจุบัน: <b>${d} เมตร</b>`,
+        'swal_in_range': 'อยู่ในระยะ 20 เมตรตามที่กำหนด',
+        'swal_out_range': 'คุณอยู่ไกลเกิน 20 เมตร',
+        'swal_btn_confirm': 'ยืนยันอนุมัติ',
+        'swal_btn_cancel': 'ยกเลิก',
+        'swal_title_denied': 'ไม่อนุมัติ',
+        'swal_text_denied': 'ระยะห่างต้องไม่เกิน 20 เมตรเท่านั้น',
+        'swal_title_gps_err': 'พิกัดผิดพลาด',
+        'swal_text_gps_err': 'กรุณาเปิด GPS ของคุณก่อนเช็กระยะ',
+        'swal_title_success': 'สำเร็จ!',
+        'swal_text_success': 'ยืนยันตัวตนสมาชิกเรียบร้อยแล้ว',
+		'btn_back_to_requests': 'กลับไปรายการคำขอ',
+        'btn_reject_kyc': 'ปฏิเสธคำขอ',
+        'btn_approve_kyc': 'อนุมัติและเติมเงิน',
+        'title_kyc_detail': 'รายละเอียดการยืนยันตัวตน',
+        'lbl_current_photo': 'รูปถ่ายปัจจุบัน',
+        'status_pending': 'สถานะ: รอดำเนินการ',
+        'lbl_dist_from_you': (d) => `ห่างจากคุณ: ${d} เมตร`,
+		'lbl_member_info_header': 'ข้อมูลสมาชิก',
+        'lbl_full_name': 'ชื่อ-นามสกุล',
+        'lbl_id_card': 'เลขบัตรประชาชน',
+        'lbl_phone': 'เบอร์โทรศัพท์',
+        'lbl_username': 'Username',
+        'lbl_geo_address': 'ที่อยู่ตามพิกัด',
+		'btn_kyc_reject': 'ปฏิเสธ',
+        'btn_kyc_approve': 'อนุมัติการยืนยัน',
+        'lbl_chat_appointment': 'แชทนัดหมายกับสมาชิก',
+        'msg_start_chat_kyc': 'เริ่มการสนทนาเพื่อนัดพบยืนยันตัวตน',
     },
     'en': {
         'lbl_master_balance': 'Available Balance (Master)',
@@ -300,6 +388,94 @@ const translations = {
         'label_topup': 'Top-up',
         'status_approved': 'Approved',
         'status_rejected': 'Rejected',
+		'chat_system_info': 'Initial system data',
+        'chat_topup_amount': (amt) => `Top-up Amount: ${amt} USD`,
+        'chat_history_title': (user) => `History: ${user}`,
+        'chat_status_label': 'Status:',
+        'chat_approved': 'Approved',
+        'chat_rejected': 'Rejected',
+        'chat_time_request': 'Request Time:',
+        'chat_time_processed': 'Processed Time:',
+        'chat_locked_msg': 'This transaction has been completed.',
+		'kyc_waiting': 'Waiting for document verification',
+        'btn_check_doc': 'Verify Docs',
+        'confirm_topup_msg': (amt, user) => `Approve ${amt} USD for ${user}?`,
+        'msg_approve_success': 'Approval successful',
+		'form_payment_title': 'Payment Settings',
+        'lbl_bank_info': 'Bank Account / Payment Details:',
+        'lbl_topup_instructions': 'Top-up Instructions:',
+        'btn_save_db': 'Save to Database',
+        'def_topup_desc': 'Please transfer the specified amount and attach the slip in the chat.',
+		'msg_save_success': 'Saved successfully! Members will see this information immediately.',
+        'msg_save_error': 'An error occurred while saving.',
+		'no_new_items': 'No new items',
+        'load_failed': 'Failed to load data',
+        'time_suffix': '',
+		'confirm_approve_action': (amt, user) => `Confirm top-up ${amt} USD for ${user}?`,
+        'confirm_reject_action': (user) => `Reject request from ${user}?`,
+		'title_check_withdraw': 'Verify Withdrawal',
+        'title_check_topup': 'Verify Top-up',
+        'lbl_from_member': 'From Member:',
+        'lbl_amount_type': (type) => `Transaction Amount (${type})`,
+        'lbl_customer_bank': 'Customer Bank Account:',
+        'lbl_withdraw_warning': '* Please transfer cash to the customer before approving',
+        'btn_reject': 'Reject',
+        'btn_confirm_transfer': 'Transfer Confirmed',
+        'btn_approve_topup': 'Approve Top-up',
+        'lbl_chat_verify': 'Evidence Verification Chat',
+        'plh_chat_input': 'Type a message...',
+		'action_approve_withdraw': 'Confirm cash transfer to customer completed',
+        'action_approve_topup': 'Approve wallet top-up',
+        'action_reject_withdraw': 'Reject and refund to customer wallet',
+        'action_reject_topup': 'Cancel top-up request',
+        'confirm_withdraw_final': (user, amt, curr) => `Have you transferred cash to @${user} for ${amt} ${curr}? (Coins will be moved to admin)`,
+        'confirm_topup_final': (user, curr) => `Confirm amount to top up for @${user} (${curr}):`,
+        'confirm_general_action': (label) => `Are you sure you want to ${label}?`,
+        'swal_success': 'Success!',
+        'swal_error': 'Error',
+        'sys_msg_success': (type, amt, curr) => `✅ ${type} completed: ${amt} ${curr}`,
+        'sys_msg_rejected': '❌ Request rejected by admin',
+        'withdraw_type': 'Withdrawal',
+        'topup_type': 'Top-up',
+        'err_server_connect': 'Cannot connect to server',
+		'confirm_generic': (action) => `Are you sure you want to ${action} this request?`,
+        'alert_success': 'Action completed successfully!',
+		'lbl_current_dist': (d) => `Current distance: ${d} meters`,
+        'status_ready': 'Status: Ready to Approve (Within Range)',
+        'status_too_far': 'Status: Too far (Must be within 20m)',
+		'confirm_delete_request': (user) => `Are you sure you want to reject and "DELETE" the request from @${user}?\n(Member will need to resubmit the information)`,
+        'alert_delete_success': 'Request deleted successfully',
+		'swal_check_gps': 'Checking your coordinates...',
+        'swal_dist_pass': 'Distance Condition Met',
+        'swal_dist_fail': 'Distance Condition Failed',
+        'swal_dist_current': (d) => `Current distance: <b>${d} meters</b>`,
+        'swal_in_range': 'Within the required 20m range',
+        'swal_out_range': 'You are too far from the 20m limit',
+        'swal_btn_confirm': 'Confirm Approval',
+        'swal_btn_cancel': 'Cancel',
+        'swal_title_denied': 'Not Approved',
+        'swal_text_denied': 'Distance must not exceed 20 meters',
+        'swal_title_gps_err': 'GPS Error',
+        'swal_text_gps_err': 'Please enable GPS before checking distance',
+        'swal_title_success': 'Success!',
+        'swal_text_success': 'Member identity verified successfully',
+		'btn_back_to_requests': 'Back to Requests',
+        'btn_reject_kyc': 'Reject Request',
+        'btn_approve_kyc': 'Approve & Top-up',
+        'title_kyc_detail': 'KYC Details',
+        'lbl_current_photo': 'Current Photo',
+        'status_pending': 'Status: Pending',
+        'lbl_dist_from_you': (d) => `Distance from you: ${d} m`,
+		'lbl_member_info_header': 'Member Information',
+        'lbl_full_name': 'Full Name',
+        'lbl_id_card': 'ID Card Number',
+        'lbl_phone': 'Phone Number',
+        'lbl_username': 'Username',
+        'lbl_geo_address': 'GPS Address',
+		'btn_kyc_reject': 'Reject',
+        'btn_kyc_approve': 'Approve Verification',
+        'lbl_chat_appointment': 'Appointment Chat',
+        'msg_start_chat_kyc': 'Start conversation to schedule verification',
     },
     'pt': {
         'lbl_master_balance': 'Saldo Disponível (Master)',
@@ -325,6 +501,94 @@ const translations = {
         'label_topup': 'Recarregar',
         'status_approved': 'Aprovado',
         'status_rejected': 'Rejeitado',
+		'chat_system_info': 'Dados iniciais do sistema',
+        'chat_topup_amount': (amt) => `Valor da Recarga: ${amt} USD`,
+        'chat_history_title': (user) => `Histórico: ${user}`,
+        'chat_status_label': 'Status:',
+        'chat_approved': 'Aprovado',
+        'chat_rejected': 'Rejeitado',
+        'chat_time_request': 'Hora do Pedido:',
+        'chat_time_processed': 'Hora do Processamento:',
+        'chat_locked_msg': 'Esta transação foi concluída.',
+		'kyc_waiting': 'Aguardando verificação de documentos',
+        'btn_check_doc': 'Verificar Docs',
+        'confirm_topup_msg': (amt, user) => `Aprovar ${amt} USD para ${user}?`,
+        'msg_approve_success': 'Aprovação bem-sucedida',
+		'form_payment_title': 'Configurações de Pagamento',
+        'lbl_bank_info': 'Conta Bancária / Detalhes de Pagamento:',
+        'lbl_topup_instructions': 'Instruções de Recarga:',
+        'btn_save_db': 'Salvar no Banco de Dados',
+        'def_topup_desc': 'Por favor, transfira o valor especificado e anexe o comprovante no chat.',
+		'msg_save_success': 'Salvo com sucesso! Os membros verão esta informação imediatamente.',
+        'msg_save_error': 'Ocorreu um erro ao salvar.',
+		'no_new_items': 'Sem novos itens',
+        'load_failed': 'Falha ao carregar dados',
+        'time_suffix': '',
+		'confirm_approve_action': (amt, user) => `Confirmar recarga de ${amt} USD para ${user}?`,
+        'confirm_reject_action': (user) => `Rejeitar solicitação de ${user}?`,
+		'title_check_withdraw': 'Verificar Saque',
+        'title_check_topup': 'Verificar Recarga',
+        'lbl_from_member': 'Do Membro:',
+        'lbl_amount_type': (type) => `Valor da Transação (${type})`,
+        'lbl_customer_bank': 'Conta Bancária do Cliente:',
+        'lbl_withdraw_warning': '* Por favor, transfira o dinheiro antes de aprovar',
+        'btn_reject': 'Rejeitar',
+        'btn_confirm_transfer': 'Transferência Confirmada',
+        'btn_approve_topup': 'Aprovar Recarga',
+        'lbl_chat_verify': 'Chat de Verificação',
+        'plh_chat_input': 'Digite uma mensagem...',
+		'action_approve_withdraw': 'Confirmar transferência de dinheiro concluída',
+        'action_approve_topup': 'Aprovar recarga da carteira',
+        'action_reject_withdraw': 'Rejeitar e reembolsar a carteira do cliente',
+        'action_reject_topup': 'Cancelar pedido de recarga',
+        'confirm_withdraw_final': (user, amt, curr) => `Você transferiu o dinheiro para @${user} no valor de ${amt} ${curr}? (As moedas serão movidas para o admin)`,
+        'confirm_topup_final': (user, curr) => `Confirmar valor da recarga para @${user} (${curr}):`,
+        'confirm_general_action': (label) => `Tem certeza que deseja ${label}?`,
+        'swal_success': 'Sucesso!',
+        'swal_error': 'Erro',
+        'sys_msg_success': (type, amt, curr) => `✅ ${type} concluída: ${amt} ${curr}`,
+        'sys_msg_rejected': '❌ Pedido rejeitado pelo administrador',
+        'withdraw_type': 'Saque',
+        'topup_type': 'Recarga',
+        'err_server_connect': 'Não foi possível conectar ao servidor',
+		'confirm_generic': (action) => `Tem certeza que deseja ${action} este pedido?`,
+        'alert_success': 'Ação realizada com sucesso!',
+		'lbl_current_dist': (d) => `Distância atual: ${d} metros`,
+        'status_ready': 'Status: Pronto para Aprovar (Dentro do Alcance)',
+        'status_too_far': 'Status: Muito longe (Deve estar a 20m)',
+		'confirm_delete_request': (user) => `Tem certeza que deseja rejeitar e "EXCLUIR" o pedido de @${user}?\n(O membro precisará enviar as informações novamente)`,
+        'alert_delete_success': 'Pedido excluído com sucesso',
+		'swal_check_gps': 'Verificando suas coordenadas...',
+        'swal_dist_pass': 'Critério de distância aceito',
+        'swal_dist_fail': 'Critério de distância não aceito',
+        'swal_dist_current': (d) => `Distância atual: <b>${d} metros</b>`,
+        'swal_in_range': 'Dentro do alcance de 20m exigido',
+        'swal_out_range': 'Você está além do limite de 20m',
+        'swal_btn_confirm': 'Confirmar Aprovação',
+        'swal_btn_cancel': 'Cancelar',
+        'swal_title_denied': 'Não Aprovado',
+        'swal_text_denied': 'A distância deve ser de no máximo 20 metros',
+        'swal_title_gps_err': 'Erro de GPS',
+        'swal_text_gps_err': 'Ative o GPS antes de verificar a distância',
+        'swal_title_success': 'Sucesso!',
+        'swal_text_success': 'Identidade do membro verificada com sucesso',
+		'btn_back_to_requests': 'Voltar aos Pedidos',
+        'btn_reject_kyc': 'Rejeitar Pedido',
+        'btn_approve_kyc': 'Aprovar e Recarregar',
+        'title_kyc_detail': 'Detalhes do KYC',
+        'lbl_current_photo': 'Foto Atual',
+        'status_pending': 'Status: Pendente',
+        'lbl_dist_from_you': (d) => `Distância de você: ${d} m`,
+		'lbl_member_info_header': 'Informações do Membro',
+        'lbl_full_name': 'Nome Completo',
+        'lbl_id_card': 'Número do Documento',
+        'lbl_phone': 'Telefone',
+        'lbl_username': 'Usuário',
+        'lbl_geo_address': 'Endereço GPS',
+		'btn_kyc_reject': 'Rejeitar',
+        'btn_kyc_approve': 'Aprovar Verificação',
+        'lbl_chat_appointment': 'Chat de Agendamento',
+        'msg_start_chat_kyc': 'Inicie a conversa para agendar a verificação',
     }
 };
 
@@ -497,7 +761,7 @@ async function loadAdminHistory() {
         }).join('');
     } catch (err) {
         console.error("Load Admin History Error:", err);
-        container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
+        container.innerHTML = '<p style="text-align:center; color:red;">Data loading failed.</p>';
     }
 }
 
@@ -517,9 +781,9 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
     let slipSection = "";
     if (slipUrl && slipUrl !== "") {
         slipSection = `<div style="align-self: flex-start; background: white; padding: 10px; border-radius: 10px; border: 1px solid #ddd; max-width: 70%; margin-bottom:10px;">
-            <div style="font-size: 0.8em; color: #666; margin-bottom: 5px;"><i class="fas fa-info-circle"></i> ข้อมูลเริ่มต้นจากระบบ</div>
+            <div style="font-size: 0.8em; color: #666; margin-bottom: 5px;"><i class="fas fa-info-circle"></i> ${translations[currentLang].chat_system_info}</div>
             <img src="${slipUrl}" style="max-width: 100%; border-radius: 5px; cursor: pointer;" onclick="window.open('${slipUrl}')">
-            <div style="margin-top: 5px; font-weight: bold; color: var(--dark);">ยอดแจ้งเติม: ${amount.toFixed(2)} USD</div>
+            <div style="margin-top: 5px; font-weight: bold; color: var(--dark);">${translations[currentLang].chat_topup_amount(amount.toFixed(2))}</div>
         </div>`;
     }
 
@@ -528,9 +792,9 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
             <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px;">
                 <button onclick="showContent('history')" style="border:none; background:#f8fafc; width:40px; height:40px; border-radius:50%; cursor:pointer;"><i class="fas fa-arrow-left"></i></button>
                 <div>
-                    <h4 style="margin:0;">ประวัติ: ${username}</h4>
+                    <h4 style="margin:0;">${translations[currentLang].chat_history_title(username)}</h4>
                     <small style="color:${status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
-                        สถานะ: ${status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'} (${amount.toFixed(2)} USD)
+                        ${translations[currentLang].chat_status_label} ${status === 'approved' ? translations[currentLang].chat_approved : translations[currentLang].chat_rejected} (${amount.toFixed(2)} USD)
                     </small>
                 </div>
             </div>
@@ -540,16 +804,16 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
             </div>
 
             <div style="padding: 15px; background: #fff; border-top: 1px solid #eee; color: #666; font-size: 0.85em; line-height: 1.6;">
-    <div style="display: flex; justify-content: space-between;">
-        <span><i class="far fa-clock"></i> เวลาส่งคำขอ:</span>
-        <b>${createdAt ? new Date(createdAt).toLocaleString('th-TH') : '-'}</b>
-    </div>
-    <div style="display: flex; justify-content: space-between;">
-        <span><i class="fas fa-check-double"></i> เวลาที่ดำเนินการ:</span>
-        <b>${processedAt ? new Date(processedAt).toLocaleString('th-TH') : '-'}</b>
-    </div>
-    <div style="text-align: center; color: #ccc; margin-top: 8px; font-size: 0.9em;">
-        <i class="fas fa-lock"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นแล้ว
+                <div style="display: flex; justify-content: space-between;">
+                    <span><i class="far fa-clock"></i> ${translations[currentLang].chat_time_request}</span>
+                    <b>${createdAt ? new Date(createdAt).toLocaleString(dateLocale) : '-'}</b>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span><i class="fas fa-check-double"></i> ${translations[currentLang].chat_time_processed}</span>
+                    <b>${processedAt ? new Date(processedAt).toLocaleString(dateLocale) : '-'}</b>
+                </div>
+                <div style="text-align: center; color: #ccc; margin-top: 8px; font-size: 0.9em;">
+                    <i class="fas fa-lock"></i> ${translations[currentLang].chat_locked_msg}
                 </div>
             </div>
         </div>`;
@@ -565,18 +829,18 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
         <div class="admin-card">
             <div>
                 <strong>User: Maria_Brazil</strong><br>
-                <small style="color:#666;">รอการตรวจเอกสารยืนยันตัวตน</small>
+                <small style="color:#666;">${translations[currentLang].kyc_waiting}</small>
             </div>
             <div>
-                <button class="status-btn btn-approve">ตรวจเอกสาร</button>
+                <button class="status-btn btn-approve">${translations[currentLang].btn_check_doc}</button>
             </div>
         </div>
     `;
 }
 
-    function confirmTopup(user, amount) {
-    if(confirm(`อนุมัติเงิน ${amount} USD ให้คุณ ${user}?`)) {
-        alert('อนุมัติสำเร็จ');
+function confirmTopup(user, amount) {
+    if(confirm(translations[currentLang].confirm_topup_msg(amount, user))) {
+        alert(translations[currentLang].msg_approve_success);
     }
 }
 
@@ -599,24 +863,29 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
 
 
 
-	function renderAutoMessageForm(bankInfo = "", desc = "") {
-    // กำหนดค่าเริ่มต้นถ้าไม่มีข้อมูล
+function renderAutoMessageForm(bankInfo = "", desc = "") {
     const displayBank = bankInfo || "";
-    const displayDesc = desc || "กรุณาโอนเงินตามยอดที่ระบุ และแนบสลิปในแชท";
+    const displayDesc = desc || translations[currentLang].def_topup_desc;
 
     return `
         <div class="admin-card" style="display: block; max-width: 600px; margin: 0 auto;">
-            <h3 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px;">ตั้งค่าการรับเงิน</h3>
+            <h3 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px;">
+                ${translations[currentLang].form_payment_title}
+            </h3>
             <div style="margin-bottom: 20px;">
-                <label style="font-weight: bold; display: block; margin-bottom: 8px;">เลขบัญชี / พร้อมเพย์:</label>
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">
+                    ${translations[currentLang].lbl_bank_info}
+                </label>
                 <textarea id="bank-info-input" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-family: inherit;">${displayBank}</textarea>
             </div>
             <div style="margin-bottom: 20px;">
-                <label style="font-weight: bold; display: block; margin-bottom: 8px;">คำอธิบายขั้นตอนการเติมเงิน:</label>
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">
+                    ${translations[currentLang].lbl_topup_instructions}
+                </label>
                 <textarea id="topup-desc-input" rows="4" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-family: inherit;">${displayDesc}</textarea>
             </div>
             <button onclick="saveAutoMessage()" style="width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s;">
-                <i class="fas fa-save"></i> บันทึกข้อมูลลงฐานข้อมูล
+                <i class="fas fa-save"></i> ${translations[currentLang].btn_save_db}
             </button>
         </div>
     `;
@@ -638,13 +907,13 @@ async function saveAutoMessage() {
             // ยังคงเซฟลง localStorage ไว้ด้วยเพื่อให้แสดงผลในหน้า Admin เร็วขึ้น
             localStorage.setItem('adminBankInfo', bankInfo);
             localStorage.setItem('adminTopupDesc', desc);
-            alert("บันทึกลงระบบเรียบร้อยแล้ว สมาชิกจะเห็นข้อมูลนี้ทันที!");
+            alert(translations[currentLang].msg_save_success);
         } else {
-            alert("เกิดข้อผิดพลาดในการบันทึก");
+            alert(translations[currentLang].msg_save_error);
         }
     } catch (e) {
         console.error(e);
-        alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
+        alert("Unable to connect to the server.");
     }
 }
 
@@ -661,7 +930,7 @@ async function saveAutoMessage() {
         document.getElementById('topup-count').innerText = data.topupCount || 0;
         document.getElementById('kyc-count').innerText = data.kycCount || 0;
     } catch(e) {
-        console.warn("Badge API ยังไม่พร้อมใช้งาน");
+        console.warn("Badge API Not yet available.");
     }
 }
 
@@ -670,27 +939,34 @@ async function saveAutoMessage() {
 
 
 async function loadTopupRequests() {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th'; // ดึงภาษาปัจจุบัน
+    const timeLocale = { 'th': 'th-TH', 'en': 'en-US', 'pt': 'pt-PT' }[currentLang]; // เลือก Format เวลา
+    
     const adminName = localStorage.getItem('myUsername');
     const container = document.getElementById('topup-list-container');
     if (!container) return;
 
     try {
-        // ใช้ API เดิม แต่ผลลัพธ์จะมีฟิลด์ type มาด้วย
         const res = await fetch(`/api/admin/topup-list?admin=${adminName}`);
         const requests = await res.json();
         
         if (requests.length === 0) {
-            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-inbox fa-3x"></i><p>ไม่มีรายการใหม่</p></div>';
+            container.innerHTML = `<div style="text-align:center; margin-top:50px; color:#999;">
+                <i class="fas fa-inbox fa-3x"></i>
+                <p>${translations[currentLang].no_new_items}</p>
+            </div>`;
             return;
         }
 
         container.innerHTML = requests.map(req => {
             const reqType = (req.type || 'TOPUP').toUpperCase(); 
-			const isWithdraw = reqType === 'WITHDRAW';
-			const currency = req.currency || 'USD';
-			const color = isWithdraw ? 'var(--danger)' : 'var(--primary)';
-			const label = isWithdraw ? 'ถอนเงินสด' : 'เติมเงิน';
-			const icon = isWithdraw ? 'fas fa-arrow-circle-up' : 'fas fa-arrow-circle-down';
+            const isWithdraw = reqType === 'WITHDRAW';
+            const currency = req.currency || 'USD';
+            const color = isWithdraw ? 'var(--danger)' : 'var(--primary)';
+            
+            // 🚩 เปลี่ยนตรงนี้ให้ดึงจากไฟล์แปลภาษา
+            const label = isWithdraw ? translations[currentLang].label_withdraw : translations[currentLang].label_topup;
+            const icon = isWithdraw ? 'fas fa-arrow-circle-up' : 'fas fa-arrow-circle-down';
 
             return `
             <div class="admin-card" onclick="openFullChat('${req._id}', '${req.username}', ${req.amount}, '${reqType}', '${encodeURIComponent(req.bankInfo || "")}', '${currency}')" 
@@ -703,20 +979,22 @@ async function loadTopupRequests() {
                     <span style="color:${color}; font-weight:bold; font-size: 1.2em;">${req.amount.toFixed(2)} ${currency}</span>
                 </div>
                 <div style="text-align:right; color:#999;">
-                    <small>${new Date(req.createdAt).toLocaleTimeString('th-TH')} น.</small><br>
+                    <small>${new Date(req.createdAt).toLocaleTimeString(timeLocale)}${translations[currentLang].time_suffix}</small><br>
                     <i class="fas fa-chevron-right" style="margin-top: 10px; opacity: 0.3;"></i>
                 </div>
             </div>
             `;
         }).join('');
     } catch (err) {
-        container.innerHTML = '<p style="text-align:center; color:red;">โหลดข้อมูลล้มเหลว</p>';
+        container.innerHTML = `<p style="text-align:center; color:red;">${translations[currentLang].load_failed}</p>`;
     }
 }
 
 
 async function handleQuickAction(requestId, status, username, amount = 0) {
-    const actionText = status === 'approved' ? `ยืนยันเติมเงิน ${amount} USD ให้คุณ ${username}?` : `ปฏิเสธคำขอของคุณ ${username}?`;
+    const actionText = status === 'approved' 
+    ? translations[currentLang].confirm_approve_action(amount, username) 
+    : translations[currentLang].confirm_reject_action(username);
     
     if (!confirm(actionText)) return;
 
@@ -732,7 +1010,7 @@ async function handleQuickAction(requestId, status, username, amount = 0) {
         });
 
         if (res.ok) {
-            alert("ดำเนินการสำเร็จ!");
+            alert("Operation successful!");
             
             // ส่งสัญญาณ Socket บอก User ให้หน้าจอเขาอัปเดตทันที
             socket.emit('statusChanged', { 
@@ -744,11 +1022,11 @@ async function handleQuickAction(requestId, status, username, amount = 0) {
             loadTopupRequests();
             updateBadges();
         } else {
-            alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+            alert("An error occurred while saving the data.");
         }
     } catch (e) {
         console.error(e);
-        alert("การเชื่อมต่อเซิร์ฟเวอร์มีปัญหา");
+        alert("There was a problem with the server connection.");
     }
 }
 
@@ -779,21 +1057,22 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
     
     socket.emit('joinRequest', requestId);
 
-    const titleHeader = isWithdraw ? 'ตรวจสอบรายการถอนเงิน' : 'ตรวจสอบรายการเติมเงิน';
+    // 🚩 เปลี่ยนข้อความเป็นคำแปล
+    const titleHeader = isWithdraw ? translations[currentLang].title_check_withdraw : translations[currentLang].title_check_topup;
     const mainIcon = isWithdraw ? 'fas fa-money-bill-transfer' : 'fas fa-hand-holding-usd';
     const cardBorderColor = isWithdraw ? '#ffcdd2' : '#c8e6c9';
-    const cardBgColor = isWithdraw ? '#fff5f5' : '#e8f5e9'; // แก้ไขตรงนี้แล้ว
+    const cardBgColor = isWithdraw ? '#fff5f5' : '#e8f5e9'; 
     const textStatusColor = isWithdraw ? '#c62828' : '#2e7d32';
 
     let withdrawInfoHtml = "";
     if (isWithdraw) {
         withdrawInfoHtml = `
             <div style="background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px dashed #e74c3c; margin-bottom: 25px;">
-                <b style="color: #c62828; display: block; margin-bottom: 5px;"><i class="fas fa-university"></i> บัญชีรับเงินของลูกค้า:</b>
+                <b style="color: #c62828; display: block; margin-bottom: 5px;"><i class="fas fa-university"></i> ${translations[currentLang].lbl_customer_bank}</b>
                 <div style="background: white; padding: 10px; border-radius: 8px; font-family: monospace; user-select: all; border: 1px solid #eee;">
                     ${bankInfo.replace(/\n/g, '<br>')}
                 </div>
-                <small style="color: #666; margin-top: 5px; display: block;">* โปรดโอนเงินสดให้ลูกค้าตามยอดด้านบนก่อนกดอนุมัติ</small>
+                <small style="color: #666; margin-top: 5px; display: block;">${translations[currentLang].lbl_withdraw_warning}</small>
             </div>`;
     }
 
@@ -808,7 +1087,7 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
                 </button>
                 <div>
                     <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">${titleHeader}</h3>
-                    <small style="color: #666;">จากสมาชิก: <b>${username}</b></small>
+                    <small style="color: #666;">${translations[currentLang].lbl_from_member} <b>${username}</b></small>
                 </div>
             </div>
             <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
@@ -821,7 +1100,7 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
                     <i class="${mainIcon}"></i>
                 </div>
                 <div style="text-align: left; flex: 1;">
-                    <div style="font-weight: bold; color: ${textStatusColor}; font-size: 1em;">ยอดเงินรายการ (${type})</div>
+                    <div style="font-weight: bold; color: ${textStatusColor}; font-size: 1em;">${translations[currentLang].lbl_amount_type(type)}</div>
                     <div style="font-size: 1.2em; color: ${themeColor}; font-weight: bold;">${amount.toFixed(2)} ${currency}</div>
                 </div>
             </div>
@@ -829,21 +1108,21 @@ async function openFullChat(requestId, username, amount, type, bankInfoEncoded, 
             ${withdrawInfoHtml}
 
             <div style="display: flex; gap: 15px; margin-bottom: 30px;">
-                <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}', ${amount}, '${type}', '${currency}')" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold; cursor: pointer;">ปฏิเสธ</button>
+                <button class="status-btn btn-reject" onclick="processAction('rejected', '${username}', ${amount}, '${type}', '${currency}')" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold; cursor: pointer;">${translations[currentLang].btn_reject}</button>
                 <button class="status-btn btn-approve" onclick="processAction('approved', '${username}', ${amount}, '${type}', '${currency}')" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em; cursor: pointer; background: ${themeColor};">
-                    <i class="fas fa-check-circle"></i> ${isWithdraw ? 'ยืนยันโอนแล้ว' : 'อนุมัติเติมเงิน'}
+                    <i class="fas fa-check-circle"></i> ${isWithdraw ? translations[currentLang].btn_confirm_transfer : translations[currentLang].btn_approve_topup}
                 </button>
             </div>
 
             <div style="background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; overflow: hidden; margin-bottom: 40px;">
                 <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px; background: #f8fafc;">
-                    <i class="fas fa-comments" style="color: ${themeColor};"></i> แชทตรวจสอบหลักฐาน
+                    <i class="fas fa-comments" style="color: ${themeColor};"></i> ${translations[currentLang].lbl_chat_verify}
                 </div>
                 <div id="chat-box" style="height: 350px; overflow-y: auto; padding: 15px; background: #f1f5f9; display: flex; flex-direction: column; gap: 10px;"></div>
                 <div style="padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee;">
                      <input type="file" id="admin-slip-input" hidden accept="image/*" onchange="handleAdminSlipUpload()">
                      <button onclick="document.getElementById('admin-slip-input').click()" style="background: #f1f5f9; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;"><i class="fas fa-image"></i></button>
-                     <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+                     <input type="text" id="admin-chat-input" placeholder="${translations[currentLang].plh_chat_input}" style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
                      <button onclick="sendAdminMessage()" style="background: ${themeColor}; color: white; border: none; width: 45px; height: 45px; border-radius: 10px;"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
@@ -869,14 +1148,15 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
     let finalAmount = initialAmount;
     const isWithdraw = type === 'WITHDRAW';
     
+    // 🚩 เลือก Label ตามสถานะและประเภท
     const actionLabel = status === 'approved' 
-        ? (isWithdraw ? 'ยืนยันการโอนเงินสดให้ลูกค้าเรียบร้อยแล้ว' : 'อนุมัติการเติมเงินเข้ากระเป๋า')
-        : (isWithdraw ? 'ปฏิเสธและคืนเงินเข้ากระเป๋าลูกค้า' : 'ยกเลิกคำขอเติมเงิน');
+        ? (isWithdraw ? translations[currentLang].action_approve_withdraw : translations[currentLang].action_approve_topup)
+        : (isWithdraw ? translations[currentLang].action_reject_withdraw : translations[currentLang].action_reject_topup);
 
     if (status === 'approved') {
         const confirmMsg = isWithdraw 
-            ? `คุณได้โอนเงินสดให้ @${username} จำนวน ${initialAmount.toFixed(2)} ${currency} เรียบร้อยแล้วใช่หรือไม่? (ระบบจะโอนเหรียญเข้าแอดมิน)` 
-            : `ยืนยันยอดเงินที่จะเติมให้ @${username} (${currency}):`;
+            ? translations[currentLang].confirm_withdraw_final(username, initialAmount.toFixed(2), currency)
+            : translations[currentLang].confirm_topup_final(username, currency);
 
         if (!isWithdraw) {
             const inputAmount = prompt(confirmMsg, initialAmount);
@@ -886,7 +1166,7 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
             if (!confirm(confirmMsg)) return;
         }
     } else {
-        if (!confirm(`คุณต้องการ ${actionLabel} ใช่หรือไม่?`)) return;
+        if (!confirm(translations[currentLang].confirm_general_action(actionLabel))) return;
     }
 
     try {
@@ -898,22 +1178,23 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
                 status: status,
                 finalAmount: finalAmount,
                 adminName: localStorage.getItem('myUsername'),
-                // ✅ ส่ง currency ไปให้ API ด้วย
                 currency: currency 
             })
         });
 
         const data = await res.json();
         if (res.ok) {
-            Swal.fire('สำเร็จ!', data.message, 'success');
+            Swal.fire(translations[currentLang].swal_success, data.message, 'success');
             socket.emit('statusChanged', { requestId: currentChatRequestId, status: status });
             
+            // 🚩 ระบบข้อความ System Message ในแชท
+            const typeLabel = isWithdraw ? translations[currentLang].withdraw_type : translations[currentLang].topup_type;
             const sysMsg = {
                 requestId: currentChatRequestId,
                 sender: 'System',
                 message: status === 'approved' 
-                    ? `✅ รายการ ${isWithdraw ? 'ถอนเงิน' : 'เติมเงิน'} สำเร็จ จำนวน ${finalAmount.toFixed(2)} ${currency}` 
-                    : `❌ รายการถูกปฏิเสธโดยแอดมิน`,
+                    ? translations[currentLang].sys_msg_success(typeLabel, finalAmount.toFixed(2), currency)
+                    : translations[currentLang].sys_msg_rejected,
                 type: 'system'
             };
             socket.emit('sendMessage', sysMsg);
@@ -921,10 +1202,10 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
             showContent('topup');
             updateBadges();
         } else {
-            Swal.fire('ผิดพลาด', data.error || "เกิดข้อผิดพลาด", 'error');
+            Swal.fire(translations[currentLang].swal_error, data.error || translations[currentLang].swal_error, 'error');
         }
     } catch (e) {
-        Swal.fire('Error', "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", 'error');
+        Swal.fire('Error', translations[currentLang].err_server_connect, 'error');
     }
 }
 
@@ -932,8 +1213,10 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
 
 // 3. ฟังก์ชันอนุมัติหรือปฏิเสธ
 async function processRequest(status) {
-    const action = status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ';
-    if (!confirm(`คุณต้องการ ${action} คำขอนี้ใช่หรือไม่?`)) return;
+    const action = status === 'approved' 
+		? translations[currentLang].action_approve 
+		: translations[currentLang].action_reject;
+    if (!confirm(translations[currentLang].confirm_generic(action))) return;
 
     try {
         const res = await fetch(`/api/admin/process-topup`, {
@@ -953,11 +1236,11 @@ async function processRequest(status) {
             status: status 
         });
         
-        alert("ดำเนินการสำเร็จ!");
+        alert(translations[currentLang].alert_success);
         showContent('topup');
         }
     } catch (e) {
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+        alert("Unable to connect to the server.");
     }
 }
 
@@ -1019,7 +1302,7 @@ function appendAdminChatMessage(msg) {
                 ${contentHTML}
             </div>
             <small style="font-size: 0.7em; color: #94a3b8; margin-top: 3px;">
-                ${isMe ? 'คุณ (Admin)' : msg.sender}
+                ${isMe ? 'You (Admin)' : msg.sender}
             </small>
         </div>
     `;
@@ -1050,21 +1333,12 @@ socket.on('receiveMessage', (msg) => {
 
 socket.on('notifyAdminNewRequest', (data) => {
     const myName = localStorage.getItem('myUsername');
-    
-    // ตรวจสอบว่าคำขอนี้เป็นของแอดมินคนนี้หรือไม่
     if (data.adminId === myName) {
-        // 1. สั่งโหลดรายการคำขอใหม่ (ฟังก์ชันที่ดึงรายการ pending มาโชว์)
         if (typeof loadTopupList === "function") {
             loadTopupList(); 
         } else {
-            // ถ้าชื่อฟังก์ชันต่างออกไป ให้ใส่ชื่อฟังก์ชันที่ใช้ดึงรายการคำขอตรงนี้
-            // เช่น fetchPendingRequests();
-            location.reload(); // กรณีหาฟังก์ชันไม่เจอ ให้รีเฟรชหน้า (ไม่แนะนำแต่ใช้แก้ขัดได้)
+            location.reload();
         }
-
-        // 2. แจ้งเตือนด้วยเสียงหรือ Toast (ถ้ามี)
-        console.log("🔔 มีรายการใหม่เข้ามา!");
-        // alert("มีรายการเติมเงินใหม่จากคุณ " + data.username);
     }
 });
 
@@ -1132,7 +1406,7 @@ async function handleAdminSlipUpload() {
         }
     } catch (err) {
         console.error("Upload error:", err);
-        alert("อัปโหลดรูปภาพล้มเหลว");
+        alert("Image upload failed.");
     } finally {
         fileInput.value = '';
         btn.innerHTML = '<i class="fas fa-image"></i>';
@@ -1153,8 +1427,6 @@ socket.on('admin-notification', (data) => {
         
         let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
         audio.play();
-
-        console.log("แจ้งเตือนใหม่:", data.message);
         
         // เช็คว่าตอนนี้หน้าจอหลักแสดงผลส่วน KYC อยู่หรือไม่
         const mainDisplay = document.getElementById('main-display');
@@ -1162,7 +1434,6 @@ socket.on('admin-notification', (data) => {
         
         // ถ้าเจอ section-kyc-list อยู่ในหน้าจอหลัก (แปลว่าเปิดหน้านี้ค้างไว้) ให้โหลดข้อมูลใหม่
         if (kycInDisplay && kycInDisplay.style.display !== 'none') {
-            console.log("กำลังอัปเดตรายการ KYC ในหน้าจอ...");
             loadKYCRequests(); 
         }
     }
@@ -1170,7 +1441,7 @@ socket.on('admin-notification', (data) => {
 
 async function loadKYCRequests() {
     const container = document.getElementById('kyc-list-container');
-    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังดึงข้อมูลคำขอ...</div>';
+    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Retrieving request data...</div>';
 
     try {
         const adminName = localStorage.getItem('myUsername');
@@ -1178,7 +1449,7 @@ async function loadKYCRequests() {
         const requests = await res.json();
 
         if (requests.length === 0) {
-            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-user-shield fa-3x"></i><p>ไม่มีคำขอยืนยันตัวตนใหม่</p></div>';
+            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-user-shield fa-3x"></i><p>There are no new identity verification requests.</p></div>';
             return;
         }
 
@@ -1213,7 +1484,7 @@ async function loadKYCRequests() {
                     req.coords.lat, 
                     req.coords.lng
                 );
-                distanceText = `ห่าง ${distanceVal.toFixed(1)} ม.`;
+                distanceText = `far ${distanceVal.toFixed(1)} ม.`;
                 isClose = distanceVal <= 20;
             }
 
@@ -1232,14 +1503,14 @@ async function loadKYCRequests() {
                     </div>
                 </div>
                 <div style="color: var(--primary); font-size: 0.85em; font-weight: bold; white-space: nowrap;">
-                    ตรวจข้อมูล <i class="fas fa-chevron-right" style="font-size: 0.8em; margin-left: 5px;"></i>
+                    Check the information <i class="fas fa-chevron-right" style="font-size: 0.8em; margin-left: 5px;"></i>
                 </div>
             </div>`;
         }).join('');
 
     } catch (err) {
         console.error("Load KYC Error:", err);
-        container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">โหลดข้อมูลผิดพลาด หรือเซิร์ฟเวอร์ขัดข้อง</p>';
+        container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">Data loading error or server failure.</p>';
     }
 }
 
@@ -1284,18 +1555,17 @@ function viewKYCDetail(dataStr) {
             const distElem = document.getElementById('det-distance');
             const titleElem = document.getElementById('det-title');
             const badgeElem = document.getElementById('det-status-badge');
-            // ✅ ต้องเพิ่มบรรทัดนี้เข้าไปเพื่อให้รู้จัก btnApprove ในฟังก์ชันนี้
             const btnApprove = document.getElementById('btn-det-approve');
 
-            distElem.innerHTML = `<i class="fas fa-map-marker-alt"></i> ระยะห่างปัจจุบัน: ${dist.toFixed(1)} เมตร`;
+            distElem.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${translations[currentLang].lbl_current_dist(dist.toFixed(1))}`;
 
             if (isClose) {
-                titleElem.innerText = "สถานะ: พร้อมอนุมัติ (อยู่ในระยะ)";
+                titleElem.innerText = translations[currentLang].status_ready;
                 badgeElem.style.background = "#e8f5e9";
                 badgeElem.style.borderColor = "#c8e6c9";
                 btnApprove.style.background = "var(--primary)"; 
             } else {
-                titleElem.innerText = "สถานะ: ไกลเกินไป (ต้องเข้าใกล้ 20ม.)";
+                titleElem.innerText = translations[currentLang].status_too_far;
                 badgeElem.style.background = "#fff3e0";
                 badgeElem.style.borderColor = "#ffe0b2";
                 btnApprove.style.background = "#94a3b8";
@@ -1318,7 +1588,7 @@ function viewKYCDetail(dataStr) {
     modal.scrollTop = 0;
     modal.style.display = 'block';
     
-    document.getElementById('kyc-chat-box').innerHTML = '<div style="text-align:center; padding:10px; color:#999; font-size:0.8em;">กำลังโหลดประวัติแชท...</div>';
+    document.getElementById('kyc-chat-box').innerHTML = '<div style="text-align:center; padding:10px; color:#999; font-size:0.8em;">Loading chat history...</div>';
     loadKYCChatHistory(data.username); 
     socket.emit('joinRequest', data.username); 
 }
@@ -1381,7 +1651,7 @@ function appendKYCChatMessage(msg) {
                 ${msg.message}
             </div>
             <small style="font-size: 0.6em; color: #94a3b8; margin-top: 2px; padding: 0 5px;">
-                ${isMe ? 'คุณ' : msg.sender} • ${new Date(msg.timestamp || new Date()).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}
+                ${isMe ? 'You' : msg.sender} • ${new Date(msg.timestamp || new Date()).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}
             </small>
         </div>
     `;
@@ -1390,9 +1660,9 @@ function appendKYCChatMessage(msg) {
 }
 
 async function deleteKYCRequest(requestId, username) {
-    if (!confirm(`คุณต้องการปฏิเสธและ "ลบ" คำขอของ @${username} ใช่หรือไม่?\n(สมาชิกจะต้องส่งข้อมูลมาใหม่อีกครั้ง)`)) {
-        return;
-    }
+    if (!confirm(translations[currentLang].confirm_delete_request(username))) {
+		return;
+	}
 
     try {
         const res = await fetch('/api/admin/delete-kyc', {
@@ -1404,16 +1674,16 @@ async function deleteKYCRequest(requestId, username) {
         const data = await res.json();
 
         if (data.success) {
-            alert("ลบคำขอเรียบร้อยแล้ว");
+            alert(translations[currentLang].alert_delete_success);
             closeKYCDetail(); 
             loadKYCRequests();
             updateBadges(); 
         } else {
-            alert("เกิดข้อผิดพลาด: " + data.error);
+            alert("An error occurred: " + data.error);
         }
     } catch (err) {
         console.error(err);
-        alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+        alert("Unable to connect to the server.");
     }
 }
 
@@ -1423,7 +1693,7 @@ async function checkDistanceBeforeApprove(requestId, username, memberLat, member
     const adminName = localStorage.getItem('myUsername');
     
     // 1. ดึงพิกัดแอดมินปัจจุบัน
-    Swal.fire({ title: 'กำลังเช็กพิกัดของคุณ...',
+    title: translations[currentLang].swal_check_gps,
 	allowOutsideClick: false,
 	target: document.getElementById('admin-kyc-detail-modal'),
 	didOpen: () => Swal.showLoading() });
@@ -1438,20 +1708,20 @@ async function checkDistanceBeforeApprove(requestId, username, memberLat, member
 
         // 3. แสดงหน้าต่างแจ้งผลเงื่อนไข
         Swal.fire({
-            title: isPass ? 'ผ่านเงื่อนไขระยะห่าง' : 'ไม่ผ่านเงื่อนไขระยะห่าง',
-            html: `ระยะห่างปัจจุบัน: <b>${dist.toFixed(1)} เมตร</b><br>${isPass ? '<span style="color:green">อยู่ในระยะ 20 เมตรตามที่กำหนด</span>' : '<span style="color:red">คุณอยู่ไกลเกิน 20 เมตร</span>'}`,
+            title: isPass ? translations[currentLang].swal_dist_pass : translations[currentLang].swal_dist_fail,
+            html: `Current distance: <b>${dist.toFixed(1)} m</b><br>${isPass ? '<span style="color:green">Stay within the specified 20-meter radius </span>' : '<span style="color:red">You are more than 20 meters away.</span>'}`,
             icon: isPass ? 'success' : 'warning',
 			target: document.getElementById('admin-kyc-detail-modal'),
             showCancelButton: true,
-            confirmButtonText: 'ยืนยันอนุมัติ',
-            cancelButtonText: 'ยกเลิก',
+            confirmButtonText: translations[currentLang].swal_btn_confirm,
+			cancelButtonText: translations[currentLang].swal_btn_cancel,
             confirmButtonColor: isPass ? '#11998e' : '#94a3b8',
         }).then((result) => {
             if (result.isConfirmed) {
 				if (!isPass) {
 				return Swal.fire({
-					title: 'ไม่อนุมัติ',
-					text: 'ระยะห่างต้องไม่เกิน 20 เมตรเท่านั้น',
+					title: translations[currentLang].swal_title_denied,
+					text: translations[currentLang].swal_text_denied,
 					icon: 'error',
 					target: document.getElementById('admin-kyc-detail-modal')
 				});
@@ -1461,8 +1731,8 @@ async function checkDistanceBeforeApprove(requestId, username, memberLat, member
         });
     }, (err) => {
         Swal.fire({
-            title: 'พิกัดผิดพลาด',
-            text: 'กรุณาเปิด GPS ของคุณก่อนเช็กระยะ',
+            title: translations[currentLang].swal_title_gps_err,
+			text: translations[currentLang].swal_text_gps_err,
             icon: 'error',
             target: document.getElementById('admin-kyc-detail-modal')
         });
@@ -1479,8 +1749,8 @@ async function executeApprove(requestId, username, adminName) {
         });
         if (res.ok) {
             Swal.fire({
-                title: 'สำเร็จ!',
-                text: 'ยืนยันตัวตนสมาชิกเรียบร้อยแล้ว',
+                title: translations[currentLang].swal_title_success,
+				text: translations[currentLang].swal_text_success,
                 icon: 'success',
                 target: document.getElementById('admin-kyc-detail-modal')
             }).then(() => {
@@ -1495,7 +1765,7 @@ async function executeApprove(requestId, username, adminName) {
 async function loadMemberList() {
     const container = document.getElementById('members-list-container');
     const search = document.getElementById('member-search-input').value;
-    const filterStatus = document.getElementById('member-filter-status').value; // ✅ ดึงค่า Filter
+    const filterStatus = document.getElementById('member-filter-status').value;
     const adminName = localStorage.getItem('myUsername');
     
     container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">กำลังโหลดข้อมูลสมาชิก...</p>';
@@ -1515,7 +1785,7 @@ async function loadMemberList() {
         }
 
         if (!members || members.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">ไม่พบสมาชิกตามเงื่อนไขที่เลือก</p>';
+            container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">No members were found matching the selected criteria</p>';
             return;
         }
 
@@ -1544,7 +1814,7 @@ async function loadMemberList() {
                     <div style="display: flex; flex-direction: column; gap: 5px;">
                         <button onclick="viewUserProfile('${username}')" 
                                 style="border: none; background: #f1f5f9; color: var(--dark); padding: 8px 15px; border-radius: 10px; font-size: 0.85em; cursor: pointer; font-family:'Kanit'; font-weight:bold;">
-                            <i class="fas fa-search"></i> ดูโปรไฟล์
+                            <i class="fas fa-search"></i> Profile
                         </button>
                     </div>
                 </div>
@@ -1552,14 +1822,14 @@ async function loadMemberList() {
         }).join('');
 
     } catch (err) {
-        container.innerHTML = '<p style="text-align:center; color:red;">ไม่สามารถเชื่อมต่อ API ได้</p>';
+        container.innerHTML = '<p style="text-align:center; color:red;">Unable to connect.</p>';
     }
 }
 
 
 async function viewUserProfile(username) {
     Swal.fire({
-        title: 'กำลังดึงข้อมูลโปรไฟล์...',
+        title: 'Retrieving profile data...',
         target: document.getElementById('user-profile-modal'),
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
@@ -1573,7 +1843,7 @@ async function viewUserProfile(username) {
         const user = data.users.find(u => u.name === username);
 
         if (!user) {
-            Swal.fire({ title: 'ไม่พบผู้ใช้', icon: 'error', target: document.getElementById('user-profile-modal') });
+            Swal.fire({ title: 'User not found.', icon: 'error', target: document.getElementById('user-profile-modal') });
             return;
         }
 
@@ -1586,19 +1856,19 @@ async function viewUserProfile(username) {
             kycHtml = `
                 <div style="background: #e8f5e9; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
                     <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 1em;">
-                        <i class="fas fa-id-card"></i> ข้อมูลการยืนยันตัวตน
+                        <i class="fas fa-id-card"></i> Identity verification information
                     </h4>
                     <div style="display: grid; gap: 10px; font-size: 0.9em;">
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: #666;">เลขบัตรประชาชน:</span>
+                            <span style="color: #666;">National ID number:</span>
                             <b>${user.idNumber || '-'}</b>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: #666;">เบอร์โทรศัพท์:</span>
+                            <span style="color: #666;">telephone number:</span>
                             <b>${user.phone || '-'}</b>
                         </div>
                         <div style="border-top: 1px solid #c8e6c9; padding-top: 10px;">
-                            <small style="color: #666;">ที่อยู่ปัจจุบัน:</small>
+                            <small style="color: #666;">Current address:</small>
                             <div style="font-weight: bold; margin-top: 2px;">${user.address || '-'}</div>
                         </div>
                     </div>
@@ -1616,22 +1886,22 @@ async function viewUserProfile(username) {
                 <h3 style="margin: 15px 0 5px;">@${user.name}</h3>
                 <div style="color: #f1c40f; font-weight: bold;">
                     <i class="fas fa-star"></i> ${user.rating.toFixed(1)} 
-                    <span style="color: #94a3b8; font-weight: normal; font-size: 0.8em;">(${user.ratingCount} รีวิว)</span>
+                    <span style="color: #94a3b8; font-weight: normal; font-size: 0.8em;">(${user.ratingCount} review)</span>
                 </div>
-                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${user.fullName || 'ยังไม่ได้ระบุชื่อ'}</p>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${user.fullName || 'Name not yet specified.'}</p>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
                 <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
-                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">โพสต์</div>
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">Post</div>
                     <div style="font-weight: bold; font-size: 1.1em;">${user.totalPosts}</div>
                 </div>
                 <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
-                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">รับงาน</div>
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">Job</div>
                     <div style="font-weight: bold; font-size: 1.1em;">${user.totalJobs}</div>
                 </div>
                 <div style="background: #e8f5e9; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #c8e6c9;">
-                    <div style="font-size: 0.7em; color: #2e7d32; text-transform: uppercase;">สำเร็จ</div>
+                    <div style="font-size: 0.7em; color: #2e7d32; text-transform: uppercase;">Success</div>
                     <div style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">${user.completedJobs}</div>
                 </div>
             </div>
@@ -1650,7 +1920,7 @@ async function viewUserProfile(username) {
                         style="width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-family: 'Kanit';
                         background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; 
                         color: ${user.isBanned ? 'white' : '#c62828'};">
-                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดระงับการใช้งาน' : 'ระงับการใช้งาน (BAN)'}
+                    <i class="fas fa-ban"></i> ${user.isBanned ? 'Un ban' : 'BAN'}
                 </button>
             </div>
         `;
@@ -1659,7 +1929,7 @@ async function viewUserProfile(username) {
 
     } catch (err) {
         console.error(err);
-        Swal.fire({ title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลโปรไฟล์ได้', icon: 'error', target: document.getElementById('user-profile-modal') });
+        Swal.fire({ title: 'An error occurred.', text: 'Unable to load profile information.', icon: 'error', target: document.getElementById('user-profile-modal') });
     }
 }
 
@@ -1672,12 +1942,12 @@ function closeUserProfile() {
 async function manageUserBan(username, isCurrentlyBanned) {
     if (isCurrentlyBanned) {
         const result = await Swal.fire({
-            title: 'ปลดระงับผู้ใช้งาน?',
-            text: `คุณต้องการปลดแบนคุณ @${username} ใช่หรือไม่?`,
+            title: 'Un ban?',
+            text: `Do you want to be unbanned @${username} Is it right?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'ใช่, ปลดแบนเลย',
-            cancelButtonText: 'ยกเลิก',
+            confirmButtonText: 'Yes, Un ban',
+            cancelButtonText: 'Cancle',
             target: document.getElementById('user-profile-modal')
         });
 
@@ -1686,24 +1956,24 @@ async function manageUserBan(username, isCurrentlyBanned) {
         }
     } else {
         const { value: days } = await Swal.fire({
-            title: `ระงับการใช้งาน @${username}`,
+            title: `Ban!!! @${username}`,
             input: 'select',
             inputOptions: {
-                '1': '1 วัน',
-                '3': '3 วัน',
-                '7': '7 วัน',
-                '15': '15 วัน',
-                '30': '30 วัน',
-                '9999': 'ถาวร (ไม่มีกำหนด)'
+                '1': '1 Day',
+                '3': '3 Day',
+                '7': '7 Day',
+                '15': '15 Day',
+                '30': '30 Day',
+                '9999': 'permanent'
             },
-            inputPlaceholder: 'เลือกระยะเวลาการแบน',
+            inputPlaceholder: 'Select the ban duration.',
             showCancelButton: true,
-            confirmButtonText: 'ยืนยันการแบน',
-            cancelButtonText: 'ยกเลิก',
+            confirmButtonText: 'Confirm',
+            cancelButtonText: 'Cancel',
             confirmButtonColor: '#e74c3c',
 			target: document.getElementById('user-profile-modal'),
             inputValidator: (value) => {
-                if (!value) return 'กรุณาเลือกระยะเวลา'
+                if (!value) return 'Please select a duration.'
             }
         });
 
@@ -1716,7 +1986,7 @@ async function manageUserBan(username, isCurrentlyBanned) {
 // ✅ 2. ฟังก์ชันส่งข้อมูลไปที่ Server (ใช้ API /api/admin/toggle-ban ตัวเดิมของคุณ)
 async function executeBanAction(username, days) {
     Swal.fire({ 
-			title: 'กำลังดำเนินการ...',
+			title: 'In progress...',
 			target: document.getElementById('user-profile-modal'),
 			didOpen: () => Swal.showLoading() });
 
@@ -1736,16 +2006,16 @@ async function executeBanAction(username, days) {
 
         const data = await res.json();
         if (res.ok && data.success) {
-            Swal.fire('สำเร็จ', days > 0 ? 'ระงับการใช้งานเรียบร้อยแล้ว' : 'ปลดแบนเรียบร้อยแล้ว', 'success').then(() => {
+            Swal.fire('Success', days > 0 ? 'The account has been successfully deactivated' : 'The ban has been lifted', 'success').then(() => {
                 closeUserProfile(); // ปิดหน้าโปรไฟล์
                 loadMemberList();   // โหลดรายชื่อใหม่เพื่ออัปเดตสถานะ
             });
         } else {
-            Swal.fire('ไม่สามารถดำเนินการได้', data.error || 'เกิดข้อผิดพลาด', 'error');
+            Swal.fire('The action cannot be performed.', data.error || 'An error occurred.', 'error');
         }
     } catch (err) {
         console.error(err);
-        Swal.fire('ผิดพลาด', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+        Swal.fire('An error occurred', 'Unable to connect to the server.', 'error');
     }
 }
 
@@ -1774,7 +2044,7 @@ async function fetchAdminZoneInfo(username) {
             if(zoneCurrencyElem) zoneCurrencyElem.innerText = zoneCurrency;
         }
     } catch (e) { 
-        console.error("โหลดข้อมูลโซนไม่สำเร็จ", e); 
+        console.error("Zone data loading failed.", e); 
     }
 }
 
@@ -1782,7 +2052,7 @@ async function fetchAdminZoneInfo(username) {
 // ฟังก์ชันเปิดหน้าต่างแปลงเงิน
 async function openExchangeModal() {
     if (!currentZoneId) {
-        Swal.fire('ผิดพลาด', 'ไม่พบข้อมูลโซนที่คุณดูแล', 'error');
+        Swal.fire('An error occurred', 'No information was found for the zone you are responsible for.', 'error');
         return;
     }
 
@@ -1800,16 +2070,16 @@ async function openExchangeModal() {
         const myUsdt = data.admin.usdtBalance || 0; 
 
         const { value: usdtAmount } = await Swal.fire({
-            title: 'แปลง USDT เป็นเงินในโซน',
+            title: 'Convert USDT This is money within the zone.',
             html: `
                 <div style="text-align:left; font-family:'Kanit',sans-serif;">
-                    <p><b>เรทปัจจุบัน:</b> 1 USDT = ${zoneRate} ${zoneCurrency}</p>
-                    <p><b>ยอดเหรียญของคุณ:</b> <span style="color:var(--primary)">${myUsdt.toFixed(2)} USDT</span></p>
+                    <p><b>Current rate:</b> 1 USDT = ${zoneRate} ${zoneCurrency}</p>
+                    <p><b>Your coin balance:</b> <span style="color:var(--primary)">${myUsdt.toFixed(2)} USDT</span></p>
                     <hr>
-                    <label>จำนวน USDT ที่ต้องการแปลง:</label>
+                    <label>amount USDT to be converted:</label>
                     <input id="ex-usdt" type="number" step="0.01" class="swal2-input" placeholder="0.00" style="width:100%; margin:10px 0;">
                     <div id="ex-preview" style="background:#f1f5f9; padding:10px; border-radius:10px; text-align:center; font-weight:bold; color:var(--primary);">
-                        คุณจะได้รับ: 0.00 ${zoneCurrency}
+                        You will receive: 0.00 ${zoneCurrency}
                     </div>
                 </div>
             `,
@@ -1817,17 +2087,17 @@ async function openExchangeModal() {
                 const input = document.getElementById('ex-usdt');
                 input.addEventListener('input', () => {
                     const val = parseFloat(input.value) || 0;
-                    document.getElementById('ex-preview').innerText = `คุณจะได้รับ: ${(val * zoneRate).toLocaleString()} ${zoneCurrency}`;
+                    document.getElementById('ex-preview').innerText = `You will receive: ${(val * zoneRate).toLocaleString()} ${zoneCurrency}`;
                 });
             },
             showCancelButton: true,
-            confirmButtonText: 'ยืนยันการแปลง',
-            cancelButtonText: 'ยกเลิก',
+            confirmButtonText: 'Confirm',
+            cancelButtonText: 'Cancel',
             confirmButtonColor: 'var(--primary)',
             preConfirm: () => {
                 const val = parseFloat(document.getElementById('ex-usdt').value);
                 if (!val || val <= 0 || val > myUsdt) {
-                    Swal.showValidationMessage('ยอดเงินไม่ถูกต้อง หรือ USDT ไม่พอ');
+                    Swal.showValidationMessage('The amount is incorrect or there is insufficient USDT.');
                 }
                 return val;
             }
@@ -1838,7 +2108,7 @@ async function openExchangeModal() {
         }
     } catch (e) {
         console.error(e);
-        Swal.fire('ผิดพลาด', 'ไม่สามารถดึงยอดเงินล่าสุดได้', 'error');
+        Swal.fire('failed', 'Unable to retrieve the latest balance.', 'error');
     }
 }
 
@@ -1848,7 +2118,7 @@ async function executeExchange(amount) {
 
     try {
         Swal.fire({
-            title: 'กำลังดำเนินการ...',
+            title: 'In progress...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
@@ -1868,18 +2138,18 @@ async function executeExchange(amount) {
         if (result.success) {
             Swal.fire({
                 icon: 'success',
-                title: 'แปลงเงินสำเร็จ!',
-                text: `ได้รับ ${result.received.toLocaleString()} ${result.currency} เข้ากระเป๋าโซนเรียบร้อย`,
+                title: 'Currency conversion successful.!',
+                text: `receive ${result.received.toLocaleString()} ${result.currency} success`,
                 confirmButtonColor: 'var(--primary)'
             }).then(() => {
                 // รีโหลดข้อมูลโซนเพื่ออัปเดตยอดเงินใน Sidebar ทันที
                 fetchAdminZoneInfo(adminName); 
             });
         } else {
-            Swal.fire('ล้มเหลว', result.message, 'error');
+            Swal.fire('failed', result.message, 'error');
         }
     } catch (err) {
-        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        Swal.fire('Error', 'Unable to connect to the server.', 'error');
     }
 }
 
@@ -1887,7 +2157,6 @@ async function executeExchange(amount) {
 
 socket.on('kyc-location-updated', (data) => {
     if (currentKYCRequestId === data.username) {
-        console.log("สมาชิกอัปเดตพิกัดใหม่ -> คำนวณระยะใหม่");
         if (typeof updateModalDistance === "function") updateModalDistance();
         loadKYCRequests(); // อัปเดตรายการข้างหลังด้วย
     }
@@ -1908,16 +2177,16 @@ socket.on('kyc-location-updated', (data) => {
         </div>
 
         <div id="section-admin-chat" style="display: none;">
-            <button onclick="showContent('topup')" style="background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 15px;">
-                <i class="fas fa-arrow-left"></i> กลับไปรายการคำขอ
-            </button>
+            <button onclick="showContent('topup')" style="background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 15px;" data-i18n-key="btn_back_to_requests">
+				<i class="fas fa-arrow-left"></i> กลับไปรายการคำขอ
+			</button>
 
             <div id="chat-box" style="background: #f1f3f5; padding: 20px; border-radius: 15px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
             </div>
 
             <div style="margin-top: 15px; display: flex; gap: 10px;">
-                <button class="status-btn btn-reject" style="flex: 1; padding: 15px;" onclick="processRequest('rejected')">ปฏิเสธคำขอ</button>
-                <button class="status-btn btn-approve" style="flex: 1; padding: 15px;" onclick="processRequest('approved')">อนุมัติและเติมเงิน</button>
+                <button class="status-btn btn-reject" style="flex: 1; padding: 15px;" onclick="processRequest('rejected')" data-i18n-key="btn_reject_kyc">ปฏิเสธคำขอ</button>
+				<button class="status-btn btn-approve" style="flex: 1; padding: 15px;" onclick="processRequest('approved')" data-i18n-key="btn_approve_kyc">อนุมัติและเติมเงิน</button>
             </div>
         </div>
         
@@ -1939,7 +2208,7 @@ socket.on('kyc-location-updated', (data) => {
                 <button onclick="closeKYCDetail()" style="border: none; background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">รายละเอียดการยืนยันตัวตน</h3>
+                <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);" data-i18n-key="title_kyc_detail">รายละเอียดการยืนยันตัวตน</h3>
             </div>
             <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
         </div>
@@ -1947,9 +2216,9 @@ socket.on('kyc-location-updated', (data) => {
         <div style="padding: 20px; max-width: 500px; margin: 0 auto;">
             
             <div id="det-user-img" style="width: 100%; height: 350px; background-size: cover; background-position: center; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; position: relative; border: 4px solid #fff;">
-                <div style="position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.6); color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; backdrop-filter: blur(5px);">
-                    <i class="fas fa-camera"></i> รูปถ่ายปัจจุบัน
-                </div>
+                <div style="position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.6); color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; backdrop-filter: blur(5px);" data-i18n-key="lbl_current_photo">
+				<i class="fas fa-camera"></i> รูปถ่ายปัจจุบัน
+				</div>
             </div>
 
             <div id="det-status-badge" style="display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 15px; border: 1px solid #c8e6c9; margin-bottom: 25px; background: #e8f5e9;">
@@ -1957,58 +2226,66 @@ socket.on('kyc-location-updated', (data) => {
                     <i class="fas fa-check-double"></i>
                 </div>
                 <div style="text-align: left; flex: 1;">
-                    <div id="det-title" style="font-weight: bold; color: #2e7d32; font-size: 1em;">สถานะ: รอดำเนินการ</div>
-                    <div id="det-distance" style="font-size: 0.85em; color: #4caf50; font-weight: bold;">ห่างจากคุณ: 0.0 เมตร</div>
-                </div>
+				<div id="det-title" style="font-weight: bold; color: #2e7d32; font-size: 1em;" data-i18n-key="status_pending">สถานะ: รอดำเนินการ</div>
+				<div id="det-distance" style="font-size: 0.85em; color: #4caf50; font-weight: bold;" data-i18n-key="lbl_dist_from_you">ห่างจากคุณ: 0.0 เมตร</div>
+				</div>
                 <i class="fas fa-shield-alt" style="color: #2e7d32; font-size: 1.5em; opacity: 0.5;"></i>
             </div>
 
             <div style="background: #f8fafc; border-radius: 20px; padding: 20px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
-                <h4 style="margin: 0 0 15px; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px;">ข้อมูลสมาชิก</h4>
-                <div style="display: grid; gap: 15px;">
-                    <div>
-                        <small style="color: #94a3b8; display: block;">ชื่อ-นามสกุล</small>
-                        <span id="det-name" style="font-weight: bold; font-size: 1.1em;">-</span>
-                    </div>
-                    <div>
-                        <small style="color: #94a3b8; display: block;">เลขบัตรประชาชน</small>
-                        <span id="det-id" style="font-weight: bold;">-</span>
-                    </div>
-                    <div style="display: flex; gap: 20px;">
-                        <div style="flex: 1;">
-                            <small style="color: #94a3b8; display: block;">เบอร์โทรศัพท์</small>
-                            <span id="det-phone" style="font-weight: bold;">-</span>
-                        </div>
-                        <div style="flex: 1;">
-                            <small style="color: #94a3b8; display: block;">Username</small>
-                            <span id="det-username" style="font-weight: bold; color: var(--primary);">-</span>
-                        </div>
-                    </div>
-                    <div>
-                        <small style="color: #94a3b8; display: block;">ที่อยู่ตามพิกัด</small>
-                        <span id="det-address" style="font-size: 0.9em; color: #475569;">-</span>
-                    </div>
-                </div>
+    <h4 style="margin: 0 0 15px; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px;" data-i18n-key="lbl_member_info_header">
+        ข้อมูลสมาชิก
+    </h4>
+
+    <div style="display: grid; gap: 15px;">
+        <div>
+            <small style="color: #94a3b8; display: block;" data-i18n-key="lbl_full_name">ชื่อ-นามสกุล</small>
+            <span id="det-name" style="font-weight: bold; font-size: 1.1em;">-</span>
+        </div>
+
+        <div>
+            <small style="color: #94a3b8; display: block;" data-i18n-key="lbl_id_card">เลขบัตรประชาชน</small>
+            <span id="det-id" style="font-weight: bold;">-</span>
+        </div>
+
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+                <small style="color: #94a3b8; display: block;" data-i18n-key="lbl_phone">เบอร์โทรศัพท์</small>
+                <span id="det-phone" style="font-weight: bold;">-</span>
             </div>
+            <div style="flex: 1;">
+                <small style="color: #94a3b8; display: block;" data-i18n-key="lbl_username">Username</small>
+                <span id="det-username" style="font-weight: bold; color: var(--primary);">-</span>
+            </div>
+        </div>
+
+        <div>
+            <small style="color: #94a3b8; display: block;" data-i18n-key="lbl_geo_address">ที่อยู่ตามพิกัด</small>
+            <span id="det-address" style="font-size: 0.9em; color: #475569;">-</span>
+        </div>
+    </div>
+</div>
 
             <div style="display: flex; gap: 15px; padding-bottom: 30px;">
-                <button id="btn-det-reject" class="status-btn btn-reject" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold;">ปฏิเสธ</button>
-                <button id="btn-det-approve" class="status-btn btn-approve" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em;">
-                    <i class="fas fa-check-circle"></i> อนุมัติการยืนยัน
-                </button>
-            </div>
+			<button id="btn-det-reject" class="status-btn btn-reject" style="flex: 1; padding: 16px; border-radius: 15px; font-weight: bold;" data-i18n-key="btn_kyc_reject">
+			ปฏิเสธ
+			</button>
+			<button id="btn-det-approve" class="status-btn btn-approve" style="flex: 2; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1em;" data-i18n-key="btn_kyc_approve">
+			<i class="fas fa-check-circle"></i> อนุมัติการยืนยัน
+			</button>
+			</div>
         </div>
         
         
-        <div style="background: white; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); margin-top: 20px;">
-            <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-comments" style="color: var(--primary);"></i> แชทนัดหมายกับสมาชิก
-            </div>
+        <div style="padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: var(--dark); display: flex; align-items: center; gap: 10px;">
+			<i class="fas fa-comments" style="color: var(--primary);"></i> 
+			<span data-i18n-key="lbl_chat_appointment">แชทนัดหมายกับสมาชิก</span>
+			</div>
             
             <div id="kyc-chat-box" style="height: 300px; overflow-y: auto; padding: 15px; background: #f1f5f9; display: flex; flex-direction: column; gap: 10px;">
-                <div style="align-self: center; background: #fff; padding: 5px 15px; border-radius: 20px; font-size: 0.75em; color: #94a3b8; border: 1px solid #e2e8f0;">
-                    เริ่มการสนทนาเพื่อนัดพบยืนยันตัวตน
-                </div>
+                <div style="align-self: center; background: #fff; padding: 5px 15px; border-radius: 20px; font-size: 0.75em; color: #94a3b8; border: 1px solid #e2e8f0;" data-i18n-key="msg_start_chat_kyc">
+				เริ่มการสนทนาเพื่อนัดพบยืนยันตัวตน
+				</div>
             </div>
 
             <div style="padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee;">
@@ -2018,7 +2295,7 @@ socket.on('kyc-location-updated', (data) => {
         <i class="fas fa-image"></i>
     </button>
 
-    <input type="text" id="admin-chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+    <input type="text" id="admin-chat-input" placeholder="Text..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
     <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px;">
         <i class="fas fa-paper-plane"></i>
     </button>
@@ -2036,7 +2313,9 @@ socket.on('kyc-location-updated', (data) => {
             <button onclick="closeUserProfile()" style="border: none; background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);">โปรไฟล์สมาชิก</h3>
+            <h3 style="margin: 0; font-size: 1.1em; color: var(--dark);" data-i18n-key="title_member_profile">
+			โปรไฟล์สมาชิก
+		</h3>
         </div>
         <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
     </div>
@@ -2051,7 +2330,7 @@ socket.on('kyc-location-updated', (data) => {
 	<div id="section-members-list" style="display: none;">
     <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
         <div style="display: flex; gap: 10px;">
-            <input type="text" id="member-search-input" placeholder="ค้นหา Username หรือชื่อ..." 
+            <input type="text" id="member-search-input" placeholder="Search Username..." 
                    style="flex: 1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; outline: none; font-family: 'Kanit';">
             <button onclick="loadMemberList()" style="background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 12px; cursor: pointer;">
                 <i class="fas fa-search"></i>
@@ -2059,11 +2338,11 @@ socket.on('kyc-location-updated', (data) => {
         </div>
         
         <select id="member-filter-status" onchange="loadMemberList()" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; font-family: 'Kanit'; outline: none; background: white;">
-            <option value="all">แสดงสมาชิกทั้งหมด</option>
-            <option value="kyc">เฉพาะคนที่ยืนยันตัวตนแล้ว (KYC)</option>
-            <option value="not_kyc">คนที่ยังไม่ได้ยืนยันตัวตน</option>
-            <option value="banned">เฉพาะคนที่ถูกแบน</option>
-        </select>
+				<option value="all" data-i18n-key="filter_all">แสดงสมาชิกทั้งหมด</option>
+				<option value="kyc" data-i18n-key="filter_kyc">เฉพาะคนที่ยืนยันตัวตนแล้ว (KYC)</option>
+				<option value="not_kyc" data-i18n-key="filter_not_kyc">คนที่ยังไม่ได้ยืนยันตัวตน</option>
+				<option value="banned" data-i18n-key="filter_banned">เฉพาะคนที่ถูกแบน</option>
+		</select>
     </div>
 
     <div id="members-list-container" style="display: flex; flex-direction: column; gap: 12px;">
