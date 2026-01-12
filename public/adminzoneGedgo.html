@@ -266,6 +266,15 @@ const translations = {
         'title_history': 'ประวัติธุรกรรม',
         'lbl_zone_owner': 'เจ้าของโซน',
         'loading_data': 'กำลังโหลดข้อมูล...',
+		'title_transactionsss': 'รายการธุรกรรม (เติมเงิน/ถอนเงิน)',
+        'title_kyc_verificationnn': 'คำขอยืนยันตัวตน (20 เมตร)',
+        'title_auto_msg_settings': 'ตั้งค่าข้อความอัตโนมัติ',
+        'title_zone_history': 'ประวัติธุรกรรมในโซน',
+        'title_zone_members': 'รายชื่อสมาชิกในโซน',
+        'label_withdraw': 'ถอนเงินสด',
+        'label_topup': 'เติมเงิน',
+        'status_approved': 'อนุมัติแล้ว',
+        'status_rejected': 'ปฏิเสธแล้ว',
     },
     'en': {
         'lbl_master_balance': 'Available Balance (Master)',
@@ -282,6 +291,15 @@ const translations = {
         'title_history': 'Transaction History',
         'lbl_zone_owner': 'Zone Owner',
         'loading_data': 'Loading data...',
+		'title_transactionsss': 'Transactions (Top-up/Withdraw)',
+        'title_kyc_verificationnn': 'KYC Verification (20m)',
+        'title_auto_msg_settings': 'Auto Message Settings',
+        'title_zone_history': 'Zone Transaction History',
+        'title_zone_members': 'Zone Member List',
+        'label_withdraw': 'Withdraw Cash',
+        'label_topup': 'Top-up',
+        'status_approved': 'Approved',
+        'status_rejected': 'Rejected',
     },
     'pt': {
         'lbl_master_balance': 'Saldo Disponível (Master)',
@@ -298,6 +316,15 @@ const translations = {
         'title_history': 'Histórico de Transações',
         'lbl_zone_owner': 'Proprietário da Zona',
         'loading_data': 'Carregando dados...',
+		'title_transactionsss': 'Transações (Depósito/Saque)',
+        'title_kyc_verificationnn': 'Verificação de Identidade (20m)',
+        'title_auto_msg_settings': 'Configuração de Mensagem Automática',
+        'title_zone_history': 'Histórico da Zona',
+        'title_zone_members': 'Membros da Zona',
+        'label_withdraw': 'Saque em Dinheiro',
+        'label_topup': 'Recarregar',
+        'status_approved': 'Aprovado',
+        'status_rejected': 'Rejeitado',
     }
 };
 
@@ -372,7 +399,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // --- ส่วนการแสดงผลตามประเภท (Switch View) ---
 
     if (type === 'topup') {
-        title.innerText = 'รายการธุรกรรม (เติมเงิน/ถอนเงิน)';
+        title.innerText = translations[currentLang].title_transactionsss;
         // ดึงของจาก storage กลับมาแสดง
         display.appendChild(topupListSec);
         display.appendChild(adminChatSec);
@@ -380,23 +407,23 @@ window.addEventListener('DOMContentLoaded', () => {
         adminChatSec.style.display = 'none';
         topupListSec.style.display = 'block';
         
-        document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">กำลังโหลด...</p>';
+        document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Loadding...</p>';
         loadTopupRequests(); 
 
     } else if (type === 'kyc') { // ✅ เพิ่ม Logic สำหรับหน้า KYC
-        title.innerText = 'คำขอยืนยันตัวตน (20 เมตร)';
+        title.innerText = translations[currentLang].title_kyc_verificationnn;
         // ดึงส่วน KYC จาก storage มาแสดงที่หน้าจอหลัก
         display.appendChild(kycListSec);
         
         kycListSec.style.display = 'block';
         
         // แสดงสถานะกำลังโหลด
-        document.getElementById('kyc-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบพิกัดและโหลดข้อมูล...</p>';
+        document.getElementById('kyc-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> Checking coordinates and loading data...</p>';
         loadKYCRequests(); // เรียกฟังก์ชันโหลดข้อมูล (ที่ต้องเขียนเพิ่ม)
 
     } else if (type === 'automessage') {
-        title.innerText = 'ตั้งค่าข้อความอัตโนมัติ';
-        display.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">กำลังดึงข้อมูล...</p>';
+        title.innerText = translations[currentLang].title_auto_msg_settings;
+        display.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">loading data...</p>';
         try {
             const adminName = localStorage.getItem('myUsername');
             const res = await fetch(`/api/admin/get-settings?admin=${adminName}`);
@@ -407,11 +434,11 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
     } else if (type === 'history') {
-        title.innerText = 'ประวัติธุรกรรมในโซน';
-        display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">กำลังโหลด...</p></div>`;
+        title.innerText = translations[currentLang].title_zone_history;
+        display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">loading...</p></div>`;
         loadAdminHistory(); 
     }else if (type === 'members') {
-    title.innerText = 'รายชื่อสมาชิกในระบบ';
+    title.innerText = translations[currentLang].title_zone_members;
     display.appendChild(membersListSec);
     membersListSec.style.display = 'block';
     loadMemberList(); 
@@ -433,16 +460,18 @@ async function loadAdminHistory() {
         const history = await res.json();
 
         if (history.length === 0) {
-            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-history fa-3x"></i><p>ยังไม่มีประวัติการจัดการ</p></div>';
+            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-history fa-3x"></i><p>No history data.</p></div>';
             return;
         }
 
         container.innerHTML = history.map(item => {
             const isWithdraw = item.type === 'WITHDRAW';
             const color = isWithdraw ? 'var(--danger)' : 'var(--primary)';
-            const label = isWithdraw ? 'ถอนเงินสด' : 'เติมเงิน';
+            const label = isWithdraw ? translations[currentLang].label_withdraw : translations[currentLang].label_topup;
             const icon = isWithdraw ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
-            const statusLabel = item.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว';
+            const statusLabel = item.status === 'approved' 
+				? translations[currentLang].status_approved 
+				: translations[currentLang].status_rejected;
             
             // ✅ ดึงสกุลเงินจาก item (Raw value เช่น BRL) ถ้าไม่มีให้ใช้ USD
             const currency = item.currency || 'USD';
