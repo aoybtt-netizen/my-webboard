@@ -845,6 +845,8 @@ const translations = {
 		'note_title': 'ข้อควรจำ',
         'note_bypass_title': '<i class="fas fa-star"></i> การกดบายพาส',
         'note_bypass_desc': 'การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ',
+		'swal_prevent_exit_title': 'ไม่สามารถออกจากหน้านี้ได้',
+        'swal_prevent_exit_text': (num) => `⚠️ คุณยังมีงานค้างในระบบ ${num} งาน กรุณาจัดการให้เรียบร้อยก่อนครับ`,
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1039,6 +1041,8 @@ const translations = {
 		'note_title': 'Important Notes',
         'note_bypass_title': '<i class="fas fa-star"></i> Bypassing Points',
         'note_bypass_desc': 'Bypassing is used to skip a delivery point in case the rider forgets to check in.',
+		'swal_prevent_exit_title': 'Cannot leave this page',
+        'swal_prevent_exit_text': (num) => `⚠️ You have ${num} pending tasks. Please complete them first.`,
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1233,6 +1237,8 @@ const translations = {
 		'note_title': 'Lembretes Importantes',
         'note_bypass_title': '<i class="fas fa-star"></i> Ignorar Pontos (Bypass)',
         'note_bypass_desc': 'O bypass é usado para pular um ponto de entrega caso o entregador esqueça de fazer o check-in.',
+		'swal_prevent_exit_title': 'Não é possível sair',
+        'swal_prevent_exit_text': (num) => `⚠️ Você tem ${num} tarefas pendentes. Conclua-as primeiro.`,
     }
 };
 
@@ -3041,8 +3047,8 @@ async function safeNavigateHome() {
         if (currentMercNum >= 1) {
             Swal.fire({
                 icon: 'warning',
-                title: 'ไม่สามารถออกจากหน้านี้ได้',
-                text: `⚠️ คุณยังมีงานค้างในระบบ ${currentMercNum} งาน กรุณาจัดการให้เรียบร้อยก่อนครับ`,
+				title: translations[currentLang].swal_prevent_exit_title,
+				text: translations[currentLang].swal_prevent_exit_text(currentMercNum),
                 confirmButtonColor: '#11998e'
             });
         } 
