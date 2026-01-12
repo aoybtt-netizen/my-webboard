@@ -146,28 +146,39 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 	
 	
 	<div style="margin-top: 15px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: left;">
-        <button onclick="openExchangeModal()" style="width: 100%; background: var(--secondary); color: var(--dark); border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Kanit';">
-            💱 แปลงเป็นเงินโซน
-        </button>
-    </div>
-	
-    <div class="sidebar-menu">
+    <button onclick="openExchangeModal()" 
+            style="width: 100%; background: var(--secondary); color: var(--dark); border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Kanit';"
+            data-i18n-key="btn_exchange_zone">
+        💱 แปลงเป็นเงินโซน
+    </button>
+</div>
+
+<div class="sidebar-menu">
     <div class="menu-item active" onclick="showContent('topup')">
-    <i class="fas fa-exchange-alt"></i> รายการธุรกรรม
-    <span class="badge" id="topup-count">0</span>
-	</div>
+        <i class="fas fa-exchange-alt"></i> 
+        <span data-i18n-key="menu_transactions">รายการธุรกรรม</span>
+        <span class="badge" id="topup-count">0</span>
+    </div>
+    
     <div class="menu-item" onclick="showContent('kyc')">
-        <i class="fas fa-id-card"></i> คำขอยืนยันตัวตน
+        <i class="fas fa-id-card"></i> 
+        <span data-i18n-key="menu_kyc">คำขอยืนยันตัวตน</span>
         <span class="badge" id="kyc-count">0</span>
     </div>
-	<div class="menu-item" onclick="showContent('members')">
-    <i class="fas fa-users"></i> รายชื่อสมาชิก
-	</div>
-    <div class="menu-item" onclick="showContent('automessage')">
-        <i class="fas fa-comment-dots"></i> ข้อความอัตโนมัติ (เลขบัญชี)
+    
+    <div class="menu-item" onclick="showContent('members')">
+        <i class="fas fa-users"></i> 
+        <span data-i18n-key="menu_members">รายชื่อสมาชิก</span>
     </div>
+    
+    <div class="menu-item" onclick="showContent('automessage')">
+        <i class="fas fa-comment-dots"></i> 
+        <span data-i18n-key="menu_automessage">ข้อความอัตโนมัติ (เลขบัญชี)</span>
+    </div>
+    
     <div class="menu-item" onclick="showContent('history')">
-        <i class="fas fa-history"></i> ประวัติธุรกรรมในโซน
+        <i class="fas fa-history"></i> 
+        <span data-i18n-key="menu_history">ประวัติธุรกรรมในโซน</span>
     </div>
 </div>
 </nav>
@@ -176,14 +187,15 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     <main class="main-content">
     <header class="top-bar">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em; color: var(--dark); padding: 5px;"></i>
-            <h2 id="content-title" style="margin:0; font-size: 1.1em; font-weight: 600;">คำขอเติมเงิน</h2>
-        </div>
+    <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em; color: var(--dark); padding: 5px;"></i>
+    <h2 id="content-title" style="margin:0; font-size: 1.1em; font-weight: 600;" data-i18n-key="title_topup">คำขอเติมเงิน</h2>
+</div>
 
         <div style="display: flex; align-items: center; gap: 15px;">
-            <div id="admin-info" style="text-align: right; display: none;"> <small style="display:block; color:#999; font-size:0.7em;">เจ้าของโซน</small>
-                <b id="admin-name" style="font-size: 0.9em;">...</b>
-            </div>
+            <div id="admin-info" style="text-align: right; display: none;"> 
+    <small style="display:block; color:#999; font-size:0.7em;" data-i18n-key="lbl_zone_owner">เจ้าของโซน</small>
+    <b id="admin-name" style="font-size: 0.9em;">...</b>
+</div>
             
             <a href="index.html" style="
                 text-decoration: none; 
@@ -204,9 +216,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 
     <div class="content-body" id="main-display">
         <div style="text-align:center; margin-top: 50px; color: #999;">
-            <i class="fas fa-spinner fa-spin fa-2x"></i>
-            <p>กำลังโหลดข้อมูล...</p>
-        </div>
+    <i class="fas fa-spinner fa-spin fa-2x"></i>
+    <p data-i18n-key="loading_data">กำลังโหลดข้อมูล...</p>
+</div>
     </div>
 </main>
 
@@ -241,12 +253,51 @@ const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 const translations = {
     'th': {
         'lbl_master_balance': 'ทุนคงเหลือ (Master)',
+		'btn_exchange_zone': '💱 แปลงเป็นเงินโซน',
+        'menu_transactions': 'รายการธุรกรรม',
+        'menu_kyc': 'คำขอยืนยันตัวตน',
+        'menu_members': 'รายชื่อสมาชิก',
+        'menu_automessage': 'ข้อความอัตโนมัติ (เลขบัญชี)',
+        'menu_history': 'ประวัติธุรกรรมในโซน',
+		'title_topup': 'คำขอเติมเงิน',
+        'title_kyc': 'คำขอยืนยันตัวตน',
+        'title_members': 'รายชื่อสมาชิก',
+        'title_automessage': 'ข้อความอัตโนมัติ',
+        'title_history': 'ประวัติธุรกรรม',
+        'lbl_zone_owner': 'เจ้าของโซน',
+        'loading_data': 'กำลังโหลดข้อมูล...',
     },
     'en': {
         'lbl_master_balance': 'Available Balance (Master)',
+		'btn_exchange_zone': '💱 Exchange to Zone Currency',
+        'menu_transactions': 'Transaction List',
+        'menu_kyc': 'KYC Verification',
+        'menu_members': 'Member List',
+        'menu_automessage': 'Auto Message (Bank Acc)',
+        'menu_history': 'Zone Transaction History',
+		'title_topup': 'Top-up Requests',
+        'title_kyc': 'KYC Verification',
+        'title_members': 'Member List',
+        'title_automessage': 'Auto Message',
+        'title_history': 'Transaction History',
+        'lbl_zone_owner': 'Zone Owner',
+        'loading_data': 'Loading data...',
     },
     'pt': {
         'lbl_master_balance': 'Saldo Disponível (Master)',
+		'btn_exchange_zone': '💱 Converter para Moeda da Zona',
+        'menu_transactions': 'Lista de Transações',
+        'menu_kyc': 'Verificação de Identidade',
+        'menu_members': 'Lista de Membros',
+        'menu_automessage': 'Mensagem Automática (Conta)',
+        'menu_history': 'Histórico de Transações',
+		'title_topup': 'Pedidos de Recarga',
+        'title_kyc': 'Verificação de Identidade',
+        'title_members': 'Lista de Membros',
+        'title_automessage': 'Mensagem Automática',
+        'title_history': 'Histórico de Transações',
+        'lbl_zone_owner': 'Proprietário da Zona',
+        'loading_data': 'Carregando dados...',
     }
 };
 
