@@ -1691,7 +1691,7 @@ function updateMarker(lat, lng) {
     selectedLng = lng;
     if (currentMarker) merchantMap.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lng], { draggable: true }).addTo(merchantMap);
-    document.getElementById('map-coords-display').innerText = `พิกัด: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('map-coords-display').innerText = `📍: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
 
