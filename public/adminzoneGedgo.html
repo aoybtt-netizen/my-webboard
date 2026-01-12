@@ -235,7 +235,8 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
     function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    
+    if (!sidebar || !overlay) return;
+
     sidebar.classList.toggle('active');
     
     if (sidebar.classList.contains('active')) {
@@ -1692,11 +1693,12 @@ async function deleteKYCRequest(requestId, username) {
 async function checkDistanceBeforeApprove(requestId, username, memberLat, memberLng) {
     const adminName = localStorage.getItem('myUsername');
     
-    // 1. ดึงพิกัดแอดมินปัจจุบัน
-    title: translations[currentLang].swal_check_gps,
-	allowOutsideClick: false,
-	target: document.getElementById('admin-kyc-detail-modal'),
-	didOpen: () => Swal.showLoading() });
+    Swal.fire({ 
+        title: translations[currentLang].swal_check_gps,
+        allowOutsideClick: false,
+        target: document.getElementById('admin-kyc-detail-modal'),
+        didOpen: () => Swal.showLoading() 
+    });
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const adminLat = pos.coords.latitude;
