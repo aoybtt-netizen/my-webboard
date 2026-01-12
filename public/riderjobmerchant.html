@@ -217,36 +217,35 @@
 <body>
 
     <div class="header">
-        <i class="fas fa-chevron-left" style="float: left; cursor: pointer;" onclick="history.back()"></i>
-        <b>รายละเอียดงานร้านค้า</b>
-    </div>
-	
-	
-	<div class="card-map-toggle">
+    <i class="fas fa-chevron-left" style="float: left; cursor: pointer;" onclick="history.back()"></i>
+    <b data-i18n-key="header_job_details">รายละเอียดงานร้านค้า</b>
+</div>
+
+<div class="card-map-toggle">
     <button class="btn-toggle-map" onclick="toggleRouteMap()">
-        <i class="fas fa-map-marked-alt"></i> <span id="map-btn-text">แสดงแผนที่เส้นทาง</span>
+        <i class="fas fa-map-marked-alt"></i> 
+        <span id="map-btn-text" data-i18n-key="btn_show_map">แสดงแผนที่เส้นทาง</span>
     </button>
     <div id="map-wrapper" class="hidden">
         <div id="route-map" style="height: 350px; width: 100%; border-radius: 12px; margin-top: 10px;"></div>
         <div class="map-legend">
-            <span><i class="fas fa-motorcycle" style="color: #3498db;"></i> คุณ</span>
-            <span><i class="fas fa-store" style="color: #27ae60;"></i> จุดรับงาน</span>
-            <span><i class="fas fa-box" style="color: #11998e;"></i> จุดส่ง</span>
+            <span data-i18n-key="legend_you"><i class="fas fa-motorcycle" style="color: #3498db;"></i> คุณ</span>
+            <span data-i18n-key="legend_pickup"><i class="fas fa-store" style="color: #27ae60;"></i> จุดรับงาน</span>
+            <span data-i18n-key="legend_dropoff"><i class="fas fa-box" style="color: #11998e;"></i> จุดส่ง</span>
         </div>
     </div>
 </div>
 
-
-    <div class="container" id="job-details">
-        <div style="text-align: center; padding: 50px;">
-            <i class="fas fa-spinner fa-spin fa-2x" style="color: #11998e;"></i>
-            <p>กำลังโหลดข้อมูลงาน...</p>
-        </div>
+<div class="container" id="job-details">
+    <div style="text-align: center; padding: 50px;">
+        <i class="fas fa-spinner fa-spin fa-2x" style="color: #11998e;"></i>
+        <p data-i18n-key="loading_job_info">กำลังโหลดข้อมูลงาน...</p>
     </div>
+</div>
 
-    <div class="footer-action" id="footer-btns">
-    <button id="btn-back" class="btn-action btn-back" onclick="history.back()">กลับ</button>
-    <button id="btn-accept-job" class="btn-action btn-accept" onclick="acceptJob()">กดรับงานนี้</button>
+<div class="footer-action" id="footer-btns">
+    <button id="btn-back" class="btn-action btn-back" onclick="history.back()" data-i18n-key="btn_back">กลับ</button>
+    <button id="btn-accept-job" class="btn-action btn-accept" onclick="acceptJob()" data-i18n-key="btn_accept_job">กดรับงานนี้</button>
 </div>
 
     <script>
@@ -257,6 +256,81 @@
         const urlParams = new URLSearchParams(window.location.search);
         const jobId = urlParams.get('view_id') || urlParams.get('id');
         const myUsername = localStorage.getItem('myUsername');
+		
+		const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+		
+		
+		
+		
+const translations = {
+    'th': {
+        'header_job_details': 'รายละเอียดงานร้านค้า',
+        'btn_show_map': 'แสดงแผนที่เส้นทาง',
+        'btn_hide_map': 'ซ่อนแผนที่',
+        'legend_you': 'คุณ',
+        'legend_pickup': 'จุดรับงาน',
+        'legend_dropoff': 'จุดส่ง',
+        'loading_job_info': 'กำลังโหลดข้อมูลงาน...',
+        'btn_back': 'กลับ',
+        'btn_accept_job': 'กดรับงานนี้',
+    },
+    'en': {
+        'header_job_details': 'Merchant Job Details',
+        'btn_show_map': 'Show Route Map',
+        'btn_hide_map': 'Hide Map',
+        'legend_you': 'You',
+        'legend_pickup': 'Pickup Point',
+        'legend_dropoff': 'Drop-off',
+        'loading_job_info': 'Loading job details...',
+        'btn_back': 'Back',
+        'btn_accept_job': 'Accept this Job',
+    },
+    'pt': {
+        'header_job_details': 'Detalhes do Pedido',
+        'btn_show_map': 'Ver Mapa da Rota',
+        'btn_hide_map': 'Ocultar Mapa',
+        'legend_you': 'Você',
+        'legend_pickup': 'Ponto de Retirada',
+        'legend_dropoff': 'Entrega',
+        'loading_job_info': 'Carregando detalhes...',
+        'btn_back': 'Voltar',
+        'btn_accept_job': 'Aceitar este Trabalho',
+    }
+};
+
+function applyMerchantTranslations() {
+    console.log(`[i18n] Applying translations for: ${currentLang}`);
+
+    // ใช้ data-i18n-key เป็นหลักตัวเดียวพอครับ
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+        const key = el.getAttribute('data-i18n-key');
+        const translatedText = translations[currentLang]?.[key];
+
+        if (translatedText) {
+            // 🚩 กรณีที่ 1: ถ้าเป็นช่องกรอกข้อมูล (Input / Textarea) ให้เปลี่ยนที่ Placeholder
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.placeholder = translatedText;
+            } 
+            // 🚩 กรณีที่ 2: ถ้าเป็น Element ทั่วไปที่มีไอคอน <i> อยู่ข้างใน
+            else {
+                const icon = el.querySelector('i');
+                if (icon) {
+                    el.innerHTML = ''; // ล้างข้อมูลเก่า
+                    el.appendChild(icon); // ใส่ไอคอนกลับที่เดิม
+                    el.insertAdjacentHTML('beforeend', ' ' + translatedText); // เติมข้อความ
+                } else {
+                    // 🚩 กรณีที่ 3: ข้อความทั่วไปที่ไม่มีไอคอน
+                    el.innerText = translatedText;
+                }
+            }
+        }
+    });
+}
+
+// สั่งรันตอนโหลดหน้าจอ
+window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+});
 		
 		// 🚩 เช็คว่าถ้าไม่มี ID งาน ให้ดีดกลับหน้าแรกทันที ไม่ต้องรอ Loading
 if (!jobId) {
@@ -376,16 +450,18 @@ function updateFooterButtons(post) {
 
 
 	function toggleRouteMap() {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const wrapper = document.getElementById('map-wrapper');
     const btnText = document.getElementById('map-btn-text');
     
     if (wrapper.classList.contains('hidden')) {
         wrapper.classList.remove('hidden');
-        btnText.innerText = "ซ่อนแผนที่เส้นทาง";
-        initRouteMap(); // เรียกวาดแผนที่
+        btnText.innerText = translations[currentLang].btn_hide_map || "ซ่อนแผนที่เส้นทาง";
+        
+        initRouteMap();
     } else {
         wrapper.classList.add('hidden');
-        btnText.innerText = "แสดงแผนที่เส้นทาง";
+        btnText.innerText = translations[currentLang].btn_show_map || "แสดงแผนที่เส้นทาง";
     }
 }
 
