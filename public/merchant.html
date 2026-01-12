@@ -1244,35 +1244,32 @@ const translations = {
 
 
 function applyMerchantTranslations() {
+    console.log(`[i18n] Applying translations for: ${currentLang}`);
 
-    console.log(`[i18n] Using local language setting: ${currentLang}`);
-
-    // 1. แปลข้อความทั่วไปที่มี data-i18n-key
+    // ใช้ data-i18n-key เป็นหลักตัวเดียวพอครับ
     document.querySelectorAll('[data-i18n-key]').forEach(el => {
         const key = el.getAttribute('data-i18n-key');
-        if (translations[currentLang] && translations[currentLang][key]) {
-            
-            // รักษาไอคอน <i> ไว้เหมือนเดิม
-            const icon = el.querySelector('i');
-            if (icon) {
-                const translatedText = translations[currentLang][key];
-                el.innerHTML = ''; // ล้างข้อมูลเก่า
-                el.appendChild(icon); // ใส่ไอคอนกลับไป
-                el.insertAdjacentHTML('beforeend', ' ' + translatedText); // เติมข้อความแปล
-            } else {
-                el.innerText = translations[currentLang][key];
+        const translatedText = translations[currentLang]?.[key];
+
+        if (translatedText) {
+            // 🚩 กรณีที่ 1: ถ้าเป็นช่องกรอกข้อมูล (Input / Textarea) ให้เปลี่ยนที่ Placeholder
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.placeholder = translatedText;
+            } 
+            // 🚩 กรณีที่ 2: ถ้าเป็น Element ทั่วไปที่มีไอคอน <i> อยู่ข้างใน
+            else {
+                const icon = el.querySelector('i');
+                if (icon) {
+                    el.innerHTML = ''; // ล้างข้อมูลเก่า
+                    el.appendChild(icon); // ใส่ไอคอนกลับที่เดิม
+                    el.insertAdjacentHTML('beforeend', ' ' + translatedText); // เติมข้อความ
+                } else {
+                    // 🚩 กรณีที่ 3: ข้อความทั่วไปที่ไม่มีไอคอน
+                    el.innerText = translatedText;
+                }
             }
         }
     });
-
-    // 2. แปลพวก Placeholder (ช่องกรอกข้อมูล)
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const key = el.getAttribute('data-i18n-placeholder');
-        if (translations[currentLang] && translations[currentLang][key]) {
-            el.placeholder = translations[currentLang][key];
-        }
-    });
-	
 }
 
 // สั่งรันตอนโหลดหน้าจอ
