@@ -818,6 +818,33 @@ const translations = {
         'lbl_delivery_budget': '<i class="fas fa-coins"></i> งบประมาณจ้างงาน (บาท)',
         'btn_confirm_this_data': 'ยืนยันข้อมูลนี้',
         'btn_edit_new': 'แก้ไขใหม่',
+		'sidebar_main_title': 'จัดการงาน',
+        'sidebar_tab_notif': '<i class="fas fa-bell"></i> แจ้งเตือนสถานะ',
+        'sidebar_tab_details': '<i class="fas fa-list-ol"></i> ลำดับการส่งงาน',
+        'sidebar_tab_chat': '<i class="fas fa-comments"></i> แชทกับไรเดอร์',
+        'plh_chat_input': 'พิมพ์ข้อความ...',
+		'tpl_title': '<i class="fas fa-save"></i> บันทึกออเดอร์นี้',
+        'tpl_label_name': 'ชื่อเรียกออเดอร์ (เช่น ออเดอร์เอ)',
+        'tpl_plh_name': 'ตั้งชื่อที่จำง่าย...',
+        'tpl_label_voice': 'คำสั่งเสียง (Keyword)',
+        'tpl_plh_voice': 'เช่น ออเดอร์เอ',
+        'tpl_note': '* พูดคำนี้เพื่อสั่งงานอัตโนมัติ',
+        'btn_save_template': 'บันทึกสำเร็จรูป',
+		'tpl_list_title': '<i class="fas fa-bookmark"></i> ออเดอร์ที่บันทึกไว้',
+        'btn_close_window': 'ปิดหน้าต่าง',
+		'guide_title': 'คู่มือการสั่งงานด้วยเสียง',
+        'guide_method_1_title': '<i class="fas fa-star"></i> วิธีที่ 1: สั่งงานด้วย "ชื่อออเดอร์"',
+        'guide_method_1_desc': 'พูดคำว่า <b>"ออเดอร์"</b> ตามด้วยชื่อออเดอร์ที่คุณบันทึกไว้ ระบบจะดึงข้อมูลพิกัดและราคามาให้ทันที',
+        'guide_method_1_ex': '<b>ตัวอย่าง:</b> "ออเดอร์เอ", "ออเดอร์ข้าวกล่อง"',
+        'guide_method_2_title': '<i class="fas fa-star"></i> วิธีที่ 2: สั่งงานแบบระบุพิกัดแยกส่วน',
+        'guide_method_2_desc': 'พูดประเภทงาน พิกัด และราคา รวมกันในประโยคเดียว',
+        'guide_method_2_sub': 'คำสั่งมี 3 แบบ ส่งเอกสาร-ส่งสินค้า-ส่งอาหาร ตามด้วยชื่อพิกัดที่บันทึก',
+        'guide_method_2_ex': '<b>ตัวอย่าง:</b> "ส่งเอกสารไป <u>บ้านลูกค้าเอ</u> <u>ห้าสิบ</u>บาท"',
+        'guide_note': '* หมายเหตุ: กรุณาตั้งชื่อพิกัดหรือเทมเพลตให้สั้นและชัดเจน เพื่อความแม่นยำของ AI',
+        'btn_got_it': 'เข้าใจแล้ว',
+		'note_title': 'ข้อควรจำ',
+        'note_bypass_title': '<i class="fas fa-star"></i> การกดบายพาส',
+        'note_bypass_desc': 'การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -985,6 +1012,33 @@ const translations = {
         'lbl_delivery_budget': '<i class="fas fa-coins"></i> Delivery Budget (THB)',
         'btn_confirm_this_data': 'Confirm Data',
         'btn_edit_new': 'Edit',
+		'sidebar_main_title': 'Manage Task',
+        'sidebar_tab_notif': '<i class="fas fa-bell"></i> Status Updates',
+        'sidebar_tab_details': '<i class="fas fa-list-ol"></i> Delivery Sequence',
+        'sidebar_tab_chat': '<i class="fas fa-comments"></i> Chat with Rider',
+        'plh_chat_input': 'Type a message...',
+		'tpl_title': '<i class="fas fa-save"></i> Save Order Template',
+        'tpl_label_name': 'Template Name (e.g., Order A)',
+        'tpl_plh_name': 'Enter easy name...',
+        'tpl_label_voice': 'Voice Command (Keyword)',
+        'tpl_plh_voice': 'e.g., Order A',
+        'tpl_note': '* Say this keyword to automate ordering',
+        'btn_save_template': 'Save Template',
+		'tpl_list_title': '<i class="fas fa-bookmark"></i> Saved Orders',
+        'btn_close_window': 'Close Window',
+		'guide_title': 'Voice Command Guide',
+        'guide_method_1_title': '<i class="fas fa-star"></i> Method 1: Use "Order Name"',
+        'guide_method_1_desc': 'Say <b>"Order"</b> followed by your saved template name. The system will auto-fill coordinates and budget.',
+        'guide_method_1_ex': '<b>Example:</b> "Order A", "Order Box Lunch"',
+        'guide_method_2_title': '<i class="fas fa-star"></i> Method 2: Detailed Command',
+        'guide_method_2_desc': 'Speak task type, location, and budget in one sentence.',
+        'guide_method_2_sub': 'Commands: Send Document / Send Product / Send Food + Saved Location name.',
+        'guide_method_2_ex': '<b>Example:</b> "Send document to <u>Customer A</u> <u>fifty</u> baht"',
+        'guide_note': '* Note: Use short and clear names for better AI accuracy.',
+        'btn_got_it': 'Got it',
+		'note_title': 'Important Notes',
+        'note_bypass_title': '<i class="fas fa-star"></i> Bypassing Points',
+        'note_bypass_desc': 'Bypassing is used to skip a delivery point in case the rider forgets to check in.',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1152,6 +1206,33 @@ const translations = {
         'lbl_delivery_budget': '<i class="fas fa-coins"></i> Orçamento de Entrega (THB)',
         'btn_confirm_this_data': 'Confirmar Dados',
         'btn_edit_new': 'Editar',
+		'sidebar_main_title': 'Gerenciar Tarefa',
+        'sidebar_tab_notif': '<i class="fas fa-bell"></i> Notificações',
+        'sidebar_tab_details': '<i class="fas fa-list-ol"></i> Sequência de Entrega',
+        'sidebar_tab_chat': '<i class="fas fa-comments"></i> Chat com Entregador',
+        'plh_chat_input': 'Digite uma mensagem...',
+		'tpl_title': '<i class="fas fa-save"></i> Salvar Modelo de Pedido',
+        'tpl_label_name': 'Nome do Modelo (ex: Pedido A)',
+        'tpl_plh_name': 'Digite um nome fácil...',
+        'tpl_label_voice': 'Comando de Voz (Palavra-chave)',
+        'tpl_plh_voice': 'ex: Pedido A',
+        'tpl_note': '* Fale esta palavra para automatizar o pedido',
+        'btn_save_template': 'Salvar Modelo',
+		'tpl_list_title': '<i class="fas fa-bookmark"></i> Pedidos Salvos',
+        'btn_close_window': 'Fechar Janela',
+		'guide_title': 'Guia de Comando de Voz',
+        'guide_method_1_title': '<i class="fas fa-star"></i> Método 1: Usar "Nome do Pedido"',
+        'guide_method_1_desc': 'Diga <b>"Pedido"</b> seguido pelo nome do seu modelo salvo. O sistema preencherá tudo automaticamente.',
+        'guide_method_1_ex': '<b>Exemplo:</b> "Pedido A", "Pedido Marmita"',
+        'guide_method_2_title': '<i class="fas fa-star"></i> Método 2: Comando Detalhado',
+        'guide_method_2_desc': 'Diga o tipo de tarefa, local e valor em uma única frase.',
+        'guide_method_2_sub': 'Comandos: Enviar Documento / Enviar Produto / Enviar Comida + Nome do local salvo.',
+        'guide_method_2_ex': '<b>Exemplo:</b> "Enviar documento para <u>Cliente A</u> <u>cinquenta</u> reais"',
+        'guide_note': '* Nota: Use nomes curtos e claros para melhor precisão da IA.',
+        'btn_got_it': 'Entendi',
+		'note_title': 'Lembretes Importantes',
+        'note_bypass_title': '<i class="fas fa-star"></i> Ignorar Pontos (Bypass)',
+        'note_bypass_desc': 'O bypass é usado para pular um ponto de entrega caso o entregador esqueça de fazer o check-in.',
     }
 };
 
@@ -3173,9 +3254,9 @@ window.onbeforeunload = function() {
 
 	<div id="right-sidebar" class="right-sidebar">
     <div class="sidebar-header" style="background: #11998e;">
-        <span onclick="closeRightSidebar()" style="cursor:pointer;"><i class="fas fa-times"></i></span>
-        <h3 id="sidebar-task-title" style="margin: 0; font-size: 1.1em;">จัดการงาน</h3>
-    </div>
+    <span onclick="closeRightSidebar()" style="cursor:pointer;"><i class="fas fa-times"></i></span>
+    <h3 id="sidebar-task-title" style="margin: 0; font-size: 1.1em;" data-i18n-key="sidebar_main_title">จัดการงาน</h3>
+</div>
     
     <div class="tab-menu">
         <div class="tab-item active" onclick="switchTab('notif')"><i class="fas fa-bell"></i></div>
@@ -3184,26 +3265,26 @@ window.onbeforeunload = function() {
     </div>
 
     <div id="tab-notif" class="tab-content">
-        <h4><i class="fas fa-bell"></i> แจ้งเตือนสถานะ</h4>
-        <div id="notif-list"></div>
-    </div>
+    <h4 data-i18n-key="sidebar_tab_notif"><i class="fas fa-bell"></i> แจ้งเตือนสถานะ</h4>
+    <div id="notif-list"></div>
+</div>
 
     <div id="tab-details" class="tab-content hidden">
-        <h4><i class="fas fa-list-ol"></i> ลำดับการส่งงาน</h4>
-        <div id="sidebar-details-content"></div>
-    </div>
+    <h4 data-i18n-key="sidebar_tab_details"><i class="fas fa-list-ol"></i> ลำดับการส่งงาน</h4>
+    <div id="sidebar-details-content"></div>
+	</div>
 
     <div id="tab-chat" class="tab-content hidden" style="display: flex; flex-direction: column; height: 100%;">
-        <h4><i class="fas fa-comments"></i> แชทกับไรเดอร์</h4>
-        <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; margin-bottom: 10px;">
-            </div>
-        <div style="display: flex; gap: 5px;">
-            <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." style="margin-bottom: 0;">
-            <button onclick="sendSidebarChat()" style="width: 50px; background: #11998e; color: white; border: none; border-radius: 8px;">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
+    <h4 data-i18n-key="sidebar_tab_chat"><i class="fas fa-comments"></i> แชทกับไรเดอร์</h4>
+    <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; margin-bottom: 10px;">
     </div>
+    <div style="display: flex; gap: 5px;">
+        <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." style="margin-bottom: 0;" data-i18n-key="plh_chat_input">
+        <button onclick="sendSidebarChat()" style="width: 50px; background: #11998e; color: white; border: none; border-radius: 8px;">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
 </div>
 <div id="right-sidebar-overlay" class="sidebar-overlay hidden" onclick="closeRightSidebar()"></div>
 
@@ -3211,36 +3292,42 @@ window.onbeforeunload = function() {
 	<div id="save-template-modal" class="modal-overlay hidden" style="z-index: 9500;">
     <div class="modal-box" style="max-width: 400px;">
         <div style="background: #11998e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0;">
-            <h3 style="margin: 0;"><i class="fas fa-save"></i> บันทึกออเดอร์นี้</h3>
+            <h3 style="margin: 0;" data-i18n-key="tpl_title"><i class="fas fa-save"></i> บันทึกออเดอร์นี้</h3>
         </div>
-        <label>ชื่อเรียกออเดอร์ (เช่น ออเดอร์เอ)</label>
-        <input type="text" id="tpl-name" placeholder="ตั้งชื่อที่จำง่าย...">
+        <label data-i18n-key="tpl_label_name">ชื่อเรียกออเดอร์ (เช่น ออเดอร์เอ)</label>
+        <input type="text" id="tpl-name" placeholder="ตั้งชื่อที่จำง่าย..." data-i18n-key="tpl_plh_name">
         
-        <label>คำสั่งเสียง (Keyword)</label>
+        <label data-i18n-key="tpl_label_voice">คำสั่งเสียง (Keyword)</label>
         <div style="display: flex; gap: 5px;">
-            <input type="text" id="tpl-voice" placeholder="เช่น ออเดอร์เอ" style="margin-bottom: 0;">
+            <input type="text" id="tpl-voice" placeholder="เช่น ออเดอร์เอ" style="margin-bottom: 0;" data-i18n-key="tpl_plh_voice">
             <button onclick="startVoiceForTemplate(this)" style="background: #f39c12; color: white; border: none; border-radius: 8px; width: 45px; cursor: pointer;">
                 <i class="fas fa-microphone"></i>
             </button>
         </div>
-        <p style="font-size: 0.8em; color: #888; margin-top: 5px;">* พูดคำนี้เพื่อสั่งงานอัตโนมัติ</p>
+        <p style="font-size: 0.8em; color: #888; margin-top: 5px;" data-i18n-key="tpl_note">* พูดคำนี้เพื่อสั่งงานอัตโนมัติ</p>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button class="btn-submit" onclick="confirmSaveTemplate()">บันทึกสำเร็จรูป</button>
-            <button class="btn-submit" onclick="closeSaveTplModal()" style="background: #999;">ยกเลิก</button>
+            <button class="btn-submit" onclick="confirmSaveTemplate()" data-i18n-key="btn_save_template">บันทึกสำเร็จรูป</button>
+            <button class="btn-submit" onclick="closeSaveTplModal()" style="background: #999;" data-i18n-key="btn_cancel">ยกเลิก</button>
         </div>
     </div>
 </div>
 
 <div id="list-order-modal" class="modal-overlay hidden" style="z-index: 9000;">
     <div class="modal-box" style="max-width: 450px;">
-        <div style="background: #11998e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0;">
-            <h3 style="margin: 0;"><i class="fas fa-bookmark"></i> ออเดอร์ที่บันทึกไว้</h3>
-        </div>
-        <div id="template-list-content" style="max-height: 400px; overflow-y: auto;">
-            </div>
-        <button class="btn-submit" onclick="closeListOrderModal()" style="background: #999; margin-top: 20px; border-radius: 8px;">ปิดหน้าต่าง</button>
+    <div style="background: #11998e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0;">
+        <h3 style="margin: 0;" data-i18n-key="tpl_list_title">
+            <i class="fas fa-bookmark"></i> ออเดอร์ที่บันทึกไว้
+        </h3>
     </div>
+    <div id="template-list-content" style="max-height: 400px; overflow-y: auto;">
+        </div>
+    <button class="btn-submit" onclick="closeListOrderModal()" 
+            style="background: #999; margin-top: 20px; border-radius: 8px;" 
+            data-i18n-key="btn_close_window">
+        ปิดหน้าต่าง
+    </button>
+</div>
 </div>
 
 
@@ -3248,38 +3335,38 @@ window.onbeforeunload = function() {
 	
 	<div id="how-to-voice-modal" class="modal-overlay hidden" style="z-index: 9999;">
     <div class="modal-box" style="max-width: 450px; text-align: left;">
-        <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
-            <i class="fas fa-microphone-alt" style="font-size: 2.5em; margin-bottom: 10px;"></i>
-            <h3 style="margin: 0;">คู่มือการสั่งงานด้วยเสียง</h3>
-        </div>
-
-        <div style="padding: 10px;">
-            <p style="font-weight: bold; color: #11998e;"><i class="fas fa-star"></i> วิธีที่ 1: สั่งงานด้วย "ชื่อออเดอร์"</p>
-            <p style="font-size: 0.9em; color: #666; margin-left: 15px;">
-                พูดคำว่า <b>"ออเดอร์"</b> ตามด้วยชื่อออเดอร์ที่คุณบันทึกไว ระบบจะดึงข้อมูลพิกัดและราคามาให้ทันที
-            </p>
-            <div style="background: #fff4e5; padding: 10px; border-radius: 8px; font-size: 0.85em; margin-bottom: 20px;">
-                <b>ตัวอย่าง:</b> "ออเดอร์เอ", "ออเดอร์ข้าวกล่อง"
-            </div>
-
-            <p style="font-weight: bold; color: #11998e;"><i class="fas fa-star"></i> วิธีที่ 2: สั่งงานแบบระบุพิกัดแยกส่วน</p>
-            <p style="font-size: 0.9em; color: #666; margin-left: 15px;">
-                พูดประเภทงาน พิกัด และราคา รวมกันในประโยคเดียว (ระบบจะดึงพิกัดจากสมุดที่อยู่ของคุณ)
-            </p>
-			<p style="font-size: 0.9em; color: #666; margin-left: 15px;">
-                คำสั่งมี3แบบ ส่งเอกสาร-ส่งสินค้า-ส่งอาหาร ตามด้วยชื่อพิกัดที่บันทึก
-            </p>
-            <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; font-size: 0.85em; margin-bottom: 20px;">
-                <b>ตัวอย่าง:</b> "ส่งเอกสารไป <u>บ้านลูกค้าเอ</u> <u>ห้าสิบ</u>บาท", "ส่งของไป <u>คลังสินค้า</u> <u>แปดสิบ</u>"
-            </div>
-
-            <p style="font-size: 0.8em; color: #999; border-top: 1px solid #eee; pt-10;">
-                * หมายเหตุ: กรุณาตั้งชื่อพิกัดหรือเทมเพลตให้สั้นและชัดเจน เพื่อความแม่นยำของ AI
-            </p>
-        </div>
-
-        <button class="btn-submit" onclick="closeHowToVoice()" style="margin-top: 20px;">เข้าใจแล้ว</button>
+    <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
+        <i class="fas fa-microphone-alt" style="font-size: 2.5em; margin-bottom: 10px;"></i>
+        <h3 style="margin: 0;" data-i18n-key="guide_title">คู่มือการสั่งงานด้วยเสียง</h3>
     </div>
+
+    <div style="padding: 10px;">
+        <p style="font-weight: bold; color: #11998e;" data-i18n-key="guide_method_1_title"><i class="fas fa-star"></i> วิธีที่ 1: สั่งงานด้วย "ชื่อออเดอร์"</p>
+        <p style="font-size: 0.9em; color: #666; margin-left: 15px;" data-i18n-key="guide_method_1_desc">
+            พูดคำว่า <b>"ออเดอร์"</b> ตามด้วยชื่อออเดอร์ที่คุณบันทึกไว้ ระบบจะดึงข้อมูลพิกัดและราคามาให้ทันที
+        </p>
+        <div style="background: #fff4e5; padding: 10px; border-radius: 8px; font-size: 0.85em; margin-bottom: 20px;" data-i18n-key="guide_method_1_ex">
+            <b>ตัวอย่าง:</b> "ออเดอร์เอ", "ออเดอร์ข้าวกล่อง"
+        </div>
+
+        <p style="font-weight: bold; color: #11998e;" data-i18n-key="guide_method_2_title"><i class="fas fa-star"></i> วิธีที่ 2: สั่งงานแบบระบุพิกัดแยกส่วน</p>
+        <p style="font-size: 0.9em; color: #666; margin-left: 15px;" data-i18n-key="guide_method_2_desc">
+            พูดประเภทงาน พิกัด และราคา รวมกันในประโยคเดียว (ระบบจะดึงพิกัดจากสมุดที่อยู่ของคุณ)
+        </p>
+        <p style="font-size: 0.9em; color: #666; margin-left: 15px;" data-i18n-key="guide_method_2_sub">
+            คำสั่งมี 3 แบบ ส่งเอกสาร-ส่งสินค้า-ส่งอาหาร ตามด้วยชื่อพิกัดที่บันทึก
+        </p>
+        <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; font-size: 0.85em; margin-bottom: 20px;" data-i18n-key="guide_method_2_ex">
+            <b>ตัวอย่าง:</b> "ส่งเอกสารไป <u>บ้านลูกค้าเอ</u> <u>ห้าสิบ</u>บาท", "ส่งของไป <u>คลังสินค้า</u> <u>แปดสิบ</u>"
+        </div>
+
+        <p style="font-size: 0.8em; color: #999; border-top: 1px solid #eee; padding-top: 10px;" data-i18n-key="guide_note">
+            * หมายเหตุ: กรุณาตั้งชื่อพิกัดหรือเทมเพลตให้สั้นและชัดเจน เพื่อความแม่นยำของ AI
+        </p>
+    </div>
+
+    <button class="btn-submit" onclick="closeHowToVoice()" style="margin-top: 20px;" data-i18n-key="btn_got_it">เข้าใจแล้ว</button>
+</div>
 </div>
 
 
@@ -3287,20 +3374,18 @@ window.onbeforeunload = function() {
 	<div id="info-use-modal" class="modal-overlay hidden" style="z-index: 9999;">
     <div class="modal-box" style="max-width: 450px; text-align: left;">
         <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
-            <i class="fas fa-info" style="font-size: 2.5em; margin-bottom: 10px;"></i>
-            <h3 style="margin: 0;">ข้อควรจำ</h3>
-        </div>
+    <i class="fas fa-info" style="font-size: 2.5em; margin-bottom: 10px;"></i>
+    <h3 style="margin: 0;" data-i18n-key="note_title">ข้อควรจำ</h3>
+</div>
 
         <div style="padding: 10px;">
-            <p style="font-weight: bold; color: #11998e;"><i class="fas fa-star"></i> การกดบายพาส</p>
-            <p style="font-size: 0.9em; color: #666; margin-left: 15px;">
-                การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ
-            </p>
+    <p style="font-weight: bold; color: #11998e;" data-i18n-key="note_bypass_title"><i class="fas fa-star"></i> การกดบายพาส</p>
+    <p style="font-size: 0.9em; color: #666; margin-left: 15px;" data-i18n-key="note_bypass_desc">
+        การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ
+    </p>            
+</div>
 
-            
-        </div>
-
-        <button class="btn-submit" onclick="closeInfo()" style="margin-top: 20px;">เข้าใจแล้ว</button>
+        <button class="btn-submit" onclick="closeInfo()" style="margin-top: 20px;" data-i18n-key="btn_got_it">เข้าใจแล้ว</button>
     </div>
 </div>
 
