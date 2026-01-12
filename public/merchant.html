@@ -783,6 +783,41 @@ const translations = {
         'confirm_reject_rider': 'ต้องการปฏิเสธคำขอจากไรเดอร์คนนี้ใช่หรือไม่?',
         'alert_reject_success': 'ปฏิเสธคำขอแล้ว',
         'err_generic': 'เกิดข้อผิดพลาด',
+		'notif_new_request': 'คำขอรับงานใหม่!',
+        'notif_rider_wants': (name) => `ไรเดอร์ <b>${name}</b> ต้องการรับงานนี้`,
+        'btn_confirm_assign': 'กดยืนยันให้งาน',
+        'prompt_rating': (name) => `กรุณาให้คะแนนคุณ ${name} (1-5 คะแนน):`,
+        'err_rating_range': 'กรุณาใส่คะแนนระหว่าง 1 ถึง 5 ครับ',
+        'confirm_bypass': 'คุณต้องการยืนยันการเช็คอินจุดนี้แทนไรเดอร์ใช่หรือไม่?',
+        'msg_task_complete': '✅ งานนี้ส่งครบทุกจุดและปิดงานเรียบร้อยแล้ว',
+        'msg_bypass_success': '✅ บายพาสจุดส่งเรียบร้อย',
+		'confirm_delete_template': 'คุณต้องการลบออเดอร์สำเร็จรูปนี้ใช่หรือไม่?',
+        'msg_delete_template_success': '🗑️ ลบออเดอร์สำเร็จรูปเรียบร้อย!',
+		'no_templates_found': 'ยังไม่มีออเดอร์ที่บันทึกไว้',
+        'unit_stop_short': 'จุด',
+		'log_server_error': '❌ ไม่สามารถดึงข้อมูลจาก Server ได้:',
+        'before_unload_msg': 'คุณยังมีงานค้างอยู่ ต้องการออกจากหน้าจอนี้จริงหรือไม่?',
+        'modal_title_address_book': '🔖 สมุดที่อยู่ของคุณ',
+        'modal_title_pin_map': '📍 ปักหมุดพิกัด',
+        'btn_close': 'ปิด',
+		'lbl_map_name': '<i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)',
+        'plh_map_name': 'ระบุชื่อสถานที่...',
+        'lbl_map_phone': '<i class="fas fa-phone"></i> เบอร์โทรศัพท์ (ถ้ามี)',
+        'plh_map_phone': 'เช่น 081-234-5678',
+        'lbl_map_voice': '<i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword สำหรับสั่งงาน)',
+        'plh_map_voice': 'พูดหรือพิมพ์คำสั้นๆ เช่น ลาดพร้าว',
+        'lbl_map_coords_waiting': 'พิกัด: กรุณาเลือกจุดบนแผนที่',
+        'btn_confirm_coords': 'ยืนยันพิกัด',
+        'btn_cancel': 'ยกเลิก',
+		'title_manage_locations': '<i class="fas fa-list"></i> จัดการรายการพิกัด',
+        'btn_close_window': 'ปิดหน้าต่าง',
+        'ai_summary_success': 'AI วิเคราะห์คำสั่งเสียงสำเร็จ',
+        'ai_summary_subtitle': 'ตรวจสอบความถูกต้องก่อนเริ่มสร้างงาน',
+        'lbl_task_and_title': '<i class="fas fa-file-signature"></i> ประเภทงานและหัวข้อ',
+        'lbl_stops_sequence': '<i class="fas fa-map-marked-alt"></i> ลำดับจุดส่งงานที่พบ',
+        'lbl_delivery_budget': '<i class="fas fa-coins"></i> งบประมาณจ้างงาน (บาท)',
+        'btn_confirm_this_data': 'ยืนยันข้อมูลนี้',
+        'btn_edit_new': 'แก้ไขใหม่',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -915,6 +950,41 @@ const translations = {
         'confirm_reject_rider': 'Do you want to reject this rider\'s request?',
         'alert_reject_success': 'Request rejected.',
         'err_generic': 'Error occurred',
+		'notif_new_request': 'New Job Request!',
+        'notif_rider_wants': (name) => `Rider <b>${name}</b> wants to take this job`,
+        'btn_confirm_assign': 'Confirm Assignment',
+        'prompt_rating': (name) => `Please rate ${name} (1-5 points):`,
+        'err_rating_range': 'Please enter a score between 1 and 5',
+        'confirm_bypass': 'Do you want to confirm check-in at this point for the rider?',
+        'msg_task_complete': '✅ All points delivered. Job closed successfully.',
+        'msg_bypass_success': '✅ Point bypassed successfully',
+		'confirm_delete_template': 'Are you sure you want to delete this order template?',
+        'msg_delete_template_success': '🗑️ Order template deleted successfully!',
+		'no_templates_found': 'No saved templates found',
+        'unit_stop_short': 'stops',
+		'log_server_error': '❌ Cannot fetch data from server:',
+        'before_unload_msg': 'You have pending tasks. Are you sure you want to leave?',
+        'modal_title_address_book': '🔖 Your Address Book',
+        'modal_title_pin_map': '📍 Pin Location',
+        'btn_close': 'Close',
+		'lbl_map_name': '<i class="fas fa-tag"></i> Name this location (e.g., Customer A House)',
+        'plh_map_name': 'Enter location name...',
+        'lbl_map_phone': '<i class="fas fa-phone"></i> Phone Number (Optional)',
+        'plh_map_phone': 'e.g., 081-234-5678',
+        'lbl_map_voice': '<i class="fas fa-microphone"></i> Voice Command (Order Keyword)',
+        'plh_map_voice': 'Speak or type short keyword',
+        'lbl_map_coords_waiting': 'Coordinates: Please select a point on map',
+        'btn_confirm_coords': 'Confirm Location',
+        'btn_cancel': 'Cancel',
+		'title_manage_locations': '<i class="fas fa-list"></i> Manage Locations',
+        'btn_close_window': 'Close Window',
+        'ai_summary_success': 'AI Voice Analysis Successful',
+        'ai_summary_subtitle': 'Review details before creating task',
+        'lbl_task_and_title': '<i class="fas fa-file-signature"></i> Task Category & Title',
+        'lbl_stops_sequence': '<i class="fas fa-map-marked-alt"></i> Found Waypoints',
+        'lbl_delivery_budget': '<i class="fas fa-coins"></i> Delivery Budget (THB)',
+        'btn_confirm_this_data': 'Confirm Data',
+        'btn_edit_new': 'Edit',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1047,6 +1117,41 @@ const translations = {
         'confirm_reject_rider': 'Deseja rejeitar a solicitação deste entregador?',
         'alert_reject_success': 'Solicitação rejeitada.',
         'err_generic': 'Ocorreu um erro',
+		'notif_new_request': 'Novo Pedido!',
+        'notif_rider_wants': (name) => `Entregador <b>${name}</b> quer aceitar este trabalho`,
+        'btn_confirm_assign': 'Confirmar Atribuição',
+        'prompt_rating': (name) => `Por favor, avalie ${name} (1-5 pontos):`,
+        'err_rating_range': 'Insira uma pontuação entre 1 e 5',
+        'confirm_bypass': 'Deseja confirmar o check-in neste ponto para o entregador?',
+        'msg_task_complete': '✅ Todos os pontos entregues. Trabalho finalizado.',
+        'msg_bypass_success': '✅ Ponto ignorado com sucesso',
+		'confirm_delete_template': 'Tem certeza que deseja excluir este modelo de pedido?',
+        'msg_delete_template_success': '🗑️ Modelo de pedido excluído com sucesso!',
+		'no_templates_found': 'Nenhum modelo salvo encontrado',
+        'unit_stop_short': 'paradas',
+		'log_server_error': '❌ Não foi possível buscar dados do servidor:',
+        'before_unload_msg': 'Você tem tarefas pendentes. Tem certeza de que deseja sair?',
+        'modal_title_address_book': '🔖 Seu Livro de Endereços',
+        'modal_title_pin_map': '📍 Marcar Localização',
+        'btn_close': 'Fechar',
+		'lbl_map_name': '<i class="fas fa-tag"></i> Nomear este local (ex: Casa do Cliente A)',
+        'plh_map_name': 'Digite o nome do local...',
+        'lbl_map_phone': '<i class="fas fa-phone"></i> Telefone (Opcional)',
+        'plh_map_phone': 'ex: 081-234-5678',
+        'lbl_map_voice': '<i class="fas fa-microphone"></i> Comando de Voz (Palavra-chave)',
+        'plh_map_voice': 'Fale ou digite uma palavra curta',
+        'lbl_map_coords_waiting': 'Coordenadas: Selecione um ponto no mapa',
+        'btn_confirm_coords': 'Confirmar Local',
+        'btn_cancel': 'Cancelar',
+		'title_manage_locations': '<i class="fas fa-list"></i> Gerenciar Locais',
+        'btn_close_window': 'Fechar Janela',
+        'ai_summary_success': 'Análise de Voz IA com Sucesso',
+        'ai_summary_subtitle': 'Revise os detalhes antes de criar a tarefa',
+        'lbl_task_and_title': '<i class="fas fa-file-signature"></i> Categoria e Título',
+        'lbl_stops_sequence': '<i class="fas fa-map-marked-alt"></i> Pontos Encontrados',
+        'lbl_delivery_budget': '<i class="fas fa-coins"></i> Orçamento de Entrega (THB)',
+        'btn_confirm_this_data': 'Confirmar Dados',
+        'btn_edit_new': 'Editar',
     }
 };
 
@@ -2602,10 +2707,13 @@ socket.on('rider-applied', (data) => {
         const notifList = document.getElementById('notif-list');
         notifList.innerHTML = `
             <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12; margin-bottom: 10px;">
-                <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> คำขอรับงานใหม่!</b><br>
-                ไรเดอร์ <b>${data.riderName}</b> ต้องการรับงานนี้<br>
-                <button onclick="approveRider('${data.postId}')" style="margin-top:10px; background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:20px; width:100%;">กดยืนยันให้งาน</button>
-            </div>
+        <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> ${translations[currentLang].notif_new_request}</b><br>
+        ${translations[currentLang].notif_rider_wants(data.riderName)}<br>
+        <button onclick="approveRider('${data.postId}')" 
+            style="margin-top:10px; background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:20px; width:100%;">
+            ${translations[currentLang].btn_confirm_assign}
+        </button>
+    </div>
         ` + notifList.innerHTML;
     }
 });
@@ -2649,13 +2757,13 @@ socket.on('new-comment', (data) => {
 // แก้ไขฟังก์ชัน confirmAndRate ให้เรียกใช้ API กลาง
 async function confirmAndRate(postId, riderName) {
     // 1. ถามคะแนนด้วยหน้าต่างเด้ง (คุณสามารถเปลี่ยนเป็นระบบ Star Rating ทีหลังได้)
-    const rating = prompt(`กรุณาให้คะแนนคุณ ${riderName} (1-5 คะแนน):`, "5");
+    const rating = prompt(translations[currentLang].prompt_rating(riderName), "5");
     
     if (rating === null) return; // กดยกเลิก
     const score = parseFloat(rating);
     
     if (isNaN(score) || score < 1 || score > 5) {
-        alert("กรุณาใส่คะแนนระหว่าง 1 ถึง 5 ครับ");
+        alert(translations[currentLang].err_rating_range);
         return;
     }
 
@@ -2686,17 +2794,17 @@ async function confirmAndRate(postId, riderName) {
             loadActiveMerchantTasks(); 
             socket.emit('confirm-finish-job', { postId: postId, accepted: true });
         } else {
-            alert("เกิดข้อผิดพลาด: " + data.error);
+            alert("An error occurred: " + data.error);
         }
     } catch (e) {
         console.error(e);
-        alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
+        alert("Unable to connect to the server.");
     }
 }
 
 
 async function bypassCheckIn(postId, stopIndex) {
-    if (!confirm("คุณต้องการยืนยันการเช็คอินจุดนี้แทนไรเดอร์ใช่หรือไม่?")) return;
+    if (!confirm(translations[currentLang].confirm_bypass)) return;
 
     try {
         const res = await fetch(`/api/posts/${postId}/bypass-stop/${stopIndex}`, {
@@ -2718,18 +2826,17 @@ async function bypassCheckIn(postId, stopIndex) {
             }
             
             if (data.allFinished) {
-                alert("✅ งานนี้ส่งครบทุกจุดและปิดงานเรียบร้อยแล้ว");
-                // ปิด Sidebar ถ้างานจบแล้ว
+                alert(translations[currentLang].msg_task_complete);
                 closeRightSidebar();
             } else {
-                alert("✅ บายพาสจุดส่งเรียบร้อย");
+                alert(translations[currentLang].msg_bypass_success);
             }
         } else {
-            alert("เกิดข้อผิดพลาด: " + data.error);
+            alert("An error occurred: " + data.error);
         }
     } catch (e) {
         console.error(e);
-        alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
+        alert("Unable to connect to the server.");
     }
 }
 
@@ -2781,7 +2888,7 @@ function closeInfo() {
 
 
 async function deleteOrderTemplate(id, index) {
-    if (!confirm("คุณต้องการลบออเดอร์สำเร็จรูปนี้ใช่หรือไม่?")) return;
+    if (!confirm(translations[currentLang].confirm_delete_template)) return;
 
     try {
         const res = await fetch(`/api/merchant/templates/${id}`, {
@@ -2790,7 +2897,7 @@ async function deleteOrderTemplate(id, index) {
         const data = await res.json();
 
         if (data.success) {
-            alert("🗑️ ลบออเดอร์สำเร็จรูปเรียบร้อย!");
+            alert(translations[currentLang].msg_delete_template_success);
             
             // อัปเดตข้อมูลในตัวแปร Global
             myOrderTemplates.splice(index, 1);
@@ -2798,11 +2905,11 @@ async function deleteOrderTemplate(id, index) {
             // วาดรายการใน Modal ใหม่ทันทีโดยไม่ต้องปิดหน้าต่าง
             renderTemplateListInModal(); 
         } else {
-            alert("ไม่สามารถลบได้: " + data.error);
+            alert("Cannot deleted.: " + data.error);
         }
     } catch (e) {
         console.error("Delete Error:", e);
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+        alert("Unable to connect to the server.");
     }
 }
 
@@ -2813,16 +2920,20 @@ function renderTemplateListInModal() {
     
     listContent.innerHTML = "";
     if (myOrderTemplates.length === 0) {
-        listContent.innerHTML = `<div style="text-align:center; padding:30px; color:#999;">ยังไม่มีออเดอร์ที่บันทึกไว้</div>`;
+        // 🚩 แปลข้อความเมื่อไม่มีข้อมูล
+        listContent.innerHTML = `<div style="text-align:center; padding:30px; color:#999;">${translations[currentLang].no_templates_found}</div>`;
         return;
     }
 
     myOrderTemplates.forEach((tpl, index) => {
+        // 🚩 แปลหน่วยนับ (จุด/stops/paradas)
+        const stopUnit = translations[currentLang].unit_stop_short;
+
         listContent.innerHTML += `
             <div class="manage-item" style="cursor:pointer; display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee;" onclick="selectOrderTemplate(${index})">
                 <div class="manage-info">
                     <strong style="color: #11998e;"><i class="fas fa-file-invoice"></i> ${tpl.templateName}</strong><br>
-                    <small style="color:#888;">🎙️ "${tpl.voiceKeyword}" • ${tpl.stops.length} จุด</small>
+                    <small style="color:#888;">🎙️ "${tpl.voiceKeyword}" • ${tpl.stops.length} ${stopUnit}</small>
                 </div>
                 <div class="manage-actions">
                     <button class="btn-delete" onclick="event.stopPropagation(); deleteOrderTemplate('${tpl._id}', ${index})">
@@ -2843,14 +2954,9 @@ async function safeNavigateHome() {
     }
 
     try {
-        // 🔍 1. ถาม API ก่อนว่าตอนนี้ mercNum ในฐานข้อมูลเป็นเท่าไหร่
         const checkRes = await fetch(`/api/rider/check-working-status?username=${encodeURIComponent(myUsername)}`);
         const checkData = await checkRes.json();
-        
-        // ดึงค่า mercNum ออกมา (ถ้าไม่มีให้เป็น 0)
         const currentMercNum = checkData.mercNum || 0;
-
-        // 🚩 2. เช็คเงื่อนไข: ถ้า mercNum >= 1 แสดงว่ายังมีงานค้างในระบบ
         if (currentMercNum >= 1) {
             Swal.fire({
                 icon: 'warning',
@@ -2859,9 +2965,7 @@ async function safeNavigateHome() {
                 confirmButtonColor: '#11998e'
             });
         } 
-        // ✅ 3. ถ้าไม่มีงานค้าง (mercNum < 1) ให้ทำการรีเซ็ตเพื่อความปลอดภัยและกลับหน้าแรก
         else {
-            console.log("✅ ไม่พบงานค้าง (mercNum < 1) กำลังเตรียมกลับหน้าหลัก...");
             
             const resetRes = await fetch('/api/merchant/reset-mercnum', {
                 method: 'POST',
@@ -2874,28 +2978,20 @@ async function safeNavigateHome() {
             if (resetData.success) {
                 window.location.href = 'index.html';
             } else {
-                // ถ้ามีปัญหาที่ API รีเซ็ต แต่เราเช็คแล้วว่าไม่มีงานจริง ก็ให้กลับหน้าแรกได้เลย
                 window.location.href = 'index.html';
             }
         }
     } catch (e) {
         console.error("🚨 Navigation Error:", e);
-        // กรณีเชื่อมต่อไม่ได้ ให้กลับหน้าแรกเพื่อป้องกัน User ติดค้าง
         window.location.href = 'index.html';
     }
 }
 
 
 // 🔔 รับสัญญาณเมื่อไรเดอร์ "เช็คอิน" หรือ "อัปเดตสถานะจุดส่ง"
-socket.on('update-job-status', (data) => {
-    console.log("📍 มีการอัปเดตจุดส่งในงาน:", data.postId);
-    
-    // 1. โหลดรายการงานหน้าแรกใหม่ทันที (เพื่ออัปเดต Progress Bar และจำนวนจุด)
-    loadActiveMerchantTasks();
-    
-    // 2. ถ้าเราเปิด Sidebar งานนั้นค้างไว้ ให้โหลดข้อมูลใน Sidebar ใหม่ด้วย
+socket.on('update-job-status', (data) => {   
+    loadActiveMerchantTasks();   
     if (activeTaskInSidebar && activeTaskInSidebar.id == data.postId) {
-        // ดึงข้อมูลใหม่มาอัปเดตรายละเอียดใน Sidebar โดยไม่ปิดหน้าต่าง
         updateSidebarDataOnly(data.postId);
     }
 });
@@ -2907,14 +3003,13 @@ async function updateSidebarDataOnly(postId) {
         const data = await res.json();
         if (data.success) {
             activeTaskInSidebar = data.post;
-            renderSidebarDetails(); // วาดลำดับจุดใหม่
+            renderSidebarDetails();
         }
     } catch (e) { console.error(e); }
 }
 
 // ฟังก์ชันสำหรับ Debug สถานะงานร้านค้า
 async function debugMerchantStatus() {
-    console.log("🔍 [Debug] เริ่มการตรวจสอบสถานะร้านค้าสำหรับ:", myUsername);
     
     try {
         const res = await fetch(`/api/merchant/tasks?username=${myUsername}`);
@@ -2933,10 +3028,10 @@ async function debugMerchantStatus() {
             // ตรวจสอบงานที่ "ค้าง" (ส่งเสร็จแต่ยังไม่ได้จบงาน)
             const stuckJobs = data.posts.filter(p => p.status === 'closed_permanently' && !p.isClosed);
             if (stuckJobs.length > 0) {
-                console.warn(`⚠️ พบงานค้าง ${stuckJobs.length} งาน: ไรเดอร์ส่งครบแล้วแต่ร้านยังไม่กดให้คะแนน`);
+                console.warn(translations[currentLang].log_stuck_jobs(stuckJobs.length));
             }
         } else {
-            console.error("❌ ไม่สามารถดึงข้อมูลจาก Server ได้:", data.error);
+            console.error("❌ Unable to connect to the server:", data.error);
         }
     } catch (e) {
         console.error("❌ [Debug Error]:", e);
@@ -2948,7 +3043,7 @@ async function debugMerchantStatus() {
 window.onbeforeunload = function() {
     const activeTasks = document.querySelectorAll('.active-task-card').length;
     if (activeTasks > 0) {
-        return "คุณยังมีงานค้างอยู่ ต้องการออกจากหน้าจอนี้จริงหรือไม่?";
+        return translations[currentLang].before_unload_msg;
     }
 };
 
@@ -2957,11 +3052,15 @@ window.onbeforeunload = function() {
 	
 	<div id="saved-locations-modal" class="modal-overlay hidden" style="z-index: 6000;">
     <div class="modal-box" style="max-width: 400px;">
-        <h3>🔖 สมุดที่อยู่ของคุณ</h3>
-        <div id="saved-list-content" style="max-height: 300px; overflow-y: auto; text-align: left;">
-            </div>
-        <button class="btn-submit" onclick="closeSavedModal()" style="margin-top: 15px; background: #54a896;">ปิด</button>
-    </div>
+    <h3 data-i18n-key="modal_title_address_book">🔖 สมุดที่อยู่ของคุณ</h3>
+    <div id="saved-list-content" style="max-height: 300px; overflow-y: auto; text-align: left;">
+        </div>
+    <button class="btn-submit" onclick="closeSavedModal()" 
+            style="margin-top: 15px; background: #54a896;" 
+            data-i18n-key="btn_close">
+        ปิด
+    </button>
+</div>
 </div>
 
 
@@ -2970,41 +3069,41 @@ window.onbeforeunload = function() {
 	<div id="map-modal" class="modal-overlay hidden" style="z-index: 8000;">
     <div class="modal-box" style="max-width: 500px; padding: 0; overflow: hidden;">
         <div style="background: #11998e; color: white; padding: 15px; text-align: center;">
-            <h3 style="margin: 0;">📍 ปักหมุดพิกัด</h3>
-        </div>
+			<h3 style="margin: 0;" data-i18n-key="modal_title_pin_map">📍 ปักหมุดพิกัด</h3>
+		</div>
         
         <div id="map-container" style="height: 250px; width: 100%;"></div>
 
         <div style="padding: 20px; padding-bottom: 30px;"> 
-            <div id="map-extra-info">
-                <label id="map-label-name"><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)</label>
-                <input type="text" id="map-loc-name" placeholder="ระบุชื่อสถานที่...">
-				
-				<label><i class="fas fa-phone"></i> เบอร์โทรศัพท์ (ถ้ามี)</label>
-				<input type="tel" id="map-loc-phone" placeholder="เช่น 081-234-5678">
+    <div id="map-extra-info">
+        <label id="map-label-name" data-i18n-key="lbl_map_name"><i class="fas fa-tag"></i> ตั้งชื่อเรียกพิกัด (เช่น บ้านลูกค้า A)</label>
+        <input type="text" id="map-loc-name" placeholder="ระบุชื่อสถานที่..." data-i18n-key="plh_map_name">
+        
+        <label data-i18n-key="lbl_map_phone"><i class="fas fa-phone"></i> เบอร์โทรศัพท์ (ถ้ามี)</label>
+        <input type="tel" id="map-loc-phone" placeholder="เช่น 081-234-5678" data-i18n-key="plh_map_phone">
 
-                <label><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword สำหรับสั่งงาน)</label>
-                <div style="display: flex; gap: 5px; margin-bottom: 15px;">
-                    <input type="text" id="map-loc-voice" placeholder="พูดหรือพิมพ์คำสั้นๆ เช่น ลาดพร้าว" style="margin-bottom: 0;">
-                    <button onclick="startVoiceForKeyword(this)" style="background: #f39c12; color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer;">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <p id="map-coords-display" style="font-size: 0.8em; color: #888; margin-bottom: 15px;">
-                พิกัด: กรุณาเลือกจุดบนแผนที่
-            </p>
-
-            <div style="display: flex; gap: 10px;">
-                <button class="btn-submit" onclick="confirmMapLocation()" style="flex: 2; border-radius: 8px;">
-                    ยืนยันพิกัด
-                </button>
-                <button class="btn-submit" onclick="closeMapModal()" style="flex: 1; background: #999; border-radius: 8px;">
-                    ยกเลิก
-                </button>
-            </div>
+        <label data-i18n-key="lbl_map_voice"><i class="fas fa-microphone"></i> ตั้งคำสั่งเสียง (Keyword สำหรับสั่งงาน)</label>
+        <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+            <input type="text" id="map-loc-voice" placeholder="พูดหรือพิมพ์คำสั้นๆ เช่น ลาดพร้าว" style="margin-bottom: 0;" data-i18n-key="plh_map_voice">
+            <button onclick="startVoiceForKeyword(this)" style="background: #f39c12; color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer;">
+                <i class="fas fa-microphone"></i>
+            </button>
         </div>
+    </div>
+    
+    <p id="map-coords-display" style="font-size: 0.8em; color: #888; margin-bottom: 15px;" data-i18n-key="lbl_map_coords_waiting">
+        พิกัด: กรุณาเลือกจุดบนแผนที่
+    </p>
+
+    <div style="display: flex; gap: 10px;">
+        <button class="btn-submit" onclick="confirmMapLocation()" style="flex: 2; border-radius: 8px;" data-i18n-key="btn_confirm_coords">
+            ยืนยันพิกัด
+        </button>
+        <button class="btn-submit" onclick="closeMapModal()" style="flex: 1; background: #999; border-radius: 8px;" data-i18n-key="btn_cancel">
+            ยกเลิก
+        </button>
+    </div>
+</div>
     </div>
 </div>
 
@@ -3014,15 +3113,17 @@ window.onbeforeunload = function() {
 	<div id="manage-locations-modal" class="modal-overlay hidden" style="z-index: 8500;">
     <div class="modal-box" style="max-width: 500px; width: 95%;">
         <div style="background: #11998e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0;">
-            <h3 style="margin: 0;"><i class="fas fa-list"></i> จัดการรายการพิกัด</h3>
-        </div>
+    <h3 style="margin: 0;" data-i18n-key="title_manage_locations">
+        <i class="fas fa-list"></i> จัดการรายการพิกัด
+    </h3>
+</div>
         
         <div id="manage-list-container" style="max-height: 400px; overflow-y: auto;">
             </div>
 
-        <button class="btn-submit" onclick="closeManageModal()" style="background: #999; margin-top: 20px; border-radius: 8px;">
-            ปิดหน้าต่าง
-        </button>
+        <button class="btn-submit" onclick="closeManageModal()" style="background: #999; margin-top: 20px; border-radius: 8px;" data-i18n-key="btn_close_window">
+    ปิดหน้าต่าง
+</button>
     </div>
 </div>
 
@@ -3031,39 +3132,38 @@ window.onbeforeunload = function() {
 
 		<div id="voice-summary-modal" class="modal-overlay hidden" style="z-index: 9999;">
     <div class="modal-box" style="max-width: 450px; background: #fdfdfd;">
-        <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; text-align: center;">
-            <i class="fas fa-robot" style="font-size: 2em; margin-bottom: 10px;"></i>
-            <h3 style="margin: 0; font-weight: 600;">AI วิเคราะห์คำสั่งเสียงสำเร็จ</h3>
-            <p style="margin: 5px 0 0 0; font-size: 0.85em; opacity: 0.9;">ตรวจสอบความถูกต้องก่อนเริ่มสร้างงาน</p>
+    <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; text-align: center;">
+        <i class="fas fa-robot" style="font-size: 2em; margin-bottom: 10px;"></i>
+        <h3 style="margin: 0; font-weight: 600;" data-i18n-key="ai_summary_success">AI วิเคราะห์คำสั่งเสียงสำเร็จ</h3>
+        <p style="margin: 5px 0 0 0; font-size: 0.85em; opacity: 0.9;" data-i18n-key="ai_summary_subtitle">ตรวจสอบความถูกต้องก่อนเริ่มสร้างงาน</p>
+    </div>
+
+    <div style="padding: 20px;">
+        <div class="summary-label" data-i18n-key="lbl_task_and_title"><i class="fas fa-file-signature"></i> ประเภทงานและหัวข้อ</div>
+        <div id="sum-title" style="background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 10px; font-weight: bold; color: #11998e; margin-bottom: 20px;">
+            -
         </div>
 
-        <div style="padding: 20px;">
-            <div class="summary-label"><i class="fas fa-file-signature"></i> ประเภทงานและหัวข้อ</div>
-            <div id="sum-title" style="background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 10px; font-weight: bold; color: #11998e; margin-bottom: 20px;">
-                -
-            </div>
+        <div class="summary-label" data-i18n-key="lbl_stops_sequence"><i class="fas fa-map-marked-alt"></i> ลำดับจุดส่งงานที่พบ</div>
+        <div id="sum-stops" style="margin-bottom: 20px;"></div>
 
-            <div class="summary-label"><i class="fas fa-map-marked-alt"></i> ลำดับจุดส่งงานที่พบ</div>
-            <div id="sum-stops" style="margin-bottom: 20px;">
-                </div>
-
-            <div style="background: #fff4e5; padding: 15px; border-radius: 12px; border: 1px dashed #f39c12; text-align: center; margin-bottom: 25px;">
-                <div class="summary-label" style="justify-content: center;"><i class="fas fa-coins"></i> งบประมาณจ้างงาน (บาท)</div>
-                <div style="font-size: 2em; color: #e67e22; font-weight: bold;">
-                    <small style="font-size: 0.5em; vertical-align: middle;">฿</small> <span id="sum-budget">0</span>
-                </div>
+        <div style="background: #fff4e5; padding: 15px; border-radius: 12px; border: 1px dashed #f39c12; text-align: center; margin-bottom: 25px;">
+            <div class="summary-label" style="justify-content: center;" data-i18n-key="lbl_delivery_budget"><i class="fas fa-coins"></i> งบประมาณจ้างงาน (บาท)</div>
+            <div style="font-size: 2em; color: #e67e22; font-weight: bold;">
+                <small style="font-size: 0.5em; vertical-align: middle;">฿</small> <span id="sum-budget">0</span>
             </div>
+        </div>
 
-            <div style="display: flex; gap: 12px;">
-                <button class="btn-submit" onclick="confirmVoiceSummary()" style="flex: 2; height: 55px; box-shadow: 0 4px 12px rgba(17,153,142,0.2);">
-                    ยืนยันข้อมูลนี้
-                </button>
-                <button class="btn-submit" onclick="closeVoiceSummary()" style="flex: 1; background: #eee; color: #666; height: 55px;">
-                    แก้ไขใหม่
-                </button>
-            </div>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn-submit" onclick="confirmVoiceSummary()" style="flex: 2; height: 55px; box-shadow: 0 4px 12px rgba(17,153,142,0.2);" data-i18n-key="btn_confirm_this_data">
+                ยืนยันข้อมูลนี้
+            </button>
+            <button class="btn-submit" onclick="closeVoiceSummary()" style="flex: 1; background: #eee; color: #666; height: 55px;" data-i18n-key="btn_edit_new">
+                แก้ไขใหม่
+            </button>
         </div>
     </div>
+</div>
 </div>
 
 
