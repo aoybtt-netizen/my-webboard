@@ -656,6 +656,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const topupListSec = document.getElementById('section-topup-list');
     const adminChatSec = document.getElementById('section-admin-chat');
     const kycListSec = document.getElementById('section-kyc-list'); // เพิ่มอ้างอิงส่วน KYC
+	const membersListSec = document.getElementById('section-members-list');
 
     // 2. สร้าง/ดึง "ที่เก็บของลับ"
     let storage = document.getElementById('hidden-storage');
@@ -669,7 +670,8 @@ window.addEventListener('DOMContentLoaded', () => {
     // 3. ย้ายทุก Section ไปพักไว้ใน storage ก่อน (ของจะไม่โดนลบจากหน่วยความจำ)
     if (topupListSec) storage.appendChild(topupListSec);
     if (adminChatSec) storage.appendChild(adminChatSec);
-    if (kycListSec) storage.appendChild(kycListSec); // เก็บส่วน KYC ไว้ในที่ปลอดภัยด้วย
+    if (kycListSec) storage.appendChild(kycListSec);
+	if (membersListSec) storage.appendChild(membersListSec);
 
     // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element จริงถูกย้ายไปที่ storage ไม่ได้ถูกทำลาย)
     display.innerHTML = ''; 
@@ -683,7 +685,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (type === 'topup') {
         title.innerText = translations[currentLang].title_transactionsss;
-        // ดึงของจาก storage กลับมาแสดง
+        if (topupListSec) display.appendChild(topupListSec);
         display.appendChild(topupListSec);
         display.appendChild(adminChatSec);
 
@@ -695,7 +697,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     } else if (type === 'kyc') { // ✅ เพิ่ม Logic สำหรับหน้า KYC
         title.innerText = translations[currentLang].title_kyc_verificationnn;
-        // ดึงส่วน KYC จาก storage มาแสดงที่หน้าจอหลัก
+        if (kycListSec) display.appendChild(kycListSec);
         display.appendChild(kycListSec);
         
         kycListSec.style.display = 'block';
@@ -722,9 +724,13 @@ window.addEventListener('DOMContentLoaded', () => {
         loadAdminHistory(); 
     }else if (type === 'members') {
     title.innerText = translations[currentLang].title_zone_members;
-    display.appendChild(membersListSec);
-    membersListSec.style.display = 'block';
-    loadMemberList(); 
+    if (membersListSec) {
+            display.appendChild(membersListSec);
+            membersListSec.style.display = 'block';
+            loadMemberList();
+        } else {
+            display.innerHTML = '<p style="color:red; text-align:center;">Error: Member Section not found!</p>';
+        }
 }
     
     if(window.innerWidth <= 768 && document.getElementById('sidebar')?.classList.contains('active')) {
