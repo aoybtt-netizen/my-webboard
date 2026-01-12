@@ -351,8 +351,8 @@
 <div id="topup-request-modal" class="modal">
     <div class="modal-content" style="max-width: 320px; text-align: center;">
         <div style="font-size: 40px; color: #f1c40f; margin-bottom: 10px;"><i class="fas fa-hand-holding-usd"></i></div>
-        <h3 style="margin: 0 0 10px;">ส่งคำขอเติมเงิน</h3>
-        <p style="font-size: 0.8em; color: #666; margin-bottom: 15px;">กรุณาระบุจำนวนเงิน (USD) ที่คุณต้องการเติม</p>
+        <h3 style="margin: 0 0 10px;" data-i18n-key="title_request_topup">ส่งคำขอเติมเงิน</h3>
+        <p style="font-size: 0.8em; color: #666; margin-bottom: 15px;" data-i18n-key="desc_request_topup">กรุณาระบุจำนวนเงิน (USD) ที่คุณต้องการเติม</p>
         
         <div style="position: relative; margin-bottom: 20px;">
             <input type="number" id="request-amount-input" placeholder="0.00" 
@@ -361,27 +361,39 @@
         </div>
 
         <div style="display: flex; gap: 10px;">
-            <button onclick="closeRequestTopup()" style="flex: 1; padding: 12px; background: #eee; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: #666;">ยกเลิก</button>
-            <button onclick="submitTopupRequest()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">ส่งคำขอ</button>
+            <button onclick="closeRequestTopup()" style="flex: 1; padding: 12px; background: #eee; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: #666;" data-i18n-key="btn_cancel_topup">ยกเลิก</button>
+            <button onclick="submitTopupRequest()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;" data-i18n-key="btn_submit_topup">ส่งคำขอ</button>
         </div>
     </div>
 </div>
 
-        <div class="menu-list">
+<div class="menu-list">
     <div id="kyc-menu-container">
         <div class="menu-item verify-btn" onclick="openKYC()">
             <i class="fas fa-id-card"></i>
             <div style="text-align: left; flex: 1;">
-                <div style="font-weight: bold;">ยืนยันตัวตน (KYC)</div>
-                <div style="font-size: 0.7em; color: #b58900;">อัปโหลดเอกสารเพื่อรับงานที่มูลค่าสูงขึ้น</div>
+                <div style="font-weight: bold;" data-i18n-key="menu_kyc_title">ยืนยันตัวตน (KYC)</div>
+                <div style="font-size: 0.7em; color: #b58900;" data-i18n-key="menu_kyc_desc">อัปโหลดเอกสารเพื่อรับงานที่มูลค่าสูงขึ้น</div>
             </div>
             <i class="fas fa-chevron-right" style="font-size: 0.8em; color: #ccc;"></i>
         </div>
     </div>
 
-    <a href="#" class="menu-item"><i class="fas fa-envelope"></i> อีเมล: <span id="display-email" style="margin-left:5px; color:#999;">ยังไม่ระบุ</span></a>
-    <a href="#" class="menu-item"><i class="fas fa-history"></i> ประวัติธุรกรรม</a>
-    <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;"><i class="fas fa-power-off"></i> ออกจากระบบ</a>
+    <a href="#" class="menu-item">
+        <i class="fas fa-envelope"></i> 
+        <span data-i18n-key="lbl_email_static">อีเมล:</span> 
+        <span id="display-email" style="margin-left:5px; color:#999;" data-i18n-key="lbl_not_specified">ยังไม่ระบุ</span>
+    </a>
+    
+    <a href="#" class="menu-item">
+        <i class="fas fa-history"></i> 
+        <span data-i18n-key="menu_history">ประวัติธุรกรรม</span>
+    </a>
+    
+    <a href="javascript:logout()" class="menu-item" style="color: var(--danger); border-color: #ffeaea;">
+        <i class="fas fa-power-off"></i> 
+        <span data-i18n-key="menu_logout">ออกจากระบบ</span>
+    </a>
 </div>
 
     </div>
@@ -406,18 +418,48 @@ const translations = {
         'lbl_finding_zone': 'กำลังค้นหาโซน...',
         'lbl_zone_owner': 'เจ้าของโซน:',
         'lbl_waiting_connect': 'รอการเชื่อมต่อ',
+		'title_request_topup': 'ส่งคำขอเติมเงิน',
+        'desc_request_topup': 'กรุณาระบุจำนวนเงิน (USD) ที่คุณต้องการเติม',
+        'btn_cancel_topup': 'ยกเลิก',
+        'btn_submit_topup': 'ส่งคำขอ',
+        'menu_kyc_title': 'ยืนยันตัวตน (KYC)',
+        'menu_kyc_desc': 'อัปโหลดเอกสารเพื่อรับงานที่มูลค่าสูงขึ้น',
+        'lbl_email_static': 'อีเมล:',
+        'lbl_not_specified': 'ยังไม่ระบุ',
+        'menu_history': 'ประวัติธุรกรรม',
+        'menu_logout': 'ออกจากระบบ',
     },
     'en': {
         'lbl_current_zone_area': 'Current Operating Area',
         'lbl_finding_zone': 'Finding zone...',
         'lbl_zone_owner': 'Zone Owner:',
         'lbl_waiting_connect': 'Waiting for connection',
+		'title_request_topup': 'Top-up Request',
+        'desc_request_topup': 'Please enter the amount (USD) you wish to top-up',
+        'btn_cancel_topup': 'Cancel',
+        'btn_submit_topup': 'Submit',
+        'menu_kyc_title': 'Identity Verification (KYC)',
+        'menu_kyc_desc': 'Upload documents to accept higher value jobs',
+        'lbl_email_static': 'Email:',
+        'lbl_not_specified': 'Not specified',
+        'menu_history': 'Transaction History',
+        'menu_logout': 'Log Out',
     },
     'pt': {
         'lbl_current_zone_area': 'Área de Operação Atual',
         'lbl_finding_zone': 'Procurando zona...',
         'lbl_zone_owner': 'Dono da Zona:',
         'lbl_waiting_connect': 'Aguardando conexão',
+		'title_request_topup': 'Solicitar Recarga',
+        'desc_request_topup': 'Insira o valor (USD) que deseja recarregar',
+        'btn_cancel_topup': 'Cancelar',
+        'btn_submit_topup': 'Enviar',
+        'menu_kyc_title': 'Verificação de Identidade (KYC)',
+        'menu_kyc_desc': 'Envie documentos para aceitar trabalhos de maior valor',
+        'lbl_email_static': 'E-mail:',
+        'lbl_not_specified': 'Não especificado',
+        'menu_history': 'Histórico de Transações',
+        'menu_logout': 'Sair',
     }
 };
 
