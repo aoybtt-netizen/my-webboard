@@ -122,7 +122,9 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
 		
 		
 		<div style="margin-bottom: 10px;">
-            <small style="color: rgba(255,255,255,0.5); font-size: 0.75em; display: block;">ทุนคงเหลือ (Master)</small>
+            <small style="color: rgba(255,255,255,0.5); font-size: 0.75em; display: block;" data-i18n-key="lbl_master_balance">
+    ทุนคงเหลือ (Master)
+</small>
             <div style="font-size: 1.1em; font-weight: bold; color: #fff;">
                 <i class="fas fa-coins" style="color: #f1c40f; margin-right: 5px;"></i>
                 <span id="sidebar-usdt-balance">0.00</span> <small>USDT</small>
@@ -230,6 +232,59 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         overlay.style.display = 'none';
     }
 }
+
+
+
+
+const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+				
+const translations = {
+    'th': {
+        'lbl_master_balance': 'ทุนคงเหลือ (Master)',
+    },
+    'en': {
+        'lbl_master_balance': 'Available Balance (Master)',
+    },
+    'pt': {
+        'lbl_master_balance': 'Saldo Disponível (Master)',
+    }
+};
+
+function applyMerchantTranslations() {
+    console.log(`[i18n] Applying translations for: ${currentLang}`);
+
+    // ใช้ data-i18n-key เป็นหลักตัวเดียวพอครับ
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+        const key = el.getAttribute('data-i18n-key');
+        const translatedText = translations[currentLang]?.[key];
+
+        if (translatedText) {
+            // 🚩 กรณีที่ 1: ถ้าเป็นช่องกรอกข้อมูล (Input / Textarea) ให้เปลี่ยนที่ Placeholder
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.placeholder = translatedText;
+            } 
+            // 🚩 กรณีที่ 2: ถ้าเป็น Element ทั่วไปที่มีไอคอน <i> อยู่ข้างใน
+            else {
+                const icon = el.querySelector('i');
+                if (icon) {
+                    el.innerHTML = ''; // ล้างข้อมูลเก่า
+                    el.appendChild(icon); // ใส่ไอคอนกลับที่เดิม
+                    el.insertAdjacentHTML('beforeend', ' ' + translatedText); // เติมข้อความ
+                } else {
+                    // 🚩 กรณีที่ 3: ข้อความทั่วไปที่ไม่มีไอคอน
+                    el.innerText = translatedText;
+                }
+            }
+        }
+    });
+}
+
+// สั่งรันตอนโหลดหน้าจอ
+window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+});
+
+
 
     async function showContent(type) {
     const display = document.getElementById('main-display');
