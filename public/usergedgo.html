@@ -294,8 +294,8 @@
     <div style="display: flex; align-items: center;">
         <i class="fas fa-bars menu-trigger" onclick="toggleSidebar()"></i>
     </div>
-    <span style="font-weight: bold;">โปรไฟล์สมาชิก</span>
-    <a href="index.html"><i class="fas fa-home"></i> หน้าแรก</a>
+    <span style="font-weight: bold;">Profile</span>
+    <a href="index.html"><i class="fas fa-home"></i> Home</a>
 </div>
 
 <div class="container">
@@ -312,7 +312,7 @@
         <div class="wallet-bar" style="cursor: default;">
     <div style="display: flex; align-items: center; gap: 8px;">
         <i class="fas fa-wallet" style="font-size: 0.9em; opacity: 0.8;"></i>
-        <span style="font-size: 0.8em; opacity: 0.8;">ยอดเงิน:</span>
+        <span style="font-size: 0.8em; opacity: 0.8;">Balance:</span>
         <button onclick="window.location.href='userTopupGedgo.html'" 
                 style="background: #38ef7d; border: none; color: #114b46; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; transition: 0.2s;"
                 onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
@@ -330,13 +330,20 @@
         <i class="fas fa-map-marker-alt"></i>
     </div>
     <div style="flex: 1;">
-        <div style="font-size: 0.7em; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">พื้นที่การใช้งานปัจจุบัน</div>
-        <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.95em;">กำลังค้นหาโซน...</div>
-        <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
-            <i class="fas fa-user-shield" style="font-size: 0.9em; color: #f1c40f;"></i> เจ้าของโซน: 
-            <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);">รอการเชื่อมต่อ</span>
-        </div>
+    <div style="font-size: 0.7em; color: #999; text-transform: uppercase; letter-spacing: 0.5px;" 
+         data-i18n-key="lbl_current_zone_area">พื้นที่การใช้งานปัจจุบัน</div>
+    
+    <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.95em;" 
+         data-i18n-key="lbl_finding_zone">กำลังค้นหาโซน...</div>
+    
+    <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
+        <i class="fas fa-user-shield" style="font-size: 0.9em; color: #f1c40f;"></i> 
+        <span data-i18n-key="lbl_zone_owner">เจ้าของโซน:</span> 
+        
+        <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);" 
+              data-i18n-key="lbl_waiting_connect">รอการเชื่อมต่อ</span>
     </div>
+</div>
 </div>
 
 
@@ -387,6 +394,64 @@
 	let currentZoneAdmin = null;
 	let isKYCPending = false;
 	let currentKYCRequestId = null;
+	
+	
+
+
+const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+				
+const translations = {
+    'th': {
+        'lbl_current_zone_area': 'พื้นที่การใช้งานปัจจุบัน',
+        'lbl_finding_zone': 'กำลังค้นหาโซน...',
+        'lbl_zone_owner': 'เจ้าของโซน:',
+        'lbl_waiting_connect': 'รอการเชื่อมต่อ',
+    },
+    'en': {
+        'lbl_current_zone_area': 'Current Operating Area',
+        'lbl_finding_zone': 'Finding zone...',
+        'lbl_zone_owner': 'Zone Owner:',
+        'lbl_waiting_connect': 'Waiting for connection',
+    },
+    'pt': {
+        'lbl_current_zone_area': 'Área de Operação Atual',
+        'lbl_finding_zone': 'Procurando zona...',
+        'lbl_zone_owner': 'Dono da Zona:',
+        'lbl_waiting_connect': 'Aguardando conexão',
+    }
+};
+
+function applyMerchantTranslations() {
+    console.log(`[i18n] Applying translations for: ${currentLang}`);
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+        const key = el.getAttribute('data-i18n-key');
+        const translatedText = translations[currentLang]?.[key];
+
+        if (translatedText) {
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.placeholder = translatedText;
+            } 
+            else {
+                const icon = el.querySelector('i');
+                if (icon) {
+                    el.innerHTML = '';
+                    el.appendChild(icon);
+                    el.insertAdjacentHTML('beforeend', ' ' + translatedText);
+                } else {
+                    el.innerText = translatedText;
+                }
+            }
+        }
+    });
+}
+
+// สั่งรันตอนโหลดหน้าจอ
+window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+});
+
+
+
 	
 	function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
