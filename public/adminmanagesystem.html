@@ -246,25 +246,10 @@ async function loadZones() {
                             ${(z.kycPrice || 0).toLocaleString()}
                         </button>
                     </td>
-                    <td>
-                        <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'minTopup', ${z.minTopup || 0})">
-                            ${(z.minTopup || 0).toLocaleString()}
-                        </button>
-                    </td>
-                    <td>
-                        <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'minWithdraw', ${z.minWithdraw || 0})">
-                            ${(z.minWithdraw || 0).toLocaleString()}
-                        </button>
-                    </td>
 
                     <td>
                         <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">
                             ${z.zoneExchangeRate || 1.0}
-                        </button>
-                    </td>
-                    <td>
-                        <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
-                            ${(z.systemZone || 0).toFixed(2)}
                         </button>
                     </td>
                     <td>
