@@ -953,17 +953,22 @@ function validateKYC() {
 }
 
 async function submitKYC() {
+    // 🚩 1. ดึงค่าภาษาและข้อมูลค่าธรรมเนียม (ใช้ค่าจาก window ที่เราโหลดมาตอนเปิดหน้าต่างจะชัวร์ที่สุด)
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    
+    // ดึงค่าจากตัวแปรที่เราเก็บไว้ (ถ้าไม่มีให้ลองดึงจาก currentZoneData)
+    const kycPrice = window.currentKYCFee || (typeof currentZoneData !== 'undefined' ? currentZoneData.kycPrice : 0) || 0;
+    const currency = window.currentKYCCurrency || (typeof currentZoneData !== 'undefined' ? currentZoneData.zoneCurrency : 'USD') || 'USD';
+    
+    // ดึงยอดเงินของผู้ใช้ (แนะนำให้ดึงจาก window.userCurrentBalance ที่เราเก็บไว้ตอนโหลดโปรไฟล์)
+    const userBalance = window.userCurrentBalance || 0;
 
-    const kycPrice = currentZoneData ? currentZoneData.kycPrice || 0 : 0;
-    const currency = currentZoneData ? currentZoneData.zoneCurrency || 'USD' : 'USD';
-    const userWallet = JSON.parse(localStorage.getItem('userWallet') || '{}'); // สมมติว่าพี่เก็บยอดเงินไว้ในนี้
-    const userBalance = userWallet[currency] || 0;
-
+    // --- 🛡️ ตรวจสอบยอดเงินก่อนเริ่มกระบวนการ ---
     if (userBalance < kycPrice) {
         return Swal.fire({
             icon: 'error',
             title: translations[currentLang].swal_error_title,
-            text: translations[currentLang].err_insufficient_kyc,
+            text: `${translations[currentLang].err_insufficient_kyc} (${kycPrice} ${currency})`,
             confirmButtonColor: '#e74c3c'
         });
     }
@@ -980,12 +985,13 @@ async function submitKYC() {
     });
 
     if (confirm.isConfirmed) {
+        // --- 🟢 เริ่มกระบวนการเดิมของพี่ ---
         if (!navigator.geolocation) {
             return Swal.fire(
-				translations[currentLang].swal_gps_not_support_title, 
-				translations[currentLang].swal_gps_not_support_text, 
-				'error'
-			);
+                translations[currentLang].swal_gps_not_support_title, 
+                translations[currentLang].swal_gps_not_support_text, 
+                'error'
+            );
         }
 
         Swal.fire({
@@ -1020,65 +1026,64 @@ async function submitKYC() {
 
             if (adminName === "Waiting for connection." || adminName === "Searching for zone...") {
                 return Swal.fire({
-						icon: 'warning',
-						title: translations[currentLang].swal_no_admin_title,
-						text: translations[currentLang].swal_no_admin_text,
-						confirmButtonColor: '#11998e'
+                    icon: 'warning',
+                    title: translations[currentLang].swal_no_admin_title,
+                    text: translations[currentLang].swal_no_admin_text,
+                    confirmButtonColor: '#11998e'
                 });
             }
 
-            // 4. ส่งผ่าน Socket (แก้ไข: มั่นใจว่ามี username ส่งไป)
+            // 4. ส่งผ่าน Socket (รวมข้อมูลค่าธรรมเนียมและสกุลเงิน)
             socket.emit('submit-kyc', {
                 username: localStorage.getItem('myUsername'),
-				fullName: name,
-				idNumber: idNum,
-				phone: phone,
-				address: address,
-				coords: userCoords,
-				adminName: adminName,
-				userImg: userImgData,
-				kycFee: kycPrice,
-				currency: currency 
+                fullName: name,
+                idNumber: idNum,
+                phone: phone,
+                address: address,
+                coords: userCoords,
+                adminName: adminName,
+                userImg: userImgData,
+                kycFee: kycPrice, // ส่งค่ายืนยัน
+                currency: currency // ส่งสกุลเงิน
             });
 
-            // 5. แสดงสถานะสำเร็จและสลับหน้า
+            // 5. แสดงสถานะสำเร็จและสลับหน้า (โค้ดเดิม)
             Swal.fire({
-				icon: 'success',
-				title: translations[currentLang].swal_send_success_title,
-				text: translations[currentLang].swal_send_success_text(adminName),
+                icon: 'success',
+                title: translations[currentLang].swal_send_success_title,
+                text: translations[currentLang].swal_send_success_text(adminName),
                 confirmButtonColor: '#11998e'
             }).then(() => {
-				localStorage.setItem('kyc_status', 'pending');
-				localStorage.setItem('kyc_admin', adminName);
-				localStorage.setItem('kyc_name', name);
-				localStorage.setItem('kyc_id', idNum);
-				localStorage.setItem('kyc_phone', phone);
-				localStorage.setItem('kyc_address', address);
-				localStorage.setItem('kyc_img', userImgData);
+                localStorage.setItem('kyc_status', 'pending');
+                localStorage.setItem('kyc_admin', adminName);
+                localStorage.setItem('kyc_name', name);
+                localStorage.setItem('kyc_id', idNum);
+                localStorage.setItem('kyc_phone', phone);
+                localStorage.setItem('kyc_address', address);
+                localStorage.setItem('kyc_img', userImgData);
                 document.getElementById('kyc-form-view').style.display = 'none';
                 document.getElementById('kyc-summary-view').style.display = 'block';
                 
-                // ✅ แก้ไข: ใช้ username เป็นชื่อห้องแชท เพื่อให้ตรงกับแอดมิน
                 const myName = localStorage.getItem('myUsername');
                 currentKYCRequestId = myName; 
-                socket.emit('joinRequest', myName); // เข้าห้องด้วยชื่อตัวเอง
-                loadKYCUserChatHistory(myName);    // โหลดประวัติแชทด้วยชื่อตัวเอง
+                socket.emit('joinRequest', myName); 
+                loadKYCUserChatHistory(myName);    
 
                 document.getElementById('sum-name').innerText = name;
-				document.getElementById('sum-id').innerText = idNum; // เพิ่มบรรทัดนี้ด้วย
-				document.getElementById('sum-phone').innerText = phone;
-				document.getElementById('sum-address').innerText = address; // เพิ่มบรรทัดนี้ด้วย
-				document.getElementById('summary-img-preview').style.backgroundImage = `url(${userImgData})`;
-				document.getElementById('admin-status-text').innerHTML = translations[currentLang].status_sent_to_admin_html(adminName);
+                document.getElementById('sum-id').innerText = idNum; 
+                document.getElementById('sum-phone').innerText = phone;
+                document.getElementById('sum-address').innerText = address; 
+                document.getElementById('summary-img-preview').style.backgroundImage = `url(${userImgData})`;
+                document.getElementById('admin-status-text').innerHTML = translations[currentLang].status_sent_to_admin_html(adminName);
                 
                 updateKYCMenuUI('pending', adminName);
             });
 
         }, (err) => {
             Swal.fire(
-					translations[currentLang].swal_gps_fail_title, 
-					translations[currentLang].swal_gps_fail_text, 
-					'error');
+                translations[currentLang].swal_gps_fail_title, 
+                translations[currentLang].swal_gps_fail_text, 
+                'error');
         });
     }
 }
