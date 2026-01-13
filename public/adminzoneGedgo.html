@@ -1487,7 +1487,7 @@ async function loadKYCRequests() {
 
         let headerCardHtml = '';
         if (zoneInfo.success) {
-            const kycPrice = zoneInfo.zone.kycPriceZone || 0;
+            const kycPriceZone = zoneInfo.zone.kycPriceZone || 0;
             const currency = zoneInfo.zone.zoneCurrency || 'USD';
 			const currentLang = localStorage.getItem('preferredLanguage') || 'th';
             const incomeLabel = translations[currentLang].lbl_kyc_income_notice || 'ค่ายืนยันจากสมาชิกจะโอนเข้าบัญชีคุณ';
@@ -1496,7 +1496,7 @@ async function loadKYCRequests() {
                 <div style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
                     <div style="font-size: 0.85em; opacity: 0.9;">${incomeLabel}</div>
                     <div style="font-size: 0.85em; font-weight: bold; margin-top: 5px;">
-                        ${kycPrice.toLocaleString()} <span style="font-size: 0.85em; font-weight: normal;">${currency}</span>
+                        ${kycPriceZone.toLocaleString()} <span style="font-size: 0.85em; font-weight: normal;">${currency}</span>
                     </div>
                 </div>
             `;
