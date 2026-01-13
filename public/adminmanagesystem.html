@@ -137,6 +137,24 @@
         <input type="text" class="search-box" id="userSearch" placeholder="ค้นหาชื่อผู้ใช้..." onkeyup="filterTable('userSearch', 'member-table')">
         <table id="member-table">
             <thead>
+                <tr>
+                    <th>ผู้ใช้งาน</th>
+                    <th>ยอดเงิน (USDT)</th>
+                    <th>กระเป๋าโซน</th>
+                    <th>ระดับ</th>
+                    <th>สถานะ</th>
+                    <th>จัดการ</th>
+                </tr>
+            </thead>
+            <tbody id="member-body">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="section-zones" class="card" style="display:none;">
+    <h2><i class="fas fa-map-marker-alt"></i> ตั้งค่าโซนและอัตราแลกเปลี่ยน</h2>
+    <table>
+        <thead>
     <tr>
         <th>ID</th>
         <th>ชื่อโซน</th>
@@ -147,24 +165,6 @@
         <th>จัดการ</th>
     </tr>
 </thead>
-            <tbody id="member-body">
-                </tbody>
-        </table>
-    </div>
-
-    <div id="section-zones" class="card" style="display:none;">
-    <h2><i class="fas fa-map-marker-alt"></i> ตั้งค่าโซนและอัตราแลกเปลี่ยน</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>ชื่อโซน</th>
-                <th>แอดมินดูแล</th>
-                <th>สกุลเงิน</th>
-                <th>เรท (1 USDT =)</th>
-                <th>ระบบ (USDT)</th> <th>แอดมินโซน (USDT)</th> <th>จัดการ</th>
-            </tr>
-        </thead>
         <tbody id="zone-body">
             </tbody>
     </table>
@@ -210,7 +210,7 @@
     }
 
     // 3. ฟังก์ชันโหลดข้อมูลโซน
-    async function loadZones() {
+async function loadZones() {
     try {
         const res = await fetch('/api/admin/all-zones');
         const zones = await res.json();
