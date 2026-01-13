@@ -375,7 +375,7 @@ function debugZoneObject(zoneId) {
 
     if (newValue !== undefined && newValue !== currentValue) {
         try {
-            const response = await fetch('/api/admin/update-field', {
+            const response = await fetch('/api/admin/universal-update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
