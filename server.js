@@ -4517,6 +4517,26 @@ app.post('/api/admin/delete-kyc', async (req, res) => {
     }
 });
 
+// API สำหรับแอดมินดูประวัติที่ตัวเองเคยอนุมัติ
+app.get('/api/admin/kyc-history', async (req, res) => {
+    try {
+        const adminUsername = req.query.admin;
+
+        // ดึงรายการที่สถานะเป็น approved และถูกอนุมัติโดยแอดมินคนนี้
+        const history = await db.collection('kycRequests')
+            .find({ 
+                status: 'approved', 
+                approvedBy: adminUsername 
+            })
+            .sort({ approvedAt: -1 }) // เรียงจากล่าสุดไปหาเก่าสุด
+            .toArray();
+
+        res.json({ success: true, history });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Error fetching history" });
+    }
+});
+
 
 
 

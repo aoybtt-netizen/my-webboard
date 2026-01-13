@@ -726,8 +726,23 @@ async function showContent(type) {
 
     } else if (type === 'history') {
         title.innerText = translations[currentLang].title_zone_history;
-        display.innerHTML = `<div id="admin-history-container" style="padding: 10px;"><p style="text-align:center; color:#999;">Loading history...</p></div>`;
-        loadAdminHistory(); 
+    
+    // สร้างโครงสร้างที่มี Tab Switcher
+    display.innerHTML = `
+        <div style="display: flex; gap: 10px; padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <button onclick="switchHistoryTab('finance')" id="tab-fin" style="flex:1; padding: 10px; border:none; border-radius:8px; cursor:pointer; font-family:'Kanit'; font-weight:bold; transition:0.3s;">
+                <i class="fas fa-wallet"></i> ${translations[currentLang].tab_finance}
+            </button>
+            <button onclick="switchHistoryTab('kyc')" id="tab-kyc" style="flex:1; padding: 10px; border:none; border-radius:8px; cursor:pointer; font-family:'Kanit'; font-weight:bold; transition:0.3s;">
+                <i class="fas fa-id-card"></i> ${translations[currentLang].tab_kyc}
+            </button>
+        </div>
+        <div id="admin-history-container" style="padding: 0 5px;"><p style="text-align:center; color:#999;">Loading history...</p></div>
+    `;
+    
+    // เริ่มต้นที่หน้าการเงิน
+    switchHistoryTab('finance');
+        //loadAdminHistory(); 
 
     } else if (type === 'members') {
         title.innerText = translations[currentLang].title_zone_members;
@@ -796,6 +811,72 @@ async function loadAdminHistory() {
     } catch (err) {
         console.error("Load Admin History Error:", err);
         container.innerHTML = '<p style="text-align:center; color:red;">Data loading failed.</p>';
+    }
+}
+
+// ฟังก์ชันสลับ Tab
+function switchHistoryTab(tab) {
+    const btnFin = document.getElementById('tab-fin');
+    const btnKyc = document.getElementById('tab-kyc');
+    
+    // ปรับสีปุ่ม Active/Inactive
+    if (tab === 'finance') {
+        btnFin.style.background = 'var(--primary)'; btnFin.style.color = '#fff';
+        btnKyc.style.background = '#f0f2f5'; btnKyc.style.color = '#666';
+        loadAdminHistory(); // เรียกฟังก์ชันเดิมของพี่
+    } else {
+        btnKyc.style.background = 'var(--primary)'; btnKyc.style.color = '#fff';
+        btnFin.style.background = '#f0f2f5'; btnFin.style.color = '#666';
+        loadAdminKYCHistory(); // เรียกฟังก์ชันใหม่ที่เรากำลังจะเขียน
+    }
+}
+
+// 🚩 ฟังก์ชันใหม่: โหลดประวัติยืนยันตัวตน (KYC)
+async function loadAdminKYCHistory() {
+    const adminName = localStorage.getItem('myUsername');
+    const container = document.getElementById('admin-history-container');
+    if (!container) return;
+
+    container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> Loading KYC history...</p>';
+
+    try {
+        const res = await fetch(`/api/admin/kyc-history?admin=${adminName}`);
+        const result = await res.json();
+        const history = result.history || [];
+
+        if (history.length === 0) {
+            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-folder-open fa-3x"></i><p>ยังไม่มีประวัติการอนุมัติ KYC</p></div>';
+            return;
+        }
+
+        container.innerHTML = history.map(item => {
+            const date = new Date(item.approvedAt).toLocaleString('th-TH');
+            const currency = item.feeCurrency || 'USD';
+            const income = item.adminReceived || 0;
+
+            return `
+            <div class="admin-card" style="display:flex; justify-content:space-between; align-items:center; border-left: 5px solid #27ae60; margin-bottom: 10px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                    <img src="${item.userImg || 'https://via.placeholder.com/50'}" style="width: 45px; height: 45px; border-radius: 8px; object-fit: cover;">
+                    <div style="text-align: left;">
+                        <strong style="font-size: 0.95em;">${item.fullName}</strong><br>
+                        <small style="color: #27ae60; font-weight: bold;">
+                            <i class="fas fa-check-circle"></i> ${translations[currentLang].status_kyc_approved}
+                        </small>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size: 0.85em; color: var(--primary); font-weight: bold;">
+                        + ${income.toLocaleString()} ${currency}
+                    </div>
+                    <small style="color:#999; font-size: 0.7em;">${date}</small>
+                </div>
+            </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error("KYC History Error:", err);
+        container.innerHTML = '<p style="text-align:center; color:red;">ไม่สามารถโหลดข้อมูลได้</p>';
     }
 }
 
