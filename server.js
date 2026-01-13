@@ -1270,9 +1270,7 @@ app.get('/api/profile-details', async (req, res) => {
             email: user.email || "ยังไม่ระบุ",
             zoneName: zoneName,
             zoneOwner: zoneOwner,
-			kycPrice: zone.kycPrice || 0,
-			kycPriceZone: zone.kycPriceZone || 0,
-			kycPriceSystem: zone.kycPriceSystem || 0
+			kycPrice: zone.kycPrice || 0
         });
 
     } catch (e) {
