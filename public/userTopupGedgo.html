@@ -182,7 +182,11 @@ html {
                 <div style="margin-top: 30px;">
     <h4 data-i18n-key="title_topup_steps"><i class="fas fa-info-circle"></i> ขั้นตอนการเติมเงิน</h4>
     <ul style="color: #666; font-size: 0.85em; line-height: 1.8;">
-        <li id="step-1-desc">ระบุจำนวนเงิน <b id="step-currency-label">---</b> ที่ต้องการ</li>
+        <li id="step-1-desc">
+    <span data-i18n-key="step_1_prefix">ระบุจำนวนเงิน</span> 
+    <b id="step-currency-label" style="color: var(--primary);">---</b> 
+    <span data-i18n-key="step_1_suffix">ที่ต้องการ</span>
+</li>
         <li data-i18n-key="step_2_text">ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด</li>
     </ul>
 </div>
@@ -255,6 +259,8 @@ const translations = {
         'step_1_text': 'ระบุจำนวนเงิน {currency} ที่ต้องการ',
         'step_2_text': 'ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด',
         'status_pending_review': 'อยู่ระหว่างตรวจสอบ',
+		'step_1_prefix': 'Especifique o valor de',
+        'step_1_suffix': 'desejado',
     },
     'en': {
         'lbl_wallet_system': 'Member Wallet System',
@@ -274,6 +280,8 @@ const translations = {
         'step_1_text': 'Specify the amount of {currency} needed',
         'step_2_text': 'The request will be sent to the <b>Zone Owner</b>',
         'status_pending_review': 'Pending Review',
+		'step_1_prefix': 'Specify the amount of',
+        'step_1_suffix': 'needed',
     },
     'pt': {
         'lbl_wallet_system': 'Sistema de Carteira',
@@ -293,14 +301,18 @@ const translations = {
         'step_1_text': 'Especifique o valor de {currency} desejado',
         'step_2_text': 'O pedido será enviado ao <b>Dono da Zona</b>',
         'status_pending_review': 'Pendente',
+		'step_1_prefix': 'Especifique o valor de',
+        'step_1_suffix': 'desejado',
     }
 };
 
 function applyMerchantTranslations() {
-    console.log(`[i18n] Applying translations for: ${currentLang}`);
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    console.log(`[i18n] Applying translations for: ${lang}`);
+
     document.querySelectorAll('[data-i18n-key]').forEach(el => {
         const key = el.getAttribute('data-i18n-key');
-        const translatedText = translations[currentLang]?.[key];
+        const translatedText = translations[lang]?.[key];
 
         if (translatedText) {
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
@@ -313,7 +325,7 @@ function applyMerchantTranslations() {
                     el.appendChild(icon);
                     el.insertAdjacentHTML('beforeend', ' ' + translatedText);
                 } else {
-                    el.innerText = translatedText;
+                    el.innerHTML = translatedText;
                 }
             }
         }
