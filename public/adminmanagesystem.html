@@ -137,15 +137,16 @@
         <input type="text" class="search-box" id="userSearch" placeholder="ค้นหาชื่อผู้ใช้..." onkeyup="filterTable('userSearch', 'member-table')">
         <table id="member-table">
             <thead>
-                <tr>
-                    <th>ผู้ใช้งาน</th>
-                    <th>ยอดเงิน (USDT)</th>
-                    <th>กระเป๋าโซน</th>
-                    <th>ระดับ</th>
-                    <th>สถานะ</th>
-                    <th>จัดการ</th>
-                </tr>
-            </thead>
+    <tr>
+        <th>ID</th>
+        <th>ชื่อโซน</th>
+        <th>แอดมินดูแล</th>
+        <th>สกุลเงิน</th>
+        <th style="background:#fdf2f2;">ค่ายืนยัน (KYC)</th> <th style="background:#f4f9f4;">เติมขั้นต่ำ</th> <th style="background:#f4f9f4;">ถอนขั้นต่ำ</th> <th>เรท (1 USDT =)</th>
+        <th>ระบบ (USDT)</th>
+        <th>จัดการ</th>
+    </tr>
+</thead>
             <tbody id="member-body">
                 </tbody>
         </table>
@@ -214,6 +215,7 @@
             const res = await fetch('/api/admin/all-zones');
             const zones = await res.json();
             const body = document.getElementById('zone-body');
+			const currency = z.zoneCurrency || 'USD';
             body.innerHTML = '';
 
             zones.forEach(z => {
@@ -221,42 +223,60 @@
                 const freeBadge = z.isFree ? '<span class="badge" style="background:#d4efdf; color:#1e8449;">FREE</span>' : '';
 
                 body.innerHTML += `
-                    <tr>
-                        <td>${z.id}</td>
-                        <td>
-                            <b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">
-                                ${z.name}
-                            </b> ${freeBadge}
-                        </td>
-                        <td>${z.assignedAdmin || '-'}</td>
-                        <td>
-                            <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${z.zoneCurrency}')">
-                                ${z.zoneCurrency || 'USD'}
-                            </button>
-                        </td>
-                        <td>
-                            <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">
-                                ${z.zoneExchangeRate || 1.0}
-                            </button>
-                        </td>
-                        <td>
-                            <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
-                                ${(z.systemZone || 0).toFixed(2)}
-                            </button>
-                        </td>
-                        <td>
-                            <button class="btn" style="color:var(--accent); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'zoneFee', ${z.zoneFee || 0})">
-                                ${(z.zoneFee || 0).toFixed(2)}
-                            </button>
-                        </td>
-                        <td>
-                            <button class="btn btn-ban ${z.isFree ? 'active' : ''}" onclick="universalEdit('zones', ${z.id}, 'isFree', ${z.isFree || false})">
-                                <i class="fas fa-magic"></i> ${z.isFree ? 'ปิดโหมดฟรี' : 'เปิดโหมดฟรี'}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
+        <tr>
+            <td>${z.id}</td>
+            <td>
+                <b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">
+                    ${z.name}
+                </b>
+            </td>
+            <td>${z.assignedAdmin || '-'}</td>
+            <td>
+                <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${z.zoneCurrency}')">
+                    ${currency}
+                </button>
+            </td>
+
+            <td>
+                <button class="btn" style="color:var(--danger); font-weight:bold;" 
+                    onclick="universalEdit('zones', ${z.id}, 'kycPrice', ${z.kycPrice || 0})">
+                    ${(z.kycPrice || 0).toLocaleString()} <small>${currency}</small>
+                </button>
+            </td>
+
+            <td>
+                <button class="btn" style="color:var(--success); font-weight:bold;" 
+                    onclick="universalEdit('zones', ${z.id}, 'minTopup', ${z.minTopup || 0})">
+                    ${(z.minTopup || 0).toLocaleString()} <small>${currency}</small>
+                </button>
+            </td>
+
+            <td>
+                <button class="btn" style="color:var(--success); font-weight:bold;" 
+                    onclick="universalEdit('zones', ${z.id}, 'minWithdraw', ${z.minWithdraw || 0})">
+                    ${(z.minWithdraw || 0).toLocaleString()} <small>${currency}</small>
+                </button>
+            </td>
+
+            <td>
+                <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">
+                    ${z.zoneExchangeRate || 1.0}
+                </button>
+            </td>
+            <td>
+                <button class="btn" style="color:var(--success); font-weight:bold;" 
+                    onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
+                    ${(z.systemZone || 0).toFixed(2)}
+                </button>
+            </td>
+            <td>
+                <button class="btn btn-ban ${z.isFree ? 'active' : ''}" onclick="universalEdit('zones', ${z.id}, 'isFree', ${z.isFree || false})">
+                    <i class="fas fa-magic"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+});
         } catch (e) { console.error(e); }
     }
 
