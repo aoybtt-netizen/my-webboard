@@ -858,46 +858,52 @@ async function openKYC() {
     const modal = document.getElementById('kyc-modal');
     const formView = document.getElementById('kyc-form-view');
     const summaryView = document.getElementById('kyc-summary-view');
-    
+    const feeElement = document.getElementById('kyc-fee-display');
     const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-    const feeElement = document.getElementById('kyc-fee-display'); 
-    
+    const myName = localStorage.getItem('myUsername');
+
+    // ตรวจสอบสถานะการยืนยัน
     const status = localStorage.getItem('kyc_status');
 
     if (status === 'pending' || status === 'approved') {
         formView.style.display = 'none';
         summaryView.style.display = 'block';
-        const myName = localStorage.getItem('myUsername');
         loadKYCUserChatHistory(myName);
     } else {
         formView.style.display = 'block';
         summaryView.style.display = 'none';
 
-        try {
-            // ดึงพิกัดล่าสุดที่เก็บไว้
-            const lat = localStorage.getItem('user_last_lat'); 
-            const lng = localStorage.getItem('user_last_lng');
+        // 🚩 โชว์ Loading รอข้อมูล
+        if (feeElement) feeElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
 
-            // 🚩 เรียก API ดึงค่าธรรมเนียม
-            const res = await fetch('/api/user/get-kyc-fee', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lat: parseFloat(lat), lng: parseFloat(lng) })
-            });
+        try {
+            // 🚩 ดึงข้อมูลแบบเดียวกับ window.onload เป๊ะๆ
+            const savedLoc = localStorage.getItem('userPrimaryLocation');
+            let locationParam = '';
+            if (savedLoc) locationParam = `&location=${encodeURIComponent(savedLoc)}`;
+
+            const res = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
             const data = await res.json();
 
+            if (data.error) throw new Error(data.error);
+
+            // 🚩 ดึงค่า kycPrice และ currency ที่ได้จาก API
+            const kycPrice = data.kycPrice || 0;
+            const currency = data.currency || 'USD';
+
+            // แสดงผลที่หน้าจอ
             if (feeElement) {
                 const label = translations[currentLang].lbl_kyc_fee || 'ค่ายืนยันตัวตน:';
-                // แสดงราคาและสกุลเงินที่ได้มาจาก API
-                feeElement.innerHTML = `${label} <b>${data.kycPrice.toLocaleString()} ${data.zoneCurrency}</b>`;
+                feeElement.innerHTML = `${label} <b>${kycPrice.toLocaleString()} ${currency}</b>`;
             }
-            
-            // เก็บค่าใส่ window ไว้ใช้ตอนกดส่งฟอร์ม (submitKYC)
-            window.currentKYCFee = data.kycPrice;
-            window.currentKYCCurrency = data.zoneCurrency;
 
-        } catch (e) {
-            console.error("Fetch KYC Fee Error:", e);
+            // เก็บใส่ window ไว้ใช้ตอนเช็คยอดเงินใน submitKYC
+            window.currentKYCFee = kycPrice;
+            window.currentKYCCurrency = currency;
+            window.userCurrentBalance = data.coins || 0; // เก็บยอดเงินที่มีอยู่จริง
+
+        } catch (err) {
+            console.error("KYC Load Error:", err);
             if (feeElement) feeElement.innerText = "Error loading fee";
         }
     }
