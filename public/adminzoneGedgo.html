@@ -681,14 +681,21 @@ async function showContent(type) {
     if (type === 'topup') {
         title.innerText = translations[currentLang].title_transactionsss;
         // ดึงของจาก storage กลับมาแสดง
-        if (topupListSec) display.appendChild(topupListSec);
-        if (adminChatSec) display.appendChild(adminChatSec);
-
-        adminChatSec.style.display = 'none';
-        topupListSec.style.display = 'block';
+        if (topupListSec) {
+            display.appendChild(topupListSec);
+            topupListSec.style.display = 'block';
+        }
         
-        document.getElementById('topup-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Loading...</p>';
-        loadTopupRequests(); 
+        if (adminChatSec) {
+            display.appendChild(adminChatSec);
+            adminChatSec.style.display = 'none'; // บรรทัดที่เคยเออเร่อ จะปลอดภัยแล้ว
+        }
+
+        const container = document.getElementById('topup-list-container');
+        if (container) {
+            container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Loading...</p>';
+            loadTopupRequests(); 
+        }
 
     } else if (type === 'kyc') {
         title.innerText = translations[currentLang].title_kyc_verificationnn;
