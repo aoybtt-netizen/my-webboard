@@ -277,47 +277,53 @@
 }
 	
 
-function viewZoneDetails(z) {
+function viewZoneDetails(zoneId) {
+    // ค้นหาข้อมูลจากตัวแปรที่เก็บไว้
+    const z = window.allZonesData.find(item => item.id === zoneId);
+    if (!z) return;
+
     const currency = z.zoneCurrency || 'USD';
-    
+
     Swal.fire({
-        title: `<i class="fas fa-map-marker-alt"></i> รายละเอียดโซน: ${z.name}`,
+        title: `<i class="fas fa-info-circle"></i> ข้อมูลโซน: ${z.name}`,
         html: `
-            <div style="text-align: left; font-family: 'Kanit', sans-serif; line-height: 1.8;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>ID:</b> <span>${z.id}</span>
+            <div style="text-align: left; font-size: 0.95em; line-height: 2;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
+                    <span style="color:#666;">รหัสโซน (ID):</span>
+                    <b>${z.id}</b>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>ชื่อโซน:</b> <span style="color:var(--accent); font-weight:bold;">${z.name}</span>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
+                    <span style="color:#666;">สกุลเงินที่ใช้:</span>
+                    <span class="badge" style="background:var(--accent); color:white; padding: 2px 8px; border-radius: 5px;">${currency}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>แอดมินดูแล:</b> <span>${z.assignedAdmin || 'ยังไม่มี'}</span>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
+                    <span style="color:#666;">แอดมินผู้ดูแล:</span>
+                    <b>${z.assignedAdmin || '-'}</b>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>สกุลเงิน:</b> <span class="badge" style="background:#e8f4fd; color:#2980b9;">${currency}</span>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
+                    <span style="color:#666;">เรทแลกเปลี่ยน:</span>
+                    <b>1 USDT = ${z.zoneExchangeRate || 1.0} ${currency}</b>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>ค่ายืนยันตัวตน (KYC):</b> <span>${(z.kycPrice || 0).toLocaleString()} ${currency}</span>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
+                    <span style="color:#666;">ค่ายืนยันตัวตน (KYC):</span>
+                    <b style="color:var(--danger);">${(z.kycPrice || 0).toLocaleString()} ${currency}</b>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>เติมเงินขั้นต่ำ:</b> <span>${(z.minTopup || 0).toLocaleString()} ${currency}</span>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
+                    <span style="color:#666;">เติมเงินขั้นต่ำ:</span>
+                    <b style="color:var(--success);">${(z.minTopup || 0).toLocaleString()} ${currency}</b>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>ถอนเงินขั้นต่ำ:</b> <span>${(z.minWithdraw || 0).toLocaleString()} ${currency}</span>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
+                    <span style="color:#666;">ถอนเงินขั้นต่ำ:</span>
+                    <b style="color:var(--success);">${(z.minWithdraw || 0).toLocaleString()} ${currency}</b>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>เรท (1 USDT =):</b> <span>${z.zoneExchangeRate || 1.0} ${currency}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>ยอดคงเหลือในระบบ:</b> <span style="color:var(--success); font-weight:bold;">${(z.systemZone || 0).toFixed(2)} USDT</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
-                    <b>ประเภทโซน:</b> <span>${z.isFree ? 'โซนฟรี' : 'โซนปกติ'}</span>
+                <div style="display: flex; justify-content: space-between; padding: 5px 0; background: #f9f9f9; margin-top: 10px; border-radius: 5px;">
+                    <span style="color:#666; padding-left: 5px;">ยอดในระบบ (System):</span>
+                    <b style="color:var(--primary); padding-right: 5px;">${(z.systemZone || 0).toFixed(2)} USDT</b>
                 </div>
             </div>
         `,
-        confirmButtonText: 'ปิด',
-        confirmButtonColor: 'var(--secondary)'
+        confirmButtonText: 'รับทราบ',
+        confirmButtonColor: 'var(--primary)'
     });
 }
 
