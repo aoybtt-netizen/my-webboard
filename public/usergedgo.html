@@ -406,6 +406,7 @@
 	let currentZoneAdmin = null;
 	let isKYCPending = false;
 	let currentKYCRequestId = null;
+	let currentZoneData = null;
 	
 	
 
@@ -857,23 +858,33 @@ function openKYC() {
     const formView = document.getElementById('kyc-form-view');
     const summaryView = document.getElementById('kyc-summary-view');
     
-    // ตรวจสอบจากสถานะที่เราเพิ่งดึงมาจาก Server
+    // 🚩 1. ประกาศตัวแปรที่จำเป็นภายในฟังก์ชัน
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const feeElement = document.getElementById('kyc-fee-display'); 
+    
+    // 🚩 2. ป้องกัน Error โดยการเช็กว่า currentZoneData มีตัวตนไหม
+    // ถ้าไม่มี (เป็น null/undefined) ให้สร้าง object เปล่าที่มีค่า default ไว้ก่อน
+    const zoneData = (typeof currentZoneData !== 'undefined' && currentZoneData) ? currentZoneData : { kycPrice: 0, zoneCurrency: 'USD' };
+
     const status = localStorage.getItem('kyc_status');
 
     if (status === 'pending' || status === 'approved') {
         formView.style.display = 'none';
         summaryView.style.display = 'block';
-        
-        // โหลดประวัติแชท
         const myName = localStorage.getItem('myUsername');
         loadKYCUserChatHistory(myName);
     } else {
         formView.style.display = 'block';
         summaryView.style.display = 'none';
-		const price = currentZoneData ? currentZoneData.kycPrice || 0 : 0;
-        const currency = currentZoneData ? currentZoneData.zoneCurrency || 'USD' : 'USD';
-		if (feeElement) {
-            feeElement.innerHTML = `${translations[currentLang].lbl_kyc_fee} <b>${price.toLocaleString()} ${currency}</b>`;
+
+        // 🚩 3. ใช้ค่าจาก zoneData ที่เราเช็กแล้วด้านบน
+        const price = zoneData.kycPrice || 0;
+        const currency = zoneData.zoneCurrency || 'USD';
+
+        if (feeElement) {
+            // ดึงคำแปลจาก Dictionary (ตรวจสอบว่าใน translations มีคีย์ lbl_kyc_fee หรือยัง)
+            const label = translations[currentLang].lbl_kyc_fee || 'ค่ายืนยันตัวตน:';
+            feeElement.innerHTML = `${label} <b>${price.toLocaleString()} ${currency}</b>`;
         }
     }
 
