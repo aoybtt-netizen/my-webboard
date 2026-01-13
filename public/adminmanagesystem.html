@@ -232,44 +232,44 @@
 	
 
 function viewZoneDetails(zoneId) {
-        const z = allZonesData.find(item => item.id === zoneId);
-        if (!z) return;
+    const z = allZonesData.find(item => item.id === zoneId);
+    if (!z) return;
 
-        const currency = z.zoneCurrency || 'USD';
+    const currency = z.zoneCurrency || 'USD';
 
-        Swal.fire({
-            title: `<i class="fas fa-edit"></i> รายละเอียดโซน: ${z.name}`,
-            html: `
-                <div style="text-align: left; font-size: 0.9em; line-height: 1.8; max-height: 500px; overflow-y: auto;">
-                    <p style="color: #e74c3c; font-size: 0.8em; margin-bottom: 10px; font-weight: bold;">
-                        <i class="fas fa-hand-pointer"></i> คลิกที่ข้อมูลตัวหนาเพื่อแก้ไข
-                    </p>
-                    
-                    <div style="background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee;">
-                        ${renderItem('ชื่อโซน', 'name', z.name, z.id)}
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
-                            <span>พิกัด (Lat, Lng):</span>
-                            <b>${z.lat || 0}, ${z.lng || 0}</b>
-                        </div>
-                        ${renderItem('เจ้าของโซน', 'assignedAdmin', z.assignedAdmin, z.id)}
-                        ${renderItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
-                        ${renderItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id, currency)}
-                        ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
-                        ${renderItem('ค่าระบบโซน', 'systemZone', z.systemZone, z.id, 'USDT')}
-                        ${renderItem('ค่ายืนยัน KYC', 'kycPrice', z.kycPrice, z.id, currency)}
-                        ${renderItem('ฝากขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
-                        ${renderItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
+    Swal.fire({
+        title: `<i class="fas fa-edit"></i> จัดการโซน: ${z.name}`,
+        html: `
+            <div style="text-align: left; font-size: 0.9em; line-height: 1.8; max-height: 500px; overflow-y: auto;">
+                <p style="color: #666; font-size: 0.8em; margin-bottom: 10px;">* คลิกที่ข้อมูลตัวหนาเพื่อแก้ไข</p>
+                
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee;">
+                    ${renderItem('ชื่อโซน', 'name', z.name, z.id)}
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
+                        <span>พิกัด (Lat, Lng):</span>
+                        <b>${z.lat || 0}, ${z.lng || 0}</b>
                     </div>
+                    ${renderItem('เจ้าของโซน', 'assignedAdmin', z.assignedAdmin, z.id)}
+                    ${renderItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
+                    ${renderItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id, currency)}
+                    ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
+                    ${renderItem('ค่าระบบโซน', 'systemZone', z.systemZone, z.id, 'USDT')}
+                    ${renderItem('ค่ายืนยัน KYC', 'kycPrice', z.kycPrice, z.id, currency)}
+                    ${renderItem('ฝากขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
+                    ${renderItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
 
-                    <button onclick="debugZone(${z.id})" style="width:100%; margin-top:15px; padding:8px; background:#34495e; color:white; border:none; border-radius:5px; cursor:pointer; font-size: 0.8em;">
-                        <i class="fas fa-code"></i> ตรวจสอบตัวแปรทั้งหมด (Debug)
-                    </button>
+                    ${renderBooleanItem('โหมดโพสต์ฟรีในโซน', 'isFree', z.isFree, z.id)}
                 </div>
-            `,
-            showConfirmButton: false,
-            showCloseButton: true
-        });
-    }
+
+                <button onclick="debugZone(${z.id})" style="width:100%; margin-top:15px; padding:8px; background:#34495e; color:white; border:none; border-radius:5px; cursor:pointer; font-size: 0.8em;">
+                    <i class="fas fa-code"></i> ตรวจสอบตัวแปรทั้งหมด (Debug)
+                </button>
+            </div>
+        `,
+        showConfirmButton: false,
+        showCloseButton: true
+    });
+}
 
 
 function renderItem(label, field, value, id, unit = '') {
@@ -287,6 +287,32 @@ function renderItem(label, field, value, id, unit = '') {
             </div>
         `;
     }
+	
+
+function renderBooleanItem(label, field, value, id) {
+    const isOn = (value === true || value === 'true');
+    return `
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0; align-items: center;">
+            <span style="color:#666;">${label}:</span>
+            <button onclick="toggleZoneBoolean(${id}, '${field}', ${isOn})" 
+                style="cursor:pointer; border:none; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-family: 'Kanit';
+                background: ${isOn ? '#27ae60' : '#bdc3c7'}; color: white;">
+                ${isOn ? '<i class="fas fa-check-circle"></i> เปิดใช้งาน' : '<i class="fas fa-times-circle"></i> ปิดใช้งาน'}
+            </button>
+        </div>
+    `;
+}
+
+async function toggleZoneBoolean(id, field, currentValue) {
+    const newValue = !currentValue; // สลับค่าจาก true เป็น false หรือกลับกัน
+    
+    // เรียกใช้ฟังก์ชันเซฟตัวเดิมของพี่
+    await executeURLUpdate('zones', id, field, newValue);
+    
+    // หลังจากเซฟเสร็จ สั่งปิด Popup แล้วเปิดใหม่เพื่อให้ข้อมูลอัปเดต (หรือจะ Reload หน้าก็ได้)
+    Swal.close();
+    setTimeout(() => viewZoneDetails(id), 500); 
+}
 
     // ฟังก์ชันดู Raw Data
     function debugZone(zoneId) {
