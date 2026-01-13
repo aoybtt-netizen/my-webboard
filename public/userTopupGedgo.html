@@ -211,7 +211,7 @@ html {
         <i class="fas fa-image"></i>
     </button>
     
-    <input type="text" id="user-chat-input" placeholder="พิมพ์ข้อความ..." style="flex: 1; border: none; padding: 10px; outline: none;">
+    <input type="text" id="user-chat-input" data-i18n-key="plh_chat_message" placeholder="พิมพ์ข้อความ..." style="flex: 1; border: none; padding: 10px; outline: none;">
     
     <button onclick="sendUserChat()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px; cursor: pointer;">
         <i class="fas fa-paper-plane"></i>
@@ -221,11 +221,11 @@ html {
 </div>
 
             <div id="section-history" style="display: none;">
-                <h4>ประวัติการส่งคำขอ</h4>
-                <div id="history-list">
-                    <p style="text-align: center; color: #999;">กำลังโหลดประวัติ...</p>
-                </div>
-            </div>
+    <h4 data-i18n-key="title_request_history">ประวัติการส่งคำขอ</h4>
+    <div id="history-list">
+        <p style="text-align: center; color: #999;" data-i18n-key="lbl_loading_history">กำลังโหลดประวัติ...</p>
+    </div>
+</div>
 
         </div>
     </main>
@@ -259,8 +259,11 @@ const translations = {
         'step_1_text': 'ระบุจำนวนเงิน {currency} ที่ต้องการ',
         'step_2_text': 'ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด',
         'status_pending_review': 'อยู่ระหว่างตรวจสอบ',
-		'step_1_prefix': 'Especifique o valor de',
-        'step_1_suffix': 'desejado',
+		'step_1_prefix': 'ระบุจำนวนเงิน',
+        'step_1_suffix': 'ที่ต้องการ',
+		'plh_chat_message': 'พิมพ์ข้อความ...',
+        'title_request_history': 'ประวัติการส่งคำขอ',
+        'lbl_loading_history': 'กำลังโหลดประวัติ...',
     },
     'en': {
         'lbl_wallet_system': 'Member Wallet System',
@@ -282,6 +285,9 @@ const translations = {
         'status_pending_review': 'Pending Review',
 		'step_1_prefix': 'Specify the amount of',
         'step_1_suffix': 'needed',
+		'plh_chat_message': 'Type a message...',
+        'title_request_history': 'Request History',
+        'lbl_loading_history': 'Loading history...',
     },
     'pt': {
         'lbl_wallet_system': 'Sistema de Carteira',
@@ -303,6 +309,9 @@ const translations = {
         'status_pending_review': 'Pendente',
 		'step_1_prefix': 'Especifique o valor de',
         'step_1_suffix': 'desejado',
+		'plh_chat_message': 'Digite uma mensagem...',
+        'title_request_history': 'Histórico de Pedidos',
+        'lbl_loading_history': 'Carregando histórico...',
     }
 };
 
