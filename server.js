@@ -4438,6 +4438,38 @@ app.post('/api/admin/delete-kyc', async (req, res) => {
     }
 });
 
+// API สำหรับดึงค่าธรรมเนียม KYC ตามพิกัดปัจจุบันของผู้ใช้
+app.post('/api/user/get-kyc-fee', async (req, res) => {
+    try {
+        const { lat, lng } = req.body;
+
+        if (!lat || !lng) {
+            return res.json({ kycPrice: 0, zoneCurrency: 'USD' });
+        }
+
+        // ค้นหาโซนที่ใกล้พิกัดนี้ที่สุด (หรือโซนที่ครอบคลุมพิกัดนี้)
+        // สมมติว่าพี่ใช้การหาโซนที่ใกล้ที่สุดจากระยะทาง
+        const zone = await db.collection('zones').findOne({
+            // พี่อาจจะใช้ Logic การหาโซนที่เคยทำไว้ หรือหาที่ใกล้ที่สุด
+            // ในที่นี้สมมติหาโซนที่มีพิกัดใกล้เคียง (ตัวอย่าง Logic อย่างง่าย)
+            lat: { $gte: lat - 0.5, $lte: lat + 0.5 },
+            lng: { $gte: lng - 0.5, $lte: lng + 0.5 }
+        });
+
+        if (zone) {
+            res.json({
+                kycPrice: zone.kycPrice || 0,
+                zoneCurrency: zone.zoneCurrency || 'USD',
+                zoneName: zone.name
+            });
+        } else {
+            res.json({ kycPrice: 0, zoneCurrency: 'USD', zoneName: 'Unknown' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 
 
 

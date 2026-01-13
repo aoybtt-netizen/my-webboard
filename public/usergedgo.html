@@ -878,25 +878,31 @@ function openKYC() {
         formView.style.display = 'block';
         summaryView.style.display = 'none';
 
-        // 🚩 3. กำหนดค่าเริ่มต้น และดึงค่าจากข้อมูลโซนจริง
-        let price = 0;
-        let currency = 'USD';
+        try {
+            // ดึงพิกัดล่าสุดที่ระบบปักหมุดไว้ (ถ้ามี)
+            const lat = localStorage.getItem('user_last_lat'); 
+            const lng = localStorage.getItem('user_last_lng');
 
-        if (zoneData) {
-            price = zoneData.kycPrice || 0;
-            currency = zoneData.zoneCurrency || 'USD';
-            console.log(`✅ โหลดข้อมูล KYC โซนสำเร็จ: ${price} ${currency}`);
-        } else {
-            console.warn("⚠️ ไม่พบข้อมูล currentZoneData ระบบจะแสดงค่าเริ่มต้น (0 USD)");
-        }
+            const res = await fetch('/api/user/get-kyc-fee', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: parseFloat(lat), lng: parseFloat(lng) })
+            });
+            const data = await res.json();
 
-        // 🚩 4. อัปเดต HTML พร้อมสกุลเงินที่ถูกต้อง
-        if (feeElement) {
-            const label = (translations[currentLang] && translations[currentLang].lbl_kyc_fee) 
-                          ? translations[currentLang].lbl_kyc_fee 
-                          : 'ค่ายืนยันตัวตน:';
-                          
-            feeElement.innerHTML = `${label} <b>${price.toLocaleString()} ${currency}</b>`;
+            // แสดงผลราคาที่ได้จาก API
+            if (feeElement) {
+                const label = translations[currentLang].lbl_kyc_fee || 'ค่ายืนยันตัวตน:';
+                feeElement.innerHTML = `${label} <b>${data.kycPrice.toLocaleString()} ${data.zoneCurrency}</b>`;
+            }
+            
+            // เก็บค่าไว้ใช้ตอนกด Submit ด้วย
+            window.currentKYCFee = data.kycPrice;
+            window.currentKYCCurrency = data.zoneCurrency;
+
+        } catch (e) {
+            console.error("Fetch KYC Fee Error:", e);
+            if (feeElement) feeElement.innerText = "Error loading fee";
         }
     }
 
