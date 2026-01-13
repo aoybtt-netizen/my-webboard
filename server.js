@@ -614,6 +614,56 @@ app.post('/api/admin/universal-update', async (req, res) => {
     }
 });
 
+// API สำหรับการอัปเดตข้อมูลแบบเจาะจงฟิลด์ (Universal Update)
+app.post('/api/admin/update-field', async (req, res) => {
+    try {
+        const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
+
+        // 1. ตรวจสอบสิทธิ์ (พี่แก้ตามระบบตรวจสอบ Admin ของพี่)
+        if (!adminUsername) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึง' });
+        }
+
+        // 2. แปลงประเภทข้อมูลให้ถูกต้องก่อนลง DB
+        // ถ้าฟิลด์เหล่านี้น่าจะเป็นตัวเลข ให้แปลงเป็น Number
+        const numericFields = ['kycPrice', 'minTopup', 'minWithdraw', 'zoneExchangeRate', 'systemZone', 'zoneFee', 'id'];
+        let finalValue = newValue;
+        
+        if (numericFields.includes(field)) {
+            finalValue = parseFloat(newValue);
+            if (isNaN(finalValue)) finalValue = 0; // กันค่าว่างหรือ Error
+        }
+
+        // 3. กำหนด Collection ที่ต้องการอัปเดต
+        let collection;
+        if (targetCollection === 'zones') {
+            collection = db.collection('zones');
+        } else if (targetCollection === 'users') {
+            collection = db.collection('users');
+        } else {
+            return res.status(400).json({ success: false, message: 'ไม่พบ Collection' });
+        }
+
+        // 4. สั่งอัปเดต (รองรับทั้งการหาด้วย id ที่เป็น Number หรือ _id ที่เป็น ObjectId)
+        const filter = (field === 'id' || typeof targetId === 'number') ? { id: Number(targetId) } : { _id: new ObjectId(targetId) };
+
+        const result = await collection.updateOne(
+            filter,
+            { $set: { [field]: finalValue, updatedAt: new Date() } }
+        );
+
+        if (result.modifiedCount > 0 || result.matchedCount > 0) {
+            res.json({ success: true, message: `อัปเดตฟิลด์ ${field} เรียบร้อยแล้ว` });
+        } else {
+            res.status(404).json({ success: false, message: 'ไม่พบข้อมูลที่ต้องการอัปเดต' });
+        }
+
+    } catch (err) {
+        console.error("Update Field Error:", err);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์' });
+    }
+});
+
 
 
 
