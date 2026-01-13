@@ -1251,10 +1251,8 @@ app.get('/api/profile-details', async (req, res) => {
                 // ✅ 1. ดึงสกุลเงินของโซนนั้นมา (เช่น 'THB', 'BRL')
                 if (zoneInfo.zoneData.zoneCurrency) {
                     currentCurrency = zoneInfo.zoneData.zoneCurrency;
-                    
-                    // ✅ 2. ดึงยอดเงินจาก "กระเป๋าที่ตรงกับสกุลเงิน" (เช่น user.THB)
-                    // ถ้าไม่มีให้เป็น 0 (ห้ามแปลงค่า ให้ดึงค่าดิบ)
-                    currentBalance = user[currentCurrency] || 0; 
+                    currentBalance = user[currentCurrency] || 0;
+					kycPrice = zoneInfo.zoneData.kycPrice;
                 }
             }
         }
@@ -1269,8 +1267,7 @@ app.get('/api/profile-details', async (req, res) => {
             completedJobs: user.completedJobs || 0,
             email: user.email || "ยังไม่ระบุ",
             zoneName: zoneName,
-            zoneOwner: zoneOwner,
-			kycPrice: zone.kycPrice || 0
+            zoneOwner: zoneOwner
         });
 
     } catch (e) {
