@@ -305,8 +305,13 @@ function viewZoneDetails(zoneId) {
                 <div style="background: #f4f9f4; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--success);">
                     <b style="color: var(--success);">💰 นโยบายการเงิน (${currency})</b><br>
                     <div style="display: flex; justify-content: space-between;">
-                        <span>ค่าธรรมเนียมโซน:</span> <b>${((z.zoneFee || 0) * 100).toFixed(2)}%</b>
+                        <span>ค่าธรรมเนียมโซน:</span> <b>${(z.zoneFee || 0).toFixed(2)}</b>
                     </div>
+					
+					<div style="display: flex; justify-content: space-between;">
+                        <span>ค่าธรรมเนียมระบบ:</span> <b>${(z.systemZone || 0).toFixed(2)}</b>
+                    </div>
+					
                     <div style="display: flex; justify-content: space-between;">
                         <span>ค่ายืนยันตัวตน (KYC):</span> <b>${(z.kycPrice || 0).toLocaleString()} ${currency}</b>
                     </div>
@@ -323,7 +328,6 @@ function viewZoneDetails(zoneId) {
                     <span style="color:#666;">โซน ID:</span> <b>${z.id}</b><br>
                     <span style="color:#666;">เจ้าของโซน:</span> <b>${z.assignedAdmin || '-'}</b><br>
                     <span style="color:#666;">เรทแลกเปลี่ยน:</span> <b>1 USDT = ${z.zoneExchangeRate || 1.0} ${currency}</b><br>
-                    <span style="color:#666;">ยอดเงินในระบบ:</span> <b style="color:var(--success);">${(z.systemZone || 0).toFixed(2)} USDT</b>
                 </div>
             </div>
         `,
