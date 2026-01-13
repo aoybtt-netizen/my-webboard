@@ -564,7 +564,7 @@ app.post('/api/admin/universal-update', async (req, res) => {
             'coins', 'adminLevel', 'id', 'zoneExchangeRate', 
             'totalPosts', 'completedJobs', 'rating', 
             'BRL', 'THB', 'VND', 'systemZone', 'zoneFee',
-            'kycPrice', 'minTopup', 'minWithdraw' // <--- เพิ่ม 3 ตัวนี้
+            'kycPrice', 'minTopup', 'minWithdraw'
         ];
 
         if (numericFields.includes(field)) {
