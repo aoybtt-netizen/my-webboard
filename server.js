@@ -1870,29 +1870,23 @@ app.get('/api/admin/get-zone-detail/:id', async (req, res) => {
 app.get('/api/admin/my-zone-info', async (req, res) => {
     try {
         const adminUsername = req.query.admin;
-        
-        // 1. ดึงข้อมูลโซนที่แอดมินคนนี้รับผิดชอบ
         const zone = await db.collection('zones').findOne({ assignedAdmin: adminUsername });
 
         if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
 
-        // 2. กำหนดชื่อฟิลด์กระเป๋าเงินตามค่าที่ตั้งไว้ในโซน
         const currencyKey = zone.zoneCurrency || 'USD';
-
-        // 3. ดึงข้อมูลโปรไฟล์ของแอดมิน
         const adminProfile = await db.collection('users').findOne({ username: adminUsername });
 
         res.json({
             success: true,
             zone: {
                 id: zone.id,
-                zoneCurrency: zone.zoneCurrency || 'USD',
+                name: zone.name,
+                zoneCurrency: currencyKey,
                 zoneExchangeRate: zone.zoneExchangeRate || 1.0,
-				kycPriceZone: zone.kycPriceZone || 0,
-				kycPriceSystem: zone.kycPriceSystem || 0
+                kycPriceZone: zone.kycPriceZone || 0
             },
             adminCoins: adminProfile ? (adminProfile.coins || 0) : 0,
-            // ✅ ดึงยอดเงินจากกระเป๋าที่ชื่อตรงกับสกุลเงิน
             zoneWallet: adminProfile ? (adminProfile[currencyKey] || 0) : 0 
         });
     } catch (err) { 
