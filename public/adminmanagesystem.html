@@ -255,6 +255,8 @@ function viewZoneDetails(zoneId) {
                     ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
                     ${renderItem('ค่าระบบโซน', 'systemZone', z.systemZone, z.id, 'USDT')}
                     ${renderItem('ค่ายืนยัน KYC', 'kycPrice', z.kycPrice, z.id, currency)}
+					${renderItem('KYC Zone', 'kycPriceZone', z.kycPriceZone, z.id, currency)}
+					${renderItem('KYC System Zone', 'kycPriceSystem', z.kycPriceSystem, z.id, currency)}
                     ${renderItem('ฝากขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
                     ${renderItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
 

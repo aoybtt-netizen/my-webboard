@@ -183,6 +183,7 @@ const serverTranslations = {
         'kyc_success_text': (admin) => `บัญชีของคุณได้รับการตรวจสอบและยืนยันโดย ${admin} เรียบร้อยแล้ว`,
         'kyc_rejected_title': 'คำขอถูกปฏิเสธ',
         'kyc_rejected_text': 'ข้อมูลของคุณไม่ผ่านการตรวจสอบ กรุณาส่งข้อมูลใหม่อีกครั้ง',
+		'err_insufficient_kyc': 'ยอดเงินของคุณไม่เพียงพอสำหรับค่ายืนยันตัวตน',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -282,6 +283,7 @@ const serverTranslations = {
         'kyc_success_text': (admin) => `Your account has been verified by ${admin} successfully.`,
         'kyc_rejected_title': 'Request Rejected',
         'kyc_rejected_text': 'Your information did not pass verification. Please resubmit your data.',
+		'err_insufficient_kyc': 'Insufficient balance for KYC verification',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -380,6 +382,7 @@ const serverTranslations = {
         'kyc_rejected_title': 'Solicitação Rejeitada',
         'kyc_rejected_text': 'Seus dados não passaram na verificação. Por favor, envie novamente.',
 		'msg_admin_kyc_new': (name) => `Nova solicitação de KYC de ${name}`,
+		'err_insufficient_kyc': 'Saldo insuficiente para verificação KYC',
     }
 };
 
@@ -565,7 +568,7 @@ app.post('/api/admin/universal-update', async (req, res) => {
             'coins', 'adminLevel', 'id', 'zoneExchangeRate', 
 			'totalPosts', 'completedJobs', 'rating', 
 			'BRL', 'THB', 'VND', 'systemZone', 'zoneFee',
-			'kycPrice', 'minTopup', 'minWithdraw'
+			'kycPrice','kycPriceZone','kycPriceSystem', 'minTopup', 'minWithdraw'
         ];
 
         if (numericFields.includes(field)) {
@@ -5236,32 +5239,53 @@ socket.on('reply-deduct-confirm', async (data) => {
 	
 //KYC
 socket.on('submit-kyc', async (kycData) => {
-	const lang = socket.lang || 'th';
+    const lang = socket.lang || 'th';
+    const i18n = serverTranslations[lang];
+
     try {
-        const { username, fullName, idNumber, phone, address, coords, adminName, userImg } = kycData; // รับ userImg มาด้วย
+        const { username, fullName, idNumber, phone, address, coords, adminName, userImg, kycFee, currency } = kycData;
         
+        // 🚩 1. ตรวจสอบยอดเงินผู้ใช้ในฐานข้อมูล (Security Check)
+        const user = await db.collection('users').findOne({ username: username });
+        const currentBalance = user ? (user[currency] || 0) : 0;
+        const fee = parseFloat(kycFee || 0);
+
+        if (currentBalance < fee) {
+            // ถ้าเงินไม่พอ ส่ง error กลับไปที่ user
+            return socket.emit('error-notification', { message: i18n.err_insufficient_kyc });
+        }
+
+        // 🚩 2. หักเงินผู้ใช้ทันที (เก็บไว้ที่ระบบก่อน)
+        await db.collection('users').updateOne(
+            { username: username },
+            { $inc: { [currency]: -fee } } // หักเงินออก
+        );
+
+        // 🚩 3. สร้างรายการคำขอพร้อมบันทึกยอดเงินที่ "ถือไว้" (Held)
         const newRequest = {
             username: username || "Unknown",
             fullName,
             idNumber,
             phone,
             address,
-            coords: coords, // ใช้ชื่อ 'coords' ให้ตรงกับหน้าแอดมิน
-            userImg: userImg, // เก็บรูปภาพ (Base64) ลงไปด้วย
+            coords: coords,
+            userImg: userImg,
             targetAdmin: adminName,
             status: 'pending',
+            feeAmount: fee,       // บันทึกยอดเงินที่หักมา
+            feeCurrency: currency, // บันทึกสกุลเงิน
+            feeStatus: 'held',    // สถานะเงิน: ระบบถือไว้ (รอโอนให้แอดมิน)
             submittedAt: new Date()
         };
 
         await db.collection('kycRequests').insertOne(newRequest);
 
-        // 3. ส่งแจ้งเตือน Real-time ไปที่แอดมินทุกคน
-        // ใช้ io.emit เพื่อให้แอดมินที่เปิดหน้าจออยู่ได้รับทราบทันที
+        // 🚩 4. แจ้งเตือนแอดมิน
         io.emit('admin-notification', {
-			type: 'KYC_REQUEST',
-			message: serverTranslations[lang].msg_admin_kyc_new(fullName),
-			adminId: adminName 
-		});
+            type: 'KYC_REQUEST',
+            message: i18n.msg_admin_kyc_new(fullName),
+            adminId: adminName 
+        });
 
     } catch (err) {
         console.error("❌ KYC Submit Backend Error:", err);

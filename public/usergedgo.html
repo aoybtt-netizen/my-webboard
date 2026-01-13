@@ -492,6 +492,9 @@ const translations = {
         'lbl_next_step_title': 'ขั้นตอนต่อไป:',
         'lbl_next_step_desc': 'โปรดรอแอดมินตอบกลับผ่านแชทเพื่อยืนยันจุดนัดพบในระยะ 20 เมตร',
         'btn_close_window': 'ปิดหน้าต่างนี้',
+		'lbl_kyc_fee': 'ค่ายืนยันตัวตน:',
+        'err_insufficient_kyc': 'ยอดเงินของคุณไม่เพียงพอสำหรับค่ายืนยันตัวตน',
+        'swal_deduct_notice': 'ระบบจะหักเงินค่าธรรมเนียมทันที และจะโอนให้เจ้าของโซนเมื่อการยืนยันสำเร็จ',
     },
     'en': {
         'lbl_current_zone_area': 'Current Operating Area',
@@ -572,6 +575,9 @@ const translations = {
         'lbl_next_step_title': 'Next Step:',
         'lbl_next_step_desc': 'Wait for admin response to confirm meeting point within 20m',
         'btn_close_window': 'Close Window',
+		'lbl_kyc_fee': 'KYC Verification Fee:',
+        'err_insufficient_kyc': 'Insufficient balance for KYC verification',
+        'swal_deduct_notice': 'The fee will be deducted immediately and transferred to the zone owner upon approval.',
     },
     'pt': {
         'lbl_current_zone_area': 'Área de Operação Atual',
@@ -652,6 +658,9 @@ const translations = {
         'lbl_next_step_title': 'Próximo Passo:',
         'lbl_next_step_desc': 'Aguarde o admin responder para confirmar o encontro em até 20m',
         'btn_close_window': 'Fechar Janela',
+		'lbl_kyc_fee': 'Taxa de verificação KYC:',
+        'err_insufficient_kyc': 'Saldo insuficiente para verificação KYC',
+        'swal_deduct_notice': 'A taxa será deduzida imediatamente e transferida para o proprietário da zona após a aprovação.',
     }
 };
 
@@ -861,6 +870,11 @@ function openKYC() {
     } else {
         formView.style.display = 'block';
         summaryView.style.display = 'none';
+		const price = currentZoneData ? currentZoneData.kycPrice || 0 : 0;
+        const currency = currentZoneData ? currentZoneData.zoneCurrency || 'USD' : 'USD';
+		if (feeElement) {
+            feeElement.innerHTML = `${translations[currentLang].lbl_kyc_fee} <b>${price.toLocaleString()} ${currency}</b>`;
+        }
     }
 
     modal.style.display = 'block';
@@ -908,12 +922,29 @@ function validateKYC() {
 }
 
 async function submitKYC() {
+
+    const kycPrice = currentZoneData ? currentZoneData.kycPrice || 0 : 0;
+    const currency = currentZoneData ? currentZoneData.zoneCurrency || 'USD' : 'USD';
+    const userWallet = JSON.parse(localStorage.getItem('userWallet') || '{}'); // สมมติว่าพี่เก็บยอดเงินไว้ในนี้
+    const userBalance = userWallet[currency] || 0;
+
+    if (userBalance < kycPrice) {
+        return Swal.fire({
+            icon: 'error',
+            title: translations[currentLang].swal_error_title,
+            text: translations[currentLang].err_insufficient_kyc,
+            confirmButtonColor: '#e74c3c'
+        });
+    }
+
+    // 🚩 2. ยืนยันการส่งพร้อมแจ้งเรื่องการหักเงิน
     const confirm = await Swal.fire({
         title: translations[currentLang].swal_confirm_submit_title,
-		text: translations[currentLang].swal_confirm_submit_text,
+        text: `${translations[currentLang].swal_deduct_notice} (${kycPrice} ${currency})`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#11998e',
+        confirmButtonText: translations[currentLang].btn_confirm,
         cancelButtonText: translations[currentLang].btn_check_again
     });
 
@@ -967,14 +998,16 @@ async function submitKYC() {
 
             // 4. ส่งผ่าน Socket (แก้ไข: มั่นใจว่ามี username ส่งไป)
             socket.emit('submit-kyc', {
-                username: localStorage.getItem('myUsername'), // ✅ ส่ง username ไปด้วยกัน null
-                fullName: name,
-                idNumber: idNum,
-                phone: phone,
-                address: address,
-                coords: userCoords,
-                adminName: adminName,
-                userImg: userImgData
+                username: localStorage.getItem('myUsername'),
+				fullName: name,
+				idNumber: idNum,
+				phone: phone,
+				address: address,
+				coords: userCoords,
+				adminName: adminName,
+				userImg: userImgData,
+				kycFee: kycPrice,
+				currency: currency 
             });
 
             // 5. แสดงสถานะสำเร็จและสลับหน้า
@@ -1277,6 +1310,7 @@ function updateCurrentLocation() {
     <div style="text-align: left; margin-bottom: 20px;">
         <h3 style="margin: 0; color: var(--dark); font-size: 1.5em;" data-i18n-key="title_kyc_member">ยืนยันตัวตนสมาชิก</h3>
         <p style="font-size: 0.85em; color: #666; margin-top: 5px;" data-i18n-key="desc_kyc_member">อัปโหลดข้อมูลเพื่อให้แอดมินเจ้าของโซนตรวจสอบ</p>
+		<p id="kyc-fee-display" style="font-size: 0.85em; color: #666; margin-top: 5px;"></p>
     </div>
 
     <label style="font-size: 0.85em; font-weight: bold; display: block; text-align: left; margin-bottom: 8px;" data-i18n-key="lbl_selfie_current">รูปถ่ายหน้าจริงปัจจุบัน:</label>
