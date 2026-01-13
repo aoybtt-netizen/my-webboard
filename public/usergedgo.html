@@ -858,14 +858,15 @@ function openKYC() {
     const formView = document.getElementById('kyc-form-view');
     const summaryView = document.getElementById('kyc-summary-view');
     
-    // 🚩 1. ประกาศตัวแปรที่จำเป็นภายในฟังก์ชัน
+    // 🚩 1. ดึงภาษาปัจจุบัน และ Element แสดงราคา
     const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const feeElement = document.getElementById('kyc-fee-display'); 
     
-    // 🚩 2. ป้องกัน Error โดยการเช็กว่า currentZoneData มีตัวตนไหม
-    // ถ้าไม่มี (เป็น null/undefined) ให้สร้าง object เปล่าที่มีค่า default ไว้ก่อน
-    const zoneData = (typeof currentZoneData !== 'undefined' && currentZoneData) ? currentZoneData : { kycPrice: 0, zoneCurrency: 'USD' };
+    // 🚩 2. ดึงข้อมูลโซนจาก Global Variable (window.currentZoneData)
+    // ข้อมูลนี้ควรถูกตั้งค่าไว้ตอนที่ระบบ "ระบุโซน" หรือ "ปักหมุด" สำเร็จ
+    const zoneData = (typeof currentZoneData !== 'undefined' && currentZoneData) ? currentZoneData : null;
 
+    // ตรวจสอบสถานะการยืนยัน
     const status = localStorage.getItem('kyc_status');
 
     if (status === 'pending' || status === 'approved') {
@@ -877,12 +878,25 @@ function openKYC() {
         formView.style.display = 'block';
         summaryView.style.display = 'none';
 
-        // 🚩 3. ใช้ค่าจาก zoneData ที่เราเช็กแล้วด้านบน
-        const price = zoneData.kycPrice || 0;
-        const currency = zoneData.zoneCurrency || 'USD';
+        // 🚩 3. กำหนดค่าเริ่มต้น และดึงค่าจากข้อมูลโซนจริง
+        let price = 0;
+        let currency = 'USD';
 
+        if (zoneData) {
+            price = zoneData.kycPrice || 0;
+            currency = zoneData.zoneCurrency || 'USD';
+            console.log(`✅ โหลดข้อมูล KYC โซนสำเร็จ: ${price} ${currency}`);
+        } else {
+            console.warn("⚠️ ไม่พบข้อมูล currentZoneData ระบบจะแสดงค่าเริ่มต้น (0 USD)");
+        }
+
+        // 🚩 4. อัปเดต HTML พร้อมสกุลเงินที่ถูกต้อง
         if (feeElement) {
-            feeElement.innerHTML = `${translations[currentLang].lbl_kyc_fee} <b>${price.toLocaleString()} ${currency}</b>`;
+            const label = (translations[currentLang] && translations[currentLang].lbl_kyc_fee) 
+                          ? translations[currentLang].lbl_kyc_fee 
+                          : 'ค่ายืนยันตัวตน:';
+                          
+            feeElement.innerHTML = `${label} <b>${price.toLocaleString()} ${currency}</b>`;
         }
     }
 
