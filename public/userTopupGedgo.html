@@ -129,11 +129,12 @@ html {
     <main class="main-content">
         <header class="top-bar">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <i class="fas fa-bars menu-btn" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em;"></i>
-                <h2 id="content-title" style="margin:0; font-size: 1.2em;">เติมเงิน</h2>
-            </div>
+			<i class="fas fa-bars menu-btn" onclick="toggleSidebar()" style="cursor:pointer; font-size: 1.2em;"></i>
+    
+			<h2 id="content-title" style="margin:0; font-size: 1.2em;" data-i18n-key="title_topup">เติมเงิน</h2>
+		</div>
             <div>
-			ยอดเงินปัจจุบัน: <b id="current-balance">0.00</b> <span id="currency-label">USD</span>
+			Balance: <b id="current-balance">0.00</b> <span id="currency-label">USD</span>
 			</div>
         </header>
 
@@ -239,6 +240,7 @@ const translations = {
         'menu_topup': 'เติมเงิน',
         'menu_withdraw': 'ถอนเงิน',
         'menu_topup_history': 'ประวัติการเติมเงิน',
+		'title_topup': 'เติมเงิน',
     },
     'en': {
         'lbl_wallet_system': 'Member Wallet System',
@@ -246,6 +248,7 @@ const translations = {
         'menu_topup': 'Top-up',
         'menu_withdraw': 'Withdraw',
         'menu_topup_history': 'Top-up History',
+		'title_topup': 'Top-up',
     },
     'pt': {
         'lbl_wallet_system': 'Sistema de Carteira',
@@ -253,6 +256,7 @@ const translations = {
         'menu_topup': 'Recarregar',
         'menu_withdraw': 'Sacar',
         'menu_topup_history': 'Histórico de Recargas',
+		'title_topup': 'Recarregar',
     }
 };
 
