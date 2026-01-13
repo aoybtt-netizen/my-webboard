@@ -482,19 +482,20 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
     function switchTab(tab, type = 'TOPUP') {
+    console.log("--- 🕵️ เริ่มตรวจสอบ switchTab ---");
+    console.log("Mode:", tab, "| TransactionType:", type);
+
     isHistoryMode = false;
-    transactionType = type; // เก็บสถานะว่าคือ TOPUP หรือ WITHDRAW
+    transactionType = type; 
     
     const title = document.getElementById('content-title');
     const topupSec = document.getElementById('section-topup-form');
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
 
-    // ล้างสถานะ active จากทุกเมนู
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
     
     if (tab === 'topup') {
-        // 1. จัดการสถานะ active ของปุ่มใน Sidebar
         if(type === 'TOPUP') document.getElementById('menu-topup').classList.add('active');
         if(type === 'WITHDRAW') document.getElementById('menu-withdraw').classList.add('active');
 
@@ -502,35 +503,41 @@ window.addEventListener('DOMContentLoaded', () => {
                 ? translations[currentLang].title_topup 
                 : translations[currentLang].title_withdraw;
         
-        // 2. จัดการการแสดงผลข้อมูลธนาคารและสีไอคอน
         document.getElementById('withdraw-bank-info').style.display = (transactionType === 'WITHDRAW') ? 'block' : 'none';
         document.getElementById('form-icon').style.color = (transactionType === 'WITHDRAW') ? 'var(--danger)' : 'var(--primary)';
 
-        // 🚩 3. ส่วนจัดการยอดขั้นต่ำ (แก้ไขจุดนี้)
+        // 🚩 ส่วนที่ตรวจสอบยอดขั้นต่ำ
         const minNotice = document.getElementById('min-amount-notice');
         const minValDisplay = document.getElementById('min-val-display');
         const minCurrDisplay = document.getElementById('min-currency-display');
         
-        // ดึงข้อมูลโซนจากตัวแปรที่คุณใช้ (แนะนำให้ใช้ window เพื่อความชัวร์)
+        // ตรวจสอบข้อมูลโซน
         const zoneInfo = window.currentZoneData || (typeof currentZoneData !== 'undefined' ? currentZoneData : null);
+        console.log("📦 ข้อมูล Zone ที่ตรวจพบ:", zoneInfo);
 
-        if (zoneInfo && minNotice) {
-            const minVal = (transactionType === 'TOPUP') 
-                           ? (zoneInfo.minTopup || 0) 
-                           : (zoneInfo.minWithdraw || 0);
-            const currency = zoneInfo.zoneCurrency || 'USD';
-            
-            // ใส่ตัวเลขและสกุลเงิน
-            if (minValDisplay) minValDisplay.innerText = minVal.toLocaleString();
-            if (minCurrDisplay) minCurrDisplay.innerText = currency;
-            
-            minNotice.style.display = 'block';
-            
-            // สั่งอัปเดตภาษาเพื่อให้ data-i18n-key ทำงานทันที
-            if (typeof updateLanguage === 'function') updateLanguage();
+        if (minNotice) {
+            if (zoneInfo) {
+                // ⚠️ แก้ไขจุดสำคัญ: ใน JSON หลังบ้านพี่ส่งมาว่า 'currency' ไม่ใช่ 'zoneCurrency'
+                const minVal = (transactionType === 'TOPUP') 
+                               ? (zoneInfo.minTopup || 0) 
+                               : (zoneInfo.minWithdraw || 0);
+                const currency = zoneInfo.currency || zoneInfo.zoneCurrency || 'USD'; 
+
+                console.log(`💰 ค่าที่เตรียมโชว์: ${minVal} ${currency}`);
+
+                if (minValDisplay) minValDisplay.innerText = minVal.toLocaleString();
+                if (minCurrDisplay) minCurrDisplay.innerText = currency;
+                
+                minNotice.style.display = 'block';
+                console.log("✅ สั่งโชว์แถบขั้นต่ำแล้ว");
+            } else {
+                console.warn("❌ ไม่แสดงแถบขั้นต่ำเพราะ: ไม่มีข้อมูลใน zoneInfo (ค่าเป็น null หรือ undefined)");
+            }
+        } else {
+            console.error("❌ ไม่พบ Element ที่มี ID: min-amount-notice ในหน้า HTML");
         }
 
-        // 4. เปลี่ยนสีปุ่มและไอคอนตามโหมด
+        // ส่วนจัดการปุ่ม (โค้ดเดิมของพี่)
         const submitBtn = document.querySelector('.btn-submit-topup');
         if(transactionType === 'WITHDRAW') {
             submitBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
@@ -542,17 +549,14 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('amount-label').innerText = translations[currentLang].lbl_amount_topup;
         }
         
-        historySec.style.display = 'none';
+        if(historySec) historySec.style.display = 'none';
         checkTransactionStatus(); 
     } else {
-        // กรณีหน้าประวัติ
-        const historyBtn = document.querySelector('div[onclick*="history"]');
-        if(historyBtn) historyBtn.classList.add('active');
-        
+        // ... โหมด history เดิม ...
         title.innerText = translations[currentLang].title_history;
         if(topupSec) topupSec.style.display = 'none';
-        chatSec.style.display = 'none';
-        historySec.style.display = 'block';
+        if(chatSec) chatSec.style.display = 'none';
+        if(historySec) historySec.style.display = 'block';
         loadHistory();
     }
     
