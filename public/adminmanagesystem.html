@@ -210,14 +210,12 @@
     }
 
     // 3. ฟังก์ชันโหลดข้อมูลโซน
-    async function loadZones() {
+async function loadZones() {
     try {
         const res = await fetch('/api/admin/all-zones');
         const zones = await res.json();
         const body = document.getElementById('zone-body');
         body.innerHTML = '';
-
-        // เก็บข้อมูลไว้ในตัวแปร global เผื่อเรียกใช้ภายหลัง (ถ้าจำเป็น)
         window.allZonesData = zones;
 
         zones.forEach(z => {
@@ -239,6 +237,13 @@
                         </button>
                     </td>
                     
+                    <td>
+                        <button class="btn" style="color:var(--accent); font-weight:bold;" 
+                            onclick="universalEdit('zones', ${z.id}, 'zoneFee', ${z.zoneFee || 0})">
+                            ${((z.zoneFee || 0) * 100).toFixed(1)}%
+                        </button>
+                    </td>
+
                     <td>
                         <button class="btn" style="color:var(--danger); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'kycPrice', ${z.kycPrice || 0})">
                             ${(z.kycPrice || 0).toLocaleString()}
@@ -278,52 +283,52 @@
 	
 
 function viewZoneDetails(zoneId) {
-    // ค้นหาข้อมูลจากตัวแปรที่เก็บไว้
     const z = window.allZonesData.find(item => item.id === zoneId);
     if (!z) return;
 
     const currency = z.zoneCurrency || 'USD';
+    // สร้างลิงก์ Google Maps จาก lat, lng
+    const mapUrl = (z.lat && z.lng) ? `https://www.google.com/maps?q=${z.lat},${z.lng}` : '#';
 
     Swal.fire({
-        title: `<i class="fas fa-info-circle"></i> ข้อมูลโซน: ${z.name}`,
+        title: `<i class="fas fa-map-marked-alt"></i> ข้อมูลเชิงลึกโซน: ${z.name}`,
         html: `
-            <div style="text-align: left; font-size: 0.95em; line-height: 2;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
-                    <span style="color:#666;">รหัสโซน (ID):</span>
-                    <b>${z.id}</b>
+            <div style="text-align: left; font-size: 0.9em; line-height: 1.8; max-height: 450px; overflow-y: auto; padding-right: 5px;">
+                <div style="background: #fdf2f2; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--danger);">
+                    <b style="color: var(--danger);">📍 ข้อมูลพิกัดและสถานที่</b><br>
+                    <span style="color:#666;">ชื่อสถานที่อ้างอิง:</span> <b>${z.addressName || 'ไม่ได้ระบุ'}</b><br>
+                    <span style="color:#666;">แอดมินอ้างอิงพิกัด:</span> <b>${z.sourceUser || 'ไม่ได้ระบุ'}</b><br>
+                    <span style="color:#666;">พิกัด (Lat, Lng):</span> <b>${z.lat || 0}, ${z.lng || 0}</b>
+                    ${z.lat ? `<br><a href="${mapUrl}" target="_blank" style="color:var(--accent); text-decoration: none; font-size: 0.85em;"><i class="fas fa-external-link-alt"></i> เปิดใน Google Maps</a>` : ''}
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
-                    <span style="color:#666;">สกุลเงินที่ใช้:</span>
-                    <span class="badge" style="background:var(--accent); color:white; padding: 2px 8px; border-radius: 5px;">${currency}</span>
+
+                <div style="background: #f4f9f4; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--success);">
+                    <b style="color: var(--success);">💰 นโยบายการเงิน (${currency})</b><br>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>ค่าธรรมเนียมโซน:</span> <b>${((z.zoneFee || 0) * 100).toFixed(2)}%</b>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>ค่ายืนยันตัวตน (KYC):</span> <b>${(z.kycPrice || 0).toLocaleString()} ${currency}</b>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>เติมเงินขั้นต่ำ:</span> <b>${(z.minTopup || 0).toLocaleString()} ${currency}</b>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>ถอนเงินขั้นต่ำ:</span> <b>${(z.minWithdraw || 0).toLocaleString()} ${currency}</b>
+                    </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
-                    <span style="color:#666;">แอดมินผู้ดูแล:</span>
-                    <b>${z.assignedAdmin || '-'}</b>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
-                    <span style="color:#666;">เรทแลกเปลี่ยน:</span>
-                    <b>1 USDT = ${z.zoneExchangeRate || 1.0} ${currency}</b>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
-                    <span style="color:#666;">ค่ายืนยันตัวตน (KYC):</span>
-                    <b style="color:var(--danger);">${(z.kycPrice || 0).toLocaleString()} ${currency}</b>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
-                    <span style="color:#666;">เติมเงินขั้นต่ำ:</span>
-                    <b style="color:var(--success);">${(z.minTopup || 0).toLocaleString()} ${currency}</b>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ddd; padding: 5px 0;">
-                    <span style="color:#666;">ถอนเงินขั้นต่ำ:</span>
-                    <b style="color:var(--success);">${(z.minWithdraw || 0).toLocaleString()} ${currency}</b>
-                </div>
-                <div style="display: flex; justify-content: space-between; padding: 5px 0; background: #f9f9f9; margin-top: 10px; border-radius: 5px;">
-                    <span style="color:#666; padding-left: 5px;">ยอดในระบบ (System):</span>
-                    <b style="color:var(--primary); padding-right: 5px;">${(z.systemZone || 0).toFixed(2)} USDT</b>
+
+                <div style="padding: 10px; border: 1px solid #eee; border-radius: 8px;">
+                    <b style="color: var(--primary);">⚙️ ข้อมูลทั่วไป</b><br>
+                    <span style="color:#666;">โซน ID:</span> <b>${z.id}</b><br>
+                    <span style="color:#666;">เจ้าของโซน:</span> <b>${z.assignedAdmin || '-'}</b><br>
+                    <span style="color:#666;">เรทแลกเปลี่ยน:</span> <b>1 USDT = ${z.zoneExchangeRate || 1.0} ${currency}</b><br>
+                    <span style="color:#666;">ยอดเงินในระบบ:</span> <b style="color:var(--success);">${(z.systemZone || 0).toFixed(2)} USDT</b>
                 </div>
             </div>
         `,
-        confirmButtonText: 'รับทราบ',
-        confirmButtonColor: 'var(--primary)'
+        confirmButtonText: 'ปิดหน้าต่าง',
+        confirmButtonColor: 'var(--secondary)'
     });
 }
 
