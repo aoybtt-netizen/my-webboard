@@ -144,12 +144,13 @@ html {
                     <i class="fas fa-map-marker-alt"></i>
                 </div>
                 <div style="flex: 1;">
-                    <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.9em;">กำลังโหลด...</div>
-                    <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
-                        <i class="fas fa-user-shield" style="color: #f1c40f;"></i> ผู้ดูแล: 
-                        <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);">รอการเชื่อมต่อ</span>
-                    </div>
-                </div>
+    <div id="display-zone-name" style="font-weight: bold; color: var(--dark); font-size: 0.9em;" data-i18n-key="lbl_loading">กำลังโหลด...</div>
+    <div style="font-size: 0.75em; color: #666; margin-top: 2px;">
+        <i class="fas fa-user-shield" style="color: #f1c40f;"></i> 
+        <span data-i18n-key="lbl_zone_admin_title">ผู้ดูแล:</span> 
+        <span id="display-zone-admin" style="font-weight: bold; color: var(--primary);" data-i18n-key="lbl_wait_connect">รอการเชื่อมต่อ</span>
+    </div>
+</div>
             </div>
         </div>
 
@@ -160,7 +161,7 @@ html {
     <div id="form-icon" style="font-size: 50px; color: var(--primary);">
         <i class="fas fa-wallet"></i>
     </div>
-    <h3 id="amount-label">ระบุจำนวนเงิน</h3>
+    <h3 id="amount-label" data-i18n-key="lbl_specify_amount">ระบุจำนวนเงิน</h3>
     
     <div class="amount-input-group">
     <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
@@ -168,29 +169,31 @@ html {
 	</div>
 
     <div id="withdraw-bank-info" style="display: none; margin-bottom: 20px; text-align: left;">
-        <label style="font-size: 0.85em; color: #666; font-weight: bold;">ระบุบัญชีธนาคารรับเงิน (ชื่อ-เลขบัญชี-ธนาคาร):</label>
-        <textarea id="withdraw-bank-details" rows="3" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #eee; font-family: inherit; margin-top: 5px;" placeholder="เช่น กสิกรไทย 123-4-567-890 นายสมชาย"></textarea>
-    </div>
+    <label style="font-size: 0.85em; color: #666; font-weight: bold;" data-i18n-key="lbl_withdraw_bank_title">ระบุบัญชีธนาคารรับเงิน (ชื่อ-เลขบัญชี-ธนาคาร):</label>
+    <textarea id="withdraw-bank-details" rows="3" data-i18n-key="plh_withdraw_bank_details" placeholder="เช่น กสิกรไทย 123-4-567-890 นายสมชาย" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #eee; font-family: inherit; margin-top: 5px;"></textarea>
+</div>
 
     <button class="btn-submit-topup" onclick="submitTransactionRequest()">
-        <i class="fas fa-paper-plane"></i> ส่งคำขอ
-    </button>
+    <i class="fas fa-paper-plane"></i> 
+    <span data-i18n-key="btn_send_request">ส่งคำขอ</span>
+</button>
 </div>
 
                 <div style="margin-top: 30px;">
-			<h4><i class="fas fa-info-circle"></i> ขั้นตอนการเติมเงิน</h4>
-			<ul style="color: #666; font-size: 0.85em; line-height: 1.8;">
-			<li>ระบุจำนวนเงิน <b id="step-currency-label">---</b> ที่ต้องการ</li>
-			<li>ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด</li>
-			</ul>
-			</div>
+    <h4 data-i18n-key="title_topup_steps"><i class="fas fa-info-circle"></i> ขั้นตอนการเติมเงิน</h4>
+    <ul style="color: #666; font-size: 0.85em; line-height: 1.8;">
+        <li id="step-1-desc">ระบุจำนวนเงิน <b id="step-currency-label">---</b> ที่ต้องการ</li>
+        <li data-i18n-key="step_2_text">ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด</li>
+    </ul>
+</div>
             </div>
 
             <div id="section-pending-chat" style="display: none; height: calc(100vh - 150px); flex-direction: column;">
     <div style="text-align: center; margin-bottom: 10px;">
         <span style="background: #fff9e6; color: #f1c40f; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid #f1c40f;">
-            <i class="fas fa-clock"></i> อยู่ระหว่างตรวจสอบ
-        </span>
+    <i class="fas fa-clock"></i> 
+    <span data-i18n-key="status_pending_review">อยู่ระหว่างตรวจสอบ</span>
+</span>
     </div>
 
     <div id="chat-messages-container" style="flex: 1; overflow-y: auto; background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid #eee; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
@@ -241,6 +244,17 @@ const translations = {
         'menu_withdraw': 'ถอนเงิน',
         'menu_topup_history': 'ประวัติการเติมเงิน',
 		'title_topup': 'เติมเงิน',
+		'lbl_loading': 'กำลังโหลด...',
+        'lbl_zone_admin_title': 'ผู้ดูแล:',
+        'lbl_wait_connect': 'รอการเชื่อมต่อ',
+        'lbl_specify_amount': 'ระบุจำนวนเงิน',
+        'lbl_withdraw_bank_title': 'ระบุบัญชีธนาคารรับเงิน (ชื่อ-เลขบัญชี-ธนาคาร):',
+        'plh_withdraw_bank_details': 'เช่น กสิกรไทย 123-4-567-890 นายสมชาย',
+        'btn_send_request': 'ส่งคำขอ',
+        'title_topup_steps': 'ขั้นตอนการเติมเงิน',
+        'step_1_text': 'ระบุจำนวนเงิน {currency} ที่ต้องการ',
+        'step_2_text': 'ระบบจะส่งคำขอไปยัง <b>เจ้าของโซน</b> ที่คุณสังกัด',
+        'status_pending_review': 'อยู่ระหว่างตรวจสอบ',
     },
     'en': {
         'lbl_wallet_system': 'Member Wallet System',
@@ -249,6 +263,17 @@ const translations = {
         'menu_withdraw': 'Withdraw',
         'menu_topup_history': 'Top-up History',
 		'title_topup': 'Top-up',
+		'lbl_loading': 'Loading...',
+        'lbl_zone_admin_title': 'Admin:',
+        'lbl_wait_connect': 'Waiting...',
+        'lbl_specify_amount': 'Specify Amount',
+        'lbl_withdraw_bank_title': 'Specify receiving bank account (Name-Number-Bank):',
+        'plh_withdraw_bank_details': 'e.g. Kasikorn Bank 123-4-567-890 John Doe',
+        'btn_send_request': 'Submit Request',
+        'title_topup_steps': 'Top-up Steps',
+        'step_1_text': 'Specify the amount of {currency} needed',
+        'step_2_text': 'The request will be sent to the <b>Zone Owner</b>',
+        'status_pending_review': 'Pending Review',
     },
     'pt': {
         'lbl_wallet_system': 'Sistema de Carteira',
@@ -257,6 +282,17 @@ const translations = {
         'menu_withdraw': 'Sacar',
         'menu_topup_history': 'Histórico de Recargas',
 		'title_topup': 'Recarregar',
+		'lbl_loading': 'Carregando...',
+        'lbl_zone_admin_title': 'Admin:',
+        'lbl_wait_connect': 'Aguardando...',
+        'lbl_specify_amount': 'Especificar Valor',
+        'lbl_withdraw_bank_title': 'Dados bancários para recebimento (Nome-Número-Banco):',
+        'plh_withdraw_bank_details': 'ex: Banco Itaú 123-4-567-890 João Silva',
+        'btn_send_request': 'Enviar Pedido',
+        'title_topup_steps': 'Passos para Recarga',
+        'step_1_text': 'Especifique o valor de {currency} desejado',
+        'step_2_text': 'O pedido será enviado ao <b>Dono da Zona</b>',
+        'status_pending_review': 'Pendente',
     }
 };
 
