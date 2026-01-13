@@ -661,29 +661,28 @@ window.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
 
         if (data.error) throw new Error(data.error);
+		window.currentZoneData = data;
         if (typeof zoneCurrency !== 'undefined') {
             zoneCurrency = data.currency || 'USD';
-			minTopup = data.minTopup || 100;
-			minWithdraw = data.minWithdraw || 100;
         }
 
-        // ✅ 1. อัปเดตตัวเลขยอดเงิน (มาจากกระเป๋าที่ถูกต้องแล้ว)
         document.getElementById('current-balance').innerText = (data.coins || 0).toFixed(2);
-		const inputLabel = document.getElementById('input-currency-label');
-		if(inputLabel) inputLabel.innerText = zoneCurrency;
-		const stepLabel = document.getElementById('step-currency-label');
-		if(stepLabel) stepLabel.innerText = zoneCurrency;
+        const inputLabel = document.getElementById('input-currency-label');
+        if(inputLabel) inputLabel.innerText = zoneCurrency;
+        const stepLabel = document.getElementById('step-currency-label');
+        if(stepLabel) stepLabel.innerText = zoneCurrency;
         
-        // ✅ 2. อัปเดตป้ายสกุลเงิน (ที่เราเพิ่งสร้าง id ไว้)
-        // ถ้า API ส่งมาว่า 'THB' ตรงนี้ก็จะเปลี่ยนจาก USD เป็น THB ทันที
         const currencyLabel = document.getElementById('currency-label');
         if (currencyLabel) {
             currencyLabel.innerText = data.currency || 'USD';
         }
 
-        // ✅ 3. อัปเดตข้อมูลโซน
         document.getElementById('display-zone-name').innerText = data.zoneName || translations[currentLang].lbl_outside_service;
-		document.getElementById('display-zone-admin').innerText = data.zoneOwner || translations[currentLang].lbl_no_admin;
+        document.getElementById('display-zone-admin').innerText = data.zoneOwner || translations[currentLang].lbl_no_admin;
+
+        if (typeof transactionType !== 'undefined') {
+            switchTab('topup', transactionType);
+        }
 
     } catch (err) {
         console.error("Load Topup Info Error:", err);
