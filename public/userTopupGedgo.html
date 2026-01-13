@@ -663,6 +663,8 @@ window.addEventListener('DOMContentLoaded', () => {
         if (data.error) throw new Error(data.error);
         if (typeof zoneCurrency !== 'undefined') {
             zoneCurrency = data.currency || 'USD';
+			minTopup = data.minTopup || 100;
+			minWithdraw = data.minWithdraw || 100;
         }
 
         // ✅ 1. อัปเดตตัวเลขยอดเงิน (มาจากกระเป๋าที่ถูกต้องแล้ว)
