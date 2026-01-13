@@ -1200,7 +1200,8 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
                 status: status,
                 finalAmount: finalAmount,
                 adminName: localStorage.getItem('myUsername'),
-                currency: currency 
+                currency: currency,
+				lang: currentLang
             })
         });
 
