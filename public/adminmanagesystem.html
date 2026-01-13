@@ -152,16 +152,15 @@
     </div>
 
     <div id="section-zones" class="card" style="display:none;">
-    <h2><i class="fas fa-map-marker-alt"></i> ตั้งค่าโซนและอัตราแลกเปลี่ยน</h2>
+    <h2><i class="fas fa-map-marker-alt"></i> รายชื่อโซนพื้นที่</h2>
     <table>
         <thead>
-    <tr>
-        <th>ID</th>
-        <th>ชื่อโซน</th>
-        <th>แอดมินดูแล</th>
-        <th>สกุลเงิน</th>
-    </tr>
-</thead>
+            <tr>
+                <th>ชื่อโซน (คลิกเพื่อดูรายละเอียด)</th>
+                <th>แอดมินดูแล</th>
+                <th>สกุลเงิน</th>
+            </tr>
+        </thead>
         <tbody id="zone-body">
             </tbody>
     </table>
@@ -169,6 +168,7 @@
 </div>
 
 <script>
+	let allZonesData = [];
     const adminUser = localStorage.getItem('myUsername');
 
     // 1. ฟังก์ชันสลับหน้าจอ
@@ -207,198 +207,125 @@
     }
 
     // 3. ฟังก์ชันโหลดข้อมูลโซน
-async function loadZones() {
-    try {
-        const res = await fetch('/api/admin/all-zones');
-        const zones = await res.json();
-        const body = document.getElementById('zone-body');
-        body.innerHTML = '';
-        window.allZonesData = zones;
+    async function loadZones() {
+        try {
+            const res = await fetch('/api/admin/all-zones');
+            allZonesData = await res.json();
+            const body = document.getElementById('zone-body');
+            body.innerHTML = '';
 
-        zones.forEach(z => {
-            const currency = z.zoneCurrency || 'USD';
-            const freeBadge = z.isFree ? '<span class="badge" style="background:#d4efdf; color:#1e8449;">FREE</span>' : '';
-
-            body.innerHTML += `
-                <tr>
-                    <td>${z.id}</td>
-                    <td>
-                        <b onclick="viewZoneDetails(${z.id})" style="cursor:pointer; color:var(--accent); text-decoration: underline;">
-                            ${z.name}
-                        </b> ${freeBadge}
-                    </td>
-                    <td>${z.assignedAdmin || '-'}</td>
-                    <td>
-                        <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${currency}')">
-                            ${currency}
-                        </button>
-                    </td>
-                    
-                    <td>
-                        <button class="btn" style="color:var(--accent); font-weight:bold;" 
-                            onclick="universalEdit('zones', ${z.id}, 'zoneFee', ${z.zoneFee || 0})">
-                            ${((z.zoneFee || 0) * 100).toFixed(1)}%
-                        </button>
-                    </td>
-
-                    <td>
-                        <button class="btn" style="color:var(--danger); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'kycPrice', ${z.kycPrice || 0})">
-                            ${(z.kycPrice || 0).toLocaleString()}
-                        </button>
-                    </td>
-
-                    <td>
-                        <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">
-                            ${z.zoneExchangeRate || 1.0}
-                        </button>
-                    </td>
-                    <td>
-                        <button class="btn btn-ban ${z.isFree ? 'active' : ''}" onclick="universalEdit('zones', ${z.id}, 'isFree', ${z.isFree || false})">
-                            <i class="fas fa-magic"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-    } catch (e) { console.error(e); }
-}
+            allZonesData.forEach(z => {
+                body.innerHTML += `
+                    <tr>
+                        <td>
+                            <b onclick="viewZoneDetails(${z.id})" style="cursor:pointer; color:var(--accent); text-decoration: underline;">
+                                ${z.name}
+                            </b>
+                        </td>
+                        <td>${z.assignedAdmin || '-'}</td>
+                        <td><span class="badge" style="background:#e8f4fd; color:#2980b9;">${z.zoneCurrency || 'USD'}</span></td>
+                    </tr>
+                `;
+            });
+        } catch (e) { console.error(e); }
+    }
 	
 
 function viewZoneDetails(zoneId) {
-    const z = window.allZonesData.find(item => item.id === zoneId);
-    if (!z) return;
+        const z = allZonesData.find(item => item.id === zoneId);
+        if (!z) return;
 
-    const currency = z.zoneCurrency || 'BRL'; // ใช้สกุลเงินโซน
+        const currency = z.zoneCurrency || 'USD';
 
-    Swal.fire({
-        title: `<i class="fas fa-edit"></i> ตั้งค่าโซน: ${z.name}`,
-        html: `
-            <div style="text-align: left; font-size: 0.95em; line-height: 1.8;">
-                <p style="color: var(--danger); font-size: 0.8em; margin-bottom: 10px; font-weight: bold;">
-                    <i class="fas fa-mouse-pointer"></i> คลิกที่ตัวเลขสีฟ้าเพื่อระบุค่าใหม่
-                </p>
-                
-                <div style="background: #ffffff; border: 1px solid #ddd; padding: 12px; border-radius: 10px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
-                    ${renderItem('ค่ายืนยัน KYC', 'kycPrice', z.kycPrice, z.id, currency)}
-                    ${renderItem('เติมขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
-                    ${renderItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
+        Swal.fire({
+            title: `<i class="fas fa-edit"></i> รายละเอียดโซน: ${z.name}`,
+            html: `
+                <div style="text-align: left; font-size: 0.9em; line-height: 1.8; max-height: 500px; overflow-y: auto;">
+                    <p style="color: #e74c3c; font-size: 0.8em; margin-bottom: 10px; font-weight: bold;">
+                        <i class="fas fa-hand-pointer"></i> คลิกที่ข้อมูลตัวหนาเพื่อแก้ไข
+                    </p>
                     
-                    <div style="margin: 10px 0; border-top: 2px dashed #eee;"></div>
-                    
-                    ${renderItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id, currency)}
-                    ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
-                    ${renderItem('ยอดเงินระบบ', 'systemZone', z.systemZone, z.id, 'USDT')}
+                    <div style="background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee;">
+                        ${renderItem('ชื่อโซน', 'name', z.name, z.id)}
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
+                            <span>พิกัด (Lat, Lng):</span>
+                            <b>${z.lat || 0}, ${z.lng || 0}</b>
+                        </div>
+                        ${renderItem('เจ้าของโซน', 'assignedAdmin', z.assignedAdmin, z.id)}
+                        ${renderItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
+                        ${renderItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id, currency)}
+                        ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
+                        ${renderItem('ค่าระบบโซน', 'systemZone', z.systemZone, z.id, 'USDT')}
+                        ${renderItem('ค่ายืนยัน KYC', 'kycPrice', z.kycPrice, z.id, currency)}
+                        ${renderItem('ฝากขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
+                        ${renderItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
+                    </div>
+
+                    <button onclick="debugZone(${z.id})" style="width:100%; margin-top:15px; padding:8px; background:#34495e; color:white; border:none; border-radius:5px; cursor:pointer; font-size: 0.8em;">
+                        <i class="fas fa-code"></i> ตรวจสอบตัวแปรทั้งหมด (Debug)
+                    </button>
                 </div>
+            `,
+            showConfirmButton: false,
+            showCloseButton: true
+        });
+    }
 
-                <button onclick="showAllVariables(${z.id})" style="width:100%; margin-top:15px; padding:12px; background:#2c3e50; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
-                    <i class="fas fa-search-plus"></i> ตรวจสอบตัวแปรทั้งหมด (Debug)
-                </button>
-            </div>
-        `,
-        showConfirmButton: false,
-        showCloseButton: true
-    });
-}
 
-// ฟังก์ชันช่วยสร้างบรรทัดรายการ
 function renderItem(label, field, value, id, unit = '') {
-    // 🚩 ถ้า value เป็น undefined หรือไม่มีค่า ให้ใช้ 0 แทน
-    const displayValue = (value !== undefined && value !== null) ? value : 0;
-    
-    // ป้องกันปัญหาการส่งค่า string เปล่าไปหาฟังก์ชัน
-    const safeValue = String(displayValue).replace(/'/g, "\\'");
-
-    return `
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0; align-items: center;">
-            <span style="color:#555;">${label}:</span>
-            <b onclick="universalEdit('zones', ${id}, '${field}', '${safeValue}')" 
-               style="cursor:pointer; color:var(--accent); text-decoration: underline; font-size: 1.1em; padding: 2px 8px; background: rgba(52, 152, 219, 0.05); border-radius: 4px;">
-                ${displayValue.toLocaleString()} <small style="font-weight:normal;">${unit}</small>
-            </b>
-        </div>
-    `;
-}
-
-// ฟังก์ชันดูตัวแปรทั้งหมด (Debug)
-function showAllVariables(zoneId) {
-    const z = window.allZonesData.find(item => item.id === zoneId);
-    let content = '<div style="text-align:left; font-family:monospace; font-size:0.8em; background:#222; color:#0f0; padding:10px; border-radius:5px; max-height:300px; overflow-y:auto;">';
-    for (let key in z) {
-        content += `<div><span style="color:#ff79c6">"${key}"</span>: ${JSON.stringify(z[key])}</div>`;
+        const displayVal = (value !== undefined && value !== null) ? value : 0;
+        // ป้องกัน Error จากเครื่องหมายคำพูดในภาษาไทย
+        const safeVal = String(displayVal).replace(/'/g, "\\'");
+        
+        return `
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0;">
+                <span style="color:#666;">${label}:</span>
+                <b onclick="universalEdit('zones', ${id}, '${field}', '${safeVal}')" 
+                   style="cursor:pointer; color:var(--accent); text-decoration: underline dotted;">
+                    ${displayVal} ${unit}
+                </b>
+            </div>
+        `;
     }
-    content += '</div>';
 
-    Swal.fire({
-        title: 'Raw Data (Database)',
-        html: content,
-        width: '80%'
-    });
-}
-
-
-function debugZoneObject(zoneId) {
-    // ดึงข้อมูลจากตัวแปรที่โหลดไว้แล้วตอน loadZones
-    const z = window.allZonesData.find(item => item.id === zoneId);
-    if (!z) return;
-
-    // สร้าง HTML สำหรับโชว์ Key: Value ทั้งหมดที่มีในโซนนั้น
-    let rawHtml = '<div style="text-align:left; font-family:monospace; background:#1e1e1e; color:#00ff00; padding:15px; border-radius:10px; max-height:400px; overflow-y:auto; font-size:12px;">';
-    
-    for (let [key, value] of Object.entries(z)) {
-        rawHtml += `<div style="border-bottom:1px solid #333; padding:4px 0;">
-            <span style="color:#e06c75;">"${key}"</span>: 
-            <span style="color:#98c379;">${JSON.stringify(value)}</span>
-        </div>`;
+    // ฟังก์ชันดู Raw Data
+    function debugZone(zoneId) {
+        const z = allZonesData.find(item => item.id === zoneId);
+        Swal.fire({
+            title: 'Raw Data',
+            html: `<pre style="text-align:left; background:#222; color:#0f0; padding:10px; border-radius:5px; font-size:0.7em; overflow:auto;">${JSON.stringify(z, null, 2)}</pre>`
+        });
     }
-    rawHtml += '</div>';
 
-    Swal.fire({
-        title: 'โครงสร้างตัวแปรใน Database',
-        html: rawHtml,
-        width: '600px',
-        confirmButtonText: 'ปิด'
-    });
-}
-
-
+	
 
     // 4. 🔥 ฟังก์ชันหัวใจหลัก: Universal Edit
-    async function universalEdit(collection, id, field, currentValue) {
-    const { value: newValue } = await Swal.fire({
-        title: `แก้ไขข้อมูล: ${field}`,
-        input: 'text',
-        inputValue: currentValue,
-        showCancelButton: true,
-        confirmButtonText: 'บันทึก',
-        cancelButtonText: 'ยกเลิก'
-    });
+    async function universalEdit(collection, id, field, currentVal) {
+        let inputType = 'text';
+		let inputAttr = {};
+        if (typeof currentVal === 'number') {
+				inputType = 'number';
+				inputAttr = { step: 'any' }; 
+			}
+        if (typeof currentVal === 'boolean') {
+            confirmToggle(collection, id, field, currentVal);
+            return;
+        }
 
-    if (newValue !== undefined && newValue !== currentValue) {
-        try {
-            const response = await fetch('/api/admin/universal-update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    adminUsername: localStorage.getItem('adminUser'), // หรือตัวแปรที่พี่เก็บชื่อแอดมิน
-                    targetCollection: collection,
-                    targetId: id,
-                    field: field,
-                    newValue: newValue
-                })
-            });
+        const { value: newVal } = await Swal.fire({
+            title: `แก้ไขฟิลด์: ${field}`,
+            input: inputType,
+			inputAttributes: inputAttr,
+            inputValue: currentVal,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึกข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        });
 
-            const result = await response.json();
-            if (result.success) {
-                Swal.fire('สำเร็จ', result.message, 'success');
-                loadZones(); // โหลดตารางใหม่เพื่อให้ข้อมูลอัปเดต
-            } else {
-                Swal.fire('ผิดพลาด', result.message, 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        if (newVal !== undefined && newVal !== null) {
+            executeURLUpdate(collection, id, field, newVal);
         }
     }
-}
 
     async function confirmToggle(collection, id, field, currentVal) {
         const res = await Swal.fire({
@@ -411,7 +338,7 @@ function debugZoneObject(zoneId) {
     }
 
     // ฟังก์ชันส่งข้อมูลไปหา API ตัวกลางที่เราเขียนไว้
-    async function executeURLUpdate(collection, id, field, newValue) {
+async function executeURLUpdate(collection, id, field, newValue) {
         try {
             const response = await fetch('/api/admin/universal-update', {
                 method: 'POST',
@@ -426,13 +353,14 @@ function debugZoneObject(zoneId) {
             });
             const result = await response.json();
             if (result.success) {
-                Swal.fire('สำเร็จ', result.message, 'success');
-                loadMembers();
-                loadZones();
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', timer: 1000, showConfirmButton: false });
+                loadZones(); // รีโหลดตาราง
+                // สั่งปิด Popup รายละเอียดเพื่อให้เห็นค่าใหม่ (หรือจะเขียน Logic อัปเดตเฉพาะจุดก็ได้ครับ)
+                Swal.close(); 
             } else {
                 Swal.fire('ผิดพลาด', result.message, 'error');
             }
-        } catch (e) { Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+        } catch (e) { Swal.fire('Error', 'เซิร์ฟเวอร์ขัดข้อง', 'error'); }
     }
 
     // 5. ฟังก์ชันค้นหาในตาราง

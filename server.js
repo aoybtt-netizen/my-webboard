@@ -547,45 +547,49 @@ app.get('/api/admin/all-zones', async (req, res) => {
 
 // 3. 🔥 API หัวใจหลัก: Universal Update (เวอร์ชันอัปเดตเพื่อรองรับระบบโซน)
 app.post('/api/admin/universal-update', async (req, res) => {
-    const lang = req.body.lang || 'th';
+	const lang = req.body.lang || 'th';
     const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
 
     try {
-        // --- 🛡️ ตรวจสอบสิทธิ์แอดมิน ---
+        // --- 🛡️ ตรวจสอบสิทธิ์แอดมิน (Security Check) ---
         const admin = await db.collection('users').findOne({ username: adminUsername });
         if (!admin || admin.adminLevel < 3) {
-            return res.status(403).json({ success: false, message: "สิทธิ์แอดมินระดับ 3 เท่านั้น" });
+            return res.status(403).json({ success: false, message: serverTranslations[lang].error_admin_l3_required });
         }
 
+        // --- ⚙️ จัดการประเภทข้อมูล (Data Casting) ---
         let finalValue = newValue;
 
-        // 🚩 [อัปเดต] เพิ่มฟิลด์ใหม่เข้ากลุ่มตัวเลข
+        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็นตัวเลข (เพิ่ม systemZone และ zoneFee)
         const numericFields = [
             'coins', 'adminLevel', 'id', 'zoneExchangeRate', 
-            'totalPosts', 'completedJobs', 'rating', 
-            'BRL', 'THB', 'VND', 'systemZone', 'zoneFee',
-            'kycPrice', 'minTopup', 'minWithdraw'
+			'totalPosts', 'completedJobs', 'rating', 
+			'BRL', 'THB', 'VND', 'systemZone', 'zoneFee',
+			'kycPrice', 'minTopup', 'minWithdraw'
         ];
 
         if (numericFields.includes(field)) {
+            // แยกกรณี parseInt สำหรับ ID/Level และ parseFloat สำหรับยอดเงิน/เรท
             if (field === 'adminLevel' || field === 'id') {
                 finalValue = parseInt(newValue);
             } else {
                 finalValue = parseFloat(newValue);
             }
             
+            // ป้องกันค่า NaN ถ้าใส่ข้อมูลมาผิดประเภท
             if (isNaN(finalValue)) {
                 return res.status(400).json({ success: false, message: "ค่าที่ระบุต้องเป็นตัวเลขเท่านั้น" });
             }
         }
 
+        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็น Boolean (เพิ่ม isFree ของโซนเข้าไปด้วย)
         const booleanFields = ['isBanned', 'isFree'];
         if (booleanFields.includes(field)) {
             finalValue = (newValue === 'true' || newValue === true);
         }
 
-        // --- 📝 อัปเดตลง Database ---
-        // ถ้าเป็น users ใช้ username เป็น ID, ถ้าเป็น zones ใช้ id (ตัวเลข)
+        // --- 📝 ทำการอัปเดตลง Database ---
+        // กำหนดเงื่อนไขการหา: ถ้าแก้ user ให้หาจาก username, ถ้าแก้ zone ให้หาจาก id
         const query = targetCollection === 'users' ? { username: targetId } : { id: parseInt(targetId) };
 
         const result = await db.collection(targetCollection).updateOne(
@@ -600,64 +604,14 @@ app.post('/api/admin/universal-update', async (req, res) => {
         );
 
         if (result.matchedCount > 0) {
-            res.json({ success: true, message: `อัปเดต [${field}] เรียบร้อย` });
+            res.json({ success: true, message: `อัปเดต [${field}] เป็น [${finalValue}] เรียบร้อยแล้ว` });
         } else {
             res.status(404).json({ success: false, message: "ไม่พบข้อมูลที่ต้องการแก้ไข" });
         }
 
     } catch (err) {
         console.error("Universal Update Error:", err);
-        res.status(500).json({ success: false, message: "Server Error" });
-    }
-});
-
-// API สำหรับการอัปเดตข้อมูลแบบเจาะจงฟิลด์ (Universal Update)
-app.post('/api/admin/update-field', async (req, res) => {
-    try {
-        const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
-
-        // 1. ตรวจสอบสิทธิ์ (พี่แก้ตามระบบตรวจสอบ Admin ของพี่)
-        if (!adminUsername) {
-            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึง' });
-        }
-
-        // 2. แปลงประเภทข้อมูลให้ถูกต้องก่อนลง DB
-        // ถ้าฟิลด์เหล่านี้น่าจะเป็นตัวเลข ให้แปลงเป็น Number
-        const numericFields = ['kycPrice', 'minTopup', 'minWithdraw', 'zoneExchangeRate', 'systemZone', 'zoneFee', 'id'];
-        let finalValue = newValue;
-        
-        if (numericFields.includes(field)) {
-            finalValue = parseFloat(newValue);
-            if (isNaN(finalValue)) finalValue = 0; // กันค่าว่างหรือ Error
-        }
-
-        // 3. กำหนด Collection ที่ต้องการอัปเดต
-        let collection;
-        if (targetCollection === 'zones') {
-            collection = db.collection('zones');
-        } else if (targetCollection === 'users') {
-            collection = db.collection('users');
-        } else {
-            return res.status(400).json({ success: false, message: 'ไม่พบ Collection' });
-        }
-
-        // 4. สั่งอัปเดต (รองรับทั้งการหาด้วย id ที่เป็น Number หรือ _id ที่เป็น ObjectId)
-        const filter = (field === 'id' || typeof targetId === 'number') ? { id: Number(targetId) } : { _id: new ObjectId(targetId) };
-
-        const result = await collection.updateOne(
-            filter,
-            { $set: { [field]: finalValue, updatedAt: new Date() } }
-        );
-
-        if (result.modifiedCount > 0 || result.matchedCount > 0) {
-            res.json({ success: true, message: `อัปเดตฟิลด์ ${field} เรียบร้อยแล้ว` });
-        } else {
-            res.status(404).json({ success: false, message: 'ไม่พบข้อมูลที่ต้องการอัปเดต' });
-        }
-
-    } catch (err) {
-        console.error("Update Field Error:", err);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์' });
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" });
     }
 });
 
