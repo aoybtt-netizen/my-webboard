@@ -1484,7 +1484,7 @@ async function loadKYCRequests() {
 
         let headerCardHtml = '';
         if (zoneInfo.success) {
-            const kycPriceZone = zoneInfo.zone.kycPriceZone || 0;
+            const kycPrice = zoneInfo.zone.kycPriceZone || 0;
             const currency = zoneInfo.zone.zoneCurrency || 'USD';
             
             // การ์ดข้อความบนสุด (คงโครงสร้างสีเขียวที่ดูเป็นรายได้)
