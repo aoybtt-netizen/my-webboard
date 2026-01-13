@@ -285,6 +285,24 @@ const translations = {
 		'title_bank_info_collapsible': 'ข้อมูลการโอนเงิน (คลิกเพื่อปิด/เปิด)',
         'lbl_bank_account': '🏦 บัญชีธนาคาร:',
         'lbl_more_details': '📝 รายละเอียดเพิ่มเติม:',
+		'err_invalid_amount': 'กรุณาระบุจำนวนเงิน',
+        'title_transaction_detail': 'รายละเอียดธุรกรรม',
+        'status_approved_msg': 'รายการนี้ได้รับการอนุมัติแล้ว',
+        'status_rejected_msg': 'รายการนี้ถูกปฏิเสธแล้ว',
+        'lbl_amount_total': 'ยอดเงิน:',
+        'lbl_request_date': '📅 วันที่ส่งคำขอ:',
+        'lbl_processed_date': '✅ ดำเนินการเมื่อ:',
+        'btn_back_history': 'กลับไปหน้าประวัติ',
+        'date_locale': 'th-TH',
+		'err_no_bank_details': 'กรุณาระบุรายละเอียดบัญชีธนาคาร',
+        'err_insufficient_balance': 'ยอดเงินของคุณไม่เพียงพอสำหรับการถอน',
+		'status_waiting_withdraw': '<i class="fas fa-university"></i> กำลังรอการถอนเงิน',
+        'status_pending_review': '<i class="fas fa-clock"></i> อยู่ระหว่างตรวจสอบ',
+        'lbl_your_withdraw_info': '📌 ข้อมูลการถอนเงินของคุณ:',
+        'lbl_amount': 'จำนวน:',
+        'lbl_transfer_to': 'โอนเข้า:',
+        'title_admin_bank_info': '🏦 ข้อมูลการโอนเงิน (เติมเงิน)',
+        'lbl_admin_bank_acc': 'บัญชีธนาคารแอดมิน:',
     },
     'en': {
         'lbl_wallet_system': 'Member Wallet System',
@@ -330,6 +348,24 @@ const translations = {
 		'title_bank_info_collapsible': 'Transfer Information (Click to toggle)',
         'lbl_bank_account': '🏦 Bank Account:',
         'lbl_more_details': '📝 Additional Details:',
+		'err_invalid_amount': 'Please enter a valid amount',
+        'title_transaction_detail': 'Transaction Details',
+        'status_approved_msg': 'This transaction has been approved',
+        'status_rejected_msg': 'This transaction has been rejected',
+        'lbl_amount_total': 'Amount:',
+        'lbl_request_date': '📅 Request Date:',
+        'lbl_processed_date': '✅ Processed on:',
+        'btn_back_history': 'Back to History',
+        'date_locale': 'en-US',
+		'err_no_bank_details': 'Please provide bank account details',
+        'err_insufficient_balance': 'Your balance is insufficient for withdrawal',
+		'status_waiting_withdraw': '<i class="fas fa-university"></i> Waiting for withdrawal',
+        'status_pending_review': '<i class="fas fa-clock"></i> Pending review',
+        'lbl_your_withdraw_info': '📌 Your Withdrawal Info:',
+        'lbl_amount': 'Amount:',
+        'lbl_transfer_to': 'Transfer to:',
+        'title_admin_bank_info': '🏦 Transfer Information (Top-up)',
+        'lbl_admin_bank_acc': 'Admin Bank Account:',
     },
     'pt': {
         'lbl_wallet_system': 'Sistema de Carteira',
@@ -375,6 +411,24 @@ const translations = {
 		'title_bank_info_collapsible': 'Informações de Transferência (Clique para abrir/fechar)',
         'lbl_bank_account': '🏦 Conta Bancária:',
         'lbl_more_details': '📝 Detalhes Adicionais:',
+		'err_invalid_amount': 'Por favor, insira um valor válido',
+        'title_transaction_detail': 'Detalhes da Transação',
+        'status_approved_msg': 'Esta transação foi aprovada',
+        'status_rejected_msg': 'Esta transação foi rejeitada',
+        'lbl_amount_total': 'Valor:',
+        'lbl_request_date': '📅 Data do Pedido:',
+        'lbl_processed_date': '✅ Processado em:',
+        'btn_back_history': 'Voltar ao Histórico',
+        'date_locale': 'pt-BR',
+		'err_no_bank_details': 'Por favor, forneça os detalhes da conta bancária',
+        'err_insufficient_balance': 'Seu saldo é insuficiente para o saque',
+		'status_waiting_withdraw': '<i class="fas fa-university"></i> Aguardando saque',
+        'status_pending_review': '<i class="fas fa-clock"></i> Em análise',
+        'lbl_your_withdraw_info': '📌 Suas informações de saque:',
+        'lbl_amount': 'Valor:',
+        'lbl_transfer_to': 'Transferir para:',
+        'title_admin_bank_info': '🏦 Informações de Transferência (Recarga)',
+        'lbl_admin_bank_acc': 'Conta Bancária do Admin:',
     }
 };
 
@@ -743,7 +797,7 @@ function appendMessage(msg) { // หรือ appendAdminChatMessage(msg)
                 ${contentHTML}
             </div>
             <small style="font-size: 0.7em; color: #999; margin-top: 4px;">
-                ${isMe ? 'คุณ' : msg.sender}
+                ${isMe ? 'You' : msg.sender}
             </small>
         </div>
     `;
@@ -770,7 +824,7 @@ async function submitTopupRequest() {
     const amount = document.getElementById('topup-amount').value;
     const username = localStorage.getItem('myUsername');
     
-    if (!amount || amount <= 0) return alert("กรุณาระบุจำนวนเงิน");
+    if (!amount || amount <= 0) return alert(i18n.err_invalid_amount);
 
     try {
         const res = await fetch('/api/topup/request', {
@@ -779,7 +833,6 @@ async function submitTopupRequest() {
             body: JSON.stringify({
                 username: username,
                 amount: amount,
-                // ระบบจะหา adminId จากพิกัดในฝั่ง Backend เอง
                 location: localStorage.getItem('userPrimaryLocation') 
             })
         });
@@ -794,7 +847,7 @@ async function submitTopupRequest() {
             await checkTopupStatus();
         }
     } catch (err) {
-        alert("เกิดข้อผิดพลาดในการส่งคำขอ");
+        alert("An error occurred while submitting the request.");
     }
 }
 
@@ -833,7 +886,7 @@ async function submitTopupRequest() {
         }
     } catch (err) {
         console.error("Upload error:", err);
-        alert("การอัปโหลดหรือย่อรูปผิดพลาด");
+        alert("Image upload or resizing error.");
     } finally {
         fileInput.value = '';
         originalBtn.innerHTML = '<i class="fas fa-image"></i>';
@@ -877,6 +930,8 @@ async function compressImage(file, { maxWidth = 1024, quality = 0.7 }) {
 let isHistoryMode = false; // เพิ่มตัวแปรสถานะ
 
 async function viewArchivedChat(requestId, amount, status, createdAt, processedAt) {
+	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+	const i18n = translations[currentLang];
     currentRequestId = requestId;
     isHistoryMode = true; 
     
@@ -884,7 +939,7 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
     
-    titleElem.innerText = "รายละเอียดธุรกรรม";
+    titleElem.innerText = i18n.title_transaction_detail;
     historySec.style.display = 'none';
     chatSec.style.display = 'flex';
     chatSec.style.flexDirection = 'column';
@@ -896,84 +951,87 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
 
     const headerWrapper = document.getElementById('admin-auto-reply-wrapper');
     headerWrapper.innerHTML = `
-        <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'}; width: 100%; box-sizing: border-box;">
-            <div style="text-align: center;">
-                <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
-                <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
-                    รายการนี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
-                </div>
-                <div style="font-size: 1.1em; font-weight: bold; margin: 5px 0;">ยอดเงิน: ${amount.toFixed(2)} USD</div>
+    <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'}; width: 100%; box-sizing: border-box;">
+        <div style="text-align: center;">
+            <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
+            <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
+                ${status === 'approved' ? i18n.status_approved_msg : i18n.status_rejected_msg}
             </div>
-            
-            <div style="border-top: 1px solid rgba(0,0,0,0.05); margin-top: 10px; padding-top: 10px; font-size: 0.85em; color: #666;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-                    <span>📅 วันที่ส่งคำขอ:</span>
-                    <span>${new Date(createdAt).toLocaleString('th-TH')}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span>✅ ดำเนินการเมื่อ:</span>
-                    <span>${new Date(processedAt).toLocaleString('th-TH')}</span>
-                </div>
-            </div>
-
-            <button onclick="switchTab('history')" style="width:100%; margin-top:12px; border:none; background:rgba(0,0,0,0.08); padding: 10px; border-radius: 8px; cursor:pointer; font-weight:bold; color:#555;">
-                <i class="fas fa-arrow-left"></i> กลับไปหน้าประวัติ
-            </button>
+            <div style="font-size: 1.1em; font-weight: bold; margin: 5px 0;">${i18n.lbl_amount_total} ${amount.toFixed(2)} USD</div>
         </div>
-    `;
+        
+        <div style="border-top: 1px solid rgba(0,0,0,0.05); margin-top: 10px; padding-top: 10px; font-size: 0.85em; color: #666;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>${i18n.lbl_request_date}</span>
+                <span>${new Date(createdAt).toLocaleString(i18n.date_locale)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>${i18n.lbl_processed_date}</span>
+                <span>${new Date(processedAt).toLocaleString(i18n.date_locale)}</span>
+            </div>
+        </div>
+
+        <button onclick="switchTab('history')" style="width:100%; margin-top:12px; border:none; background:rgba(0,0,0,0.08); padding: 10px; border-radius: 8px; cursor:pointer; font-weight:bold; color:#555;">
+            <i class="fas fa-arrow-left"></i> ${i18n.btn_back_history}
+        </button>
+    </div>
+`;
 
     const chatDisplay = document.getElementById('realtime-chats');
     chatDisplay.style.flex = '1';
     chatDisplay.style.overflowY = 'auto';
-    chatDisplay.innerHTML = '<p style="text-align:center; color:#999;">กำลังโหลดประวัติแชท...</p>';
+    chatDisplay.innerHTML = '<p style="text-align:center; color:#999;">Loading chat history...</p>';
     
     await loadChatHistory(requestId);
 }
 
 
 async function submitTransactionRequest() {
+	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+	const i18n = translations[currentLang];
     const amount = document.getElementById('topup-amount').value;
     const bankDetails = document.getElementById('withdraw-bank-details').value;
     const username = localStorage.getItem('myUsername');
     
-    if (!amount || amount <= 0) return alert("กรุณาระบุจำนวนเงิน");
-    if (transactionType === 'WITHDRAW' && !bankDetails) return alert("กรุณาระบุรายละเอียดบัญชีธนาคาร");
+    if (!amount || amount <= 0) return alert(i18n.err_invalid_amount);
+    if (transactionType === 'WITHDRAW' && !bankDetails) {
+				return alert(i18n.err_no_bank_details);
+		}
 
-    // ถ้าถอนเงิน เช็คยอดเงินในเครื่องเบื้องต้นก่อน (ป้องกันกดเล่น)
     const currentBalance = parseFloat(document.getElementById('current-balance').innerText);
     if (transactionType === 'WITHDRAW' && amount > currentBalance) {
-        return alert("ยอดเงินของคุณไม่เพียงพอสำหรับการถอน");
+        return alert(i18n.err_insufficient_balance);
     }
 
     try {
-        const res = await fetch('/api/topup/request', { // ใช้ API เส้นเดิม
+        const res = await fetch('/api/topup/request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: username,
                 amount: amount,
-                type: transactionType, // 🚩 ส่งค่า TOPUP หรือ WITHDRAW
-                bankInfo: bankDetails, // ส่งข้อมูลบัญชีไป (ถ้ามี)
+                type: transactionType,
+                bankInfo: bankDetails,
                 location: localStorage.getItem('userPrimaryLocation') 
             })
         });
 
         if (res.ok) {
             const result = await res.json();
-            socket.emit('newTransactionRequest', { // เปลี่ยนชื่อ event socket
+            socket.emit('newTransactionRequest', {
                 adminId: result.adminId,
                 username: username,
                 amount: amount,
                 type: transactionType,
                 currency: zoneCurrency
             });
-            await checkTransactionStatus(); // รีเฟรชหน้าจอเพื่อเข้าสู่โหมดแชท
+            await checkTransactionStatus();
         } else {
             const error = await res.json();
-            alert(error.error || "เกิดข้อผิดพลาด");
+            alert(error.error || "An error occurred.");
         }
     } catch (err) {
-        alert("เกิดข้อผิดพลาดในการส่งคำขอ");
+        alert("An error occurred while submitting the request.");
     }
 }
 
@@ -981,7 +1039,6 @@ async function submitTransactionRequest() {
 async function checkTransactionStatus() {
     const myName = localStorage.getItem('myUsername');
     try {
-        // API จะส่งกลับมาว่ามีคำขอที่ค้างอยู่หรือไม่ (ไม่ว่าจะเป็นเติมหรือถอน)
         const res = await fetch(`/api/topup/status?username=${myName}`);
         const data = await res.json();
 
@@ -990,33 +1047,37 @@ async function checkTransactionStatus() {
 
         if (data.hasPending) {
             currentRequestId = data.requestId;
-            const isWithdraw = data.type === 'WITHDRAW'; // เช็คประเภทจาก server
+            const isWithdraw = data.type === 'WITHDRAW';
             
             formSec.style.display = 'none';
             chatSec.style.display = 'flex';
             
-            // ปรับแต่ง UI ตามประเภท
             const statusLabel = chatSec.querySelector('span');
             statusLabel.style.background = isWithdraw ? '#fff5f5' : '#fff9e6';
             statusLabel.style.color = isWithdraw ? '#e74c3c' : '#f1c40f';
             statusLabel.style.borderColor = isWithdraw ? '#e74c3c' : '#f1c40f';
-            statusLabel.innerHTML = isWithdraw ? '<i class="fas fa-university"></i> กำลังรอการถอนเงิน' : '<i class="fas fa-clock"></i> อยู่ระหว่างตรวจสอบ';
+            statusLabel.innerHTML = isWithdraw 
+				? translations[currentLang].status_waiting_withdraw 
+				: translations[currentLang].status_pending_review;
 
             // ถ้าเป็นเติมเงิน โชว์บัญชีแอดมิน | ถ้าเป็นถอนเงิน โชว์บัญชีตัวเอง
             const headerHTML = isWithdraw ? `
-                <div style="background: white; border-radius: 12px; border: 1px solid #ffcdd2; padding: 15px; font-size: 0.9em;">
-                    <b style="color: #e74c3c;">📌 ข้อมูลการถอนเงินของคุณ:</b><br>
-                    จำนวน: <b>${data.amount.toFixed(2)} USD</b><br>
-                    โอนเข้า: ${data.bankInfo.replace(/\n/g, '<br>')}
-                </div>
-            ` : `
-                <details open style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
-                    <summary style="padding: 10px 15px; background: #f8fafc; font-weight: bold; color: var(--primary);">🏦 ข้อมูลการโอนเงิน (เติมเงิน)</summary>
-                    <div style="padding: 15px; font-size: 0.9em; border-top: 1px solid #eee;">
-                        <b>บัญชีธนาคารแอดมิน:</b><br>${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}
-                    </div>
-                </details>
-            `;
+    <div style="background: white; border-radius: 12px; border: 1px solid #ffcdd2; padding: 15px; font-size: 0.9em;">
+        <b style="color: #e74c3c;">${translations[currentLang].lbl_your_withdraw_info}</b><br>
+        ${translations[currentLang].lbl_amount} <b>${data.amount.toFixed(2)} USD</b><br>
+        ${translations[currentLang].lbl_transfer_to} ${data.bankInfo.replace(/\n/g, '<br>')}
+    </div>
+` : `
+    <details open style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+        <summary style="padding: 10px 15px; background: #f8fafc; font-weight: bold; color: var(--primary);">
+            ${translations[currentLang].title_admin_bank_info}
+        </summary>
+        <div style="padding: 15px; font-size: 0.9em; border-top: 1px solid #eee;">
+            <b>${translations[currentLang].lbl_admin_bank_acc}</b><br>
+            ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}
+        </div>
+    </details>
+`;
 
             document.getElementById('admin-auto-reply-wrapper').innerHTML = headerHTML;
 
