@@ -985,7 +985,6 @@ async function submitKYC() {
     });
 
     if (confirm.isConfirmed) {
-        // --- 🟢 เริ่มกระบวนการเดิมของพี่ ---
         if (!navigator.geolocation) {
             return Swal.fire(
                 translations[currentLang].swal_gps_not_support_title, 

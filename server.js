@@ -4364,43 +4364,99 @@ app.get('/api/admin/kyc-list', async (req, res) => {
     }
 });
 
-// --- API สำหรับ อนุมัติ หรือ ปฏิเสธ KYC ---
-app.post('/api/admin/process-kyc', async (req, res) => {
-	const lang = req.body.lang || 'th';
+// --- 🚩 API อนุมัติ KYC และโอนค่าธรรมเนียมให้เจ้าของโซน ---
+app.post('/api/admin/approve-kyc', async (req, res) => {
+    const { requestId, username, adminName } = req.body;
+
     try {
-        const { requestId, status, adminName } = req.body;
+        // 1. ตรวจสอบรายการคำขอ KYC
+        const kycReq = await db.collection('kycRequests').findOne({ 
+            _id: new ObjectId(requestId) 
+        });
 
-        // 1. อัปเดตสถานะในรายการคำขอ (kycRequests)
-        const request = await db.collection('kycRequests').findOne({ _id: new ObjectId(requestId) });
-        if (!request) return res.status(404).json({ error: "Request not found" });
+        if (!kycReq) {
+            return res.status(404).json({ success: false, message: "ไม่พบรายการคำขอนี้" });
+        }
 
-        await db.collection('kycRequests').updateOne(
-            { _id: new ObjectId(requestId) },
-            { $set: { status: status, processedAt: new Date(), processedBy: adminName } }
-        );
+        if (kycReq.status === 'approved') {
+            return res.status(400).json({ success: false, message: "รายการนี้ได้รับการอนุมัติไปแล้ว" });
+        }
 
-        // 2. ถ้าอนุมัติ ให้ไปอัปเดตสถานะในบัญชี User ด้วย (usersCollection)
-        if (status === 'approved') {
+        // 2. 🔍 ดึงข้อมูลโซนของแอดมิน เพื่อหาค่า kycPriceZone ที่ต้องแบ่งให้แอดมิน
+        const zone = await db.collection('zones').findOne({ assignedAdmin: adminName });
+        if (!zone) {
+            return res.status(404).json({ success: false, message: "ไม่พบข้อมูลโซนที่แอดมินดูแล" });
+        }
+
+        // 3. 💰 กระบวนการโอนเงิน (Escrow Split)
+        if (kycReq.feeStatus === 'held' && kycReq.feeAmount > 0) {
+            const currency = kycReq.feeCurrency || 'USD';
+            const totalAmount = parseFloat(kycReq.feeAmount);
+            
+            // ค่าธรรมเนียมที่แอดมินเจ้าของโซนควรได้รับ
+            const adminShare = parseFloat(zone.kycPriceZone || 0);
+            
+            // ส่วนต่างที่จะเข้าสู่ระบบ (Admin)
+            const systemShare = totalAmount - adminShare;
+
+            // --- โอนส่วนของแอดมินเจ้าของโซน ---
             await db.collection('users').updateOne(
-                { username: request.username },
-                { $set: { kycVerified: true, verifiedAt: new Date() } }
+                { username: adminName },
+                { $inc: { [currency]: adminShare } }
+            );
+
+            // --- โอนส่วนต่างเข้าบัญชีระบบ (Username: 'Admin') ---
+            // ตรวจสอบก่อนว่า systemShare มีค่ามากกว่า 0 หรือไม่
+            if (systemShare > 0) {
+                await db.collection('users').updateOne(
+                    { username: 'Admin' }, // หรือเปลี่ยนเป็นชื่อบัญชีกลางที่พี่ใช้
+                    { $inc: { [currency]: systemShare } }
+                );
+            }
+
+            // อัปเดตสถานะเงินในรายการ KYC
+            await db.collection('kycRequests').updateOne(
+                { _id: new ObjectId(requestId) },
+                { $set: { 
+                    feeStatus: 'paid_out',
+                    adminReceived: adminShare,
+                    systemReceived: systemShare
+                } }
             );
         }
 
-        const msg = status === 'approved' 
-			? serverTranslations[lang].msg_op_approved 
-			: serverTranslations[lang].msg_op_rejected;
+        // 4. 📝 อัปเดตสถานะ KYC ในระบบ
+        await db.collection('kycRequests').updateOne(
+            { _id: new ObjectId(requestId) },
+            { 
+                $set: { 
+                    status: 'approved', 
+                    approvedBy: adminName,
+                    approvedAt: new Date() 
+                } 
+            }
+        );
 
-			res.json({ message: msg });
+        await db.collection('users').updateOne(
+            { username: username },
+            { $set: { kycStatus: 'approved' } }
+        );
+
+        // 5. ตอบกลับ
+        res.json({ 
+            success: true, 
+            message: `อนุมัติสำเร็จ! โอนเข้ากระเป๋าคุณ ${zone.kycPrice} ${kycReq.feeCurrency} และเข้าส่วนกลางเรียบร้อย` 
+        });
+
     } catch (err) {
-        console.error("❌ Process KYC Error:", err);
-        res.status(500).json({ error: "Failed to process request" });
+        console.error("🚨 Approve KYC Error:", err);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" });
     }
 });
 
 // ✅ API สำหรับแอดมินลบคำขอยืนยันตัวตน (ปฏิเสธและลบ)
 app.post('/api/admin/delete-kyc', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     try {
         const { requestId, username } = req.body;
 
@@ -4408,28 +4464,55 @@ app.post('/api/admin/delete-kyc', async (req, res) => {
             return res.status(400).json({ error: "Missing Request ID" });
         }
 
-        // 1. ลบรายการออกจากคอลเลกชัน kycRequests
+        // 🚩 1. ค้นหาข้อมูลคำขอก่อนลบ เพื่อดูว่ามีเงินที่ต้องคืนไหม
+        const kycReq = await db.collection('kycRequests').findOne({ 
+            _id: new ObjectId(requestId) 
+        });
+
+        if (!kycReq) {
+            return res.status(404).json({ error: serverTranslations[lang].err_delete_not_found_kyc });
+        }
+
+        // 🚩 2. กระบวนการคืนเงิน (Refund Logic)
+        // ตรวจสอบว่าสถานะเงินคือ 'held' (พักไว้) และมียอดเงินจริง
+        if (kycReq.feeStatus === 'held' && kycReq.feeAmount > 0) {
+            const currency = kycReq.feeCurrency;
+            const amount = parseFloat(kycReq.feeAmount);
+
+            // บวกเงินคืนเข้ากระเป๋าของสมาชิกตามสกุลเงินที่จ่ายมา
+            await db.collection('users').updateOne(
+                { username: kycReq.username },
+                { $inc: { [currency]: amount } }
+            );
+            
+            console.log(`✅ Refunded ${amount} ${currency} to ${kycReq.username}`);
+        }
+
+        // 🚩 3. ลบรายการออกจากคอลเลกชัน kycRequests
         const result = await db.collection('kycRequests').deleteOne({ 
             _id: new ObjectId(requestId) 
         });
 
-        // 2. ลบประวัติแชทที่เกี่ยวข้องกับคำขอนี้ด้วย (เพื่อความสะอาดของ DB)
+        // 🚩 4. ลบประวัติแชทที่เกี่ยวข้อง
         await db.collection('kyc_chats').deleteMany({ requestId: username });
 
         if (result.deletedCount === 1) {
-    // ส่งสัญญาณ Socket
-    io.emit('kyc-status-updated', {
-        username: username,
-        status: 'deleted',
-        message: serverTranslations[lang].msg_kyc_deleted_socket
-		});
+            // ส่งสัญญาณ Socket แจ้งสมาชิก
+            io.emit('kyc-status-updated', {
+                username: username,
+                status: 'deleted',
+                message: serverTranslations[lang].msg_kyc_deleted_socket
+            });
 
-			res.json({ success: true, message: serverTranslations[lang].msg_delete_success });
-			} else {
-				res.status(404).json({ error: serverTranslations[lang].err_delete_not_found_kyc });
-			}
+            res.json({ 
+                success: true, 
+                message: serverTranslations[lang].msg_delete_success + " (คืนเงินเรียบร้อยแล้ว)" 
+            });
+        } else {
+            res.status(404).json({ error: serverTranslations[lang].err_delete_not_found_kyc });
+        }
     } catch (err) {
-        console.error("❌ Delete KYC Error:", err);
+        console.error("❌ Delete/Refund KYC Error:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
