@@ -1236,12 +1236,12 @@ app.get('/api/profile-details', async (req, res) => {
         let zoneName = "นอกพื้นที่บริการ";
         let zoneOwner = "ไม่มีผู้ดูแล";
         let currentCurrency = 'USD';
-        let currentBalance = user.coins || 0; // ค่า Default (กระเป๋าหลัก)
+        let currentBalance = user.coins || 0;
 
         // ตรวจสอบพิกัดเพื่อหาโซน
         if (location) {
             const locationObj = JSON.parse(decodeURIComponent(location));
-            // ใช้ฟังก์ชันเดิมที่คุณมีเพื่อหา Admin/Zone
+            // หา Admin/Zone
             const zoneInfo = await findResponsibleAdmin(locationObj);
             
             if (zoneInfo && zoneInfo.zoneData) {
@@ -1254,16 +1254,20 @@ app.get('/api/profile-details', async (req, res) => {
                     currentBalance = user[currentCurrency] || 0;
 					kycPrice = zoneInfo.zoneData.kycPrice || 0;
 					kycPriceZone = zoneInfo.zoneData.kycPriceZone || 0;
+					minTopup = zoneInfo.zoneData.minTopup || 0;
+					minWithdraw = zoneInfo.zoneData.minWithdraw || 0;
                 }
             }
         }
 
         // ส่งข้อมูลกลับไปหน้าบ้าน
         res.json({
-            coins: currentBalance,      // ส่งยอดเงินของกระเป๋านั้นๆ
-            currency: currentCurrency,  // ส่งชื่อสกุลเงินไปด้วย
+            coins: currentBalance, 
+            currency: currentCurrency,
             kycPrice: kycPrice,
-			kycPriceZone: kycPriceZone,
+			minTopup: minTopup,
+			kycPrice: kycPrice,
+			minWithdraw: minWithdraw,
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,

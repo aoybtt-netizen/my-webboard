@@ -162,7 +162,7 @@ html {
         <i class="fas fa-wallet"></i>
     </div>
     <h3 id="amount-label" data-i18n-key="lbl_specify_amount">ระบุจำนวนเงิน</h3>
-    
+    <div id="min-amount-notice" style="font-size: 0.9em; color: #666; margin-top: -5px; margin-bottom: 10px;"></div>
     <div class="amount-input-group">
     <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
     <div id="input-currency-label" style="margin-top: 10px; font-weight: bold; color: var(--primary);">Loading...</div>
@@ -303,6 +303,7 @@ const translations = {
         'lbl_transfer_to': 'โอนเข้า:',
         'title_admin_bank_info': '🏦 ข้อมูลการโอนเงิน (เติมเงิน)',
         'lbl_admin_bank_acc': 'บัญชีธนาคารแอดมิน:',
+		'lbl_min_amount': 'ขั้นต่ำ:',
     },
     'en': {
         'lbl_wallet_system': 'Member Wallet System',
@@ -366,6 +367,7 @@ const translations = {
         'lbl_transfer_to': 'Transfer to:',
         'title_admin_bank_info': '🏦 Transfer Information (Top-up)',
         'lbl_admin_bank_acc': 'Admin Bank Account:',
+		'lbl_min_amount': 'Minimum:',
     },
     'pt': {
         'lbl_wallet_system': 'Sistema de Carteira',
@@ -429,6 +431,7 @@ const translations = {
         'lbl_transfer_to': 'Transferir para:',
         'title_admin_bank_info': '🏦 Informações de Transferência (Recarga)',
         'lbl_admin_bank_acc': 'Conta Bancária do Admin:',
+		'lbl_min_amount': 'Mínimo:',
     }
 };
 
@@ -498,6 +501,15 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('withdraw-bank-info').style.display = (transactionType === 'WITHDRAW') ? 'block' : 'none';
         document.getElementById('form-icon').style.color = (transactionType === 'WITHDRAW') ? 'var(--danger)' : 'var(--primary)';
         
+		if (typeof currentZoneData !== 'undefined' && currentZoneData) {
+            const minVal = (transactionType === 'TOPUP') 
+                           ? (currentZoneData.minTopup || 0) 
+                           : (currentZoneData.minWithdraw || 0);
+            const currency = currentZoneData.zoneCurrency || 'USD';
+            
+            // แสดงข้อความ "ขั้นต่ำ: 100 USD"
+            minNotice.innerHTML = `<i class="fas fa-info-circle"></i> ${translations[currentLang].lbl_min_amount} <b>${minVal.toLocaleString()} ${currency}</b>`;
+        }
         // เปลี่ยนสีปุ่มและไอคอนตามโหมด
         const submitBtn = document.querySelector('.btn-submit-topup');
         if(transactionType === 'WITHDRAW') {
