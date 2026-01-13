@@ -269,38 +269,33 @@ function viewZoneDetails(zoneId) {
     if (!z) return;
 
     const currency = z.zoneCurrency || 'USD';
-    const mapUrl = (z.lat && z.lng) ? `https://www.google.com/maps?q=${z.lat},${z.lng}` : '#';
 
     Swal.fire({
-        title: `<i class="fas fa-edit"></i> จัดการโซน: ${z.name}`,
+        title: `<i class="fas fa-tools"></i> จัดการโซน: ${z.name}`,
         html: `
-            <div style="text-align: left; font-size: 0.9em; line-height: 1.8; max-height: 500px; overflow-y: auto; padding-right: 5px;">
+            <div style="text-align: left; font-size: 0.9em; line-height: 1.8; max-height: 500px; overflow-y: auto;">
+                <p style="color: #666; font-size: 0.8em; margin-bottom: 10px;">* คลิกที่ตัวหนาเพื่อแก้ไขข้อมูล</p>
                 
-                <div style="background: #f0f7ff; padding: 12px; border-radius: 10px; border-left: 5px solid var(--accent); margin-bottom: 15px;">
-                    <b style="color: var(--accent); display: block; margin-bottom: 5px;"><i class="fas fa-pen"></i> คลิกที่ข้อมูลเพื่อแก้ไข</b>
-                    
-                    ${renderEditItem('ชื่อโซน', 'name', z.name, z.id)}
-                    ${renderEditItem('เจ้าของโซน (Admin)', 'assignedAdmin', z.assignedAdmin, z.id)}
-                    ${renderEditItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
-                    ${renderEditItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id)}
-                    ${renderEditItem('ค่าธรรมเนียม (ทศนิยม)', 'zoneFee', z.zoneFee, z.id)}
-                    ${renderEditItem('ค่ายืนยันตัวตน (KYC)', 'kycPrice', z.kycPrice, z.id, currency)}
-                    ${renderEditItem('เติมขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
-                    ${renderEditItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
-                    ${renderEditItem('ยอดระบบ (USDT)', 'systemZone', z.systemZone, z.id)}
-                    ${renderEditItem('รูปพื้นหลัง (URL)', 'bgImage', z.bgImage, z.id)}
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                    ${renderItem('ชื่อโซน', 'name', z.name, z.id)}
+                    ${renderItem('แอดมินดูแล', 'assignedAdmin', z.assignedAdmin, z.id)}
+                    ${renderItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
+                    ${renderItem('เรทแลกเปลี่ยน', 'zoneExchangeRate', z.zoneExchangeRate, z.id)}
+                    ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
+                    ${renderItem('ค่ายืนยัน KYC', 'kycPrice', z.kycPrice, z.id, currency)}
+                    ${renderItem('เติมขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
+                    ${renderItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
+                    ${renderItem('ยอดเงินในระบบ', 'systemZone', z.systemZone, z.id, 'USDT')}
                 </div>
 
-                <div style="background: #fdf2f2; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.85em;">
-                    <b style="color: var(--danger);">📍 พิกัดอ้างอิง</b><br>
-                    <span>สถานที่:</span> <b>${z.addressName || '-'}</b><br>
-                    <span>โดย:</span> <b>${z.sourceUser || '-'}</b><br>
-                    <span>Lat/Lng:</span> <b>${z.lat}, ${z.lng}</b>
-                    <br><a href="${mapUrl}" target="_blank" style="color:var(--accent); text-decoration:none;"><i class="fas fa-map-marker-alt"></i> เปิดดูตำแหน่งใน Google Maps</a>
+                <div style="margin-top: 15px; font-size: 0.85em; color: #7f8c8d;">
+                    <b>📍 พิกัดอ้างอิง:</b> ${z.lat}, ${z.lng}<br>
+                    <b>🏠 สถานที่:</b> ${z.addressName || '-'}<br>
+                    <b>👤 ผู้ปักหมุด:</b> ${z.sourceUser || '-'}
                 </div>
 
-                <button onclick="debugZoneObject(${z.id})" style="width:100%; padding:10px; background:#34495e; color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.8em; margin-top:10px;">
-                    <i class="fas fa-code"></i> ดูชื่อตัวแปรและข้อมูลดิบทั้งหมด (Raw Data)
+                <button onclick="showAllVariables(${z.id})" style="width:100%; margin-top:15px; padding:10px; background:#34495e; color:white; border:none; border-radius:5px; cursor:pointer;">
+                    <i class="fas fa-code"></i> ดูชื่อตัวแปรทั้งหมดในโซนนี้
                 </button>
             </div>
         `,
@@ -309,21 +304,34 @@ function viewZoneDetails(zoneId) {
     });
 }
 
-// ฟังก์ชันช่วยสร้างแถวที่คลิกแก้ได้
-function renderEditItem(label, field, value, id, unit = '') {
-    const displayValue = value === undefined || value === null || value === '' ? 'ไม่ได้ระบุ' : value;
+// ฟังก์ชันช่วยสร้างบรรทัดรายการ
+function renderItem(label, field, value, id, unit = '') {
     return `
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 5px 0;">
-            <span style="color:#555;">${label}:</span>
-            <b onclick="universalEdit('zones', ${id}, '${field}', '${value}')" 
-               style="cursor:pointer; color:var(--primary); text-decoration: underline dotted; transition: 0.2s;"
-               onmouseover="this.style.color='var(--accent)'" 
-               onmouseout="this.style.color='var(--primary)'">
-                ${displayValue} ${unit}
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
+            <span>${label}:</span>
+            <b onclick="universalEdit('zones', ${id}, '${field}', '${value}')" style="cursor:pointer; color:var(--accent); text-decoration: underline;">
+                ${value !== undefined ? value : 0} ${unit}
             </b>
         </div>
     `;
 }
+
+// ฟังก์ชันดูตัวแปรทั้งหมด (Debug)
+function showAllVariables(zoneId) {
+    const z = window.allZonesData.find(item => item.id === zoneId);
+    let content = '<div style="text-align:left; font-family:monospace; font-size:0.8em; background:#222; color:#0f0; padding:10px; border-radius:5px; max-height:300px; overflow-y:auto;">';
+    for (let key in z) {
+        content += `<div><span style="color:#ff79c6">"${key}"</span>: ${JSON.stringify(z[key])}</div>`;
+    }
+    content += '</div>';
+
+    Swal.fire({
+        title: 'Raw Data (Database)',
+        html: content,
+        width: '80%'
+    });
+}
+
 
 function debugZoneObject(zoneId) {
     // ดึงข้อมูลจากตัวแปรที่โหลดไว้แล้วตอน loadZones

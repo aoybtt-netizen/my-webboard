@@ -547,48 +547,45 @@ app.get('/api/admin/all-zones', async (req, res) => {
 
 // 3. 🔥 API หัวใจหลัก: Universal Update (เวอร์ชันอัปเดตเพื่อรองรับระบบโซน)
 app.post('/api/admin/universal-update', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
 
     try {
-        // --- 🛡️ ตรวจสอบสิทธิ์แอดมิน (Security Check) ---
+        // --- 🛡️ ตรวจสอบสิทธิ์แอดมิน ---
         const admin = await db.collection('users').findOne({ username: adminUsername });
         if (!admin || admin.adminLevel < 3) {
-            return res.status(403).json({ success: false, message: serverTranslations[lang].error_admin_l3_required });
+            return res.status(403).json({ success: false, message: "สิทธิ์แอดมินระดับ 3 เท่านั้น" });
         }
 
-        // --- ⚙️ จัดการประเภทข้อมูล (Data Casting) ---
         let finalValue = newValue;
 
-        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็นตัวเลข (เพิ่ม systemZone และ zoneFee)
+        // 🚩 [อัปเดต] เพิ่มฟิลด์ใหม่เข้ากลุ่มตัวเลข
         const numericFields = [
             'coins', 'adminLevel', 'id', 'zoneExchangeRate', 
             'totalPosts', 'completedJobs', 'rating', 
-            'BRL', 'THB', 'VND', 'systemZone', 'zoneFee'
+            'BRL', 'THB', 'VND', 'systemZone', 'zoneFee',
+            'kycPrice', 'minTopup', 'minWithdraw' // <--- เพิ่ม 3 ตัวนี้
         ];
 
         if (numericFields.includes(field)) {
-            // แยกกรณี parseInt สำหรับ ID/Level และ parseFloat สำหรับยอดเงิน/เรท
             if (field === 'adminLevel' || field === 'id') {
                 finalValue = parseInt(newValue);
             } else {
                 finalValue = parseFloat(newValue);
             }
             
-            // ป้องกันค่า NaN ถ้าใส่ข้อมูลมาผิดประเภท
             if (isNaN(finalValue)) {
                 return res.status(400).json({ success: false, message: "ค่าที่ระบุต้องเป็นตัวเลขเท่านั้น" });
             }
         }
 
-        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็น Boolean (เพิ่ม isFree ของโซนเข้าไปด้วย)
         const booleanFields = ['isBanned', 'isFree'];
         if (booleanFields.includes(field)) {
             finalValue = (newValue === 'true' || newValue === true);
         }
 
-        // --- 📝 ทำการอัปเดตลง Database ---
-        // กำหนดเงื่อนไขการหา: ถ้าแก้ user ให้หาจาก username, ถ้าแก้ zone ให้หาจาก id
+        // --- 📝 อัปเดตลง Database ---
+        // ถ้าเป็น users ใช้ username เป็น ID, ถ้าเป็น zones ใช้ id (ตัวเลข)
         const query = targetCollection === 'users' ? { username: targetId } : { id: parseInt(targetId) };
 
         const result = await db.collection(targetCollection).updateOne(
@@ -603,14 +600,14 @@ app.post('/api/admin/universal-update', async (req, res) => {
         );
 
         if (result.matchedCount > 0) {
-            res.json({ success: true, message: `อัปเดต [${field}] เป็น [${finalValue}] เรียบร้อยแล้ว` });
+            res.json({ success: true, message: `อัปเดต [${field}] เรียบร้อย` });
         } else {
             res.status(404).json({ success: false, message: "ไม่พบข้อมูลที่ต้องการแก้ไข" });
         }
 
     } catch (err) {
         console.error("Universal Update Error:", err);
-        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" });
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 });
 
