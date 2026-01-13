@@ -680,9 +680,7 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('display-zone-name').innerText = data.zoneName || translations[currentLang].lbl_outside_service;
         document.getElementById('display-zone-admin').innerText = data.zoneOwner || translations[currentLang].lbl_no_admin;
 
-        if (typeof transactionType !== 'undefined') {
-            switchTab('topup', transactionType);
-        }
+     
 
     } catch (err) {
         console.error("Load Topup Info Error:", err);
