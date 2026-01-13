@@ -675,7 +675,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('display-zone-name').innerText = data.zoneName || translations[currentLang].lbl_outside_service;
         document.getElementById('display-zone-admin').innerText = data.zoneOwner || translations[currentLang].lbl_no_admin;
-
+		if (typeof transactionType !== 'undefined') {
+            switchTab('topup', transactionType);
+			toggleSidebar();
+        }
      
 
     } catch (err) {
@@ -683,7 +686,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const zoneDisplay = document.getElementById('display-zone-name');
         if(zoneDisplay) zoneDisplay.innerText = translations[currentLang].err_load_failed;
     }
-	switchTab(tab, type = 'TOPUP');
 };
 
 
