@@ -1252,7 +1252,7 @@ app.get('/api/profile-details', async (req, res) => {
                 if (zoneInfo.zoneData.zoneCurrency) {
                     currentCurrency = zoneInfo.zoneData.zoneCurrency;
                     currentBalance = user[currentCurrency] || 0;
-					kycPrice = zoneInfo.zoneData.kycPrice;
+					kycPrice = zoneInfo.zoneData.kycPrice || 0;
                 }
             }
         }
@@ -1261,7 +1261,7 @@ app.get('/api/profile-details', async (req, res) => {
         res.json({
             coins: currentBalance,      // ส่งยอดเงินของกระเป๋านั้นๆ
             currency: currentCurrency,  // ส่งชื่อสกุลเงินไปด้วย
-            
+            kycPrice: kycPrice,
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
