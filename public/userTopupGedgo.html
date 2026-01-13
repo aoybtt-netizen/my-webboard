@@ -930,8 +930,6 @@ async function compressImage(file, { maxWidth = 1024, quality = 0.7 }) {
 let isHistoryMode = false; // เพิ่มตัวแปรสถานะ
 
 async function viewArchivedChat(requestId, amount, status, createdAt, processedAt) {
-	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-	const i18n = translations[currentLang];
     currentRequestId = requestId;
     isHistoryMode = true; 
     
@@ -939,7 +937,7 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
     const historySec = document.getElementById('section-history');
     const chatSec = document.getElementById('section-pending-chat');
     
-    titleElem.innerText = i18n.title_transaction_detail;
+    titleElem.innerText = "รายละเอียดธุรกรรม";
     historySec.style.display = 'none';
     chatSec.style.display = 'flex';
     chatSec.style.flexDirection = 'column';
@@ -951,36 +949,36 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
 
     const headerWrapper = document.getElementById('admin-auto-reply-wrapper');
     headerWrapper.innerHTML = `
-    <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'}; width: 100%; box-sizing: border-box;">
-        <div style="text-align: center;">
-            <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
-            <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
-                ${status === 'approved' ? i18n.status_approved_msg : i18n.status_rejected_msg}
+        <div style="background: ${status === 'approved' ? '#e8f5e9' : '#ffebee'}; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid ${status === 'approved' ? '#c8e6c9' : '#ffcdd2'}; width: 100%; box-sizing: border-box;">
+            <div style="text-align: center;">
+                <i class="fas ${status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size: 2em; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};"></i>
+                <div style="font-weight: bold; margin-top: 5px; color: ${status === 'approved' ? '#2e7d32' : '#c62828'};">
+                    รายการนี้${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}แล้ว
+                </div>
+                <div style="font-size: 1.1em; font-weight: bold; margin: 5px 0;">ยอดเงิน: ${amount.toFixed(2)} USD</div>
             </div>
-            <div style="font-size: 1.1em; font-weight: bold; margin: 5px 0;">${i18n.lbl_amount_total} ${amount.toFixed(2)} USD</div>
-        </div>
-        
-        <div style="border-top: 1px solid rgba(0,0,0,0.05); margin-top: 10px; padding-top: 10px; font-size: 0.85em; color: #666;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-                <span>${i18n.lbl_request_date}</span>
-                <span>${new Date(createdAt).toLocaleString(i18n.date_locale)}</span>
+            
+            <div style="border-top: 1px solid rgba(0,0,0,0.05); margin-top: 10px; padding-top: 10px; font-size: 0.85em; color: #666;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span>📅 วันที่ส่งคำขอ:</span>
+                    <span>${new Date(createdAt).toLocaleString('th-TH')}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>✅ ดำเนินการเมื่อ:</span>
+                    <span>${new Date(processedAt).toLocaleString('th-TH')}</span>
+                </div>
             </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>${i18n.lbl_processed_date}</span>
-                <span>${new Date(processedAt).toLocaleString(i18n.date_locale)}</span>
-            </div>
-        </div>
 
-        <button onclick="switchTab('history')" style="width:100%; margin-top:12px; border:none; background:rgba(0,0,0,0.08); padding: 10px; border-radius: 8px; cursor:pointer; font-weight:bold; color:#555;">
-            <i class="fas fa-arrow-left"></i> ${i18n.btn_back_history}
-        </button>
-    </div>
-`;
+            <button onclick="switchTab('history')" style="width:100%; margin-top:12px; border:none; background:rgba(0,0,0,0.08); padding: 10px; border-radius: 8px; cursor:pointer; font-weight:bold; color:#555;">
+                <i class="fas fa-arrow-left"></i> กลับไปหน้าประวัติ
+            </button>
+        </div>
+    `;
 
     const chatDisplay = document.getElementById('realtime-chats');
     chatDisplay.style.flex = '1';
     chatDisplay.style.overflowY = 'auto';
-    chatDisplay.innerHTML = '<p style="text-align:center; color:#999;">Loading chat history...</p>';
+    chatDisplay.innerHTML = '<p style="text-align:center; color:#999;">กำลังโหลดประวัติแชท...</p>';
     
     await loadChatHistory(requestId);
 }
