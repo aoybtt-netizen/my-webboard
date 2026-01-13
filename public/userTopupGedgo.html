@@ -89,30 +89,42 @@ html {
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
     <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3 style="margin:0; color:var(--secondary);">GedGo! Wallet</h3>
-            <small style="opacity:0.6;">ระบบกระเป๋าเงินสมาชิก</small>
-        </div>
-        <div class="sidebar-menu">
-			<div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <a href="index.html" class="menu-item" style="padding:0;"><i class="fas fa-user-circle"></i> กลับหน้าแรก</a>
-        </div>
-            <div class="menu-item" id="menu-topup" onclick="switchTab('topup', 'TOPUP')">
-		<i class="fas fa-hand-holding-usd"></i> เติมเงิน
-		</div>
-
-		<div class="menu-item" id="menu-withdraw" onclick="switchTab('topup', 'WITHDRAW')">
-			<i class="fas fa-money-bill-transfer"></i> ถอนเงิน
-		</div>
-            <div class="menu-item" onclick="switchTab('history')">
-                <i class="fas fa-file-invoice-dollar"></i> ประวัติการเติมเงิน
-            </div>
-			
-        </div>
+    <div class="sidebar-header">
+        <h3 style="margin:0; color:var(--secondary);">GedGo! Wallet</h3>
+        <small style="opacity:0.6;" data-i18n-key="lbl_wallet_system">ระบบกระเป๋าเงินสมาชิก</small>
+    </div>
+    
+    <div class="sidebar-menu">
         <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <a href="index.html" class="menu-item" style="padding:0;"><i class="fas fa-user-circle"></i> กลับหน้าแรก</a>
+            <a href="index.html" class="menu-item" style="padding:0;">
+                <i class="fas fa-user-circle"></i> 
+                <span data-i18n-key="menu_back_home">กลับหน้าแรก</span>
+            </a>
         </div>
-    </nav>
+
+        <div class="menu-item" id="menu-topup" onclick="switchTab('topup', 'TOPUP')">
+            <i class="fas fa-hand-holding-usd"></i> 
+            <span data-i18n-key="menu_topup">เติมเงิน</span>
+        </div>
+
+        <div class="menu-item" id="menu-withdraw" onclick="switchTab('topup', 'WITHDRAW')">
+            <i class="fas fa-money-bill-transfer"></i> 
+            <span data-i18n-key="menu_withdraw">ถอนเงิน</span>
+        </div>
+
+        <div class="menu-item" onclick="switchTab('history')">
+            <i class="fas fa-file-invoice-dollar"></i> 
+            <span data-i18n-key="menu_topup_history">ประวัติการเติมเงิน</span>
+        </div>
+    </div>
+
+    <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <a href="index.html" class="menu-item" style="padding:0;">
+            <i class="fas fa-user-circle"></i> 
+            <span data-i18n-key="menu_back_home">กลับหน้าแรก</span>
+        </a>
+    </div>
+</nav>
 
     <main class="main-content">
         <header class="top-bar">
@@ -215,6 +227,66 @@ html {
 	let currentRequestId = null;
 	let transactionType = 'TOPUP';
 	let zoneCurrency = 'USD';
+	
+
+
+const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+				
+const translations = {
+    'th': {
+        'lbl_wallet_system': 'ระบบกระเป๋าเงินสมาชิก',
+        'menu_back_home': 'กลับหน้าแรก',
+        'menu_topup': 'เติมเงิน',
+        'menu_withdraw': 'ถอนเงิน',
+        'menu_topup_history': 'ประวัติการเติมเงิน',
+    },
+    'en': {
+        'lbl_wallet_system': 'Member Wallet System',
+        'menu_back_home': 'Back to Home',
+        'menu_topup': 'Top-up',
+        'menu_withdraw': 'Withdraw',
+        'menu_topup_history': 'Top-up History',
+    },
+    'pt': {
+        'lbl_wallet_system': 'Sistema de Carteira',
+        'menu_back_home': 'Voltar ao Início',
+        'menu_topup': 'Recarregar',
+        'menu_withdraw': 'Sacar',
+        'menu_topup_history': 'Histórico de Recargas',
+    }
+};
+
+function applyMerchantTranslations() {
+    console.log(`[i18n] Applying translations for: ${currentLang}`);
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+        const key = el.getAttribute('data-i18n-key');
+        const translatedText = translations[currentLang]?.[key];
+
+        if (translatedText) {
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.placeholder = translatedText;
+            } 
+            else {
+                const icon = el.querySelector('i');
+                if (icon) {
+                    el.innerHTML = '';
+                    el.appendChild(icon);
+                    el.insertAdjacentHTML('beforeend', ' ' + translatedText);
+                } else {
+                    el.innerText = translatedText;
+                }
+            }
+        }
+    });
+}
+
+// สั่งรันตอนโหลดหน้าจอ
+window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+});
+
+
+
 	
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
