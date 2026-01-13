@@ -162,8 +162,12 @@ html {
         <i class="fas fa-wallet"></i>
     </div>
     <h3 id="amount-label" data-i18n-key="lbl_specify_amount">ระบุจำนวนเงิน</h3>
-    <div id="min-amount-notice" style="font-size: 0.9em; color: #666; margin-top: -5px; margin-bottom: 10px;"></div>
-	<span data-i18n-key="min-amount-notice">Minimum</span> 
+    <div id="min-amount-notice" style="font-size: 0.9em; color: #666; margin-top: -5px; margin-bottom: 10px; display: none;">
+    <i class="fas fa-info-circle"></i> 
+    <span data-i18n-key="lbl_min_amount">ขั้นต่ำ:</span> 
+    <b id="min-val-display">0</b> 
+    <span id="min-currency-display">USD</span>
+	</div>
     <div class="amount-input-group">
     <input type="number" id="topup-amount" class="amount-input" placeholder="0.00">
     <div id="input-currency-label" style="margin-top: 10px; font-weight: bold; color: var(--primary);">Loading...</div>
@@ -490,37 +494,52 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
     
     if (tab === 'topup') {
-        // จัดการสถานะ active ของปุ่มใน Sidebar
+        // 1. จัดการสถานะ active ของปุ่มใน Sidebar
         if(type === 'TOPUP') document.getElementById('menu-topup').classList.add('active');
         if(type === 'WITHDRAW') document.getElementById('menu-withdraw').classList.add('active');
 
         title.innerText = (transactionType === 'TOPUP') 
-				? translations[currentLang].title_topup 
-				: translations[currentLang].title_withdraw;
+                ? translations[currentLang].title_topup 
+                : translations[currentLang].title_withdraw;
         
-        // --- 2 บรรทัดที่คุณกังวล อยู่ตรงนี้ถูกต้องแล้ว ---
+        // 2. จัดการการแสดงผลข้อมูลธนาคารและสีไอคอน
         document.getElementById('withdraw-bank-info').style.display = (transactionType === 'WITHDRAW') ? 'block' : 'none';
         document.getElementById('form-icon').style.color = (transactionType === 'WITHDRAW') ? 'var(--danger)' : 'var(--primary)';
+
+        // 🚩 3. ส่วนจัดการยอดขั้นต่ำ (แก้ไขจุดนี้)
+        const minNotice = document.getElementById('min-amount-notice');
+        const minValDisplay = document.getElementById('min-val-display');
+        const minCurrDisplay = document.getElementById('min-currency-display');
         
-		if (typeof currentZoneData !== 'undefined' && currentZoneData) {
+        // ดึงข้อมูลโซนจากตัวแปรที่คุณใช้ (แนะนำให้ใช้ window เพื่อความชัวร์)
+        const zoneInfo = window.currentZoneData || (typeof currentZoneData !== 'undefined' ? currentZoneData : null);
+
+        if (zoneInfo && minNotice) {
             const minVal = (transactionType === 'TOPUP') 
-                           ? (currentZoneData.minTopup || 0) 
-                           : (currentZoneData.minWithdraw || 0);
-            const currency = currentZoneData.zoneCurrency || 'USD';
+                           ? (zoneInfo.minTopup || 0) 
+                           : (zoneInfo.minWithdraw || 0);
+            const currency = zoneInfo.zoneCurrency || 'USD';
             
-            // แสดงข้อความ "ขั้นต่ำ: 100 USD"
-            minNotice.innerHTML = `<i class="fas fa-info-circle"></i> ${translations[currentLang].lbl_min_amount} <b>${minVal.toLocaleString()} ${currency}</b>`;
+            // ใส่ตัวเลขและสกุลเงิน
+            if (minValDisplay) minValDisplay.innerText = minVal.toLocaleString();
+            if (minCurrDisplay) minCurrDisplay.innerText = currency;
+            
+            minNotice.style.display = 'block';
+            
+            // สั่งอัปเดตภาษาเพื่อให้ data-i18n-key ทำงานทันที
+            if (typeof updateLanguage === 'function') updateLanguage();
         }
-        // เปลี่ยนสีปุ่มและไอคอนตามโหมด
+
+        // 4. เปลี่ยนสีปุ่มและไอคอนตามโหมด
         const submitBtn = document.querySelector('.btn-submit-topup');
         if(transactionType === 'WITHDRAW') {
             submitBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
             submitBtn.innerHTML = translations[currentLang].btn_confirm_withdraw;
-			document.getElementById('amount-label').innerText = translations[currentLang].lbl_amount_withdraw;
+            document.getElementById('amount-label').innerText = translations[currentLang].lbl_amount_withdraw;
         } else {
             submitBtn.style.background = 'linear-gradient(135deg, var(--primary), var(--secondary))';
             submitBtn.innerHTML = translations[currentLang].btn_confirm_topup;
-			document.getElementById('amount-label').innerText = translations[currentLang].lbl_amount_topup;
+            document.getElementById('amount-label').innerText = translations[currentLang].lbl_amount_topup;
         }
         
         historySec.style.display = 'none';
