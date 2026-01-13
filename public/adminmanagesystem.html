@@ -210,26 +210,25 @@
     }
 
     // 3. ฟังก์ชันโหลดข้อมูลโซน
-async function loadZones() {
+    async function loadZones() {
     try {
         const res = await fetch('/api/admin/all-zones');
         const zones = await res.json();
         const body = document.getElementById('zone-body');
-        
         body.innerHTML = '';
 
+        // เก็บข้อมูลไว้ในตัวแปร global เผื่อเรียกใช้ภายหลัง (ถ้าจำเป็น)
+        window.allZonesData = zones;
+
         zones.forEach(z => {
-            // ✅ ย้ายเข้ามาข้างในนี้ เพื่อให้รู้จักค่า z ของแต่ละโซน
-            const currency = z.zoneCurrency || 'USD'; 
-            
-            // เช็คสถานะฟรี เพื่อแสดงผลให้ชัดเจน
+            const currency = z.zoneCurrency || 'USD';
             const freeBadge = z.isFree ? '<span class="badge" style="background:#d4efdf; color:#1e8449;">FREE</span>' : '';
 
             body.innerHTML += `
                 <tr>
                     <td>${z.id}</td>
                     <td>
-                        <b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">
+                        <b onclick="viewZoneDetails(${z.id})" style="cursor:pointer; color:var(--accent); text-decoration: underline;">
                             ${z.name}
                         </b> ${freeBadge}
                     </td>
@@ -239,25 +238,20 @@ async function loadZones() {
                             ${currency}
                         </button>
                     </td>
-
+                    
                     <td>
-                        <button class="btn" style="color:var(--danger); font-weight:bold;" 
-                            onclick="universalEdit('zones', ${z.id}, 'kycPrice', ${z.kycPrice || 0})">
-                            ${(z.kycPrice || 0).toLocaleString()} <small>${currency}</small>
+                        <button class="btn" style="color:var(--danger); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'kycPrice', ${z.kycPrice || 0})">
+                            ${(z.kycPrice || 0).toLocaleString()}
                         </button>
                     </td>
-
                     <td>
-                        <button class="btn" style="color:var(--success); font-weight:bold;" 
-                            onclick="universalEdit('zones', ${z.id}, 'minTopup', ${z.minTopup || 0})">
-                            ${(z.minTopup || 0).toLocaleString()} <small>${currency}</small>
+                        <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'minTopup', ${z.minTopup || 0})">
+                            ${(z.minTopup || 0).toLocaleString()}
                         </button>
                     </td>
-
                     <td>
-                        <button class="btn" style="color:var(--success); font-weight:bold;" 
-                            onclick="universalEdit('zones', ${z.id}, 'minWithdraw', ${z.minWithdraw || 0})">
-                            ${(z.minWithdraw || 0).toLocaleString()} <small>${currency}</small>
+                        <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'minWithdraw', ${z.minWithdraw || 0})">
+                            ${(z.minWithdraw || 0).toLocaleString()}
                         </button>
                     </td>
 
@@ -267,8 +261,7 @@ async function loadZones() {
                         </button>
                     </td>
                     <td>
-                        <button class="btn" style="color:var(--success); font-weight:bold;" 
-                            onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
+                        <button class="btn" style="color:var(--success); font-weight:bold;" onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
                             ${(z.systemZone || 0).toFixed(2)}
                         </button>
                     </td>
@@ -280,10 +273,54 @@ async function loadZones() {
                 </tr>
             `;
         });
-    } catch (e) { 
-        console.error("Load Zones Error:", e); 
-    }
+    } catch (e) { console.error(e); }
 }
+	
+
+function viewZoneDetails(z) {
+    const currency = z.zoneCurrency || 'USD';
+    
+    Swal.fire({
+        title: `<i class="fas fa-map-marker-alt"></i> รายละเอียดโซน: ${z.name}`,
+        html: `
+            <div style="text-align: left; font-family: 'Kanit', sans-serif; line-height: 1.8;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>ID:</b> <span>${z.id}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>ชื่อโซน:</b> <span style="color:var(--accent); font-weight:bold;">${z.name}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>แอดมินดูแล:</b> <span>${z.assignedAdmin || 'ยังไม่มี'}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>สกุลเงิน:</b> <span class="badge" style="background:#e8f4fd; color:#2980b9;">${currency}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>ค่ายืนยันตัวตน (KYC):</b> <span>${(z.kycPrice || 0).toLocaleString()} ${currency}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>เติมเงินขั้นต่ำ:</b> <span>${(z.minTopup || 0).toLocaleString()} ${currency}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>ถอนเงินขั้นต่ำ:</b> <span>${(z.minWithdraw || 0).toLocaleString()} ${currency}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>เรท (1 USDT =):</b> <span>${z.zoneExchangeRate || 1.0} ${currency}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>ยอดคงเหลือในระบบ:</b> <span style="color:var(--success); font-weight:bold;">${(z.systemZone || 0).toFixed(2)} USDT</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>ประเภทโซน:</b> <span>${z.isFree ? 'โซนฟรี' : 'โซนปกติ'}</span>
+                </div>
+            </div>
+        `,
+        confirmButtonText: 'ปิด',
+        confirmButtonColor: 'var(--secondary)'
+    });
+}
+
 
     // 4. 🔥 ฟังก์ชันหัวใจหลัก: Universal Edit
     async function universalEdit(collection, id, field, currentVal) {
