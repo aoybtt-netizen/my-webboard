@@ -211,74 +211,79 @@
 
     // 3. ฟังก์ชันโหลดข้อมูลโซน
     async function loadZones() {
-        try {
-            const res = await fetch('/api/admin/all-zones');
-            const zones = await res.json();
-            const body = document.getElementById('zone-body');
-			const currency = z.zoneCurrency || 'USD';
-            body.innerHTML = '';
+    try {
+        const res = await fetch('/api/admin/all-zones');
+        const zones = await res.json();
+        const body = document.getElementById('zone-body');
+        
+        body.innerHTML = '';
 
-            zones.forEach(z => {
-                // เช็คสถานะฟรี เพื่อแสดงผลให้ชัดเจน
-                const freeBadge = z.isFree ? '<span class="badge" style="background:#d4efdf; color:#1e8449;">FREE</span>' : '';
+        zones.forEach(z => {
+            // ✅ ย้ายเข้ามาข้างในนี้ เพื่อให้รู้จักค่า z ของแต่ละโซน
+            const currency = z.zoneCurrency || 'USD'; 
+            
+            // เช็คสถานะฟรี เพื่อแสดงผลให้ชัดเจน
+            const freeBadge = z.isFree ? '<span class="badge" style="background:#d4efdf; color:#1e8449;">FREE</span>' : '';
 
-                body.innerHTML += `
-        <tr>
-            <td>${z.id}</td>
-            <td>
-                <b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">
-                    ${z.name}
-                </b>
-            </td>
-            <td>${z.assignedAdmin || '-'}</td>
-            <td>
-                <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${z.zoneCurrency}')">
-                    ${currency}
-                </button>
-            </td>
+            body.innerHTML += `
+                <tr>
+                    <td>${z.id}</td>
+                    <td>
+                        <b onclick="universalEdit('zones', ${z.id}, 'name', '${z.name}')" style="cursor:pointer; color:var(--accent);">
+                            ${z.name}
+                        </b> ${freeBadge}
+                    </td>
+                    <td>${z.assignedAdmin || '-'}</td>
+                    <td>
+                        <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneCurrency', '${currency}')">
+                            ${currency}
+                        </button>
+                    </td>
 
-            <td>
-                <button class="btn" style="color:var(--danger); font-weight:bold;" 
-                    onclick="universalEdit('zones', ${z.id}, 'kycPrice', ${z.kycPrice || 0})">
-                    ${(z.kycPrice || 0).toLocaleString()} <small>${currency}</small>
-                </button>
-            </td>
+                    <td>
+                        <button class="btn" style="color:var(--danger); font-weight:bold;" 
+                            onclick="universalEdit('zones', ${z.id}, 'kycPrice', ${z.kycPrice || 0})">
+                            ${(z.kycPrice || 0).toLocaleString()} <small>${currency}</small>
+                        </button>
+                    </td>
 
-            <td>
-                <button class="btn" style="color:var(--success); font-weight:bold;" 
-                    onclick="universalEdit('zones', ${z.id}, 'minTopup', ${z.minTopup || 0})">
-                    ${(z.minTopup || 0).toLocaleString()} <small>${currency}</small>
-                </button>
-            </td>
+                    <td>
+                        <button class="btn" style="color:var(--success); font-weight:bold;" 
+                            onclick="universalEdit('zones', ${z.id}, 'minTopup', ${z.minTopup || 0})">
+                            ${(z.minTopup || 0).toLocaleString()} <small>${currency}</small>
+                        </button>
+                    </td>
 
-            <td>
-                <button class="btn" style="color:var(--success); font-weight:bold;" 
-                    onclick="universalEdit('zones', ${z.id}, 'minWithdraw', ${z.minWithdraw || 0})">
-                    ${(z.minWithdraw || 0).toLocaleString()} <small>${currency}</small>
-                </button>
-            </td>
+                    <td>
+                        <button class="btn" style="color:var(--success); font-weight:bold;" 
+                            onclick="universalEdit('zones', ${z.id}, 'minWithdraw', ${z.minWithdraw || 0})">
+                            ${(z.minWithdraw || 0).toLocaleString()} <small>${currency}</small>
+                        </button>
+                    </td>
 
-            <td>
-                <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">
-                    ${z.zoneExchangeRate || 1.0}
-                </button>
-            </td>
-            <td>
-                <button class="btn" style="color:var(--success); font-weight:bold;" 
-                    onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
-                    ${(z.systemZone || 0).toFixed(2)}
-                </button>
-            </td>
-            <td>
-                <button class="btn btn-ban ${z.isFree ? 'active' : ''}" onclick="universalEdit('zones', ${z.id}, 'isFree', ${z.isFree || false})">
-                    <i class="fas fa-magic"></i>
-                </button>
-            </td>
-        </tr>
-    `;
-});
-        } catch (e) { console.error(e); }
+                    <td>
+                        <button class="btn" onclick="universalEdit('zones', ${z.id}, 'zoneExchangeRate', ${z.zoneExchangeRate})">
+                            ${z.zoneExchangeRate || 1.0}
+                        </button>
+                    </td>
+                    <td>
+                        <button class="btn" style="color:var(--success); font-weight:bold;" 
+                            onclick="universalEdit('zones', ${z.id}, 'systemZone', ${z.systemZone || 0})">
+                            ${(z.systemZone || 0).toFixed(2)}
+                        </button>
+                    </td>
+                    <td>
+                        <button class="btn btn-ban ${z.isFree ? 'active' : ''}" onclick="universalEdit('zones', ${z.id}, 'isFree', ${z.isFree || false})">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) { 
+        console.error("Load Zones Error:", e); 
     }
+}
 
     // 4. 🔥 ฟังก์ชันหัวใจหลัก: Universal Edit
     async function universalEdit(collection, id, field, currentVal) {
