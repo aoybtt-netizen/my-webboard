@@ -882,9 +882,7 @@ function openKYC() {
         const currency = zoneData.zoneCurrency || 'USD';
 
         if (feeElement) {
-            // ดึงคำแปลจาก Dictionary (ตรวจสอบว่าใน translations มีคีย์ lbl_kyc_fee หรือยัง)
-            const label = translations[currentLang].lbl_kyc_fee || 'ค่ายืนยันตัวตน:';
-            feeElement.innerHTML = `${label} <b>${price.toLocaleString()} ${currency}</b>`;
+            feeElement.innerHTML = `${translations[currentLang].lbl_kyc_fee} <b>${price.toLocaleString()} ${currency}</b>`;
         }
     }
 
