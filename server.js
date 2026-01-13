@@ -4375,17 +4375,17 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
         });
 
         if (!kycReq) {
-            return res.status(404).json({ success: false, message: "ไม่พบรายการคำขอนี้" });
+            return res.status(404).json({ success: false, message: "This request was not found." });
         }
 
         if (kycReq.status === 'approved') {
-            return res.status(400).json({ success: false, message: "รายการนี้ได้รับการอนุมัติไปแล้ว" });
+            return res.status(400).json({ success: false, message: "This item has already been approved." });
         }
 
         // 2. 🔍 ดึงข้อมูลโซนของแอดมิน เพื่อหาค่า kycPriceZone ที่ต้องแบ่งให้แอดมิน
         const zone = await db.collection('zones').findOne({ assignedAdmin: adminName });
         if (!zone) {
-            return res.status(404).json({ success: false, message: "ไม่พบข้อมูลโซนที่แอดมินดูแล" });
+            return res.status(404).json({ success: false, message: "No information was found for the zones that the admin manages." });
         }
 
         // 3. 💰 กระบวนการโอนเงิน (Escrow Split)
@@ -4445,12 +4445,12 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
         // 5. ตอบกลับ
         res.json({ 
             success: true, 
-            message: `อนุมัติสำเร็จ! โอนเข้ากระเป๋าคุณ ${zone.kycPrice} ${kycReq.feeCurrency} และเข้าส่วนกลางเรียบร้อย` 
+            message: `Approved! Transferred to your wallet. ${zone.kycPrice} ${kycReq.feeCurrency} And the system settings have been successfully accessed.` 
         });
 
     } catch (err) {
         console.error("🚨 Approve KYC Error:", err);
-        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" });
+        res.status(500).json({ success: false, message: "An error occurred on the server." });
     }
 });
 
@@ -4506,7 +4506,7 @@ app.post('/api/admin/delete-kyc', async (req, res) => {
 
             res.json({ 
                 success: true, 
-                message: serverTranslations[lang].msg_delete_success + " (คืนเงินเรียบร้อยแล้ว)" 
+                message: serverTranslations[lang].msg_delete_success + " (Refund has been completed.)" 
             });
         } else {
             res.status(404).json({ error: serverTranslations[lang].err_delete_not_found_kyc });

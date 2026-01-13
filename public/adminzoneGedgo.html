@@ -857,7 +857,7 @@ async function loadAdminKYCHistory() {
         const history = result.history || [];
 
         if (history.length === 0) {
-            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-folder-open fa-3x"></i><p>ยังไม่มีประวัติการอนุมัติ KYC</p></div>';
+            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-folder-open fa-3x"></i><p>There is no KYC approval history yet.</p></div>';
             return;
         }
 
@@ -888,7 +888,7 @@ async function loadAdminKYCHistory() {
         }).join('');
     } catch (err) {
         console.error("KYC History Error:", err);
-        container.innerHTML = '<p style="text-align:center; color:red;">ไม่สามารถโหลดข้อมูลได้</p>';
+        container.innerHTML = '<p style="text-align:center; color:red;">The data could not be loaded.</p>';
     }
 }
 
