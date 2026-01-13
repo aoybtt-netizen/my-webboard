@@ -370,6 +370,7 @@ const translations = {
         'filter_not_kyc': 'คนที่ยังไม่ได้ยืนยันตัวตน',
         'filter_banned': 'เฉพาะคนที่ถูกแบน',
 		'lbl_balance': 'ยอดเงินคงเหลือ',
+		'lbl_kyc_income_notice': 'ค่ายืนยันจากสมาชิกจะโอนเข้าบัญชีคุณ',
     },
     'en': {
         'lbl_master_balance': 'Available Balance (Master)',
@@ -489,6 +490,7 @@ const translations = {
         'filter_not_kyc': 'Not Verified Yet',
         'filter_banned': 'Banned Members Only',
 		'lbl_balance': 'Balance',
+		'lbl_kyc_income_notice': 'Member verification fee will be credited to your account',
     },
     'pt': {
         'lbl_master_balance': 'Saldo Disponível (Master)',
@@ -608,6 +610,7 @@ const translations = {
         'filter_not_kyc': 'Ainda Não Verificado',
         'filter_banned': 'Apenas Membros Banidos',
 		'lbl_balance': 'Saldo',
+		'lbl_kyc_income_notice': 'A taxa de verificação do membro será creditada na sua conta',
     }
 };
 
@@ -1486,16 +1489,14 @@ async function loadKYCRequests() {
         if (zoneInfo.success) {
             const kycPrice = zoneInfo.zone.kycPriceZone || 0;
             const currency = zoneInfo.zone.zoneCurrency || 'USD';
-            
+			const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+            const incomeLabel = translations[currentLang].lbl_kyc_income_notice || 'ค่ายืนยันจากสมาชิกจะโอนเข้าบัญชีคุณ';
             // การ์ดข้อความบนสุด (คงโครงสร้างสีเขียวที่ดูเป็นรายได้)
             headerCardHtml = `
                 <div style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
-                    <div style="font-size: 0.85em; opacity: 0.9;">ค่ายืนยันสมาชิกจะโอนเข้าบัญชีคุณ</div>
-                    <div style="font-size: 1.6em; font-weight: bold; margin-top: 5px;">
-                        ${kycPrice.toLocaleString()} <span style="font-size: 0.6em; font-weight: normal;">${currency}</span>
-                    </div>
-                    <div style="font-size: 1.0em; margin-top: 5px; opacity: 0.8;">
-                        <i class="fas fa-map-marker-alt"></i> โซน: ${zoneInfo.zone.name}
+                    <div style="font-size: 0.85em; opacity: 0.9;">${incomeLabel}</div>
+                    <div style="font-size: 0.85em; font-weight: bold; margin-top: 5px;">
+                        ${kycPrice.toLocaleString()} <span style="font-size: 0.85em; font-weight: normal;">${currency}</span>
                     </div>
                 </div>
             `;
