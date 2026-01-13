@@ -1253,6 +1253,7 @@ app.get('/api/profile-details', async (req, res) => {
                     currentCurrency = zoneInfo.zoneData.zoneCurrency;
                     currentBalance = user[currentCurrency] || 0;
 					kycPrice = zoneInfo.zoneData.kycPrice || 0;
+					kycPriceZone = zoneInfo.zoneData.kycPriceZone || 0;
                 }
             }
         }
@@ -1262,6 +1263,7 @@ app.get('/api/profile-details', async (req, res) => {
             coins: currentBalance,      // ส่งยอดเงินของกระเป๋านั้นๆ
             currency: currentCurrency,  // ส่งชื่อสกุลเงินไปด้วย
             kycPrice: kycPrice,
+			kycPriceZone: kycPriceZone,
             rating: user.rating || 5.0,
             totalPosts: user.totalPosts || 0,
             completedJobs: user.completedJobs || 0,
@@ -1885,7 +1887,9 @@ app.get('/api/admin/my-zone-info', async (req, res) => {
             zone: {
                 id: zone.id,
                 zoneCurrency: zone.zoneCurrency || 'USD',
-                zoneExchangeRate: zone.zoneExchangeRate || 1.0
+                zoneExchangeRate: zone.zoneExchangeRate || 1.0,
+				kycPriceZone: zone.kycPriceZone || 0,
+				kycPriceSystem: zone.kycPriceSystem || 0
             },
             adminCoins: adminProfile ? (adminProfile.coins || 0) : 0,
             // ✅ ดึงยอดเงินจากกระเป๋าที่ชื่อตรงกับสกุลเงิน

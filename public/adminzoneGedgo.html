@@ -704,7 +704,7 @@ async function showContent(type) {
         kycListSec.style.display = 'block';
         
         document.getElementById('kyc-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> Loading KYC data...</p>';
-        loadKYCRequests();
+		loadKYCRequests();
 
     } else if (type === 'automessage') {
         title.innerText = translations[currentLang].title_auto_msg_settings;
@@ -1471,19 +1471,37 @@ socket.on('admin-notification', (data) => {
 
 async function loadKYCRequests() {
     const container = document.getElementById('kyc-list-container');
-    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Retrieving request data...</div>';
+    const adminName = localStorage.getItem('myUsername');
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
     try {
-        const adminName = localStorage.getItem('myUsername');
+        // 🚩 1. ดึงข้อมูล Profile/Zone ของแอดมินเพื่อเอาค่าธรรมเนียมมาโชว์ (เหมือนที่ใช้ในหน้า User)
+        const profileRes = await fetch(`/api/admin/my-zone-info?admin=${adminName}`);
+        const profileData = await profileRes.json();
+        
+        const kycPriceZone = profileData.kycPrice || 0;
+        const currency = profileData.currency || 'USD';
+
+        // 🚩 2. ดึงรายการคำขอ KYC
         const res = await fetch(`/api/admin/kyc-list?admin=${adminName}`);
         const requests = await res.json();
 
+        // สร้าง HTML สำหรับการ์ดข้อความบนสุด
+        let headerCardHtml = `
+            <div style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
+                <div style="font-size: 0.85em; opacity: 0.9; font-weight: 300;">ค่ายืนยันสมาชิกจะโอนเข้าบัญชีคุณ</div>
+                <div style="font-size: 1.6em; font-weight: bold; margin-top: 5px;">
+                    ${kycPriceZone.toLocaleString()} <span style="font-size: 0.6em; font-weight: normal;">${currency}</span>
+                </div>
+            </div>
+        `;
+
         if (requests.length === 0) {
-            container.innerHTML = '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-user-shield fa-3x"></i><p>There are no new identity verification requests.</p></div>';
+            container.innerHTML = headerCardHtml + '<div style="text-align:center; margin-top:50px; color:#999;"><i class="fas fa-user-shield fa-3x"></i><p>There are no new identity verification requests.</p></div>';
             return;
         }
 
-        // 1. ดึงพิกัดแอดมินมาเก็บไว้ใน Promise เพื่อรอให้ได้ค่าก่อนคำนวณ
+        // --- ส่วนคำนวณพิกัด (โครงสร้างเดิมของพี่) ---
         const getPosition = () => {
             return new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(resolve, reject);
@@ -1492,21 +1510,18 @@ async function loadKYCRequests() {
 
         let adminPos = null;
         try {
-            // รอพิกัด 1.5 วินาที ถ้ายังไม่ได้ให้ข้ามไปโชว์รายการก่อน
             adminPos = await Promise.race([
                 getPosition(),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
             ]);
-        } catch (e) {
-            console.log("ยังดึงพิกัดแอดมินไม่ได้ในตอนนี้ หรือไม่ได้เปิด GPS");
-        }
+        } catch (e) { console.log("GPS Timeout/Disabled"); }
 
-        container.innerHTML = requests.map(req => {
+        // 🚩 3. แสดงผล (การ์ดบนสุด + รายการสมาชิก)
+        const listHtml = requests.map(req => {
             let distanceText = "รอพิกัด...";
             let distanceVal = 0;
             let isClose = false;
 
-            // ตรวจสอบว่ามีพิกัดทั้งแอดมินและสมาชิกไหม
             if (adminPos && req.coords) {
                 distanceVal = calculateDistance(
                     adminPos.coords.latitude, 
@@ -1518,7 +1533,6 @@ async function loadKYCRequests() {
                 isClose = distanceVal <= 20;
             }
 
-            // ใช้ encodeURIComponent เพื่อป้องกันปัญหาเครื่องหมายพิเศษใน JSON
             const dataStr = encodeURIComponent(JSON.stringify(req));
 
             return `
@@ -1533,10 +1547,13 @@ async function loadKYCRequests() {
                     </div>
                 </div>
                 <div style="color: var(--primary); font-size: 0.85em; font-weight: bold; white-space: nowrap;">
-                    Check the information <i class="fas fa-chevron-right" style="font-size: 0.8em; margin-left: 5px;"></i>
+                    Check info <i class="fas fa-chevron-right" style="font-size: 0.8em; margin-left: 5px;"></i>
                 </div>
             </div>`;
         }).join('');
+
+        // รวมการ์ดบนสุดเข้ากับรายการสมาชิก
+        container.innerHTML = headerCardHtml + listHtml;
 
     } catch (err) {
         console.error("Load KYC Error:", err);
