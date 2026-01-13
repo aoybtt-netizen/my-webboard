@@ -1494,7 +1494,9 @@ async function loadKYCRequests() {
             const currency = zoneInfo.zone.zoneCurrency || 'USD';
 			const currentLang = localStorage.getItem('preferredLanguage') || 'th';
             const incomeLabel = translations[currentLang].lbl_kyc_income_notice || 'ค่ายืนยันจากสมาชิกจะโอนเข้าบัญชีคุณ';
-			const checkInfoLabel = translations[currentLang].btn_check_info || 'ตรวจสอบข้อมูล';
+			const checkInfoLabel = (translations[currentLang] && translations[currentLang].btn_check_info) 
+                        ? translations[currentLang].btn_check_info 
+                        : 'ตรวจสอบข้อมูล';
             // การ์ดข้อความบนสุด (คงโครงสร้างสีเขียวที่ดูเป็นรายได้)
             headerCardHtml = `
                 <div style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
