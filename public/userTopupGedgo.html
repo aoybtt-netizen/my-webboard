@@ -264,6 +264,27 @@ const translations = {
 		'plh_chat_message': 'พิมพ์ข้อความ...',
         'title_request_history': 'ประวัติการส่งคำขอ',
         'lbl_loading_history': 'กำลังโหลดประวัติ...',
+		'title_topup': 'เติมเงิน',
+        'title_withdraw': 'ถอนเงินสด',
+        'title_history': 'ประวัติธุรกรรม',
+        'btn_confirm_withdraw': '<i class="fas fa-money-bill-transfer"></i> ยืนยันคำขอถอนเงิน',
+        'btn_confirm_topup': '<i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน',
+        'lbl_amount_withdraw': 'ระบุจำนวนเงินที่ต้องการถอน',
+        'lbl_amount_topup': 'ระบุจำนวนเงินที่ต้องการเติม',
+        'err_invalid_amount': 'กรุณาระบุจำนวนเงิน',
+        'msg_topup_success': (amt) => `ส่งคำขอเติมเงินจำนวน ${amt} USD เรียบร้อยแล้ว!`,
+        'msg_withdraw_success': (amt) => `ส่งคำขอถอนเงินจำนวน ${amt} USD เรียบร้อยแล้ว!`,
+        'log_withdraw': 'ถอนเงิน',
+        'log_topup': 'เติมเงิน',
+		'status_waiting': 'รออนุมัติ',
+        'err_load_failed': 'โหลดข้อมูลล้มเหลว',
+        'lbl_outside_service': 'นอกพื้นที่บริการ',
+        'lbl_no_admin': 'ไม่มีผู้ดูแล',
+        'alert_topup_approved': 'ยินดีด้วย! การเติมเงินของคุณได้รับการอนุมัติแล้ว',
+        'alert_request_rejected': 'คำขอของคุณถูกปฏิเสธ',
+		'title_bank_info_collapsible': 'ข้อมูลการโอนเงิน (คลิกเพื่อปิด/เปิด)',
+        'lbl_bank_account': '🏦 บัญชีธนาคาร:',
+        'lbl_more_details': '📝 รายละเอียดเพิ่มเติม:',
     },
     'en': {
         'lbl_wallet_system': 'Member Wallet System',
@@ -288,6 +309,27 @@ const translations = {
 		'plh_chat_message': 'Type a message...',
         'title_request_history': 'Request History',
         'lbl_loading_history': 'Loading history...',
+		'title_topup': 'Top-up',
+        'title_withdraw': 'Withdraw Cash',
+        'title_history': 'Transaction History',
+        'btn_confirm_withdraw': '<i class="fas fa-money-bill-transfer"></i> Confirm Withdrawal',
+        'btn_confirm_topup': '<i class="fas fa-paper-plane"></i> Submit Top-up Request',
+        'lbl_amount_withdraw': 'Enter amount to withdraw',
+        'lbl_amount_topup': 'Enter amount to top-up',
+        'err_invalid_amount': 'Please enter a valid amount',
+        'msg_topup_success': (amt) => `Top-up request for ${amt} USD submitted successfully!`,
+        'msg_withdraw_success': (amt) => `Withdrawal request for ${amt} USD submitted successfully!`,
+        'log_withdraw': 'Withdraw',
+        'log_topup': 'Top-up',
+		'status_waiting': 'Pending Approval',
+        'err_load_failed': 'Failed to load data',
+        'lbl_outside_service': 'Outside service area',
+        'lbl_no_admin': 'No administrator',
+        'alert_topup_approved': 'Congratulations! Your top-up has been approved.',
+        'alert_request_rejected': 'Your request has been rejected.',
+		'title_bank_info_collapsible': 'Transfer Information (Click to toggle)',
+        'lbl_bank_account': '🏦 Bank Account:',
+        'lbl_more_details': '📝 Additional Details:',
     },
     'pt': {
         'lbl_wallet_system': 'Sistema de Carteira',
@@ -312,6 +354,27 @@ const translations = {
 		'plh_chat_message': 'Digite uma mensagem...',
         'title_request_history': 'Histórico de Pedidos',
         'lbl_loading_history': 'Carregando histórico...',
+		'title_topup': 'Recarregar',
+        'title_withdraw': 'Sacar Dinheiro',
+        'title_history': 'Histórico de Transações',
+        'btn_confirm_withdraw': '<i class="fas fa-money-bill-transfer"></i> Confirmar Saque',
+        'btn_confirm_topup': '<i class="fas fa-paper-plane"></i> Enviar Pedido de Recarga',
+        'lbl_amount_withdraw': 'Insira o valor para sacar',
+        'lbl_amount_topup': 'Insira o valor para recarregar',
+        'err_invalid_amount': 'Por favor, insira um valor válido',
+        'msg_topup_success': (amt) => `Pedido de recarga de ${amt} USD enviado com sucesso!`,
+        'msg_withdraw_success': (amt) => `Pedido de saque de ${amt} USD enviado com sucesso!`,
+        'log_withdraw': 'Saque',
+        'log_topup': 'Recarga',
+		'status_waiting': 'Aguardando Aprovação',
+        'err_load_failed': 'Falha ao carregar dados',
+        'lbl_outside_service': 'Fora da área de serviço',
+        'lbl_no_admin': 'Sem administrador',
+        'alert_topup_approved': 'Parabéns! Sua recarga foi aprovada.',
+        'alert_request_rejected': 'Seu pedido foi rejeitado.',
+		'title_bank_info_collapsible': 'Informações de Transferência (Clique para abrir/fechar)',
+        'lbl_bank_account': '🏦 Conta Bancária:',
+        'lbl_more_details': '📝 Detalhes Adicionais:',
     }
 };
 
@@ -373,7 +436,9 @@ window.addEventListener('DOMContentLoaded', () => {
         if(type === 'TOPUP') document.getElementById('menu-topup').classList.add('active');
         if(type === 'WITHDRAW') document.getElementById('menu-withdraw').classList.add('active');
 
-        title.innerText = (transactionType === 'TOPUP') ? 'เติมเงิน' : 'ถอนเงินสด';
+        title.innerText = (transactionType === 'TOPUP') 
+				? translations[currentLang].title_topup 
+				: translations[currentLang].title_withdraw;
         
         // --- 2 บรรทัดที่คุณกังวล อยู่ตรงนี้ถูกต้องแล้ว ---
         document.getElementById('withdraw-bank-info').style.display = (transactionType === 'WITHDRAW') ? 'block' : 'none';
@@ -383,12 +448,12 @@ window.addEventListener('DOMContentLoaded', () => {
         const submitBtn = document.querySelector('.btn-submit-topup');
         if(transactionType === 'WITHDRAW') {
             submitBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
-            submitBtn.innerHTML = '<i class="fas fa-money-bill-transfer"></i> ยืนยันคำขอถอนเงิน';
-            document.getElementById('amount-label').innerText = 'ระบุจำนวนเงินที่ต้องการถอน';
+            submitBtn.innerHTML = translations[currentLang].btn_confirm_withdraw;
+			document.getElementById('amount-label').innerText = translations[currentLang].lbl_amount_withdraw;
         } else {
             submitBtn.style.background = 'linear-gradient(135deg, var(--primary), var(--secondary))';
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งคำขอเติมเงิน';
-            document.getElementById('amount-label').innerText = 'ระบุจำนวนเงินที่ต้องการเติม';
+            submitBtn.innerHTML = translations[currentLang].btn_confirm_topup;
+			document.getElementById('amount-label').innerText = translations[currentLang].lbl_amount_topup;
         }
         
         historySec.style.display = 'none';
@@ -398,7 +463,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const historyBtn = document.querySelector('div[onclick*="history"]');
         if(historyBtn) historyBtn.classList.add('active');
         
-        title.innerText = 'ประวัติธุรกรรม';
+        title.innerText = translations[currentLang].title_history;
         if(topupSec) topupSec.style.display = 'none';
         chatSec.style.display = 'none';
         historySec.style.display = 'block';
@@ -410,10 +475,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
         async function processTopup() {
             const amount = document.getElementById('topup-amount').value;
-            if(!amount || amount <= 0) return alert("กรุณาระบุจำนวนเงิน");
+           if(!amount || amount <= 0) return alert(translations[currentLang].err_invalid_amount);
             
             // Logic ส่งคำขอเติมเงินจะอยู่ตรงนี้
-            alert(`ส่งคำขอเติมเงินจำนวน ${amount} USD เรียบร้อยแล้ว!`);
+            alert(translations[currentLang].msg_withdraw_success(amount));
         }
 		
 
@@ -422,20 +487,20 @@ window.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('history-list');
     if (!list) return;
 
-    list.innerHTML = '<p style="text-align: center; color: #999;">กำลังโหลดประวัติ...</p>';
+    list.innerHTML = '<p style="text-align: center; color: #999;">Loading...</p>';
 
     try {
         const res = await fetch(`/api/topup/history?username=${myName}`);
         const history = await res.json();
 
         if (history.length === 0) {
-            list.innerHTML = '<p style="text-align: center; color: #999; margin-top:20px;">ไม่พบประวัติธุรกรรม</p>';
+            list.innerHTML = '<p style="text-align: center; color: #999; margin-top:20px;">No transaction history found.</p>';
             return;
         }
 
         list.innerHTML = history.map(item => {
             const isWithdraw = item.type === 'WITHDRAW';
-            const typeLabel = isWithdraw ? 'ถอนเงิน' : 'เติมเงิน';
+            const typeLabel = isWithdraw ? translations[currentLang].log_withdraw : translations[currentLang].log_topup;
             const typeIcon = isWithdraw ? 'fa-money-bill-transfer' : 'fa-hand-holding-usd';
             const typeColor = isWithdraw ? '#e74c3c' : '#3498db'; // สีแดงสำหรับถอน สีฟ้าสำหรับเติม
             
@@ -444,14 +509,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
             // 🚩 จัดการสีและข้อความตามสถานะจริง
             let statusColor = '#f39c12'; // สีส้มสำหรับ Pending
-            let statusText = 'รออนุมัติ';
+            let statusText = translations[currentLang].status_waiting;
 
             if (item.status === 'approved') {
                 statusColor = '#2ecc71'; // สีเขียว
-                statusText = 'สำเร็จ';
+                statusText = 'success!';
             } else if (item.status === 'rejected') {
                 statusColor = '#e74c3c'; // สีแดง
-                statusText = 'ปฏิเสธ';
+                statusText = 'reject';
             }
 
             return `
@@ -481,13 +546,12 @@ window.addEventListener('DOMContentLoaded', () => {
         }).join('');
     } catch (err) {
         console.error("Load History UI Error:", err);
-        list.innerHTML = '<p style="text-align: center; color: red;">โหลดข้อมูลล้มเหลว</p>';
+        list.innerHTML = `<p style="text-align: center; color: red;">${translations[currentLang].err_load_failed}</p>`;
     }
 }
 
     window.onload = async () => {
     const myName = localStorage.getItem('myUsername');
-    // เรียกฟังก์ชันเช็คสถานะธุรกรรม (ชื่อต้องตรงกับที่คุณประกาศด้านล่าง)
     if (typeof checkTransactionStatus === 'function') {
         await checkTransactionStatus();
     } else if (typeof checkTopupStatus === 'function') {
@@ -503,7 +567,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const savedLoc = localStorage.getItem('userPrimaryLocation');
         let locationParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
 
-        // เรียก API ที่เราเพิ่งแก้ด้านบน
         const res = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
         const data = await res.json();
 
@@ -527,13 +590,13 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         // ✅ 3. อัปเดตข้อมูลโซน
-        document.getElementById('display-zone-name').innerText = data.zoneName || "นอกพื้นที่บริการ";
-        document.getElementById('display-zone-admin').innerText = data.zoneOwner || "ไม่มีผู้ดูแล";
+        document.getElementById('display-zone-name').innerText = data.zoneName || translations[currentLang].lbl_outside_service;
+		document.getElementById('display-zone-admin').innerText = data.zoneOwner || translations[currentLang].lbl_no_admin;
 
     } catch (err) {
         console.error("Load Topup Info Error:", err);
         const zoneDisplay = document.getElementById('display-zone-name');
-        if(zoneDisplay) zoneDisplay.innerText = "โหลดข้อมูลล้มเหลว";
+        if(zoneDisplay) zoneDisplay.innerText = translations[currentLang].err_load_failed;
     }
 };
 
@@ -541,9 +604,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 socket.on('receiveMessage', (msg) => {
-    // 1. เช็คว่าฟังก์ชันสำหรับวาดข้อความพร้อมใช้งานไหม
-    // 2. เช็คว่าข้อความที่ส่งมา (msg.requestId) ตรงกับห้องที่ User เปิดอยู่ในปัจจุบัน (currentRequestId)
-    // 3. (เพิ่มเติม) เช็คว่าคนส่งไม่ใช่ตัวเราเอง (เพราะเราสั่ง appendMessage ไปแล้วตอนกดส่ง)
     if (typeof appendMessage === "function" && 
         msg.requestId === currentRequestId && 
         msg.sender !== localStorage.getItem('myUsername')) {
@@ -554,10 +614,10 @@ socket.on('receiveMessage', (msg) => {
 
 socket.on('updateStatus', (data) => {
     if(data.status === 'approved') {
-        alert("ยินดีด้วย! การเติมเงินของคุณได้รับการอนุมัติแล้ว");
+        alert(translations[currentLang].alert_topup_approved);
         checkTopupStatus(); // รีเฟรชหน้าจอเพื่อสลับฟอร์ม
     } else if(data.status === 'rejected') {
-        alert("คำขอของคุณถูกปฏิเสธ โปรดติดต่อเจ้าหน้าที่");
+        alert(translations[currentLang].alert_request_rejected);
         checkTopupStatus();
     }
 });
@@ -595,23 +655,22 @@ async function checkTopupStatus() {
     formSec.style.display = 'none';
     chatSec.style.display = 'flex';
     
-    // ปรับปรุง HTML ส่วนข้อมูลการโอนให้พับได้
     document.getElementById('admin-auto-reply-wrapper').innerHTML = `
-        <div style="margin-bottom: 15px; width: 100%;">
-            <details open style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                <summary style="padding: 10px 15px; background: #f8fafc; cursor: pointer; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between; align-items: center; list-style: none;">
-                    <span><i class="fas fa-university"></i> ข้อมูลการโอนเงิน (คลิกเพื่อปิด/เปิด)</span>
-                    <i class="fas fa-chevron-down" style="font-size: 0.8em;"></i>
-                </summary>
-                <div style="padding: 15px; font-size: 0.9em; border-top: 1px solid #eee;">
-                    <b style="color: var(--primary);">🏦 บัญชีธนาคาร:</b><br>
-                    ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}<br><br>
-                    <b style="color: var(--dark);">📝 รายละเอียดเพิ่มเติม:</b><br>
-                    ${data.adminMessage.desc.replace(/\n/g, '<br>')}
-                </div>
-            </details>
-        </div>
-    `;
+    <div style="margin-bottom: 15px; width: 100%;">
+        <details open style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <summary style="padding: 10px 15px; background: #f8fafc; cursor: pointer; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between; align-items: center; list-style: none;">
+                <span><i class="fas fa-university"></i> ${translations[currentLang].title_bank_info_collapsible}</span>
+                <i class="fas fa-chevron-down" style="font-size: 0.8em;"></i>
+            </summary>
+            <div style="padding: 15px; font-size: 0.9em; border-top: 1px solid #eee;">
+                <b style="color: var(--primary);">${translations[currentLang].lbl_bank_account}</b><br>
+                ${data.adminMessage.bankInfo.replace(/\n/g, '<br>')}<br><br>
+                <b style="color: var(--dark);">${translations[currentLang].lbl_more_details}</b><br>
+                ${data.adminMessage.desc.replace(/\n/g, '<br>')}
+            </div>
+        </details>
+    </div>
+	`;
 
     await loadChatHistory(data.requestId);
     socket.emit('joinRequest', data.requestId);
