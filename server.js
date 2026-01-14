@@ -556,79 +556,74 @@ app.get('/api/admin/all-users', async (req, res) => {
 // 1.1 API สำหรับอัปเดตข้อมูลสมาชิกแบบครบวงจร
 app.post('/api/admin/update-user-full', async (req, res) => {
     try {
-        const { username, updates, adminUsername } = req.body; // adminUsername คือชื่อของพี่ (Level 3)
+        const { username, updates, adminUsername } = req.body;
         
         if (!username || !updates || !adminUsername) {
             return res.status(400).json({ success: false, message: "ข้อมูลไม่ครบถ้วน" });
         }
 
-        // 1. ตรวจสอบสิทธิ์ของพี่ (Level 3)
-        const masterAdmin = await db.collection('users').findOne({ username: adminUsername });
-        if (!masterAdmin || masterAdmin.adminLevel < 3) {
-            return res.status(403).json({ success: false, message: "สิทธิ์ไม่เพียงพอ" });
+        // 1. 🛡️ เช็คสิทธิ์คนสั่ง (ต้องเป็น Level 3 เท่านั้น)
+        const master = await db.collection('users').findOne({ username: adminUsername });
+        if (!master || master.adminLevel < 3) {
+            return res.status(403).json({ success: false, message: "สิทธิ์ปฏิเสธ: เฉพาะแอดมินระดับ 3 เท่านั้น" });
         }
 
-        // 2. ดึงข้อมูล "คนที่จะโดนปรับ" มาดูก่อนว่าเป็นแอดมินไหม
+        // 2. ดึงข้อมูลคนที่จะโดนปรับ
         const targetUser = await db.collection('users').findOne({ username: username });
-        if (!targetUser) {
-            return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้ที่ต้องการปรับปรุง" });
-        }
+        if (!targetUser) return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้งานนี้" });
 
         const adjCurrency = updates.adjustmentCurrency;
         const adjAmount = parseFloat(updates.adjustmentAmount) || 0;
 
-        // 3. เตรียมข้อมูลที่จะอัปเดต
+        // 3. กรองข้อมูลฟิลด์ทั่วไป
         const finalUpdates = {};
         for (const [key, value] of Object.entries(updates)) {
             if (key === 'adjustmentCurrency' || key === 'adjustmentAmount') continue;
-            if (['adminLevel', 'coins', 'BRL', 'THB', 'rating', 'ratingCount', 
-                 'completedJobs', 'totalPosts', 'totalJobs', 
-                 'merchantRatingCount', 'merchantRatingScore'].includes(key)) {
+            if (['adminLevel', 'coins', 'BRL', 'THB', 'rating', 'ratingCount', 'completedJobs', 'totalPosts', 'totalJobs', 'merchantRatingCount', 'merchantRatingScore'].includes(key)) {
                 finalUpdates[key] = parseFloat(value) || 0;
             } else {
                 finalUpdates[key] = value;
             }
         }
 
-        // 4. ถ้ามีการปรับยอดเงิน (Quick Adjust)
+        // 4. 🚩 จัดการเรื่องเงินและบันทึกประวัติ (Log)
         if (adjAmount !== 0 && adjCurrency) {
             const currentVal = finalUpdates[adjCurrency] || 0;
             finalUpdates[adjCurrency] = currentVal + adjAmount;
 
-            // 🚩 ตรวจสอบว่า "คนโดนปรับ" เป็นแอดมินหรือไม่
+            // บันทึก Log ถ้าคนโดนปรับเป็นแอดมิน (เพื่อให้เขาเห็นในหน้าประวัติเขาเอง)
             if (targetUser.adminLevel > 0) {
-                // บันทึก Log เพื่อให้คนโดนปรับ (ที่เป็นแอดมิน) เห็นในประวัติของเขาเอง
                 await db.collection('topupRequests').insertOne({
-                    username: username, 
+                    username: username,
                     amount: Math.abs(adjAmount),
                     currency: adjCurrency,
                     type: adjAmount > 0 ? 'TOPUP' : 'WITHDRAW',
                     status: 'approved',
-                    method: 'SYSTEM ADJUST', 
-                    name: 'SYSTEM', // ชื่อผู้โอนให้แสดงเป็น SYSTEM
-                    processedBy: username, // บันทึกเป็นชื่อเขา เพื่อให้ API history ดึงไปโชว์ในหน้าเขาได้
+                    method: 'SYSTEM ADJUST',
+                    name: 'SYSTEM',
+                    processedBy: username, // ใส่เพื่อให้ดึงโชว์ในหน้า history ของเขาได้
                     processedAt: new Date(),
-                    note: `ได้รับการปรับยอดจากผู้บริหาร (${adminUsername}) : ${adjAmount > 0 ? '+' : ''}${adjAmount}`
+                    note: `Master Admin (${adminUsername})`
                 });
             }
         }
 
-        // 5. บันทึกการเปลี่ยนแปลงทั้งหมด
+        // 5. บันทึกข้อมูลลง Database
         await db.collection('users').updateOne(
             { username: username },
             { 
-                $set: {
-                    ...finalUpdates,
-                    lastModifiedBy: adminUsername,
-                    updatedAt: new Date()
+                $set: { 
+                    ...finalUpdates, 
+                    lastModifiedBy: adminUsername, 
+                    updatedAt: new Date() 
                 } 
             }
         );
 
-        res.json({ success: true, message: "ดำเนินการเรียบร้อยแล้ว" });
+        res.json({ success: true, message: "ดำเนินการสำเร็จ" });
 
     } catch (error) {
-        console.error("🚨 Error:", error);
+        console.error("🚨 Update Error:", error);
         res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
     }
 });

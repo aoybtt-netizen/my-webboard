@@ -195,6 +195,42 @@
     const adminUser = localStorage.getItem('myUsername');
 	let currentPage = 1;
 	let currentFilter = 'all';
+	
+async function checkAdminAccess() {
+    const username = localStorage.getItem('myUsername');
+    if (!username) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    try {
+        // ดึงข้อมูลตัวเองมาเช็ค Level จริงๆ จาก Database
+        const res = await fetch(`/api/user/profile?username=${username}`);
+        const user = await res.json();
+
+        if (!user || user.adminLevel < 3) {
+            Swal.fire({
+                icon: 'error',
+                title: 'สิทธิ์ไม่เพียงพอ',
+                text: 'หน้านี้สำหรับแอดมินระดับ 3 เท่านั้น',
+                confirmButtonText: 'ตกลง'
+            }).then(() => {
+                window.location.href = 'index.html'; // เตะออกไปหน้าหลัก
+            });
+            return;
+        }
+        
+        // ถ้าผ่าน ให้โหลดข้อมูลปกติ
+        loadMembers();
+        loadZones();
+        
+    } catch (e) {
+        console.error("Access Check Error:", e);
+        window.location.href = 'index.html';
+    }
+}
+
+
 
     // 1. ฟังก์ชันสลับหน้าจอ
     function switchTab(tab) {
@@ -275,6 +311,7 @@ function renderPagination(totalPages, current) {
 window.onload = () => loadMembers(1);
 
 async function showUserDetail(user) {
+	const currentAdminName = localStorage.getItem('myUsername');
     const { username } = user;
     
     const fields = [
@@ -367,7 +404,7 @@ async function showUserDetail(user) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: user.username,
-					adminUsername: (typeof currentAdminName !== 'undefined') ? currentAdminName : 'SystemAdmin',
+					adminUsername: currentAdminName,
                     updates: formValues
                 })
             });
@@ -732,6 +769,7 @@ async function executeURLUpdate(collection, id, field, newValue) {
 
     // เริ่มต้นโหลดข้อมูล
     window.onload = () => {
+		checkAdminAccess();
         if (!adminUser) { window.location.href = 'index.html'; return; }
         loadMembers();
         loadZones();
