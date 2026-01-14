@@ -610,7 +610,7 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             if (parseInt(targetUser.adminLevel) > 0) {
                 // *** ใช้ topupRequestsCollection ตัวเดียวกับใน API history ของคุณ ***
                 await topupRequestsCollection.insertOne({
-                    username: 'SYSTEM',
+                    username: 'GedGoZone',
                     amount: Math.abs(adjAmount),
                     currency: adjCurrency,
                     type: adjAmount > 0 ? 'TOPUP' : 'WITHDRAW',
