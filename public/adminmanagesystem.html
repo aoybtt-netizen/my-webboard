@@ -503,7 +503,7 @@ function viewZoneDetails(zoneId) {
                         <span>พิกัด (Lat, Lng):</span>
                         <b>${z.lat || 0}, ${z.lng || 0}</b>
                     </div>
-                    ${renderItem('เจ้าของโซน', 'assignedAdmin', z.assignedAdmin, z.id)}
+                    ${renderItem('เจ้าของโซน', 'assignedAdmin', z.assignedAdmin || 'ไม่มี (คลิกเพื่อตั้งค่า)', z.id)}
                     ${renderItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
                     ${renderItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id, currency)}
                     ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
@@ -529,20 +529,22 @@ function viewZoneDetails(zoneId) {
 
 
 function renderItem(label, field, value, id, unit = '') {
-        const displayVal = (value !== undefined && value !== null) ? value : 0;
+        const displayValue = (value === undefined || value === null || value === "") 
+                         ? "ระบุข้อมูล" 
+                         : value;	
         // ป้องกัน Error จากเครื่องหมายคำพูดในภาษาไทย
         const safeVal = String(displayVal).replace(/'/g, "\\'");
         
         return `
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0;">
-                <span style="color:#666;">${label}:</span>
-                <b onclick="universalEdit('zones', ${id}, '${field}', '${safeVal}')" 
-                   style="cursor:pointer; color:var(--accent); text-decoration: underline dotted;">
-                    ${displayVal} ${unit}
-                </b>
-            </div>
-        `;
-    }
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
+            <span>${label}:</span>
+            <b onclick="editZoneField('${targetId}', '${field}', '${value || ''}')" 
+               style="cursor:pointer; color:var(--accent); text-decoration: underline;">
+                ${displayValue} ${unit}
+            </b>
+        </div>
+    `;
+}
 	
 
 function renderBooleanItem(label, field, value, id) {
