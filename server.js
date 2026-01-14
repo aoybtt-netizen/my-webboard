@@ -700,6 +700,43 @@ app.post('/api/admin/universal-update', async (req, res) => {
 });
 
 
+// 1. API เพิ่มโซนใหม่
+app.post('/api/admin/add-zone', async (req, res) => {
+    try {
+        const zoneData = req.body;
+        // ป้องกันข้อมูลซ้ำ
+        const exists = await db.collection('zones').findOne({ id: zoneData.id });
+        if (exists) return res.status(400).json({ success: false, message: "ID นี้มีอยู่แล้ว" });
+
+        await db.collection('zones').insertOne({
+            ...zoneData,
+            createdAt: new Date(),
+            assignedAdmin: ""
+        });
+
+        res.json({ success: true, message: "เพิ่มโซนเรียบร้อยแล้ว" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+});
+
+// 2. API ลบโซน
+app.delete('/api/admin/delete-zone/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const result = await db.collection('zones').deleteOne({ id: id });
+
+        if (result.deletedCount > 0) {
+            res.json({ success: true, message: "ลบโซนเรียบร้อยแล้ว" });
+        } else {
+            res.status(404).json({ success: false, message: "ไม่พบข้อมูลโซน" });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+});
+
+
 
 
 

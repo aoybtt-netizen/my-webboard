@@ -164,19 +164,30 @@
 </div>
 
     <div id="section-zones" class="card" style="display:none;">
-    <h2><i class="fas fa-map-marker-alt"></i> รายชื่อโซนพื้นที่</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2><i class="fas fa-map-marker-alt"></i> รายชื่อโซนพื้นที่</h2>
+        <button onclick="openAddZoneModal()" class="btn-primary" style="background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+            <i class="fas fa-plus"></i> เพิ่มโซนใหม่
+        </button>
+    </div>
     <table>
         <thead>
             <tr>
+                <th>ID</th>
                 <th>ชื่อโซน (คลิกเพื่อดูรายละเอียด)</th>
                 <th>แอดมินดูแล</th>
                 <th>สกุลเงิน</th>
+                <th>พิกัด (Lat, Lng)</th>
+                <th>จัดการ</th>
             </tr>
         </thead>
-        <tbody id="zone-body">
-            </tbody>
+        <tbody id="zone-body"></tbody>
     </table>
 </div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 </div>
 
 <script>
@@ -414,28 +425,35 @@ function changeFilter() {
 
 
     // 3. ฟังก์ชันโหลดข้อมูลโซน
-    async function loadZones() {
-        try {
-            const res = await fetch('/api/admin/all-zones');
-            allZonesData = await res.json();
-            const body = document.getElementById('zone-body');
-            body.innerHTML = '';
+async function loadZones() {
+    try {
+        const res = await fetch('/api/admin/all-zones');
+        allZonesData = await res.json();
+        const body = document.getElementById('zone-body');
+        body.innerHTML = '';
 
-            allZonesData.forEach(z => {
-                body.innerHTML += `
-                    <tr>
-                        <td>
-                            <b onclick="viewZoneDetails(${z.id})" style="cursor:pointer; color:var(--accent); text-decoration: underline;">
-                                ${z.name}
-                            </b>
-                        </td>
-                        <td>${z.assignedAdmin || '-'}</td>
-                        <td><span class="badge" style="background:#e8f4fd; color:#2980b9;">${z.zoneCurrency || 'USD'}</span></td>
-                    </tr>
-                `;
-            });
-        } catch (e) { console.error(e); }
-    }
+        allZonesData.forEach(z => {
+            body.innerHTML += `
+                <tr>
+                    <td>${z.id}</td>
+                    <td>
+                        <b onclick="viewZoneDetails(${z.id})" style="cursor:pointer; color:var(--accent); text-decoration: underline;">
+                            ${z.name}
+                        </b>
+                    </td>
+                    <td>${z.assignedAdmin || '-'}</td>
+                    <td><span class="badge" style="background:#e8f4fd; color:#2980b9;">${z.zoneCurrency || 'USD'}</span></td>
+                    <td><small>${z.lat || 0}, ${z.lng || 0}</small></td>
+                    <td>
+                        <button onclick="deleteZone(${z.id}, '${z.name}')" style="background:#ff4757; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) { console.error(e); }
+}
 	
 
 function viewZoneDetails(zoneId) {
@@ -531,6 +549,104 @@ async function toggleZoneBoolean(id, field, currentValue) {
             html: `<pre style="text-align:left; background:#222; color:#0f0; padding:10px; border-radius:5px; font-size:0.7em; overflow:auto;">${JSON.stringify(z, null, 2)}</pre>`
         });
     }
+	
+
+async function openAddZoneModal() {
+    // หา ID ล่าสุดเพื่อรันต่อ
+    const nextId = allZonesData.length > 0 ? Math.max(...allZonesData.map(z => z.id)) + 1 : 1;
+
+    const { value: formValues } = await Swal.fire({
+        title: 'เพิ่มโซนพื้นที่ใหม่',
+        html: `
+            <div style="text-align:left; font-size:14px;">
+                <label>ชื่อโซน (อัติโนมัติ)</label>
+                <input id="swal-zone-name" class="swal2-input" value="GedGoZone" readonly>
+                
+                <label>พิกัด (Lat, Lng) - คลิกบนแผนที่หรือระบุเอง</label>
+                <div style="display:flex; gap:5px;">
+                    <input id="swal-lat" class="swal2-input" placeholder="Latitude" style="margin-top:5px;">
+                    <input id="swal-lng" class="swal2-input" placeholder="Longitude" style="margin-top:5px;">
+                </div>
+
+                <div id="map-picker" style="height: 300px; border-radius: 8px; margin-top: 15px; border: 1px solid #ddd;"></div>
+            </div>
+        `,
+        didOpen: () => {
+            // เริ่มต้นแผนที่ (พิกัดเริ่มต้น กรุงเทพฯ)
+            const map = L.map('map-picker').setView([13.7563, 100.5018], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            let marker;
+            map.on('click', function(e) {
+                const { lat, lng } = e.latlng;
+                if (marker) marker.setLatLng(e.latlng);
+                else marker = L.marker(e.latlng).addTo(map);
+                
+                document.getElementById('swal-lat').value = lat.toFixed(6);
+                document.getElementById('swal-lng').value = lng.toFixed(6);
+            });
+        },
+        showCancelButton: true,
+        confirmButtonText: 'เพิ่มโซน',
+        preConfirm: () => {
+            return {
+                id: nextId,
+                name: document.getElementById('swal-zone-name').value,
+                lat: parseFloat(document.getElementById('swal-lat').value),
+                lng: parseFloat(document.getElementById('swal-lng').value),
+                zoneCurrency: 'THB', // ค่าเริ่มต้น
+                isFree: false
+            }
+        }
+    });
+
+    if (formValues) {
+        if (!formValues.lat || !formValues.lng) {
+            return Swal.fire('ผิดพลาด', 'กรุณาเลือกพิกัดบนแผนที่', 'error');
+        }
+        saveNewZone(formValues);
+    }
+}
+
+async function saveNewZone(zoneData) {
+    try {
+        const res = await fetch('/api/admin/add-zone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(zoneData)
+        });
+        const result = await res.json();
+        if (result.success) {
+            Swal.fire('สำเร็จ', 'เพิ่มโซนใหม่เรียบร้อย', 'success');
+            loadZones();
+        }
+    } catch (e) { Swal.fire('Error', 'ไม่สามารถเพิ่มโซนได้', 'error'); }
+}
+
+async function deleteZone(id, name) {
+    const confirm = await Swal.fire({
+        title: 'ยืนยันการลบ?',
+        text: `คุณกำลังจะลบโซน ${name} (ID: ${id})`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'ลบเลย',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (confirm.isConfirmed) {
+        try {
+            const res = await fetch(`/api/admin/delete-zone/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (result.success) {
+                Swal.fire('ลบแล้ว!', result.message, 'success');
+                loadZones();
+            }
+        } catch (e) { Swal.fire('Error', 'ไม่สามารถลบได้', 'error'); }
+    }
+}
+
+
 
 	
 
