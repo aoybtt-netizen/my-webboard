@@ -133,23 +133,21 @@
     </div>
 
     <div id="section-members" class="card">
-        <h2><i class="fas fa-users"></i> รายชื่อสมาชิกในระบบ</h2>
-        <input type="text" class="search-box" id="userSearch" placeholder="ค้นหาชื่อผู้ใช้..." onkeyup="filterTable('userSearch', 'member-table')">
-        <table id="member-table">
-            <thead>
-                <tr>
-                    <th>ผู้ใช้งาน</th>
-                    <th>ยอดเงิน (USDT)</th>
-                    <th>กระเป๋าโซน</th>
-                    <th>ระดับ</th>
-                    <th>สถานะ</th>
-                    <th>จัดการ</th>
-                </tr>
-            </thead>
-            <tbody id="member-body">
-                </tbody>
-        </table>
-    </div>
+    <h2><i class="fas fa-users"></i> รายชื่อสมาชิกในระบบ</h2>
+    <input type="text" class="search-box" id="userSearch" placeholder="ค้นหาชื่อผู้ใช้..." onkeyup="filterTable('userSearch', 'member-table')">
+    <table id="member-table">
+        <thead>
+            <tr>
+                <th>ผู้ใช้งาน</th>
+                <th>ยอดเงิน (USDT)</th>
+                <th>ระดับ</th>
+                <th>สถานะ</th>
+                <th>จัดการ</th>
+            </tr>
+        </thead>
+        <tbody id="member-body"></tbody>
+    </table>
+</div>
 
     <div id="section-zones" class="card" style="display:none;">
     <h2><i class="fas fa-map-marker-alt"></i> รายชื่อโซนพื้นที่</h2>
@@ -180,31 +178,69 @@
     }
 
     // 2. ฟังก์ชันโหลดข้อมูลสมาชิก
-    async function loadMembers() {
-        try {
-            const res = await fetch('/api/admin/all-users'); // *** คุณต้องมี API นี้ ***
-            const users = await res.json();
-            const body = document.getElementById('member-body');
-            body.innerHTML = '';
+    // ฟังก์ชันโหลดรายชื่อสมาชิก
+async function loadMembers() {
+    try {
+        const res = await fetch('/api/admin/all-users');
+        const users = await res.json();
+        const body = document.getElementById('member-body');
+        body.innerHTML = '';
 
-            users.forEach(u => {
-                body.innerHTML += `
-                    <tr>
-                        <td><b>${u.username}</b></td>
-                        <td><span onclick="universalEdit('users', '${u.username}', 'coins', ${u.coins})" style="cursor:pointer; color:var(--accent); font-weight:bold;">${(u.coins || 0).toFixed(2)}</span></td>
-                        <td>${(u[u.lastZoneCurrency] || 0).toFixed(2)} <small>${u.lastZoneCurrency || ''}</small></td>
-                        <td><button class="btn" onclick="universalEdit('users', '${u.username}', 'adminLevel', ${u.adminLevel})">Lv.${u.adminLevel || 0}</button></td>
-                        <td><span class="badge" style="background:${u.isBanned ? '#fadbd8' : '#d4efdf'}; color:${u.isBanned ? '#c0392b' : '#1e8449'};">${u.isBanned ? 'BANNED' : 'ACTIVE'}</span></td>
-                        <td>
-                            <button class="btn btn-ban ${u.isBanned ? 'active' : ''}" onclick="universalEdit('users', '${u.username}', 'isBanned', ${!u.isBanned})">
-                                <i class="fas fa-ban"></i> ${u.isBanned ? 'ปลดแบน' : 'แบน'}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-        } catch (e) { console.error(e); }
-    }
+        users.forEach(u => {
+            // เก็บข้อมูลดิบไว้ในตัวแปร เพื่อส่งให้ฟังก์ชันดูรายละเอียด
+            const userData = JSON.stringify(u).replace(/'/g, "\\'"); 
+
+            body.innerHTML += `
+                <tr>
+                    <td>
+                        <b onclick='viewUserDetails(${userData})' 
+                           style="cursor:pointer; color:var(--accent); text-decoration:underline;" 
+                           title="คลิกเพื่อดูรายละเอียด">
+                           ${u.username}
+                        </b>
+                    </td>
+                    <td>
+                        <span onclick="universalEdit('users', '${u.username}', 'coins', ${u.coins})" 
+                              style="cursor:pointer; color:var(--accent); font-weight:bold;">
+                              ${(u.coins || 0).toFixed(2)}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn" onclick="universalEdit('users', '${u.username}', 'adminLevel', ${u.adminLevel})">
+                            Lv.${u.adminLevel || 0}
+                        </button>
+                    </td>
+                    <td>
+                        <span class="badge" style="background:${u.isBanned ? '#fadbd8' : '#d4efdf'}; color:${u.isBanned ? '#c0392b' : '#1e8449'};">
+                            ${u.isBanned ? 'BANNED' : 'ACTIVE'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-ban ${u.isBanned ? 'active' : ''}" 
+                                onclick="universalEdit('users', '${u.username}', 'isBanned', ${!u.isBanned})">
+                            <i class="fas fa-ban"></i> ${u.isBanned ? 'ปลดแบน' : 'แบน'}
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) { console.error(e); }
+}
+
+// 🚩 ฟังก์ชันใหม่: แสดงตัวแปรทั้งหมดที่เก็บไว้ในรายชื่อ (Popup)
+function viewUserDetails(user) {
+    // จัดรูปแบบ JSON ให้อ่านง่าย
+    const jsonPretty = JSON.stringify(user, null, 4);
+    
+    Swal.fire({
+        title: `ข้อมูลสมาชิก: ${user.username}`,
+        html: `<pre style="text-align: left; background: #f4f4f4; padding: 15px; border-radius: 8px; font-size: 13px; max-height: 400px; overflow-y: auto; font-family: monospace;">${jsonPretty}</pre>`,
+        width: '600px',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        confirmButtonColor: 'var(--primary)',
+        showCloseButton: true
+    });
+}
 
     // 3. ฟังก์ชันโหลดข้อมูลโซน
     async function loadZones() {
