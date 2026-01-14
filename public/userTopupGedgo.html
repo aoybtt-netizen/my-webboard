@@ -1101,8 +1101,6 @@ async function updateUIWithLatestData() {
             if (balanceEl) {
                 balanceEl.innerText = (data.coins || 0).toFixed(2);
             }
-            
-            console.log("ยอดเงินอัปเดตเป็น:", data.coins);
         }
     } catch (err) {
         console.error("Update UI Error:", err);
