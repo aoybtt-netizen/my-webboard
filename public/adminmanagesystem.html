@@ -367,7 +367,6 @@ async function showUserDetail(user) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: user.username,
-					adminUsername: currentAdminName,
                     updates: formValues
                 })
             });
