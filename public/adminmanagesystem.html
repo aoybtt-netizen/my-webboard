@@ -557,6 +557,65 @@ function renderBooleanItem(label, field, value, id) {
     `;
 }
 
+async function editZoneField(id, field, currentValue) {
+    // 1. เปิด Popup รับค่าใหม่จากแอดมิน
+    const { value: newValue } = await Swal.fire({
+        title: `แก้ไขฟิลด์: ${field}`,
+        input: 'text',
+        inputValue: currentValue,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึก',
+        cancelButtonText: 'ยกเลิก',
+        inputValidator: (value) => {
+            if (!value && field !== 'assignedAdmin') { // ยอมให้เจ้าของโซนเป็นค่าว่างได้
+                return 'กรุณาระบุข้อมูล'
+            }
+        }
+    });
+
+    // 2. ถ้ากดยืนยัน (และค่าไม่เป็น null) ให้ส่งไปบันทึกที่ Server
+    if (newValue !== undefined && newValue !== null) {
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const response = await fetch('/api/admin/universal-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminUsername: localStorage.getItem('myUsername'), // ชื่อแอดมิน Lv.3 ที่ล็อกอินอยู่
+                    targetCollection: 'zones',
+                    targetId: id,
+                    field: field,
+                    newValue: newValue
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ',
+                    text: result.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                
+                // รีโหลดข้อมูลโซนเพื่ออัปเดตหน้าจอ
+                if (typeof loadZones === 'function') loadZones(); 
+                
+                // ปิด Popup รายละเอียดเดิมเพื่อแสดงค่าใหม่
+                Swal.close(); 
+            } else {
+                Swal.fire('ผิดพลาด', result.message, 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        }
+    }
+}
+
 async function toggleZoneBoolean(id, field, currentValue) {
     const newValue = !currentValue; // สลับค่าจาก true เป็น false หรือกลับกัน
     
