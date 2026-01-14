@@ -673,17 +673,7 @@ function switchTab(tab, type = 'TOPUP') {
         document.getElementById('display-zone-name').innerText = data.zoneName || translations[currentLang].lbl_outside_service;
         document.getElementById('display-zone-admin').innerText = data.zoneOwner || translations[currentLang].lbl_no_admin;
 		if (typeof transactionType !== 'undefined') {
-            const minVal = (transactionType === 'TOPUP') 
-                           ? (zoneInfo.minTopup || 0) 
-                           : (zoneInfo.minWithdraw || 0);
-            const currency = zoneInfo.currency || zoneInfo.zoneCurrency || 'USD';
-            // ใส่ตัวเลขและสกุลเงิน
-            if (minValDisplay) minValDisplay.innerText = minVal.toLocaleString();
-            if (minCurrDisplay) minCurrDisplay.innerText = currency;
-            
-            minNotice.style.display = 'block';
-            
-            if (typeof updateLanguage === 'function') updateLanguage();       
+            switchTab('topup', transactionType);
         }
      
 
