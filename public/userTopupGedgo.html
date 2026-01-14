@@ -530,6 +530,9 @@ function switchTab(tab, type = 'TOPUP') {
 
         // 4. เปลี่ยนสีปุ่มและไอคอนตามโหมด
         const submitBtn = document.querySelector('.btn-submit-topup');
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
         if(transactionType === 'WITHDRAW') {
             submitBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
             submitBtn.innerHTML = translations[currentLang].btn_confirm_withdraw;
@@ -1018,18 +1021,20 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
 
 
 async function submitTransactionRequest() {
+    const submitBtn = document.querySelector('.btn-submit-topup');
     const currentLang = localStorage.getItem('preferredLanguage') || 'th';
     const i18n = translations[currentLang];
-    const amount = parseFloat(document.getElementById('topup-amount').value);
+    const amountInput = document.getElementById('topup-amount');
+    const amount = parseFloat(amountInput.value);
     const bankDetails = document.getElementById('withdraw-bank-details').value;
     const username = localStorage.getItem('myUsername');
+
+    if (!amount || amount <= 0) return alert(i18n.err_invalid_amount);
     
-    // 🚩 1. ตรวจสอบยอดขั้นต่ำจากข้อมูลโซนที่เราเก็บไว้ใน window
     const zoneInfo = window.currentZoneData;
     if (zoneInfo) {
         const minLimit = (transactionType === 'TOPUP') ? (zoneInfo.minTopup || 0) : (zoneInfo.minWithdraw || 0);
         if (amount < minLimit) {
-            // แจ้งเตือนว่ายอดต่ำกว่าขั้นต่ำ
             return Swal.fire({
                 icon: 'error',
                 title: i18n.swal_error_title,
@@ -1038,8 +1043,6 @@ async function submitTransactionRequest() {
         }
     }
 
-    if (!amount || amount <= 0) return alert(i18n.err_invalid_amount);
-    
     if (transactionType === 'WITHDRAW' && !bankDetails) {
         return alert(i18n.err_no_bank_details);
     }
@@ -1048,6 +1051,25 @@ async function submitTransactionRequest() {
     if (transactionType === 'WITHDRAW' && amount > currentBalance) {
         return alert(i18n.err_insufficient_balance);
     }
+
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.6';
+    submitBtn.style.cursor = 'not-allowed';
+
+    let timeLeft = 10;
+    const originalText = submitBtn.innerHTML;
+
+    const countdownTimer = setInterval(() => {
+        submitBtn.innerHTML = `${originalText} (${timeLeft}s)`;
+        timeLeft -= 1;
+        if (timeLeft < 0) {
+            clearInterval(countdownTimer);
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+            submitBtn.innerHTML = originalText;
+        }
+    }, 1000);
 
     try {
         const res = await fetch('/api/topup/request', {
@@ -1072,14 +1094,22 @@ async function submitTransactionRequest() {
                 type: transactionType,
                 currency: zoneCurrency
             });
-			await updateUIWithLatestData();
+
+            await updateUIWithLatestData();
             await checkTransactionStatus();
+            amountInput.value = '';
+
         } else {
             const error = await res.json();
-            alert(error.error || "An error occurred.");
+            Swal.fire('Error', error.error || "An error occurred.", 'error');
         }
     } catch (err) {
+        console.error(err);
         alert("An error occurred while submitting the request.");
+        // ปลดล็อคปุ่มทันทีถ้าเน็ตหลุดหรือ Error
+        clearInterval(countdownTimer);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
 }
 
