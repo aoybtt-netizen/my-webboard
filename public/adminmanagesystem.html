@@ -266,7 +266,6 @@ window.onload = () => loadMembers(1);
 async function showUserDetail(user) {
     const { username } = user;
     
-    // รายการฟิลด์ที่เป็นตัวเลขที่พี่ต้องการให้แก้ได้
     const fields = [
         { key: 'adminLevel', label: 'ระดับแอดมิน (Lv)' },
         { key: 'coins', label: 'ยอดเงิน (USDT)' },
@@ -281,8 +280,8 @@ async function showUserDetail(user) {
         { key: 'merchantRatingScore', label: 'เรตติ้งร้านค้า (Score)' }
     ];
 
-    // สร้าง HTML สำหรับ Input แต่ละตัว
     let inputsHtml = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left; font-size:13px;">`;
+    
     fields.forEach(f => {
         inputsHtml += `
             <div>
@@ -290,10 +289,28 @@ async function showUserDetail(user) {
                 <input type="number" id="edit-${f.key}" class="swal2-input" style="width:100%; margin:5px 0;" value="${user[f.key] || 0}">
             </div>`;
     });
-    
-    // เพิ่มส่วนเลือกสถานะ Banned
+
+    // --- ส่วนที่เพิ่มใหม่: จัดการธุรกรรมด่วน ---
     inputsHtml += `
-        <div style="grid-column: span 2;">
+        <div style="grid-column: span 2; margin-top: 10px; padding: 15px; background: #f8f9fa; border: 1px dashed #007bff; border-radius: 10px;">
+            <label style="font-weight: bold; color: #007bff; display: block; margin-bottom: 5px;">
+                <i class="fas fa-exchange-alt"></i> โอนเงินเข้า / หักเงินออก (Quick Adjust)
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <select id="adj-currency" class="swal2-input" style="flex: 1; margin: 0; font-size: 13px;">
+                    <option value="coins">USDT (coins)</option>
+                    <option value="THB">THB</option>
+                    <option value="BRL">BRL</option>
+                </select>
+                <input type="number" id="adj-amount" class="swal2-input" style="flex: 1; margin: 0; font-size: 13px;" placeholder="ระบุจำนวน (ติดลบ = หักออก)">
+            </div>
+            <small style="color: #888;">* ใส่เลขบวกเพื่อเพิ่ม ใส่เลขลบเพื่อลด (เช่น -100)</small>
+        </div>
+    `;
+    // ------------------------------------
+
+    inputsHtml += `
+        <div style="grid-column: span 2; margin-top: 10px;">
             <label style="color:#666;">สถานะบัญชี</label>
             <select id="edit-isBanned" class="swal2-input" style="width:100%; margin:5px 0;">
                 <option value="false" ${!user.isBanned ? 'selected' : ''}>ACTIVE (ปกติ)</option>
@@ -302,62 +319,65 @@ async function showUserDetail(user) {
         </div>
     </div>`;
 
-    // ปุ่มดูตัวแปรทั้งหมด
     inputsHtml += `
-        <button onclick='viewRawVariables(${JSON.stringify(user).replace(/'/g, "\\'")})' 
+        <button type="button" onclick='viewRawVariables(${JSON.stringify(user).replace(/'/g, "\\'")})' 
                 style="margin-top:15px; width:100%; padding:10px; background:#f0f2f5; border:1px solid #ddd; border-radius:8px; cursor:pointer; font-family:Kanit;">
             <i class="fas fa-code"></i> ข้อมูลตัวแปร (Raw Data)
         </button>`;
 
     const { value: formValues } = await Swal.fire({
-    title: `จัดการสมาชิก: ${username}`,
-    html: inputsHtml,
-    showCancelButton: true,
-    confirmButtonText: 'บันทึกทั้งหมด',
-    cancelButtonText: 'ยกเลิก',
-    preConfirm: () => {
-        const updatedData = {};
-        // ดึงค่าจากทุก Input ที่เราสร้างไว้
-        fields.forEach(f => {
-            updatedData[f.key] = document.getElementById(`edit-${f.key}`).value;
-        });
-        updatedData.isBanned = document.getElementById('edit-isBanned').value === 'true';
-        return updatedData;
-    }
-});
-
-// 🚩 ส่วนการส่งข้อมูลไปบันทึก (แก้ไขใหม่)
-if (formValues) {
-    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-    try {
-        const response = await fetch('/api/admin/update-user-full', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: username,
-                updates: formValues
-            })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'สำเร็จ',
-                text: result.message,
-                timer: 1500,
-                showConfirmButton: false
+        title: `จัดการสมาชิก: ${username}`,
+        html: inputsHtml,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึกทั้งหมด',
+        cancelButtonText: 'ยกเลิก',
+        focusConfirm: false,
+        preConfirm: () => {
+            const updatedData = {};
+            fields.forEach(f => {
+                updatedData[f.key] = document.getElementById(`edit-${f.key}`).value;
             });
-            loadMembers(); // รีโหลดตารางสมาชิกเพื่อโชว์ค่าใหม่
-        } else {
-            Swal.fire('ผิดพลาด', result.message, 'error');
+            updatedData.isBanned = document.getElementById('edit-isBanned').value === 'true';
+            
+            // เก็บค่าจากช่องที่เพิ่มใหม่
+            updatedData.adjustmentCurrency = document.getElementById('adj-currency').value;
+            updatedData.adjustmentAmount = parseFloat(document.getElementById('adj-amount').value) || 0;
+
+            return updatedData;
         }
-    } catch (e) {
-        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    });
+
+    if (formValues) {
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const response = await fetch('/api/admin/update-user-full', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    updates: formValues
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ',
+                    text: result.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                loadMembers(); 
+            } else {
+                Swal.fire('ผิดพลาด', result.message, 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        }
     }
-}
 }
 
 // 🚩 ฟังก์ชันดูตัวแปรทั้งหมด (ย้ายจากหน้าหลักมาไว้ในนี้ตามสั่ง)

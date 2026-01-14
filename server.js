@@ -562,10 +562,17 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             return res.status(400).json({ success: false, message: "ข้อมูลไม่ครบถ้วน" });
         }
 
-        // กรองข้อมูลและแปลงค่าตัวเลขให้ถูกต้องก่อนบันทึก
+        // 1. แยกค่าการปรับปรุงเงิน (Adjustment) ออกมา
+        const adjCurrency = updates.adjustmentCurrency; // 'coins', 'THB', หรือ 'BRL'
+        const adjAmount = parseFloat(updates.adjustmentAmount) || 0;
+
+        // 2. กรองข้อมูลและแปลงค่าตัวเลข
         const finalUpdates = {};
         for (const [key, value] of Object.entries(updates)) {
-            // ถ้าเป็นฟิลด์ที่ควรเป็นตัวเลข ให้แปลงเป็น Number
+            // ข้ามฟิลด์ที่เป็นตัวแปรช่วยคำนวณ (ไม่ต้องเซฟลง DB ตรงๆ)
+            if (key === 'adjustmentCurrency' || key === 'adjustmentAmount') continue;
+
+            // แปลงฟิลด์ตัวเลขให้ถูกต้อง
             if (['adminLevel', 'coins', 'BRL', 'THB', 'rating', 'ratingCount', 
                  'completedJobs', 'totalPosts', 'totalJobs', 
                  'merchantRatingCount', 'merchantRatingScore'].includes(key)) {
@@ -575,13 +582,29 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             }
         }
 
+        // 3. คำนวณยอดเงินใหม่ (ถ้ามีการใส่ตัวเลขในช่อง Quick Adjust)
+        if (adjAmount !== 0 && adjCurrency) {
+            // ตรวจสอบว่ามี field กระเป๋าเงินนั้นอยู่ใน finalUpdates หรือไม่
+            // (ปกติจะมีเพราะดึงมาจากหน้าฟอร์มอยู่แล้ว)
+            const currentVal = finalUpdates[adjCurrency] || 0;
+            finalUpdates[adjCurrency] = currentVal + adjAmount;
+            
+            // หมายเหตุ: ตรงนี้เราบวกเข้าไปใน object เลย เพราะเดี๋ยวเราจะใช้ $set บันทึกค่าทั้งหมดทีเดียว
+        }
+
+        // 4. บันทึกลงฐานข้อมูล
         const result = await db.collection('users').updateOne(
             { username: username },
             { $set: finalUpdates }
         );
 
         if (result.matchedCount > 0) {
-            res.json({ success: true, message: "อัปเดตข้อมูลสมาชิกเรียบร้อยแล้ว" });
+            let message = "อัปเดตข้อมูลสมาชิกเรียบร้อยแล้ว";
+            if (adjAmount !== 0) {
+                const action = adjAmount > 0 ? "เพิ่มเงิน" : "หักเงิน";
+                message += ` (และ${action} ${Math.abs(adjAmount)} ${adjCurrency.toUpperCase()} สำเร็จ)`;
+            }
+            res.json({ success: true, message: message });
         } else {
             res.status(404).json({ success: false, message: "ไม่พบรายชื่อสมาชิกนี้" });
         }
