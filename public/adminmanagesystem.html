@@ -532,8 +532,6 @@ function renderItem(label, field, value, id, unit = '') {
         const displayValue = (value === undefined || value === null || value === "") 
                          ? "ระบุข้อมูล" 
                          : value;	
-        // ป้องกัน Error จากเครื่องหมายคำพูดในภาษาไทย
-        const safeVal = String(displayVal).replace(/'/g, "\\'");
         
         return `
         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
