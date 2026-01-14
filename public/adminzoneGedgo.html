@@ -1147,7 +1147,7 @@ async function handleQuickAction(requestId, status, username, amount = 0) {
                 status: status 
             });
 
-            await refreshAdminProfile();
+            fetchAdminZoneInfo(adminName);
             loadTopupRequests();
             updateBadges();
         } else {
@@ -1328,7 +1328,7 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
                 type: 'system'
             };
             socket.emit('sendMessage', sysMsg);
-			await refreshAdminProfile();
+			fetchAdminZoneInfo(adminName);
             showContent('topup');
             updateBadges();
         } else {
@@ -1365,7 +1365,7 @@ async function processRequest(status) {
             requestId: currentChatRequestId, 
             status: status 
         });
-        await refreshAdminProfile();
+        fetchAdminZoneInfo(adminName);
         alert(translations[currentLang].alert_success);
         showContent('topup');
         }
@@ -2308,32 +2308,6 @@ async function executeExchange(amount) {
 
 
 
-async function refreshAdminProfile() {
-    const adminName = localStorage.getItem('myUsername');
-    const savedLoc = localStorage.getItem('userPrimaryLocation');
-    let locationParam = savedLoc ? `&location=${encodeURIComponent(savedLoc)}` : '';
-
-    try {
-        const res = await fetch(`/api/profile-details?username=${adminName}${locationParam}`);
-        const data = await res.json();
-
-        if (!data.error) {
-            const balEl = document.getElementById('admin-balance');
-            if (balEl) {
-                balEl.innerText = data.coins.toLocaleString(undefined, {minimumFractionDigits: 2});
-            }
-
-            const currEl = document.getElementById('admin-currency-label');
-            if (currEl) {
-                currEl.innerText = data.currency || 'USD';
-            }
-
-            console.log(`Admin balance updated: ${data.coins} ${data.currency}`);
-        }
-    } catch (err) {
-        console.error("Refresh Admin Error:", err);
-    }
-}
 
 
 
