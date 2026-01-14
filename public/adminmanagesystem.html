@@ -196,37 +196,45 @@
 	let currentPage = 1;
 	let currentFilter = 'all';
 	
+// ประกาศตัวแปรไว้ด้านบนสุดของ <script> เพื่อให้ฟังก์ชันอื่นเรียกใช้ได้
+let currentAdminName = localStorage.getItem('myUsername');
+
 async function checkAdminAccess() {
-    const username = localStorage.getItem('myUsername');
-    if (!username) {
+    if (!currentAdminName) {
+        console.error("ไม่พบ Username ใน localStorage");
         window.location.href = 'index.html';
         return;
     }
 
     try {
-        // ดึงข้อมูลตัวเองมาเช็ค Level จริงๆ จาก Database
-        const res = await fetch(`/api/user/profile?username=${username}`);
-        const user = await res.json();
+        const res = await fetch(`/api/user/profile?username=${currentAdminName}`);
+        const data = await res.json();
 
-        if (!user || user.adminLevel < 3) {
+        // Debug: ดูว่า Server ส่งอะไรกลับมากันแน่
+        console.log("Admin Data:", data);
+
+        // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ data.adminLevel หรือ data.user.adminLevel)
+        const level = data.adminLevel !== undefined ? data.adminLevel : (data.user ? data.user.adminLevel : 0);
+
+        if (parseInt(level) < 3) {
             Swal.fire({
                 icon: 'error',
                 title: 'สิทธิ์ไม่เพียงพอ',
-                text: 'หน้านี้สำหรับแอดมินระดับ 3 เท่านั้น',
-                confirmButtonText: 'ตกลง'
+                text: `คุณมีระดับ Lv.${level} แต่หน้านี้ต้องการ Lv.3`,
             }).then(() => {
-                window.location.href = 'index.html'; // เตะออกไปหน้าหลัก
+                window.location.href = 'index.html';
             });
             return;
         }
         
-        // ถ้าผ่าน ให้โหลดข้อมูลปกติ
+        // ถ้าผ่าน... ให้เริ่มโหลดข้อมูล
         loadMembers();
         loadZones();
         
     } catch (e) {
         console.error("Access Check Error:", e);
-        window.location.href = 'index.html';
+        // หาก API พังชั่วคราว แต่อยากให้เข้าได้ ให้คอมเมนต์บรรทัดล่างนี้ทิ้งตอน Debug
+        // window.location.href = 'index.html';
     }
 }
 
