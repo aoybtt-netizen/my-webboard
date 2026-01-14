@@ -24,6 +24,12 @@
             background-repeat: no-repeat;   
             background-color: #f0f2f5; /* สีสำรอง */
         }
+		
+		.header {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            padding: 20px; color: white; text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
         
         .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background: white; z-index: 1000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto;}
         .sidebar.active { left: 0; }
@@ -330,6 +336,24 @@
     </style>
 </head>
 <body>
+
+	<div class="header" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;">
+    <div style="cursor: pointer; width: 30px;" onclick="toggleMerchantSidebar()">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <div style="text-align: center; flex-grow: 1;">
+        <h2 id="merchant-name-display" style="margin: 0; font-size: 1.2em; line-height: 1.2;">GedGo Merchant</h2>
+        <div id="merchant-balance-display" style="font-size: 1.0em; color: #ffeb57; font-weight: bold; margin-top: 2px;">
+            0.00 Loading...
+        </div>
+    </div>
+
+    <div style="cursor: pointer; width: 30px; text-align: right;" onclick="safeNavigateHome()">
+        <i class="fas fa-home"></i>
+    </div>
+</div>
+
 
     <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div class="overlay" onclick="toggleSidebar()"></div>
