@@ -963,6 +963,7 @@ async function viewArchivedAdminChat(requestId, username, amount, status, slipUr
 }
 
 function confirmTopup(user, amount) {
+	const adminName = localStorage.getItem('myUsername');
     if(confirm(translations[currentLang].confirm_topup_msg(amount, user))) {
         alert(translations[currentLang].msg_approve_success);
     }
@@ -1272,6 +1273,7 @@ function closeFullChatModal() {
 
 //2.1
 async function processAction(status, username, initialAmount = 0, type = 'TOPUP', currency = 'USD') {
+	const adminName = localStorage.getItem('myUsername');
     let finalAmount = initialAmount;
     const isWithdraw = type === 'WITHDRAW';
     
@@ -1304,6 +1306,7 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
                 requestId: currentChatRequestId, 
                 status: status,
                 finalAmount: finalAmount,
+				adminName: adminName,
                 adminName: localStorage.getItem('myUsername'),
                 currency: currency,
 				lang: currentLang
@@ -1326,7 +1329,9 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
                 type: 'system'
             };
             socket.emit('sendMessage', sysMsg);
-			fetchAdminZoneInfo(adminName);
+			if (typeof fetchAdminZoneInfo === 'function') {
+                fetchAdminZoneInfo(adminName);
+            }
             showContent('topup');
             updateBadges();
         } else {
@@ -1341,6 +1346,7 @@ async function processAction(status, username, initialAmount = 0, type = 'TOPUP'
 
 // 3. ฟังก์ชันอนุมัติหรือปฏิเสธ
 async function processRequest(status) {
+	const adminName = localStorage.getItem('myUsername');
     const action = status === 'approved' 
 		? translations[currentLang].action_approve 
 		: translations[currentLang].action_reject;
