@@ -338,26 +338,21 @@
 <body>
 
 	<div class="header" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;">
-    
+    <div style="cursor: pointer; width: 30px;" onclick="toggleMerchantSidebar()">
+        <i class="fas fa-bars"></i>
+    </div>
 
     <div style="text-align: center; flex-grow: 1;">
         <h2 id="merchant-name-display" style="margin: 0; font-size: 1.2em; line-height: 1.2;">GedGo Merchant</h2>
-		
-        <div class="coin-badge" onclick="contactAdmin()" title="คลิกเพื่อดูประวัติการเงิน">
-            <div id="header-coins-container" style="text-align: right; line-height: 1.1;">
-			
-			<div id="header-converted-display" style="font-size:1.0em; color:#e67e22; font-weight: bold;">0.00 USDT</div>
-
-</div>
-            <div id="coin-notif-dot" class="notif-dot hidden">!</div>
+        <div id="header-converted-display" style="font-size: 1.0em; color: #ffeb57; font-weight: bold; margin-top: 2px;">
+            0.00 USDT
         </div>
-        
-        <div class="mail-btn" onclick="openInbox()" title="กล่องข้อความ / แจ้งเตือน">
-            📩
-            <div id="notif-badge" class="notif-dot hidden">!</div>
-        </div>
+    </div>
 
-        
+    <div style="cursor: pointer; width: 30px; text-align: right;" onclick="openInbox()">
+        <i class="fas fa-home"></i>
+		<div id="notif-badge" class="notif-dot hidden">!</div>
+    </div>
 </div>
 
 
@@ -440,6 +435,7 @@
 </div>
 
     <div class="content-area">
+    
 
     <h2 style="margin-top:0;" id="page-title" data-i18n-key="page_title">📌 รายการ</h2>
     
