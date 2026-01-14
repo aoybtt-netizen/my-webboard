@@ -577,20 +577,20 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             return res.status(400).json({ success: false, message: "ข้อมูลไม่ครบถ้วน" });
         }
 
-        // 1. เช็คสิทธิ์ Master Admin
+        // 1. เช็คสิทธิ์ Master Admin (Lv.3)
         const master = await db.collection('users').findOne({ username: adminUsername });
         if (!master || parseInt(master.adminLevel) < 3) {
             return res.status(403).json({ success: false, message: "สิทธิ์ปฏิเสธ: เฉพาะแอดมินระดับ 3" });
         }
 
-        // 2. ดึงข้อมูลเป้าหมาย
+        // 2. ดึงข้อมูลแอดมินปลายทางที่จะโดนปรับ
         const targetUser = await db.collection('users').findOne({ username: username });
         if (!targetUser) return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้งานนี้" });
 
         const adjCurrency = updates.adjustmentCurrency;
         const adjAmount = parseFloat(updates.adjustmentAmount) || 0;
 
-        // 3. กรองข้อมูล updates
+        // 3. กรองฟิลด์ที่จะบันทึก
         const finalUpdates = {};
         for (const [key, value] of Object.entries(updates)) {
             if (key === 'adjustmentCurrency' || key === 'adjustmentAmount') continue;
@@ -601,30 +601,30 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             }
         }
 
-        // 4. จัดการเรื่องเงินและบันทึก Log
+        // 4. 🚩 ส่วนสำคัญ: บันทึก Log ลง Collection เดียวกับระบบเติมเงิน
         if (adjAmount !== 0 && adjCurrency) {
             const currentVal = finalUpdates[adjCurrency] || 0;
             finalUpdates[adjCurrency] = currentVal + adjAmount;
 
-            // บันทึก Log ถ้าคนโดนปรับเป็นแอดมิน (Lv 1, 2, 3)
+            // บันทึกเฉพาะเมื่อคนโดนปรับเป็นแอดมิน (Lv > 0)
             if (parseInt(targetUser.adminLevel) > 0) {
-                // *** ตรวจสอบชื่อ Collection ให้ตรงกับตัวแปร topupRequestsCollection ***
-                await db.collection('topupRequests').insertOne({
-                    username: username, // เจ้าของบัญชี
+                // *** ใช้ topupRequestsCollection ตัวเดียวกับใน API history ของคุณ ***
+                await topupRequestsCollection.insertOne({
+                    username: username, 
                     amount: Math.abs(adjAmount),
                     currency: adjCurrency,
                     type: adjAmount > 0 ? 'TOPUP' : 'WITHDRAW',
                     status: 'approved',
                     method: 'SYSTEM ADJUST',
-                    name: 'SYSTEM',
-                    processedBy: username, // สำคัญ: ต้องเป็นชื่อแอดมินคนนั้น เพื่อให้ history หาเจอ
+                    name: 'SYSTEM', // ชื่อคนส่ง/โอน
+                    processedBy: username, // บันทึกเป็นชื่อเขา เพื่อให้ history ของเขาดึงไปโชว์ได้
                     processedAt: new Date(),
-                    note: `Master Admin (${adminUsername}) ปรับยอดเงิน`
+                    note: `โดย Master Admin (${adminUsername})`
                 });
             }
         }
 
-        // 5. บันทึกข้อมูล
+        // 5. บันทึกข้อมูลลง Table Users
         await db.collection('users').updateOne(
             { username: username },
             { 
@@ -636,11 +636,11 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             }
         );
 
-        res.json({ success: true, message: "ดำเนินการสำเร็จและบันทึกประวัติแล้ว" });
+        res.json({ success: true, message: "ดำเนินการสำเร็จ" });
 
     } catch (error) {
         console.error("🚨 Update Error:", error);
-        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาด" });
     }
 });
 
