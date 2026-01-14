@@ -178,7 +178,6 @@
     }
 
     // 2. ฟังก์ชันโหลดข้อมูลสมาชิก
-    // ฟังก์ชันโหลดรายชื่อสมาชิก
 async function loadMembers() {
     try {
         const res = await fetch('/api/admin/all-users');
@@ -187,44 +186,123 @@ async function loadMembers() {
         body.innerHTML = '';
 
         users.forEach(u => {
-            // เก็บข้อมูลดิบไว้ในตัวแปร เพื่อส่งให้ฟังก์ชันดูรายละเอียด
+            // แปลงข้อมูลเป็น String เพื่อส่งเข้าฟังก์ชัน
             const userData = JSON.stringify(u).replace(/'/g, "\\'"); 
 
             body.innerHTML += `
                 <tr>
                     <td>
-                        <b onclick='viewUserDetails(${userData})' 
-                           style="cursor:pointer; color:var(--accent); text-decoration:underline;" 
-                           title="คลิกเพื่อดูรายละเอียด">
+                        <b onclick='showUserDetail(${userData})' 
+                           style="cursor:pointer; color:var(--accent); text-decoration:underline;">
                            ${u.username}
                         </b>
                     </td>
-                    <td>
-                        <span onclick="universalEdit('users', '${u.username}', 'coins', ${u.coins})" 
-                              style="cursor:pointer; color:var(--accent); font-weight:bold;">
-                              ${(u.coins || 0).toFixed(2)}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn" onclick="universalEdit('users', '${u.username}', 'adminLevel', ${u.adminLevel})">
-                            Lv.${u.adminLevel || 0}
-                        </button>
-                    </td>
+                    <td><b>${(u.coins || 0).toFixed(2)}</b></td>
+                    <td>Lv.${u.adminLevel || 0}</td>
                     <td>
                         <span class="badge" style="background:${u.isBanned ? '#fadbd8' : '#d4efdf'}; color:${u.isBanned ? '#c0392b' : '#1e8449'};">
                             ${u.isBanned ? 'BANNED' : 'ACTIVE'}
                         </span>
                     </td>
                     <td>
-                        <button class="btn btn-ban ${u.isBanned ? 'active' : ''}" 
-                                onclick="universalEdit('users', '${u.username}', 'isBanned', ${!u.isBanned})">
-                            <i class="fas fa-ban"></i> ${u.isBanned ? 'ปลดแบน' : 'แบน'}
+                        <button class="btn" onclick='showUserDetail(${userData})'>
+                            <i class="fas fa-edit"></i> จัดการ
                         </button>
                     </td>
                 </tr>
             `;
         });
     } catch (e) { console.error(e); }
+}
+
+async function showUserDetail(user) {
+    const { username } = user;
+    
+    // รายการฟิลด์ที่เป็นตัวเลขที่พี่ต้องการให้แก้ได้
+    const fields = [
+        { key: 'adminLevel', label: 'ระดับแอดมิน (Lv)' },
+        { key: 'coins', label: 'ยอดเงิน (USDT)' },
+        { key: 'BRL', label: 'กระเป๋า BRL' },
+        { key: 'THB', label: 'กระเป๋า THB' },
+        { key: 'rating', label: 'คะแนน Rating' },
+        { key: 'ratingCount', label: 'จำนวนคนให้ Rating' },
+        { key: 'completedJobs', label: 'งานที่สำเร็จแล้ว' },
+        { key: 'totalPosts', label: 'โพสต์ทั้งหมด' },
+        { key: 'totalJobs', label: 'งานทั้งหมด' },
+        { key: 'merchantRatingCount', label: 'เรตติ้งร้านค้า (Count)' },
+        { key: 'merchantRatingScore', label: 'เรตติ้งร้านค้า (Score)' }
+    ];
+
+    // สร้าง HTML สำหรับ Input แต่ละตัว
+    let inputsHtml = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left; font-size:13px;">`;
+    fields.forEach(f => {
+        inputsHtml += `
+            <div>
+                <label style="color:#666;">${f.label}</label>
+                <input type="number" id="edit-${f.key}" class="swal2-input" style="width:100%; margin:5px 0;" value="${user[f.key] || 0}">
+            </div>`;
+    });
+    
+    // เพิ่มส่วนเลือกสถานะ Banned
+    inputsHtml += `
+        <div style="grid-column: span 2;">
+            <label style="color:#666;">สถานะบัญชี</label>
+            <select id="edit-isBanned" class="swal2-input" style="width:100%; margin:5px 0;">
+                <option value="false" ${!user.isBanned ? 'selected' : ''}>ACTIVE (ปกติ)</option>
+                <option value="true" ${user.isBanned ? 'selected' : ''}>BANNED (ระงับการใช้งาน)</option>
+            </select>
+        </div>
+    </div>`;
+
+    // ปุ่มดูตัวแปรทั้งหมด
+    inputsHtml += `
+        <button onclick='viewRawVariables(${JSON.stringify(user).replace(/'/g, "\\'")})' 
+                style="margin-top:15px; width:100%; padding:10px; background:#f0f2f5; border:1px solid #ddd; border-radius:8px; cursor:pointer; font-family:Kanit;">
+            <i class="fas fa-code"></i> ข้อมูลตัวแปร (Raw Data)
+        </button>`;
+
+    const { value: formValues } = await Swal.fire({
+        title: `จัดการสมาชิก: ${username}`,
+        html: inputsHtml,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึกทั้งหมด',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => {
+            const updatedData = {};
+            fields.forEach(f => {
+                updatedData[f.key] = parseFloat(document.getElementById(`edit-${f.key}`).value);
+            });
+            updatedData.isBanned = document.getElementById('edit-isBanned').value === 'true';
+            return updatedData;
+        }
+    });
+
+    if (formValues) {
+        // วนลูปส่งค่าไปบันทึกทีละฟิลด์ผ่าน universalEdit (หรือถ้าพี่ทำ API รับแบบก้อนเดียวจะเร็วกว่า)
+        try {
+            for (const [field, value] of Object.entries(formValues)) {
+                await fetch('/api/admin/universal-edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ collection: 'users', id: username, field, newValue: value })
+                });
+            }
+            Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success');
+            loadMembers(); // รีโหลดตาราง
+        } catch (e) {
+            Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+        }
+    }
+}
+
+// 🚩 ฟังก์ชันดูตัวแปรทั้งหมด (ย้ายจากหน้าหลักมาไว้ในนี้ตามสั่ง)
+function viewRawVariables(user) {
+    const jsonPretty = JSON.stringify(user, null, 4);
+    Swal.fire({
+        title: 'ข้อมูลตัวแปรทั้งหมด',
+        html: `<pre style="text-align:left; background:#2d3436; color:#fab1a0; padding:15px; border-radius:8px; font-size:12px; max-height:300px; overflow-y:auto;">${jsonPretty}</pre>`,
+        confirmButtonText: 'รับทราบ'
+    });
 }
 
 // 🚩 ฟังก์ชันใหม่: แสดงตัวแปรทั้งหมดที่เก็บไว้ในรายชื่อ (Popup)
