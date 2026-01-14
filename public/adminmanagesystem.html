@@ -529,91 +529,34 @@ function viewZoneDetails(zoneId) {
 
 
 function renderItem(label, field, value, id, unit = '') {
-    const displayValue = (value === undefined || value === null || value === "") 
-                         ? "ระบุข้อมูล" 
-                         : value;    
-    
-    return `
-    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
-        <span>${label}:</span>
-        <b onclick="editZoneField('${id}', '${field}', '${value || ''}')" 
-           style="cursor:pointer; color:var(--accent); text-decoration: underline;">
-            ${displayValue} ${unit}
-        </b>
-    </div>
-    `;
-}	
+        const displayVal = (value !== undefined && value !== null) ? value : 0;
+        // ป้องกัน Error จากเครื่องหมายคำพูดในภาษาไทย
+        const safeVal = String(displayVal).replace(/'/g, "\\'");
+        
+        return `
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0;">
+                <span style="color:#666;">${label}:</span>
+                <b onclick="universalEdit('zones', ${id}, '${field}', '${safeVal}')" 
+                   style="cursor:pointer; color:var(--accent); text-decoration: underline dotted;">
+                    ${displayVal} ${unit}
+                </b>
+            </div>
+        `;
+    }
 	
 
 function renderBooleanItem(label, field, value, id) {
+    const isOn = (value === true || value === 'true');
     return `
-    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
-        <span>${label}:</span>
-        <b onclick="editZoneField('${id}', '${field}', '${value}')" 
-           style="cursor:pointer; color:var(--accent); text-decoration: underline;">
-            ${value ? 'เปิด (TRUE)' : 'ปิด (FALSE)'}
-        </b>
-    </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0; align-items: center;">
+            <span style="color:#666;">${label}:</span>
+            <button onclick="toggleZoneBoolean(${id}, '${field}', ${isOn})" 
+                style="cursor:pointer; border:none; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-family: 'Kanit';
+                background: ${isOn ? '#27ae60' : '#bdc3c7'}; color: white;">
+                ${isOn ? '<i class="fas fa-check-circle"></i> เปิดใช้งาน' : '<i class="fas fa-times-circle"></i> ปิดใช้งาน'}
+            </button>
+        </div>
     `;
-}
-
-async function editZoneField(id, field, currentValue) {
-    // 1. เปิด Popup รับค่าใหม่จากแอดมิน
-    const { value: newValue } = await Swal.fire({
-        title: `แก้ไขฟิลด์: ${field}`,
-        input: 'text',
-        inputValue: currentValue,
-        showCancelButton: true,
-        confirmButtonText: 'บันทึก',
-        cancelButtonText: 'ยกเลิก',
-        inputValidator: (value) => {
-            if (!value && field !== 'assignedAdmin') { // ยอมให้เจ้าของโซนเป็นค่าว่างได้
-                return 'กรุณาระบุข้อมูล'
-            }
-        }
-    });
-
-    // 2. ถ้ากดยืนยัน (และค่าไม่เป็น null) ให้ส่งไปบันทึกที่ Server
-    if (newValue !== undefined && newValue !== null) {
-        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-        try {
-            const response = await fetch('/api/admin/universal-update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    adminUsername: localStorage.getItem('myUsername'), // ชื่อแอดมิน Lv.3 ที่ล็อกอินอยู่
-                    targetCollection: 'zones',
-                    targetId: id,
-                    field: field,
-                    newValue: newValue
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'สำเร็จ',
-                    text: result.message,
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                
-                // รีโหลดข้อมูลโซนเพื่ออัปเดตหน้าจอ
-                if (typeof loadZones === 'function') loadZones(); 
-                
-                // ปิด Popup รายละเอียดเดิมเพื่อแสดงค่าใหม่
-                Swal.close(); 
-            } else {
-                Swal.fire('ผิดพลาด', result.message, 'error');
-            }
-        } catch (e) {
-            console.error(e);
-            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-        }
-    }
 }
 
 async function toggleZoneBoolean(id, field, currentValue) {
