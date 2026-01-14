@@ -538,6 +538,44 @@ app.get('/api/admin/all-users', async (req, res) => {
     }
 });
 
+// 1.1 API สำหรับอัปเดตข้อมูลสมาชิกแบบครบวงจร
+app.post('/api/admin/update-user-full', async (req, res) => {
+    try {
+        const { username, updates } = req.body;
+        
+        if (!username || !updates) {
+            return res.status(400).json({ success: false, message: "ข้อมูลไม่ครบถ้วน" });
+        }
+
+        // กรองข้อมูลและแปลงค่าตัวเลขให้ถูกต้องก่อนบันทึก
+        const finalUpdates = {};
+        for (const [key, value] of Object.entries(updates)) {
+            // ถ้าเป็นฟิลด์ที่ควรเป็นตัวเลข ให้แปลงเป็น Number
+            if (['adminLevel', 'coins', 'BRL', 'THB', 'rating', 'ratingCount', 
+                 'completedJobs', 'totalPosts', 'totalJobs', 
+                 'merchantRatingCount', 'merchantRatingScore'].includes(key)) {
+                finalUpdates[key] = parseFloat(value) || 0;
+            } else {
+                finalUpdates[key] = value;
+            }
+        }
+
+        const result = await db.collection('users').updateOne(
+            { username: username },
+            { $set: finalUpdates }
+        );
+
+        if (result.matchedCount > 0) {
+            res.json({ success: true, message: "อัปเดตข้อมูลสมาชิกเรียบร้อยแล้ว" });
+        } else {
+            res.status(404).json({ success: false, message: "ไม่พบรายชื่อสมาชิกนี้" });
+        }
+    } catch (error) {
+        console.error("🚨 Update User Error:", error);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    }
+});
+
 // 2. API ดึงรายชื่อโซนทั้งหมด
 app.get('/api/admin/all-zones', async (req, res) => {
 	const lang = req.body.lang || 'th';

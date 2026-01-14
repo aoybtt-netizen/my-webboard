@@ -262,37 +262,54 @@ async function showUserDetail(user) {
         </button>`;
 
     const { value: formValues } = await Swal.fire({
-        title: `จัดการสมาชิก: ${username}`,
-        html: inputsHtml,
-        showCancelButton: true,
-        confirmButtonText: 'บันทึกทั้งหมด',
-        cancelButtonText: 'ยกเลิก',
-        preConfirm: () => {
-            const updatedData = {};
-            fields.forEach(f => {
-                updatedData[f.key] = parseFloat(document.getElementById(`edit-${f.key}`).value);
-            });
-            updatedData.isBanned = document.getElementById('edit-isBanned').value === 'true';
-            return updatedData;
-        }
-    });
-
-    if (formValues) {
-        // วนลูปส่งค่าไปบันทึกทีละฟิลด์ผ่าน universalEdit (หรือถ้าพี่ทำ API รับแบบก้อนเดียวจะเร็วกว่า)
-        try {
-            for (const [field, value] of Object.entries(formValues)) {
-                await fetch('/api/admin/universal-edit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ collection: 'users', id: username, field, newValue: value })
-                });
-            }
-            Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success');
-            loadMembers(); // รีโหลดตาราง
-        } catch (e) {
-            Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
-        }
+    title: `จัดการสมาชิก: ${username}`,
+    html: inputsHtml,
+    showCancelButton: true,
+    confirmButtonText: 'บันทึกทั้งหมด',
+    cancelButtonText: 'ยกเลิก',
+    preConfirm: () => {
+        const updatedData = {};
+        // ดึงค่าจากทุก Input ที่เราสร้างไว้
+        fields.forEach(f => {
+            updatedData[f.key] = document.getElementById(`edit-${f.key}`).value;
+        });
+        updatedData.isBanned = document.getElementById('edit-isBanned').value === 'true';
+        return updatedData;
     }
+});
+
+// 🚩 ส่วนการส่งข้อมูลไปบันทึก (แก้ไขใหม่)
+if (formValues) {
+    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    try {
+        const response = await fetch('/api/admin/update-user-full', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username,
+                updates: formValues
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'สำเร็จ',
+                text: result.message,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            loadMembers(); // รีโหลดตารางสมาชิกเพื่อโชว์ค่าใหม่
+        } else {
+            Swal.fire('ผิดพลาด', result.message, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    }
+}
 }
 
 // 🚩 ฟังก์ชันดูตัวแปรทั้งหมด (ย้ายจากหน้าหลักมาไว้ในนี้ตามสั่ง)
