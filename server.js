@@ -608,7 +608,7 @@ app.post('/api/admin/update-user-full', async (req, res) => {
                     name: 'SYSTEM', // ชื่อผู้โอนให้แสดงเป็น SYSTEM
                     processedBy: username, // บันทึกเป็นชื่อเขา เพื่อให้ API history ดึงไปโชว์ในหน้าเขาได้
                     processedAt: new Date(),
-                    note: `'system' : ${adjAmount > 0 ? '+' : ''}${adjAmount}`
+                    note: `ได้รับการปรับยอดจากผู้บริหาร (${adminUsername}) : ${adjAmount > 0 ? '+' : ''}${adjAmount}`
                 });
             }
         }
