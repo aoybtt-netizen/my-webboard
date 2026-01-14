@@ -498,7 +498,7 @@ function viewZoneDetails(zoneId) {
                 <p style="color: #666; font-size: 0.8em; margin-bottom: 10px;">* คลิกที่ข้อมูลตัวหนาเพื่อแก้ไข</p>
                 
                 <div style="background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee;">
-                    ${renderItem('ชื่อโซน', 'name', z.name, z.id)}
+                    ${renderItem('ชื่อโซน', 'name', z.name|| 'ไม่มี (คลิกเพื่อตั้งค่า)', z.id)}
                     <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
                         <span>พิกัด (Lat, Lng):</span>
                         <b>${z.lat || 0}, ${z.lng || 0}</b>
@@ -507,7 +507,7 @@ function viewZoneDetails(zoneId) {
                     ${renderItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
                     ${renderItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id, currency)}
                     ${renderItem('ค่าธรรมเนียมโซน', 'zoneFee', z.zoneFee, z.id, '(ทศนิยม)')}
-                    ${renderItem('ค่าระบบโซน', 'systemZone', z.systemZone, z.id, 'USDT')}
+                    ${renderItem('ค่าระบบโซน', 'systemZone', z.systemZone, z.id, 'ทศนิยม')}
                     ${renderItem('ค่ายืนยัน KYC', 'kycPrice', z.kycPrice, z.id, currency)}
 					${renderItem('KYC Zone', 'kycPriceZone', z.kycPriceZone, z.id, currency)}
 					${renderItem('KYC System Zone', 'kycPriceSystem', z.kycPriceSystem, z.id, currency)}
