@@ -518,6 +518,21 @@ app.post('/api/auth/register', async (req, res) => {
 
 
 //API ADMIN HTML
+// API สำหรับเช็คสิทธิ์แอดมินโดยเฉพาะ
+app.get('/api/admin/verify-auth', async (req, res) => {
+    try {
+        const { username } = req.query;
+        const user = await db.collection('users').findOne({ username: username }, { projection: { username: 1, adminLevel: 1 } });
+        
+        if (user) {
+            res.json({ success: true, adminLevel: user.adminLevel || 0 });
+        } else {
+            res.json({ success: false, adminLevel: 0 });
+        }
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 // 1. API ดึงรายชื่อสมาชิกทั้งหมด
 app.get('/api/admin/all-users', async (req, res) => {
     try {
@@ -554,7 +569,7 @@ app.get('/api/admin/all-users', async (req, res) => {
 });
 
 // 1.1 API สำหรับอัปเดตข้อมูลสมาชิกแบบครบวงจร
-app.post('/api/admin/update-user-full', async (req, res) => {
+app.post('/api/admin/update-user-full', async (req, res) => {	
     try {
         const { username, updates, adminUsername } = req.body;
         

@@ -200,41 +200,24 @@
 let currentAdminName = localStorage.getItem('myUsername');
 
 async function checkAdminAccess() {
-    if (!currentAdminName) {
-        console.error("ไม่พบ Username ใน localStorage");
-        window.location.href = 'index.html';
-        return;
-    }
+    const myName = localStorage.getItem('myUsername');
+    if (!myName) return window.location.href = 'index.html';
 
     try {
-        const res = await fetch(`/api/user/profile?username=${currentAdminName}`);
+        const res = await fetch(`/api/admin/verify-auth?username=${myName}`);
         const data = await res.json();
 
-        // Debug: ดูว่า Server ส่งอะไรกลับมากันแน่
-        console.log("Admin Data:", data);
-
-        // ตรวจสอบโครงสร้างข้อมูล (รองรับทั้งแบบ data.adminLevel หรือ data.user.adminLevel)
-        const level = data.adminLevel !== undefined ? data.adminLevel : (data.user ? data.user.adminLevel : 0);
-
-        if (parseInt(level) < 3) {
-            Swal.fire({
-                icon: 'error',
-                title: 'สิทธิ์ไม่เพียงพอ',
-                text: `คุณมีระดับ Lv.${level} แต่หน้านี้ต้องการ Lv.3`,
-            }).then(() => {
-                window.location.href = 'index.html';
-            });
-            return;
+        // เช็คว่า success และ Level เป็น 3 หรือไม่
+        if (data.success && parseInt(data.adminLevel) >= 3) {
+            console.log("✅ Access Granted: Level", data.adminLevel);
+            loadMembers();
+            loadZones();
+        } else {
+            Swal.fire('ปฏิเสธการเข้าถึง', 'สำหรับแอดมินระดับ 3 เท่านั้น', 'error')
+                .then(() => window.location.href = 'index.html');
         }
-        
-        // ถ้าผ่าน... ให้เริ่มโหลดข้อมูล
-        loadMembers();
-        loadZones();
-        
     } catch (e) {
-        console.error("Access Check Error:", e);
-        // หาก API พังชั่วคราว แต่อยากให้เข้าได้ ให้คอมเมนต์บรรทัดล่างนี้ทิ้งตอน Debug
-        // window.location.href = 'index.html';
+        window.location.href = 'index.html';
     }
 }
 
