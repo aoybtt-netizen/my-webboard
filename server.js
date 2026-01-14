@@ -569,7 +569,7 @@ app.get('/api/admin/all-users', async (req, res) => {
 });
 
 // 1.1 API สำหรับอัปเดตข้อมูลสมาชิกแบบครบวงจร
-app.post('/api/admin/update-user-full', async (req, res) => {	
+app.post('/api/admin/update-user-full', async (req, res) => {    
     try {
         const { username, updates, adminUsername } = req.body;
         
@@ -577,20 +577,20 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             return res.status(400).json({ success: false, message: "ข้อมูลไม่ครบถ้วน" });
         }
 
-        // 1. 🛡️ เช็คสิทธิ์คนสั่ง (ต้องเป็น Level 3 เท่านั้น)
+        // 1. เช็คสิทธิ์ Master Admin
         const master = await db.collection('users').findOne({ username: adminUsername });
-        if (!master || master.adminLevel < 3) {
-            return res.status(403).json({ success: false, message: "สิทธิ์ปฏิเสธ: เฉพาะแอดมินระดับ 3 เท่านั้น" });
+        if (!master || parseInt(master.adminLevel) < 3) {
+            return res.status(403).json({ success: false, message: "สิทธิ์ปฏิเสธ: เฉพาะแอดมินระดับ 3" });
         }
 
-        // 2. ดึงข้อมูลคนที่จะโดนปรับ
+        // 2. ดึงข้อมูลเป้าหมาย
         const targetUser = await db.collection('users').findOne({ username: username });
         if (!targetUser) return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้งานนี้" });
 
         const adjCurrency = updates.adjustmentCurrency;
         const adjAmount = parseFloat(updates.adjustmentAmount) || 0;
 
-        // 3. กรองข้อมูลฟิลด์ทั่วไป
+        // 3. กรองข้อมูล updates
         const finalUpdates = {};
         for (const [key, value] of Object.entries(updates)) {
             if (key === 'adjustmentCurrency' || key === 'adjustmentAmount') continue;
@@ -601,29 +601,30 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             }
         }
 
-        // 4. 🚩 จัดการเรื่องเงินและบันทึกประวัติ (Log)
+        // 4. จัดการเรื่องเงินและบันทึก Log
         if (adjAmount !== 0 && adjCurrency) {
             const currentVal = finalUpdates[adjCurrency] || 0;
             finalUpdates[adjCurrency] = currentVal + adjAmount;
 
-            // บันทึก Log ถ้าคนโดนปรับเป็นแอดมิน (เพื่อให้เขาเห็นในหน้าประวัติเขาเอง)
-            if (targetUser.adminLevel > 0) {
+            // บันทึก Log ถ้าคนโดนปรับเป็นแอดมิน (Lv 1, 2, 3)
+            if (parseInt(targetUser.adminLevel) > 0) {
+                // *** ตรวจสอบชื่อ Collection ให้ตรงกับตัวแปร topupRequestsCollection ***
                 await db.collection('topupRequests').insertOne({
-                    username: username,
+                    username: username, // เจ้าของบัญชี
                     amount: Math.abs(adjAmount),
                     currency: adjCurrency,
                     type: adjAmount > 0 ? 'TOPUP' : 'WITHDRAW',
                     status: 'approved',
                     method: 'SYSTEM ADJUST',
                     name: 'SYSTEM',
-                    processedBy: username, // ใส่เพื่อให้ดึงโชว์ในหน้า history ของเขาได้
+                    processedBy: username, // สำคัญ: ต้องเป็นชื่อแอดมินคนนั้น เพื่อให้ history หาเจอ
                     processedAt: new Date(),
-                    note: `Master Admin (${adminUsername})`
+                    note: `Master Admin (${adminUsername}) ปรับยอดเงิน`
                 });
             }
         }
 
-        // 5. บันทึกข้อมูลลง Database
+        // 5. บันทึกข้อมูล
         await db.collection('users').updateOne(
             { username: username },
             { 
@@ -635,7 +636,7 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             }
         );
 
-        res.json({ success: true, message: "ดำเนินการสำเร็จ" });
+        res.json({ success: true, message: "ดำเนินการสำเร็จและบันทึกประวัติแล้ว" });
 
     } catch (error) {
         console.error("🚨 Update Error:", error);
