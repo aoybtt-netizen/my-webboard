@@ -521,20 +521,35 @@ app.post('/api/auth/register', async (req, res) => {
 // 1. API ดึงรายชื่อสมาชิกทั้งหมด
 app.get('/api/admin/all-users', async (req, res) => {
     try {
-        // ดึงสมาชิกทั้งหมด เรียงตามระดับ และลบฟิลด์ password ออกก่อนส่งไปหน้าบ้าน
+        let page = parseInt(req.query.page) || 1;
+        let limit = parseInt(req.query.limit) || 50;
+        let filter = req.query.filter || 'all';
+        let skip = (page - 1) * limit;
+
+        let query = {};
+        if (filter === 'banned') query.isBanned = true;
+        if (filter === 'admin') query.adminLevel = { $gt: 0 }; // เลเวลมากกว่า 0 คือแอดมิน
+
+        // 1. นับจำนวนทั้งหมดตามเงื่อนไข
+        const totalCount = await db.collection('users').countDocuments(query);
+        
+        // 2. ดึงข้อมูลตามหน้า
         const users = await db.collection('users')
-            .find({})
-            .project({ password: 0 }) // 🚩 ไม่ส่งรหัสผ่านไปที่หน้าบ้าน (เพื่อความปลอดภัย)
-            .sort({ adminLevel: -1 })
+            .find(query)
+            .project({ password: 0 })
+            .sort({ adminLevel: -1, _id: -1 })
+            .skip(skip)
+            .limit(limit)
             .toArray();
-            
-        res.json(users);
-    } catch (error) {
-        console.error("🚨 Fetch Members Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "ไม่สามารถดึงข้อมูลสมาชิกได้" 
+
+        res.json({
+            users,
+            totalCount,
+            totalPages: Math.ceil(totalCount / limit),
+            currentPage: page
         });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 
