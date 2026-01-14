@@ -529,33 +529,31 @@ function viewZoneDetails(zoneId) {
 
 
 function renderItem(label, field, value, id, unit = '') {
-        const displayValue = (value === undefined || value === null || value === "") 
+    const displayValue = (value === undefined || value === null || value === "") 
                          ? "ระบุข้อมูล" 
-                         : value;	
-        
-        return `
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
-            <span>${label}:</span>
-            <b onclick="editZoneField('${targetId}', '${field}', '${value || ''}')" 
-               style="cursor:pointer; color:var(--accent); text-decoration: underline;">
-                ${displayValue} ${unit}
-            </b>
-        </div>
+                         : value;    
+    
+    return `
+    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
+        <span>${label}:</span>
+        <b onclick="editZoneField('${id}', '${field}', '${value || ''}')" 
+           style="cursor:pointer; color:var(--accent); text-decoration: underline;">
+            ${displayValue} ${unit}
+        </b>
+    </div>
     `;
-}
+}	
 	
 
 function renderBooleanItem(label, field, value, id) {
-    const isOn = (value === true || value === 'true');
     return `
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0; align-items: center;">
-            <span style="color:#666;">${label}:</span>
-            <button onclick="toggleZoneBoolean(${id}, '${field}', ${isOn})" 
-                style="cursor:pointer; border:none; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-family: 'Kanit';
-                background: ${isOn ? '#27ae60' : '#bdc3c7'}; color: white;">
-                ${isOn ? '<i class="fas fa-check-circle"></i> เปิดใช้งาน' : '<i class="fas fa-times-circle"></i> ปิดใช้งาน'}
-            </button>
-        </div>
+    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 6px 0;">
+        <span>${label}:</span>
+        <b onclick="editZoneField('${id}', '${field}', '${value}')" 
+           style="cursor:pointer; color:var(--accent); text-decoration: underline;">
+            ${value ? 'เปิด (TRUE)' : 'ปิด (FALSE)'}
+        </b>
+    </div>
     `;
 }
 
