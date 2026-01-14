@@ -472,16 +472,14 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
+function toggleSidebar() {
+       const sidebar = document.getElementById('sidebar');
+       const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('active');
+        overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+}
 
-	
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('active');
-            overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
-        }
-
-    function switchTab(tab, type = 'TOPUP') {
+function switchTab(tab, type = 'TOPUP') {
     isHistoryMode = false;
     transactionType = type; // เก็บสถานะว่าคือ TOPUP หรือ WITHDRAW
     
@@ -518,8 +516,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const minVal = (transactionType === 'TOPUP') 
                            ? (zoneInfo.minTopup || 0) 
                            : (zoneInfo.minWithdraw || 0);
-            const currency = zoneInfo.zoneCurrency || 'USD';
-            
+            const currency = zoneInfo.currency || zoneInfo.zoneCurrency || 'USD';
             // ใส่ตัวเลขและสกุลเงิน
             if (minValDisplay) minValDisplay.innerText = minVal.toLocaleString();
             if (minCurrDisplay) minCurrDisplay.innerText = currency;
