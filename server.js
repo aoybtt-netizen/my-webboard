@@ -556,23 +556,19 @@ app.get('/api/admin/all-users', async (req, res) => {
 // 1.1 API สำหรับอัปเดตข้อมูลสมาชิกแบบครบวงจร
 app.post('/api/admin/update-user-full', async (req, res) => {
     try {
-        const { username, updates } = req.body;
+        const { username, updates, adminUsername } = req.body; // รับ adminUsername มาด้วย
         
         if (!username || !updates) {
             return res.status(400).json({ success: false, message: "ข้อมูลไม่ครบถ้วน" });
         }
 
-        // 1. แยกค่าการปรับปรุงเงิน (Adjustment) ออกมา
-        const adjCurrency = updates.adjustmentCurrency; // 'coins', 'THB', หรือ 'BRL'
+        const adjCurrency = updates.adjustmentCurrency;
         const adjAmount = parseFloat(updates.adjustmentAmount) || 0;
 
-        // 2. กรองข้อมูลและแปลงค่าตัวเลข
         const finalUpdates = {};
         for (const [key, value] of Object.entries(updates)) {
-            // ข้ามฟิลด์ที่เป็นตัวแปรช่วยคำนวณ (ไม่ต้องเซฟลง DB ตรงๆ)
             if (key === 'adjustmentCurrency' || key === 'adjustmentAmount') continue;
 
-            // แปลงฟิลด์ตัวเลขให้ถูกต้อง
             if (['adminLevel', 'coins', 'BRL', 'THB', 'rating', 'ratingCount', 
                  'completedJobs', 'totalPosts', 'totalJobs', 
                  'merchantRatingCount', 'merchantRatingScore'].includes(key)) {
@@ -582,17 +578,28 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             }
         }
 
-        // 3. คำนวณยอดเงินใหม่ (ถ้ามีการใส่ตัวเลขในช่อง Quick Adjust)
+        // --- 🚩 ส่วนที่แก้ไข: คำนวณยอดเงินและบันทึกประวัติ ---
         if (adjAmount !== 0 && adjCurrency) {
-            // ตรวจสอบว่ามี field กระเป๋าเงินนั้นอยู่ใน finalUpdates หรือไม่
-            // (ปกติจะมีเพราะดึงมาจากหน้าฟอร์มอยู่แล้ว)
             const currentVal = finalUpdates[adjCurrency] || 0;
             finalUpdates[adjCurrency] = currentVal + adjAmount;
-            
-            // หมายเหตุ: ตรงนี้เราบวกเข้าไปใน object เลย เพราะเดี๋ยวเราจะใช้ $set บันทึกค่าทั้งหมดทีเดียว
-        }
 
-        // 4. บันทึกลงฐานข้อมูล
+            // บันทึกลงในประวัติธุรกรรม (topupRequestsCollection)
+            // เพื่อให้แอดมินระดับ 3 ตรวจสอบย้อนหลังได้
+            await db.collection('topupRequests').insertOne({
+                username: username,
+                amount: Math.abs(adjAmount),
+                currency: adjCurrency,
+                type: adjAmount > 0 ? 'TOPUP' : 'WITHDRAW', // ถ้าเป็น + คือเติม, ถ้า - คือถอน
+                status: 'approved',
+                method: 'SYSTEM (Manual Adjust)', // ระบุว่าเป็นรายการจากระบบ
+                name: 'SYSTEM', // ชื่อผู้โอนเป็น SYSTEM ตามที่ต้องการ
+                processedBy: adminUsername || 'Admin', // แอดมินที่เป็นคนกด
+                processedAt: new Date(),
+                note: `ปรับปรุงยอดเงินโดยแอดมิน (${adjAmount > 0 ? '+' : ''}${adjAmount})`
+            });
+        }
+        // ----------------------------------------------
+
         const result = await db.collection('users').updateOne(
             { username: username },
             { $set: finalUpdates }
@@ -602,7 +609,7 @@ app.post('/api/admin/update-user-full', async (req, res) => {
             let message = "อัปเดตข้อมูลสมาชิกเรียบร้อยแล้ว";
             if (adjAmount !== 0) {
                 const action = adjAmount > 0 ? "เพิ่มเงิน" : "หักเงิน";
-                message += ` (และ${action} ${Math.abs(adjAmount)} ${adjCurrency.toUpperCase()} สำเร็จ)`;
+                message += ` (และบันทึกประวัติ ${action} ${Math.abs(adjAmount)} ${adjCurrency.toUpperCase()} แล้ว)`;
             }
             res.json({ success: true, message: message });
         } else {
