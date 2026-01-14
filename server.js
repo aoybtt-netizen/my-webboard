@@ -5520,6 +5520,21 @@ socket.on('update-kyc-location', async (data) => {
 
 
 
+socket.on('admin-join', (adminName) => {
+    socket.join(adminName);
+    console.log(`Admin ${adminName} joined room.`);
+});
+
+// 2. รับแจ้งเตือนจาก User แล้วส่งต่อให้ Admin
+socket.on('newTransactionRequest', (data) => {
+    console.log(`🔔 New Transaction from ${data.username} to Admin ${data.adminId}`);
+    io.to(data.adminId).emit('update-topup-list', {
+        message: `New request from ${data.username}`,
+        amount: data.amount,
+        type: data.type
+    });
+});
+
 	
 
 

@@ -665,13 +665,7 @@ async function showContent(type) {
     const title = document.getElementById('content-title');
     const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
-    // 1. ดึงอ้างอิง Section ต่างๆ (รวม Members เข้ามาด้วย)
-    const topupListSec = document.getElementById('section-topup-list');
-    const adminChatSec = document.getElementById('section-admin-chat');
-    const kycListSec = document.getElementById('section-kyc-list');
-    const membersListSec = document.getElementById('section-members-list'); // ดึงส่วนรายชื่อสมาชิก
-
-    // 2. สร้าง/ดึง "ที่เก็บของลับ" (Storage)
+    // --- 1. เตรียม Storage ---
     let storage = document.getElementById('hidden-storage');
     if (!storage) {
         storage = document.createElement('div');
@@ -680,35 +674,46 @@ async function showContent(type) {
         document.body.appendChild(storage);
     }
 
-    // 3. 🚩 ย้ายทุก Section ไปพักไว้ใน storage (ป้องกันของหายเมื่อสั่งล้างหน้าจอ)
-    if (topupListSec) storage.appendChild(topupListSec);
-    if (adminChatSec) storage.appendChild(adminChatSec);
-    if (kycListSec) storage.appendChild(kycListSec);
-    if (membersListSec) storage.appendChild(membersListSec); // ✅ เก็บสมาชิกไว้ในที่ปลอดภัย
+    // --- 2. เก็บของเข้า Storage (เช็คให้ชัวร์ก่อนย้าย) ---
+    // พยายามหา Element จากทั้ง display และ storage
+    const getEl = (id) => document.getElementById(id) || storage.querySelector(`#${id}`);
+    
+    const sections = {
+        topup: getEl('section-topup-list'),
+        chat: getEl('section-admin-chat'),
+        kyc: getEl('section-kyc-list'),
+        members: getEl('section-members-list')
+    };
 
-    // 4. ล้างหน้าจอหลัก (ตอนนี้ปลอดภัยแล้ว เพราะ Element ถูกย้ายไปเก็บที่ Storage ไม่ได้ถูกทำลาย)
-    display.innerHTML = ''; 
+    // ย้ายทุกอย่างไปเก็บที่ storage ก่อนล้างจอ
+    Object.values(sections).forEach(sec => {
+        if (sec) storage.appendChild(sec);
+    });
 
-    // จัดการสถานะปุ่มเมนู (Active)
+    display.innerHTML = ''; // ล้างหน้าจอได้อย่างปลอดภัยแล้ว
+
+    // --- 3. จัดการ Active Menu ---
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     let targetItem = document.querySelector(`.menu-item[onclick*="'${type}'"]`);
     if (targetItem) targetItem.classList.add('active');
 
-    // --- ส่วนการแสดงผลตามประเภท (Switch View) ---
+    // --- 4. Switch Case การแสดงผล ---
 
     if (type === 'topup') {
         title.innerText = translations[currentLang].title_transactionsss;
-        // ดึงของจาก storage กลับมาแสดง
-        if (topupListSec) {
-            display.appendChild(topupListSec);
-            topupListSec.style.display = 'block';
+
+        // 🚩 แก้ไขจุดที่หาย: ถ้าหา section ไม่เจอ ให้สร้างใหม่เลย!
+        let topupSec = sections.topup;
+        if (!topupSec) {
+            topupSec = document.createElement('div');
+            topupSec.id = 'section-topup-list';
+            topupSec.innerHTML = `<div id="topup-list-container"></div>`; // สร้าง container รอไว้
         }
         
-        if (adminChatSec) {
-            display.appendChild(adminChatSec);
-            adminChatSec.style.display = 'none'; // บรรทัดที่เคยเออเร่อ จะปลอดภัยแล้ว
-        }
-
+        display.appendChild(topupSec);
+        topupSec.style.display = 'block';
+        
+        // สั่งโหลดข้อมูลใหม่ทุกครั้งที่กดเข้ามา
         const container = document.getElementById('topup-list-container');
         if (container) {
             container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Loading...</p>';
@@ -717,14 +722,37 @@ async function showContent(type) {
 
     } else if (type === 'kyc') {
         title.innerText = translations[currentLang].title_kyc_verificationnn;
-        // ดึงส่วน KYC จาก storage มาแสดง
-        if (kycListSec) display.appendChild(kycListSec);
-        kycListSec.style.display = 'block';
-        
+        if (sections.kyc) {
+            display.appendChild(sections.kyc);
+            sections.kyc.style.display = 'block';
+        }
         document.getElementById('kyc-list-container').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> Loading KYC data...</p>';
-		loadKYCRequests();
+        loadKYCRequests();
 
+    } else if (type === 'history') {
+        title.innerText = translations[currentLang].title_zone_history;
+        display.innerHTML = `
+            <div style="display: flex; gap: 10px; padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <button onclick="switchHistoryTab('finance')" id="tab-fin" style="flex:1; padding: 10px; border:none; border-radius:8px; cursor:pointer; font-family:'Kanit'; font-weight:bold;">
+                    <i class="fas fa-wallet"></i> ${translations[currentLang].tab_finance}
+                </button>
+                <button onclick="switchHistoryTab('kyc')" id="tab-kyc" style="flex:1; padding: 10px; border:none; border-radius:8px; cursor:pointer; font-family:'Kanit'; font-weight:bold;">
+                    <i class="fas fa-id-card"></i> ${translations[currentLang].tab_kyc}
+                </button>
+            </div>
+            <div id="admin-history-container" style="padding: 0 5px;"><p style="text-align:center; color:#999;">Loading history...</p></div>
+        `;
+        switchHistoryTab('finance');
+
+    } else if (type === 'members') {
+        title.innerText = translations[currentLang].title_zone_members;
+        if (sections.members) {
+            display.appendChild(sections.members);
+            sections.members.style.display = 'block';
+            loadMemberList();
+        }
     } else if (type === 'automessage') {
+        // ... (โค้ด Automessage เดิมของพี่) ...
         title.innerText = translations[currentLang].title_auto_msg_settings;
         display.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">Loading settings...</p>';
         try {
@@ -735,40 +763,8 @@ async function showContent(type) {
         } catch (e) {
             display.innerHTML = renderAutoMessageForm();
         }
-
-    } else if (type === 'history') {
-        title.innerText = translations[currentLang].title_zone_history;
-    
-    // สร้างโครงสร้างที่มี Tab Switcher
-    display.innerHTML = `
-        <div style="display: flex; gap: 10px; padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-            <button onclick="switchHistoryTab('finance')" id="tab-fin" style="flex:1; padding: 10px; border:none; border-radius:8px; cursor:pointer; font-family:'Kanit'; font-weight:bold; transition:0.3s;">
-                <i class="fas fa-wallet"></i> ${translations[currentLang].tab_finance}
-            </button>
-            <button onclick="switchHistoryTab('kyc')" id="tab-kyc" style="flex:1; padding: 10px; border:none; border-radius:8px; cursor:pointer; font-family:'Kanit'; font-weight:bold; transition:0.3s;">
-                <i class="fas fa-id-card"></i> ${translations[currentLang].tab_kyc}
-            </button>
-        </div>
-        <div id="admin-history-container" style="padding: 0 5px;"><p style="text-align:center; color:#999;">Loading history...</p></div>
-    `;
-    
-    // เริ่มต้นที่หน้าการเงิน
-    switchHistoryTab('finance');
-        //loadAdminHistory(); 
-
-    } else if (type === 'members') {
-        title.innerText = translations[currentLang].title_zone_members;
-        // ✅ ดึงรายชื่อสมาชิกจาก storage กลับมาแสดง
-        if (membersListSec) {
-            display.appendChild(membersListSec);
-            membersListSec.style.display = 'block';
-            loadMemberList(); 
-        } else {
-            display.innerHTML = '<p style="text-align:center; color:red;">Error: Members section not found!</p>';
-        }
     }
-    
-    // ปิด Sidebar อัตโนมัติบนมือถือ
+
     if(window.innerWidth <= 768 && document.getElementById('sidebar')?.classList.contains('active')) {
         toggleSidebar();
     }
@@ -975,6 +971,8 @@ function confirmTopup(user, amount) {
     window.onload = async () => {
 	applyMerchantTranslations();
     const myUsername = localStorage.getItem('myUsername');
+	const myAdminName = localStorage.getItem('myUsername');
+	socket.emit('admin-join', myAdminName);
     if (!myUsername) { 
         window.location.href = 'index.html'; 
         return; 
@@ -2314,8 +2312,26 @@ async function executeExchange(amount) {
 socket.on('kyc-location-updated', (data) => {
     if (currentKYCRequestId === data.username) {
         if (typeof updateModalDistance === "function") updateModalDistance();
-        loadKYCRequests(); // อัปเดตรายการข้างหลังด้วย
+        loadKYCRequests();
     }
+});
+
+
+socket.on('update-topup-list', (data) => {
+    console.log("🔔 ได้รับงานใหม่:", data);
+    const topupListSec = document.getElementById('section-topup-list');
+    if (topupListSec && topupListSec.style.display !== 'none') {
+        loadTopupRequests();
+    } else {
+        updateBadges(); 
+    }
+    const Toast = Swal.mixin({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
+    });
+    Toast.fire({
+        icon: 'info',
+        title: `New request! ${data.type}: ${data.amount}`
+    });
 });
 
 
