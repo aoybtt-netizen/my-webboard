@@ -616,10 +616,11 @@ app.post('/api/admin/update-user-full', async (req, res) => {
                     type: adjAmount > 0 ? 'TOPUP' : 'WITHDRAW',
                     status: 'approved',
                     method: 'SYSTEM ADJUST',
-                    name: 'SYSTEM', // ชื่อคนส่ง/โอน
+                    name: 'SYSTEM',        // ชื่อผู้โอนให้โชว์ว่า SYSTEM
+					sender: 'SYSTEM',      // ป้องกันหน้าบ้านดึงจากฟิลด์ sender
                     processedBy: username, // บันทึกเป็นชื่อเขา เพื่อให้ history ของเขาดึงไปโชว์ได้
                     processedAt: new Date(),
-                    note: `โดย Master Admin (${adminUsername})`
+                    note: `Master Admin (${adminUsername})`
                 });
             }
         }
