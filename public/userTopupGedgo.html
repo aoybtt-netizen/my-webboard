@@ -1017,16 +1017,31 @@ async function viewArchivedChat(requestId, amount, status, createdAt, processedA
 
 
 async function submitTransactionRequest() {
-	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-	const i18n = translations[currentLang];
-    const amount = document.getElementById('topup-amount').value;
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const i18n = translations[currentLang];
+    const amount = parseFloat(document.getElementById('topup-amount').value);
     const bankDetails = document.getElementById('withdraw-bank-details').value;
     const username = localStorage.getItem('myUsername');
     
+    // 🚩 1. ตรวจสอบยอดขั้นต่ำจากข้อมูลโซนที่เราเก็บไว้ใน window
+    const zoneInfo = window.currentZoneData;
+    if (zoneInfo) {
+        const minLimit = (transactionType === 'TOPUP') ? (zoneInfo.minTopup || 0) : (zoneInfo.minWithdraw || 0);
+        if (amount < minLimit) {
+            // แจ้งเตือนว่ายอดต่ำกว่าขั้นต่ำ
+            return Swal.fire({
+                icon: 'error',
+                title: i18n.swal_error_title,
+                text: `${i18n.lbl_min_amount} ${minLimit} ${zoneInfo.currency || 'USD'}`
+            });
+        }
+    }
+
     if (!amount || amount <= 0) return alert(i18n.err_invalid_amount);
+    
     if (transactionType === 'WITHDRAW' && !bankDetails) {
-				return alert(i18n.err_no_bank_details);
-		}
+        return alert(i18n.err_no_bank_details);
+    }
 
     const currentBalance = parseFloat(document.getElementById('current-balance').innerText);
     if (transactionType === 'WITHDRAW' && amount > currentBalance) {
@@ -1042,7 +1057,8 @@ async function submitTransactionRequest() {
                 amount: amount,
                 type: transactionType,
                 bankInfo: bankDetails,
-                location: localStorage.getItem('userPrimaryLocation') 
+                location: localStorage.getItem('userPrimaryLocation'),
+                lang: currentLang 
             })
         });
 

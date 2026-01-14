@@ -4065,41 +4065,40 @@ app.get('/api/rider/check-working-status', async (req, res) => {
 
 // 1.1 ส่งคำขอเติมเงิน
 app.post('/api/topup/request', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     try {
         const { username, amount, location, type, bankInfo } = req.body;
         const locationObj = JSON.parse(decodeURIComponent(location));
         
-        // 1. หาโซนรับผิดชอบ
         const zoneInfo = await findResponsibleAdmin(locationObj);
         
         if (!zoneInfo || !zoneInfo.zoneData.assignedAdmin) {
-				return res.status(400).json({ error: serverTranslations[lang].err_no_zone_service });
-			}
+            return res.status(400).json({ error: serverTranslations[lang].err_no_zone_service });
+        }
 
         const adminId = zoneInfo.zoneData.assignedAdmin;
         const amountNum = parseFloat(amount);
-
-        // ✅ 2. ระบุชื่อฟิลด์กระเป๋าเงิน (เช่น 'thb', 'brl', 'usd')
-        // ถ้าโซนไม่มีสกุลเงินระบุ ให้ใช้ 'coins' หรือ 'usd' เป็นค่า default
         const currencyField = zoneInfo.zoneData.zoneCurrency || 'usd';
 
-        // --- Logic สำหรับการถอนเงิน (WITHDRAW) ---
+        // 🚩 1. ตรวจสอบยอดขั้นต่ำ (Security Check)
+        const minLimit = (type === 'WITHDRAW') ? (zoneInfo.zoneData.minWithdraw || 0) : (zoneInfo.zoneData.minTopup || 0);
+        if (amountNum < minLimit) {
+            return res.status(400).json({ error: `${serverTranslations[lang].lbl_min_amount} ${minLimit} ${currencyField.toUpperCase()}` });
+        }
+
         if (type === 'WITHDRAW') {
             const user = await usersCollection.findOne({ username });
-            
-            // ✅ 3. เช็คเงินจากฟิลด์ที่ถูกต้อง (user[currencyField])
             const currentBalance = user[currencyField] || 0;
 
             if (!user || currentBalance < amountNum) {
-					const errorMsg = serverTranslations[lang].err_withdraw_insufficient + 
-						currencyField + 
-						serverTranslations[lang].err_withdraw_insufficient_tail;
-					return res.status(400).json({ error: errorMsg });
-				}
+                // แจ้งเงินไม่พอ
+                const errorMsg = serverTranslations[lang].err_withdraw_insufficient + 
+                                currencyField.toUpperCase() + 
+                                serverTranslations[lang].err_withdraw_insufficient_tail;
+                return res.status(400).json({ error: errorMsg });
+            }
             
-            // ✅ 4. หักเงินออกจากฟิลด์ที่ถูกต้อง (Dynamic Key)
-            // ใช้ [currencyField] เพื่อบอก MongoDB ว่าให้อัปเดตฟิลด์ชื่อนี้
+            // หักเงินทันที (ระบบคนกลาง)
             await usersCollection.updateOne(
                 { username }, 
                 { $inc: { [currencyField]: -amountNum } } 
@@ -4114,7 +4113,6 @@ app.post('/api/topup/request', async (req, res) => {
             bankInfo: bankInfo || null,
             status: 'pending',
             createdAt: new Date(),
-            // ✅ 5. บันทึกสกุลเงินไว้ในประวัติด้วย เพื่อให้ Admin รู้ว่านี่คือยอดของสกุลอะไร
             currency: currencyField 
         };
 
