@@ -959,6 +959,7 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                 lng: parseFloat(request.lng), // 📍 บันทึกพิกัดจริงจากคำขอ
                 phone: request.phone || "",
                 isStore: true,
+				zoneId: request.zoneId, //โซนที่อนุมัติ
                 updatedAt: Date.now()
             });
 
@@ -997,6 +998,26 @@ app.post('/api/admin/process-merchant', async (req, res) => {
     } catch (e) {
         console.error("🚨 Process Error:", e);
         res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+//แอดมินดูร้านค้าในโซน
+app.get('/api/admin/my-zone-merchants', async (req, res) => {
+    try {
+        const { adminName } = req.query;
+        // 1. หาข้อมูลแอดมินก่อนว่าดูแลโซนไหน (สมมติเก็บโซนไว้ใน Profile แอดมิน หรือในคอลเลกชันโซน)
+        const adminUser = await db.collection('users').findOne({ username: adminName });
+        const managedZoneId = adminUser.managedZoneId; // หรือวิธีดึง ZoneID ที่พี่ใช้อยู่
+
+        // 2. ดึงร้านค้าทั้งหมดที่มี zoneId ตรงกัน
+        const merchants = await db.collection('merchant_locations').find({ 
+            zoneId: managedZoneId, 
+            isStore: true 
+        }).toArray();
+
+        res.json({ success: true, merchants });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
