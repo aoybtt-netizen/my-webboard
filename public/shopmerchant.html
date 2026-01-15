@@ -199,29 +199,45 @@ header {
 
     // 2. โหลดข้อมูลร้านค้าจาก API
     async function loadShops() {
-    if (!userCoords) return; 
+    if (!userCoords) {
+        console.warn("⚠️ [Debug] ไม่มีพิกัดผู้ใช้ (userCoords is null)");
+        return; 
+    }
 
     try {
+        console.log(`📡 [Debug] กำลังเรียก API ด้วยพิกัด: lat=${userCoords.lat}, lng=${userCoords.lng}`);
+        
         const res = await fetch(`/api/marketplace/all-merchants?lat=${userCoords.lat}&lng=${userCoords.lng}`);
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`❌ [Debug] Server ตอบกลับ Error ${res.status}:`, errorText);
+            throw new Error(`Server Error ${res.status}`);
+        }
+
         const data = await res.json();
+        console.log("✅ [Debug] ข้อมูลที่ได้รับจาก API:", data);
         
         if (data.success) {
-            // --- ส่วนที่เพิ่มเข้าไปเพื่อเปลี่ยนชื่อโซนบน Header ---
             const zoneDisplay = document.getElementById('currentZoneName');
+            console.log("📍 [Debug] ชื่อโซนที่ได้รับ:", data.currentZone);
+            
             if (data.currentZone) {
                 zoneDisplay.innerText = `โซน: ${data.currentZone}`;
             } else {
                 zoneDisplay.innerText = "ร้านค้าใกล้เคียง (นอกโซน)";
             }
-            // ----------------------------------------------
             
             allShops = data.shops;
+            console.log(`🛒 [Debug] พบร้านค้าทั้งหมด ${allShops.length} ร้าน`);
             renderShops(allShops);
+        } else {
+            console.warn("⚠️ [Debug] API ส่ง success: false", data.message);
         }
         document.getElementById('loader').style.display = 'none';
     } catch (e) {
-        console.error("Fetch shops error:", e);
-        document.getElementById('currentZoneName').innerText = "เลือกร้านค้า";
+        console.error("❌ [Debug] Fetch error:", e);
+        document.getElementById('currentZoneName').innerText = "เลือกร้านค้า (Error)";
     }
 }
 

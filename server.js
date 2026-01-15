@@ -4203,54 +4203,61 @@ app.get('/api/rider/check-working-status', async (req, res) => {
 
 // MerchantShop
 app.get('/api/marketplace/all-merchants', async (req, res) => {
+    console.log("🚀 [Backend Debug] ได้รับ Request ไปที่ /api/marketplace/all-merchants");
     try {
-        const userLat = parseFloat(req.query.lat);
-        const userLng = parseFloat(req.query.lng);
+        const { lat, lng } = req.query;
+        console.log(`📍 [Backend Debug] รับพิกัด Query: lat=${lat}, lng=${lng}`);
+
+        const userLat = parseFloat(lat);
+        const userLng = parseFloat(lng);
 
         if (isNaN(userLat) || isNaN(userLng)) {
+            console.error("❌ [Backend Debug] พิกัดที่ได้รับไม่ใช่ตัวเลข");
             return res.status(400).json({ success: false, message: "Missing location data" });
         }
 
         const locationObj = { lat: userLat, lng: userLng };
 
-        // 1. หาข้อมูลโซนโดยใช้ฟังก์ชันเดียวกับโปรไฟล์ (findResponsibleAdmin)
+        // 1. หาข้อมูลโซน
         let zoneName = "Global Zone";
-        let zoneData = null;
-        
         try {
+            console.log("🔍 [Backend Debug] กำลังหาโซนด้วย findResponsibleAdmin...");
             const zoneInfo = await findResponsibleAdmin(locationObj);
             if (zoneInfo && zoneInfo.zoneData) {
                 zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
-                zoneData = zoneInfo.zoneData;
+                console.log(`✅ [Backend Debug] พบโซน: ${zoneName}`);
+            } else {
+                console.log("⚠️ [Backend Debug] ไม่พบโซนสำหรับพิกัดนี้");
             }
         } catch (zoneErr) {
-            console.error("Zone Detection Error:", zoneErr);
+            console.error("❌ [Backend Debug] Zone Detection Error:", zoneErr.message);
         }
 
-        // 2. ค้นหาร้านค้าในรัศมี 10 กม. 
-        // แนะนำให้ใส่ try-catch ครอบส่วน $near ไว้เผื่อกรณี Index ยังไม่สมบูรณ์
+        // 2. ค้นหาร้านค้า
         let shops = [];
         try {
+            console.log("🔍 [Backend Debug] กำลังค้นหาร้านค้าในรัศมี 10 กม. จาก MongoDB...");
             shops = await db.collection('users').find({
                 location: {
                     $near: {
                         $geometry: { type: "Point", coordinates: [userLng, userLat] },
-                        $maxDistance: 10000 // 10 กม.
+                        $maxDistance: 10000 
                     }
                 },
                 adminLevel: { $gt: 0 },
                 isOnline: true
             }).toArray();
+            console.log(`✅ [Backend Debug] พบร้านค้าในรัศมี: ${shops.length} ร้าน`);
         } catch (dbErr) {
-            console.error("MongoDB Geospatial Error:", dbErr);
-            // ถ้า $near พัง ให้ fallback ดึงร้านค้าทั้งหมดมาแสดงก่อน (หรือส่งแจ้งเตือนให้สร้าง Index)
-            return res.status(500).json({ success: false, message: "กรุณาสร้าง 2dsphere index ในคอลเลกชัน users" });
+            console.error("❌ [Backend Debug] MongoDB Geospatial Error:", dbErr.message);
+            // ถ้าพิกัดร้านค้าไม่มี index 2dsphere จะมาติดที่ Error นี้ครับ
+            return res.status(500).json({ success: false, message: "Geospatial Index Error: " + dbErr.message });
         }
 
         // 3. ส่งข้อมูลกลับ
         res.json({
             success: true,
-            currentZone: zoneName, // ส่งชื่อโซนที่หาได้จาก findResponsibleAdmin
+            currentZone: zoneName,
             shops: shops.map(s => ({
                 username: s.username,
                 shopName: s.shopName || s.username,
@@ -4263,7 +4270,7 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("🚨 Marketplace API Error:", error);
+        console.error("🚨 [Backend Debug] Marketplace API Crash:", error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });
