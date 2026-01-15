@@ -1731,11 +1731,9 @@ async function loadSavedLocations() {
     const data = await res.json();
     if (data.success) {
         mySavedLocations = data.locations;
-
         const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
-
         if (storeLoc) {
-            displayMerchantLocation(storeLoc.lat, storeLoc.lng);
+            displayMerchantLocation(storeLoc.lat, storeLoc.lng, storeLoc.phone);
         }
     }
 }
