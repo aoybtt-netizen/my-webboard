@@ -853,6 +853,7 @@ const translations = {
         'msg_merchant_fee_info': '* ครั้งแรกฟรี ครั้งต่อไปมีค่าธรรมเนียมเปลี่ยนชื่อตามโซน',
         'title_merchant_confirm': 'ยืนยันพิกัดและชื่อร้าน',
 		'confirm_shop_name_label': 'ชื่อร้านที่คุณต้องการใช้:',
+		'title_merchant_verify': 'ยืนยันการส่งคำขอเปิดร้าน',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1054,6 +1055,7 @@ const translations = {
         'msg_merchant_fee_info': '* First time free, subsequent changes incur zone fees',
         'title_merchant_confirm': 'Confirm Location & Shop Name',
 		'confirm_shop_name_label': 'The shop name you want to use:',
+		'title_merchant_verify': 'Confirm Merchant Request',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1255,6 +1257,7 @@ const translations = {
         'msg_merchant_fee_info': '* Primeira vez grátis, alterações subsequentes sujeitas a taxas de zona',
         'title_merchant_confirm': 'Confirmar Localização e Nome da Loja',
 		'confirm_shop_name_label': 'O nome da loja que você deseja usar:',
+		'title_merchant_verify': 'Confirmar solicitação de comerciante',
     }
 };
 
@@ -1769,7 +1772,7 @@ async function confirmMapLocation() {
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: translations[currentLang].btn_confirm || 'ส่งคำขอ',
-            cancelButtonText: translations[currentLang].btn_cancel || 'ยกเลิก',
+            cancelButtonText: translations[currentLang].swal_cancel || 'ยกเลิก',
             footer: `<small style="color:red;">${translations[currentLang]['msg_merchant_fee_info']}</small>`
         });
 
