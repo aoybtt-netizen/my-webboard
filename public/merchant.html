@@ -515,7 +515,7 @@
 
     <div id="merchant-sidebar" class="merchant-sidebar">
         <div class="sidebar-header">
-            <h3>จัดการพิกัด</h3>
+            <h3 data-i18n-key="sidebar_title_manage">จัดการพิกัด</h3>
             <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
         </div>
         <div class="sidebar-menu">
@@ -564,7 +564,10 @@
 	
 
     <div class="container" id="active-tasks-container">
-        <h4 style="color: #666; margin-left: 10px;"><i class="fas fa-clock"></i> งานที่กำลังดำเนินการ</h4>
+        <h4 style="color: #666; margin-left: 10px;">
+    <i class="fas fa-clock"></i> 
+    <span data-i18n-key="title_active_jobs">งานที่กำลังดำเนินการ</span>
+</h4>
         <div id="active-tasks-list">
             </div>
     </div>
@@ -855,6 +858,8 @@ const translations = {
 		'confirm_shop_name_label': 'ชื่อร้านที่คุณต้องการใช้:',
 		'title_merchant_verify': 'ยืนยันการส่งคำขอเปิดร้าน',
 		'btn_confirm': 'ส่งคำขอ',
+		'sidebar_title_manage': 'จัดการพิกัด',
+        'title_active_jobs': 'งานที่กำลังดำเนินการ',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1058,6 +1063,8 @@ const translations = {
 		'confirm_shop_name_label': 'The shop name you want to use:',
 		'title_merchant_verify': 'Confirm Merchant Request',
 		'btn_confirm': 'Send request',
+		'sidebar_title_manage': 'Manage Locations',
+        'title_active_jobs': 'Active Tasks',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1261,6 +1268,8 @@ const translations = {
 		'confirm_shop_name_label': 'O nome da loja que você deseja usar:',
 		'title_merchant_verify': 'Confirmar solicitação de comerciante',
 		'btn_confirm': 'Enviar solicitação',
+		'sidebar_title_manage': 'Gerenciar Locais',
+        'title_active_jobs': 'Tarefas em Andamento',
     }
 };
 
