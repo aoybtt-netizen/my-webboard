@@ -1743,50 +1743,64 @@ async function confirmMapLocation() {
     // 3. ส่วนแยก: ถ้าเป็นโหมดบันทึกร้านค้า (isStoreMode)
     // ---------------------------------------------------------
     if (isStoreMode) {
-        // ดึงชื่อร้านปัจจุบันมาโชว์ในช่องกรอก (ถ้ามี)
-        const currentShopName = (typeof userProfile !== 'undefined' && userProfile.shopName) ? userProfile.shopName : myUsername;
+        // 🚩 1. ดึงชื่อจากช่องกรอกในหน้า Modal (id="map-loc-name") มาใช้เลย
+        const inputShopName = document.getElementById('map-loc-name').value.trim();
+        
+        // ถ้าไม่กรอกชื่อร้าน ให้เตือนก่อน
+        if (!inputShopName) {
+            return Swal.fire({
+                icon: 'warning',
+                text: translations[currentLang].err_no_location_name || 'กรุณาระบุชื่อร้านค้าของคุณ'
+            });
+        }
 
-        const { value: shopName } = await Swal.fire({
-            title: translations[currentLang].title_merchant_verify || 'ยืนยันพิกัดและชื่อร้าน',
-            input: 'text',
-            inputValue: currentShopName,
-            inputPlaceholder: translations[currentLang]['placeholder_shop_name'],
+        // 🚩 2. ใช้ Swal เป็นตัวยืนยันสุดท้าย (ไม่ต้องกรอกซ้ำแล้ว)
+        const result = await Swal.fire({
+            title: translations[currentLang].title_merchant_verify || 'ยืนยันการส่งคำขอเปิดร้าน',
+            html: `
+                <div style="text-align: center; padding: 10px;">
+                    <p style="margin-bottom: 5px;">ชื่อร้านที่คุณต้องการใช้:</p>
+                    <h3 style="color: var(--primary); margin-top: 0;">${inputShopName}</h3>
+                </div>
+            `,
+            icon: 'question',
             showCancelButton: true,
             confirmButtonText: translations[currentLang].btn_confirm || 'ส่งคำขอ',
             cancelButtonText: translations[currentLang].btn_cancel || 'ยกเลิก',
             footer: `<small style="color:red;">${translations[currentLang]['msg_merchant_fee_info']}</small>`
         });
 
-        if (!shopName) return; // ถ้ากดยกเลิก ไม่ต้องทำต่อ
+        // ถ้าผู้ใช้กดปุ่มตกลง (confirm)
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch('/api/merchant/apply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: myUsername,
+                        shopName: inputShopName, // 🚩 ส่งชื่อที่ดึงมาจาก Input หลัก
+                        lat: selectedLat,
+                        lng: selectedLng,
+                        phone: document.getElementById('map-loc-phone')?.value || "",
+                        description: document.getElementById('map-loc-voice')?.value || "" // ใช้ voice เป็น desc ชั่วคราวหรือตามถนัด
+                    })
+                });
 
-        // ส่งคำขอไปที่ API Apply Merchant (ที่สร้างไว้ใหม่)
-        try {
-            const res = await fetch('/api/merchant/apply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: myUsername,
-                    shopName: shopName,
-                    lat: selectedLat,
-                    lng: selectedLng,
-                    phone: document.getElementById('map-loc-phone')?.value || "",
-                    description: document.getElementById('map-loc-desc')?.value || ""
-                })
-            });
-
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire(translations[currentLang].swal_success, data.message, 'success');
-                isStoreMode = false; // รีเซ็ตสถานะ
-                closeMapModal();
-            } else {
-                Swal.fire(translations[currentLang].swal_error, data.message, 'error');
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire(translations[currentLang].swal_success, data.message, 'success');
+                    isStoreMode = false;
+                    closeMapModal();
+                    await loadSavedLocations(); // โหลดใหม่เพื่อให้พิกัดโชว์ในลิสต์
+                } else {
+                    Swal.fire(translations[currentLang].swal_error, data.message, 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Unable to connect to server.', 'error');
             }
-        } catch (err) {
-            Swal.fire('Error', 'Unable to connect to the server.', 'error');
         }
         
-        return; // จบการทำงานในโหมดร้านค้า
+        return; // จบการทำงาน
     }
 
     // ---------------------------------------------------------
