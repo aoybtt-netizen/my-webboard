@@ -387,7 +387,14 @@ const translations = {
         'title_merchant_verification': 'รายการตรวจสอบและอนุมัติร้านค้า',
         'btn_approve_merchant': 'อนุมัติร้านค้า',
         'btn_reject_merchant': 'ปฏิเสธคำขอ',
-        'msg_no_merchant_request': 'ไม่มีคำขอเปิดร้านค้าในขณะนี้'
+        'msg_no_merchant_request': 'ไม่มีคำขอเปิดร้านค้าในขณะนี้',
+		'label_requested_name': 'ชื่อร้านที่ขอ:',
+        'label_details': 'รายละเอียด:',
+        'label_phone': 'เบอร์โทร:',
+        'label_admin_guide': 'กดปุ่มอนุมัติเพื่อยืนยัน หรือปุ่มลบเพื่อทิ้งคำขอ',
+        'err_load_detail': 'ไม่สามารถโหลดข้อมูลได้',
+        'btn_approve_merchant': 'อนุมัติ',
+        'btn_delete_request': 'ลบคำขอ'
     },
     'en': {
         'lbl_master_balance': 'Available Balance (Master)',
@@ -517,7 +524,14 @@ const translations = {
         'title_merchant_verification': 'Merchant Approval List',
         'btn_approve_merchant': 'Approve Shop',
         'btn_reject_merchant': 'Reject Request',
-        'msg_no_merchant_request': 'No pending shop requests'
+        'msg_no_merchant_request': 'No pending shop requests',
+		'label_requested_name': 'Requested Name:',
+        'label_details': 'Details:',
+        'label_phone': 'Phone:',
+        'label_admin_guide': 'Click Approve to confirm or Delete to discard.',
+        'err_load_detail': 'Unable to load data',
+        'btn_approve_merchant': 'Approve',
+        'btn_delete_request': 'Delete',
     },
     'pt': {
         'lbl_master_balance': 'Saldo Disponível (Master)',
@@ -647,7 +661,14 @@ const translations = {
         'title_merchant_verification': 'Lista de Aprovação de Mercadores',
         'btn_approve_merchant': 'Aprovar Loja',
         'btn_reject_merchant': 'Rejeitar Pedido',
-        'msg_no_merchant_request': 'Nenhum pedido de loja pendente'
+        'msg_no_merchant_request': 'Nenhum pedido de loja pendente',
+		'label_requested_name': 'Nome solicitado:',
+        'label_details': 'Detalhes:',
+        'label_phone': 'Telefone:',
+        'label_admin_guide': 'Clique em Aprovar para confirmar ou Excluir para descartar.',
+        'err_load_detail': 'Não foi possível carregar os dados',
+        'btn_approve_merchant': 'Aprovar',
+        'btn_delete_request': 'Excluir',
     }
 };
 
@@ -2461,35 +2482,33 @@ async function openMerchantDetail(requestId, username) {
             html: `
                 <div style="text-align:left; font-size:0.9em; line-height: 1.8;">
                     <p><b>Username:</b> <span style="color:var(--primary);">@${username}</span></p>
-                    <p><b>ชื่อร้านที่ขอ:</b> <span style="color:var(--primary); font-weight:bold;">
+                    <p><b>${lang.label_requested_name}</b> <span style="color:var(--primary); font-weight:bold;">
                         ${data.requestedShopName || data.shopName || 'N/A'}</span>
                     </p>
-                    <p><b>รายละเอียด:</b> ${data.description || data.label || '-'}</p>
-                    <p><b>เบอร์โทร:</b> ${data.phone || '-'}</p>
+                    <p><b>${lang.label_details}</b> ${data.description || data.label || '-'}</p>
+                    <p><b>${lang.label_phone}</b> ${data.phone || '-'}</p>
                     <hr style="opacity: 0.2;">
                     <p style="font-size: 0.85em; color: #666; text-align: center;">
-                        <i class="fas fa-info-circle"></i> กดปุ่มอนุมัติเพื่อยืนยัน หรือปุ่มลบเพื่อทิ้งคำขอ
+                        <i class="fas fa-info-circle"></i> ${lang.label_admin_guide}
                     </p>
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: `<i class="fas fa-check"></i> ${lang.btn_approve_merchant || 'อนุมัติ'}`,
-            cancelButtonText: `<i class="fas fa-trash-alt"></i> ${lang.btn_delete_request || 'ลบคำขอ'}`, // เปลี่ยนข้อความปุ่ม
+            confirmButtonText: `<i class="fas fa-check"></i> ${lang.btn_approve_merchant}`,
+            cancelButtonText: `<i class="fas fa-trash-alt"></i> ${lang.btn_delete_request}`,
             confirmButtonColor: '#28a745',
-            cancelButtonColor: '#e74c3c', // เปลี่ยนสีปุ่ม Cancel เป็นแดง (แทนการลบ)
+            cancelButtonColor: '#e74c3c',
             reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
-                // ถ้ากด อนุมัติ
                 processMerchant(requestId, 'approved');
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-                // 🚩 ย้ายการลบมาไว้ตรงนี้แทนการ Reject แบบเดิม
                 deleteMerchantRequest(requestId);
             }
         });
     } catch (e) {
         console.error(e);
-        Swal.fire('Error', 'ไม่สามารถโหลดข้อมูลได้', 'error');
+        Swal.fire('Error', lang.err_load_detail || 'Error', 'error');
     }
 }
 

@@ -905,79 +905,69 @@ app.get('/api/admin/merchant-detail/:id', async (req, res) => {
 });
 
 app.post('/api/admin/process-merchant', async (req, res) => {
-	const lang = req.body.lang || 'th';	
     try {
-        const { requestId, status, adminName, lang = 'th' } = req.body;
+        const { requestId, status, adminName } = req.body;
+        const lang = req.body.lang || 'th';
         const txt = serverTranslations[lang] || serverTranslations['th'];
 
-        // 1. หาคำขอ
         const request = await db.collection('merchantRequests').findOne({ 
             _id: new ObjectId(requestId) 
         });
 
         if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
+        const fee = parseFloat(request.feeCharged) || 0;
+        const currency = request.currency || 'USD';
+
         if (status === 'approved') {
             const newName = request.requestedShopName || request.shopName;
-            const targetUser = request.username;
-            const fee = parseFloat(request.feeCharged) || 0;
-            const currency = request.currency || 'USD';
-
-            // 🚩 [เงินเข้าแอดมิน] หักจากที่ User เสีย มาเข้ากระเป๋าแอดมินที่กดอนุมัติ
+            
+            // ✅ [กรณีอนุมัติ] เงินเข้าแอดมินเขต (adminName) + บันทึกประวัติ
             if (fee > 0) {
                 await db.collection('users').updateOne(
                     { username: adminName },
                     { $inc: { [currency]: fee } }
                 );
 
-                // 🚩 [บันทึกประวัติ] เพื่อให้โชว์ในหน้า History ของแอดมินคนนี้
                 await topupRequestsCollection.insertOne({
-                    username: targetUser,
+                    username: request.username,
                     amount: fee,
                     currency: currency,
-                    type: 'WITHDRAW', // ให้โชว์เป็นตัวเลขสีแดง (หักจาก User)
+                    type: 'WITHDRAW',
                     status: 'approved',
-                    method: 'SHOP_FEE', // ใส่เพื่อให้หน้าบ้านแยกไอคอนได้
+                    method: 'SHOP_FEE',
                     name: 'SHOP NAME CHANGE FEE',
-                    processedBy: adminName, // 🚩 ชื่อแอดมินผู้กดอนุมัติ
+                    processedBy: adminName,
                     processedAt: new Date(),
                     createdAt: request.createdAt, 
                     note: txt.note_approve_merchant.replace('{name}', newName)
                 });
             }
 
-            // 🚩 [อัปเดตสิทธิ์ User] เป็น merchant (ไม่ใช่แอดมินเลเวล 1)
-            await db.collection('users').updateOne(
-                { username: targetUser },
-                { 
-                    $set: { 
-                        userType: 'merchant',
-                        merchantVerified: true,
-                        merchantVerifiedAt: new Date()
-                    } 
-                }
-            );
+            // อัปเดตสิทธิ์และชื่อร้าน
+            await db.collection('users').updateOne({ username: request.username }, { $set: { userType: 'merchant', merchantVerified: true, merchantVerifiedAt: new Date() } });
+            await db.collection('merchant_locations').updateOne({ owner: request.username, isStore: true }, { $set: { label: newName, updatedAt: Date.now() } });
+            await db.collection('merchantRequests').updateOne({ _id: new ObjectId(requestId) }, { $set: { status: 'approved', processedBy: adminName, processedAt: new Date() } });
 
-            // 🚩 [เปลี่ยนชื่อร้านในแผนที่]
-            await db.collection('merchant_locations').updateOne(
-                { owner: targetUser, isStore: true },
-                { $set: { label: newName, updatedAt: Date.now() } }
-            );
-
-            // 🚩 [ปิดงานคำขอ]
-            await db.collection('merchantRequests').updateOne(
-                { _id: new ObjectId(requestId) },
-                { $set: { status: 'approved', processedBy: adminName, processedAt: new Date() } }
-            );
-
-            res.json({ success: true, message: txt.msg_approve_success });	
+            res.json({ success: true, message: txt.msg_approve_success });
 
         } else {
-            // กรณี Reject (ถ้าจะคืนเงินต้องใส่ Logic $inc คืนเงินให้ targetUser ตรงนี้)
+            // 🚩 [กรณีปฏิเสธ] เงินเข้ากระเป๋าพี่ (Admin ระดับ 3)
+            if (fee > 0) {
+                const myMasterAdmin = "Admin";
+                
+                await db.collection('users').updateOne(
+                    { username: myMasterAdmin }, 
+                    { $inc: { [currency]: fee } }
+                );
+                // ❌ ไม่มีการบันทึกลง topupRequests (ประวัติไม่ขึ้น)
+            }
+
             await db.collection('merchantRequests').updateOne(
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
             );
+
             res.json({ success: true, message: txt.msg_reject_success });
         }
 
