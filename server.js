@@ -3732,18 +3732,7 @@ app.post('/api/merchant/reset-mercnum', async (req, res) => {
     }
 });
 
-// 2. API: ดึงพิกัดทั้งหมดของร้านค้า
-app.get('/api/merchant/locations', async (req, res) => {
-    const username = req.query.username; // รับชื่อจาก Query String
-    if (!username) return res.status(400).json({ success: false, error: 'Username not found.' });
 
-    try {
-        const locations = await merchantLocationsCollection.find({ owner: username }).toArray();
-        res.json({ success: true, locations });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Database Error' });
-    }
-});
 
 // 3. API: บันทึกพิกัดใหม่ (ปรับปรุง)
 app.post('/api/merchant/locations', async (req, res) => {
@@ -3770,6 +3759,31 @@ app.post('/api/merchant/locations', async (req, res) => {
         error: serverTranslations[lang].err_db_save 
     });
 }
+});
+
+// 🚩 เพิ่มส่วนนี้เข้าไปเพื่อให้ลบข้อมูลได้
+app.delete('/api/merchant/locations/:id', async (req, res) => {
+    try {
+        const locationId = req.params.id;
+
+        // ตรวจสอบว่า ID ที่ส่งมาถูกต้องไหม
+        if (!ObjectId.isValid(locationId)) {
+            return res.status(400).json({ success: false, error: 'Invalid ID format' });
+        }
+
+        const result = await merchantLocationsCollection.deleteOne({
+            _id: new ObjectId(locationId)
+        });
+
+        if (result.deletedCount === 1) {
+            res.json({ success: true, message: 'Location deleted successfully' });
+        } else {
+            res.status(404).json({ success: false, error: 'Location not found' });
+        }
+    } catch (e) {
+        console.error("🚨 Delete Location Error:", e);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
 });
 
 // API: แก้ไขข้อมูลพิกัด (ปรับปรุง)
