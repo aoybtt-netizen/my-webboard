@@ -2493,6 +2493,49 @@ async function openMerchantDetail(requestId, username) {
     }
 }
 
+async function processMerchant(requestId, status) {
+    const adminName = localStorage.getItem('myUsername');
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+
+    try {
+        // แสดง Loading เผื่อเน็ตช้า
+        Swal.fire({
+            title: translations[currentLang].shop_loading || 'Processing...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const res = await fetch('/api/admin/process-merchant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                requestId, 
+                status, 
+                adminName,
+                lang: currentLang 
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: data.message,
+                timer: 2000
+            });
+            // โหลดรายการใหม่เพื่ออัปเดต Badge และลบแถวที่ทำเสร็จแล้ว
+            loadMerchantRequests(); 
+        } else {
+            Swal.fire('Error', data.message || 'Failed to process', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'Network Error', 'error');
+    }
+}
+
 // --- ฟังก์ชันสำหรับลบคำขอ ---
 async function deleteMerchantRequest(id) {
     if (!id || id === 'undefined') {
