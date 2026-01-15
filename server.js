@@ -4730,14 +4730,19 @@ app.get('/api/admin/topup-history', async (req, res) => {
         const { admin } = req.query;
         if (!admin) return res.status(400).send("Missing admin name");
 
-        // ค้นหาคำขอที่แอดมินคนนี้เป็นคนประมวลผล (processedBy)
-        const history = await topupRequestsCollection
-            .find({ processedBy: admin, status: { $ne: 'pending' } })
-            .sort({ processedAt: -1 }) // เรียงตามเวลาที่จัดการล่าสุด
+        // 🚩 เปลี่ยนจาก topupRequestsCollection เป็น db.collection('topupRequests')
+        // เพื่อให้ตรงกับตอนที่ Insert ข้อมูลค่าธรรมเนียมร้านค้า
+        const history = await db.collection('topupRequests')
+            .find({ 
+                processedBy: admin, 
+                status: { $ne: 'pending' } 
+            })
+            .sort({ processedAt: -1 })
             .toArray();
 
         res.json(history);
     } catch (e) {
+        console.error("🚨 Get History Error:", e);
         res.status(500).json({ error: e.message });
     }
 });
