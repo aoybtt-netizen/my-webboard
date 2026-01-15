@@ -1791,7 +1791,8 @@ async function confirmMapLocation() {
                         lat: selectedLat,
                         lng: selectedLng,
                         phone: document.getElementById('map-loc-phone')?.value || "",
-                        description: document.getElementById('map-loc-voice')?.value || "" // ใช้ voice เป็น desc ชั่วคราวหรือตามถนัด
+                        description: document.getElementById('map-loc-voice')?.value || "",
+						lang: currentLang
                     })
                 });
 
