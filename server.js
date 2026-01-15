@@ -679,7 +679,7 @@ app.post('/api/admin/universal-update', async (req, res) => {
         const numericFields = [
             'coins', 'adminLevel', 'id', 'zoneExchangeRate', 
 			'totalPosts', 'completedJobs', 'rating', 
-			'BRL', 'THB', 'VND', 'systemZone', 'zoneFee',
+			'BRL', 'THB', 'VND', 'systemZone', 'zoneFee','changNameMerchant',
 			'kycPrice','kycPriceZone','kycPriceSystem', 'minTopup', 'minWithdraw'
         ];
 
