@@ -900,7 +900,7 @@ app.post('/api/admin/process-merchant', async (req, res) => {
         const { requestId, status, adminName, lang = 'th' } = req.body;
         const txt = serverTranslations[lang] || serverTranslations['th'];
 
-        // 1. หาคำขอ
+        // 1. หาคำขอเปิดร้าน
         const request = await db.collection('merchantRequests').findOne({ 
             _id: new ObjectId(requestId) 
         });
@@ -908,10 +908,12 @@ app.post('/api/admin/process-merchant', async (req, res) => {
         if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
         if (status === 'approved') {
-            const newName = request.requestedShopName || request.shopName; // ชื่อใหม่ที่ขอมา (a)
-            const targetUser = request.username; // เจ้าของร้าน (b)
+            const newName = request.requestedShopName || request.shopName;
+            const targetUser = request.username;
+            const fee = request.feeCharged || 0; // ดึงยอดเงินที่หักไปจากคำขอ
+            const currency = request.currency || 'USD';
 
-            // 🚩 [a = b] อัปเดตที่ usersCollection (เพื่อเปลี่ยนระดับเป็นร้านค้า)
+            // 🚩 2. อัปเดตข้อมูลผู้ใช้ (เปลี่ยนระดับเป็นร้านค้า)
             await db.collection('users').updateOne(
                 { username: targetUser },
                 { 
@@ -923,13 +925,12 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                 }
             );
 
-            // 🚩 [b = c] อัปเดตที่ merchant_locations (เพื่อให้หน้า Balance เห็นชื่อใหม่)
-            // หาจุดที่เป็นร้านค้า (isStore: true) ของยูสเซอร์นี้ แล้วทับชื่อด้วยชื่อใหม่ที่ขอมา
+            // 🚩 3. อัปเดตที่ merchant_locations (เปลี่ยนชื่อร้าน)
             await db.collection('merchant_locations').updateOne(
                 { owner: targetUser, isStore: true },
                 { 
                     $set: { 
-                        label: newName, // เปลี่ยน label เป็นชื่อร้านใหม่
+                        label: newName,
                         lat: request.lat,
                         lng: request.lng,
                         updatedAt: Date.now()
@@ -937,16 +938,39 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                 }
             );
 
-            // 3. ปิดงานคำขอ
+            // 🚩 4. บันทึกลงในประวัติธุรกรรมแอดมิน (เพื่อให้โชว์ในหน้า History)
+            // เราจะบันทึกเฉพาะกรณีที่มีค่าธรรมเนียม (fee > 0)
+            if (fee > 0) {
+                await db.collection('topupRequests').insertOne({
+                    username: targetUser,
+                    amount: fee,
+                    currency: currency,
+                    type: 'WITHDRAW', // แสดงเป็นรายการหักออกของ User (สีแดง)
+                    status: 'approved',
+                    method: 'SHOP_FEE', // ระบุว่าเป็นค่าธรรมเนียมร้านค้า
+                    name: 'SHOP NAME CHANGE FEE',
+                    processedBy: adminName, // 🚩 ชื่อแอดมินที่กดอนุมัติ
+                    processedAt: new Date(),
+                    createdAt: request.createdAt, // วันที่ User ส่งคำขอมา
+                    note: txt.note_auto_deduct || `เปลี่ยนชื่อร้านค้า: ${newName}`
+                });
+            }
+
+            // 5. ปิดงานคำขอเปิดร้าน
             await db.collection('merchantRequests').updateOne(
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'approved', processedBy: adminName, processedAt: new Date() } }
             );
 
-            res.json({ success: true, message: "อนุมัติและเปลี่ยนชื่อร้านค้าเรียบร้อยแล้ว" });
+            res.json({ success: true, message: "อนุมัติและบันทึกประวัติเรียบร้อยแล้ว" });
 
-        } else {
-            res.json({ success: true, message: "ดำเนินการเรียบร้อย" });
+        } else if (status === 'rejected') {
+            // กรณีปฏิเสธ (ถ้าต้องการให้เงินคืนต้องทำ Logic คืนเงินตรงนี้ครับ)
+            await db.collection('merchantRequests').updateOne(
+                { _id: new ObjectId(requestId) },
+                { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
+            );
+            res.json({ success: true, message: "ปฏิเสธคำขอเรียบร้อยแล้ว" });
         }
 
     } catch (e) {
@@ -3765,8 +3789,10 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
     }
 });
 
-app.post('/api/merchant/apply', async (req, res) => {
+app.post('/api/merchant/apply', async (req, res) => {	
+    // 1. ดึงภาษาที่ส่งมาจาก Frontend (Default เป็น 'th')
     const lang = req.body.lang || 'th';
+    // ดึงชุดคำแปลของภาษานั้นๆ มาเตรียมไว้
     const txt = serverTranslations[lang] || serverTranslations['th'];
 
     try {
@@ -3776,47 +3802,46 @@ app.post('/api/merchant/apply', async (req, res) => {
         const zoneInfo = await findResponsibleAdmin({ lat, lng });
         const zone = zoneInfo?.zoneData;
 
+        // 2. เช็คพิกัดโซน
         if (!zone) {
             return res.status(400).json({ success: false, message: txt.err_outside_zone });
         }
 
-        // --- เริ่มต้น Logic การหักเงิน ---
         const isFirstTime = !user.merchantVerified;
         const fee = isFirstTime ? 0 : (parseFloat(zone.changNameMerchant) || 0);
         const currency = zone.zoneCurrency || 'USD';
 
+        // 3. จัดการเรื่องเงิน (ถ้ามีค่าธรรมเนียม)
         if (fee > 0) {
             const userBalance = user[currency] || 0;
             if (userBalance < fee) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: txt.err_insufficient_fund.replace('{currency}', currency).replace('{fee}', fee) 
-                });
+                // แทนค่า {currency} และ {fee} ในประโยค (ถ้าพี่ทำ placeholder ไว้)
+                let msg = txt.err_insufficient_fund
+                    .replace(/{currency}/g, currency)
+                    .replace(/{fee}/g, fee);
+                return res.status(400).json({ success: false, message: msg });
             }
 
-            // 1. หักเงินในกระเป๋า User
             await db.collection('users').updateOne(
                 { username }, 
                 { $inc: { [currency]: -fee } }
             );
 
-            // 🚩 2. บันทึกเข้าคอลเลกชันเดียวกับที่แอดมินใช้ดึง History (topupRequests)
             await db.collection('topupRequests').insertOne({
-                username: username,
+                username,
                 amount: fee,
-                currency: currency,
-                type: 'WITHDRAW', // ใช้เป็นถอนเงินเพื่อให้โชว์เป็นตัวเลขสีแดงในประวัติ
-                status: 'approved', // ถือเป็นรายการที่ผ่านการอนุมัติอัตโนมัติจากระบบ
-                method: 'SHOP_FEE', // ใส่ Method ไว้แยกแยะภายหลัง
+                currency,
+                type: 'WITHDRAW',
+                status: 'approved',
+                method: 'SYSTEM',
                 name: 'SHOP NAME CHANGE FEE',
-                processedBy: zone.assignedAdmin, // 🚩 สำคัญ: เพื่อให้รายการนี้โผล่ใน history ของแอดมินคนนี้
+                processedBy: 'SYSTEM',
                 processedAt: new Date(),
-                createdAt: new Date(),
-                note: txt.note_auto_deduct
+                note: txt.note_auto_deduct // ใช้จาก serverTranslations
             });
         }
 
-        // 3. บันทึกคำขอรอแอดมินตรวจชื่อร้าน
+        // 4. บันทึกคำขอ
         await db.collection('merchantRequests').insertOne({
             username,
             requestedShopName: shopName,
@@ -3828,13 +3853,15 @@ app.post('/api/merchant/apply', async (req, res) => {
             createdAt: new Date()
         });
 
-        res.json({ 
-            success: true, 
-            message: isFirstTime ? txt.msg_apply_success_free : txt.msg_apply_success_fee.replace('{fee}', fee).replace('{currency}', currency) 
-        });
+        // 5. เตรียมข้อความตอบกลับสำเร็จ
+        let successMsg = isFirstTime 
+            ? txt.msg_apply_success_free 
+            : txt.msg_apply_success_fee.replace(/{fee}/g, fee).replace(/{currency}/g, currency);
+
+        res.json({ success: true, message: successMsg });
 
     } catch (error) {
-        console.error(error);
+        console.error("Apply Merchant Error:", error);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 });
