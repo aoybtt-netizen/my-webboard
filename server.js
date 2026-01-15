@@ -3766,9 +3766,7 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
 });
 
 app.post('/api/merchant/apply', async (req, res) => {
-    // 1. ดึงภาษาที่ส่งมาจาก Frontend (Default เป็น 'th')
     const lang = req.body.lang || 'th';
-    // ดึงชุดคำแปลของภาษานั้นๆ มาเตรียมไว้
     const txt = serverTranslations[lang] || serverTranslations['th'];
 
     try {
@@ -3778,46 +3776,47 @@ app.post('/api/merchant/apply', async (req, res) => {
         const zoneInfo = await findResponsibleAdmin({ lat, lng });
         const zone = zoneInfo?.zoneData;
 
-        // 2. เช็คพิกัดโซน
         if (!zone) {
             return res.status(400).json({ success: false, message: txt.err_outside_zone });
         }
 
+        // --- เริ่มต้น Logic การหักเงิน ---
         const isFirstTime = !user.merchantVerified;
         const fee = isFirstTime ? 0 : (parseFloat(zone.changNameMerchant) || 0);
         const currency = zone.zoneCurrency || 'USD';
 
-        // 3. จัดการเรื่องเงิน (ถ้ามีค่าธรรมเนียม)
         if (fee > 0) {
             const userBalance = user[currency] || 0;
             if (userBalance < fee) {
-                // แทนค่า {currency} และ {fee} ในประโยค (ถ้าพี่ทำ placeholder ไว้)
-                let msg = txt.err_insufficient_fund
-                    .replace(/{currency}/g, currency)
-                    .replace(/{fee}/g, fee);
-                return res.status(400).json({ success: false, message: msg });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: txt.err_insufficient_fund.replace('{currency}', currency).replace('{fee}', fee) 
+                });
             }
 
+            // 1. หักเงินในกระเป๋า User
             await db.collection('users').updateOne(
                 { username }, 
                 { $inc: { [currency]: -fee } }
             );
 
+            // 🚩 2. บันทึกเข้าคอลเลกชันเดียวกับที่แอดมินใช้ดึง History (topupRequests)
             await db.collection('topupRequests').insertOne({
-                username,
+                username: username,
                 amount: fee,
-                currency,
-                type: 'WITHDRAW',
-                status: 'approved',
-                method: 'SYSTEM',
+                currency: currency,
+                type: 'WITHDRAW', // ใช้เป็นถอนเงินเพื่อให้โชว์เป็นตัวเลขสีแดงในประวัติ
+                status: 'approved', // ถือเป็นรายการที่ผ่านการอนุมัติอัตโนมัติจากระบบ
+                method: 'SHOP_FEE', // ใส่ Method ไว้แยกแยะภายหลัง
                 name: 'SHOP NAME CHANGE FEE',
-                processedBy: 'SYSTEM',
+                processedBy: zone.assignedAdmin, // 🚩 สำคัญ: เพื่อให้รายการนี้โผล่ใน history ของแอดมินคนนี้
                 processedAt: new Date(),
-                note: txt.note_auto_deduct // ใช้จาก serverTranslations
+                createdAt: new Date(),
+                note: txt.note_auto_deduct
             });
         }
 
-        // 4. บันทึกคำขอ
+        // 3. บันทึกคำขอรอแอดมินตรวจชื่อร้าน
         await db.collection('merchantRequests').insertOne({
             username,
             requestedShopName: shopName,
@@ -3829,15 +3828,13 @@ app.post('/api/merchant/apply', async (req, res) => {
             createdAt: new Date()
         });
 
-        // 5. เตรียมข้อความตอบกลับสำเร็จ
-        let successMsg = isFirstTime 
-            ? txt.msg_apply_success_free 
-            : txt.msg_apply_success_fee.replace(/{fee}/g, fee).replace(/{currency}/g, currency);
-
-        res.json({ success: true, message: successMsg });
+        res.json({ 
+            success: true, 
+            message: isFirstTime ? txt.msg_apply_success_free : txt.msg_apply_success_fee.replace('{fee}', fee).replace('{currency}', currency) 
+        });
 
     } catch (error) {
-        console.error("Apply Merchant Error:", error);
+        console.error(error);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 });
