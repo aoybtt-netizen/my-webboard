@@ -622,6 +622,7 @@
 
     <script>
 	const socket = io();
+	let shopNameApply = '';
 	let currentTab = 'notif';
 	let unreadPosts = {};
 	const myUsername = localStorage.getItem('myUsername');
@@ -1748,7 +1749,7 @@ async function confirmMapLocation() {
         const { value: shopName } = await Swal.fire({
             title: translations[currentLang].title_merchant_verify || 'ยืนยันพิกัดและชื่อร้าน',
             input: 'text',
-            inputValue: shopNameApply || currentShopName, // ใช้ชื่อที่กรอกค้างไว้ หรือชื่อจากโปรไฟล์
+            inputValue: currentShopName,
             inputPlaceholder: translations[currentLang]['placeholder_shop_name'],
             showCancelButton: true,
             confirmButtonText: translations[currentLang].btn_confirm || 'ส่งคำขอ',
