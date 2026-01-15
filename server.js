@@ -834,6 +834,39 @@ app.get('/api/kyc/my-status', async (req, res) => {
     }
 });
 
+//ยืนยันร้านค้า
+// 1. API สำหรับดึงรายการคำขอเปิดร้าน (ไปที่หน้าแอดมิน)
+app.get('/api/admin/merchant-request-list', async (req, res) => {
+    try {
+        const { admin } = req.query;
+        // หาโซนที่แอดมินคนนี้ดูแล
+        const zone = await db.collection('zones').findOne({ assignedAdmin: admin });
+        if (!zone) return res.json([]);
+
+        // ดึงเฉพาะคำขอที่อยู่ในโซนนี้ และยังมีสถานะ 'pending'
+        const requests = await db.collection('merchantRequests').find({ 
+            zoneId: zone.id, 
+            status: 'pending' 
+        }).sort({ createdAt: -1 }).toArray();
+
+        res.json(requests);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. API สำหรับดึงรายละเอียดเชิงลึก (รูปภาพ/รายละเอียด) เมื่อแอดมินกดดู
+app.get('/api/admin/merchant-detail/:id', async (req, res) => {
+    try {
+        const request = await db.collection('merchantRequests').findOne({ 
+            _id: new require('mongodb').ObjectId(req.params.id) 
+        });
+        res.json(request);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 
 
 // ==========================================
@@ -3618,6 +3651,82 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
         res.json({ success: true });
     } catch (e) { 
         res.status(500).json({ success: false, error: 'The information cannot be updated.' }); 
+    }
+});
+
+app.post('/api/merchant/apply', async (req, res) => {
+    try {
+        const { username, shopName, lat, lng, phone, description } = req.body;
+        
+        // 1. ดึงข้อมูล User และ ตรวจสอบโซนจากพิกัด
+        const user = await db.collection('users').findOne({ username });
+        const zoneInfo = await findResponsibleAdmin({ lat, lng });
+        const zone = zoneInfo?.zoneData;
+
+        if (!zone) {
+            return res.status(400).json({ success: false, message: "พิกัดนี้ไม่อยู่ในพื้นที่บริการ" });
+        }
+
+        // 2. เช็คเงื่อนไข: ครั้งแรกฟรี (ดูจาก merchantVerified)
+        // ถ้าเคยยืนยันแล้ว (merchantVerified: true) จะถือเป็นการเปลี่ยนชื่อ ให้คิดเงิน
+        const isFirstTime = !user.merchantVerified;
+        const fee = isFirstTime ? 0 : (parseFloat(zone.changNameMerchant) || 0);
+        const currency = zone.zoneCurrency || 'USD';
+
+        // 3. จัดการเรื่องเงิน (ถ้ามีค่าธรรมเนียม)
+        if (fee > 0) {
+            const userBalance = user[currency] || 0;
+            if (userBalance < fee) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `ยอดเงินในกระเป๋า ${currency} ไม่เพียงพอ (ต้องการ ${fee} ${currency})` 
+                });
+            }
+
+            // หักเงินค่าธรรมเนียมทันที
+            await db.collection('users').updateOne(
+                { username }, 
+                { $inc: { [currency]: -fee } }
+            );
+
+            // บันทึก Log การหักเงิน
+            await db.collection('topupRequests').insertOne({
+                username,
+                amount: fee,
+                currency,
+                type: 'WITHDRAW',
+                status: 'approved',
+                method: 'SYSTEM',
+                name: 'SHOP NAME CHANGE FEE',
+                processedBy: 'SYSTEM',
+                processedAt: new Date(),
+                note: `เปลี่ยนชื่อร้านค้า (หักอัตโนมัติ)`
+            });
+        }
+
+        // 4. บันทึกคำขอลงใน merchantRequests (รอแอดมินอนุมัติ)
+        await db.collection('merchantRequests').insertOne({
+            username,
+            requestedShopName: shopName, // ชื่อใหม่ที่ขอ
+            lat,
+            lng,
+            phone,
+            description,
+            zoneId: zone.id,
+            status: 'pending',
+            feeCharged: fee,
+            currency: currency,
+            createdAt: new Date()
+        });
+
+        res.json({ 
+            success: true, 
+            message: isFirstTime ? "ส่งคำขอเปิดร้านสำเร็จ (ฟรีครั้งแรก)" : `ส่งคำขอเปลี่ยนชื่อสำเร็จ (หักค่าธรรมเนียม ${fee} ${currency})` 
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
     }
 });
 

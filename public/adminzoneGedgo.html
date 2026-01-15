@@ -2422,7 +2422,7 @@ async function loadMerchantRequests() {
                     </div>
                     <strong style="font-size: 1.1em; color: var(--dark);">@${req.username}</strong><br>
                     <span style="color:#666; font-size: 0.9em;">
-                        ${req.shopName || 'Shop Name Pending'}
+                        ${req.requestedShopName || req.shopName || 'Shop Name Pending'}
                     </span>
                 </div>
                 <div style="text-align:right; color:#999;">
@@ -2455,31 +2455,47 @@ async function openMerchantDetail(requestId, username) {
         const res = await fetch(`/api/admin/merchant-detail/${requestId}`);
         const data = await res.json();
 
+        // ตรวจสอบว่ามีข้อมูลกลับมาไหม
+        if (!data) throw new Error("No data found");
+
         Swal.fire({
             title: lang.menu_merchant_verify,
             html: `
-                <div style="text-align:left; font-size:0.9em;">
-                    <p><b>Username:</b> @${username}</p>
-                    <p><b>Shop Name:</b> ${data.shopName}</p>
+                <div style="text-align:left; font-size:0.9em; line-height: 1.6;">
+                    <p><b>Username:</b> <span style="color:var(--primary);">@${username}</span></p>
+                    
+                    <p><b>${lang.shop_name_label || 'ชื่อร้านที่ขอ'}:</b> 
+                        <span style="font-size: 1.1em; color: #2c3e50; font-weight: bold;">
+                            ${data.requestedShopName || data.shopName || 'N/A'}
+                        </span>
+                    </p>
+                    
                     <p><b>Description:</b> ${data.description || '-'}</p>
+                    <p><b>Phone:</b> ${data.phone || '-'}</p>
                     <hr>
-                    <p><b>Document/Shop Image:</b></p>
-                    <img src="${data.idCardImage || data.shopImage}" style="width:100%; border-radius:10px; cursor:pointer;" onclick="window.open(this.src)">
+                    <p><b><i class="fas fa-image"></i> Document / Shop Image:</b></p>
+                    <img src="${data.idCardImage || data.shopImage || 'https://via.placeholder.com/300?text=No+Image'}" 
+                         style="width:100%; border-radius:10px; border: 1px solid #ddd; cursor:pointer; margin-top: 5px;" 
+                         onclick="window.open(this.src)" 
+                         title="Click to view full image">
                 </div>
             `,
             showCancelButton: true,
             confirmButtonText: `<i class="fas fa-check"></i> ${lang.btn_approve_merchant}`,
             cancelButtonText: `<i class="fas fa-times"></i> ${lang.btn_reject_merchant}`,
             confirmButtonColor: '#28a745',
-            cancelButtonColor: '#d33'
+            cancelButtonColor: '#d33',
+            reverseButtons: true // เอาปุ่มปฏิเสธไว้ซ้าย อนุมัติไว้ขวา ตามมาตรฐาน UI
         }).then((result) => {
             if (result.isConfirmed) {
                 processMerchant(requestId, 'approved');
             } else if (result.dismiss === Swal.DismissReason.cancel) {
+                // ก่อนจะปฏิเสธ อาจจะเพิ่มการถามเหตุผลก็ได้นะครับ (ถ้าต้องการ)
                 processMerchant(requestId, 'rejected');
             }
         });
     } catch (e) {
+        console.error("Detail Load Error:", e);
         Swal.fire('Error', 'Could not load details', 'error');
     }
 }

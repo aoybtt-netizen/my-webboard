@@ -848,6 +848,9 @@ const translations = {
         'note_bypass_desc': 'การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ',
 		'swal_prevent_exit_title': 'ไม่สามารถออกจากหน้านี้ได้',
         'swal_prevent_exit_text': (num) => `⚠️ คุณยังมีงานค้างในระบบ ${num} งาน กรุณาจัดการให้เรียบร้อยก่อนครับ`,
+		'placeholder_shop_name': 'ใส่ชื่อร้านค้าของคุณ...',
+        'msg_merchant_fee_info': '* ครั้งแรกฟรี ครั้งต่อไปมีค่าธรรมเนียมเปลี่ยนชื่อตามโซน',
+        'title_merchant_confirm': 'ยืนยันพิกัดและชื่อร้าน',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1045,6 +1048,9 @@ const translations = {
         'note_bypass_desc': 'Bypassing is used to skip a delivery point in case the rider forgets to check in.',
 		'swal_prevent_exit_title': 'Cannot leave this page',
         'swal_prevent_exit_text': (num) => `⚠️ You have ${num} pending tasks. Please complete them first.`,
+		'placeholder_shop_name': 'Enter your shop name...',
+        'msg_merchant_fee_info': '* First time free, subsequent changes incur zone fees',
+        'title_merchant_confirm': 'Confirm Location & Shop Name',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1242,6 +1248,9 @@ const translations = {
         'note_bypass_desc': 'O bypass é usado para pular um ponto de entrega caso o entregador esqueça de fazer o check-in.',
 		'swal_prevent_exit_title': 'Não é possível sair',
         'swal_prevent_exit_text': (num) => `⚠️ Você tem ${num} tarefas pendentes. Conclua-as primeiro.`,
+		'placeholder_shop_name': 'Insira o nome da sua loja...',
+        'msg_merchant_fee_info': '* Primeira vez grátis, alterações subsequentes sujeitas a taxas de zona',
+        'title_merchant_confirm': 'Confirmar Localização e Nome da Loja',
     }
 };
 
@@ -1708,8 +1717,10 @@ async function loadSavedLocations() {
 let isStoreMode = false; 
 
 async function confirmMapLocation() {
+    // 1. ตรวจสอบว่าปักหมุดหรือยัง
     if (!selectedLat || !selectedLng) return alert(translations[currentLang].err_no_pin);
 
+    // 2. กรณีเป็นโหมดเลือกจุดรับ-ส่ง (Stop Mode) - โค้ดส่วนเดิมของพี่
     if (mapMode === 'stop') {
         const id = currentTargetStopId;
         const latInput = document.getElementById(`lat-${id}`);
@@ -1727,8 +1738,62 @@ async function confirmMapLocation() {
         return;
     }
 
-    // ส่วนที่เหลือสำหรับบันทึกลงสมุดที่อยู่ (Book Mode)
-    const name = document.getElementById('map-loc-name').value.trim();
+    // ---------------------------------------------------------
+    // 3. ส่วนแยก: ถ้าเป็นโหมดบันทึกร้านค้า (isStoreMode)
+    // ---------------------------------------------------------
+    if (isStoreMode) {
+        // ดึงชื่อร้านปัจจุบันมาโชว์ในช่องกรอก (ถ้ามี)
+        const currentShopName = (typeof userProfile !== 'undefined' && userProfile.shopName) ? userProfile.shopName : myUsername;
+
+        const { value: shopName } = await Swal.fire({
+            title: translations[currentLang].title_merchant_verify || 'ยืนยันพิกัดและชื่อร้าน',
+            input: 'text',
+            inputValue: shopNameApply || currentShopName, // ใช้ชื่อที่กรอกค้างไว้ หรือชื่อจากโปรไฟล์
+            inputPlaceholder: translations[currentLang]['placeholder_shop_name'],
+            showCancelButton: true,
+            confirmButtonText: translations[currentLang].btn_confirm || 'ส่งคำขอ',
+            cancelButtonText: translations[currentLang].btn_cancel || 'ยกเลิก',
+            footer: `<small style="color:red;">${translations[currentLang]['msg_merchant_fee_info']}</small>`
+        });
+
+        if (!shopName) return; // ถ้ากดยกเลิก ไม่ต้องทำต่อ
+
+        // ส่งคำขอไปที่ API Apply Merchant (ที่สร้างไว้ใหม่)
+        try {
+            const res = await fetch('/api/merchant/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: myUsername,
+                    shopName: shopName,
+                    lat: selectedLat,
+                    lng: selectedLng,
+                    phone: document.getElementById('map-loc-phone')?.value || "",
+                    description: document.getElementById('map-loc-desc')?.value || ""
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire(translations[currentLang].swal_success, data.message, 'success');
+                isStoreMode = false; // รีเซ็ตสถานะ
+                closeMapModal();
+            } else {
+                Swal.fire(translations[currentLang].swal_error, data.message, 'error');
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Unable to connect to the server.', 'error');
+        }
+        
+        return; // จบการทำงานในโหมดร้านค้า
+    }
+
+    // ---------------------------------------------------------
+    // 4. ส่วนเดิม: สำหรับบันทึกลงสมุดที่อยู่ (Book Mode)
+    // ---------------------------------------------------------
+    const nameInput = document.getElementById('map-loc-name');
+    const name = nameInput ? nameInput.value.trim() : "";
+    
     if (!name) return alert(translations[currentLang].err_no_location_name);
 
     const payload = {
@@ -1738,7 +1803,7 @@ async function confirmMapLocation() {
         voiceKeyword: document.getElementById('map-loc-voice').value || name,
         lat: selectedLat,
         lng: selectedLng,
-        isStore: isStoreMode // 🚩 ส่งสถานะว่าเป็นพิกัดร้านหรือไม่ไปที่ Server
+        isStore: false // บันทึกเป็นพิกัดทั่วไป
     };
 
     let url = '/api/merchant/locations';
@@ -1757,7 +1822,7 @@ async function confirmMapLocation() {
     const data = await res.json();
     if (data.success) {
         alert(translations[currentLang].msg_save_success_simple);
-        isStoreMode = false; // รีเซ็ตค่า
+        isStoreMode = false; 
         await loadSavedLocations();
         closeMapModal();
     }
