@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>GedGo Marketplace | เลือกร้านค้าใกล้คุณ</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -152,10 +152,12 @@ header {
 <header style="background: linear-gradient(135deg, #11998e, #38ef7d); padding: 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
     
     <div style="display: flex; justify-content: space-between; align-items: center; color: white;">
-        <div onclick="history.back()" style="cursor:pointer; width: 40px;"><i class="fas fa-chevron-left"></i></div>
-        <div style="font-weight: 600; font-size: 1.2rem;">เลือกร้านค้า</div>
-        <div style="width: 40px; text-align: right;"><i class="fas fa-filter"></i></div>
-    </div>
+    <div onclick="history.back()" style="cursor:pointer; width: 40px;"><i class="fas fa-chevron-left"></i></div>
+    
+    <div id="currentZoneName" style="font-weight: 600; font-size: 1.2rem;">กำลังระบุตำแหน่ง...</div>
+    
+    <div style="width: 40px; text-align: right;"><i class="fas fa-filter"></i></div>
+</div>
 
 </header>
 
@@ -197,17 +199,31 @@ header {
 
     // 2. โหลดข้อมูลร้านค้าจาก API
     async function loadShops() {
-        try {
-            // สมมติชื่อ API ของพี่นะครับ
-            const res = await fetch('/api/marketplace/all-merchants');
-            allShops = await res.json();
+    if (!userCoords) return; 
+
+    try {
+        const res = await fetch(`/api/marketplace/all-merchants?lat=${userCoords.lat}&lng=${userCoords.lng}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            // --- ส่วนที่เพิ่มเข้าไปเพื่อเปลี่ยนชื่อโซนบน Header ---
+            const zoneDisplay = document.getElementById('currentZoneName');
+            if (data.currentZone) {
+                zoneDisplay.innerText = `โซน: ${data.currentZone}`;
+            } else {
+                zoneDisplay.innerText = "ร้านค้าใกล้เคียง (นอกโซน)";
+            }
+            // ----------------------------------------------
             
+            allShops = data.shops;
             renderShops(allShops);
-            document.getElementById('loader').style.display = 'none';
-        } catch (e) {
-            console.error("Fetch shops error:", e);
         }
+        document.getElementById('loader').style.display = 'none';
+    } catch (e) {
+        console.error("Fetch shops error:", e);
+        document.getElementById('currentZoneName').innerText = "เลือกร้านค้า";
     }
+}
 
     // 3. แสดงผลการ์ดร้านค้า
     function renderShops(shops) {

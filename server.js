@@ -4201,7 +4201,62 @@ app.get('/api/rider/check-working-status', async (req, res) => {
     }
 });
 
+// MerchantShop
+app.get('/api/marketplace/all-merchants', async (req, res) => {
+    try {
+        const userLat = parseFloat(req.query.lat);
+        const userLng = parseFloat(req.query.lng);
 
+        if (isNaN(userLat) || isNaN(userLng)) {
+            return res.status(400).json({ success: false, message: "Missing location data" });
+        }
+
+        // 1. ค้นหาร้านค้าในรัศมี 10 กม. (10,000 เมตร)
+        // และต้องเป็นร้านค้า (adminLevel หรือ merchantStatus ตามที่พี่ตั้งไว้)
+        // และสถานะร้านต้องเปิดอยู่ (isOnline: true)
+        const shops = await db.collection('users').find({
+            location: {
+                $near: {
+                    $geometry: { type: "Point", coordinates: [userLng, userLat] },
+                    $maxDistance: 10000 // หน่วยเป็นเมตร = 10 กม.
+                }
+            },
+            adminLevel: { $gt: 0 }, // ตัวอย่าง: เช็คว่าเป็นแอดมิน/ร้านค้า
+            isOnline: true          // เช็คว่าเปิดร้านอยู่
+        }).toArray();
+
+        // 2. เช็คว่าผู้ซื้ออยู่โซนไหน (เพื่อส่งข้อมูลโซนกลับไปแสดงผล)
+        const myZone = await db.collection('zones').findOne({
+            // สมมติในคอลเลกชัน zones เก็บขอบเขตแบบ Polygon หรือใช้รัศมีเช็ค
+            // แต่ถ้าเช็คแบบง่ายคือหาโซนที่ใกล้ที่สุด
+            location: {
+                $near: {
+                    $geometry: { type: "Point", coordinates: [userLng, userLat] }
+                }
+            }
+        });
+
+        // 3. ส่งข้อมูลกลับไป พร้อมระยะทางที่คำนวณแล้ว (MongoDB จะเรียงใกล้ไปไกลให้เลย)
+        res.json({
+            success: true,
+            currentZone: myZone ? myZone.name : "Global Zone",
+            shops: shops.map(s => ({
+                username: s.username,
+                shopName: s.shopName || s.username,
+                shopImage: s.shopImage,
+                rating: s.rating,
+                completedJobs: s.completedJobs,
+                lat: s.location.coordinates[1],
+                lng: s.location.coordinates[0],
+                // ระยะทางจริงจะถูกคำนวณที่หน้าบ้านตามสูตร Haversine ที่ให้ไปก่อนหน้า
+            }))
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+});
 
 
 
