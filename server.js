@@ -900,50 +900,57 @@ app.post('/api/admin/process-merchant', async (req, res) => {
         const { requestId, status, adminName, lang = 'th' } = req.body;
         const txt = serverTranslations[lang] || serverTranslations['th'];
 
-        // 1. ค้นหาคำขอเปิดร้าน
+        // 1. หาคำขอ
         const request = await db.collection('merchantRequests').findOne({ 
             _id: new ObjectId(requestId) 
         });
 
-        if (!request) {
-            return res.status(404).json({ success: false, message: "Request not found" });
-        }
+        if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
         if (status === 'approved') {
-            // 2. อัปเดตข้อมูลผู้ใช้ในคอลเลกชัน users
-            // - เปลี่ยน adminLevel เป็น 1 (ระดับร้านค้า)
-            // - อัปเดตชื่อร้านค้าตามที่ขอมา
-            // - ตั้งค่า merchantVerified เป็น true (ครั้งต่อไปจะเริ่มคิดเงิน)
+            const newName = request.requestedShopName || request.shopName; // ชื่อใหม่ที่ขอมา (a)
+            const targetUser = request.username; // เจ้าของร้าน (b)
+
+            // 🚩 [a = b] อัปเดตที่ usersCollection (เพื่อเปลี่ยนระดับเป็นร้านค้า)
             await db.collection('users').updateOne(
-                { username: request.username },
+                { username: targetUser },
                 { 
                     $set: { 
                         adminLevel: 1, 
-                        shopName: request.requestedShopName || request.shopName,
                         merchantVerified: true,
-                        merchantVerifiedAt: new Date(),
-                        shopLat: request.lat,
-                        shopLng: request.lng,
-                        shopPhone: request.phone
+                        merchantVerifiedAt: new Date()
                     } 
                 }
             );
 
-            // 3. เปลี่ยนสถานะคำขอเป็น approved (หรือจะลบทิ้งก็ได้ แต่เก็บไว้ดูประวัติจะดีกว่า)
+            // 🚩 [b = c] อัปเดตที่ merchant_locations (เพื่อให้หน้า Balance เห็นชื่อใหม่)
+            // หาจุดที่เป็นร้านค้า (isStore: true) ของยูสเซอร์นี้ แล้วทับชื่อด้วยชื่อใหม่ที่ขอมา
+            await db.collection('merchant_locations').updateOne(
+                { owner: targetUser, isStore: true },
+                { 
+                    $set: { 
+                        label: newName, // เปลี่ยน label เป็นชื่อร้านใหม่
+                        lat: request.lat,
+                        lng: request.lng,
+                        updatedAt: Date.now()
+                    } 
+                }
+            );
+
+            // 3. ปิดงานคำขอ
             await db.collection('merchantRequests').updateOne(
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'approved', processedBy: adminName, processedAt: new Date() } }
             );
 
-            res.json({ success: true, message: "อนุมัติร้านค้าเรียบร้อยแล้ว ผู้ใช้กลายเป็นระดับร้านค้าทันที" });
+            res.json({ success: true, message: "อนุมัติและเปลี่ยนชื่อร้านค้าเรียบร้อยแล้ว" });
 
         } else {
-            // กรณีเป็นสถานะอื่น (ถ้าพี่มีปุ่ม Reject แยก)
             res.json({ success: true, message: "ดำเนินการเรียบร้อย" });
         }
 
     } catch (e) {
-        console.error("🚨 Process Merchant Error:", e);
+        console.error("🚨 Process Error:", e);
         res.status(500).json({ success: false, message: e.message });
     }
 });
