@@ -324,35 +324,51 @@
 
 
 
-.sticky-shop-btn {
-    position: fixed;
-    bottom: 20%;             /* อยู่กึ่งกลางแนวตั้ง */
-    right: 0;             /* ชิดขอบขวา */
-    transform: translateY(-50%); /* จัดกึ่งกลางให้เป๊ะ */
-    
-    width: 60px;          /* ความกว้าง */
-    height: 60px;         /* ความสูง (ให้ดูเหมือนลิ้นชัก) */
-    
-    background: linear-gradient(135deg, #6c5ce7, #a29bfe); /* สีม่วงพาสเทล ดูเด่นแต่สบายตา */
-    color: white;
-    border: none;
-    
-    /* เทคนิคทำขอบมนเฉพาะด้านซ้าย (ให้ดูเหมือนโดนดูด) */
-    border-top-left-radius: 30px;
-    border-bottom-left-radius: 30px;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    
-    box-shadow: -4px 4px 15px rgba(0,0,0,0.2); /* เงาปัดไปทางซ้าย */
-    z-index: 800;        /* อยู่เหนือแผนที่ แต่ต่ำกว่า Modal */
-    
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* เด้งดึ๋งเวลา Hover */
-    font-size: 24px;
+  .sticky-shop-btn {
+  position: fixed;
+  bottom: calc(30% - 100px); /* วางอยู่เหนือปุ่มสร้างกระทู้ (ซึ่งอยู่ที่ 50%) */
+  right: 0;
+  transform: translateY(-50%);
+
+  width: 50px;
+  height: 60px;
+
+  /* ใช้โทนสีฟ้า (Blue Gradient) ให้ต่างจากปุ่มสร้างที่เป็นสีม่วง */
+  background: linear-gradient(135deg, #dfd879, #95fd0d);
+  color: white;
+  border: none;
+
+  /* ขอบมนด้านซ้าย */
+  border-top-left-radius: 30px;
+  border-bottom-left-radius: 30px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+
+  box-shadow: -4px 4px 15px rgba(186, 238, 44, 0.2);
+  z-index: 2000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-size: 24px;
+  animation: rdis-sig 3s infinite;
 }
+
+@keyframes rdis-sig {
+  0% {
+    box-shadow: 0 0 0 0 rgba(69, 199, 52, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(118, 240, 61, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(228, 231, 63, 0);
+  }
+}
+
+
 
 
 
