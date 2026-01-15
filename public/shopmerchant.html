@@ -177,6 +177,64 @@ header {
 <script>
     let userCoords = null;
     let allShops = [];
+	
+	
+	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+				
+const translations = {
+    th: {
+        shop_nearby: "ร้านค้าใกล้เคียง (นอกโซน)",
+		shop_select: "เลือกร้านค้า",
+		shop_error: "เกิดข้อผิดพลาด",
+		shop_loading: "กำลังโหลด...",
+		shop_distance: "ระยะทาง",
+		shop_sold: "ขายแล้ว"
+    },
+    en: {
+        shop_nearby: "Nearby Shops (Outside Zone)",
+		shop_select: "Select Shop",
+		shop_error: "An error occurred",
+		shop_loading: "Loading...",
+		shop_distance: "Distance",
+		shop_sold: "Sold"
+    },
+    pt: {
+        shop_nearby: "Lojas Próximas (Fora da Zona)",
+		shop_select: "Selecionar Loja",
+		shop_error: "Ocorreu um erro",
+		shop_loading: "Carregando...",
+		shop_distance: "Distância",
+		shop_sold: "Vendido"
+    }
+};
+
+function applyMerchantTranslations() {
+    console.log(`[i18n] Applying translations for: ${currentLang}`);
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+        const key = el.getAttribute('data-i18n-key');
+        const translatedText = translations[currentLang]?.[key];
+
+        if (translatedText) {
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.placeholder = translatedText;
+            } 
+            else {
+                const icon = el.querySelector('i');
+                if (icon) {
+                    el.innerHTML = '';
+                    el.appendChild(icon);
+                    el.insertAdjacentHTML('beforeend', ' ' + translatedText);
+                } else {
+                    el.innerText = translatedText;
+                }
+            }
+        }
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    applyMerchantTranslations();
+});
 
     // 1. เริ่มต้น: ขอพิกัดผู้ใช้และโหลดร้านค้า
     window.onload = async () => {
@@ -198,82 +256,73 @@ header {
     };
 
     // 2. โหลดข้อมูลร้านค้าจาก API
-    async function loadShops() {
+async function loadShops() {
     if (!userCoords) {
-        console.warn("⚠️ [Debug] ไม่มีพิกัดผู้ใช้ (userCoords is null)");
+        console.warn("⚠️ [Debug] ไม่มีพิกัดผู้ใช้");
         return; 
     }
 
     try {
-        console.log(`📡 [Debug] กำลังเรียก API ด้วยพิกัด: lat=${userCoords.lat}, lng=${userCoords.lng}`);
-        
         const res = await fetch(`/api/marketplace/all-merchants?lat=${userCoords.lat}&lng=${userCoords.lng}`);
         
         if (!res.ok) {
-            const errorText = await res.text();
-            console.error(`❌ [Debug] Server ตอบกลับ Error ${res.status}:`, errorText);
-            throw new Error(`Server Error ${res.status}`);
+            console.error(`❌ [Debug] Server Error ${res.status}`);
+            throw new Error(`Server Error`);
         }
 
         const data = await res.json();
-        console.log("✅ [Debug] ข้อมูลที่ได้รับจาก API:", data);
         
         if (data.success) {
             const zoneDisplay = document.getElementById('currentZoneName');
-            console.log("📍 [Debug] ชื่อโซนที่ได้รับ:", data.currentZone);
             
             if (data.currentZone) {
-                zoneDisplay.innerText = `โซน: ${data.currentZone}`;
+                // ชื่อโซนจาก DB ไม่ต้องแปล
+                zoneDisplay.innerText = data.currentZone;
             } else {
-                zoneDisplay.innerText = "ร้านค้าใกล้เคียง (นอกโซน)";
+                // เรียกใช้จาก translations[currentLang]
+                zoneDisplay.innerText = translations[currentLang].shop_nearby;
             }
             
             allShops = data.shops;
-            console.log(`🛒 [Debug] พบร้านค้าทั้งหมด ${allShops.length} ร้าน`);
             renderShops(allShops);
-        } else {
-            console.warn("⚠️ [Debug] API ส่ง success: false", data.message);
         }
         document.getElementById('loader').style.display = 'none';
     } catch (e) {
         console.error("❌ [Debug] Fetch error:", e);
-        document.getElementById('currentZoneName').innerText = "เลือกร้านค้า (Error)";
+        // แสดงข้อความ Error ตามภาษาปัจจุบัน
+        document.getElementById('currentZoneName').innerText = 
+            `${translations[currentLang].shop_select} (${translations[currentLang].shop_error})`;
     }
 }
 
     // 3. แสดงผลการ์ดร้านค้า
-    function renderShops(shops) {
-        const grid = document.getElementById('shopGrid');
-        grid.innerHTML = '';
+function renderShops(shops) {
+    const grid = document.getElementById('shopGrid');
+    grid.innerHTML = '';
+    
+    // ดึงคำแปลมาเตรียมไว้
+    const txtSold = translations[currentLang].shop_sold;
 
-        // ถ้ามีพิกัด ให้คำนวณระยะทางและเรียงร้านที่ใกล้ที่สุดขึ้นก่อน
-        if (userCoords) {
-            shops.forEach(s => {
-                s.distance = calculateDistance(userCoords.lat, userCoords.lng, s.lat, s.lng);
-            });
-            shops.sort((a, b) => a.distance - b.distance);
-        }
-
-        shops.forEach(s => {
-            grid.innerHTML += `
-                <div class="shop-card" onclick="goToShop('${s.username}')">
-                    <div class="shop-image">
-                        <img src="${s.shopImage || 'https://via.placeholder.com/150'}" alt="${s.shopName}">
-                        <div class="distance-badge">
-                            <i class="fas fa-location-arrow"></i> ${s.distance ? s.distance.toFixed(1) + ' กม.' : 'N/A'}
-                        </div>
-                    </div>
-                    <div class="shop-info">
-                        <div class="shop-name">${s.shopName || s.username}</div>
-                        <div class="shop-meta">
-                            <span class="rating"><i class="fas fa-star"></i> ${s.rating || '5.0'}</span>
-                            <span>• ขายแล้ว ${s.completedJobs || 0}</span>
-                        </div>
+    shops.forEach(s => {
+        grid.innerHTML += `
+            <div class="shop-card" onclick="goToShop('${s.username}')">
+                <div class="shop-image">
+                    <img src="${s.shopImage || 'https://via.placeholder.com/150'}" alt="${s.shopName}">
+                    <div class="distance-badge">
+                        <i class="fas fa-location-arrow"></i> ${s.distance ? s.distance.toFixed(1) + ' km' : 'N/A'}
                     </div>
                 </div>
-            `;
-        });
-    }
+                <div class="shop-info">
+                    <div class="shop-name">${s.shopName || s.username}</div>
+                    <div class="shop-meta">
+                        <span class="rating"><i class="fas fa-star"></i> ${s.rating || '5.0'}</span>
+                        <span>• ${txtSold} ${s.completedJobs || 0}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+}
 
     // 4. สูตรคำนวณระยะทาง Haversine (กม.)
     function calculateDistance(lat1, lon1, lat2, lon2) {
