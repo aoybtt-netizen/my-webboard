@@ -165,6 +165,13 @@ body { font-family: 'Kanit', sans-serif; background: var(--light); margin: 0; di
         <span data-i18n-key="menu_kyc">คำขอยืนยันตัวตน</span>
         <span class="badge" id="kyc-count">0</span>
     </div>
+	
+	<div class="menu-item" onclick="showContent('merchant_verify')">
+    <i class="fas fa-store"></i> 
+    <span data-i18n-key="menu_merchant_verify">คำขอยืนยันร้านค้า</span>
+    <span class="badge" id="merchant-verify-count" style="background: #e74c3c;">0</span>
+	</div>
+
     
     <div class="menu-item" onclick="showContent('members')">
         <i class="fas fa-users"></i> 
@@ -376,6 +383,11 @@ const translations = {
         'tab_kyc': 'ประวัติ KYC',
         'status_kyc_approved': 'ยืนยันสำเร็จ',
         'income_label': 'รายได้:',
+		'menu_merchant_verify': 'คำขอยืนยันร้านค้า',
+        'title_merchant_verification': 'รายการตรวจสอบและอนุมัติร้านค้า',
+        'btn_approve_merchant': 'อนุมัติร้านค้า',
+        'btn_reject_merchant': 'ปฏิเสธคำขอ',
+        'msg_no_merchant_request': 'ไม่มีคำขอเปิดร้านค้าในขณะนี้'
     },
     'en': {
         'lbl_master_balance': 'Available Balance (Master)',
@@ -501,6 +513,11 @@ const translations = {
         'tab_kyc': 'KYC History',
         'status_kyc_approved': 'Verified',
         'income_label': 'Income:',
+		'menu_merchant_verify': 'Shop Verification',
+        'title_merchant_verification': 'Merchant Approval List',
+        'btn_approve_merchant': 'Approve Shop',
+        'btn_reject_merchant': 'Reject Request',
+        'msg_no_merchant_request': 'No pending shop requests'
     },
     'pt': {
         'lbl_master_balance': 'Saldo Disponível (Master)',
@@ -626,6 +643,11 @@ const translations = {
         'tab_kyc': 'Histórico KYC',
         'status_kyc_approved': 'Verificado',
         'income_label': 'Receita:',
+		'menu_merchant_verify': 'Verificação de Loja',
+        'title_merchant_verification': 'Lista de Aprovação de Mercadores',
+        'btn_approve_merchant': 'Aprovar Loja',
+        'btn_reject_merchant': 'Rejeitar Pedido',
+        'msg_no_merchant_request': 'Nenhum pedido de loja pendente'
     }
 };
 
@@ -682,7 +704,8 @@ async function showContent(type) {
         topup: getEl('section-topup-list'),
         chat: getEl('section-admin-chat'),
         kyc: getEl('section-kyc-list'),
-        members: getEl('section-members-list')
+        members: getEl('section-members-list'),
+        merchant_verify: getEl('section-merchant-verify-list')
     };
 
     // ย้ายทุกอย่างไปเก็บที่ storage ก่อนล้างจอ
@@ -698,6 +721,26 @@ async function showContent(type) {
     if (targetItem) targetItem.classList.add('active');
 
     // --- 4. Switch Case การแสดงผล ---
+	if (type === 'merchant_verify') {
+        title.innerText = translations[currentLang]['title_merchant_verification'];
+        
+        let merchantSec = sections.merchant_verify;
+        if (!merchantSec) {
+            merchantSec = document.createElement('div');
+            merchantSec.id = 'section-merchant-verify-list';
+            merchantSec.innerHTML = `<div id="merchant-verify-container"></div>`;
+        }
+        
+        display.appendChild(merchantSec);
+        merchantSec.style.display = 'block';
+        
+        // แสดง Loading และเรียกฟังก์ชันโหลดข้อมูล (เดี๋ยวเราต้องสร้างฟังก์ชันนี้ต่อ)
+        const container = document.getElementById('merchant-verify-container');
+        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;"><i class="fas fa-spinner fa-spin"></i> Loading Merchant Requests...</p>';
+        
+        if (typeof loadMerchantRequests === 'function') {
+            loadMerchantRequests(); 
+        }
 
     if (type === 'topup') {
         title.innerText = translations[currentLang].title_transactionsss;
@@ -2339,6 +2382,107 @@ socket.on('update-topup-list', (data) => {
         title: `New request! ${data.type}: ${data.amount}`
     });
 });
+
+
+
+async function loadMerchantRequests() {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const timeLocale = { 'th': 'th-TH', 'en': 'en-US', 'pt': 'pt-PT' }[currentLang];
+    
+    const adminName = localStorage.getItem('myUsername');
+    const container = document.getElementById('merchant-verify-container');
+    if (!container) return;
+
+    try {
+        // เรียก API ดึงคำขอเปิดร้าน (ต้องสร้าง API นี้ที่ Backend ด้วยนะครับ)
+        const res = await fetch(`/api/admin/merchant-request-list?admin=${adminName}`);
+        const requests = await res.json();
+        
+        if (requests.length === 0) {
+            container.innerHTML = `
+                <div style="text-align:center; margin-top:50px; color:#999;">
+                    <i class="fas fa-store-slash fa-3x"></i>
+                    <p>${translations[currentLang].msg_no_merchant_request}</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = requests.map(req => {
+            const color = 'var(--accent)'; // สีเขียวหรือสีฟ้าตามธีมร้านค้า
+            const label = translations[currentLang].menu_merchant_verify;
+            const icon = 'fas fa-store';
+
+            // เมื่อคลิก จะเรียกเปิดหน้าต่างดูรายละเอียด (ฟังก์ชันใหม่)
+            return `
+            <div class="admin-card" onclick="openMerchantDetail('${req._id}', '${req.username}')" 
+             style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${color};">
+                <div>
+                    <div style="font-size: 0.85em; color: ${color}; font-weight: bold; margin-bottom: 5px;">
+                        <i class="${icon}"></i> ${label}
+                    </div>
+                    <strong style="font-size: 1.1em; color: var(--dark);">@${req.username}</strong><br>
+                    <span style="color:#666; font-size: 0.9em;">
+                        ${req.shopName || 'Shop Name Pending'}
+                    </span>
+                </div>
+                <div style="text-align:right; color:#999;">
+                    <small>${new Date(req.createdAt).toLocaleTimeString(timeLocale)}</small><br>
+                    <i class="fas fa-chevron-right" style="margin-top: 10px; opacity: 0.3;"></i>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+        // อัปเดตตัวเลข Badge
+        const badge = document.getElementById('merchant-verify-count');
+        if (badge) {
+            badge.innerText = requests.length;
+            badge.style.display = requests.length > 0 ? 'inline-block' : 'none';
+        }
+
+    } catch (err) {
+        console.error("Load Merchant Error:", err);
+        container.innerHTML = `<p style="text-align:center; color:red;">${translations[currentLang].shop_error}</p>`;
+    }
+}
+
+
+async function openMerchantDetail(requestId, username) {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const lang = translations[currentLang];
+
+    try {
+        const res = await fetch(`/api/admin/merchant-detail/${requestId}`);
+        const data = await res.json();
+
+        Swal.fire({
+            title: lang.menu_merchant_verify,
+            html: `
+                <div style="text-align:left; font-size:0.9em;">
+                    <p><b>Username:</b> @${username}</p>
+                    <p><b>Shop Name:</b> ${data.shopName}</p>
+                    <p><b>Description:</b> ${data.description || '-'}</p>
+                    <hr>
+                    <p><b>Document/Shop Image:</b></p>
+                    <img src="${data.idCardImage || data.shopImage}" style="width:100%; border-radius:10px; cursor:pointer;" onclick="window.open(this.src)">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: `<i class="fas fa-check"></i> ${lang.btn_approve_merchant}`,
+            cancelButtonText: `<i class="fas fa-times"></i> ${lang.btn_reject_merchant}`,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#d33'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                processMerchant(requestId, 'approved');
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                processMerchant(requestId, 'rejected');
+            }
+        });
+    } catch (e) {
+        Swal.fire('Error', 'Could not load details', 'error');
+    }
+}
 
 
 

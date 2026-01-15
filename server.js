@@ -4729,6 +4729,26 @@ app.get('/api/admin/kyc-history', async (req, res) => {
     }
 });
 
+// ยืนยันร้านค้า
+// ดึงรายการที่รออนุมัติในโซน
+app.get('/api/admin/merchant-request-list', async (req, res) => {
+    try {
+        const { admin } = req.query;
+        // หาว่าแอดมินคนนี้คุมโซนไหน แล้วดึงคำขอจากโซนนั้น
+        const zone = await db.collection('zones').findOne({ assignedAdmin: admin });
+        if (!zone) return res.json([]);
+
+        const requests = await db.collection('merchantRequests').find({ 
+            zoneId: zone.id, 
+            status: 'pending' 
+        }).toArray();
+
+        res.json(requests);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 
 
 
