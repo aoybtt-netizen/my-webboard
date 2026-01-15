@@ -2105,22 +2105,25 @@ function updateTitlePreview() {
     }
 
     let hasError = false;
-		stopElements.forEach((el, index) => {
+    stopElements.forEach((el, index) => {
     const id = el.id.split('-')[1];
     const labelInput = document.getElementById(`label-${id}`).value;
     
-    // 🚩 ปรับปรุงจุดนี้: ถ้าเป็นจุดแรก (ร้านค้า) และ label ว่าง หรืออยากให้ใช้ชื่อร้านที่บันทึกไว้
     let finalLabel = labelInput;
-    if (index === 0 && isMerchantTask) {
-        // หาข้อมูลร้านค้าจาก mySavedLocations ที่มี isStore: true
+
+    // 🚩 แก้ไขจุดนี้: เช็คจากโหมดปัจจุบัน (isStoreMode) 
+    // หรือเช็คจากตัวแปร global ที่บอกว่าเป็น User ประเภท merchant
+    if (index === 0 && (typeof isStoreMode !== 'undefined' && isStoreMode === true)) {
+        // หาข้อมูลร้านค้าจากพิกัดที่เราโหลดมาเก็บไว้
         const storeData = mySavedLocations.find(loc => loc.isStore === true);
-        // ถ้าในช่อง input ว่าง ให้ดึงชื่อร้านจากฐานข้อมูลมาใส่แทน
-        if (!finalLabel && storeData) {
-            finalLabel = storeData.label;
+        if (storeData) {
+            // ถ้าในช่อง input ว่าง หรือต้องการให้ชื่อตรงเป๊ะ ให้ดึงจากฐานข้อมูลมาใส่
+            if (!finalLabel) {
+                finalLabel = storeData.label;
+            }
         }
     }
 
-    // หากยังไม่มีชื่ออีก ให้ใช้ Pickup/Dropoff ตามปกติ
     if (!finalLabel) {
         finalLabel = (index === 0 
             ? translations[currentLang].lbl_pickup_simple 
