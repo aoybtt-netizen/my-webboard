@@ -861,9 +861,21 @@ app.get('/api/admin/merchant-detail/:id', async (req, res) => {
         const request = await db.collection('merchantRequests').findOne({ 
             _id: new require('mongodb').ObjectId(req.params.id) 
         });
+        // ส่งกลับไป และตรวจสอบว่าฟิลด์ต่างๆ มีค่าไหม
         res.json(request);
     } catch (e) {
         res.status(500).json({ error: e.message });
+    }
+});
+// --- API สำหรับลบคำขอ ---
+app.delete('/api/admin/merchant-request/:id', async (req, res) => {
+    try {
+        await db.collection('merchantRequests').deleteOne({ 
+            _id: new require('mongodb').ObjectId(req.params.id) 
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
