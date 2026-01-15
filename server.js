@@ -3906,6 +3906,29 @@ app.post('/api/merchant/apply', async (req, res) => {
     }
 });
 
+app.post('/api/merchant/check-fee', async (req, res) => {
+    try {
+        const { lat, lng, username } = req.body;
+        const user = await db.collection('users').findOne({ username });
+        const zoneInfo = await findResponsibleAdmin({ lat, lng });
+        const zone = zoneInfo?.zoneData;
+
+        if (!zone) return res.json({ success: false, message: 'Outside zone' });
+
+        const isFirstTime = !user.merchantVerified;
+        const fee = isFirstTime ? 0 : (parseFloat(zone.changNameMerchant) || 0);
+        
+        res.json({ 
+            success: true, 
+            fee, 
+            currency: zone.zoneCurrency || 'USD',
+            isFirstTime 
+        });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 
 
 
