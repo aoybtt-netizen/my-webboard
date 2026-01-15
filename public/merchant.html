@@ -3254,7 +3254,7 @@ function displayMerchantLocation(lat, lng) {
     
     // ดึงคำแปลจากตัวแปรที่มีอยู่แล้ว
     const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-    const label = (currentLang === 'pt') ? 'Sua localização' : (currentLang === 'en' ? 'Your Location' : 'พิกัดร้านของคุณ');
+    const label = (currentLang === 'pt') ? 'Sua localização' : (currentLang === 'en' ? 'Store' : 'Store');
 
     container.innerHTML = `
         <a href="${mapsUrl}" target="_blank" style="
