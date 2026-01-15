@@ -3833,33 +3833,44 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
     }
 });
 
-app.post('/api/merchant/apply', async (req, res) => {	
-    // 1. ดึงภาษาที่ส่งมาจาก Frontend (Default เป็น 'th')
-    const lang = req.body.lang || 'th';
-    // ดึงชุดคำแปลของภาษานั้นๆ มาเตรียมไว้
+app.post('/api/merchant/apply', async (req, res) => {    
+    const lang = req.body.lang || 'th'; 
     const txt = serverTranslations[lang] || serverTranslations['th'];
 
     try {
         const { username, shopName, lat, lng, phone, description } = req.body;
         
         const user = await db.collection('users').findOne({ username });
+        
+        // 🚩 1. เช็คก่อนว่ามีคำขอที่ "รออนุมัติ" ค้างอยู่ไหม
+        // เพื่อป้องกันการส่งคำขอซ้ำในขณะที่แอดมินยังไม่กดอนุมัติ
+        const existingRequest = await db.collection('merchantRequests').findOne({ 
+            username, 
+            status: 'pending' 
+        });
+        
+        if (existingRequest) {
+            return res.status(400).json({ 
+                success: false, 
+                message: lang === 'th' ? "คุณมีคำขอที่รอการอนุมัติอยู่แล้ว" : "You already have a pending request." 
+            });
+        }
+
         const zoneInfo = await findResponsibleAdmin({ lat, lng });
         const zone = zoneInfo?.zoneData;
 
-        // 2. เช็คพิกัดโซน
         if (!zone) {
             return res.status(400).json({ success: false, message: txt.err_outside_zone });
         }
 
-        const isFirstTime = !user.merchantVerified;
+        // 🚩 2. เช็คสิทธิ์ฟรี (จะฟรีต่อเมื่อยังไม่เคยมีคำขอไหน "ได้รับอนุมัติ" มาก่อน)
+        const isFirstTime = !user.merchantVerified; 
         const fee = isFirstTime ? 0 : (parseFloat(zone.changNameMerchant) || 0);
         const currency = zone.zoneCurrency || 'USD';
 
-        // 3. จัดการเรื่องเงิน (ถ้ามีค่าธรรมเนียม)
         if (fee > 0) {
             const userBalance = user[currency] || 0;
             if (userBalance < fee) {
-                // แทนค่า {currency} และ {fee} ในประโยค (ถ้าพี่ทำ placeholder ไว้)
                 let msg = txt.err_insufficient_fund
                     .replace(/{currency}/g, currency)
                     .replace(/{fee}/g, fee);
@@ -3872,7 +3883,6 @@ app.post('/api/merchant/apply', async (req, res) => {
             );
         }
 
-        // 4. บันทึกคำขอ
         await db.collection('merchantRequests').insertOne({
             username,
             requestedShopName: shopName,
@@ -3884,7 +3894,6 @@ app.post('/api/merchant/apply', async (req, res) => {
             createdAt: new Date()
         });
 
-        // 5. เตรียมข้อความตอบกลับสำเร็จ
         let successMsg = isFirstTime 
             ? txt.msg_apply_success_free 
             : txt.msg_apply_success_fee.replace(/{fee}/g, fee).replace(/{currency}/g, currency);
