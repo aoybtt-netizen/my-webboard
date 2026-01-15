@@ -324,6 +324,36 @@
 
 
 
+.sticky-shop-btn {
+    position: fixed;
+    bottom: 20%;             /* อยู่กึ่งกลางแนวตั้ง */
+    right: 0;             /* ชิดขอบขวา */
+    transform: translateY(-50%); /* จัดกึ่งกลางให้เป๊ะ */
+    
+    width: 60px;          /* ความกว้าง */
+    height: 60px;         /* ความสูง (ให้ดูเหมือนลิ้นชัก) */
+    
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe); /* สีม่วงพาสเทล ดูเด่นแต่สบายตา */
+    color: white;
+    border: none;
+    
+    /* เทคนิคทำขอบมนเฉพาะด้านซ้าย (ให้ดูเหมือนโดนดูด) */
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    
+    box-shadow: -4px 4px 15px rgba(0,0,0,0.2); /* เงาปัดไปทางซ้าย */
+    z-index: 800;        /* อยู่เหนือแผนที่ แต่ต่ำกว่า Modal */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* เด้งดึ๋งเวลา Hover */
+    font-size: 24px;
+}
+
 
 
 
@@ -5803,6 +5833,10 @@ async function saveZoneCurrency(zoneId, currency, rate) {
 </button>
 
 <button id="sticky-create-btn" class="sticky-create-btn hidden" onclick="openCreateModal()" title="Create New Post">
+    <i class="fas fa-plus"></i>
+</button>
+
+<button id="sticky-shop-btn" class="sticky-shop-btn hidden" onclick="openCreateModal()" title="Create New Post">
     <i class="fas fa-plus"></i>
 </button>
 
