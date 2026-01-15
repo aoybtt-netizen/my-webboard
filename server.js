@@ -3732,7 +3732,17 @@ app.post('/api/merchant/reset-mercnum', async (req, res) => {
     }
 });
 
+app.get('/api/merchant/locations', async (req, res) => {
+    const username = req.query.username; // รับชื่อจาก Query String
+    if (!username) return res.status(400).json({ success: false, error: 'Username not found.' });
 
+    try {
+        const locations = await merchantLocationsCollection.find({ owner: username }).toArray();
+        res.json({ success: true, locations });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Database Error' });
+    }
+});
 
 // 3. API: บันทึกพิกัดใหม่ (ปรับปรุง)
 app.post('/api/merchant/locations', async (req, res) => {
