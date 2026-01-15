@@ -1753,7 +1753,7 @@ async function confirmMapLocation() {
                 text: translations[currentLang].err_no_location_name || 'กรุณาระบุชื่อร้านค้าของคุณ'
             });
         }
-
+		closeMapModal();	
         // 🚩 2. ใช้ Swal เป็นตัวยืนยันสุดท้าย (ไม่ต้องกรอกซ้ำแล้ว)
         const result = await Swal.fire({
             title: translations[currentLang].title_merchant_verify || 'ยืนยันการส่งคำขอเปิดร้าน',
@@ -1798,9 +1798,11 @@ async function confirmMapLocation() {
             } catch (err) {
                 Swal.fire('Error', 'Unable to connect to server.', 'error');
             }
+        }else {
+            document.getElementById('map-modal').classList.remove('hidden');
         }
         
-        return; // จบการทำงาน
+        return;
     }
 
     // ---------------------------------------------------------

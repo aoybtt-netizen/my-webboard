@@ -188,7 +188,10 @@ const serverTranslations = {
         'err_insufficient_fund': 'ยอดเงินในกระเป๋า {currency} ไม่เพียงพอ (ต้องการ {fee} {currency})',
         'note_auto_deduct': 'เปลี่ยนชื่อร้านค้า (หักอัตโนมัติ)',
         'msg_apply_success_free': 'ส่งคำขอเปิดร้านสำเร็จ (ฟรีครั้งแรก)',
-        'msg_apply_success_fee': 'ส่งคำขอเปลี่ยนชื่อสำเร็จ (หักค่าธรรมเนียม {fee} {currency})'
+        'msg_apply_success_fee': 'ส่งคำขอเปลี่ยนชื่อสำเร็จ (หักค่าธรรมเนียม {fee} {currency})',
+		'note_approve_merchant': 'อนุมัติร้านค้า: {name}',
+        'msg_approve_success': 'อนุมัติเรียบร้อย เงินค่าธรรมเนียมเข้ากระเป๋าคุณแล้ว',
+        'msg_reject_success': 'ปฏิเสธคำขอเรียบร้อย',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -293,7 +296,10 @@ const serverTranslations = {
         'err_insufficient_fund': 'Insufficient {currency} balance (Required: {fee} {currency})',
         'note_auto_deduct': 'Shop name change fee (Auto-deducted)',
         'msg_apply_success_free': 'Shop request submitted successfully (First time free)',
-        'msg_apply_success_fee': 'Shop name change submitted (Fee: {fee} {currency})'
+        'msg_apply_success_fee': 'Shop name change submitted (Fee: {fee} {currency})',
+		'note_approve_merchant': 'Approved Shop: {name}',
+        'msg_approve_success': 'Approved successfully. Fee has been added to your wallet.',
+        'msg_reject_success': 'Request rejected successfully.',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -397,7 +403,10 @@ const serverTranslations = {
         'err_insufficient_fund': 'Saldo de {currency} insuficiente (Necessário: {fee} {currency})',
         'note_auto_deduct': 'Taxa de alteração de nome da loja (Débito automático)',
         'msg_apply_success_free': 'Pedido de loja enviado com sucesso (Primeira vez grátis)',
-        'msg_apply_success_fee': 'Pedido de alteração enviado (Taxa: {fee} {currency})'
+        'msg_apply_success_fee': 'Pedido de alteração enviado (Taxa: {fee} {currency})',
+		'note_approve_merchant': 'Loja aprovada: {name}',
+        'msg_approve_success': 'Aprovado com sucesso. A taxa foi adicionada à sua carteira.',
+        'msg_reject_success': 'Pedido rejeitado com sucesso.',
     }
 };
 
@@ -877,7 +886,7 @@ app.get('/api/admin/merchant-detail/:id', async (req, res) => {
 
         // ตรวจสอบความถูกต้องของ ID ก่อนค้นหา
         if (!ObjectId.isValid(id)) {
-            return res.status(400).json({ error: 'รูปแบบ ID ไม่ถูกต้อง' });
+            return res.status(400).json({ error: 'The ID format is incorrect.' });
         }
 
         const request = await db.collection('merchantRequests').findOne({ 
@@ -885,7 +894,7 @@ app.get('/api/admin/merchant-detail/:id', async (req, res) => {
         });
 
         if (!request) {
-            return res.status(404).json({ error: 'ไม่พบข้อมูลคำขอนี้' });
+            return res.status(404).json({ error: 'No information was found for this request.' });
         }
 
         res.json(request);
@@ -896,6 +905,7 @@ app.get('/api/admin/merchant-detail/:id', async (req, res) => {
 });
 
 app.post('/api/admin/process-merchant', async (req, res) => {
+	const lang = req.body.lang || 'th';	
     try {
         const { requestId, status, adminName, lang = 'th' } = req.body;
         const txt = serverTranslations[lang] || serverTranslations['th'];
@@ -932,7 +942,7 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                     processedBy: adminName, // 🚩 ชื่อแอดมินผู้กดอนุมัติ
                     processedAt: new Date(),
                     createdAt: request.createdAt, 
-                    note: `อนุมัติร้านค้า: ${newName}`
+                    note: txt.note_approve_merchant.replace('{name}', newName)
                 });
             }
 
@@ -960,7 +970,7 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                 { $set: { status: 'approved', processedBy: adminName, processedAt: new Date() } }
             );
 
-            res.json({ success: true, message: "อนุมัติเรียบร้อย เงินค่าธรรมเนียมเข้ากระเป๋าคุณแล้ว" });
+            res.json({ success: true, message: txt.msg_approve_success });	
 
         } else {
             // กรณี Reject (ถ้าจะคืนเงินต้องใส่ Logic $inc คืนเงินให้ targetUser ตรงนี้)
@@ -968,7 +978,7 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
             );
-            res.json({ success: true, message: "ปฏิเสธคำขอเรียบร้อย" });
+            res.json({ success: true, message: txt.msg_reject_success });
         }
 
     } catch (e) {
@@ -984,8 +994,8 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
 
         // ตรวจสอบก่อนว่า ID ที่ส่งมาถูกต้องตามรูปแบบ MongoDB ไหม
         if (!ObjectId.isValid(id)) {
-            console.error(`❌ ID ไม่ถูกต้อง: ${id}`);
-            return res.status(400).json({ success: false, error: 'รูปแบบ ID ไม่ถูกต้อง' });
+            console.error(`❌ ID : ${id}`);
+            return res.status(400).json({ success: false, error: 'The ID format is incorrect.' });
         }
 
         const result = await db.collection('merchantRequests').deleteOne({ 
@@ -993,10 +1003,9 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
         });
 
         if (result.deletedCount === 0) {
-            return res.status(404).json({ success: false, error: 'ไม่พบรายการที่ต้องการลบ' });
+            return res.status(404).json({ success: false, error: 'The item you wish to delete was not found.' });
         }
 
-        console.log(`✅ ลบคำขอ ${id} สำเร็จ`);
         res.json({ success: true });
 
     } catch (e) {
