@@ -921,18 +921,18 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                 );
 
                 // 🚩 [บันทึกประวัติ] เพื่อให้โชว์ในหน้า History ของแอดมินคนนี้
-                await db.collection('topupRequests').insertOne({
+                await topupRequestsCollection.insertOne({
                     username: targetUser,
                     amount: fee,
                     currency: currency,
-                    type: 'WITHDRAW', 
+                    type: 'WITHDRAW', // ให้โชว์เป็นตัวเลขสีแดง (หักจาก User)
                     status: 'approved',
-                    method: 'SHOP_FEE',
-                    name: 'MERCHANT APPROVE FEE',
-                    processedBy: adminName, // ชื่อแอดมินที่กดปุ่ม
+                    method: 'SHOP_FEE', // ใส่เพื่อให้หน้าบ้านแยกไอคอนได้
+                    name: 'SHOP NAME CHANGE FEE',
+                    processedBy: adminName, // 🚩 ชื่อแอดมินผู้กดอนุมัติ
                     processedAt: new Date(),
-                    createdAt: new Date(),
-                    note: `อนุมัติชื่อร้าน: ${newName}`
+                    createdAt: request.createdAt, 
+                    note: `อนุมัติร้านค้า: ${newName}`
                 });
             }
 
@@ -4730,19 +4730,14 @@ app.get('/api/admin/topup-history', async (req, res) => {
         const { admin } = req.query;
         if (!admin) return res.status(400).send("Missing admin name");
 
-        // 🚩 เปลี่ยนจาก topupRequestsCollection เป็น db.collection('topupRequests')
-        // เพื่อให้ตรงกับตอนที่ Insert ข้อมูลค่าธรรมเนียมร้านค้า
-        const history = await db.collection('topupRequests')
-            .find({ 
-                processedBy: admin, 
-                status: { $ne: 'pending' } 
-            })
-            .sort({ processedAt: -1 })
+        // ค้นหาคำขอที่แอดมินคนนี้เป็นคนประมวลผล (processedBy)
+        const history = await topupRequestsCollection
+            .find({ processedBy: admin, status: { $ne: 'pending' } })
+            .sort({ processedAt: -1 }) // เรียงตามเวลาที่จัดการล่าสุด
             .toArray();
 
         res.json(history);
     } catch (e) {
-        console.error("🚨 Get History Error:", e);
         res.status(500).json({ error: e.message });
     }
 });

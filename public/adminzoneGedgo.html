@@ -829,45 +829,36 @@ async function loadAdminHistory() {
         }
 
         container.innerHTML = history.map(item => {
-    const isWithdraw = item.type === 'WITHDRAW';
-    const isShopFee = item.method === 'SHOP_FEE'; // 🚩 ตรวจสอบว่าเป็นค่าธรรมเนียมร้านค้าไหม
+            const isWithdraw = item.type === 'WITHDRAW';
+            const color = isWithdraw ? 'var(--danger)' : 'var(--primary)';
+            const label = isWithdraw ? translations[currentLang].label_withdraw : translations[currentLang].label_topup;
+            const icon = isWithdraw ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
+            const statusLabel = item.status === 'approved' 
+				? translations[currentLang].status_approved 
+				: translations[currentLang].status_rejected;
+            
+            // ✅ ดึงสกุลเงินจาก item (Raw value เช่น BRL) ถ้าไม่มีให้ใช้ USD
+            const currency = item.currency || 'USD';
 
-    const color = isWithdraw ? 'var(--danger)' : 'var(--primary)';
-    
-    // 🚩 ปรับ Label: ถ้าเป็น SHOP_FEE ให้ขึ้นว่า "ค่าธรรมเนียมร้าน" 
-    let label = isWithdraw ? translations[currentLang].label_withdraw : translations[currentLang].label_topup;
-    if (isShopFee) label = "ค่าธรรมเนียมอนุมัติร้านค้า"; 
-    
-    // 🚩 ปรับ Icon: ถ้าเป็น SHOP_FEE ให้ใช้ไอคอนร้านค้า
-    let icon = isWithdraw ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
-    if (isShopFee) icon = 'fas fa-store';
-
-    const statusLabel = item.status === 'approved' 
-        ? translations[currentLang].status_approved 
-        : translations[currentLang].status_rejected;
-    
-    const currency = item.currency || 'USD';
-
-    return `
-    <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.slipUrl || ""}', '${item.createdAt}', '${item.processedAt}', '${currency}')" 
-         style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; margin-bottom: 10px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-        <div style="flex: 1;">
-            <div style="font-size: 0.8em; color: ${color}; font-weight: bold; margin-bottom: 2px;">
-                <i class="${icon}"></i> ${label}
+            return `
+            <div class="admin-card" onclick="viewArchivedAdminChat('${item._id}', '${item.username}', ${item.amount}, '${item.status}', '${item.slipUrl || ""}', '${item.createdAt}', '${item.processedAt}', '${currency}')" 
+                 style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-left: 5px solid ${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; margin-bottom: 10px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <div style="flex: 1;">
+                    <div style="font-size: 0.8em; color: ${color}; font-weight: bold; margin-bottom: 2px;">
+                        <i class="${icon}"></i> ${label}
+                    </div>
+                    <strong>User: ${item.username}</strong><br>
+                    <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
+                        ${statusLabel}: ${item.amount.toLocaleString(undefined, {minimumFractionDigits:2})} ${currency}
+                    </span>
+                </div>
+                <div style="text-align:right;">
+                    <small style="color:#999; display:block;">${new Date(item.processedAt).toLocaleString('th-TH')}</small>
+                    <i class="fas fa-chevron-right" style="color:#eee; margin-top:5px;"></i>
+                </div>
             </div>
-            <strong>User: @${item.username}</strong><br>
-            <span style="color:${item.status === 'approved' ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">
-                ${statusLabel}: ${item.amount.toLocaleString(undefined, {minimumFractionDigits:2})} ${currency}
-            </span>
-            ${item.note ? `<br><small style="color:#999;">${item.note}</small>` : ''}
-        </div>
-        <div style="text-align:right;">
-            <small style="color:#999; display:block;">${new Date(item.processedAt).toLocaleString('th-TH')}</small>
-            <i class="fas fa-chevron-right" style="color:#eee; margin-top:5px;"></i>
-        </div>
-    </div>
-    `;
-}).join('');
+            `;
+        }).join('');
     } catch (err) {
         console.error("Load Admin History Error:", err);
         container.innerHTML = '<p style="text-align:center; color:red;">Data loading failed.</p>';
