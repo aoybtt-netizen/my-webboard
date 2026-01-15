@@ -918,9 +918,9 @@ app.post('/api/admin/process-merchant', async (req, res) => {
                 { username: targetUser },
                 { 
                     $set: { 
-                        adminLevel: 1, 
-                        merchantVerified: true,
-                        merchantVerifiedAt: new Date()
+						userType: 'merchant',
+						merchantVerified: true,
+						merchantVerifiedAt: new Date()
                     } 
                 }
             );
