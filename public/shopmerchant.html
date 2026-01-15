@@ -53,14 +53,19 @@ header {
 }
 
 .search-box {
-    background: rgba(255, 255, 255, 0.2); /* โปร่งแสงเพื่อให้เห็นสีพื้นหลัง */
-    backdrop-filter: blur(5px); /* เบลอพื้นหลังให้ดูพรีเมียม */
+    background: rgba(255, 255, 255, 0.2); /* โปร่งแสงพรีเมียม */
+    backdrop-filter: blur(10px); /* เอฟเฟกต์กระจกเบลอ */
     border-radius: 25px;
     padding: 10px 20px;
-    display: flex;
-    align-items: center;
-    margin: 0 auto;
-    max-width: 500px;
+    display: flex;             /* จัดไอคอนกับ input ให้อยู่บรรทัดเดียวกัน */
+    align-items: center;       /* จัดให้อยู่กลางในแนวตั้ง */
+    
+    /* --- ส่วนสำคัญที่ทำให้กลาง --- */
+    margin: 15px auto 0 auto;  /* บน 15px, ซ้าย-ขวา auto (ดึงเข้ากึ่งกลาง) */
+    max-width: 500px;          /* จำกัดความกว้างให้ดูดี */
+    width: 90%;                /* ยืดหยุ่นตามหน้าจอมือถือ */
+    /* -------------------------- */
+    
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
@@ -71,11 +76,12 @@ header {
     width: 100%;
     margin-left: 10px;
     font-family: 'Kanit';
-    color: white; /* เปลี่ยนตัวหนังสือเป็นสีขาว */
+    color: white;
+    font-size: 14px;
 }
 
 .search-box input::placeholder {
-    color: rgba(255, 255, 255, 0.7); /* สีตัวอักษร Placeholder */
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .search-box i {
@@ -198,21 +204,19 @@ header {
 </head>
 <body>
 
-<header>
-    <div class="header-top">
-        <div onclick="history.back()" style="cursor:pointer; width: 30px; text-align: left;">
-            <i class="fas fa-chevron-left"></i>
-        </div>
-        <div class="header-title">เลือกร้านค้า</div>
-        <div style="width: 30px; text-align: right;">
-            <i class="fas fa-filter"></i>
-        </div>
-    </div>
+<header style="background: linear-gradient(135deg, #11998e, #38ef7d); padding: 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
     
+    <div style="display: flex; justify-content: space-between; align-items: center; color: white;">
+        <div onclick="history.back()" style="cursor:pointer; width: 40px;"><i class="fas fa-chevron-left"></i></div>
+        <div style="font-weight: 600; font-size: 1.2rem;">เลือกร้านค้า</div>
+        <div style="width: 40px; text-align: right;"><i class="fas fa-filter"></i></div>
+    </div>
+
     <div class="search-box">
         <i class="fas fa-search"></i>
         <input type="text" placeholder="ค้นหาชื่อร้านค้า..." id="searchInput" onkeyup="filterShops()">
     </div>
+
 </header>
 
 
