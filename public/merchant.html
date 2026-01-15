@@ -1745,7 +1745,7 @@ async function confirmMapLocation() {
     // 1. ตรวจสอบว่าปักหมุดหรือยัง
     if (!selectedLat || !selectedLng) return alert(translations[currentLang].err_no_pin);
 
-    // 2. กรณีเป็นโหมดเลือกจุดรับ-ส่ง (Stop Mode)
+    // 2. กรณีเป็นโหมดเลือกจุดรับ-ส่ง (Stop Mode) - โค้ดส่วนเดิมของพี่
     if (mapMode === 'stop') {
         const id = currentTargetStopId;
         const latInput = document.getElementById(`lat-${id}`);
@@ -1767,31 +1767,18 @@ async function confirmMapLocation() {
     // 3. ส่วนแยก: ถ้าเป็นโหมดบันทึกร้านค้า (isStoreMode)
     // ---------------------------------------------------------
     if (isStoreMode) {
+        // 🚩 1. ดึงชื่อจากช่องกรอกในหน้า Modal (id="map-loc-name") มาใช้เลย
         const inputShopName = document.getElementById('map-loc-name').value.trim();
         
+        // ถ้าไม่กรอกชื่อร้าน ให้เตือนก่อน
         if (!inputShopName) {
             return Swal.fire({
                 icon: 'warning',
                 text: translations[currentLang].err_no_location_name || 'กรุณาระบุชื่อร้านค้าของคุณ'
             });
         }
-
-        // 🚩 ส่วนที่เพิ่ม: คำนวณค่าธรรมเนียมตามโซนที่ปักหมุด
-        const zoneInfo = findResponsibleAdmin({ lat: selectedLat, lng: selectedLng });
-        const zone = zoneInfo?.zoneData;
-        
-        // เช็คสิทธิ์ฟรี (เช็คจาก userData.merchantVerified ที่เก็บไว้ตอนโหลดโปรไฟล์)
-        const isFirstTime = !userData.merchantVerified; 
-        const fee = isFirstTime ? 0 : (parseFloat(zone?.changNameMerchant) || 0);
-        const currency = zone?.zoneCurrency || 'USD';
-        
-        // เตรียมข้อความราคา
-        const feeLabel = isFirstTime 
-            ? `0 ${currency} (${translations[currentLang].free_first_time || 'ฟรีครั้งแรก'})`
-            : `${fee} ${currency}`;
-
-        closeMapModal();	
-
+		closeMapModal();	
+        // 🚩 2. ใช้ Swal เป็นตัวยืนยันสุดท้าย (ไม่ต้องกรอกซ้ำแล้ว)
         const result = await Swal.fire({
             title: translations[currentLang].title_merchant_verify || 'ยืนยันการส่งคำขอเปิดร้าน',
             html: `
@@ -1804,13 +1791,10 @@ async function confirmMapLocation() {
             showCancelButton: true,
             confirmButtonText: translations[currentLang].btn_confirm || 'ส่งคำขอ',
             cancelButtonText: translations[currentLang].swal_cancel || 'ยกเลิก',
-            // 🚩 แสดงราคาใน Footer (เขียวถ้าฟรี / แดงถ้าเสียเงิน)
-            footer: `<div style="text-align:center;"><small style="color: ${fee > 0 ? 'red' : 'green'}; font-weight:bold;">${translations[currentLang]['msg_merchant_fee_info']}: ${feeLabel}</small></div>`,
-            didOpen: () => {
-                Swal.getPopup().style.zIndex = '10000';
-            }
+            footer: `<small style="color:red;">${translations[currentLang]['msg_merchant_fee_info']}</small>`
         });
 
+        // ถ้าผู้ใช้กดปุ่มตกลง (confirm)
         if (result.isConfirmed) {
             try {
                 const res = await fetch('/api/merchant/apply', {
@@ -1818,12 +1802,12 @@ async function confirmMapLocation() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         username: myUsername,
-                        shopName: inputShopName,
+                        shopName: inputShopName, // 🚩 ส่งชื่อที่ดึงมาจาก Input หลัก
                         lat: selectedLat,
                         lng: selectedLng,
                         phone: document.getElementById('map-loc-phone')?.value || "",
                         description: document.getElementById('map-loc-voice')?.value || "",
-                        lang: currentLang
+						lang: currentLang
                     })
                 });
 
@@ -1832,14 +1816,14 @@ async function confirmMapLocation() {
                     Swal.fire(translations[currentLang].swal_success, data.message, 'success');
                     isStoreMode = false;
                     closeMapModal();
-                    await loadSavedLocations();
+                    await loadSavedLocations(); // โหลดใหม่เพื่อให้พิกัดโชว์ในลิสต์
                 } else {
                     Swal.fire(translations[currentLang].swal_error, data.message, 'error');
                 }
             } catch (err) {
                 Swal.fire('Error', 'Unable to connect to server.', 'error');
             }
-        } else {
+        }else {
             document.getElementById('map-modal').classList.remove('hidden');
         }
         
@@ -1861,7 +1845,7 @@ async function confirmMapLocation() {
         voiceKeyword: document.getElementById('map-loc-voice').value || name,
         lat: selectedLat,
         lng: selectedLng,
-        isStore: false
+        isStore: false // บันทึกเป็นพิกัดทั่วไป
     };
 
     let url = '/api/merchant/locations';
