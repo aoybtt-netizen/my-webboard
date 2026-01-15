@@ -515,9 +515,10 @@
 
     <div id="merchant-sidebar" class="merchant-sidebar">
         <div class="sidebar-header">
-            <h3 data-i18n-key="sidebar_title_manage">จัดการพิกัด</h3>
-            <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
-        </div>
+    <h3 data-i18n-key="sidebar_title_manage">จัดการพิกัด</h3>
+    <div id="merchant-coordinate-link"></div>    
+    <span onclick="toggleMerchantSidebar()" style="cursor:pointer;">&times;</span>
+</div>
         <div class="sidebar-menu">
     <div class="menu-item" onclick="openSaveStoreModal()">
         <i class="fas fa-store"></i> 
@@ -1728,6 +1729,10 @@ async function loadSavedLocations() {
     const data = await res.json();
     if (data.success) {
         mySavedLocations = data.locations;
+        const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
+        if (storeLoc) {
+            displayMerchantLocation(storeLoc.lat, storeLoc.lng);
+        }
     }
 }
 
@@ -3236,6 +3241,36 @@ async function debugMerchantStatus() {
     } catch (e) {
         console.error("❌ [Debug Error]:", e);
     }
+}
+
+
+function displayMerchantLocation(lat, lng) {
+    const container = document.getElementById('merchant-coordinate-link');
+    if (!container) return;
+
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    
+    // ดึงคำแปลจากตัวแปรที่มีอยู่แล้ว
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const label = (currentLang === 'pt') ? 'Sua localização' : (currentLang === 'en' ? 'Your Location' : 'พิกัดร้านของคุณ');
+
+    container.innerHTML = `
+        <a href="${mapsUrl}" target="_blank" style="
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.7em;
+            color: #ffffff;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-top: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        ">
+            <i class="fas fa-map-marker-alt" style="margin-right: 4px;"></i>
+            ${label}: ${lat.toFixed(5)}, ${lng.toFixed(5)}
+        </a>
+    `;
 }
 
 
