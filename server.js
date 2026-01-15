@@ -4211,50 +4211,60 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
             return res.status(400).json({ success: false, message: "Missing location data" });
         }
 
-        // 1. ค้นหาร้านค้าในรัศมี 10 กม. (10,000 เมตร)
-        // และต้องเป็นร้านค้า (adminLevel หรือ merchantStatus ตามที่พี่ตั้งไว้)
-        // และสถานะร้านต้องเปิดอยู่ (isOnline: true)
-        const shops = await db.collection('users').find({
-            location: {
-                $near: {
-                    $geometry: { type: "Point", coordinates: [userLng, userLat] },
-                    $maxDistance: 10000 // หน่วยเป็นเมตร = 10 กม.
-                }
-            },
-            adminLevel: { $gt: 0 }, // ตัวอย่าง: เช็คว่าเป็นแอดมิน/ร้านค้า
-            isOnline: true          // เช็คว่าเปิดร้านอยู่
-        }).toArray();
+        const locationObj = { lat: userLat, lng: userLng };
 
-        // 2. เช็คว่าผู้ซื้ออยู่โซนไหน (เพื่อส่งข้อมูลโซนกลับไปแสดงผล)
-        const myZone = await db.collection('zones').findOne({
-            // สมมติในคอลเลกชัน zones เก็บขอบเขตแบบ Polygon หรือใช้รัศมีเช็ค
-            // แต่ถ้าเช็คแบบง่ายคือหาโซนที่ใกล้ที่สุด
-            location: {
-                $near: {
-                    $geometry: { type: "Point", coordinates: [userLng, userLat] }
-                }
+        // 1. หาข้อมูลโซนโดยใช้ฟังก์ชันเดียวกับโปรไฟล์ (findResponsibleAdmin)
+        let zoneName = "Global Zone";
+        let zoneData = null;
+        
+        try {
+            const zoneInfo = await findResponsibleAdmin(locationObj);
+            if (zoneInfo && zoneInfo.zoneData) {
+                zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
+                zoneData = zoneInfo.zoneData;
             }
-        });
+        } catch (zoneErr) {
+            console.error("Zone Detection Error:", zoneErr);
+        }
 
-        // 3. ส่งข้อมูลกลับไป พร้อมระยะทางที่คำนวณแล้ว (MongoDB จะเรียงใกล้ไปไกลให้เลย)
+        // 2. ค้นหาร้านค้าในรัศมี 10 กม. 
+        // แนะนำให้ใส่ try-catch ครอบส่วน $near ไว้เผื่อกรณี Index ยังไม่สมบูรณ์
+        let shops = [];
+        try {
+            shops = await db.collection('users').find({
+                location: {
+                    $near: {
+                        $geometry: { type: "Point", coordinates: [userLng, userLat] },
+                        $maxDistance: 10000 // 10 กม.
+                    }
+                },
+                adminLevel: { $gt: 0 },
+                isOnline: true
+            }).toArray();
+        } catch (dbErr) {
+            console.error("MongoDB Geospatial Error:", dbErr);
+            // ถ้า $near พัง ให้ fallback ดึงร้านค้าทั้งหมดมาแสดงก่อน (หรือส่งแจ้งเตือนให้สร้าง Index)
+            return res.status(500).json({ success: false, message: "กรุณาสร้าง 2dsphere index ในคอลเลกชัน users" });
+        }
+
+        // 3. ส่งข้อมูลกลับ
         res.json({
             success: true,
-            currentZone: myZone ? myZone.name : "Global Zone",
+            currentZone: zoneName, // ส่งชื่อโซนที่หาได้จาก findResponsibleAdmin
             shops: shops.map(s => ({
                 username: s.username,
                 shopName: s.shopName || s.username,
-                shopImage: s.shopImage,
-                rating: s.rating,
-                completedJobs: s.completedJobs,
+                shopImage: s.shopImage || '',
+                rating: s.rating || 5,
+                completedJobs: s.completedJobs || 0,
                 lat: s.location.coordinates[1],
-                lng: s.location.coordinates[0],
-                // ระยะทางจริงจะถูกคำนวณที่หน้าบ้านตามสูตร Haversine ที่ให้ไปก่อนหน้า
+                lng: s.location.coordinates[0]
             }))
         });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: "Server Error" });
+        console.error("🚨 Marketplace API Error:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });
 
