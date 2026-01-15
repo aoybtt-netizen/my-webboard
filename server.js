@@ -900,7 +900,7 @@ app.post('/api/admin/process-merchant', async (req, res) => {
         const { requestId, status, adminName, lang = 'th' } = req.body;
         const txt = serverTranslations[lang] || serverTranslations['th'];
 
-        // 1. หาคำขอเปิดร้าน
+        // 1. หาคำขอ
         const request = await db.collection('merchantRequests').findOne({ 
             _id: new ObjectId(requestId) 
         });
@@ -910,67 +910,65 @@ app.post('/api/admin/process-merchant', async (req, res) => {
         if (status === 'approved') {
             const newName = request.requestedShopName || request.shopName;
             const targetUser = request.username;
-            const fee = request.feeCharged || 0; // ดึงยอดเงินที่หักไปจากคำขอ
+            const fee = parseFloat(request.feeCharged) || 0;
             const currency = request.currency || 'USD';
 
-            // 🚩 2. อัปเดตข้อมูลผู้ใช้ (เปลี่ยนระดับเป็นร้านค้า)
-            await db.collection('users').updateOne(
-                { username: targetUser },
-                { 
-                    $set: { 
-						userType: 'merchant',
-						merchantVerified: true,
-						merchantVerifiedAt: new Date()
-                    } 
-                }
-            );
-
-            // 🚩 3. อัปเดตที่ merchant_locations (เปลี่ยนชื่อร้าน)
-            await db.collection('merchant_locations').updateOne(
-                { owner: targetUser, isStore: true },
-                { 
-                    $set: { 
-                        label: newName,
-                        lat: request.lat,
-                        lng: request.lng,
-                        updatedAt: Date.now()
-                    } 
-                }
-            );
-
-            // 🚩 4. บันทึกลงในประวัติธุรกรรมแอดมิน (เพื่อให้โชว์ในหน้า History)
-            // เราจะบันทึกเฉพาะกรณีที่มีค่าธรรมเนียม (fee > 0)
+            // 🚩 [เงินเข้าแอดมิน] หักจากที่ User เสีย มาเข้ากระเป๋าแอดมินที่กดอนุมัติ
             if (fee > 0) {
+                await db.collection('users').updateOne(
+                    { username: adminName },
+                    { $inc: { [currency]: fee } }
+                );
+
+                // 🚩 [บันทึกประวัติ] เพื่อให้โชว์ในหน้า History ของแอดมินคนนี้
                 await db.collection('topupRequests').insertOne({
                     username: targetUser,
                     amount: fee,
                     currency: currency,
-                    type: 'WITHDRAW', // แสดงเป็นรายการหักออกของ User (สีแดง)
+                    type: 'WITHDRAW', 
                     status: 'approved',
-                    method: 'SHOP_FEE', // ระบุว่าเป็นค่าธรรมเนียมร้านค้า
-                    name: 'SHOP NAME CHANGE FEE',
-                    processedBy: adminName, // 🚩 ชื่อแอดมินที่กดอนุมัติ
+                    method: 'SHOP_FEE',
+                    name: 'MERCHANT APPROVE FEE',
+                    processedBy: adminName, // ชื่อแอดมินที่กดปุ่ม
                     processedAt: new Date(),
-                    createdAt: request.createdAt, // วันที่ User ส่งคำขอมา
-                    note: txt.note_auto_deduct || `เปลี่ยนชื่อร้านค้า: ${newName}`
+                    createdAt: new Date(),
+                    note: `อนุมัติชื่อร้าน: ${newName}`
                 });
             }
 
-            // 5. ปิดงานคำขอเปิดร้าน
+            // 🚩 [อัปเดตสิทธิ์ User] เป็น merchant (ไม่ใช่แอดมินเลเวล 1)
+            await db.collection('users').updateOne(
+                { username: targetUser },
+                { 
+                    $set: { 
+                        userType: 'merchant',
+                        merchantVerified: true,
+                        merchantVerifiedAt: new Date()
+                    } 
+                }
+            );
+
+            // 🚩 [เปลี่ยนชื่อร้านในแผนที่]
+            await db.collection('merchant_locations').updateOne(
+                { owner: targetUser, isStore: true },
+                { $set: { label: newName, updatedAt: Date.now() } }
+            );
+
+            // 🚩 [ปิดงานคำขอ]
             await db.collection('merchantRequests').updateOne(
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'approved', processedBy: adminName, processedAt: new Date() } }
             );
 
-            res.json({ success: true, message: "อนุมัติและบันทึกประวัติเรียบร้อยแล้ว" });
+            res.json({ success: true, message: "อนุมัติเรียบร้อย เงินค่าธรรมเนียมเข้ากระเป๋าคุณแล้ว" });
 
-        } else if (status === 'rejected') {
-            // กรณีปฏิเสธ (ถ้าต้องการให้เงินคืนต้องทำ Logic คืนเงินตรงนี้ครับ)
+        } else {
+            // กรณี Reject (ถ้าจะคืนเงินต้องใส่ Logic $inc คืนเงินให้ targetUser ตรงนี้)
             await db.collection('merchantRequests').updateOne(
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'rejected', processedBy: adminName, processedAt: new Date() } }
             );
-            res.json({ success: true, message: "ปฏิเสธคำขอเรียบร้อยแล้ว" });
+            res.json({ success: true, message: "ปฏิเสธคำขอเรียบร้อย" });
         }
 
     } catch (e) {
@@ -3826,19 +3824,6 @@ app.post('/api/merchant/apply', async (req, res) => {
                 { username }, 
                 { $inc: { [currency]: -fee } }
             );
-
-            await db.collection('topupRequests').insertOne({
-                username,
-                amount: fee,
-                currency,
-                type: 'WITHDRAW',
-                status: 'approved',
-                method: 'SYSTEM',
-                name: 'SHOP NAME CHANGE FEE',
-                processedBy: 'SYSTEM',
-                processedAt: new Date(),
-                note: txt.note_auto_deduct // ใช้จาก serverTranslations
-            });
         }
 
         // 4. บันทึกคำขอ
