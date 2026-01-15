@@ -23,17 +23,68 @@
         }
 
         /* Header */
-        header {
-            background: var(--white);
-            padding: 15px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+        /* ปรับปรุงส่วน Header ใหม่ */
+header {
+    background: linear-gradient(135deg, #11998e, #38ef7d); /* สีที่คุณต้องการ */
+    padding: 25px 20px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    display: block; /* เปลี่ยนจาก flex เป็น block เพื่อให้ text-align: center ทำงาน */
+}
+
+/* ปรับส่วนประกอบภายใน Header */
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.header-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.search-box {
+    background: rgba(255, 255, 255, 0.2); /* โปร่งแสงเพื่อให้เห็นสีพื้นหลัง */
+    backdrop-filter: blur(5px); /* เบลอพื้นหลังให้ดูพรีเมียม */
+    border-radius: 25px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    margin: 0 auto;
+    max-width: 500px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.search-box input {
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 100%;
+    margin-left: 10px;
+    font-family: 'Kanit';
+    color: white; /* เปลี่ยนตัวหนังสือเป็นสีขาว */
+}
+
+.search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.7); /* สีตัวอักษร Placeholder */
+}
+
+.search-box i {
+    color: white;
+}
+
+
+
+
 
         .search-box {
             background: #eee;
@@ -148,13 +199,23 @@
 <body>
 
 <header>
-    <div onclick="history.back()" style="cursor:pointer;"><i class="fas fa-chevron-left"></i></div>
-    <div class="search-box">
-        <i class="fas fa-search" style="color:#999;"></i>
-        <input type="text" placeholder="ค้นหาร้านค้าที่ต้องการ..." id="searchInput" onkeyup="filterShops()">
+    <div class="header-top">
+        <div onclick="history.back()" style="cursor:pointer; width: 30px; text-align: left;">
+            <i class="fas fa-chevron-left"></i>
+        </div>
+        <div class="header-title">เลือกร้านค้า</div>
+        <div style="width: 30px; text-align: right;">
+            <i class="fas fa-filter"></i>
+        </div>
     </div>
-    <i class="fas fa-filter" style="color:var(--accent);"></i>
+    
+    <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="ค้นหาชื่อร้านค้า..." id="searchInput" onkeyup="filterShops()">
+    </div>
 </header>
+
+
 
 <div class="container">
     <h3 style="margin-bottom: 15px;">ร้านค้าแนะนำใกล้คุณ</h3>
