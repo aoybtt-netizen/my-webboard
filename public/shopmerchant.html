@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGo Marketplace | เลือกร้านค้าใกล้คุณ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f4f7f6;
+            --white: #ffffff;
+            --text-muted: #7f8c8d;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Header */
+        header {
+            background: var(--white);
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-box {
+            background: #eee;
+            border-radius: 20px;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            flex: 1;
+            margin: 0 15px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            margin-left: 10px;
+            font-family: 'Kanit';
+        }
+
+        /* Shop Grid */
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+        }
+
+        /* Shop Card */
+        .shop-card {
+            background: var(--white);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .shop-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .shop-image {
+            width: 100%;
+            height: 120px;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .shop-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .distance-badge {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        .shop-info {
+            padding: 10px;
+        }
+
+        .shop-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .shop-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .rating {
+            color: #f1c40f;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            width: 100%;
+        }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div onclick="history.back()" style="cursor:pointer;"><i class="fas fa-chevron-left"></i></div>
+    <div class="search-box">
+        <i class="fas fa-search" style="color:#999;"></i>
+        <input type="text" placeholder="ค้นหาร้านค้าที่ต้องการ..." id="searchInput" onkeyup="filterShops()">
+    </div>
+    <i class="fas fa-filter" style="color:var(--accent);"></i>
+</header>
+
+<div class="container">
+    <h3 style="margin-bottom: 15px;">ร้านค้าแนะนำใกล้คุณ</h3>
+    
+    <div id="loader">
+        <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--accent);"></i>
+    </div>
+
+    <div class="shop-grid" id="shopGrid">
+        </div>
+</div>
+
+<script>
+    let userCoords = null;
+    let allShops = [];
+
+    // 1. เริ่มต้น: ขอพิกัดผู้ใช้และโหลดร้านค้า
+    window.onload = async () => {
+        // ขอพิกัดปัจจุบันของผู้ใช้
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    loadShops();
+                },
+                (err) => {
+                    console.warn("เข้าถึงพิกัดไม่ได้:", err);
+                    loadShops(); // โหลดต่อแม้ไม่มีพิกัด (ระยะทางจะเป็น 0)
+                }
+            );
+        } else {
+            loadShops();
+        }
+    };
+
+    // 2. โหลดข้อมูลร้านค้าจาก API
+    async function loadShops() {
+        try {
+            // สมมติชื่อ API ของพี่นะครับ
+            const res = await fetch('/api/marketplace/all-merchants');
+            allShops = await res.json();
+            
+            renderShops(allShops);
+            document.getElementById('loader').style.display = 'none';
+        } catch (e) {
+            console.error("Fetch shops error:", e);
+        }
+    }
+
+    // 3. แสดงผลการ์ดร้านค้า
+    function renderShops(shops) {
+        const grid = document.getElementById('shopGrid');
+        grid.innerHTML = '';
+
+        // ถ้ามีพิกัด ให้คำนวณระยะทางและเรียงร้านที่ใกล้ที่สุดขึ้นก่อน
+        if (userCoords) {
+            shops.forEach(s => {
+                s.distance = calculateDistance(userCoords.lat, userCoords.lng, s.lat, s.lng);
+            });
+            shops.sort((a, b) => a.distance - b.distance);
+        }
+
+        shops.forEach(s => {
+            grid.innerHTML += `
+                <div class="shop-card" onclick="goToShop('${s.username}')">
+                    <div class="shop-image">
+                        <img src="${s.shopImage || 'https://via.placeholder.com/150'}" alt="${s.shopName}">
+                        <div class="distance-badge">
+                            <i class="fas fa-location-arrow"></i> ${s.distance ? s.distance.toFixed(1) + ' กม.' : 'N/A'}
+                        </div>
+                    </div>
+                    <div class="shop-info">
+                        <div class="shop-name">${s.shopName || s.username}</div>
+                        <div class="shop-meta">
+                            <span class="rating"><i class="fas fa-star"></i> ${s.rating || '5.0'}</span>
+                            <span>• ขายแล้ว ${s.completedJobs || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // 4. สูตรคำนวณระยะทาง Haversine (กม.)
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+        const R = 6371; // รัศมีโลก
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    // 5. ค้นหาร้านค้า
+    function filterShops() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = allShops.filter(s => 
+            (s.shopName && s.shopName.toLowerCase().includes(term)) || 
+            s.username.toLowerCase().includes(term)
+        );
+        renderShops(filtered);
+    }
+
+    function goToShop(username) {
+        // ลิงก์ไปยังหน้าร้านค้า
+        window.location.href = `viewshop.html?merchant=${username}`;
+    }
+</script>
+
+</body>
+</html>
