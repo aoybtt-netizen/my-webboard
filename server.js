@@ -870,11 +870,27 @@ app.get('/api/admin/merchant-detail/:id', async (req, res) => {
 // --- API สำหรับลบคำขอ ---
 app.delete('/api/admin/merchant-request/:id', async (req, res) => {
     try {
-        await db.collection('merchantRequests').deleteOne({ 
-            _id: new require('mongodb').ObjectId(req.params.id) 
+        const { id } = req.params;
+
+        // ตรวจสอบก่อนว่า ID ที่ส่งมาถูกต้องตามรูปแบบ MongoDB ไหม
+        if (!ObjectId.isValid(id)) {
+            console.error(`❌ ID ไม่ถูกต้อง: ${id}`);
+            return res.status(400).json({ success: false, error: 'รูปแบบ ID ไม่ถูกต้อง' });
+        }
+
+        const result = await db.collection('merchantRequests').deleteOne({ 
+            _id: new ObjectId(id) 
         });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ success: false, error: 'ไม่พบรายการที่ต้องการลบ' });
+        }
+
+        console.log(`✅ ลบคำขอ ${id} สำเร็จ`);
         res.json({ success: true });
+
     } catch (e) {
+        console.error("🚨 Delete Request Error:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });

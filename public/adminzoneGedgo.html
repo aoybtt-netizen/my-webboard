@@ -2492,25 +2492,42 @@ async function openMerchantDetail(requestId, username) {
 
 // --- ฟังก์ชันสำหรับลบคำขอ ---
 async function deleteMerchantRequest(id) {
+    if (!id || id === 'undefined') {
+        return Swal.fire('Error', 'ไม่พบ ID ของรายการนี้', 'error');
+    }
+
     const confirm = await Swal.fire({
         title: 'คุณแน่ใจหรือไม่?',
         text: "ข้อมูลคำขอนี้จะถูกลบออกถาวร!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'ใช่, ลบทิ้ง!',
-        cancelButtonText: 'ยกเลิก'
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#d33'
     });
 
     if (confirm.isConfirmed) {
         try {
             const res = await fetch(`/api/admin/merchant-request/${id}`, { method: 'DELETE' });
-            const result = await res.json();
-            if (result.success) {
-                Swal.fire('Deleted!', 'ลบรายการสำเร็จ', 'success');
-                loadMerchantRequests(); // รีโหลดรายการใหม่
+            
+            // ตรวจสอบว่า Server ตอบกลับมาเป็น JSON หรือไม่
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const result = await res.json();
+                if (result.success) {
+                    Swal.fire('Deleted!', 'ลบรายการสำเร็จ', 'success');
+                    loadMerchantRequests(); // รีโหลดรายการใหม่
+                } else {
+                    Swal.fire('Error', result.error || 'ลบไม่สำเร็จ', 'error');
+                }
+            } else {
+                const textError = await res.text();
+                console.error("Server Error Text:", textError);
+                Swal.fire('Error', 'เกิดข้อผิดพลาดที่ระบบ Server', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'ไม่สามารถลบได้', 'error');
+            console.error("Fetch Error:", e);
+            Swal.fire('Error', 'เครือข่ายมีปัญหา', 'error');
         }
     }
 }
