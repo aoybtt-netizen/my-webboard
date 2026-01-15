@@ -353,7 +353,19 @@
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   font-size: 24px;
-  animation: rdis-sig 3s infinite;
+  animation: rdiss-sig 2s infinite;
+}
+
+@keyframes rdiss-sig {
+  0% {
+    box-shadow: 0 0 0 0 rgba(69, 199, 52, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(118, 240, 61, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(228, 231, 63, 0);
+  }
 }
 
 
