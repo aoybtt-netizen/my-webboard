@@ -858,12 +858,24 @@ app.get('/api/admin/merchant-request-list', async (req, res) => {
 // 2. API สำหรับดึงรายละเอียดเชิงลึก (รูปภาพ/รายละเอียด) เมื่อแอดมินกดดู
 app.get('/api/admin/merchant-detail/:id', async (req, res) => {
     try {
+        const { id } = req.params;
+
+        // ตรวจสอบความถูกต้องของ ID ก่อนค้นหา
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: 'รูปแบบ ID ไม่ถูกต้อง' });
+        }
+
         const request = await db.collection('merchantRequests').findOne({ 
-            _id: new require('mongodb').ObjectId(req.params.id) 
+            _id: new ObjectId(id) 
         });
-        // ส่งกลับไป และตรวจสอบว่าฟิลด์ต่างๆ มีค่าไหม
+
+        if (!request) {
+            return res.status(404).json({ error: 'ไม่พบข้อมูลคำขอนี้' });
+        }
+
         res.json(request);
     } catch (e) {
+        console.error("🚨 Detail API Error:", e.message);
         res.status(500).json({ error: e.message });
     }
 });

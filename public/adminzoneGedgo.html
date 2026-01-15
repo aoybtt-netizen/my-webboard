@@ -2453,13 +2453,20 @@ async function openMerchantDetail(requestId, username) {
 
     try {
         const res = await fetch(`/api/admin/merchant-detail/${requestId}`);
+        
+        // เช็คว่าถ้า Server ส่ง 500 มา ให้เด้งเตือนทันที
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || 'Server Error');
+        }
+
         const data = await res.json();
 
         Swal.fire({
             title: lang.menu_merchant_verify,
             html: `
                 <div style="text-align:left; font-size:0.9em; line-height: 1.8;">
-                    <p><b>Username:</b> @${username}</p>
+                    <p><b>Username:</b> <span style="color:var(--primary);">@${username}</span></p>
                     <p><b>ชื่อร้านที่ขอ:</b> <span style="color:var(--primary); font-weight:bold;">
                         ${data.requestedShopName || data.shopName || 'N/A'}</span>
                     </p>
@@ -2476,7 +2483,7 @@ async function openMerchantDetail(requestId, username) {
             confirmButtonText: lang.btn_approve_merchant,
             cancelButtonText: lang.btn_reject_merchant,
             confirmButtonColor: '#28a745',
-            cancelButtonColor: '#f39c12', // เปลี่ยนสีปุ่มปฏิเสธเป็นส้ม
+            cancelButtonColor: '#f39c12',
             reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
@@ -2486,7 +2493,8 @@ async function openMerchantDetail(requestId, username) {
             }
         });
     } catch (e) {
-        Swal.fire('Error', 'ไม่สามารถโหลดข้อมูลได้', 'error');
+        console.error("❌ Fetch Detail Error:", e);
+        Swal.fire('Error', `เกิดข้อผิดพลาด: ${e.message}`, 'error');
     }
 }
 
