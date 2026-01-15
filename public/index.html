@@ -356,17 +356,6 @@
   animation: rdis-sig 3s infinite;
 }
 
-@keyframes rdis-sig {
-  0% {
-    box-shadow: 0 0 0 0 rgba(69, 199, 52, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(118, 240, 61, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(228, 231, 63, 0);
-  }
-}
 
 
 
@@ -5852,7 +5841,7 @@ async function saveZoneCurrency(zoneId, currency, rate) {
     <i class="fas fa-plus"></i>
 </button>
 
-<button id="sticky-shop-btn" onclick="openCreateModal()" title="shoping">
+<button id="sticky-shop-btn" class="sticky-shop-btn hidden" onclick="openCreateModal()" title="shoping">
     <i class="fas fa-shopping-cart"></i>
 </button>
 
