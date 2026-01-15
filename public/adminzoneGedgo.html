@@ -394,7 +394,17 @@ const translations = {
         'label_admin_guide': 'กดปุ่มอนุมัติเพื่อยืนยัน หรือปุ่มลบเพื่อทิ้งคำขอ',
         'err_load_detail': 'ไม่สามารถโหลดข้อมูลได้',
         'btn_approve_merchant': 'อนุมัติ',
-        'btn_delete_request': 'ลบคำขอ'
+        'btn_delete_request': 'ลบคำขอ',
+		'confirm_delete_title': 'คุณแน่ใจหรือไม่?',
+        'confirm_delete_text': 'ข้อมูลคำขอนี้จะถูกลบออกถาวร!',
+        'btn_yes_delete': 'ใช่, ลบทิ้ง!',
+        'msg_deleted_title': 'ลบสำเร็จ!',
+        'msg_deleted_text': 'ลบรายการสำเร็จ',
+        'err_no_id': 'ไม่พบ ID ของรายการนี้',
+        'err_server': 'เกิดข้อผิดพลาดที่ระบบ Server',
+        'err_network': 'เครือข่ายมีปัญหา',
+		'label_location': 'พิกัดร้าน:',
+        'btn_open_maps': 'เปิดใน Google Maps',
     },
     'en': {
         'lbl_master_balance': 'Available Balance (Master)',
@@ -532,6 +542,16 @@ const translations = {
         'err_load_detail': 'Unable to load data',
         'btn_approve_merchant': 'Approve',
         'btn_delete_request': 'Delete',
+		'confirm_delete_title': 'Are you sure?',
+        'confirm_delete_text': 'This request will be permanently deleted!',
+        'btn_yes_delete': 'Yes, delete it!',
+        'msg_deleted_title': 'Deleted!',
+        'msg_deleted_text': 'Request has been deleted.',
+        'err_no_id': 'Request ID not found.',
+        'err_server': 'Server Error occurred.',
+        'err_network': 'Network connection error.',
+		'label_location': 'Location:',
+        'btn_open_maps': 'Open in Google Maps',
     },
     'pt': {
         'lbl_master_balance': 'Saldo Disponível (Master)',
@@ -669,6 +689,16 @@ const translations = {
         'err_load_detail': 'Não foi possível carregar os dados',
         'btn_approve_merchant': 'Aprovar',
         'btn_delete_request': 'Excluir',
+		'confirm_delete_title': 'Você tem certeza?',
+        'confirm_delete_text': 'Esta solicitação será excluída permanentemente!',
+        'btn_yes_delete': 'Sim, excluir!',
+        'msg_deleted_title': 'Excluído!',
+        'msg_deleted_text': 'A solicitação foi excluída.',
+        'err_no_id': 'ID da solicitação não encontrado.',
+        'err_server': 'Ocorreu um erro no servidor.',
+        'err_network': 'Erro de conexão de rede.',
+		'label_location': 'Localização:',
+        'btn_open_maps': 'Abrir no Google Maps',
     }
 };
 
@@ -2477,6 +2507,11 @@ async function openMerchantDetail(requestId, username) {
         if (!res.ok) throw new Error('Server Error');
         const data = await res.json();
 
+        // 🚩 เตรียมพิกัดและลิงก์ Google Maps
+        const lat = data.lat;
+        const lng = data.lng;
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
         Swal.fire({
             title: lang.menu_merchant_verify,
             html: `
@@ -2487,7 +2522,21 @@ async function openMerchantDetail(requestId, username) {
                     </p>
                     <p><b>${lang.label_details}</b> ${data.description || data.label || '-'}</p>
                     <p><b>${lang.label_phone}</b> ${data.phone || '-'}</p>
-                    <hr style="opacity: 0.2;">
+                    
+                    <p><b>${lang.label_location}</b> 
+                        <a href="${mapsUrl}" target="_blank" style="color: #4285F4; text-decoration: none; font-weight: bold; margin-left: 5px;">
+                            <i class="fas fa-map-marker-alt"></i> ${lat.toFixed(5)}, ${lng.toFixed(5)}
+                        </a>
+                    </p>
+
+                    <div style="text-align: center; margin-top: 10px;">
+                        <a href="${mapsUrl}" target="_blank" 
+                           style="display: inline-block; background: #4285F4; color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.85em;">
+                            <i class="fab fa-google"></i> ${lang.btn_open_maps}
+                        </a>
+                    </div>
+
+                    <hr style="opacity: 0.2; margin-top: 15px;">
                     <p style="font-size: 0.85em; color: #666; text-align: center;">
                         <i class="fas fa-info-circle"></i> ${lang.label_admin_guide}
                     </p>
@@ -2557,42 +2606,49 @@ async function processMerchant(requestId, status) {
 
 // --- ฟังก์ชันสำหรับลบคำขอ ---
 async function deleteMerchantRequest(id) {
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const lang = translations[currentLang];
+
     if (!id || id === 'undefined') {
-        return Swal.fire('Error', 'ไม่พบ ID ของรายการนี้', 'error');
+        return Swal.fire('Error', lang.err_no_id, 'error');
     }
 
     const confirm = await Swal.fire({
-        title: 'คุณแน่ใจหรือไม่?',
-        text: "ข้อมูลคำขอนี้จะถูกลบออกถาวร!",
+        title: lang.confirm_delete_title,
+        text: lang.confirm_delete_text,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'ใช่, ลบทิ้ง!',
-        cancelButtonText: 'ยกเลิก',
+        confirmButtonText: lang.btn_yes_delete,
+        cancelButtonText: lang.btn_cancel || 'Cancel', // ใช้ตัวแปรยกเลิกเดิม
         confirmButtonColor: '#d33'
     });
 
     if (confirm.isConfirmed) {
         try {
-            const res = await fetch(`/api/admin/merchant-request/${id}`, { method: 'DELETE' });
+            // ส่งชื่อแอดมินไปเพื่อให้ระบบรู้ว่าใครเป็นคนสั่งลบ (โอนเงินเข้าพี่)
+            const adminName = localStorage.getItem('myUsername');
             
-            // ตรวจสอบว่า Server ตอบกลับมาเป็น JSON หรือไม่
+            const res = await fetch(`/api/admin/merchant-request/${id}`, { 
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminName, lang: currentLang })
+            });
+            
             const contentType = res.headers.get("content-type");
             if (contentType && contentType.indexOf("application/json") !== -1) {
                 const result = await res.json();
                 if (result.success) {
-                    Swal.fire('Deleted!', 'ลบรายการสำเร็จ', 'success');
-                    loadMerchantRequests(); // รีโหลดรายการใหม่
+                    Swal.fire(lang.msg_deleted_title, lang.msg_deleted_text, 'success');
+                    loadMerchantRequests(); 
                 } else {
-                    Swal.fire('Error', result.error || 'ลบไม่สำเร็จ', 'error');
+                    Swal.fire('Error', result.error || 'Failed', 'error');
                 }
             } else {
-                const textError = await res.text();
-                console.error("Server Error Text:", textError);
-                Swal.fire('Error', 'เกิดข้อผิดพลาดที่ระบบ Server', 'error');
+                Swal.fire('Error', lang.err_server, 'error');
             }
         } catch (e) {
             console.error("Fetch Error:", e);
-            Swal.fire('Error', 'เครือข่ายมีปัญหา', 'error');
+            Swal.fire('Error', lang.err_network, 'error');
         }
     }
 }
