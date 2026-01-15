@@ -514,10 +514,16 @@
 
 
     <div id="merchant-sidebar" class="merchant-sidebar">
-        <div class="sidebar-header">
-    <h3 data-i18n-key="sidebar_title_manage">จัดการพิกัด</h3>
-    <div id="merchant-coordinate-link"></div>    
-</div>
+        <div class="sidebar-header" style="flex-direction: column; align-items: flex-start; padding: 15px;">
+    <div id="merchant-phone-display" style="font-size: 1.1em; font-weight: bold; color: var(--primary); margin-bottom: 5px;">
+        <i class="fas fa-phone-alt"></i> <span id="shop-phone-number">-</span>
+    </div>
+    
+    <div id="merchant-coordinate-link"></div>
+
+    <span onclick="toggleMerchantSidebar()" style="position: absolute; right: 15px; top: 15px; cursor: pointer; font-size: 1.5em;">&times;</span>
+	</div>
+
         <div class="sidebar-menu">
     <div class="menu-item" onclick="openSaveStoreModal()">
         <i class="fas fa-store"></i> 
@@ -858,7 +864,6 @@ const translations = {
 		'confirm_shop_name_label': 'ชื่อร้านที่คุณต้องการใช้:',
 		'title_merchant_verify': 'ยืนยันการส่งคำขอเปิดร้าน',
 		'btn_confirm': 'ส่งคำขอ',
-		'sidebar_title_manage': 'จัดการพิกัด',
         'title_active_jobs': 'งานที่กำลังดำเนินการ',
     },
     'en': {
@@ -1063,7 +1068,6 @@ const translations = {
 		'confirm_shop_name_label': 'The shop name you want to use:',
 		'title_merchant_verify': 'Confirm Merchant Request',
 		'btn_confirm': 'Send request',
-		'sidebar_title_manage': 'Manage Locations',
         'title_active_jobs': 'Active Tasks',
     },
     'pt': {
@@ -1268,7 +1272,6 @@ const translations = {
 		'confirm_shop_name_label': 'O nome da loja que você deseja usar:',
 		'title_merchant_verify': 'Confirmar solicitação de comerciante',
 		'btn_confirm': 'Enviar solicitação',
-		'sidebar_title_manage': 'Gerenciar Locais',
         'title_active_jobs': 'Tarefas em Andamento',
     }
 };
@@ -3264,30 +3267,35 @@ async function debugMerchantStatus() {
 }
 
 
-function displayMerchantLocation(lat, lng) {
+function displayMerchantLocation(lat, lng, phone) {
     const container = document.getElementById('merchant-coordinate-link');
-    if (!container) return;
-
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    const phoneSpan = document.getElementById('shop-phone-number');
     
-    // ดึงคำแปลจากตัวแปรที่มีอยู่แล้ว
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-    const label = (currentLang === 'pt') ? 'Sua localização' : (currentLang === 'en' ? 'Store' : 'Store');
+    if (phoneSpan) {
+        phoneSpan.innerText = phone || '-';
+    }
 
+    if (!container || !lat || !lng) return;
+
+    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+    const label = (currentLang === 'pt') ? 'Sua localização' : (currentLang === 'en' ? 'Your Location' : 'พิกัดร้านของคุณ');
+
+    // 2. แสดงลิงก์พิกัดแบบ Clean
     container.innerHTML = `
         <a href="${mapsUrl}" target="_blank" style="
             display: inline-flex;
             align-items: center;
-            font-size: 0.7em;
-            color: #ffffff;
+            font-size: 0.8em;
+            color: #666;
             text-decoration: none;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin-top: 5px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.05);
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: 0.3s;
         ">
-            <i class="fas fa-map-marker-alt" style="margin-right: 4px;"></i>
+            <i class="fas fa-map-marker-alt" style="margin-right: 6px; color: #ea4335;"></i>
             ${label}: ${lat.toFixed(5)}, ${lng.toFixed(5)}
         </a>
     `;
