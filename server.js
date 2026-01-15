@@ -3746,25 +3746,13 @@ app.post('/api/merchant/reset-mercnum', async (req, res) => {
 });
 
 app.get('/api/merchant/locations', async (req, res) => {
-    const username = req.query.username;
+    const username = req.query.username; // รับชื่อจาก Query String
     if (!username) return res.status(400).json({ success: false, error: 'Username not found.' });
 
     try {
-        // 🚩 ดึงข้อมูลพิกัดทั้งหมดของ User คนนี้
         const locations = await merchantLocationsCollection.find({ owner: username }).toArray();
-
-        // 🔍 DEBUG: แสดงจำนวนรายการที่หาเจอ
-        console.log(`--- [DEBUG] Get Locations for: ${username} ---`);
-        console.log(`Found: ${locations.length} items`);
-
-        // 🔍 DEBUG: วนลูปเช็คว่ามีอันไหนเป็นร้านค้า (isStore) บ้าง
-        locations.forEach((loc, index) => {
-            console.log(`Item ${index}: Name=${loc.label}, isStore=${loc.isStore}, Lat=${loc.lat}, Lng=${loc.lng}`);
-        });
-
         res.json({ success: true, locations });
     } catch (error) {
-        console.error("🚨 [DEBUG] Database Error:", error);
         res.status(500).json({ success: false, error: 'Database Error' });
     }
 });

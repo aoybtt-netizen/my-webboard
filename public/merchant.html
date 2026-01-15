@@ -1729,10 +1729,8 @@ async function loadSavedLocations() {
     const data = await res.json();
     if (data.success) {
         mySavedLocations = data.locations;
-        console.log("--- [Frontend Debug] All Locations ---", mySavedLocations);
 
         const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
-        console.log("--- [Frontend Debug] Found Store Loc ---", storeLoc);
 
         if (storeLoc) {
             displayMerchantLocation(storeLoc.lat, storeLoc.lng);
