@@ -3277,7 +3277,7 @@ function displayMerchantLocation(lat, lng, phone) {
 
     const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
     const currentLang = localStorage.getItem('preferredLanguage') || 'th';
-    const label = (currentLang === 'pt') ? 'Sua localização' : (currentLang === 'en' ? 'Your Location' : 'พิกัดร้านของคุณ');
+    const label = (currentLang === 'pt') ? 'Sua localização' : (currentLang === 'en' ? 'Store' : 'Store');
 
     // 2. แสดงลิงก์พิกัดแบบ Clean
     container.innerHTML = `
