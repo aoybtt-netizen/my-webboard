@@ -184,6 +184,11 @@ const serverTranslations = {
         'kyc_rejected_title': 'คำขอถูกปฏิเสธ',
         'kyc_rejected_text': 'ข้อมูลของคุณไม่ผ่านการตรวจสอบ กรุณาส่งข้อมูลใหม่อีกครั้ง',
 		'err_insufficient_kyc': 'ยอดเงินของคุณไม่เพียงพอสำหรับค่ายืนยันตัวตน',
+		'err_outside_zone': 'พิกัดนี้ไม่อยู่ในพื้นที่บริการ',
+        'err_insufficient_fund': 'ยอดเงินในกระเป๋า {currency} ไม่เพียงพอ (ต้องการ {fee} {currency})',
+        'note_auto_deduct': 'เปลี่ยนชื่อร้านค้า (หักอัตโนมัติ)',
+        'msg_apply_success_free': 'ส่งคำขอเปิดร้านสำเร็จ (ฟรีครั้งแรก)',
+        'msg_apply_success_fee': 'ส่งคำขอเปลี่ยนชื่อสำเร็จ (หักค่าธรรมเนียม {fee} {currency})'
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -284,6 +289,11 @@ const serverTranslations = {
         'kyc_rejected_title': 'Request Rejected',
         'kyc_rejected_text': 'Your information did not pass verification. Please resubmit your data.',
 		'err_insufficient_kyc': 'Insufficient balance for KYC verification',
+		'err_outside_zone': 'This location is outside our service area.',
+        'err_insufficient_fund': 'Insufficient {currency} balance (Required: {fee} {currency})',
+        'note_auto_deduct': 'Shop name change fee (Auto-deducted)',
+        'msg_apply_success_free': 'Shop request submitted successfully (First time free)',
+        'msg_apply_success_fee': 'Shop name change submitted (Fee: {fee} {currency})'
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -383,6 +393,11 @@ const serverTranslations = {
         'kyc_rejected_text': 'Seus dados não passaram na verificação. Por favor, envie novamente.',
 		'msg_admin_kyc_new': (name) => `Nova solicitação de KYC de ${name}`,
 		'err_insufficient_kyc': 'Saldo insuficiente para verificação KYC',
+		'err_outside_zone': 'Esta localização está fora da nossa área de serviço.',
+        'err_insufficient_fund': 'Saldo de {currency} insuficiente (Necessário: {fee} {currency})',
+        'note_auto_deduct': 'Taxa de alteração de nome da loja (Débito automático)',
+        'msg_apply_success_free': 'Pedido de loja enviado com sucesso (Primeira vez grátis)',
+        'msg_apply_success_fee': 'Pedido de alteração enviado (Taxa: {fee} {currency})'
     }
 };
 
@@ -3690,21 +3705,23 @@ app.put('/api/merchant/locations/:id', async (req, res) => {
 });
 
 app.post('/api/merchant/apply', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    // 1. ดึงภาษาที่ส่งมาจาก Frontend (Default เป็น 'th')
+    const lang = req.body.lang || 'th';
+    // ดึงชุดคำแปลของภาษานั้นๆ มาเตรียมไว้
+    const txt = serverTranslations[lang] || serverTranslations['th'];
+
     try {
         const { username, shopName, lat, lng, phone, description } = req.body;
         
-        // 1. ดึงข้อมูล User และ ตรวจสอบโซนจากพิกัด
         const user = await db.collection('users').findOne({ username });
         const zoneInfo = await findResponsibleAdmin({ lat, lng });
         const zone = zoneInfo?.zoneData;
 
+        // 2. เช็คพิกัดโซน
         if (!zone) {
-            return res.status(400).json({ success: false, message: "พิกัดนี้ไม่อยู่ในพื้นที่บริการ" });
+            return res.status(400).json({ success: false, message: txt.err_outside_zone });
         }
 
-        // 2. เช็คเงื่อนไข: ครั้งแรกฟรี (ดูจาก merchantVerified)
-        // ถ้าเคยยืนยันแล้ว (merchantVerified: true) จะถือเป็นการเปลี่ยนชื่อ ให้คิดเงิน
         const isFirstTime = !user.merchantVerified;
         const fee = isFirstTime ? 0 : (parseFloat(zone.changNameMerchant) || 0);
         const currency = zone.zoneCurrency || 'USD';
@@ -3713,19 +3730,18 @@ app.post('/api/merchant/apply', async (req, res) => {
         if (fee > 0) {
             const userBalance = user[currency] || 0;
             if (userBalance < fee) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `ยอดเงินในกระเป๋า ${currency} ไม่เพียงพอ (ต้องการ ${fee} ${currency})` 
-                });
+                // แทนค่า {currency} และ {fee} ในประโยค (ถ้าพี่ทำ placeholder ไว้)
+                let msg = txt.err_insufficient_fund
+                    .replace(/{currency}/g, currency)
+                    .replace(/{fee}/g, fee);
+                return res.status(400).json({ success: false, message: msg });
             }
 
-            // หักเงินค่าธรรมเนียมทันที
             await db.collection('users').updateOne(
                 { username }, 
                 { $inc: { [currency]: -fee } }
             );
 
-            // บันทึก Log การหักเงิน
             await db.collection('topupRequests').insertOne({
                 username,
                 amount: fee,
@@ -3736,18 +3752,15 @@ app.post('/api/merchant/apply', async (req, res) => {
                 name: 'SHOP NAME CHANGE FEE',
                 processedBy: 'SYSTEM',
                 processedAt: new Date(),
-                note: `เปลี่ยนชื่อร้านค้า (หักอัตโนมัติ)`
+                note: txt.note_auto_deduct // ใช้จาก serverTranslations
             });
         }
 
-        // 4. บันทึกคำขอลงใน merchantRequests (รอแอดมินอนุมัติ)
+        // 4. บันทึกคำขอ
         await db.collection('merchantRequests').insertOne({
             username,
-            requestedShopName: shopName, // ชื่อใหม่ที่ขอ
-            lat,
-            lng,
-            phone,
-            description,
+            requestedShopName: shopName,
+            lat, lng, phone, description,
             zoneId: zone.id,
             status: 'pending',
             feeCharged: fee,
@@ -3755,14 +3768,16 @@ app.post('/api/merchant/apply', async (req, res) => {
             createdAt: new Date()
         });
 
-        res.json({ 
-            success: true, 
-            message: isFirstTime ? "ส่งคำขอเปิดร้านสำเร็จ (ฟรีครั้งแรก)" : `ส่งคำขอเปลี่ยนชื่อสำเร็จ (หักค่าธรรมเนียม ${fee} ${currency})` 
-        });
+        // 5. เตรียมข้อความตอบกลับสำเร็จ
+        let successMsg = isFirstTime 
+            ? txt.msg_apply_success_free 
+            : txt.msg_apply_success_fee.replace(/{fee}/g, fee).replace(/{currency}/g, currency);
+
+        res.json({ success: true, message: successMsg });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: "Unable to connect to the server." });
+        console.error("Apply Merchant Error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 });
 
