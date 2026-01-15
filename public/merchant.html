@@ -852,6 +852,7 @@ const translations = {
 		'placeholder_shop_name': 'ใส่ชื่อร้านค้าของคุณ...',
         'msg_merchant_fee_info': '* ครั้งแรกฟรี ครั้งต่อไปมีค่าธรรมเนียมเปลี่ยนชื่อตามโซน',
         'title_merchant_confirm': 'ยืนยันพิกัดและชื่อร้าน',
+		'confirm_shop_name_label': 'ชื่อร้านที่คุณต้องการใช้:',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1052,6 +1053,7 @@ const translations = {
 		'placeholder_shop_name': 'Enter your shop name...',
         'msg_merchant_fee_info': '* First time free, subsequent changes incur zone fees',
         'title_merchant_confirm': 'Confirm Location & Shop Name',
+		'confirm_shop_name_label': 'The shop name you want to use:',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1252,6 +1254,7 @@ const translations = {
 		'placeholder_shop_name': 'Insira o nome da sua loja...',
         'msg_merchant_fee_info': '* Primeira vez grátis, alterações subsequentes sujeitas a taxas de zona',
         'title_merchant_confirm': 'Confirmar Localização e Nome da Loja',
+		'confirm_shop_name_label': 'O nome da loja que você deseja usar:',
     }
 };
 
@@ -1759,7 +1762,7 @@ async function confirmMapLocation() {
             title: translations[currentLang].title_merchant_verify || 'ยืนยันการส่งคำขอเปิดร้าน',
             html: `
                 <div style="text-align: center; padding: 10px;">
-                    <p style="margin-bottom: 5px;">ชื่อร้านที่คุณต้องการใช้:</p>
+                    <p style="margin-bottom: 5px;">${translations[currentLang].confirm_shop_name_label}</p>
                     <h3 style="color: var(--primary); margin-top: 0;">${inputShopName}</h3>
                 </div>
             `,
