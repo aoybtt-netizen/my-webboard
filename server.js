@@ -2869,17 +2869,33 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     }
 
     // ==================================================================
-    // 🚩 เตรียมข้อมูล Merchant (แก้ไขการดึงชื่อร้านและพิกัด)
+    // 🚩 เตรียมข้อมูล Merchant (บังคับดึงชื่อร้านจากฐานข้อมูลโดยตรง)
     // ==================================================================
     let parsedStops = stops ? (typeof stops === 'string' ? JSON.parse(stops) : stops) : null;
-    let storeName = author; // กันพลาดให้เป็นชื่อคนโพสต์ไว้ก่อน
+    let storeName = author; // เริ่มต้นด้วย Username
     let storeCoords = location ? JSON.parse(location) : null;
 
-    if (isMerchantTask && parsedStops && parsedStops.length > 0) {
-        // ใช้ชื่อจากจุดรับงาน (Pickup) เป็นชื่อร้าน
-        storeName = parsedStops[0].label || author; 
-        // ใช้พิกัดร้านที่ปักไว้เป็นพิกัดหลักของโพสต์
-        storeCoords = { lat: parsedStops[0].lat, lng: parsedStops[0].lng };
+    if (isMerchantTask) {
+        // 🔍 ไปดึงข้อมูลร้านค้าตัวจริงจากคอลเลกชัน merchant_locations
+        const officialStore = await db.collection('merchant_locations').findOne({ 
+            owner: author, 
+            isStore: true 
+        });
+
+        if (officialStore) {
+            // ✅ บังคับใช้ชื่อร้านที่ได้รับอนุมัติมาเป็นผู้โพสต์ (storeName)
+            storeName = officialStore.label; 
+            
+            // ✅ แก้ไขชื่อจุดแรก (Stop 1) ให้เป็นชื่อร้านค้าด้วย เพื่อให้ Rider เห็นชัดเจน
+            if (parsedStops && parsedStops.length > 0) {
+                parsedStops[0].label = officialStore.label;
+                // บังคับใช้พิกัดร้านที่บันทึกไว้ด้วยเพื่อความแม่นยำ
+                parsedStops[0].lat = officialStore.lat;
+                parsedStops[0].lng = officialStore.lng;
+            }
+            // ใช้พิกัดร้านค้าเป็นจุดหลักของโพสต์
+            storeCoords = { lat: officialStore.lat, lng: officialStore.lng };
+        }
     }
 
     const newPost = { 
@@ -2898,7 +2914,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 
         // 🚩 ข้อมูลสำหรับการแสดงผล
         isMerchantTask: isMerchantTask,
-        storeName: storeName, // ชื่อร้านค้า (ไม่โชว์ชื่อคนโพสต์)
+        storeName: storeName, // ชื่อนี้จะโชว์บนหน้า Post Card
         budget: budget,
         stops: parsedStops
     };

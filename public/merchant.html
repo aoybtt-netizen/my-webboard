@@ -2107,46 +2107,24 @@ function updateTitlePreview() {
     let hasError = false;
     stopElements.forEach((el, index) => {
         const id = el.id.split('-')[1];
-        
-        // 1. ดึงค่าจาก Input
-        const labelInput = document.getElementById(`label-${id}`).value;
-        const phoneInput = document.getElementById(`phone-${id}`).value;
-        const latInput = document.getElementById(`lat-${id}`).value;
-        const lngInput = document.getElementById(`lng-${id}`).value;
+        const label = document.getElementById(`label-${id}`).value;
+        const phone = document.getElementById(`phone-${id}`).value;
+        const lat = document.getElementById(`lat-${id}`).value;
+        const lng = document.getElementById(`lng-${id}`).value;
 
-        // ตรวจสอบพิกัด ถ้าไม่มีให้แจ้ง Error
-        if (!latInput || !lngInput) {
+        if (!lat || !lng) {
             hasError = true;
             return;
         }
 
-        let finalLabel = labelInput;
-
-        // 2. Logic จัดการชื่อร้านค้า (ถ้าเป็นโหมดร้านค้า และเป็นจุดแรก)
-        if (index === 0 && (typeof isStoreMode !== 'undefined' && isStoreMode === true)) {
-            const storeData = mySavedLocations.find(loc => loc.isStore === true);
-            if (storeData) {
-                // บังคับใช้ชื่อร้านจากฐานข้อมูลถ้าในช่อง input ว่าง
-                if (!finalLabel) {
-                    finalLabel = storeData.label;
-                }
-            }
-        }
-
-        // 3. ถ้ายังไม่มีชื่ออีก ให้ใช้ชื่อมาตรฐาน (Pickup/Dropoff)
-        if (!finalLabel) {
-            finalLabel = (index === 0 
-                ? translations[currentLang].lbl_pickup_simple 
-                : translations[currentLang].lbl_dropoff_indexed_simple(index));
-        }
-
-        // 4. บันทึกลง Array stops (แก้ชื่อตัวแปรให้ตรงกับข้างบน)
         stops.push({
             step: index + 1,
-            label: finalLabel,
-            phone: phoneInput,
-            lat: parseFloat(latInput),
-            lng: parseFloat(lngInput),
+            label: label || (index === 0 
+			? translations[currentLang].lbl_pickup_simple 
+			: translations[currentLang].lbl_dropoff_indexed_simple(index)),
+            phone: phone,
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
             status: 'pending'
         });
     });
