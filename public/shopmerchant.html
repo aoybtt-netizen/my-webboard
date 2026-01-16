@@ -353,13 +353,19 @@ function renderShops(shops) {
 
     // 5. ค้นหาร้านค้า
     function filterShops() {
-        const term = document.getElementById('searchInput').value.toLowerCase();
-        const filtered = allShops.filter(s => 
-            (s.shopName && s.shopName.toLowerCase().includes(term)) || 
-            s.username.toLowerCase().includes(term)
-        );
-        renderShops(filtered);
+    const searchInput = document.getElementById('searchInput');
+    if (!searchInput) {
+        renderShops(allShops);
+        return;
     }
+    const term = searchInput.value.toLowerCase();
+    
+    const filtered = allShops.filter(s => 
+        (s.shopName && s.shopName.toLowerCase().includes(term)) || 
+        (s.username && s.username.toLowerCase().includes(term))
+    );    
+    renderShops(filtered);
+}
 
     function goToShop(username) {
         // ลิงก์ไปยังหน้าร้านค้า
@@ -370,18 +376,22 @@ function renderShops(shops) {
 	
 // 🚩 รับสัญญาณการเปลี่ยนแปลงสถานะร้านค้าแบบ Real-time
 socket.on('shop-status-changed', (data) => {
-        const { username, isOpen, shopDetails } = data;
-        if (isOpen) {
-            const exists = allShops.find(s => s.username === username);
-            if (!exists) {
-                allShops.push(shopDetails);
-            }
-        } else {
-            allShops = allShops.filter(s => s.username !== username);
+    const { username, isOpen, shopDetails } = data;
+
+    if (isOpen) {
+        const exists = allShops.find(s => s.username === username);
+        if (!exists) {
+            allShops.push(shopDetails);
         }
-        renderShops(allShops);   
+    } else {
+        allShops = allShops.filter(s => s.username !== username);
+    }
+    if (typeof filterShops === 'function') {
         filterShops(); 
-    });
+    } else {
+        renderShops(allShops);
+    }
+});
 
 </script>
 
