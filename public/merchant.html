@@ -1358,29 +1358,30 @@ function updateSwitchFromData() {
 
     if (!toggle || !statusText) return;
 
-    // 🚩 ถ้าไม่ใช่ Merchant ให้ล็อคสวิตช์ไว้เลย
-    if (userData.userType !== 'merchant') {
+    // 🚩 หาข้อมูลร้านค้าในรายการที่โหลดมา
+    const storeLoc = (typeof mySavedLocations !== 'undefined') 
+        ? mySavedLocations.find(loc => loc.isStore === true) 
+        : null;
+
+    // 🚩 ถ้าไม่มีข้อมูลร้านค้า (ยังไม่เป็น Merchant หรือยังไม่ได้รับอนุมัติ)
+    if (!storeLoc) {
         toggle.disabled = true;
-        toggle.parentElement.style.opacity = "0.5"; // ทำให้ดูจางลง
+        toggle.parentElement.style.opacity = "0.5";
         toggle.parentElement.style.cursor = "not-allowed";
         statusText.innerText = 'UNVERIFIED';
+        toggle.checked = false;
         return;
     }
 
-    // สำหรับ Merchant ปกติ
+    // ✅ ถ้าเป็น Merchant (มีข้อมูล storeLoc)
     toggle.disabled = false;
     toggle.parentElement.style.opacity = "1";
     toggle.parentElement.style.cursor = "pointer";
 
-    if (typeof mySavedLocations !== 'undefined') {
-        const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
-        if (storeLoc) {
-            const isOpen = storeLoc.isOpen === true;
-            toggle.checked = isOpen;
-            statusText.innerText = isOpen ? 'OPEN' : 'CLOSED';
-            statusText.style.color = isOpen ? '#28a745' : '#666';
-        }
-    }
+    const isOpen = storeLoc.isOpen === true;
+    toggle.checked = isOpen;
+    statusText.innerText = isOpen ? 'OPEN' : 'CLOSED';
+    statusText.style.color = isOpen ? '#28a745' : '#666';
 }
 
 // ฟังก์ชัน เปิด/ปิด ฟอร์มสร้างงาน
@@ -3364,17 +3365,19 @@ function displayMerchantLocation(lat, lng, phone) {
 
 
 async function updateMerchantStatus(isOpen) {
-    // 🚩 เช็คสิทธิ์ก่อน: ถ้าไม่ใช่ merchant ให้ดีดสวิตช์กลับและแจ้งเตือน
-    if (userData.userType !== 'merchant') {
+    const statusText = document.getElementById('status-text');
+    
+    // 🚩 เช็คสิทธิ์จากข้อมูลที่โหลดไว้
+    const isMerchant = mySavedLocations && mySavedLocations.some(loc => loc.isStore === true);
+
+    if (!isMerchant) {
         document.getElementById('merchant-status-toggle').checked = false;
         return Swal.fire({
-            icon: 'error',
-            title: translations[currentLang].swal_error,
-            text: currentLang === 'th' ? 'เฉพาะร้านค้าที่ได้รับการยืนยันแล้วเท่านั้นที่สามารถเปิด-ปิดร้านได้' : 'Only verified merchants can open/close the shop.'
+            icon: 'warning',
+            text: 'เฉพาะร้านค้าที่ได้รับอนุมัติแล้วเท่านั้น'
         });
     }
 
-    const statusText = document.getElementById('status-text');
     statusText.innerText = isOpen ? 'OPEN' : 'CLOSED';
     statusText.style.color = isOpen ? '#28a745' : '#666';
 
@@ -3389,10 +3392,13 @@ async function updateMerchantStatus(isOpen) {
         });
         
         const data = await res.json();
-        if (!data.success) {
+        if (data.success) {
+            // 🚩 สำคัญมาก: อัปเดตค่าในตัวแปร local ด้วย เพื่อให้เปิด sidebar ครั้งหน้าค่าไม่เพี้ยน
+            const store = mySavedLocations.find(loc => loc.isStore === true);
+            if (store) store.isOpen = isOpen;
+        } else {
             document.getElementById('merchant-status-toggle').checked = !isOpen;
-            updateSwitchFromData(); // คืนค่าจากข้อมูลเดิม
-            alert("Error updating status");
+            updateSwitchFromData();
         }
     } catch (e) {
         console.error("Status Update Error:", e);
