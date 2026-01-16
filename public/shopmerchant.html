@@ -220,6 +220,8 @@ const translations = {
         'shop_nearby': 'ร้านค้าแนะนำใกล้คุณ',
         'shop_select': 'เลือกร้านค้า',
         'shop_error': 'เกิดข้อผิดพลาด',
+		'price_exclude_delivery': '* ราคาอาหารยังไม่รวมค่าจัดส่ง',
+		
     },
     'en': {
         'shop_nearby': 'Nearby Shops (Outside Zone)',
@@ -236,6 +238,8 @@ const translations = {
         'shop_nearby': 'Recommended Shops Near You',
         'shop_select': 'Select Shop',
         'shop_error': 'An error occurred',
+		'price_exclude_delivery': '* Prices exclude delivery fee',
+		
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -252,6 +256,7 @@ const translations = {
         'shop_nearby': 'Lojas Recomendadas Próximas',
         'shop_select': 'Selecionar Loja',
         'shop_error': 'Ocorreu um erro',
+		'price_exclude_delivery': '* Preços não incluem taxa de entrega',
     }
 };
 
@@ -443,6 +448,42 @@ socket.on('shop-status-changed', (data) => {
         renderShops(allShops);
     }
 });
+
+// ฟังก์ชันเมื่อคลิกที่ร้านค้า
+function goToShop(username) {
+    // 1. ค้นหาข้อมูลร้านจากตัวแปร allShops ที่เราโหลดไว้แล้ว
+    const shop = allShops.find(s => s.username === username);
+    if (!shop) return;
+
+    // 2. ตั้งค่าชื่อร้านใน Modal
+    document.getElementById('modalShopName').innerText = shop.shopName || shop.username;
+
+    // 3. เตรียม Container สำหรับใส่เมนู
+    const container = document.getElementById('menu-items-container');
+    container.innerHTML = '';
+
+    if (shop.products && shop.products.length > 0) {
+        // 4. วนลูปโชว์เมนู (สูงสุด 5 เมนูตามที่บันทึกไว้)
+        shop.products.forEach(item => {
+            container.innerHTML += `
+                <div class="menu-item-row">
+                    <span class="menu-item-name">${item.name}</span>
+                    <span class="menu-item-price">${item.price.toLocaleString()} ${shop.zoneCurrency}</span>
+                </div>
+            `;
+        });
+    } else {
+        // กรณีร้านค้ายังไม่ได้เพิ่มเมนู
+        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการเมนูในขณะนี้</p>`;
+    }
+
+    // 5. แสดง Modal
+    document.getElementById('shopMenuModal').classList.remove('hidden');
+}
+
+function closeShopMenuModal() {
+    document.getElementById('shopMenuModal').classList.add('hidden');
+}
 
 </script>
 
