@@ -500,6 +500,12 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 
 
+
+.product-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+.product-row input[type="text"] { flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+.product-row input[type="number"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+.currency-label { font-weight: bold; min-width: 40px; }
+
     </style>
 </head>
 <body>
@@ -672,6 +678,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 	let editingLocationId = null;
 	let lastVoiceAnalysis = null;
 	let mapMode = 'book';
+	let currentZoneCurrency = 'USD';
 	
 	let activeTaskInSidebar = null;
 	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
@@ -894,6 +901,8 @@ const translations = {
 		'btn_confirm': 'ส่งคำขอ',
         'title_active_jobs': 'งานที่กำลังดำเนินการ',
 		'menu_manage_products': 'จัดการเมนูขาย/สินค้า',
+		'product_limit_note': 'เพิ่มได้สูงสุด 5 เมนู (ราคาไม่รวมค่าส่ง)',
+		'btn_save': 'บันทึกข้อมูลเมนู',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1099,6 +1108,8 @@ const translations = {
 		'btn_confirm': 'Send request',
         'title_active_jobs': 'Active Tasks',
 		'menu_manage_products': 'Manage Shop Menu/Products',
+		'product_limit_note': 'Add up to 5 items (price excluding delivery)',
+		'btn_save': 'Save Menu',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1304,6 +1315,8 @@ const translations = {
 		'btn_confirm': 'Enviar solicitação',
         'title_active_jobs': 'Tarefas em Andamento',
 		'menu_manage_products': 'Gerenciar Cardápio/Produtos',
+		'product_limit_note': 'Adicione até 5 itens (preço sem entrega)',
+		'btn_save': 'Salvar Cardápio',
     }
 };
 
@@ -3436,6 +3449,76 @@ async function checkCurrentMerchantStatus() {
 
 
 
+async function openMerchantProductsModal() {
+    const modal = document.getElementById('merchantProductsModal');
+    const container = document.getElementById('product-list-inputs');
+    container.innerHTML = ''; // ล้างค่าเก่า
+
+    // 1. หาข้อมูลร้านค้าเพื่อเอาเมนูเดิมและสกุลเงิน
+    const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
+    const savedProducts = (storeLoc && storeLoc.products) ? storeLoc.products : [];
+    
+    // ดึงสกุลเงินจากข้อมูลโซนที่โหลดไว้ (สมมติว่ามีใน storeLoc หรือ global variable)
+    currentZoneCurrency = storeLoc.zoneCurrency || 'USD';
+
+    // 2. สร้าง Input 5 แถว
+    for (let i = 0; i < 5; i++) {
+        const p = savedProducts[i] || { name: '', price: '' };
+        container.innerHTML += `
+            <div class="product-row">
+                <span>${i + 1}.</span>
+                <input type="text" id="prod-name-${i}" placeholder="ชื่อเมนู/สินค้า" value="${p.name}">
+                <input type="number" id="prod-price-${i}" placeholder="ราคา" value="${p.price}">
+                <span class="currency-label">${currentZoneCurrency}</span>
+            </div>
+        `;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeMerchantProductsModal() {
+    document.getElementById('merchantProductsModal').classList.add('hidden');
+}
+
+async function saveMerchantProducts() {
+    const products = [];
+    for (let i = 0; i < 5; i++) {
+        const name = document.getElementById(`prod-name-${i}`).value.trim();
+        const price = document.getElementById(`prod-price-${i}`).value.trim();
+        
+        if (name && price) {
+            products.push({ name: name, price: parseFloat(price) });
+        }
+    }
+
+    try {
+        const res = await fetch('/api/merchant/update-products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: myUsername, 
+                products: products 
+            })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            // อัปเดตข้อมูลในตัวแปร local ด้วย
+            const store = mySavedLocations.find(loc => loc.isStore === true);
+            if (store) store.products = products;
+            
+            Swal.fire({ icon: 'success', text: 'บันทึกเมนูเรียบร้อยแล้ว' });
+            closeMerchantProductsModal();
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Error saving products");
+    }
+}
+
+
+
 
 window.onbeforeunload = function() {
     const activeTasks = document.querySelectorAll('.active-task-card').length;
@@ -3702,6 +3785,27 @@ window.onbeforeunload = function() {
 </div>
 
         <button class="btn-submit" onclick="closeInfo()" style="margin-top: 20px;" data-i18n-key="btn_got_it">เข้าใจแล้ว</button>
+    </div>
+</div>
+
+
+
+<div id="merchantProductsModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 data-i18n-key="menu_manage_products">จัดการเมนูขาย/สินค้า</h3>
+            <span class="close" onclick="closeMerchantProductsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+                * <span data-i18n-key="product_limit_note">เพิ่มได้สูงสุด 5 เมนู (ราคาไม่รวมค่าส่ง)</span>
+            </p>
+            <div id="product-list-inputs">
+                </div>
+            <button onclick="saveMerchantProducts()" class="btn-save-products" style="width: 100%; margin-top: 20px; padding: 12px; background: #11998e; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                <i class="fas fa-save"></i> <span data-i18n-key="btn_save">บันทึกข้อมูลเมนู</span>
+            </button>
+        </div>
     </div>
 </div>
 
