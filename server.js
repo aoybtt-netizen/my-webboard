@@ -4019,6 +4019,23 @@ app.post('/api/merchant/update-products', async (req, res) => {
     }
 });
 
+app.get('/api/merchant/get-zone-currency', async (req, res) => {
+    try {
+        const { lat, lng } = req.query;
+        const locationObj = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        
+        // ใช้ฟังก์ชัน findResponsibleAdmin ที่พี่มีอยู่แล้วในการหาโซน
+        const responsibleData = await findResponsibleAdmin(locationObj);
+        
+        // ดึงสกุลเงินจากโซน ถ้าไม่มีให้ใช้ USD
+        const currency = responsibleData.zoneData ? responsibleData.zoneData.zoneCurrency : 'USD';
+        
+        res.json({ success: true, currency: currency });
+    } catch (e) {
+        res.status(500).json({ success: false, currency: 'USD' });
+    }
+});
+
 
 
 // API: ดึงงานของร้านค้า (Merchant) เฉพาะที่ยังไม่จบกระบวนการ

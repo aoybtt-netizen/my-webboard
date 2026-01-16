@@ -3502,19 +3502,30 @@ async function checkCurrentMerchantStatus() {
 async function openMerchantProductsModal() {
     const modal = document.getElementById('merchantProductsModal');
     const container = document.getElementById('product-list-inputs');
-    container.innerHTML = '';
+    container.innerHTML = '<p style="text-align:center;">Loading...</p>';
 
-    // 1. หาข้อมูลร้านค้า
+    // 1. หาข้อมูลร้านค้าจากตัวแปรที่มีอยู่
     const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
     if (!storeLoc) {
-        return Swal.fire({ icon: 'error', text: 'กรุณาบันทึกพิกัดร้านค้าก่อน' });
+        return Swal.fire({ icon: 'error', text: 'ไม่พบข้อมูลร้านค้า' });
     }
 
-    const savedProducts = storeLoc.products || [];
-    // 🚩 ดึงสกุลเงิน ถ้าไม่มีให้ใช้หน่วยเงินกลาง (เช่น THB หรือ USD)
-    const currency = storeLoc.zoneCurrency || 'USD';
+    let currency = 'USD'; // ค่าเริ่มต้น
 
-    // 2. วนลูปสร้างช่องกรอก 5 ช่องแบบสมมาตร
+    try {
+        // 🚩 2. ดึงข้อมูลโซนล่าสุดจาก Server เพื่อดูสกุลเงินที่ถูกต้อง
+        const res = await fetch(`/api/merchant/get-zone-currency?lat=${storeLoc.lat}&lng=${storeLoc.lng}`);
+        const data = await res.json();
+        if (data.success) {
+            currency = data.currency; // ใช้สกุลเงินจากโซนจริง (เช่น THB, KHR, LAK)
+        }
+    } catch (err) {
+        console.error("Fetch currency error:", err);
+    }
+
+    // 3. วาดหน้าจอใหม่พร้อมสกุลเงินที่ถูกต้อง
+    container.innerHTML = '';
+    const savedProducts = storeLoc.products || [];
     for (let i = 0; i < 5; i++) {
         const p = savedProducts[i] || { name: '', price: '' };
         container.innerHTML += `
