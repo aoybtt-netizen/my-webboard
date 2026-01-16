@@ -490,14 +490,13 @@
 
 
 
-.switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
-.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
 input:checked + .slider { background-color: #28a745; }
-input:checked + .slider:before { transform: translateX(18px); }
-.slider.round { border-radius: 34px; }
-.slider.round:before { border-radius: 50%; }
+input:checked + .slider:before { transform: translateX(20px); }
 
 
 
@@ -520,10 +519,6 @@ input:checked + .slider:before { transform: translateX(18px); }
 	<div class="merchant-status-container" style="display: flex; align-items: center; gap: 8px; margin-left: 10px;">
     <span id="status-label" style="font-size: 0.75em; font-weight: bold; color: #666;">CLOSED</span>
     
-    <label class="switch">
-        <input type="checkbox" id="merchant-status-toggle" onchange="updateMerchantStatus(this.checked)">
-        <span class="slider round"></span>
-    </label>
 </div>
 
 
@@ -545,6 +540,18 @@ input:checked + .slider:before { transform: translateX(18px); }
 	</div>
 
         <div class="sidebar-menu">
+		
+		<div class="menu-item" style="display: flex; justify-content: space-between; align-items: center; cursor: default;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-power-off"></i> 
+            <span id="status-text" style="font-weight: bold;">CLOSED</span>
+        </div>
+        <label class="switch">
+            <input type="checkbox" id="merchant-status-toggle" onchange="updateMerchantStatus(this.checked)">
+            <span class="slider round"></span>
+        </label>
+    </div>
+	
     <div class="menu-item" onclick="openSaveStoreModal()">
         <i class="fas fa-store"></i> 
         <span data-i18n-key="menu_save_store">บันทึกพิกัดร้าน (Base)</span>
@@ -1334,13 +1341,36 @@ window.addEventListener('DOMContentLoaded', () => {
 	
 	
 	// ฟังก์ชัน เปิด/ปิด Sidebar
-function toggleMerchantSidebar() {
+async function toggleMerchantSidebar() {
     const sidebar = document.getElementById('merchant-sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    sidebar.classList.toggle('active');
+    
+    // สลับการแสดงผล Sidebar
+    const isActive = sidebar.classList.toggle('active');
     overlay.classList.toggle('hidden');
+
+    // 🚩 ถ้า Sidebar กำลังจะเปิด ให้ดึงสถานะร้านมาโชว์ที่สวิตช์ด้วย
+    if (isActive) {
+        updateSwitchFromData();
+    }
 }
 
+// ฟังก์ชันช่วยสำหรับอัปเดตสวิตช์โดยเฉพาะ
+function updateSwitchFromData() {
+    // ดึงข้อมูลจากตัวแปร mySavedLocations ที่โหลดไว้แล้วในหน้าบ้าน
+    if (typeof mySavedLocations !== 'undefined') {
+        const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
+        const toggle = document.getElementById('merchant-status-toggle');
+        const statusText = document.getElementById('status-text');
+
+        if (storeLoc && toggle && statusText) {
+            const isOpen = storeLoc.isOpen === true;
+            toggle.checked = isOpen;
+            statusText.innerText = isOpen ? 'OPEN' : 'CLOSED';
+            statusText.style.color = isOpen ? '#28a745' : '#666';
+        }
+    }
+}
 
 // ฟังก์ชัน เปิด/ปิด ฟอร์มสร้างงาน
 function toggleTaskForm() {
@@ -3323,12 +3353,11 @@ function displayMerchantLocation(lat, lng, phone) {
 
 
 async function updateMerchantStatus(isOpen) {
-    const statusLabel = document.getElementById('status-label');
-    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    const statusText = document.getElementById('status-text');
     
-    // เปลี่ยนตัวหนังสือแสดงผลทันที
-    statusLabel.innerText = isOpen ? 'OPEN' : 'CLOSED';
-    statusLabel.style.color = isOpen ? '#28a745' : '#666';
+    // อัปเดต UI เบื้องต้น
+    statusText.innerText = isOpen ? 'OPEN' : 'CLOSED';
+    statusText.style.color = isOpen ? '#28a745' : '#666';
 
     try {
         const res = await fetch('/api/merchant/update-status', {
@@ -3342,12 +3371,14 @@ async function updateMerchantStatus(isOpen) {
         
         const data = await res.json();
         if (!data.success) {
-            alert('Failed to update status');
-            // ถ้าพังให้ดีดสวิตช์กลับ
+            // หากบันทึกไม่สำเร็จ ให้ดีดสวิตช์กลับ
             document.getElementById('merchant-status-toggle').checked = !isOpen;
+            statusText.innerText = !isOpen ? 'OPEN' : 'CLOSED';
+            statusText.style.color = !isOpen ? '#28a745' : '#666';
+            alert("Error updating status");
         }
     } catch (e) {
-        console.error(e);
+        console.error("Status Update Error:", e);
     }
 }
 
