@@ -4619,57 +4619,65 @@ app.get('/api/rider/check-working-status', async (req, res) => {
 app.get('/api/marketplace/all-merchants', async (req, res) => {
     try {
         const { lat, lng } = req.query;
-        const userLat = parseFloat(lat);
-        const userLng = parseFloat(lng);
+        const uLat = parseFloat(lat);
+        const uLng = parseFloat(lng);
 
-        if (isNaN(userLat) || isNaN(userLng)) {
-            return res.status(400).json({ success: false, message: "Missing location data" });
-        }
-
-        const locationObj = { lat: userLat, lng: userLng };
-
-        // 1. หาข้อมูลโซน
-        let zoneName = "Global Zone";
+        // 1. หาโซนปัจจุบันของผู้ใช้ (ส่งกลับไปที่ currentZone)
+        let userZoneName = "Global Zone";
         try {
-            const zoneInfo = await findResponsibleAdmin(locationObj);
-            if (zoneInfo && zoneInfo.zoneData) {
-                zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
+            if (!isNaN(uLat) && !isNaN(uLng)) {
+                const userZoneInfo = await findResponsibleAdmin({ lat: uLat, lng: uLng });
+                if (userZoneInfo && userZoneInfo.zoneData) {
+                    userZoneName = userZoneInfo.zoneData.name || "โซนนิรนาม";
+                }
             }
-        } catch (zoneErr) {
-            console.error("❌ Zone Detection Error:", zoneErr.message);
+        } catch (zErr) {
+            console.error("❌ Error finding user zone:", zErr.message);
         }
 
-        // 🚩 2. ดึงเฉพาะร้านค้าที่ "เปิดอยู่" เท่านั้น
-        // และต้องมี isStore: true เพื่อป้องกันการดึงพิกัดบ้านทั่วไปมาโชว์
+        // 2. ดึงร้านค้าที่เปิดอยู่
         const openShops = await db.collection('merchant_locations').find({ 
             isStore: true, 
             isOpen: true 
         }).toArray();
 
-        // 🚩 3. ปรับ Format ข้อมูลให้ตรงกับที่หน้าบ้าน (shopmerchant.html) ต้องการ
-        const formattedShops = openShops.map(s => ({
-            username: s.owner,
-			shopName: s.label,
-			lat: s.lat,
-			lng: s.lng,
-			phone: s.phone || '',
-			shopImage: s.shopImage || null,
-			distance: null,
-			rating: s.rating || "5.0",
-			completedJobs: s.completedJobs || 0,
-			products: s.products || [], 
-			zoneCurrency: currency || 'USD'
+        // 3. ปรับ Format และหา Currency (ดัก Error ภายใน map)
+        const formattedShops = await Promise.all(openShops.map(async (s) => {
+            let shopCurrency = 'USD';
+            try {
+                // เช็คว่าร้านมีพิกัดไหมก่อนส่งไปหาโซน
+                if (s.lat && s.lng) {
+                    const shopZoneInfo = await findResponsibleAdmin({ lat: parseFloat(s.lat), lng: parseFloat(s.lng) });
+                    if (shopZoneInfo && shopZoneInfo.zoneData) {
+                        shopCurrency = shopZoneInfo.zoneData.zoneCurrency || 'USD';
+                    }
+                }
+            } catch (err) {
+                console.error(`⚠️ Currency error for shop ${s.owner}:`, err.message);
+            }
+
+            return {
+                username: s.owner,
+                shopName: s.label || s.owner,
+                phone: s.phone || '',
+                lat: parseFloat(s.lat),
+                lng: parseFloat(s.lng),
+                shopImage: s.shopImage || null,
+                rating: s.rating || "5.0",
+                completedJobs: s.completedJobs || 0,
+                products: s.products || [],
+                zoneCurrency: shopCurrency
+            };
         }));
 
-        res.json({
-            success: true,
-            currentZone: zoneName, 
-            userCoords: { lat: userLat, lng: userLng },
-            shops: formattedShops // ส่งรายการร้านค้าที่เปิดอยู่กลับไป
+        res.json({ 
+            success: true, 
+            currentZone: userZoneName, // ส่งชื่อโซนกลับไปให้หน้าบ้านแสดงผล
+            shops: formattedShops 
         });
 
     } catch (error) {
-        console.error("🚨 API Crash:", error);
+        console.error("🚨 [Server Error] all-merchants API:", error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });
