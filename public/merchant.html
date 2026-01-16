@@ -548,6 +548,11 @@ input:checked + .slider:before { transform: translateX(20px); }
         </label>
     </div>
 	
+	<div class="menu-item" onclick="openMerchantProductsModal()">
+        <i class="fas fa-utensils"></i> 
+        <span data-i18n-key="menu_manage_products">จัดการเมนูขาย/สินค้า</span>
+    </div>
+	
     <div class="menu-item" onclick="openSaveStoreModal()">
         <i class="fas fa-store"></i> 
         <span data-i18n-key="menu_save_store">บันทึกพิกัดร้าน (Base)</span>
@@ -888,6 +893,7 @@ const translations = {
 		'title_merchant_verify': 'ยืนยันการส่งคำขอเปิดร้าน',
 		'btn_confirm': 'ส่งคำขอ',
         'title_active_jobs': 'งานที่กำลังดำเนินการ',
+		'menu_manage_products': 'จัดการเมนูขาย/สินค้า',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1092,6 +1098,7 @@ const translations = {
 		'title_merchant_verify': 'Confirm Merchant Request',
 		'btn_confirm': 'Send request',
         'title_active_jobs': 'Active Tasks',
+		'menu_manage_products': 'Manage Shop Menu/Products',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1296,6 +1303,7 @@ const translations = {
 		'title_merchant_verify': 'Confirmar solicitação de comerciante',
 		'btn_confirm': 'Enviar solicitação',
         'title_active_jobs': 'Tarefas em Andamento',
+		'menu_manage_products': 'Gerenciar Cardápio/Produtos',
     }
 };
 
