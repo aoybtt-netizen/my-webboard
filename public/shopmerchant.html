@@ -556,24 +556,47 @@ function goToShop(username) {
     const shop = allShops.find(s => s.username === username);
     if (!shop) return;
 
+    // 1. ตั้งชื่อร้าน
     document.getElementById('modalShopName').innerText = shop.shopName || shop.username;
+
+    // 2. ตั้งค่าเบอร์โทร (ถ้ามีข้อมูลเบอร์ใน shop object)
+    const phoneLink = document.getElementById('modalShopPhone');
+    if (shop.phone) {
+        phoneLink.href = `tel:${shop.phone}`;
+        phoneLink.querySelector('span').innerText = shop.phone;
+        phoneLink.style.display = 'block';
+    } else {
+        phoneLink.style.display = 'none'; // ซ่อนถ้าไม่มีเบอร์
+    }
+
+    // 3. จัดการแผนที่เล็ก
+    const mapContainer = document.getElementById('shop-mini-map');
+    // ใช้ Google Maps Static API หรือเปิด Google Maps App เมื่อคลิก
+    mapContainer.onclick = function() {
+        window.open(`https://www.google.com/maps?q=${shop.lat},${shop.lng}`, '_blank');
+    };
+    // แปะภาพแผนที่ (ถ้าพี่มี API Key ของ Google ใช้ Static Map จะสวยมาก)
+    const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${shop.lat},${shop.lng}&zoom=15&size=400x120&markers=color:red%7C${shop.lat},${shop.lng}&key=YOUR_API_KEY`;
+    // ถ้าไม่มี API Key ให้ใช้เป็นรูป Icon แผนที่สวยๆ แทนไปก่อนได้ครับ
+
+    // 4. จัดการรายการเมนู (เหมือนเดิม)
     const container = document.getElementById('menu-items-container');
     container.innerHTML = '';
-
-    // ดึงสกุลเงินจากข้อมูลร้านค้า (ที่ส่งมาจาก API หลังบ้าน)
     const currency = shop.zoneCurrency || 'USD';
 
     if (shop.products && shop.products.length > 0) {
         shop.products.forEach(item => {
             container.innerHTML += `
-                <div class="menu-item-row">
+                <div class="menu-item-row" style="display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee;">
                     <span class="menu-item-name">${item.name}</span>
-                    <span class="menu-item-price">${Number(item.price).toLocaleString()} ${currency}</span>
+                    <span class="menu-item-price" style="font-weight: bold; color: #11998e;">
+                        ${Number(item.price).toLocaleString()} ${currency}
+                    </span>
                 </div>
             `;
         });
     } else {
-        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการเมนูในขณะนี้</p>`;
+        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการเมนู</p>`;
     }
 
     document.getElementById('shopMenuModal').classList.remove('hidden');
@@ -591,12 +614,25 @@ function closeShopMenuModal() {
 <div id="shopMenuModal" class="product-modal-overlay hidden">
     <div class="product-modal-card">
         <div class="product-modal-header" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
-            <h3 id="modalShopName">ชื่อร้านค้า</h3>
+            <div style="display: flex; flex-direction: column;">
+                <h3 id="modalShopName" style="margin: 0;">ชื่อร้านค้า</h3>
+                <a id="modalShopPhone" href="#" style="color: white; text-decoration: none; font-size: 0.9rem; margin-top: 4px;">
+                    <i class="fas fa-phone-alt"></i> <span>-</span>
+                </a>
+            </div>
             <button class="btn-close-modal" onclick="closeShopMenuModal()">&times;</button>
         </div>
+        
         <div class="product-modal-body">
+            <div id="shop-mini-map" style="width: 100%; height: 120px; background: #eee; border-radius: 10px; margin-bottom: 15px; overflow: hidden; position: relative; cursor: pointer;">
+                <div id="map-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 0.8rem;">
+                    <i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i> <span data-i18n-key="shop_view_map">ดูตำแหน่งร้าน</span>
+                </div>
+            </div>
+
             <div id="menu-items-container">
                 </div>
+            
             <p style="font-size: 0.8em; color: #888; text-align: center; margin-top: 15px;" data-i18n-key="price_exclude_delivery">
                 * ราคาอาหารยังไม่รวมค่าจัดส่ง
             </p>

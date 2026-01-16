@@ -4652,6 +4652,7 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
 			shopName: s.label,
 			lat: s.lat,
 			lng: s.lng,
+			phone: s.phone || '',
 			shopImage: s.shopImage || null,
 			distance: null,
 			rating: s.rating || "5.0",
