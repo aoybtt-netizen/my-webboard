@@ -556,30 +556,28 @@ function goToShop(username) {
     const shop = allShops.find(s => s.username === username);
     if (!shop) return;
 
-    // 1. ตั้งชื่อร้าน
+    // ... (ส่วนชื่อร้านและเบอร์โทรเดิมของพี่) ...
     document.getElementById('modalShopName').innerText = shop.shopName || shop.username;
 
-    // 2. ตั้งค่าเบอร์โทร (ถ้ามีข้อมูลเบอร์ใน shop object)
-    const phoneLink = document.getElementById('modalShopPhone');
-    if (shop.phone) {
-        phoneLink.href = `tel:${shop.phone}`;
-        phoneLink.querySelector('span').innerText = shop.phone;
-        phoneLink.style.display = 'block';
-    } else {
-        phoneLink.style.display = 'none'; // ซ่อนถ้าไม่มีเบอร์
-    }
+    // 🚩 ส่วนแผนที่: แสดงผลแบบเห็นภาพจริง
+    const mapContent = document.getElementById('map-content');
+    
+    // ใช้ Iframe ของ Google Maps แบบ Embed (ฟรีและไม่ต้องใช้ API Key สำหรับการแสดงผลพื้นฐาน)
+    mapContent.innerHTML = `
+        <iframe 
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            style="border:0" 
+            src="https://www.google.com/maps?q=${shop.lat},${shop.lng}&hl=th&z=15&output=embed" 
+            allowfullscreen>
+        </iframe>
+        <div onclick="window.open('https://www.google.com/maps?q=${shop.lat},${shop.lng}', '_blank')" 
+             style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; background:transparent;">
+        </div>
+    `;
 
-    // 3. จัดการแผนที่เล็ก
-    const mapContainer = document.getElementById('shop-mini-map');
-    // ใช้ Google Maps Static API หรือเปิด Google Maps App เมื่อคลิก
-    mapContainer.onclick = function() {
-        window.open(`https://www.google.com/maps?q=${shop.lat},${shop.lng}`, '_blank');
-    };
-    // แปะภาพแผนที่ (ถ้าพี่มี API Key ของ Google ใช้ Static Map จะสวยมาก)
-    const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${shop.lat},${shop.lng}&zoom=15&size=400x120&markers=color:red%7C${shop.lat},${shop.lng}&key=YOUR_API_KEY`;
-    // ถ้าไม่มี API Key ให้ใช้เป็นรูป Icon แผนที่สวยๆ แทนไปก่อนได้ครับ
-
-    // 4. จัดการรายการเมนู (เหมือนเดิม)
+    // ... (ส่วนเมนูสินค้าเดิม) ...
     const container = document.getElementById('menu-items-container');
     container.innerHTML = '';
     const currency = shop.zoneCurrency || 'USD';
@@ -624,11 +622,9 @@ function closeShopMenuModal() {
         </div>
         
         <div class="product-modal-body">
-            <div id="shop-mini-map" style="width: 100%; height: 120px; background: #eee; border-radius: 10px; margin-bottom: 15px; overflow: hidden; position: relative; cursor: pointer;">
-                <div id="map-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 0.8rem;">
-                    <i class="fas fa-map-marker-alt" style="margin-right: 5px;"></i> <span data-i18n-key="shop_view_map">ดูตำแหน่งร้าน</span>
-                </div>
-            </div>
+            <div id="shop-mini-map" style="width: 100%; height: 140px; background: #eee; border-radius: 12px; margin-bottom: 15px; overflow: hidden; position: relative; border: 1px solid #ddd;">
+    <div id="map-content" style="width: 100%; height: 100%;"></div>
+</div>
 
             <div id="menu-items-container">
                 </div>
