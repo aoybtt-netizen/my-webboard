@@ -501,10 +501,60 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 
 
-.product-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
-.product-row input[type="text"] { flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-.product-row input[type="number"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-.currency-label { font-weight: bold; min-width: 40px; }
+.product-modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* มั่นใจว่าอยู่หน้าสุด */
+}
+.product-modal-card {
+    background: white;
+    width: 90%;
+    max-width: 450px;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    animation: modalPop 0.3s ease-out;
+}
+@keyframes modalPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.product-modal-header {
+    background: #11998e;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.btn-close-modal {
+    background: none; border: none;
+    color: white; font-size: 28px; cursor: pointer;
+}
+.product-modal-body { padding: 20px; }
+.product-note { font-size: 0.85em; color: #666; margin-bottom: 15px; }
+
+.product-row-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.product-row-item input[type="text"] { flex: 2; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+.product-row-item input[type="number"] { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 80px; }
+.currency-badge {
+    background: #f0f0f0;
+    padding: 12px 8px;
+    border-radius: 8px;
+    font-weight: bold;
+    min-width: 45px;
+    text-align: center;
+    color: #333;
+}
+.hidden { display: none !important; }
 
     </style>
 </head>
@@ -3452,24 +3502,26 @@ async function checkCurrentMerchantStatus() {
 async function openMerchantProductsModal() {
     const modal = document.getElementById('merchantProductsModal');
     const container = document.getElementById('product-list-inputs');
-    container.innerHTML = ''; // ล้างค่าเก่า
+    container.innerHTML = '';
 
-    // 1. หาข้อมูลร้านค้าเพื่อเอาเมนูเดิมและสกุลเงิน
+    // 1. หาข้อมูลร้านค้า
     const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
-    const savedProducts = (storeLoc && storeLoc.products) ? storeLoc.products : [];
-    
-    // ดึงสกุลเงินจากข้อมูลโซนที่โหลดไว้ (สมมติว่ามีใน storeLoc หรือ global variable)
-    currentZoneCurrency = storeLoc.zoneCurrency || 'USD';
+    if (!storeLoc) {
+        return Swal.fire({ icon: 'error', text: 'กรุณาบันทึกพิกัดร้านค้าก่อน' });
+    }
 
-    // 2. สร้าง Input 5 แถว
+    const savedProducts = storeLoc.products || [];
+    // 🚩 ดึงสกุลเงิน ถ้าไม่มีให้ใช้หน่วยเงินกลาง (เช่น THB หรือ USD)
+    const currency = storeLoc.zoneCurrency || 'USD';
+
+    // 2. วนลูปสร้างช่องกรอก 5 ช่องแบบสมมาตร
     for (let i = 0; i < 5; i++) {
         const p = savedProducts[i] || { name: '', price: '' };
         container.innerHTML += `
-            <div class="product-row">
-                <span>${i + 1}.</span>
-                <input type="text" id="prod-name-${i}" placeholder="ชื่อเมนู/สินค้า" value="${p.name}">
+            <div class="product-row-item">
+                <input type="text" id="prod-name-${i}" placeholder="เมนูที่ ${i+1}" value="${p.name}">
                 <input type="number" id="prod-price-${i}" placeholder="ราคา" value="${p.price}">
-                <span class="currency-label">${currentZoneCurrency}</span>
+                <div class="currency-badge">${currency}</div>
             </div>
         `;
     }
@@ -3477,8 +3529,17 @@ async function openMerchantProductsModal() {
     modal.classList.remove('hidden');
 }
 
+// 🚩 ฟังก์ชันปิดหน้าจอที่ทำงานแน่นอน
 function closeMerchantProductsModal() {
     document.getElementById('merchantProductsModal').classList.add('hidden');
+}
+
+// คลิกข้างนอก Modal ให้ปิดได้ด้วย (เพิ่มประสบการณ์ที่ดี)
+window.onclick = function(event) {
+    const modal = document.getElementById('merchantProductsModal');
+    if (event.target == modal) {
+        closeMerchantProductsModal();
+    }
 }
 
 async function saveMerchantProducts() {
@@ -3790,19 +3851,19 @@ window.onbeforeunload = function() {
 
 
 
-<div id="merchantProductsModal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
+<div id="merchantProductsModal" class="product-modal-overlay hidden">
+    <div class="product-modal-card">
+        <div class="product-modal-header">
             <h3 data-i18n-key="menu_manage_products">จัดการเมนูขาย/สินค้า</h3>
-            <span class="close" onclick="closeMerchantProductsModal()">&times;</span>
+            <button class="btn-close-modal" onclick="closeMerchantProductsModal()">&times;</button>
         </div>
-        <div class="modal-body">
-            <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+        <div class="product-modal-body">
+            <p class="product-note">
                 * <span data-i18n-key="product_limit_note">เพิ่มได้สูงสุด 5 เมนู (ราคาไม่รวมค่าส่ง)</span>
             </p>
             <div id="product-list-inputs">
                 </div>
-            <button onclick="saveMerchantProducts()" class="btn-save-products" style="width: 100%; margin-top: 20px; padding: 12px; background: #11998e; color: white; border: none; border-radius: 8px; cursor: pointer;">
+            <button onclick="saveMerchantProducts()" class="btn-save-products">
                 <i class="fas fa-save"></i> <span data-i18n-key="btn_save">บันทึกข้อมูลเมนู</span>
             </button>
         </div>
