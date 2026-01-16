@@ -3245,16 +3245,28 @@ async function safeNavigateHome() {
         const checkRes = await fetch(`/api/rider/check-working-status?username=${encodeURIComponent(myUsername)}`);
         const checkData = await checkRes.json();
         const currentMercNum = checkData.mercNum || 0;
+        
         if (currentMercNum >= 1) {
             Swal.fire({
                 icon: 'warning',
-				title: translations[currentLang].swal_prevent_exit_title,
-				text: translations[currentLang].swal_prevent_exit_text(currentMercNum),
+                title: translations[currentLang].swal_prevent_exit_title,
+                text: translations[currentLang].swal_prevent_exit_text(currentMercNum),
                 confirmButtonColor: '#11998e'
             });
         } 
         else {
-            
+            // 🚩 1. สั่ง "ปิดร้าน" (Set isOpen: false) ก่อนออก
+            // เราใช้ API ตัวเดียวกับสวิตช์ Toggle ได้เลยครับ
+            await fetch('/api/merchant/update-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    username: myUsername, 
+                    isOpen: false 
+                })
+            });
+
+            // 🚩 2. รีเซ็ต mercNum และกลับหน้าหลักตามปกติ
             const resetRes = await fetch('/api/merchant/reset-mercnum', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3263,11 +3275,8 @@ async function safeNavigateHome() {
 
             const resetData = await resetRes.json();
             
-            if (resetData.success) {
-                window.location.href = 'index.html';
-            } else {
-                window.location.href = 'index.html';
-            }
+            // ไม่ว่าผล reset จะเป็นอย่างไร ให้เปลี่ยนหน้าไป index.html
+            window.location.href = 'index.html';
         }
     } catch (e) {
         console.error("🚨 Navigation Error:", e);
@@ -3366,15 +3375,13 @@ function displayMerchantLocation(lat, lng, phone) {
 
 async function updateMerchantStatus(isOpen) {
     const statusText = document.getElementById('status-text');
-    
-    // 🚩 เช็คสิทธิ์จากข้อมูลที่โหลดไว้
     const isMerchant = mySavedLocations && mySavedLocations.some(loc => loc.isStore === true);
 
     if (!isMerchant) {
         document.getElementById('merchant-status-toggle').checked = false;
         return Swal.fire({
             icon: 'warning',
-            text: 'เฉพาะร้านค้าที่ได้รับอนุมัติแล้วเท่านั้น'
+            text: 'Only approved stores are allowed.'
         });
     }
 
@@ -3393,7 +3400,6 @@ async function updateMerchantStatus(isOpen) {
         
         const data = await res.json();
         if (data.success) {
-            // 🚩 สำคัญมาก: อัปเดตค่าในตัวแปร local ด้วย เพื่อให้เปิด sidebar ครั้งหน้าค่าไม่เพี้ยน
             const store = mySavedLocations.find(loc => loc.isStore === true);
             if (store) store.isOpen = isOpen;
         } else {
@@ -3405,9 +3411,7 @@ async function updateMerchantStatus(isOpen) {
     }
 }
 
-// 🚩 อย่าลืมเรียกสถานะปัจจุบันมาโชว์ตอนโหลดหน้าเว็บด้วยนะครับ
 async function checkCurrentMerchantStatus() {
-    // พี่ดึงข้อมูลจาก profile หรือ locations ที่มีอยู่แล้วมาตั้งค่าเริ่มต้น
     const res = await fetch(`/api/merchant/locations?username=${myUsername}`);
     const data = await res.json();
     if (data.success) {
