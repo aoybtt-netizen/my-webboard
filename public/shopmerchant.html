@@ -260,6 +260,8 @@ header {
     let userCoords = null;
     let allShops = [];
 	const socket = io();
+	let cart = {}; 
+	let currentMerchantId = '';
 	
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -282,6 +284,12 @@ const translations = {
         'shop_error': 'เกิดข้อผิดพลาด',
 		'price_exclude_delivery': '* ราคาอาหารยังไม่รวมค่าจัดส่ง',
 		'no_menu_items': 'ยังไม่มีรายการเมนูในขณะนี้',
+		'btn_checkout': 'เช็คเอาท์',
+		'order_summary': 'สรุปรายการสั่งซื้อ',
+		'rider_wage': 'ค่าจ้างไรเดอร์',
+		'total_items': 'ยอดรวมสินค้า:',
+		'total_all': 'ยอดรวมทั้งสิ้น:',
+		'btn_confirm_order': 'ยืนยันการสั่งซื้อ',
 		
     },
     'en': {
@@ -301,6 +309,12 @@ const translations = {
         'shop_error': 'An error occurred',
 		'price_exclude_delivery': '* Prices exclude delivery fee',
 		'no_menu_items': 'No menu items available at the moment.',
+		'btn_checkout': 'Checkout',
+		'order_summary': 'Order Summary',
+		'rider_wage': 'Rider Wage',
+		'total_items': 'Subtotal:',
+		'total_all': 'Total Amount:',
+		'btn_confirm_order': 'Confirm Order',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -319,6 +333,12 @@ const translations = {
         'shop_error': 'Ocorreu um erro',
 		'price_exclude_delivery': '* Preços não incluem taxa de entrega',
 		'no_menu_items': 'Nenhum item de menu disponível no momento.',
+		'btn_checkout': 'Finalizar Pedido',
+		'order_summary': 'Resumo do Pedido',
+		'rider_wage': 'Taxa do Entregador',
+		'total_items': 'Subtotal:',
+		'total_all': 'Valor Total:',
+		'btn_confirm_order': 'Confirmar Pedido',
     }
 };
 
@@ -559,23 +579,24 @@ socket.on('shop-status-changed', (data) => {
 
 // ฟังก์ชันเมื่อคลิกที่ร้านค้า
 function goToShop(username) {
+	currentMerchantId = username;
     const shop = allShops.find(s => s.username === username);
     if (!shop) return;
 
     // 1. ตั้งชื่อร้าน
     document.getElementById('modalShopName').innerText = shop.shopName || shop.username;
 
-    // 🚩 2. ส่วนเบอร์โทร (เพิ่มกลับเข้าไป)
+    // 2. ส่วนเบอร์โทร
     const phoneLink = document.getElementById('modalShopPhone');
     if (shop.phone) {
         phoneLink.href = `tel:${shop.phone}`;
         phoneLink.querySelector('span').innerText = shop.phone;
-        phoneLink.style.display = 'inline-block'; // แสดงผล
+        phoneLink.style.display = 'inline-block';
     } else {
-        phoneLink.style.display = 'none'; // ซ่อนถ้าไม่มีข้อมูลเบอร์โทร
+        phoneLink.style.display = 'none';
     }
 
-    // 🚩 3. ส่วนแผนที่: แก้ไข URL ให้ถูกต้อง
+    // 3. ส่วนแผนที่: แก้ไขพิกัดให้ถูกต้อง
     const mapContent = document.getElementById('map-content');
     mapContent.innerHTML = `
         <iframe 
@@ -583,7 +604,7 @@ function goToShop(username) {
             height="100%" 
             frameborder="0" 
             style="border:0" 
-            src="https://maps.google.com/maps?q=${shop.lat},${shop.lng}&hl=th&z=15&output=embed" 
+            src="https://maps.google.com/maps?q=${shop.lat},${shop.lng}&hl=${currentLang}&z=15&output=embed" 
             allowfullscreen>
         </iframe>
         <div onclick="window.open('https://www.google.com/maps/search/?api=1&query=${shop.lat},${shop.lng}', '_blank')" 
@@ -591,27 +612,105 @@ function goToShop(username) {
         </div>
     `;
 
-    // 4. ส่วนเมนูสินค้า (เหมือนเดิม)
+    // 4. ส่วนเมนูสินค้าพร้อมปุ่ม + และ -
     const container = document.getElementById('menu-items-container');
     container.innerHTML = '';
     const currency = shop.zoneCurrency || 'USD';
 
     if (shop.products && shop.products.length > 0) {
-        shop.products.forEach(item => {
+        shop.products.forEach((item, index) => {
             container.innerHTML += `
-                <div class="menu-item-row" style="display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee;">
-                    <span class="menu-item-name">${item.name}</span>
-                    <span class="menu-item-price" style="font-weight: bold; color: #11998e;">
-                        ${Number(item.price).toLocaleString()} ${currency}
-                    </span>
+                <div class="menu-item-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee;">
+                    <span class="menu-item-name" style="flex: 1;">${item.name}</span>
+                    
+                    <div class="price-qty-control" style="display: flex; align-items: center; gap: 10px;">
+                        <button onclick="changeQty('${username}', ${index}, 1)" style="width: 28px; height: 28px; border-radius: 50%; border: none; background: #11998e; color: white; cursor: pointer;">+</button>
+                        
+                        <div style="text-align: center; min-width: 80px;">
+                            <div class="menu-item-price" style="font-weight: bold; color: #11998e; font-size: 0.9rem;">
+                                ${Number(item.price).toLocaleString()} ${currency}
+                            </div>
+                            <small id="qty-${username}-${index}" style="color: #666; font-size: 0.7rem;">x 0</small>
+                        </div>
+
+                        <button onclick="changeQty('${username}', ${index}, -1)" style="width: 28px; height: 28px; border-radius: 50%; border: none; background: #ff4d4d; color: white; cursor: pointer;">-</button>
+                    </div>
                 </div>
             `;
         });
     } else {
-        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการเมนู</p>`;
+        const noMenuText = (typeof translations !== 'undefined' && translations[currentLang]) ? translations[currentLang].no_menu_items : 'ยังไม่มีรายการเมนู';
+        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">${noMenuText}</p>`;
     }
 
     document.getElementById('shopMenuModal').classList.remove('hidden');
+}
+
+
+
+
+
+function changeQty(merchantId, productIndex, delta) {
+    const key = `${merchantId}-${productIndex}`;
+    if (!cart[key]) cart[key] = 0;
+    cart[key] += delta;
+    if (cart[key] < 0) cart[key] = 0;
+
+    const qtyEl = document.getElementById(`qty-${key}`);
+    if (qtyEl) {
+        qtyEl.innerText = `x ${cart[key]}`;
+        qtyEl.style.color = cart[key] > 0 ? '#11998e' : '#666';
+    }
+
+    // 🚩 ตรวจสอบว่ามียอดสั่งซื้อรวมไหม เพื่อแสดงปุ่มเช็คเอาท์
+    const hasItems = Object.keys(cart).some(k => k.startsWith(merchantId) && cart[k] > 0);
+    document.getElementById('btn-goto-checkout').style.display = hasItems ? 'block' : 'none';
+}
+
+function openCheckoutModal() {
+    const shop = allShops.find(s => s.username === currentMerchantId);
+    if (!shop) return;
+
+    const listContainer = document.getElementById('checkout-items-list');
+    listContainer.innerHTML = '';
+    let totalItemsPrice = 0;
+
+    // วนลูปหาเฉพาะรายการที่สั่งในร้านนี้
+    shop.products.forEach((product, index) => {
+        const qty = cart[`${currentMerchantId}-${index}`] || 0;
+        if (qty > 0) {
+            const itemTotal = product.price * qty;
+            totalItemsPrice += itemTotal;
+            listContainer.innerHTML += `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem;">
+                    <span>${product.name} (x${qty})</span>
+                    <span>${itemTotal.toLocaleString()} ${shop.zoneCurrency}</span>
+                </div>
+            `;
+        }
+    });
+
+    // อัปเดตข้อมูลเบื้องต้นในหน้าสรุป
+    document.getElementById('sum-items-price').innerText = `${totalItemsPrice.toLocaleString()} ${shop.zoneCurrency}`;
+    document.querySelectorAll('.currency-label-summary').forEach(el => el.innerText = shop.zoneCurrency);
+    
+    // บันทึกค่าไว้คำนวณต่อ
+    window.lastTotalItemsPrice = totalItemsPrice;
+    window.currentShopCurrency = shop.zoneCurrency;
+
+    updateCheckoutTotal();
+    document.getElementById('checkoutModal').classList.remove('hidden');
+}
+
+function updateCheckoutTotal() {
+    const riderWage = parseFloat(document.getElementById('rider-wage-input').value) || 0;
+    const totalAll = (window.lastTotalItemsPrice || 0) + riderWage;
+    
+    document.getElementById('sum-total-all').innerText = `${totalAll.toLocaleString()} ${window.currentShopCurrency}`;
+}
+
+function closeCheckoutModal() {
+    document.getElementById('checkoutModal').classList.add('hidden');
 }
 
 function closeShopMenuModal() {
@@ -625,27 +724,48 @@ function closeShopMenuModal() {
 
 <div id="shopMenuModal" class="product-modal-overlay hidden">
     <div class="product-modal-card">
-        <div class="product-modal-header" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
-            <div style="display: flex; flex-direction: column;">
-                <h3 id="modalShopName" style="margin: 0;">ชื่อร้านค้า</h3>
-                <a id="modalShopPhone" href="#" style="color: white; text-decoration: none; font-size: 0.9rem; margin-top: 4px;">
-                    <i class="fas fa-phone-alt"></i> <span>-</span>
-                </a>
-            </div>
-            <button class="btn-close-modal" onclick="closeShopMenuModal()">&times;</button>
-        </div>
-        
         <div class="product-modal-body">
-            <div id="shop-mini-map" style="width: 100%; height: 140px; background: #eee; border-radius: 12px; margin-bottom: 15px; overflow: hidden; position: relative; border: 1px solid #ddd;">
-    <div id="map-content" style="width: 100%; height: 100%;"></div>
+            <button id="btn-goto-checkout" onclick="openCheckoutModal()" style="display:none; width: 100%; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem;">
+                <i class="fas fa-shopping-cart"></i> <span data-i18n-key="btn_checkout">เช็คเอาท์</span>
+            </button>
+        </div>
+    </div>
 </div>
 
-            <div id="menu-items-container">
+<div id="checkoutModal" class="product-modal-overlay hidden">
+    <div class="product-modal-card">
+        <div class="product-modal-header" style="background: #2c3e50;">
+            <h3 data-i18n-key="order_summary">สรุปรายการสั่งซื้อ</h3>
+            <button class="btn-close-modal" onclick="closeCheckoutModal()">&times;</button>
+        </div>
+        <div class="product-modal-body">
+            <div id="checkout-items-list" style="margin-bottom: 20px;">
                 </div>
             
-            <p style="font-size: 0.8em; color: #888; text-align: center; margin-top: 15px;" data-i18n-key="price_exclude_delivery">
-                * ราคาอาหารยังไม่รวมค่าจัดส่ง
-            </p>
+            <hr>
+            
+            <div style="margin-top: 15px;">
+                <label style="font-size: 0.9rem; font-weight: bold;" data-i18n-key="rider_wage">ค่าจ้างไรเดอร์</label>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <input type="number" id="rider-wage-input" oninput="updateCheckoutTotal()" placeholder="ระบุจำนวนเงิน" style="flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 1rem;">
+                    <span class="currency-label-summary" style="font-weight: bold;">USD</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px dashed #ccc;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span data-i18n-key="total_items">ยอดรวมสินค้า:</span>
+                    <span id="sum-items-price">0.00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; color: #11998e;">
+                    <span data-i18n-key="total_all">ยอดรวมทั้งสิ้น:</span>
+                    <span id="sum-total-all">0.00</span>
+                </div>
+            </div>
+
+            <button onclick="confirmFinalOrder()" style="width: 100%; margin-top: 20px; padding: 15px; background: #11998e; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer;">
+                <span data-i18n-key="btn_confirm_order">ยืนยันการสั่งซื้อ</span>
+            </button>
         </div>
     </div>
 </div>
