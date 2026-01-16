@@ -4658,7 +4658,7 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
 			rating: s.rating || "5.0",
 			completedJobs: s.completedJobs || 0,
 			products: s.products || [], 
-			zoneCurrency: s.zoneCurrency || 'USD'
+			zoneCurrency: currency || 'USD'
         }));
 
         res.json({
