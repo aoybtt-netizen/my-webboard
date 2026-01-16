@@ -160,6 +160,63 @@ header {
 .menu-item-price { font-weight: bold; color: #11998e; }
 
 
+.product-modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* ให้อยู่เหนือ Header */
+}
+
+.product-modal-card {
+    background: white;
+    width: 90%;
+    max-width: 450px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.product-modal-header {
+    padding: 20px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-close-modal {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.product-modal-body {
+    padding: 20px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* คลาสสำหรับซ่อน Element */
+.hidden {
+    display: none !important;
+}
+
+
     </style>
 </head>
 <body>
@@ -415,10 +472,7 @@ function renderShops(shops) {
     renderShops(filtered);
 }
 
-    function goToShop(username) {
-        // ลิงก์ไปยังหน้าร้านค้า
-        window.location.href = `viewshop.html?merchant=${username}`;
-    }
+
 	
 	
 	
@@ -451,33 +505,29 @@ socket.on('shop-status-changed', (data) => {
 
 // ฟังก์ชันเมื่อคลิกที่ร้านค้า
 function goToShop(username) {
-    // 1. ค้นหาข้อมูลร้านจากตัวแปร allShops ที่เราโหลดไว้แล้ว
     const shop = allShops.find(s => s.username === username);
     if (!shop) return;
 
-    // 2. ตั้งค่าชื่อร้านใน Modal
     document.getElementById('modalShopName').innerText = shop.shopName || shop.username;
-
-    // 3. เตรียม Container สำหรับใส่เมนู
     const container = document.getElementById('menu-items-container');
     container.innerHTML = '';
 
+    // ดึงสกุลเงินจากข้อมูลร้านค้า (ที่ส่งมาจาก API หลังบ้าน)
+    const currency = shop.zoneCurrency || 'USD';
+
     if (shop.products && shop.products.length > 0) {
-        // 4. วนลูปโชว์เมนู (สูงสุด 5 เมนูตามที่บันทึกไว้)
         shop.products.forEach(item => {
             container.innerHTML += `
                 <div class="menu-item-row">
                     <span class="menu-item-name">${item.name}</span>
-                    <span class="menu-item-price">${item.price.toLocaleString()} ${shop.zoneCurrency}</span>
+                    <span class="menu-item-price">${Number(item.price).toLocaleString()} ${currency}</span>
                 </div>
             `;
         });
     } else {
-        // กรณีร้านค้ายังไม่ได้เพิ่มเมนู
         container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการเมนูในขณะนี้</p>`;
     }
 
-    // 5. แสดง Modal
     document.getElementById('shopMenuModal').classList.remove('hidden');
 }
 
