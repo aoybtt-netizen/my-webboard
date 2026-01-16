@@ -155,7 +155,11 @@ header {
     <div style="display: flex; justify-content: space-between; align-items: center; color: white;">
     <div onclick="history.back()" style="cursor:pointer; width: 40px;"><i class="fas fa-chevron-left"></i></div>
     
-    <div id="currentZoneName" style="font-weight: 600; font-size: 1.2rem;">กำลังระบุตำแหน่ง...</div>
+    <div id="currentZoneName" 
+     data-i18n-key="shop_loading" 
+     style="font-weight: 600; font-size: 1.2rem;">
+     กำลังระบุตำแหน่ง...
+</div>
     
     <div style="width: 40px; text-align: right;"><i class="fas fa-filter"></i></div>
 </div>
@@ -165,7 +169,10 @@ header {
 
 
 <div class="container">
-    <h3 style="margin-bottom: 15px;">ร้านค้าแนะนำใกล้คุณ</h3>
+    <h3 data-i18n-key="shop_nearby" 
+    style="margin-bottom: 15px;">
+    ร้านค้าแนะนำใกล้คุณ
+</h3>
     
     <div id="loader">
         <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--accent);"></i>
@@ -194,7 +201,11 @@ const translations = {
         'shop_open': 'เปิด',
         'shop_closed': 'ปิด',
         'msg_merchant_fee_info': 'ค่าธรรมเนียมการดำเนินการ',
-        'free_first_time': 'ฟรีครั้งแรก'
+        'free_first_time': 'ฟรีครั้งแรก',
+		'shop_loading': 'กำลังระบุตำแหน่ง...',
+        'shop_nearby': 'ร้านค้าแนะนำใกล้คุณ',
+        'shop_select': 'เลือกร้านค้า',
+        'shop_error': 'เกิดข้อผิดพลาด',
     },
     'en': {
         'shop_nearby': 'Nearby Shops (Outside Zone)',
@@ -206,7 +217,11 @@ const translations = {
         'shop_open': 'Open',
         'shop_closed': 'Closed',
         'msg_merchant_fee_info': 'Processing Fee',
-        'free_first_time': 'First time free'
+        'free_first_time': 'First time free',
+		'shop_loading': 'Identifying location...',
+        'shop_nearby': 'Recommended Shops Near You',
+        'shop_select': 'Select Shop',
+        'shop_error': 'An error occurred',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -218,7 +233,11 @@ const translations = {
         'shop_open': 'Aberto',
         'shop_closed': 'Fechado',
         'msg_merchant_fee_info': 'Taxa de processamento',
-        'free_first_time': 'Primeira vez grátis'
+        'free_first_time': 'Primeira vez grátis',
+		'shop_loading': 'Identificando localização...',
+        'shop_nearby': 'Lojas Recomendadas Próximas',
+        'shop_select': 'Selecionar Loja',
+        'shop_error': 'Ocorreu um erro',
     }
 };
 
