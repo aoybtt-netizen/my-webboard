@@ -232,7 +232,10 @@ header {
      กำลังระบุตำแหน่ง...
 </div>
     
-    <div style="width: 40px; text-align: right;"><i class="fas fa-filter"></i></div>
+    <div id="user-balance-display" style="min-width: 80px; text-align: right; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-weight: bold;">
+    <span id="top-balance">0.00</span> 
+    <span id="top-currency">...</span>
+</div>
 </div>
 
 </header>
@@ -363,6 +366,35 @@ window.addEventListener('DOMContentLoaded', () => {
             loadShops();
         }
     };
+	
+// ฟังก์ชันสำหรับอัปเดตยอดเงินในหน้า Marketplace
+async function updateTopBalance(lat, lng) {
+    try {
+        // 1. ไปถาม Server ว่าพิกัดนี้คือโซนอะไร และใช้สกุลเงินอะไร
+        const res = await fetch(`/api/merchant/get-zone-currency?lat=${lat}&lng=${lng}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            const currency = data.currency; // เช่น THB, USD, KHR
+            
+            // 2. ดึงข้อมูล User ล่าสุดเพื่อเอายอดเงินในสกุลนั้นๆ
+            // (สมมติว่าพี่มี API /api/user/profile หรือใช้ตัวแปร global)
+            const profileRes = await fetch(`/api/user/profile?username=${myUsername}`);
+            const profileData = await profileRes.json();
+            
+            if (profileData.success) {
+                const balance = profileData.user[currency] || 0;
+                
+                // 3. แสดงผลบนหน้าจอ
+                document.getElementById('top-balance').innerText = balance.toLocaleString(undefined, {minimumFractionDigits: 2});
+                document.getElementById('top-currency').innerText = currency;
+            }
+        }
+    } catch (e) {
+        console.error("Update Balance Error:", e);
+    }
+}
+
 
     // 2. โหลดข้อมูลร้านค้าจาก API
 async function loadShops() {
@@ -378,6 +410,9 @@ async function loadShops() {
             console.error(`❌ [Debug] Server Error ${res.status}`);
             throw new Error(`Server Error`);
         }
+		if (userCoords) {
+			updateTopBalance(userCoords.lat, userCoords.lng);
+		}
 
         const data = await res.json();
         
