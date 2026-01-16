@@ -145,6 +145,20 @@ header {
             height: 200px;
             width: 100%;
         }
+		
+		
+		
+.menu-item-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+    border-bottom: 1px border-radius: 8px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 5px;
+}
+.menu-item-name { font-weight: 500; color: #333; }
+.menu-item-price { font-weight: bold; color: #11998e; }
+
 
     </style>
 </head>
@@ -431,6 +445,27 @@ socket.on('shop-status-changed', (data) => {
 });
 
 </script>
+
+
+
+
+<div id="shopMenuModal" class="product-modal-overlay hidden">
+    <div class="product-modal-card">
+        <div class="product-modal-header" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+            <h3 id="modalShopName">ชื่อร้านค้า</h3>
+            <button class="btn-close-modal" onclick="closeShopMenuModal()">&times;</button>
+        </div>
+        <div class="product-modal-body">
+            <div id="menu-items-container">
+                </div>
+            <p style="font-size: 0.8em; color: #888; text-align: center; margin-top: 15px;" data-i18n-key="price_exclude_delivery">
+                * ราคาอาหารยังไม่รวมค่าจัดส่ง
+            </p>
+        </div>
+    </div>
+</div>
+
+
 
 </body>
 </html>

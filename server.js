@@ -4648,14 +4648,16 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
 
         // 🚩 3. ปรับ Format ข้อมูลให้ตรงกับที่หน้าบ้าน (shopmerchant.html) ต้องการ
         const formattedShops = openShops.map(s => ({
-            username: s.owner,          // ส่งชื่อเจ้าของร้าน
-            shopName: s.label,          // ส่งชื่อร้าน (label) ไปเป็น shopName
-            lat: s.lat,
-            lng: s.lng,
-            shopImage: s.shopImage || null, // ถ้ามีรูปให้ส่งไป
-            distance: null,             // ตัดเงื่อนไขระยะทางออกตามที่พี่บอก
-            rating: s.rating || "5.0",  // ค่าเริ่มต้นถ้ายังไม่มีเรตติ้ง
-            completedJobs: s.completedJobs || 0 // จำนวนงานที่ขายได้
+            username: s.owner,
+			shopName: s.label,
+			lat: s.lat,
+			lng: s.lng,
+			shopImage: s.shopImage || null,
+			distance: null,
+			rating: s.rating || "5.0",
+			completedJobs: s.completedJobs || 0,
+			products: s.products || [], 
+			zoneCurrency: s.zoneCurrency || 'USD'
         }));
 
         res.json({
