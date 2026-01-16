@@ -370,24 +370,37 @@ window.addEventListener('DOMContentLoaded', () => {
 // ฟังก์ชันสำหรับอัปเดตยอดเงินในหน้า Marketplace
 async function updateTopBalance(lat, lng) {
     try {
-        // 1. ไปถาม Server ว่าพิกัดนี้คือโซนอะไร และใช้สกุลเงินอะไร
+        // 🚩 ดึงชื่อผู้ใช้จาก localStorage มาก่อน
+        const myUsername = localStorage.getItem('myUsername');
+        
+        if (!myUsername) {
+            console.warn("User not logged in");
+            return;
+        }
+
+        // 1. ถาม Server เรื่องสกุลเงินของโซน
         const res = await fetch(`/api/merchant/get-zone-currency?lat=${lat}&lng=${lng}`);
         const data = await res.json();
         
         if (data.success) {
-            const currency = data.currency; // เช่น THB, USD, KHR
+            const currency = data.currency;
             
-            // 2. ดึงข้อมูล User ล่าสุดเพื่อเอายอดเงินในสกุลนั้นๆ
-            // (สมมติว่าพี่มี API /api/user/profile หรือใช้ตัวแปร global)
-            const profileRes = await fetch(`/api/user/profile?username=${myUsername}`);
+            // 2. ดึงโปรไฟล์เพื่อเอายอดเงิน (ส่ง myUsername ที่ดึงมาตะกี้ไป)
+            const profileRes = await fetch(`/api/user/profile?username=${encodeURIComponent(myUsername)}`);
             const profileData = await profileRes.json();
             
             if (profileData.success) {
+                // ดึงยอดเงินตามสกุลเงินโซนนั้นๆ
                 const balance = profileData.user[currency] || 0;
                 
                 // 3. แสดงผลบนหน้าจอ
-                document.getElementById('top-balance').innerText = balance.toLocaleString(undefined, {minimumFractionDigits: 2});
-                document.getElementById('top-currency').innerText = currency;
+                const balanceEl = document.getElementById('top-balance');
+                const currencyEl = document.getElementById('top-currency');
+                
+                if (balanceEl && currencyEl) {
+                    balanceEl.innerText = balance.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    currencyEl.innerText = currency;
+                }
             }
         }
     } catch (e) {
