@@ -386,7 +386,7 @@ async function updateTopBalance(lat, lng) {
             const currency = data.currency;
             
             // 2. ดึงโปรไฟล์เพื่อเอายอดเงิน (ส่ง myUsername ที่ดึงมาตะกี้ไป)
-            const profileRes = await fetch(`/api/profile-details?username=${myName}${locationParam}`);
+            const profileRes = await fetch(`/api/profile-details?username=${encodeURIComponent(myUsername)}`);
             const profileData = await profileRes.json();
             
             if (profileData.success) {
