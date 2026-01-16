@@ -290,20 +290,30 @@ async function loadShops() {
             const zoneDisplay = document.getElementById('currentZoneName');
             
             if (data.currentZone) {
-                // ชื่อโซนจาก DB ไม่ต้องแปล
                 zoneDisplay.innerText = data.currentZone;
             } else {
-                // เรียกใช้จาก translations[currentLang]
                 zoneDisplay.innerText = translations[currentLang].shop_nearby;
             }
             
-            allShops = data.shops;
+            // 🚩 1. คำนวณระยะทางให้กับทุกร้านที่ได้มาจาก DB
+            allShops = data.shops.map(shop => {
+                const dist = calculateDistance(
+                    userCoords.lat, 
+                    userCoords.lng, 
+                    shop.lat, 
+                    shop.lng
+                );
+                return { ...shop, distance: dist };
+            });
+
+            // 🚩 2. เรียงลำดับจาก น้อย ไป มาก (ใกล้ -> ไกล)
+            allShops.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
             renderShops(allShops);
         }
         document.getElementById('loader').style.display = 'none';
     } catch (e) {
         console.error("❌ [Debug] Fetch error:", e);
-        // แสดงข้อความ Error ตามภาษาปัจจุบัน
         document.getElementById('currentZoneName').innerText = 
             `${translations[currentLang].shop_select} (${translations[currentLang].shop_error})`;
     }
@@ -381,11 +391,19 @@ socket.on('shop-status-changed', (data) => {
     if (isOpen) {
         const exists = allShops.find(s => s.username === username);
         if (!exists) {
+            // 🚩 คำนวณระยะทางให้ร้านที่เพิ่งเปิดใหม่
+            const dist = calculateDistance(userCoords.lat, userCoords.lng, shopDetails.lat, shopDetails.lng);
+            shopDetails.distance = dist;
+            
             allShops.push(shopDetails);
         }
     } else {
         allShops = allShops.filter(s => s.username !== username);
     }
+
+    // 🚩 เรียงลำดับใหม่ทุกครั้งที่มีการอัปเดตสถานะ
+    allShops.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
     if (typeof filterShops === 'function') {
         filterShops(); 
     } else {
