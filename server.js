@@ -4003,6 +4003,23 @@ app.post('/api/merchant/update-status', async (req, res) => {
 });
 
 
+app.post('/api/merchant/update-products', async (req, res) => {
+    try {
+        const { username, products } = req.body;
+        
+        // บันทึกลงในพิกัดร้านค้า (isStore: true)
+        await db.collection('merchant_locations').updateOne(
+            { owner: username, isStore: true },
+            { $set: { products: products, lastMenuUpdate: Date.now() } }
+        );
+        
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+
 
 // API: ดึงงานของร้านค้า (Merchant) เฉพาะที่ยังไม่จบกระบวนการ
 app.get('/api/merchant/tasks', async (req, res) => {
