@@ -6,6 +6,7 @@
     <title>GedGo Marketplace | เลือกร้านค้าใกล้คุณ</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+	<script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
             --primary: #2c3e50;
@@ -177,6 +178,7 @@ header {
 <script>
     let userCoords = null;
     let allShops = [];
+	const socket = io();
 	
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -368,27 +370,18 @@ function renderShops(shops) {
 	
 // 🚩 รับสัญญาณการเปลี่ยนแปลงสถานะร้านค้าแบบ Real-time
 socket.on('shop-status-changed', (data) => {
-    const { username, isOpen, shopDetails } = data;
-
-    if (isOpen) {
-        // --- กรณีร้านเปิด ---
-        // 1. เช็คก่อนว่ามีร้านนี้อยู่ในลิสต์หรือยัง (กันซ้ำ)
-        const exists = allShops.find(s => s.username === username);
-        if (!exists) {
-            allShops.push(shopDetails); // เพิ่มร้านใหม่เข้าไปในอาร์เรย์
+        const { username, isOpen, shopDetails } = data;
+        if (isOpen) {
+            const exists = allShops.find(s => s.username === username);
+            if (!exists) {
+                allShops.push(shopDetails);
+            }
+        } else {
+            allShops = allShops.filter(s => s.username !== username);
         }
-    } else {
-        // --- กรณีร้านปิด ---
-        // กรองเอาร้านที่ปิดออกจากอาร์เรย์ allShops
-        allShops = allShops.filter(s => s.username !== username);
-    }
-
-    // 2. สั่งให้หน้าจอวาดรายการร้านค้าใหม่ทันที
-    renderShops(allShops);
-    
-    // 3. (Optional) ถ้ามีช่องค้นหาค้างอยู่ ให้กรองซ้ำอีกรอบ
-    filterShops(); 
-});
+        renderShops(allShops);   
+        filterShops(); 
+    });
 
 </script>
 
