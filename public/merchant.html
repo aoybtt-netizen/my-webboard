@@ -510,8 +510,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     </div>
 
     <div style="text-align: center; flex-grow: 1;">
-        <h2 id="merchant-name-display" style="margin: 0; font-size: 1.2em; line-height: 1.2;">GedGo Merchant
-		<span id="status-text" style="font-size: 0.75em; font-weight: bold; color: #666;">CLOSED</span></h2>
+        <h2 id="merchant-name-display" style="margin: 0; font-size: 1.2em; line-height: 1.2;">GedGo Merchant</h2>
         <div id="merchant-balance-display" style="font-size: 1.0em; color: #ffeb57; font-weight: bold; margin-top: 2px;">
             0.00 Loading...
         </div>
@@ -1354,13 +1353,28 @@ async function toggleMerchantSidebar() {
 
 // ฟังก์ชันช่วยสำหรับอัปเดตสวิตช์โดยเฉพาะ
 function updateSwitchFromData() {
-    // ดึงข้อมูลจากตัวแปร mySavedLocations ที่โหลดไว้แล้วในหน้าบ้าน
+    const toggle = document.getElementById('merchant-status-toggle');
+    const statusText = document.getElementById('status-text');
+
+    if (!toggle || !statusText) return;
+
+    // 🚩 ถ้าไม่ใช่ Merchant ให้ล็อคสวิตช์ไว้เลย
+    if (userData.userType !== 'merchant') {
+        toggle.disabled = true;
+        toggle.parentElement.style.opacity = "0.5"; // ทำให้ดูจางลง
+        toggle.parentElement.style.cursor = "not-allowed";
+        statusText.innerText = 'UNVERIFIED';
+        return;
+    }
+
+    // สำหรับ Merchant ปกติ
+    toggle.disabled = false;
+    toggle.parentElement.style.opacity = "1";
+    toggle.parentElement.style.cursor = "pointer";
+
     if (typeof mySavedLocations !== 'undefined') {
         const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
-        const toggle = document.getElementById('merchant-status-toggle');
-        const statusText = document.getElementById('status-text');
-
-        if (storeLoc && toggle && statusText) {
+        if (storeLoc) {
             const isOpen = storeLoc.isOpen === true;
             toggle.checked = isOpen;
             statusText.innerText = isOpen ? 'OPEN' : 'CLOSED';
@@ -3350,9 +3364,17 @@ function displayMerchantLocation(lat, lng, phone) {
 
 
 async function updateMerchantStatus(isOpen) {
+    // 🚩 เช็คสิทธิ์ก่อน: ถ้าไม่ใช่ merchant ให้ดีดสวิตช์กลับและแจ้งเตือน
+    if (userData.userType !== 'merchant') {
+        document.getElementById('merchant-status-toggle').checked = false;
+        return Swal.fire({
+            icon: 'error',
+            title: translations[currentLang].swal_error,
+            text: currentLang === 'th' ? 'เฉพาะร้านค้าที่ได้รับการยืนยันแล้วเท่านั้นที่สามารถเปิด-ปิดร้านได้' : 'Only verified merchants can open/close the shop.'
+        });
+    }
+
     const statusText = document.getElementById('status-text');
-    
-    // อัปเดต UI เบื้องต้น
     statusText.innerText = isOpen ? 'OPEN' : 'CLOSED';
     statusText.style.color = isOpen ? '#28a745' : '#666';
 
@@ -3368,10 +3390,8 @@ async function updateMerchantStatus(isOpen) {
         
         const data = await res.json();
         if (!data.success) {
-            // หากบันทึกไม่สำเร็จ ให้ดีดสวิตช์กลับ
             document.getElementById('merchant-status-toggle').checked = !isOpen;
-            statusText.innerText = !isOpen ? 'OPEN' : 'CLOSED';
-            statusText.style.color = !isOpen ? '#28a745' : '#666';
+            updateSwitchFromData(); // คืนค่าจากข้อมูลเดิม
             alert("Error updating status");
         }
     } catch (e) {

@@ -3970,14 +3970,19 @@ app.post('/api/merchant/check-fee', async (req, res) => {
 app.post('/api/merchant/update-status', async (req, res) => {
     try {
         const { username, isOpen } = req.body;
-        // บันทึกลงในพิกัดร้านค้าตัวจริง (isStore: true)
+        
+        // 🔍 เช็คจากฐานข้อมูลว่าคนนี้เป็น Merchant จริงไหม
+        const user = await db.collection('users').findOne({ username });
+        if (!user || user.userType !== 'merchant') {
+            return res.status(403).json({ success: false, message: "Unauthorized" });
+        }
+
         await db.collection('merchant_locations').updateOne(
             { owner: username, isStore: true },
             { $set: { isOpen: isOpen, updatedAt: Date.now() } }
         );
         res.json({ success: true });
     } catch (e) {
-        console.error("Status update error:", e);
         res.status(500).json({ success: false });
     }
 });
