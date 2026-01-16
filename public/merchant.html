@@ -490,6 +490,16 @@
 
 
 
+.switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+input:checked + .slider { background-color: #28a745; }
+input:checked + .slider:before { transform: translateX(18px); }
+.slider.round { border-radius: 34px; }
+.slider.round:before { border-radius: 50%; }
+
+
 
     </style>
 </head>
@@ -506,6 +516,16 @@
             0.00 Loading...
         </div>
     </div>
+	
+	<div class="merchant-status-container" style="display: flex; align-items: center; gap: 8px; margin-left: 10px;">
+    <span id="status-label" style="font-size: 0.75em; font-weight: bold; color: #666;">CLOSED</span>
+    
+    <label class="switch">
+        <input type="checkbox" id="merchant-status-toggle" onchange="updateMerchantStatus(this.checked)">
+        <span class="slider round"></span>
+    </label>
+</div>
+
 
     <div style="cursor: pointer; width: 30px; text-align: right;" onclick="safeNavigateHome()">
         <i class="fas fa-home"></i>
@@ -3298,6 +3318,56 @@ function displayMerchantLocation(lat, lng, phone) {
         </a>
     `;
 }
+
+
+
+
+async function updateMerchantStatus(isOpen) {
+    const statusLabel = document.getElementById('status-label');
+    const lang = localStorage.getItem('preferredLanguage') || 'th';
+    
+    // เปลี่ยนตัวหนังสือแสดงผลทันที
+    statusLabel.innerText = isOpen ? 'OPEN' : 'CLOSED';
+    statusLabel.style.color = isOpen ? '#28a745' : '#666';
+
+    try {
+        const res = await fetch('/api/merchant/update-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: myUsername, 
+                isOpen: isOpen 
+            })
+        });
+        
+        const data = await res.json();
+        if (!data.success) {
+            alert('Failed to update status');
+            // ถ้าพังให้ดีดสวิตช์กลับ
+            document.getElementById('merchant-status-toggle').checked = !isOpen;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 🚩 อย่าลืมเรียกสถานะปัจจุบันมาโชว์ตอนโหลดหน้าเว็บด้วยนะครับ
+async function checkCurrentMerchantStatus() {
+    // พี่ดึงข้อมูลจาก profile หรือ locations ที่มีอยู่แล้วมาตั้งค่าเริ่มต้น
+    const res = await fetch(`/api/merchant/locations?username=${myUsername}`);
+    const data = await res.json();
+    if (data.success) {
+        const store = data.locations.find(l => l.isStore === true);
+        if (store) {
+            const toggle = document.getElementById('merchant-status-toggle');
+            const statusLabel = document.getElementById('status-label');
+            toggle.checked = store.isOpen === true;
+            statusLabel.innerText = store.isOpen ? 'OPEN' : 'CLOSED';
+            statusLabel.style.color = store.isOpen ? '#28a745' : '#666';
+        }
+    }
+}
+
 
 
 

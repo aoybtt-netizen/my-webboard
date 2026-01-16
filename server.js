@@ -3967,6 +3967,19 @@ app.post('/api/merchant/check-fee', async (req, res) => {
 });
 
 
+app.post('/api/merchant/update-status', async (req, res) => {
+    try {
+        const { username, isOpen } = req.body;
+        await db.collection('merchant_locations').updateOne(
+            { owner: username, isStore: true },
+            { $set: { isOpen: isOpen, lastStatusUpdate: new Date() } }
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 
 
 // API: ดึงงานของร้านค้า (Merchant) เฉพาะที่ยังไม่จบกระบวนการ
