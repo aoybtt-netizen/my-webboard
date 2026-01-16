@@ -3970,12 +3970,14 @@ app.post('/api/merchant/check-fee', async (req, res) => {
 app.post('/api/merchant/update-status', async (req, res) => {
     try {
         const { username, isOpen } = req.body;
+        // บันทึกลงในพิกัดร้านค้าตัวจริง (isStore: true)
         await db.collection('merchant_locations').updateOne(
             { owner: username, isStore: true },
-            { $set: { isOpen: isOpen, lastStatusUpdate: new Date() } }
+            { $set: { isOpen: isOpen, updatedAt: Date.now() } }
         );
         res.json({ success: true });
     } catch (e) {
+        console.error("Status update error:", e);
         res.status(500).json({ success: false });
     }
 });
