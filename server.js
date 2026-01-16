@@ -4579,7 +4579,7 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
 
         const locationObj = { lat: userLat, lng: userLng };
 
-        // 1. หาข้อมูลโซน (ส่วนนี้ของพี่ทำงานได้แล้ว)
+        // 1. หาข้อมูลโซน
         let zoneName = "Global Zone";
         try {
             const zoneInfo = await findResponsibleAdmin(locationObj);
@@ -4587,24 +4587,37 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
                 zoneName = zoneInfo.zoneData.name || "โซนนิรนาม";
             }
         } catch (zoneErr) {
-            console.error("❌ [Backend Debug] Zone Detection Error:", zoneErr.message);
+            console.error("❌ Zone Detection Error:", zoneErr.message);
         }
 
-        
-        let shops = []; 
-       
-        
+        // 🚩 2. ดึงเฉพาะร้านค้าที่ "เปิดอยู่" เท่านั้น
+        // และต้องมี isStore: true เพื่อป้องกันการดึงพิกัดบ้านทั่วไปมาโชว์
+        const openShops = await db.collection('merchant_locations').find({ 
+            isStore: true, 
+            isOpen: true 
+        }).toArray();
 
-        // 3. ส่งข้อมูลกลับ (ส่งแค่ชื่อโซน และพิกัดที่ส่งมา)
+        // 🚩 3. ปรับ Format ข้อมูลให้ตรงกับที่หน้าบ้าน (shopmerchant.html) ต้องการ
+        const formattedShops = openShops.map(s => ({
+            username: s.owner,          // ส่งชื่อเจ้าของร้าน
+            shopName: s.label,          // ส่งชื่อร้าน (label) ไปเป็น shopName
+            lat: s.lat,
+            lng: s.lng,
+            shopImage: s.shopImage || null, // ถ้ามีรูปให้ส่งไป
+            distance: null,             // ตัดเงื่อนไขระยะทางออกตามที่พี่บอก
+            rating: s.rating || "5.0",  // ค่าเริ่มต้นถ้ายังไม่มีเรตติ้ง
+            completedJobs: s.completedJobs || 0 // จำนวนงานที่ขายได้
+        }));
+
         res.json({
             success: true,
             currentZone: zoneName, 
-            userCoords: { lat: userLat, lng: userLng }, // ส่งพิกัดผู้ใช้กลับไปด้วย
-            shops: [] // ส่งอาร์เรย์ว่างไปก่อน หน้าจอจะได้ไม่ค้าง
+            userCoords: { lat: userLat, lng: userLng },
+            shops: formattedShops // ส่งรายการร้านค้าที่เปิดอยู่กลับไป
         });
 
     } catch (error) {
-        console.error("🚨 [Backend Debug] API Crash:", error);
+        console.error("🚨 API Crash:", error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });
