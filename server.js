@@ -3971,16 +3971,31 @@ app.post('/api/merchant/update-status', async (req, res) => {
     try {
         const { username, isOpen } = req.body;
         
-        // 🔍 เช็คจากฐานข้อมูลว่าคนนี้เป็น Merchant จริงไหม
-        const user = await db.collection('users').findOne({ username });
-        if (!user || user.userType !== 'merchant') {
-            return res.status(403).json({ success: false, message: "Unauthorized" });
-        }
-
+        // 1. อัปเดตใน DB
         await db.collection('merchant_locations').updateOne(
             { owner: username, isStore: true },
             { $set: { isOpen: isOpen, updatedAt: Date.now() } }
         );
+
+        // 2. ดึงข้อมูลร้านค้าแบบเต็มเพื่อส่งไปอัปเดตหน้าจอคนอื่น
+        const shopData = await db.collection('merchant_locations').findOne({ owner: username, isStore: true });
+
+        // 🚩 3. ส่งสัญญาณ Socket ไปบอกทุกคน
+        // ส่งทั้งสถานะ และข้อมูลร้านค้าไปเลย
+        io.emit('shop-status-changed', {
+            username: username,
+            isOpen: isOpen,
+            shopDetails: {
+                username: shopData.owner,
+                shopName: shopData.label,
+                lat: shopData.lat,
+                lng: shopData.lng,
+                shopImage: shopData.shopImage || null,
+                rating: shopData.rating || "5.0",
+                completedJobs: shopData.completedJobs || 0
+            }
+        });
+
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false });

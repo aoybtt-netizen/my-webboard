@@ -182,29 +182,41 @@ header {
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 				
 const translations = {
-    th: {
-        shop_nearby: "ร้านค้าใกล้เคียง (นอกโซน)",
-		shop_select: "เลือกร้านค้า",
-		shop_error: "เกิดข้อผิดพลาด",
-		shop_loading: "กำลังโหลด...",
-		shop_distance: "ระยะทาง",
-		shop_sold: "ขายแล้ว"
+    'th': {
+        'shop_nearby': 'ร้านค้าใกล้เคียง (นอกโซน)',
+        'shop_select': 'เลือกร้านค้า',
+        'shop_error': 'เกิดข้อผิดพลาด',
+        'shop_loading': 'กำลังโหลด...',
+        'shop_distance': 'ระยะทาง',
+        'shop_sold': 'ขายแล้ว',
+        'shop_open': 'เปิด',
+        'shop_closed': 'ปิด',
+        'msg_merchant_fee_info': 'ค่าธรรมเนียมการดำเนินการ',
+        'free_first_time': 'ฟรีครั้งแรก'
     },
-    en: {
-        shop_nearby: "Nearby Shops (Outside Zone)",
-		shop_select: "Select Shop",
-		shop_error: "An error occurred",
-		shop_loading: "Loading...",
-		shop_distance: "Distance",
-		shop_sold: "Sold"
+    'en': {
+        'shop_nearby': 'Nearby Shops (Outside Zone)',
+        'shop_select': 'Select Shop',
+        'shop_error': 'An error occurred',
+        'shop_loading': 'Loading...',
+        'shop_distance': 'Distance',
+        'shop_sold': 'Sold',
+        'shop_open': 'Open',
+        'shop_closed': 'Closed',
+        'msg_merchant_fee_info': 'Processing Fee',
+        'free_first_time': 'First time free'
     },
-    pt: {
-        shop_nearby: "Lojas Próximas (Fora da Zona)",
-		shop_select: "Selecionar Loja",
-		shop_error: "Ocorreu um erro",
-		shop_loading: "Carregando...",
-		shop_distance: "Distância",
-		shop_sold: "Vendido"
+    'pt': {
+        'shop_nearby': 'Lojas Próximas (Fora da Zona)',
+        'shop_select': 'Selecionar Loja',
+        'shop_error': 'Ocorreu um erro',
+        'shop_loading': 'Carregando...',
+        'shop_distance': 'Distância',
+        'shop_sold': 'Vendido',
+        'shop_open': 'Aberto',
+        'shop_closed': 'Fechado',
+        'msg_merchant_fee_info': 'Taxa de processamento',
+        'free_first_time': 'Primeira vez grátis'
     }
 };
 
@@ -351,6 +363,33 @@ function renderShops(shops) {
         // ลิงก์ไปยังหน้าร้านค้า
         window.location.href = `viewshop.html?merchant=${username}`;
     }
+	
+	
+	
+// 🚩 รับสัญญาณการเปลี่ยนแปลงสถานะร้านค้าแบบ Real-time
+socket.on('shop-status-changed', (data) => {
+    const { username, isOpen, shopDetails } = data;
+
+    if (isOpen) {
+        // --- กรณีร้านเปิด ---
+        // 1. เช็คก่อนว่ามีร้านนี้อยู่ในลิสต์หรือยัง (กันซ้ำ)
+        const exists = allShops.find(s => s.username === username);
+        if (!exists) {
+            allShops.push(shopDetails); // เพิ่มร้านใหม่เข้าไปในอาร์เรย์
+        }
+    } else {
+        // --- กรณีร้านปิด ---
+        // กรองเอาร้านที่ปิดออกจากอาร์เรย์ allShops
+        allShops = allShops.filter(s => s.username !== username);
+    }
+
+    // 2. สั่งให้หน้าจอวาดรายการร้านค้าใหม่ทันที
+    renderShops(allShops);
+    
+    // 3. (Optional) ถ้ามีช่องค้นหาค้างอยู่ ให้กรองซ้ำอีกรอบ
+    filterShops(); 
+});
+
 </script>
 
 </body>
