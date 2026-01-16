@@ -556,28 +556,36 @@ function goToShop(username) {
     const shop = allShops.find(s => s.username === username);
     if (!shop) return;
 
-    // ... (ส่วนชื่อร้านและเบอร์โทรเดิมของพี่) ...
+    // 1. ตั้งชื่อร้าน
     document.getElementById('modalShopName').innerText = shop.shopName || shop.username;
 
-    // 🚩 ส่วนแผนที่: แสดงผลแบบเห็นภาพจริง
+    // 🚩 2. ส่วนเบอร์โทร (เพิ่มกลับเข้าไป)
+    const phoneLink = document.getElementById('modalShopPhone');
+    if (shop.phone) {
+        phoneLink.href = `tel:${shop.phone}`;
+        phoneLink.querySelector('span').innerText = shop.phone;
+        phoneLink.style.display = 'inline-block'; // แสดงผล
+    } else {
+        phoneLink.style.display = 'none'; // ซ่อนถ้าไม่มีข้อมูลเบอร์โทร
+    }
+
+    // 🚩 3. ส่วนแผนที่: แก้ไข URL ให้ถูกต้อง
     const mapContent = document.getElementById('map-content');
-    
-    // ใช้ Iframe ของ Google Maps แบบ Embed (ฟรีและไม่ต้องใช้ API Key สำหรับการแสดงผลพื้นฐาน)
     mapContent.innerHTML = `
         <iframe 
             width="100%" 
             height="100%" 
             frameborder="0" 
             style="border:0" 
-            src="https://www.google.com/maps?q=${shop.lat},${shop.lng}&hl=th&z=15&output=embed" 
+            src="https://maps.google.com/maps?q=${shop.lat},${shop.lng}&hl=th&z=15&output=embed" 
             allowfullscreen>
         </iframe>
-        <div onclick="window.open('https://www.google.com/maps?q=${shop.lat},${shop.lng}', '_blank')" 
+        <div onclick="window.open('https://www.google.com/maps/search/?api=1&query=${shop.lat},${shop.lng}', '_blank')" 
              style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; background:transparent;">
         </div>
     `;
 
-    // ... (ส่วนเมนูสินค้าเดิม) ...
+    // 4. ส่วนเมนูสินค้า (เหมือนเดิม)
     const container = document.getElementById('menu-items-container');
     container.innerHTML = '';
     const currency = shop.zoneCurrency || 'USD';
