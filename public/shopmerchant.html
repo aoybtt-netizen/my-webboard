@@ -292,6 +292,17 @@ const translations = {
 		'total_items': 'ยอดรวมสินค้า:',
 		'total_all': 'ยอดรวมทั้งสิ้น:',
 		'btn_confirm_order': 'ยืนยันการสั่งซื้อ',
+		'confirm_payment_title': 'ยืนยันการชำระเงิน?',
+		'subtotal_label': 'ยอดรวมสินค้า:',
+		'rider_wage_label': 'ค่าจ้างไรเดอร์:',
+		'total_deduction_label': 'ยอดหักเงินรวม:',
+		'confirm_btn': 'ยืนยัน หักเงินทันที',
+		'cancel_btn': 'ยกเลิก',
+		'please_select_item': 'กรุณาเลือกสินค้าอย่างน้อย 1 รายการ',
+		'order_success_title': 'สั่งซื้อสำเร็จ!',
+		'order_success_text': 'หักเงินจากระบบเรียบร้อยแล้ว',
+		'payment_failed': 'การชำระเงินล้มเหลว',
+		'connection_error': 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
 		
     },
     'en': {
@@ -317,6 +328,17 @@ const translations = {
 		'total_items': 'Subtotal:',
 		'total_all': 'Total Amount:',
 		'btn_confirm_order': 'Confirm Order',
+		'confirm_payment_title': 'Confirm Payment?',
+		'subtotal_label': 'Subtotal:',
+		'rider_wage_label': 'Rider Wage:',
+		'total_deduction_label': 'Total Amount:',
+		'confirm_btn': 'Confirm & Pay Now',
+		'cancel_btn': 'Cancel',
+		'please_select_item': 'Please select at least 1 item',
+		'order_success_title': 'Order Successful!',
+		'order_success_text': 'Payment has been processed',
+		'payment_failed': 'Payment Failed',
+		'connection_error': 'Connection Error',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -341,6 +363,17 @@ const translations = {
 		'total_items': 'Subtotal:',
 		'total_all': 'Valor Total:',
 		'btn_confirm_order': 'Confirmar Pedido',
+		'confirm_payment_title': 'Confirmar Pagamento?',
+		'subtotal_label': 'Subtotal:',
+		'rider_wage_label': 'Taxa do Entregador:',
+		'total_deduction_label': 'Total:',
+		'confirm_btn': 'Confirmar e Pagar Agora',
+		'cancel_btn': 'Cancelar',
+		'please_select_item': 'Selecione pelo menos 1 item',
+		'order_success_title': 'Pedido com Sucesso!',
+		'order_success_text': 'O pagamento foi processado',
+		'payment_failed': 'Falha no Pagamento',
+		'connection_error': 'Erro de Conexão',
     }
 };
 
@@ -709,6 +742,104 @@ function updateCheckoutTotal() {
     const totalAll = (window.lastTotalItemsPrice || 0) + riderWage;
     
     document.getElementById('sum-total-all').innerText = `${totalAll.toLocaleString()} ${window.currentShopCurrency}`;
+}
+
+async function confirmFinalOrder() {
+    const shop = allShops.find(s => s.username === currentMerchantId);
+    if (!shop) return;
+
+    // ดึงชุดภาษาปัจจุบัน
+    const lang = translations[currentLang];
+
+    let subtotal = 0;
+    let itemsText = "";
+
+    // 1. คำนวณยอดรวมสินค้า
+    shop.products.forEach((product, index) => {
+        const qty = cart[`${currentMerchantId}-${index}`] || 0;
+        if (qty > 0) {
+            const itemPrice = product.price * qty;
+            subtotal += itemPrice;
+            itemsText += `- ${product.name} x${qty}<br>`;
+        }
+    });
+
+    const riderWage = parseFloat(document.getElementById('rider-wage-input').value) || 0;
+    const totalAmount = subtotal + riderWage;
+    const currency = shop.zoneCurrency || 'USD';
+
+    if (subtotal === 0) {
+        return Swal.fire({ icon: 'warning', text: lang.please_select_item });
+    }
+
+    // 🚩 2. หน้าต่างถามย้ำ (ใช้ภาษาตามที่เลือก)
+    const { isConfirmed } = await Swal.fire({
+        title: lang.confirm_payment_title,
+        html: `
+            <div style="text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px; font-size: 0.9rem;">
+                ${itemsText}
+                <hr>
+                <b>${lang.subtotal_label}</b> ${subtotal.toLocaleString()} ${currency}<br>
+                <b>${lang.rider_wage_label}</b> ${riderWage.toLocaleString()} ${currency}<br>
+                <b style="color:#11998e; font-size: 1.1rem;">${lang.total_deduction_label} ${totalAmount.toLocaleString()} ${currency}</b>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#11998e',
+        cancelButtonColor: '#d33',
+        confirmButtonText: lang.confirm_btn,
+        cancelButtonText: lang.cancel_btn
+    });
+
+    if (isConfirmed) {
+        try {
+            // 🚩 3. ส่งคำขอหักเงิน
+            const response = await fetch('/api/order/process-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: localStorage.getItem('myUsername'),
+                    merchant: currentMerchantId,
+                    amount: totalAmount,
+                    currency: currency,
+                    items: itemsText.replace(/<br>/g, "\n")
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: lang.order_success_title,
+                    text: `${lang.order_success_text} ${totalAmount.toLocaleString()} ${currency}`,
+                    timer: 2000
+                });
+                
+                // ล้างตะกร้าและปิด Modal
+                cart = {};
+                closeCheckoutModal();
+                closeShopMenuModal();
+                
+                // อัปเดตยอดเงินบนหัวเว็บ
+                if (typeof userCoords !== 'undefined' && userCoords) {
+                    updateTopBalance(userCoords.lat, userCoords.lng);
+                }
+            } else {
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: lang.payment_failed, 
+                    text: result.message // ข้อความ Error จากหลังบ้าน (Server)
+                });
+            }
+        } catch (error) {
+            Swal.fire({ 
+                icon: 'error', 
+                text: lang.connection_error 
+            });
+        }
+    }
 }
 
 function closeCheckoutModal() {

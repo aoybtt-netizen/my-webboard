@@ -4683,6 +4683,61 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
 });
 
 
+app.post('/api/order/process-payment', async (req, res) => {
+    try {
+        const { username, amount, currency, merchant, items } = req.body;
+        
+        // 1. ดึงข้อมูลผู้ใช้ล่าสุดจาก DB
+        const user = await db.collection('users').findOne({ username: username });
+        if (!user) return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
+
+        // 2. เช็คยอดเงินในสกุลเงินนั้นๆ
+        const currentBalance = user[currency] || 0;
+        if (currentBalance < amount) {
+            return res.status(400).json({ success: false, message: `ยอดเงิน ${currency} ไม่เพียงพอ` });
+        }
+
+        // 3. เริ่มกระบวนการหักเงิน (Atomic Update)
+        const updateResult = await db.collection('users').updateOne(
+            { username: username, [currency]: { $gte: amount } }, // เช็คซ้ำเพื่อป้องกันการหักเงินซ้อน
+            { $inc: { [currency]: -amount } }
+        );
+
+        if (updateResult.modifiedCount === 0) {
+            return res.status(400).json({ success: false, message: "ยอดเงินไม่เพียงพอหรือเกิดข้อผิดพลาด" });
+        }
+
+        // 4. บันทึก Transaction (ประวัติการเงิน)
+        await db.collection('transactions').insertOne({
+            username,
+            type: 'order_payment',
+            amount: -amount,
+            currency,
+            merchant,
+            details: items,
+            timestamp: new Date()
+        });
+
+        // 5. บันทึกออเดอร์ให้ร้านค้า (เตรียมส่งงานให้ไรเดอร์)
+        await db.collection('orders').insertOne({
+            customer: username,
+            merchant: merchant,
+            items: items,
+            totalPrice: amount,
+            currency,
+            status: 'paid', // สถานะจ่ายเงินแล้ว
+            createdAt: new Date()
+        });
+
+        res.json({ success: true, message: "ชำระเงินสำเร็จ" });
+
+    } catch (e) {
+        console.error("🚨 Payment API Error:", e);
+        res.status(500).json({ success: false, message: "ระบบหลังบ้านขัดข้อง" });
+    }
+});
+
+
 
 
 //================ส่วนเติมเงิน
