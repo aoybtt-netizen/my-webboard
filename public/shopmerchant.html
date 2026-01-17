@@ -748,13 +748,20 @@ async function confirmFinalOrder() {
     const shop = allShops.find(s => s.username === currentMerchantId);
     if (!shop) return;
 
-    // ดึงชุดภาษาปัจจุบัน
     const lang = translations[currentLang];
+    const phone = document.getElementById('customer-phone-input').value.trim();
+    const riderWage = parseFloat(document.getElementById('rider-wage-input').value) || 0;
+    
+    // 🚩 ตรวจสอบความครบถ้วน
+    if (!phone) {
+        return Swal.fire({ icon: 'warning', text: 'กรุณากรอกเบอร์โทรศัพท์สำหรับติดต่อ' });
+    }
+    if (riderWage <= 0) {
+        return Swal.fire({ icon: 'warning', text: 'กรุณาระบุค่าจ้างไรเดอร์' });
+    }
 
     let subtotal = 0;
     let itemsText = "";
-
-    // 1. คำนวณยอดรวมสินค้า
     shop.products.forEach((product, index) => {
         const qty = cart[`${currentMerchantId}-${index}`] || 0;
         if (qty > 0) {
@@ -764,37 +771,25 @@ async function confirmFinalOrder() {
         }
     });
 
-    const riderWage = parseFloat(document.getElementById('rider-wage-input').value) || 0;
     const totalAmount = subtotal + riderWage;
     const currency = shop.zoneCurrency || 'USD';
 
-    if (subtotal === 0) {
-        return Swal.fire({ icon: 'warning', text: lang.please_select_item });
-    }
-
-    // 🚩 2. หน้าต่างถามย้ำ (ใช้ภาษาตามที่เลือก)
+    // ถามยืนยัน
     const { isConfirmed } = await Swal.fire({
         title: lang.confirm_payment_title,
-        html: `
-            <div style="text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px; font-size: 0.9rem;">
+        html: `<div style="text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px;">
                 ${itemsText}
                 <hr>
-                <b>${lang.subtotal_label}</b> ${subtotal.toLocaleString()} ${currency}<br>
-                <b>${lang.rider_wage_label}</b> ${riderWage.toLocaleString()} ${currency}<br>
-                <b style="color:#11998e; font-size: 1.1rem;">${lang.total_deduction_label} ${totalAmount.toLocaleString()} ${currency}</b>
-            </div>
-        `,
+                <b>ยอดรวม: ${totalAmount.toLocaleString()} ${currency}</b><br>
+                <small>เบอร์ติดต่อ: ${phone}</small>
+               </div>`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#11998e',
-        cancelButtonColor: '#d33',
-        confirmButtonText: lang.confirm_btn,
-        cancelButtonText: lang.cancel_btn
+        confirmButtonText: lang.confirm_btn
     });
 
     if (isConfirmed) {
         try {
-            // 🚩 3. ส่งคำขอหักเงิน
             const response = await fetch('/api/order/process-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -803,41 +798,28 @@ async function confirmFinalOrder() {
                     merchant: currentMerchantId,
                     amount: totalAmount,
                     currency: currency,
-                    items: itemsText.replace(/<br>/g, "\n")
+                    items: itemsText.replace(/<br>/g, "\n"),
+                    // 🚩 ส่งข้อมูลเพิ่ม
+                    phone: phone,
+                    riderWage: riderWage,
+                    userLocation: userCoords // พิกัดละติจูด/ลองจิจูดของลูกค้า
                 })
             });
 
             const result = await response.json();
-
             if (result.success) {
-                await Swal.fire({
-                    icon: 'success',
-                    title: lang.order_success_title,
-                    text: `${lang.order_success_text} ${totalAmount.toLocaleString()} ${currency}`,
-                    timer: 2000
-                });
-                
-                // ล้างตะกร้าและปิด Modal
+                await Swal.fire({ icon: 'success', title: lang.order_success_title, timer: 2000 });
                 cart = {};
+                document.getElementById('customer-phone-input').value = '';
+                document.getElementById('rider-wage-input').value = '';
                 closeCheckoutModal();
                 closeShopMenuModal();
-                
-                // อัปเดตยอดเงินบนหัวเว็บ
-                if (typeof userCoords !== 'undefined' && userCoords) {
-                    updateTopBalance(userCoords.lat, userCoords.lng);
-                }
+                if (typeof updateTopBalance === 'function') updateTopBalance(userCoords.lat, userCoords.lng);
             } else {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: lang.payment_failed, 
-                    text: result.message // ข้อความ Error จากหลังบ้าน (Server)
-                });
+                Swal.fire({ icon: 'error', text: result.message });
             }
         } catch (error) {
-            Swal.fire({ 
-                icon: 'error', 
-                text: lang.connection_error 
-            });
+            Swal.fire({ icon: 'error', text: 'Connection Error' });
         }
     }
 }
@@ -894,6 +876,14 @@ function closeShopMenuModal() {
         <div class="product-modal-body">
             <div id="checkout-items-list" style="margin-bottom: 20px;"></div>
             <hr>
+			
+			<div style="margin-top: 15px;">
+    <label style="font-size: 0.9rem; font-weight: bold;" data-i18n-key="customer_phone">เบอร์โทรศัพท์ติดต่อ</label>
+    <div style="margin-bottom: 15px; margin-top: 5px;">
+        <input type="tel" id="customer-phone-input" placeholder="08x-xxx-xxxx" 
+               style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 1rem; box-sizing: border-box;">
+    </div>
+	
             <div style="margin-top: 15px;">
                 <label style="font-size: 0.9rem; font-weight: bold;" data-i18n-key="rider_wage">ค่าจ้างไรเดอร์</label>
                 <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
