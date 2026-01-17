@@ -4809,14 +4809,37 @@ app.get('/api/my-active-orders', async (req, res) => {
 app.post('/api/order/customer-cancel', async (req, res) => {
     const { orderId, username } = req.body;
     try {
-        const order = await db.collection('pending_orders').findOne({ orderId, customer: username });
-        if (!order) return res.status(404).json({ success: false, message: "ไม่พบออเดอร์" });
+        // 1. ลองหาในออเดอร์ที่ยังไม่ได้รับ (Pending)
+        let order = await db.collection('pending_orders').findOne({ orderId, customer: username });
+        let isAlreadyAccepted = false;
 
-        // เรียกฟังก์ชันคืนเงินที่เคยเขียนไว้ (หักค่าธรรมเนียม)
+        if (!order) {
+            // 2. ถ้าไม่เจอ ให้ลองหาในออเดอร์ที่รับไปแล้ว (Orders)
+            order = await db.collection('orders').findOne({ orderId, customer: username });
+            isAlreadyAccepted = true;
+        }
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: "ไม่พบออเดอร์ในระบบ" });
+        }
+
+        // 3. เรียกใช้ฟังก์ชันคืนเงิน (หักค่าธรรมเนียมตามที่พี่ตั้งไว้)
         await autoRefundOrder(order, "ยกเลิกโดยลูกค้า");
-        
+
+        // 🚩 4. ถ้าออเดอร์ถูกรับไปแล้ว (มีโพสต์งานแล้ว) ต้องลบโพสต์งานออกจากหน้า Index ด้วย
+        if (isAlreadyAccepted && order.postId) {
+            await db.collection('posts').deleteOne({ id: order.postId });
+            io.emit('order_cancelled', { orderId: order.orderId }); // แจ้งไรเดอร์ว่างานถูกยกเลิก
+        }
+
+        // 5. แจ้งเตือนร้านค้าผ่าน Socket ให้เขารู้ว่าลูกค้ายกเลิกแล้วนะ
+        io.to(order.merchant).emit('order_cancelled_by_customer', { orderId: order.orderId });
+
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) {
+        console.error("Cancel Error:", e);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
 });
 
 
