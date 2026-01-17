@@ -556,6 +556,77 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 .hidden { display: none !important; }
 
+
+
+
+
+.order-alert-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 10000;
+}
+
+.order-alert-card {
+    background: white;
+    width: 90%; max-width: 400px;
+    border-radius: 20px;
+    overflow: hidden;
+    animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.order-alert-header {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white; padding: 25px; text-align: center;
+}
+
+.pulse-icon {
+    font-size: 3rem; margin-bottom: 10px;
+    animation: pulseIcon 1.5s infinite;
+}
+
+@keyframes pulseIcon {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.order-items-box {
+    background: #f8f9fa;
+    margin: 15px 0; padding: 15px;
+    border-radius: 10px; border-left: 5px solid #e67e22;
+    max-height: 150px; overflow-y: auto;
+    white-space: pre-line; font-size: 0.95rem;
+}
+
+.order-price-box {
+    display: flex; justify-content: space-between;
+    font-size: 1.3rem; font-weight: bold; color: #11998e;
+    margin-top: 10px;
+}
+
+.order-alert-footer {
+    display: flex; gap: 10px; padding: 20px;
+}
+
+.btn-accept {
+    flex: 2; padding: 15px; background: #11998e; color: white;
+    border: none; border-radius: 10px; font-weight: bold; cursor: pointer;
+}
+
+.btn-decline {
+    flex: 1; padding: 15px; background: #eee; color: #666;
+    border: none; border-radius: 10px; cursor: pointer;
+}
+
+@keyframes bounceIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
     </style>
 </head>
 <body>
@@ -729,6 +800,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 	let lastVoiceAnalysis = null;
 	let mapMode = 'book';
 	let currentZoneCurrency = 'USD';
+	let currentIncomingOrder = null;
 	
 	let activeTaskInSidebar = null;
 	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
@@ -953,6 +1025,10 @@ const translations = {
 		'menu_manage_products': 'จัดการเมนูขาย/สินค้า',
 		'product_limit_note': 'เพิ่มได้สูงสุด 5 เมนู (ราคาไม่รวมค่าส่ง)',
 		'btn_save': 'บันทึกข้อมูลเมนู',
+		'new_order_title': 'มีออเดอร์ใหม่เข้า!',
+		'btn_accept_order': 'รับออเดอร์ & เรียกไรเดอร์',
+		'btn_decline': 'ปฏิเสธ',
+		'customer_name': 'ลูกค้า:',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1160,6 +1236,10 @@ const translations = {
 		'menu_manage_products': 'Manage Shop Menu/Products',
 		'product_limit_note': 'Add up to 5 items (price excluding delivery)',
 		'btn_save': 'Save Menu',
+		'new_order_title': 'New Order Received!',
+		'btn_accept_order': 'Accept & Call Rider',
+		'btn_decline': 'Decline',
+		'customer_name': 'Customer:'
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1367,6 +1447,10 @@ const translations = {
 		'menu_manage_products': 'Gerenciar Cardápio/Produtos',
 		'product_limit_note': 'Adicione até 5 itens (preço sem entrega)',
 		'btn_save': 'Salvar Cardápio',
+		'new_order_title': 'Novo Pedido Recebido!',
+		'btn_accept_order': 'Aceitar e Chamar Entregador',
+		'btn_decline': 'Recusar',
+		'customer_name': 'Cliente:',
     }
 };
 
@@ -3591,6 +3675,58 @@ async function saveMerchantProducts() {
 
 
 
+socket.on('new_order_card', (order) => {
+    currentIncomingOrder = order;
+
+    // 1. เล่นเสียงแจ้งเตือน
+    const sound = document.getElementById('orderSound');
+    sound.play().catch(e => console.log("ต้องการการคลิกหน้าจอก่อนถึงจะเล่นเสียงได้"));
+
+    // 2. ใส่ข้อมูลลงในการ์ด
+    document.getElementById('alertOrderId').innerText = order.orderId;
+    document.getElementById('alertCustomerName').innerText = order.customer;
+    document.getElementById('alertOrderItems').innerText = order.items;
+    document.getElementById('alertOrderPrice').innerText = `${order.totalPrice.toLocaleString()} ${order.currency}`;
+
+    // 3. โชว์ Overlay
+    document.getElementById('orderNotificationOverlay').classList.remove('hidden');
+});
+
+// 🚩 ฟังก์ชันเมื่อร้านค้ากดรับออเดอร์
+async function acceptOrder() {
+    if (!currentIncomingOrder) return;
+
+    // หยุดเสียง
+    document.getElementById('orderSound').pause();
+
+    try {
+        const response = await fetch('/api/merchant/accept-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                orderId: currentIncomingOrder.orderId,
+                merchantUser: localStorage.getItem('myUsername')
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            Swal.fire({ icon: 'success', text: 'รับออเดอร์สำเร็จ! งานถูกส่งไปยังหน้า Index แล้ว' });
+            document.getElementById('orderNotificationOverlay').classList.add('hidden');
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', text: 'เกิดข้อผิดพลาด' });
+    }
+}
+
+function declineOrder() {
+    document.getElementById('orderSound').pause();
+    // เพิ่ม Logic คืนเงินที่นี่...
+    document.getElementById('orderNotificationOverlay').classList.add('hidden');
+}
+
+
+
 
 window.onbeforeunload = function() {
     const activeTasks = document.querySelectorAll('.active-task-card').length;
@@ -3880,6 +4016,41 @@ window.onbeforeunload = function() {
         </div>
     </div>
 </div>
+
+
+
+<div id="orderNotificationOverlay" class="order-alert-overlay hidden">
+    <div class="order-alert-card">
+        <div class="order-alert-header">
+            <div class="pulse-icon"><i class="fas fa-shopping-bag"></i></div>
+            <h2 data-i18n-key="new_order_title">มีออเดอร์ใหม่เข้า!</h2>
+        </div>
+        <div class="order-alert-body">
+            <div class="order-info-group">
+                <label data-i18n-key="order_id">เลขที่ออเดอร์:</label>
+                <span id="alertOrderId">#ORD12345</span>
+            </div>
+            <div class="order-info-group">
+                <label data-i18n-key="customer_name">ลูกค้า:</label>
+                <span id="alertCustomerName">-</span>
+            </div>
+            <div class="order-items-box" id="alertOrderItems">
+                </div>
+            <div class="order-price-box">
+                <span data-i18n-key="total_amount">ยอดรวม:</span>
+                <span id="alertOrderPrice">0.00 USD</span>
+            </div>
+        </div>
+        <div class="order-alert-footer">
+            <button class="btn-decline" onclick="declineOrder()" data-i18n-key="btn_decline">ปฏิเสธ</button>
+            <button class="btn-accept" onclick="acceptOrder()" data-i18n-key="btn_accept_order">รับออเดอร์ & เรียกไรเดอร์</button>
+        </div>
+    </div>
+</div>
+
+<audio id="orderSound" loop>
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+</audio>
 
 
 
