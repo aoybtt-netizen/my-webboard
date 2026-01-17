@@ -263,13 +263,27 @@ header {
 .status-accepted { background: #e8f5e9; color: #2e7d32; }
 
 .btn-cancel-order {
-    background: #ffeded;
-    color: #eb4d4b;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
+    background: #fff0f0;
+    color: #e74c3c;
+    border: 1px solid #ffcccc;
+    padding: 6px 12px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+}
+
+.btn-cancel-order:hover {
+    background: #e74c3c;
+    color: white;
+}
+
+.customer-order-item:hover {
+    background: #f9f9f9;
 }
 
 
@@ -950,46 +964,47 @@ function updateCustomerUI() {
 // 3. แสดงรายการออเดอร์ใน Modal
 function openMyOrdersModal() {
     const container = document.getElementById('myOrdersContainer');
-    if (!container) return; // กัน Error กรณีหาธาตุไม่เจอ
+    if (!container) return;
 
     container.innerHTML = '';
 
-    // ใช้ .map() และ .join('') แทนการใช้ += ใน loop จะทำงานเร็วกว่าและอ่านง่ายกว่าครับ
     const ordersHtml = myActiveOrders.map(order => {
-        // --- 1. เตรียมข้อมูลข้างนอกให้เสร็จก่อน ---
         const isWaiting = order.status === 'waiting_merchant';
         const statusText = isWaiting ? 'รอร้านค้าตอบรับ' : 'ร้านค้ารับออเดอร์แล้ว';
         const statusClass = isWaiting ? 'status-waiting' : 'status-accepted';
         const shortId = order.orderId.slice(-5);
         const postIdValue = order.postId || 'null';
 
-        // --- 2. เตรียมปุ่มหรือไอคอนแยกไว้เป็นตัวแปรเดียว ---
-        let actionElement = '';
-        if (isWaiting) {
-            actionElement = `<button class="btn-cancel-order" onclick="cancelOrder(event, '${order.orderId}')">ยกเลิก</button>`;
-        } else {
-            actionElement = `<i class="fas fa-comments" style="color:#11998e; font-size:1.2rem;"></i>`;
-        }
+        // 🚩 ส่วนควบคุมปุ่ม: แสดงปุ่มยกเลิกเสมอ และแสดงไอคอนแชทถ้าเป็นสถานะ accepted
+        let actionButtons = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                ${!isWaiting ? `<i class="fas fa-comments" style="color:#11998e; font-size:1.2rem; cursor:pointer;"></i>` : ''}
+                <button class="btn-cancel-order" onclick="cancelOrder(event, '${order.orderId}')">
+                    <i class="fas fa-trash-alt"></i> ยกเลิก
+                </button>
+            </div>
+        `;
 
-        // --- 3. คืนค่าเป็น HTML string ที่ไม่มี Logic ซับซ้อนข้างใน ---
         return `
             <div class="customer-order-item" onclick="handleOrderClick('${order.orderId}', '${order.status}', ${postIdValue})">
                 <div style="flex: 1;">
-                    <div style="font-weight:bold;">#${shortId}</div>
-                    <div style="font-size:0.85rem; color:#666;">${order.merchant}</div>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="font-weight:bold; color:#2c3e50;">#${shortId}</div>
+                        <span class="status-badge ${statusClass}" style="font-size: 0.65rem;">${statusText}</span>
+                    </div>
+                    <div style="font-size:0.85rem; color:#7f8c8d; margin-top: 2px;">
+                        <i class="fas fa-store" style="font-size: 0.8rem;"></i> ${order.merchant}
+                    </div>
                 </div>
                 <div>
-                    ${actionElement}
+                    ${actionButtons}
                 </div>
             </div>`;
     }).join('');
 
-    container.innerHTML = ordersHtml;
+    container.innerHTML = ordersHtml || `<p style="text-align:center; padding:30px; color:#999;">ไม่มีออเดอร์ที่กำลังดำเนินรายการ</p>`;
     
-    // แสดง Modal
-    const modal = document.getElementById('myOrdersModal');
-    if (modal) modal.classList.remove('hidden');
+    document.getElementById('myOrdersModal').classList.remove('hidden');
 }
 
 // 4. จัดการการคลิก (ถ้า Accept แล้วให้เปิดแชท)
