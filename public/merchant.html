@@ -3113,7 +3113,16 @@ function closeManageModal() {
         if (!data.success) return;
 
         activeTaskInSidebar = data.post;
-        // 🚩 แปลหัวข้อ Sidebar
+        const itemsContainer = document.getElementById('sidebar-order-items-container');
+        const itemsText = document.getElementById('sidebar-items-text');
+        
+        if (activeTaskInSidebar.isMerchantTask && activeTaskInSidebar.content) {
+            itemsContainer.classList.remove('hidden');
+            // แปลง \n เป็น <br> เพื่อให้เว้นบรรทัดสวยงาม
+            itemsText.innerHTML = activeTaskInSidebar.content.replace(/\n/g, '<br>');
+        } else {
+            itemsContainer.classList.add('hidden');
+        }
         document.getElementById('sidebar-task-title').innerText = `${translations[currentLang].sidebar_job_prefix} ${activeTaskInSidebar.title}`;
         
         if (typeof currentTab !== 'undefined' && currentTab === 'chat') {
@@ -3127,53 +3136,22 @@ function closeManageModal() {
             const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.pendingRider}`);
             const statsData = await statsRes.json();
             const stats = statsData.stats;
-            
-            // 🚩 แปลส่วนไรเดอร์สนใจงาน
             notifList.innerHTML = `
-            <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12;">
-                <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ${translations[currentLang].sidebar_rider_interested}</b>
-                
-                <div class="rider-profile-box">
-                    <div style="width: 50px; height: 50px; background: #ddd; border-radius: 50%; overflow: hidden;">
-                        <img src="${stats.avatar || 'https://via.placeholder.com/50'}" style="width:100%; height:100%; object-fit:cover;">
+                <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12;">
+                    <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ${translations[currentLang].sidebar_rider_interested}</b>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
+                        <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
                     </div>
-                    <div style="flex-grow: 1;">
-                        <div style="font-weight:bold; color:#333;">${stats.username}</div>
-                        <div style="color:#f1c40f; font-size: 0.85em;">
-                            <i class="fas fa-star"></i> ${stats.rating.toFixed(1)} ${translations[currentLang].sidebar_score_unit}
-                        </div>
-                    </div>
-                </div>
-
-                <div style="display: flex; margin-top: 10px; background: white; border-radius: 10px; padding: 10px;">
-                    <div class="stat-item">
-                        <span class="stat-value">${stats.totalJobs || 0}</span>
-                        <span class="stat-label">${translations[currentLang].sidebar_stat_jobs}</span>
-                    </div>
-                    <div style="width: 1px; background: #eee;"></div>
-                    <div class="stat-item">
-                        <span class="stat-value">${translations[currentLang].sidebar_level_best}</span>
-                        <span class="stat-label">${translations[currentLang].sidebar_stat_level}</span>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
-                    <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
-                </div>
-            </div>
-            `;
+                </div>`;
         } else if (activeTaskInSidebar.acceptedBy) {
-            // 🚩 แปลส่วนมอบหมายงานสำเร็จ
             notifList.innerHTML = `
                 <div style="text-align:center; padding: 20px;">
                     <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
                     <p style="color:#27ae60; font-weight:bold;">${translations[currentLang].sidebar_assigned_msg(activeTaskInSidebar.acceptedBy)}</p>
                     <small style="color:#999;">${translations[currentLang].sidebar_track_info}</small>
-                </div>
-            `;
+                </div>`;
         } else {
-            // 🚩 แปลสถานะรอไรเดอร์ (พี่ใส่ตัวแปรไว้แล้ว ผมแค่ดึงมาแสดงผล)
             notifList.innerHTML = `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].status_waiting_rider}</p>`;
         }
 
@@ -4364,8 +4342,16 @@ window.onbeforeunload = function() {
 
     <div id="tab-notif" class="tab-content">
     <h4 data-i18n-key="sidebar_tab_notif"><i class="fas fa-bell"></i> แจ้งเตือนสถานะ</h4>
+    
+    <div id="sidebar-order-items-container" class="hidden" style="margin-bottom: 15px; padding: 12px; background: #f0f9f8; border: 1px dashed #11998e; border-radius: 10px;">
+        <b style="color: #11998e; font-size: 0.9em; display: block; margin-bottom: 5px;">
+            <i class="fas fa-shopping-basket"></i> <span data-i18n-key="sidebar_order_items_title">รายการอาหารที่สั่ง:</span>
+        </b>
+        <div id="sidebar-items-text" style="font-size: 0.85em; color: #333; line-height: 1.4;"></div>
+    </div>
+
     <div id="notif-list"></div>
-</div>
+	</div>
 
     <div id="tab-details" class="tab-content hidden">
     <h4 data-i18n-key="sidebar_tab_details"><i class="fas fa-list-ol"></i> ลำดับการส่งงาน</h4>
