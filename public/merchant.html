@@ -4306,25 +4306,27 @@ window.onbeforeunload = function() {
     <div id="alertTimer" style="font-size: 1.5rem; font-weight: bold; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 5px; margin-top: 10px;">10:00</div>
 	</div>
         <div class="order-alert-body">
-            <div class="order-info-group">
-                <label data-i18n-key="order_id">เลขที่ออเดอร์:</label>
-                <span id="alertOrderId">#ORD12345</span>
-            </div>
-            <div class="order-info-group">
-                <label data-i18n-key="customer_name">ลูกค้า:</label>
-                <span id="alertCustomerName">-</span>
-            </div>
-			<div class="order-info-group">
+    <div class="order-info-group">
+        <label data-i18n-key="order_id">เลขที่ออเดอร์:</label>
+        <span id="alertOrderId">#ORD12345</span>
+    </div>
+    <div class="order-info-group">
+        <label data-i18n-key="customer_name">ลูกค้า:</label>
+        <span id="alertCustomerName">-</span>
+    </div>
+    <div class="order-info-group">
         <label data-i18n-key="customer_phone">เบอร์ติดต่อ:</label>
         <span id="alertCustomerPhone" style="font-weight: bold; color: #11998e;">-</span>
     </div>
-            <div class="order-items-box" id="alertOrderItems">
-                </div>
-            <div class="order-price-box">
-                <span data-i18n-key="total_amount">ยอดรวม:</span>
-                <span id="alertOrderPrice">0.00 USD</span>
-            </div>
-        </div>
+
+    <div id="orderMiniMap" style="width: 100%; height: 180px; border-radius: 12px; margin: 15px 0; border: 1px solid #ddd; background: #eee; z-index: 1;"></div>
+
+    <div class="order-items-box" id="alertOrderItems"></div>
+    <div class="order-price-box">
+        <span data-i18n-key="total_amount">ยอดรวม:</span>
+        <span id="alertOrderPrice">0.00 USD</span>
+    </div>
+</div>
         <div class="order-alert-footer">
             <button class="btn-decline" onclick="declineOrder()" data-i18n-key="btn_decline">ปฏิเสธ</button>
             <button class="btn-accept" onclick="acceptOrder()" data-i18n-key="btn_accept_order">รับออเดอร์ & เรียกไรเดอร์</button>
