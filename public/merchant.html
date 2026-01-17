@@ -571,10 +571,55 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 .order-alert-card {
     background: white;
-    width: 90%; max-width: 400px;
+    width: 90%;
+    max-width: 380px;
     border-radius: 20px;
     overflow: hidden;
-    animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.order-alert-header-compact {
+    background: #e67e22; /* สีส้มร้านค้า */
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-left h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.pulse-small {
+    font-size: 1rem;
+    animation: pulse-dot 1.5s infinite;
+}
+
+.timer-badge {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.order-alert-body {
+    padding: 20px; /* แก้ปัญหาชิดขอบ */
+}
+
+.order-info-container {
+    margin-bottom: 15px;
 }
 
 .order-alert-header {
@@ -594,15 +639,30 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 .order-items-box {
-        max-height: 100px;
-        overflow-y: auto;
-        background: #fdfdfd;
-        padding: 8px;
-        border-radius: 5px;
-        font-size: 0.85rem;
-        margin: 10px 0;
-        border: 1px solid #eee;
-    }
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 0.85rem;
+    color: #34495e;
+    max-height: 80px;
+    overflow-y: auto;
+    border: 1px dashed #ddd;
+    margin-bottom: 15px;
+}
+
+.order-price-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 2px solid #f1f1f1;
+}
+
+.price-value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #e67e22;
+}
 
 .order-price-box {
     display: flex; justify-content: space-between;
@@ -611,11 +671,37 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 .order-alert-footer {
-    position: relative;
-    z-index: 10001;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
     gap: 10px;
-    padding: 20px;
+    padding: 15px 20px 20px;
+}
+
+.btn-decline-new {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    color: #7f8c8d;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-accept-new {
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: #27ae60;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);
+}
+
+@keyframes pulse-dot {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.7; }
 }
 
 .btn-accept {
@@ -699,11 +785,24 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 
 .order-info-group {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 0.95rem;
-    }
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.info-label {
+    color: #7f8c8d;
+}
+
+.info-value {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.highlight-green {
+    color: #27ae60 !important;
+}
 	
 #orderMiniMap {
         box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
@@ -4332,36 +4431,43 @@ window.onbeforeunload = function() {
 
 <div id="orderNotificationOverlay" class="order-alert-overlay hidden">
     <div class="order-alert-card">
-        <div class="order-alert-header">
-    <div class="pulse-icon"><i class="fas fa-shopping-bag"></i></div>
-    <h2 data-i18n-key="new_order_title">มีออเดอร์ใหม่เข้า!</h2>
-    <div id="alertTimer" style="font-size: 1.5rem; font-weight: bold; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 5px; margin-top: 10px;">10:00</div>
-	</div>
+        <div class="order-alert-header-compact">
+            <div class="header-left">
+                <i class="fas fa-shopping-bag pulse-small"></i>
+                <h3 data-i18n-key="new_order_title">มีออเดอร์ใหม่!</h3>
+            </div>
+            <div id="alertTimer" class="timer-badge">10:00</div>
+        </div>
+
         <div class="order-alert-body">
-    <div class="order-info-group">
-        <label data-i18n-key="order_id">เลขที่ออเดอร์:</label>
-        <span id="alertOrderId">#ORD12345</span>
-    </div>
-    <div class="order-info-group">
-        <label data-i18n-key="customer_name">ลูกค้า:</label>
-        <span id="alertCustomerName">-</span>
-    </div>
-    <div class="order-info-group">
-        <label data-i18n-key="customer_phone">เบอร์ติดต่อ:</label>
-        <span id="alertCustomerPhone" style="font-weight: bold; color: #11998e;">-</span>
-    </div>
+            <div class="order-info-container">
+                <div class="order-info-group">
+                    <span class="info-label" data-i18n-key="order_id">เลขที่ออเดอร์:</span>
+                    <span id="alertOrderId" class="info-value">#ORD12345</span>
+                </div>
+                <div class="order-info-group">
+                    <span class="info-label" data-i18n-key="customer_name">ลูกค้า:</span>
+                    <span id="alertCustomerName" class="info-value">-</span>
+                </div>
+                <div class="order-info-group">
+                    <span class="info-label" data-i18n-key="customer_phone">เบอร์ติดต่อ:</span>
+                    <span id="alertCustomerPhone" class="info-value highlight-green">-</span>
+                </div>
+            </div>
 
-    <div id="orderMiniMap" style="width: 100%; height: 180px; border-radius: 12px; margin: 15px 0; border: 1px solid #ddd; background: #eee; z-index: 1;"></div>
+            <div id="orderMiniMap" style="width: 100%; height: 140px; border-radius: 12px; margin: 12px 0; border: 1px solid #eee; background: #f0f0f0; z-index: 1;"></div>
 
-    <div class="order-items-box" id="alertOrderItems"></div>
-    <div class="order-price-box">
-        <span data-i18n-key="total_amount">ยอดรวม:</span>
-        <span id="alertOrderPrice">0.00 USD</span>
-    </div>
-</div>
+            <div class="order-items-box" id="alertOrderItems"></div>
+
+            <div class="order-price-summary">
+                <span data-i18n-key="total_amount">ยอดรวมสุทธิ:</span>
+                <span id="alertOrderPrice" class="price-value">0.00 USD</span>
+            </div>
+        </div>
+
         <div class="order-alert-footer">
-            <button class="btn-decline" onclick="declineOrder()" data-i18n-key="btn_decline">ปฏิเสธ</button>
-            <button class="btn-accept" onclick="acceptOrder()" data-i18n-key="btn_accept_order">รับออเดอร์ & เรียกไรเดอร์</button>
+            <button class="btn-decline-new" onclick="declineOrder()" data-i18n-key="btn_decline">ปฏิเสธ</button>
+            <button class="btn-accept-new" onclick="acceptOrder()" data-i18n-key="btn_accept_order">รับออเดอร์ & เรียกไรเดอร์</button>
         </div>
     </div>
 </div>
