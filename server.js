@@ -4678,11 +4678,15 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
 
         // 1. หาโซนปัจจุบันของผู้ใช้ (ส่งกลับไปที่ currentZone)
         let userZoneName = "Global Zone";
+		let zoneFee = 0;    // 🚩 เพิ่มตัวแปรเก็บค่าธรรมเนียม
+        let systemZone = 0; // 🚩 เพิ่มตัวแปรเก็บค่าระบบ
         try {
             if (!isNaN(uLat) && !isNaN(uLng)) {
                 const userZoneInfo = await findResponsibleAdmin({ lat: uLat, lng: uLng });
                 if (userZoneInfo && userZoneInfo.zoneData) {
                     userZoneName = userZoneInfo.zoneData.name || "โซนนิรนาม";
+					zoneFee = parseFloat(userZoneInfo.zoneData.zoneFee || 0);
+                    systemZone = parseFloat(userZoneInfo.zoneData.systemZone || 0);
                 }
             }
         } catch (zErr) {
@@ -4727,6 +4731,8 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
         res.json({ 
             success: true, 
             currentZone: userZoneName, // ส่งชื่อโซนกลับไปให้หน้าบ้านแสดงผล
+			zoneFee: zoneFee,       // 🚩 ส่งกลับไปหน้าบ้าน
+            systemZone: systemZone, // 🚩 ส่งกลับไปหน้าบ้าน
             shops: formattedShops 
         });
 

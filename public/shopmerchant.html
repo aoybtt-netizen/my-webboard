@@ -269,6 +269,8 @@ header {
 	let currentMerchantId = '';
 	let lastTotalItemsPrice = 0;
 	let currentShopCurrency = '';
+	let currentZoneFee = 0;
+	let currentSystemZone = 0;
 	
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -503,6 +505,8 @@ async function loadShops() {
         
         if (data.success) {
             const zoneDisplay = document.getElementById('currentZoneName');
+			currentZoneFee = data.zoneFee || 0;
+            currentSystemZone = data.systemZone || 0;
             
             if (data.currentZone) {
                 zoneDisplay.innerText = data.currentZone;
@@ -782,7 +786,7 @@ async function confirmFinalOrder() {
         }
     });
 
-    const totalAmount = subtotal + riderWage;
+    const totalAmount = subtotal + riderWage + currentZoneFee + currentSystemZone;
     const currency = shop.zoneCurrency || 'USD';
 
     // 🚩 หน้าต่างถามยืนยัน (แก้ไขส่วนคำแปลและ HTML)
@@ -792,7 +796,11 @@ async function confirmFinalOrder() {
             <div style="text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px; font-size: 0.9rem;">
                 ${itemsText}
                 <hr>
-                <b>${lang.total_label} ${totalAmount.toLocaleString()} ${currency}</b><br>
+                <div>${lang.subtotal_label || 'ยอดสินค้า:'} ${subtotal.toLocaleString()} ${currency}</div>
+                <div>${lang.rider_wage_label || 'ค่าไรเดอร์:'} ${riderWage.toLocaleString()} ${currency}</div>
+                <div style="color: #666;">${lang.zone_fee_label || 'ค่าธรรมเนียมโซน:'} ${(currentZoneFee + currentSystemZone).toLocaleString()} ${currency}</div>
+                <hr>
+                <b style="font-size: 1.1rem; color: #11998e;">${lang.total_label} ${totalAmount.toLocaleString()} ${currency}</b><br>
                 <small>${lang.contact_phone_label} ${phone}</small>
             </div>
         `,
@@ -818,7 +826,9 @@ async function confirmFinalOrder() {
                     items: itemsText.replace(/<br>/g, "\n"),
                     phone: phone,
                     riderWage: riderWage,
-                    userLocation: userCoords
+                    userLocation: userCoords,
+					zoneFee: currentZoneFee,
+                    systemZone: currentSystemZone
                 })
             });
 

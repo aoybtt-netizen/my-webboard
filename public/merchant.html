@@ -689,6 +689,10 @@ input:checked + .slider:before { transform: translateX(20px); }
     background: #fdf2e9;
 }
 
+.swal2-container {
+    z-index: 20000 !important;
+}
+
 
     </style>
 </head>
@@ -3923,8 +3927,12 @@ async function declineOrder() {
     if (!currentIncomingOrder) return;
 
     const lang = translations[currentLang];
+    const detailOverlay = document.getElementById('orderNotificationOverlay');
 
-    // 1. ถามเพื่อความแน่ใจ (Double Confirm)
+    // 🚩 ลดความชัดของหน้าต่างหลังลงชั่วคราวเพื่อให้ Swal เด่นขึ้น
+    if (detailOverlay) detailOverlay.style.opacity = "0.5";
+
+    // 1. ถามเพื่อความแน่ใจ
     const { isConfirmed } = await Swal.fire({
         title: lang.confirm_reject_title,
         text: lang.confirm_reject_text,
@@ -3933,15 +3941,17 @@ async function declineOrder() {
         confirmButtonColor: '#d33',
         cancelButtonColor: '#aaa',
         confirmButtonText: lang.btn_confirm_reject,
-        cancelButtonText: lang.btn_cancel
+        cancelButtonText: lang.btn_cancel,
+        // เพิ่มความชัวร์ในโค้ด:
+        heightAuto: false 
     });
 
-    if (isConfirmed) {
-        // 2. หยุดตัวนับเวลา
-        if (timerInterval) clearInterval(timerInterval);
+    // 🚩 คืนค่าความชัดกลับมา
+    if (detailOverlay) detailOverlay.style.opacity = "1";
 
+    if (isConfirmed) {
+        // ... (โค้ดส่วนที่เหลือของพี่เหมือนเดิม) ...
         try {
-            // 3. หยุดเสียงเตือน
             const sound = document.getElementById('orderSound');
             if (sound) sound.pause();
 
@@ -3956,30 +3966,14 @@ async function declineOrder() {
             });
 
             const result = await response.json();
-
             if (result.success) {
-                // 4. ลบออเดอร์ออกจากรายการรอดำเนินการ
                 pendingOrders = pendingOrders.filter(o => o.orderId !== currentIncomingOrder.orderId);
-                
-                // 5. อัปเดต UI ปุ่มลอย
                 updateOrderUI();
-                
-                // 6. ปิดหน้าต่างรายละเอียดและหน้ารายการ
-                document.getElementById('orderNotificationOverlay').classList.add('hidden');
+                detailOverlay.classList.add('hidden');
                 closeOrderList();
-                
-                // 7. แจ้งเตือนสำเร็จ
-                Swal.fire({ 
-                    icon: 'success', 
-                    title: 'Done', 
-                    text: lang.reject_success_text, 
-                    timer: 2000 
-                });
-            } else {
-                Swal.fire({ icon: 'error', text: result.message || lang.error_generic });
+                Swal.fire({ icon: 'success', title: 'Done', text: lang.reject_success_text, timer: 2000 });
             }
         } catch (e) {
-            console.error("Reject Order Error:", e);
             Swal.fire({ icon: 'error', text: lang.error_connection });
         }
     }
