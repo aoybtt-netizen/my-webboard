@@ -3849,6 +3849,7 @@ function openOrderList() {
 // 🚩 4. ดูรายละเอียดออเดอร์ (ใช้หน้าต่างลอยเดิมที่พี่มี)
 function viewOrderDetail(index) {
     const order = pendingOrders[index];
+    if (!order) return; // กันเหนียวถ้าไม่มีออเดอร์
     currentIncomingOrder = order;
 
     // 1. ใส่ข้อมูลข้อความ
@@ -3858,38 +3859,63 @@ function viewOrderDetail(index) {
     document.getElementById('alertOrderItems').innerText = order.items;
     document.getElementById('alertOrderPrice').innerText = `${order.totalPrice.toLocaleString()} ${order.currency}`;
 
-    // 2. จัดการตัวนับเวลา (ตามเดิมของพี่)
+    // 🚩 2. นิยามฟังก์ชัน updateTimer ไว้ข้างในเพื่อให้เรียกใช้ได้
+    const updateTimer = () => {
+        const now = new Date().getTime();
+        const expireTime = new Date(order.expiresAt).getTime();
+        const timeLeft = expireTime - now;
+
+        const timerDisplay = document.getElementById('alertTimer');
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            if (timerDisplay) timerDisplay.innerText = "00:00";
+            document.getElementById('orderNotificationOverlay').classList.add('hidden');
+            
+            // ลบออเดอร์ที่หมดอายุออกจากรายการหน้าบ้าน
+            pendingOrders = pendingOrders.filter(o => o.orderId !== order.orderId);
+            updateOrderUI();
+            return;
+        }
+
+        const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
+        if (timerDisplay) {
+            timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+    };
+
+    // ล้าง Interval เก่าก่อนเริ่มใหม่
     if (timerInterval) clearInterval(timerInterval);
-    updateTimer();
+    
+    // เรียกทำงานทันที 1 ครั้ง เพื่อไม่ให้หน้าจอโชว์ค่าว่างตอนเริ่ม
+    updateTimer(); 
+    // ตั้งให้ทำงานทุกๆ 1 วินาที
     timerInterval = setInterval(updateTimer, 1000);
 
-    // 🚩 3. เปิดหน้าต่าง Overlay ก่อน (สำคัญมาก)
+    // 3. เปิดหน้าต่าง Overlay
     closeOrderList();
     document.getElementById('orderNotificationOverlay').classList.remove('hidden');
 
-    // 🚩 4. จัดการแผนที่หลังจากหน้าต่างโชว์แล้ว
+    // 4. จัดการแผนที่หลังจากหน้าต่างโชว์แล้ว
     setTimeout(() => {
         const lat = order.customerLocation.lat;
         const lng = order.customerLocation.lng;
 
         if (!detailMap) {
-            // สร้างครั้งแรก
             detailMap = L.map('orderMiniMap').setView([lat, lng], 16);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap'
             }).addTo(detailMap);
             detailMarker = L.marker([lat, lng]).addTo(detailMap);
         } else {
-            // ย้ายจุดและอัปเดตขนาด
             detailMap.setView([lat, lng], 16);
             detailMarker.setLatLng([lat, lng]);
-            
-            // 🚩 บังคับให้แผนที่คำนวณขนาดพื้นที่ใหม่ (ถ้าไม่ใส่ แผนที่อาจโชว์แค่ครึ่งเดียว)
             setTimeout(() => {
                 detailMap.invalidateSize();
             }, 100);
         }
-    }, 300); // รอให้ CSS Transition ทำงานเสร็จนิดนึง
+    }, 300);
 }
 
 function closeOrderList() {
