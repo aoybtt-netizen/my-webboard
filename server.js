@@ -4791,6 +4791,34 @@ app.post('/api/order/process-payment', async (req, res) => {
     }
 });
 
+// 🚩 1. API ดึงออเดอร์ที่ยังทำงานอยู่ของลูกค้า
+app.get('/api/my-active-orders', async (req, res) => {
+    const { username } = req.query;
+    try {
+        // หาใน pending_orders (ที่ยังไม่ได้รับ)
+        const pending = await db.collection('pending_orders').find({ customer: username }).toArray();
+        // หาใน orders (ที่รับแล้วแต่ยังไม่จบงาน)
+        const accepted = await db.collection('orders').find({ customer: username, status: 'accepted' }).toArray();
+        
+        const all = [...pending, ...accepted];
+        res.json({ success: true, orders: all });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 🚩 2. API ลูกค้ายกเลิกออเดอร์เอง (Logic เหมือน Reject ของร้านค้า)
+app.post('/api/order/customer-cancel', async (req, res) => {
+    const { orderId, username } = req.body;
+    try {
+        const order = await db.collection('pending_orders').findOne({ orderId, customer: username });
+        if (!order) return res.status(404).json({ success: false, message: "ไม่พบออเดอร์" });
+
+        // เรียกฟังก์ชันคืนเงินที่เคยเขียนไว้ (หักค่าธรรมเนียม)
+        await autoRefundOrder(order, "ยกเลิกโดยลูกค้า");
+        
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
 
 // --- API ร้านค้ากดยอมรับ ---
 app.post('/api/merchant/accept-order', async (req, res) => {
@@ -4868,6 +4896,11 @@ app.post('/api/merchant/accept-order', async (req, res) => {
 
         // 🚩 8. ส่ง Socket ให้ไรเดอร์ทุกคนเห็นงานใหม่ทันที
         io.emit('new-post', newPost);
+		io.to(pending.customer).emit('order_accepted_update', { 
+			orderId: pending.orderId, 
+			postId: newPost.id,
+			status: 'accepted'
+		});
 
         res.json({ success: true, message: "Order accepted and task posted!" });
     } catch (e) {

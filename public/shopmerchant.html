@@ -220,6 +220,58 @@ header {
 .swal2-container {
         z-index: 20000 !important;
     }
+	
+	
+
+/* ปุ่มลอยติดขอบขวาสำหรับลูกค้า */
+.floating-customer-btn {
+    position: fixed;
+    right: -10px;
+    top: 60%; /* อยู่ต่ำกว่าปุ่มร้านค้านิดหน่อย */
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+    padding: 12px 15px 12px 20px;
+    border-radius: 25px 0 0 25px;
+    box-shadow: -2px 4px 10px rgba(0,0,0,0.2);
+    z-index: 998;
+    cursor: pointer;
+    display: none; /* โชว์เมื่อมีออเดอร์ค้าง */
+    transition: all 0.3s ease;
+}
+
+.floating-customer-btn:hover {
+    right: 0;
+}
+
+.customer-order-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.status-waiting { background: #fff4e5; color: #f39c12; }
+.status-accepted { background: #e8f5e9; color: #2e7d32; }
+
+.btn-cancel-order {
+    background: #ffeded;
+    color: #eb4d4b;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
 
 
     </style>
@@ -271,6 +323,7 @@ header {
 	let currentShopCurrency = '';
 	let currentZoneFee = 0;
 	let currentSystemZone = 0;
+	let myActiveOrders = [];
 	
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -813,7 +866,6 @@ async function confirmFinalOrder() {
     });
 
     if (isConfirmed) {
-        // ... (ส่วนการส่ง API fetch เหมือนเดิมที่พี่มีอยู่) ...
         try {
             const response = await fetch('/api/order/process-payment', {
                 method: 'POST',
@@ -857,6 +909,148 @@ function closeCheckoutModal() {
 function closeShopMenuModal() {
     document.getElementById('shopMenuModal').classList.add('hidden');
 }
+
+
+
+
+// 1. เรียกใช้งานเมื่อเปิดหน้าเว็บ หรือเมื่อสั่งซื้อสำเร็จ
+async function loadMyOrders() {
+    const username = localStorage.getItem('myUsername');
+    if (!username) return;
+
+    try {
+        const res = await fetch(`/api/my-active-orders?username=${username}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            myActiveOrders = data.orders;
+            updateCustomerUI();
+        }
+    } catch (e) { console.error("Load orders error:", e); }
+}
+
+// 2. อัปเดตการแสดงผลปุ่มลอย
+function updateCustomerUI() {
+    const btn = document.getElementById('floatingCustomerBtn');
+    if (myActiveOrders.length > 0) {
+        btn.style.display = 'block';
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+// 3. แสดงรายการออเดอร์ใน Modal
+function openMyOrdersModal() {
+    const container = document.getElementById('myOrdersContainer');
+    if (!container) return; // กัน Error กรณีหาธาตุไม่เจอ
+
+    container.innerHTML = '';
+
+    // ใช้ .map() และ .join('') แทนการใช้ += ใน loop จะทำงานเร็วกว่าและอ่านง่ายกว่าครับ
+    const ordersHtml = myActiveOrders.map(order => {
+        // --- 1. เตรียมข้อมูลข้างนอกให้เสร็จก่อน ---
+        const isWaiting = order.status === 'waiting_merchant';
+        const statusText = isWaiting ? 'รอร้านค้าตอบรับ' : 'ร้านค้ารับออเดอร์แล้ว';
+        const statusClass = isWaiting ? 'status-waiting' : 'status-accepted';
+        const shortId = order.orderId.slice(-5);
+        const postIdValue = order.postId || 'null';
+
+        // --- 2. เตรียมปุ่มหรือไอคอนแยกไว้เป็นตัวแปรเดียว ---
+        let actionElement = '';
+        if (isWaiting) {
+            actionElement = `<button class="btn-cancel-order" onclick="cancelOrder(event, '${order.orderId}')">ยกเลิก</button>`;
+        } else {
+            actionElement = `<i class="fas fa-comments" style="color:#11998e; font-size:1.2rem;"></i>`;
+        }
+
+        // --- 3. คืนค่าเป็น HTML string ที่ไม่มี Logic ซับซ้อนข้างใน ---
+        return `
+            <div class="customer-order-item" onclick="handleOrderClick('${order.orderId}', '${order.status}', ${postIdValue})">
+                <div style="flex: 1;">
+                    <div style="font-weight:bold;">#${shortId}</div>
+                    <div style="font-size:0.85rem; color:#666;">${order.merchant}</div>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+                <div>
+                    ${actionElement}
+                </div>
+            </div>`;
+    }).join('');
+
+    container.innerHTML = ordersHtml;
+    
+    // แสดง Modal
+    const modal = document.getElementById('myOrdersModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+// 4. จัดการการคลิก (ถ้า Accept แล้วให้เปิดแชท)
+function handleOrderClick(orderId, status, postId) {
+    if (status === 'accepted' && postId) {
+        closeMyOrdersModal();
+        // เรียกฟังก์ชันเปิด Sidebar แชทที่มีอยู่แล้วในระบบ
+        if (typeof openRightSidebar === 'function') {
+            openRightSidebar(postId); 
+        }
+    } else {
+        Swal.fire({
+            icon: 'info',
+            text: 'กรุณารอร้านค้าตอบรับเพื่อเริ่มการแชท',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
+}
+
+// 5. ยกเลิกออเดอร์ (คืนเงิน)
+async function cancelOrder(event, orderId) {
+    event.stopPropagation(); // ไม่ให้ไปโดน click ของ item
+    
+    const { isConfirmed } = await Swal.fire({
+        title: 'ยกเลิกออเดอร์?',
+        text: 'คุณต้องการยกเลิกออเดอร์และรับเงินคืน (หักค่าธรรมเนียม) ใช่หรือไม่?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ใช่, ยกเลิกเลย',
+        cancelButtonText: 'กลับ'
+    });
+
+    if (isConfirmed) {
+        try {
+            const res = await fetch('/api/order/customer-cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId, username: localStorage.getItem('myUsername') })
+            });
+            const result = await res.json();
+            if (result.success) {
+                Swal.fire('สำเร็จ', 'ยกเลิกออเดอร์และคืนเงินแล้ว', 'success');
+                loadMyOrders(); // โหลดใหม่
+            }
+        } catch (e) { Swal.fire('Error', 'ไม่สามารถยกเลิกได้', 'error'); }
+    }
+}
+
+function closeMyOrdersModal() {
+    document.getElementById('myOrdersModal').classList.add('hidden');
+}
+
+// ฝั่งลูกค้า (index.html หรือหน้าสั่งซื้อ)
+socket.on('order_accepted_update', (data) => {
+    console.log("ออเดอร์ถูกรับแล้ว!", data);
+    if (typeof loadMyOrders === 'function') {
+        loadMyOrders(); 
+    }
+    Swal.fire({
+        icon: 'success',
+        title: 'ร้านค้าได้รับออเดอร์แล้ว!',
+        text: 'กำลังเตรียมอาหารและหาไรเดอร์ให้คุณ',
+        timer: 3000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false
+    });
+});
 
 </script>
 
@@ -932,6 +1126,25 @@ function closeShopMenuModal() {
         </div>
     </div>
 </div>
+
+
+
+<div id="floatingCustomerBtn" class="floating-customer-btn" onclick="openMyOrdersModal()">
+    <i class="fas fa-receipt"></i>
+    <span style="margin-left: 8px; font-weight: bold;" data-i18n-key="my_orders_btn">ออเดอร์ของฉัน</span>
+</div>
+
+<div id="myOrdersModal" class="product-modal-overlay hidden">
+    <div class="product-modal-card">
+        <div class="product-modal-header" style="background: #11998e;">
+            <h3 data-i18n-key="my_orders_title" style="color:white; margin:0;">ติดตามออเดอร์</h3>
+            <button class="btn-close-modal" onclick="closeMyOrdersModal()">&times;</button>
+        </div>
+        <div class="product-modal-body" id="myOrdersContainer" style="padding: 0;">
+            </div>
+    </div>
+</div>
+
 
 
 
