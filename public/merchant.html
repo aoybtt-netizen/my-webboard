@@ -658,14 +658,48 @@ input:checked + .slider:before { transform: translateX(20px); }
     border-top: 2px solid #f1f1f1;
 }
 
+/* กล่องหุ้มรายการอาหาร */
+.order-items-box-wrapper {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #eee;
+    margin-bottom: 10px;
+}
+
+.items-list {
+    font-size: 0.9rem;
+    color: #34495e;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+/* แถวราคาอาหารท้ายรายการ */
+.food-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed #ccc;
+    padding-top: 8px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+/* แถวค่าไรเดอร์ */
+.rider-wage-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 5px;
+    margin-bottom: 15px;
+}
+
 /* แถบสีราคาอาหาร (ฟ้า-น้ำเงิน) */
 .badge-price-food {
     background: #e3f2fd;
     color: #1976d2;
     padding: 2px 8px;
     border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 700;
     border: 1px solid #bbdefb;
 }
 
@@ -673,10 +707,8 @@ input:checked + .slider:before { transform: translateX(20px); }
 .badge-price-rider {
     background: #f3e5f5;
     color: #7b1fa2;
-    padding: 2px 10px;
+    padding: 2px 8px;
     border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 700;
     border: 1px solid #e1bee7;
 }
 
@@ -1254,6 +1286,11 @@ const translations = {
         'error_connection': 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
         'error_generic': 'เกิดข้อผิดพลาด',
 		'customer_phone': 'เบอร์ติดต่อลูกค้า:',
+		'food_total': 'ยอดรวมอาหาร:',
+        'net_total': 'ยอดรวมงานนี้:',
+        'rider_wage': 'ค่าจ้างไรเดอร์:',
+        'order_id': 'เลขที่ออเดอร์:',
+        'customer_name': 'ลูกค้า:',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1475,6 +1512,11 @@ const translations = {
         'error_connection': 'Connection Error',
         'error_generic': 'An error occurred',
 		'customer_phone': 'Customer Phone:',
+		'food_total': 'Food Total:',
+        'net_total': 'Net Total:',
+        'rider_wage': 'Rider Wage:',
+        'order_id': 'Order ID:',
+        'customer_name': 'Customer:',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1696,6 +1738,11 @@ const translations = {
         'error_connection': 'Erro de Conexão',
         'error_generic': 'Ocorreu um erro',
 		'customer_phone': 'Telefone do Cliente:',
+		'food_total': 'Total da Comida:',
+        'net_total': 'Total desta Tarefa:',
+        'rider_wage': 'Taxa do Entregador:',
+        'order_id': 'ID do Pedido:',
+        'customer_name': 'Cliente:',
     }
 };
 
@@ -3988,8 +4035,9 @@ function viewOrderDetail(index) {
         `${order.riderWage.toLocaleString()} ${order.currency}`;
 
     // ยอดรวมสุทธิ
+    const netTotal = order.foodPrice + order.riderWage;
     document.getElementById('alertOrderPrice').innerText = 
-        `${order.totalPrice.toLocaleString()} ${order.currency}`;
+        `${netTotal.toLocaleString()} ${order.currency}`;
 
     // 🚩 2. นิยามฟังก์ชัน updateTimer ไว้ข้างในเพื่อให้เรียกใช้ได้
     const updateTimer = () => {
@@ -4476,34 +4524,35 @@ window.onbeforeunload = function() {
             <div class="order-info-container">
                 <div class="order-info-group">
                     <span class="info-label" data-i18n-key="order_id">เลขที่ออเดอร์:</span>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span id="alertOrderId" class="info-value">#ORD12345</span>
-                        <span id="alertFoodPrice" class="badge-price-food">0.00</span>
-                    </div>
+                    <span id="alertOrderId" class="info-value">#ORD12345</span>
                 </div>
-                
                 <div class="order-info-group">
                     <span class="info-label" data-i18n-key="customer_name">ลูกค้า:</span>
                     <span id="alertCustomerName" class="info-value">-</span>
                 </div>
-                
                 <div class="order-info-group">
                     <span class="info-label" data-i18n-key="customer_phone">เบอร์ติดต่อ:</span>
                     <span id="alertCustomerPhone" class="info-value highlight-green">-</span>
                 </div>
+            </div>
 
-                <div class="order-info-group" style="margin-top: 4px;">
-                    <span class="info-label" data-i18n-key="rider_wage">ค่าจ้างไรเดอร์:</span>
-                    <span id="alertRiderWage" class="badge-price-rider">0.00</span>
+            <div id="orderMiniMap" style="width: 100%; height: 130px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #eee; background: #f0f0f0; z-index: 1;"></div>
+
+            <div class="order-items-box-wrapper">
+                <div id="alertOrderItems" class="items-list"></div>
+                <div class="food-price-row">
+                    <span data-i18n-key="food_total">รวมราคาอาหาร:</span>
+                    <span id="alertFoodPrice" class="badge-price-food">0.00</span>
                 </div>
             </div>
 
-            <div id="orderMiniMap" style="width: 100%; height: 140px; border-radius: 12px; margin: 12px 0; border: 1px solid #eee; background: #f0f0f0; z-index: 1;"></div>
-
-            <div class="order-items-box" id="alertOrderItems"></div>
+            <div class="rider-wage-row">
+                <span class="info-label" data-i18n-key="rider_wage">ค่าจ้างไรเดอร์:</span>
+                <span id="alertRiderWage" class="badge-price-rider">0.00</span>
+            </div>
 
             <div class="order-price-summary">
-                <span data-i18n-key="total_amount" style="font-weight: bold;">ยอดรวมสุทธิ:</span>
+                <span data-i18n-key="net_total" style="font-weight: bold;">ยอดรวมงานนี้:</span>
                 <span id="alertOrderPrice" class="price-value">0.00 USD</span>
             </div>
         </div>
