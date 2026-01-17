@@ -658,10 +658,33 @@ input:checked + .slider:before { transform: translateX(20px); }
     border-top: 2px solid #f1f1f1;
 }
 
+/* แถบสีราคาอาหาร (ฟ้า-น้ำเงิน) */
+.badge-price-food {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid #bbdefb;
+}
+
+/* แถบสีค่าจ้างไรเดอร์ (ม่วง) */
+.badge-price-rider {
+    background: #f3e5f5;
+    color: #7b1fa2;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid #e1bee7;
+}
+
 .price-value {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: 800;
-    color: #e67e22;
+    color: #2c3e50; /* ใช้สีเข้มเพื่อให้ดูขรึมและแพง */
+    text-shadow: 0px 1px 1px rgba(0,0,0,0.05);
 }
 
 .order-price-box {
@@ -3956,7 +3979,17 @@ function viewOrderDetail(index) {
     document.getElementById('alertCustomerName').innerText = order.customer;
     document.getElementById('alertCustomerPhone').innerText = order.customerPhone || '-';
     document.getElementById('alertOrderItems').innerText = order.items;
-    document.getElementById('alertOrderPrice').innerText = `${order.totalPrice.toLocaleString()} ${order.currency}`;
+    // 🚩 ราคาอาหาร (ดึงจาก foodPrice ที่เราคำนวณไว้)
+    document.getElementById('alertFoodPrice').innerText = 
+        `${order.foodPrice.toLocaleString()} ${order.currency}`;
+    
+    // 🚩 ค่าจ้างไรเดอร์ (ดึงจาก riderWage)
+    document.getElementById('alertRiderWage').innerText = 
+        `${order.riderWage.toLocaleString()} ${order.currency}`;
+
+    // ยอดรวมสุทธิ
+    document.getElementById('alertOrderPrice').innerText = 
+        `${order.totalPrice.toLocaleString()} ${order.currency}`;
 
     // 🚩 2. นิยามฟังก์ชัน updateTimer ไว้ข้างในเพื่อให้เรียกใช้ได้
     const updateTimer = () => {
@@ -4443,15 +4476,25 @@ window.onbeforeunload = function() {
             <div class="order-info-container">
                 <div class="order-info-group">
                     <span class="info-label" data-i18n-key="order_id">เลขที่ออเดอร์:</span>
-                    <span id="alertOrderId" class="info-value">#ORD12345</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span id="alertOrderId" class="info-value">#ORD12345</span>
+                        <span id="alertFoodPrice" class="badge-price-food">0.00</span>
+                    </div>
                 </div>
+                
                 <div class="order-info-group">
                     <span class="info-label" data-i18n-key="customer_name">ลูกค้า:</span>
                     <span id="alertCustomerName" class="info-value">-</span>
                 </div>
+                
                 <div class="order-info-group">
                     <span class="info-label" data-i18n-key="customer_phone">เบอร์ติดต่อ:</span>
                     <span id="alertCustomerPhone" class="info-value highlight-green">-</span>
+                </div>
+
+                <div class="order-info-group" style="margin-top: 4px;">
+                    <span class="info-label" data-i18n-key="rider_wage">ค่าจ้างไรเดอร์:</span>
+                    <span id="alertRiderWage" class="badge-price-rider">0.00</span>
                 </div>
             </div>
 
@@ -4460,7 +4503,7 @@ window.onbeforeunload = function() {
             <div class="order-items-box" id="alertOrderItems"></div>
 
             <div class="order-price-summary">
-                <span data-i18n-key="total_amount">ยอดรวมสุทธิ:</span>
+                <span data-i18n-key="total_amount" style="font-weight: bold;">ยอดรวมสุทธิ:</span>
                 <span id="alertOrderPrice" class="price-value">0.00 USD</span>
             </div>
         </div>
