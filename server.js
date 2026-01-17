@@ -4795,10 +4795,16 @@ app.post('/api/order/process-payment', async (req, res) => {
 app.get('/api/my-active-orders', async (req, res) => {
     const { username } = req.query;
     try {
-        // หาใน pending_orders (ที่ยังไม่ได้รับ)
-        const pending = await db.collection('pending_orders').find({ customer: username }).toArray();
-        // หาใน orders (ที่รับแล้วแต่ยังไม่จบงาน)
-        const accepted = await db.collection('orders').find({ customer: username, status: 'accepted' }).toArray();
+        // 🚩 ดึงเฉพาะออเดอร์ที่สถานะไม่ใช่ cancelled และไม่ใช่ finished
+        const pending = await db.collection('pending_orders').find({ 
+            customer: username, 
+            status: { $ne: 'cancelled' } 
+        }).toArray();
+
+        const accepted = await db.collection('orders').find({ 
+            customer: username, 
+            status: 'accepted' // หรือ status: { $nin: ['cancelled', 'finished'] }
+        }).toArray();
         
         const all = [...pending, ...accepted];
         res.json({ success: true, orders: all });
