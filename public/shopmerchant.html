@@ -217,6 +217,10 @@ header {
     display: none !important;
 }
 
+.swal2-container {
+        z-index: 20000 !important;
+    }
+
 
     </style>
 </head>
@@ -304,6 +308,8 @@ const translations = {
 		'order_success_text': 'หักเงินจากระบบเรียบร้อยแล้ว',
 		'payment_failed': 'การชำระเงินล้มเหลว',
 		'connection_error': 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
+		'total_label': 'ยอดรวม:',
+		'contact_phone_label': 'เบอร์ติดต่อ:',
 		
     },
     'en': {
@@ -340,6 +346,8 @@ const translations = {
 		'order_success_text': 'Payment has been processed',
 		'payment_failed': 'Payment Failed',
 		'connection_error': 'Connection Error',
+		'total_label': 'Total:',
+		'contact_phone_label': 'Contact Phone:',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -375,6 +383,8 @@ const translations = {
 		'order_success_text': 'O pagamento foi processado',
 		'payment_failed': 'Falha no Pagamento',
 		'connection_error': 'Erro de Conexão',
+		'total_label': 'Total:',
+		'contact_phone_label': 'Telefone de contato:',
     }
 };
 
@@ -749,16 +759,16 @@ async function confirmFinalOrder() {
     const shop = allShops.find(s => s.username === currentMerchantId);
     if (!shop) return;
 
-    const lang = translations[currentLang];
+    const lang = translations[currentLang]; // ดึงภาษาปัจจุบัน
     const phone = document.getElementById('customer-phone-input').value.trim();
     const riderWage = parseFloat(document.getElementById('rider-wage-input').value) || 0;
     
-    // 🚩 ตรวจสอบความครบถ้วน
+    // ตรวจสอบความครบถ้วน
     if (!phone) {
-        return Swal.fire({ icon: 'warning', text: 'กรุณากรอกเบอร์โทรศัพท์สำหรับติดต่อ' });
+        return Swal.fire({ icon: 'warning', text: translations[currentLang].err_no_phone || 'กรุณากรอกเบอร์โทรศัพท์' });
     }
     if (riderWage <= 0) {
-        return Swal.fire({ icon: 'warning', text: 'กรุณาระบุค่าจ้างไรเดอร์' });
+        return Swal.fire({ icon: 'warning', text: translations[currentLang].err_no_wage || 'กรุณาระบุค่าจ้างไรเดอร์' });
     }
 
     let subtotal = 0;
@@ -775,21 +785,27 @@ async function confirmFinalOrder() {
     const totalAmount = subtotal + riderWage;
     const currency = shop.zoneCurrency || 'USD';
 
-    // ถามยืนยัน
+    // 🚩 หน้าต่างถามยืนยัน (แก้ไขส่วนคำแปลและ HTML)
     const { isConfirmed } = await Swal.fire({
         title: lang.confirm_payment_title,
-        html: `<div style="text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+        html: `
+            <div style="text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px; font-size: 0.9rem;">
                 ${itemsText}
                 <hr>
-                <b>ยอดรวม: ${totalAmount.toLocaleString()} ${currency}</b><br>
-                <small>เบอร์ติดต่อ: ${phone}</small>
-               </div>`,
+                <b>${lang.total_label} ${totalAmount.toLocaleString()} ${currency}</b><br>
+                <small>${lang.contact_phone_label} ${phone}</small>
+            </div>
+        `,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: lang.confirm_btn
+        confirmButtonColor: '#11998e',
+        cancelButtonColor: '#d33',
+        confirmButtonText: lang.confirm_btn,
+        cancelButtonText: lang.cancel_btn
     });
 
     if (isConfirmed) {
+        // ... (ส่วนการส่ง API fetch เหมือนเดิมที่พี่มีอยู่) ...
         try {
             const response = await fetch('/api/order/process-payment', {
                 method: 'POST',
@@ -800,10 +816,9 @@ async function confirmFinalOrder() {
                     amount: totalAmount,
                     currency: currency,
                     items: itemsText.replace(/<br>/g, "\n"),
-                    // 🚩 ส่งข้อมูลเพิ่ม
                     phone: phone,
                     riderWage: riderWage,
-                    userLocation: userCoords // พิกัดละติจูด/ลองจิจูดของลูกค้า
+                    userLocation: userCoords
                 })
             });
 
