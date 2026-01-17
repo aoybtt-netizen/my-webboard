@@ -365,6 +365,8 @@ const translations = {
 		'connection_error': 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
 		'total_label': 'ยอดรวม:',
 		'contact_phone_label': 'เบอร์ติดต่อ:',
+		'my_orders_btn': 'ออเดอร์ของฉัน',
+		'my_orders_title': 'ติดตามออเดอร์',
 		
     },
     'en': {
@@ -403,6 +405,8 @@ const translations = {
 		'connection_error': 'Connection Error',
 		'total_label': 'Total:',
 		'contact_phone_label': 'Contact Phone:',
+		'my_orders_btn': 'My Orders',
+		'my_orders_title': 'Order Tracking',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -440,6 +444,8 @@ const translations = {
 		'connection_error': 'Erro de Conexão',
 		'total_label': 'Total:',
 		'contact_phone_label': 'Telefone de contato:',
+		'my_orders_btn': 'Meus Pedidos',
+		'my_orders_title': 'Acompanhar Pedidos',
     }
 };
 
@@ -473,6 +479,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 1. เริ่มต้น: ขอพิกัดผู้ใช้และโหลดร้านค้า
     window.onload = async () => {
+	loadMyOrders();
         // ขอพิกัดปัจจุบันของผู้ใช้
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -890,6 +897,7 @@ async function confirmFinalOrder() {
                 cart = {};
                 document.getElementById('customer-phone-input').value = '';
                 document.getElementById('rider-wage-input').value = '';
+				loadMyOrders();
                 closeCheckoutModal();
                 closeShopMenuModal();
                 if (typeof updateTopBalance === 'function') updateTopBalance(userCoords.lat, userCoords.lng);
