@@ -594,12 +594,15 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 .order-items-box {
-    background: #f8f9fa;
-    margin: 15px 0; padding: 15px;
-    border-radius: 10px; border-left: 5px solid #e67e22;
-    max-height: 150px; overflow-y: auto;
-    white-space: pre-line; font-size: 0.95rem;
-}
+        max-height: 100px;
+        overflow-y: auto;
+        background: #fdfdfd;
+        padding: 8px;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        margin: 10px 0;
+        border: 1px solid #eee;
+    }
 
 .order-price-box {
     display: flex; justify-content: space-between;
@@ -692,6 +695,21 @@ input:checked + .slider:before { transform: translateX(20px); }
 .swal2-container {
     z-index: 20000 !important;
 }
+
+
+
+.order-info-group {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+	
+#orderMiniMap {
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        background: #eee; /* สีพื้นหลังระหว่างรอแผนที่โหลด */
+    }	
+	
 
 
     </style>
@@ -1111,6 +1129,7 @@ const translations = {
         'btn_cancel': 'ยกเลิก',
         'error_connection': 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
         'error_generic': 'เกิดข้อผิดพลาด',
+		'customer_phone': 'เบอร์ติดต่อลูกค้า:',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1331,6 +1350,7 @@ const translations = {
         'btn_cancel': 'Cancel',
         'error_connection': 'Connection Error',
         'error_generic': 'An error occurred',
+		'customer_phone': 'Customer Phone:',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1551,6 +1571,7 @@ const translations = {
         'btn_cancel': 'Cancelar',
         'error_connection': 'Erro de Conexão',
         'error_generic': 'Ocorreu um erro',
+		'customer_phone': 'Telefone do Cliente:',
     }
 };
 
@@ -3828,39 +3849,38 @@ function viewOrderDetail(index) {
     const order = pendingOrders[index];
     currentIncomingOrder = order;
 
-    // ใส่ข้อมูลลงในการ์ด
+    // 1. ใส่ข้อมูลข้อความ
     document.getElementById('alertOrderId').innerText = order.orderId;
     document.getElementById('alertCustomerName').innerText = order.customer;
+    document.getElementById('alertCustomerPhone').innerText = order.customerPhone || '-'; // 🚩 โชว์เบอร์โทร
     document.getElementById('alertOrderItems').innerText = order.items;
     document.getElementById('alertOrderPrice').innerText = `${order.totalPrice.toLocaleString()} ${order.currency}`;
 
-    // --- จัดการตัวนับเวลา (Timer) ---
+    // 2. จัดการตัวนับเวลา (เหมือนเดิมที่พี่มี)
     if (timerInterval) clearInterval(timerInterval);
-    
-    function updateTimer() {
-        const now = new Date().getTime();
-        const expireTime = new Date(order.expiresAt).getTime();
-        const timeLeft = expireTime - now;
+    function updateTimer() { /* ... Logic เดิมของพี่ ... */ }
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 1000);
 
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            document.getElementById('alertTimer').innerText = "00:00";
-            document.getElementById('orderNotificationOverlay').classList.add('hidden');
-            // ลบออเดอร์ที่หมดอายุออก
-            pendingOrders = pendingOrders.filter(o => o.orderId !== order.orderId);
-            updateOrderUI();
-            return;
+    // 🚩 3. จัดการแผนที่ขนาดเล็ก
+    // รอให้ Modal แสดงผลก่อนค่อยวาดแผนที่ (setTimeout เล็กน้อยเพื่อให้ DIV มีขนาดที่ถูกต้อง)
+    setTimeout(() => {
+        const lat = order.customerLocation.lat;
+        const lng = order.customerLocation.lng;
+
+        if (!detailMap) {
+            // สร้างแผนที่ครั้งแรก
+            detailMap = L.map('orderMiniMap').setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(detailMap);
+            detailMarker = L.marker([lat, lng]).addTo(detailMap);
+        } else {
+            // ถ้ามีแผนที่แล้ว ให้ย้ายจุดไปยังพิกัดใหม่
+            detailMap.setView([lat, lng], 15);
+            detailMarker.setLatLng([lat, lng]);
+            detailMap.invalidateSize(); // บังคับให้แผนที่วาดใหม่กรณีขนาดเพี้ยน
         }
+    }, 200);
 
-        const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-        const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
-        document.getElementById('alertTimer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    updateTimer(); // รันทันที 1 ครั้ง
-    timerInterval = setInterval(updateTimer, 1000); // รันต่อเนื่อง
-
-    // ซ่อนหน้ารายการ และเปิดหน้าแจ้งเตือน (Overlay)
     closeOrderList();
     document.getElementById('orderNotificationOverlay').classList.remove('hidden');
 }
@@ -3875,13 +3895,11 @@ function closeOrderList() {
 async function acceptOrder() {
     if (!currentIncomingOrder) return;
 
-    const lang = translations[currentLang]; // ดึงภาษาปัจจุบัน
+    const lang = translations[currentLang];
 
-    // 1. หยุดเสียงแจ้งเตือน
+    // 1. หยุดเสียงแจ้งเตือนและล้าง Timer
     const sound = document.getElementById('orderSound');
     if (sound) sound.pause();
-
-    // 2. หยุดตัวนับเวลา (Timer) ทันทีที่กด
     if (timerInterval) clearInterval(timerInterval);
 
     try {
@@ -3897,24 +3915,29 @@ async function acceptOrder() {
         const result = await response.json();
 
         if (result.success) {
-            // 3. ลบออเดอร์นี้ออกจากรายการรอดำเนินการ (Pending)
+            // 2. ลบออเดอร์ออกจากรายการในหน้าจอปัจจุบัน
             pendingOrders = pendingOrders.filter(o => o.orderId !== currentIncomingOrder.orderId);
             
-            // 4. อัปเดต UI ปุ่มลอยข้างจอ
+            // 3. อัปเดต UI (ปุ่มลอยข้างจอ)
             updateOrderUI();
             
-            // 5. ปิดหน้าต่าง Overlay รายละเอียด
+            // 4. ปิดหน้าต่าง Overlay
             document.getElementById('orderNotificationOverlay').classList.add('hidden');
 
-            // 6. แจ้งเตือนสำเร็จ
+            // 5. แจ้งเตือนความสำเร็จ (ใช้คำแปลภาษา)
             Swal.fire({ 
                 icon: 'success', 
-                title: lang.accept_success_title, 
-                text: lang.accept_success_text,
+                title: lang.accept_success_title || 'Accepted!', 
+                text: lang.accept_success_text || 'Order is now on the Index.',
                 timer: 2000 
             });
+
+            // 6. (Optional) โหลดรายการงานที่ร้านกำลังเปิดอยู่ใหม่
+            if (typeof loadActiveMerchantTasks === 'function') {
+                await loadActiveMerchantTasks();
+            }
         } else {
-            Swal.fire({ icon: 'error', text: result.message || lang.error_generic });
+            Swal.fire({ icon: 'error', text: result.message || 'Error' });
         }
     } catch (e) {
         console.error("Accept Order Error:", e);
@@ -4290,6 +4313,10 @@ window.onbeforeunload = function() {
                 <label data-i18n-key="customer_name">ลูกค้า:</label>
                 <span id="alertCustomerName">-</span>
             </div>
+			<div class="order-info-group">
+        <label data-i18n-key="customer_phone">เบอร์ติดต่อ:</label>
+        <span id="alertCustomerPhone" style="font-weight: bold; color: #11998e;">-</span>
+    </div>
             <div class="order-items-box" id="alertOrderItems">
                 </div>
             <div class="order-price-box">

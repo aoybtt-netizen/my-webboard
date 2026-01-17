@@ -4794,22 +4794,86 @@ app.post('/api/order/process-payment', async (req, res) => {
 
 // --- API ร้านค้ากดยอมรับ ---
 app.post('/api/merchant/accept-order', async (req, res) => {
-    const { orderId, merchantUser } = req.body;
-    
-    // ดึงข้อมูลจาก pending_orders
-    const pending = await db.collection('pending_orders').findOne({ orderId, merchant: merchantUser });
-    if (!pending) return res.status(400).json({ error: "Order not found or expired" });
+    try {
+        const { orderId, merchantUser } = req.body;
+        
+        // 1. ดึงข้อมูลออเดอร์ที่ค้างอยู่
+        const pending = await db.collection('pending_orders').findOne({ orderId, merchant: merchantUser });
+        if (!pending) return res.status(400).json({ error: "Order not found or expired" });
 
-    // 1. เปลี่ยนสถานะและบันทึกเป็นออเดอร์จริง
-    await db.collection('orders').insertOne({ ...pending, status: 'accepted', acceptedAt: new Date() });
-    
-    // 2. ลบออกจากคอลเลกชันชั่วคราว
-    await db.collection('pending_orders').deleteOne({ orderId });
+        // 2. ดึงข้อมูลร้านค้า (เพื่อเอาชื่อร้านและพิกัดที่แท้จริง)
+        const officialStore = await db.collection('merchant_locations').findOne({ 
+            owner: merchantUser, 
+            isStore: true 
+        });
+        if (!officialStore) return res.status(400).json({ error: "Merchant profile not found" });
 
-    // 3. สร้างโพสต์งานหน้า Index (ดึงข้อมูลจาก pending มาใช้)
-    // ... โค้ดสร้างโพสต์เหมือนที่ทำก่อนหน้า ...
+        // 🚩 3. เตรียม Stops (จุดรับ: ร้านค้า, จุดส่ง: ลูกค้า)
+        const stops = [
+            {
+                step: 1,
+                label: officialStore.label, // ชื่อร้านค้า
+                phone: officialStore.phone || '',
+                lat: parseFloat(officialStore.lat),
+                lng: parseFloat(officialStore.lng),
+                status: 'pending'
+            },
+            {
+                step: 2,
+                label: "Customer (Delivery)", // จุดส่งลูกค้า
+                phone: pending.customerPhone || '',
+                lat: parseFloat(pending.customerLocation.lat),
+                lng: parseFloat(pending.customerLocation.lng),
+                status: 'pending'
+            }
+        ];
 
-    res.json({ success: true });
+        // 🚩 4. สร้างข้อมูลโพสต์ (ใช้ Logic เดียวกับ /api/posts)
+        const newPost = {
+            id: Date.now(),
+            title: officialStore.label, // หัวข้อเป็นชื่อร้านตามที่พี่ต้องการ
+            topicId: 'delivery',
+            content: pending.items, // รายการอาหารที่สั่ง
+            author: merchantUser, 
+            location: { lat: officialStore.lat, lng: officialStore.lng },
+            imageUrl: null, 
+            comments: [],
+            isClosed: false,
+            isPinned: false,
+            isMerchantTask: true,
+            storeName: officialStore.label,
+            budget: pending.riderWage, // 🚩 ค่าส่งที่ลูกค้ากำหนดตอน Checkout
+            stops: stops,
+            orderId: pending.orderId,
+            createdAt: new Date()
+        };
+
+        // 5. บันทึกลงฐานข้อมูล (ย้ายจาก Pending ไปเป็น Order จริง และสร้าง Post)
+        await db.collection('posts').insertOne(newPost);
+        await db.collection('orders').insertOne({ 
+            ...pending, 
+            status: 'accepted', 
+            acceptedAt: new Date(), 
+            postId: newPost.id 
+        });
+        
+        // 6. อัปเดตสถิติร้านค้า
+        await db.collection('users').updateOne(
+            { username: merchantUser }, 
+            { $inc: { totalPosts: 1, mercNum: 1 } }
+        );
+
+        // 7. ลบข้อมูลออกจาก Pending
+        await db.collection('pending_orders').deleteOne({ orderId });
+
+        // 🚩 8. ส่ง Socket ให้ไรเดอร์ทุกคนเห็นงานใหม่ทันที
+        io.emit('new-post', newPost);
+
+        res.json({ success: true, message: "Order accepted and task posted!" });
+    } catch (e) {
+        console.error("Accept Order API Error:", e);
+        res.status(500).json({ error: "Server Error" });
+    }
 });
 
 // --- API สำหรับร้านค้ากดปฏิเสธ (Reject) ---
