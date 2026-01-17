@@ -627,6 +627,61 @@ input:checked + .slider:before { transform: translateX(20px); }
     100% { transform: scale(1); opacity: 1; }
 }
 
+
+
+.floating-order-btn {
+    position: fixed;
+    right: -10px; /* ให้ความรู้สึกเหมือนถูกดูดติดขอบ */
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    padding: 15px 20px 15px 25px;
+    border-radius: 30px 0 0 30px;
+    box-shadow: -2px 4px 10px rgba(0,0,0,0.2);
+    z-index: 999;
+    cursor: pointer;
+    display: none; /* ซ่อนไว้ก่อน จะโชว์เมื่อมีออเดอร์ */
+    transition: all 0.3s ease;
+}
+
+.floating-order-btn:hover {
+    right: 0;
+    padding-left: 30px;
+}
+
+.order-badge {
+    background: red;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 7px;
+    font-size: 0.8rem;
+    position: absolute;
+    top: -5px;
+    left: 10px;
+    border: 2px solid white;
+}
+
+/* รายการออเดอร์ (List Modal) */
+#orderListModal .product-modal-card {
+    max-width: 350px;
+}
+
+.order-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.order-list-item:hover {
+    background: #fdf2e9;
+}
+
+
     </style>
 </head>
 <body>
@@ -801,9 +856,10 @@ input:checked + .slider:before { transform: translateX(20px); }
 	let mapMode = 'book';
 	let currentZoneCurrency = 'USD';
 	let currentIncomingOrder = null;
-	
+	let pendingOrders = [];
 	let activeTaskInSidebar = null;
 	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
+	let timerInterval;
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 	
 
@@ -3681,28 +3737,96 @@ async function saveMerchantProducts() {
 
 
 socket.on('new_order_card', (order) => {
-    console.log("ได้รับออเดอร์ใหม่:", order);
     currentIncomingOrder = order;
+    
+    // แสดง UI แจ้งเตือน
+    document.getElementById('orderNotificationOverlay').classList.remove('hidden');
+    
+    // 🚩 เริ่มตัวนับเวลาถอยหลัง (10 นาที)
+    let timeLeft = 600; // 600 วินาที
+    const timerDisplay = document.getElementById('alertTimer'); // เพิ่ม element นี้ใน HTML
+    
+    if (timerInterval) clearInterval(timerInterval);
+    
+    timerInterval = setInterval(() => {
+        let mins = Math.floor(timeLeft / 60);
+        let secs = timeLeft % 60;
+        timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('orderNotificationOverlay').classList.add('hidden');
+            Swal.fire('Expired', 'ออเดอร์หมดเวลาการยอมรับแล้ว', 'info');
+        }
+        timeLeft--;
+    }, 1000);
+});
 
-    // 1. เล่นเสียงแจ้งเตือน
-    const sound = document.getElementById('orderSound');
-    if (sound) {
-        sound.play().catch(e => {
-            console.log("การเล่นเสียงถูกบล็อกโดยเบราว์เซอร์ ต้องมีการคลิกหน้าจอก่อน 1 ครั้ง");
-        });
+// 🚩 2. อัปเดตการแสดงผลปุ่มลอย
+function updateOrderUI() {
+    const btn = document.getElementById('floatingOrderBtn');
+    const badge = document.getElementById('orderCountBadge');
+    
+    if (pendingOrders.length > 0) {
+        btn.style.display = 'block';
+        badge.innerText = pendingOrders.length;
+    } else {
+        btn.style.display = 'none';
     }
+}
 
-    // 2. ใส่ข้อมูลลงในการ์ด
+// 🚩 3. เปิดดูรายการออเดอร์
+function openOrderList() {
+    const container = document.getElementById('orderListContainer');
+    container.innerHTML = '';
+
+    pendingOrders.forEach((order, index) => {
+        container.innerHTML += `
+            <div class="order-list-item" onclick="viewOrderDetail(${index})">
+                <div>
+                    <div style="font-weight: bold;">#${order.orderId.slice(-5)}</div>
+                    <small>${order.customer}</small>
+                </div>
+                <div style="color: #e67e22; font-weight: bold;">
+                    ${order.totalPrice.toLocaleString()} ${order.currency}
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ccc;"></i>
+            </div>
+        `;
+    });
+    document.getElementById('orderListModal').classList.remove('hidden');
+}
+
+// 🚩 4. ดูรายละเอียดออเดอร์ (ใช้หน้าต่างลอยเดิมที่พี่มี)
+function viewOrderDetail(index) {
+    const order = pendingOrders[index];
+    currentIncomingOrder = order; // ใช้ตัวแปรเดิมของพี่
+
+    // ใส่ข้อมูลลงในการ์ดแจ้งเตือน (ตัวเดิม)
     document.getElementById('alertOrderId').innerText = order.orderId;
     document.getElementById('alertCustomerName').innerText = order.customer;
     document.getElementById('alertOrderItems').innerText = order.items;
-    
-    // ตรวจสอบว่าใช้ totalPrice หรือ amount
-    const displayPrice = order.totalPrice || order.amount;
-    document.getElementById('alertOrderPrice').innerText = `${displayPrice.toLocaleString()} ${order.currency}`;
+    document.getElementById('alertOrderPrice').innerText = `${order.totalPrice.toLocaleString()} ${order.currency}`;
 
-    // 3. โชว์ Overlay
+    // ซ่อนหน้ารายการ และโชว์หน้ารายละเอียด
+    closeOrderList();
     document.getElementById('orderNotificationOverlay').classList.remove('hidden');
+}
+
+function closeOrderList() {
+    document.getElementById('orderListModal').classList.add('hidden');
+}
+
+
+
+
+socket.on('new_order_card', (order) => {
+    pendingOrders.push(order);
+    updateOrderUI();
+    const sound = document.getElementById('orderSound');
+    if(sound) sound.play().catch(e => console.log("Sound play blocked"));
+    
+    console.log("New order added to list");
 });
 
 // 🚩 ฟังก์ชันเมื่อร้านค้ากดรับออเดอร์
@@ -3724,19 +3848,64 @@ async function acceptOrder() {
 
         const result = await response.json();
         if (result.success) {
-            Swal.fire({ icon: 'success', text: 'รับออเดอร์สำเร็จ! งานถูกส่งไปยังหน้า Index แล้ว' });
-            document.getElementById('orderNotificationOverlay').classList.add('hidden');
+            pendingOrders = pendingOrders.filter(o => o.orderId !== currentIncomingOrder.orderId);
+			updateOrderUI();
+			document.getElementById('orderNotificationOverlay').classList.add('hidden');
+			Swal.fire({ icon: 'success', text: 'Accepted!' });
         }
     } catch (e) {
         Swal.fire({ icon: 'error', text: 'เกิดข้อผิดพลาด' });
     }
 }
 
-function declineOrder() {
-    document.getElementById('orderSound').pause();
-    // เพิ่ม Logic คืนเงินที่นี่...
-    document.getElementById('orderNotificationOverlay').classList.add('hidden');
+async function declineOrder() {
+    if (!currentIncomingOrder) return;
+
+    // ถามเพื่อความแน่ใจอีกครั้ง
+    const { isConfirmed } = await Swal.fire({
+        title: 'ยืนยันการปฏิเสธ?',
+        text: 'ระบบจะคืนเงินลูกค้า (หักค่าธรรมเนียม) ทันที',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'ยืนยันการปฏิเสธ',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (isConfirmed) {
+        try {
+            // หยุดเสียงเตือน
+            const sound = document.getElementById('orderSound');
+            if (sound) sound.pause();
+
+            const response = await fetch('/api/merchant/reject-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    orderId: currentIncomingOrder.orderId,
+                    merchantUser: localStorage.getItem('myUsername'),
+                    reason: "Merchant Declined" 
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                // ลบออเดอร์ออกจากรายการ Pending ในหน้าจอ
+                pendingOrders = pendingOrders.filter(o => o.orderId !== currentIncomingOrder.orderId);
+                updateOrderUI(); // อัปเดตปุ่มลอย
+                
+                // ปิด Modal ทั้งหมด
+                document.getElementById('orderNotificationOverlay').classList.add('hidden');
+                closeOrderList();
+                
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'คืนเงินลูกค้าเรียบร้อยแล้ว', timer: 2000 });
+            }
+        } catch (e) {
+            Swal.fire({ icon: 'error', text: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้' });
+        }
+    }
 }
+
 
 
 
@@ -4035,9 +4204,10 @@ window.onbeforeunload = function() {
 <div id="orderNotificationOverlay" class="order-alert-overlay hidden">
     <div class="order-alert-card">
         <div class="order-alert-header">
-            <div class="pulse-icon"><i class="fas fa-shopping-bag"></i></div>
-            <h2 data-i18n-key="new_order_title">มีออเดอร์ใหม่เข้า!</h2>
-        </div>
+    <div class="pulse-icon"><i class="fas fa-shopping-bag"></i></div>
+    <h2 data-i18n-key="new_order_title">มีออเดอร์ใหม่เข้า!</h2>
+    <div id="alertTimer" style="font-size: 1.5rem; font-weight: bold; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 5px; margin-top: 10px;">10:00</div>
+	</div>
         <div class="order-alert-body">
             <div class="order-info-group">
                 <label data-i18n-key="order_id">เลขที่ออเดอร์:</label>
@@ -4067,6 +4237,23 @@ window.onbeforeunload = function() {
 
 
 
+
+<div id="floatingOrderBtn" class="floating-order-btn" onclick="openOrderList()">
+    <span class="order-badge" id="orderCountBadge">0</span>
+    <i class="fas fa-shopping-cart"></i>
+    <span style="margin-left: 10px; font-weight: bold;" data-i18n-key="orders_tab">ออเดอร์</span>
+</div>
+
+<div id="orderListModal" class="product-modal-overlay hidden">
+    <div class="product-modal-card">
+        <div class="product-modal-header" style="background: #e67e22;">
+            <h3 data-i18n-key="pending_orders">ออเดอร์ที่รอการตอบรับ</h3>
+            <button class="btn-close-modal" onclick="closeOrderList()">&times;</button>
+        </div>
+        <div class="product-modal-body" id="orderListContainer" style="padding: 0;">
+            </div>
+    </div>
+</div>
 
 
 

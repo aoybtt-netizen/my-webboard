@@ -1149,6 +1149,20 @@ async function connectDB() {
     }
 }
 
+setInterval(async () => {
+    const now = new Date();
+    // หาออเดอร์ที่สถานะยังรออยู่ และเลยเวลา expiresAt มาแล้ว
+    const expiredOrders = await db.collection('pending_orders').find({
+        status: 'waiting_merchant',
+        expiresAt: { $lt: now }
+    }).toArray();
+
+    for (const order of expiredOrders) {
+        console.log(`⏳ Order ${order.orderId} expired. Processing refund...`);
+        await autoRefundOrder(order, "Expired (10 mins)");
+    }
+}, 60000);
+
 // เรียกใช้งานฟังก์ชันเชื่อมต่อ
 //connectDB();
 
@@ -1326,6 +1340,46 @@ async function getPostCostByLocation(location) {
         // ⭐ ส่งค่าสรุปไปให้หน้าบ้านด้วย
         isFree: isGlobalFree || isZoneFree 
     };
+}
+
+
+// --- ฟังก์ชันคืนเงิน (ใช้ทั้งตอน Reject และ Timeout) ---
+async function autoRefundOrder(order, reason) {
+    // 🚩 สูตร: ยอดคืน = ยอดรวม - (ค่าโซน + ค่าระบบ)
+    const refundAmount = order.totalPrice - (order.zoneFee + order.systemZone);
+
+    // 1. คืนเงินให้ลูกค้า
+    await db.collection('users').updateOne(
+        { username: order.customer },
+        { $inc: { [order.currency]: refundAmount } }
+    );
+
+    // 2. โอนค่าธรรมเนียมที่หักไว้ให้ Admin และ Zone Admin (เป็นค่าเสียเวลา)
+    if (order.systemZone > 0) {
+        await db.collection('users').updateOne({ username: 'Admin' }, { $inc: { [order.currency]: order.systemZone } });
+    }
+    // หาเจ้าของโซนเพื่อโอน zoneFee ให้
+    const responsibleData = await findResponsibleAdmin(order.customerLocation);
+    if (responsibleData && order.zoneFee > 0) {
+        await db.collection('users').updateOne({ username: responsibleData.username }, { $inc: { [order.currency]: order.zoneFee } });
+    }
+
+    // 3. บันทึกธุรกรรมการคืนเงิน
+    await db.collection('transactions').insertOne({
+        username: order.customer,
+        type: 'ORDER_REFUND',
+        amount: refundAmount,
+        currency: order.currency,
+        note: `Refund ${order.orderId}: ${reason}. Fees deducted.`,
+        timestamp: new Date()
+    });
+
+    // 4. ลบออกจาก pending_orders (หรือเปลี่ยนสถานะเป็น 'refunded' เพื่อเก็บประวัติ)
+    await db.collection('pending_orders').deleteOne({ orderId: order.orderId });
+
+    // 5. แจ้งเตือน Socket
+    io.to(order.customer).emit('order_refunded', { orderId: order.orderId, amount: refundAmount });
+    io.to(order.merchant).emit('order_cancelled', { orderId: order.orderId });
 }
 
 
@@ -4685,58 +4739,97 @@ app.get('/api/marketplace/all-merchants', async (req, res) => {
 
 app.post('/api/order/process-payment', async (req, res) => {
     try {
-        // 🚩 รับค่า phone, userLocation, riderWage เพิ่ม
-        const { username, amount, currency, merchant, items, phone, userLocation, riderWage } = req.body;
+        const { username, amount, currency, merchant, items, phone, userLocation, riderWage, zoneFee, systemZone } = req.body;
         
+        // 1. เช็คเงินและหักเงินลูกค้า (เหมือนเดิม)
         const user = await db.collection('users').findOne({ username: username });
-        if (!user) return res.status(404).json({ success: false, message: "ไม่พบผู้ใช้" });
-
         const currentBalance = user[currency] || 0;
-        if (currentBalance < amount) {
-            return res.status(400).json({ success: false, message: `ยอดเงิน ${currency} ไม่เพียงพอ` });
-        }
+        if (currentBalance < amount) return res.status(400).json({ success: false, message: "ยอดเงินไม่พอ" });
 
         const updateResult = await db.collection('users').updateOne(
             { username: username, [currency]: { $gte: amount } },
             { $inc: { [currency]: -amount } }
         );
 
-        if (updateResult.modifiedCount === 0) {
-            return res.status(400).json({ success: false, message: "หักเงินไม่สำเร็จ" });
-        }
+        if (updateResult.modifiedCount === 0) return res.status(400).json({ success: false, message: "หักเงินไม่สำเร็จ" });
 
-        // 🚩 บันทึกออเดอร์พร้อมข้อมูลติดต่อและพิกัด
-        const orderDoc = {
-            orderId: "ORD" + Date.now(),
+        // 🚩 2. บันทึกลง DB ทันที (ป้องกันข้อมูลหายตอนอัปเดตเซิร์ฟเวอร์)
+        const orderId = "ORD" + Date.now();
+        const pendingOrder = {
+            orderId,
             customer: username,
-            customerPhone: phone,      // เก็บเบอร์โทรลูกค้า
-            customerLocation: userLocation, // เก็บพิกัดส่งของ
+            customerPhone: phone,
+            customerLocation: userLocation,
             merchant: merchant,
-            items: items,
-            foodPrice: amount - riderWage, // แยกราคาอาหาร
-            riderWage: riderWage,          // แยกค่าจ้างไรเดอร์
+            items,
+            foodPrice: amount - riderWage - zoneFee - systemZone, // ราคาอาหารจริงๆ
+            riderWage,
+            zoneFee,      // ค่าธรรมเนียมโซน
+            systemZone,   // ค่าธรรมเนียมระบบ
             totalPrice: amount,
-            currency: currency,
-            status: 'waiting_merchant',    // รอร้านค้ากดรับตามที่วางแผนไว้
+            currency,
+            status: 'waiting_merchant',
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 🚩 อีก 10 นาทีข้างหน้า
             createdAt: new Date()
         };
 
-        await db.collection('orders').insertOne(orderDoc);
+        await db.collection('pending_orders').insertOne(pendingOrder);
 
-        // บันทึกธุรกรรม
-        await db.collection('transactions').insertOne({
-            username, type: 'order_payment', amount: -amount, currency,
-            merchant, details: items, timestamp: new Date()
+        // 3. แจ้งเตือนร้านค้า (Socket)
+        io.to(merchant).emit('new_order_card', pendingOrder);
+
+        res.json({ success: true, orderId });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false });
+    }
+});
+
+
+// --- API ร้านค้ากดยอมรับ ---
+app.post('/api/merchant/accept-order', async (req, res) => {
+    const { orderId, merchantUser } = req.body;
+    
+    // ดึงข้อมูลจาก pending_orders
+    const pending = await db.collection('pending_orders').findOne({ orderId, merchant: merchantUser });
+    if (!pending) return res.status(400).json({ error: "Order not found or expired" });
+
+    // 1. เปลี่ยนสถานะและบันทึกเป็นออเดอร์จริง
+    await db.collection('orders').insertOne({ ...pending, status: 'accepted', acceptedAt: new Date() });
+    
+    // 2. ลบออกจากคอลเลกชันชั่วคราว
+    await db.collection('pending_orders').deleteOne({ orderId });
+
+    // 3. สร้างโพสต์งานหน้า Index (ดึงข้อมูลจาก pending มาใช้)
+    // ... โค้ดสร้างโพสต์เหมือนที่ทำก่อนหน้า ...
+
+    res.json({ success: true });
+});
+
+// --- API สำหรับร้านค้ากดปฏิเสธ (Reject) ---
+app.post('/api/merchant/reject-order', async (req, res) => {
+    try {
+        const { orderId, merchantUser, reason } = req.body;
+
+        // 1. ค้นหาออเดอร์ใน pending_orders
+        const order = await db.collection('pending_orders').findOne({ 
+            orderId: orderId, 
+            merchant: merchantUser,
+            status: 'waiting_merchant' 
         });
 
-        // 🚩 แจ้งเตือนร้านค้า (ส่ง Order Card ไปให้ดู)
-        io.to(merchant).emit('new_order_card', orderDoc);
+        if (!order) {
+            return res.status(404).json({ success: false, message: "ไม่พบออเดอร์หรือหมดเวลาแล้ว" });
+        }
 
-        res.json({ success: true, message: "ชำระเงินสำเร็จ" });
+        // 2. เรียกใช้ฟังก์ชันคืนเงิน (ตัวเดียวกับที่ใช้ในระบบ Auto Refund)
+        // สูตร: คืนเงินลูกค้า = ยอดรวม - (zoneFee + systemZone)
+        await autoRefundOrder(order, reason || "ร้านค้าปฏิเสธออเดอร์");
 
+        res.json({ success: true, message: "ปฏิเสธออเดอร์และคืนเงินลูกค้าแล้ว" });
     } catch (e) {
-        console.error("🚨 Payment API Error:", e);
-        res.status(500).json({ success: false, message: "Server Error" });
+        console.error("🚨 Reject API Error:", e);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดหลังบ้าน" });
     }
 });
 
