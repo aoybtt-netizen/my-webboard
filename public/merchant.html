@@ -608,7 +608,11 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 .order-alert-footer {
-    display: flex; gap: 10px; padding: 20px;
+    position: relative;
+    z-index: 10001;
+    display: flex;
+    gap: 10px;
+    padding: 20px;
 }
 
 .btn-accept {
@@ -639,7 +643,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     padding: 15px 20px 15px 25px;
     border-radius: 30px 0 0 30px;
     box-shadow: -2px 4px 10px rgba(0,0,0,0.2);
-    z-index: 999;
+    z-index: 9980;
     cursor: pointer;
     display: none; /* ซ่อนไว้ก่อน จะโชว์เมื่อมีออเดอร์ */
     transition: all 0.3s ease;
@@ -663,6 +667,10 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 /* รายการออเดอร์ (List Modal) */
+#orderListModal {
+    z-index: 9990 !important;
+}
+
 #orderListModal .product-modal-card {
     max-width: 350px;
 }
@@ -1090,6 +1098,15 @@ const translations = {
 		'btn_accept_order': 'รับออเดอร์ & เรียกไรเดอร์',
 		'btn_decline': 'ปฏิเสธ',
 		'customer_name': 'ลูกค้า:',
+		'accept_success_title': 'รับออเดอร์สำเร็จ!',
+        'accept_success_text': 'งานถูกส่งไปยังหน้า Index แล้ว',
+        'confirm_reject_title': 'ยืนยันการปฏิเสธ?',
+        'confirm_reject_text': 'ระบบจะคืนเงินลูกค้า (หักค่าธรรมเนียม) ทันที',
+        'reject_success_text': 'คืนเงินลูกค้าเรียบร้อยแล้ว',
+        'btn_confirm_reject': 'ยืนยันการปฏิเสธ',
+        'btn_cancel': 'ยกเลิก',
+        'error_connection': 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
+        'error_generic': 'เกิดข้อผิดพลาด',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1300,7 +1317,16 @@ const translations = {
 		'new_order_title': 'New Order Received!',
 		'btn_accept_order': 'Accept & Call Rider',
 		'btn_decline': 'Decline',
-		'customer_name': 'Customer:'
+		'customer_name': 'Customer:',
+		'accept_success_title': 'Order Accepted!',
+        'accept_success_text': 'Task has been posted to the Index',
+        'confirm_reject_title': 'Confirm Rejection?',
+        'confirm_reject_text': 'System will refund customer (fees deducted) immediately',
+        'reject_success_text': 'Customer refunded successfully',
+        'btn_confirm_reject': 'Confirm Reject',
+        'btn_cancel': 'Cancel',
+        'error_connection': 'Connection Error',
+        'error_generic': 'An error occurred',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1512,6 +1538,15 @@ const translations = {
 		'btn_accept_order': 'Aceitar e Chamar Entregador',
 		'btn_decline': 'Recusar',
 		'customer_name': 'Cliente:',
+		'accept_success_title': 'Pedido Aceito!',
+        'accept_success_text': 'A tarefa foi postada no Index',
+        'confirm_reject_title': 'Confirmar Rejeição?',
+        'confirm_reject_text': 'O sistema reembolsará o cliente (taxas deduzidas) imediatamente',
+        'reject_success_text': 'Cliente reembolsado com sucesso',
+        'btn_confirm_reject': 'Confirmar Rejeição',
+        'btn_cancel': 'Cancelar',
+        'error_connection': 'Erro de Conexão',
+        'error_generic': 'Ocorreu um erro',
     }
 };
 
@@ -3737,29 +3772,16 @@ async function saveMerchantProducts() {
 
 
 socket.on('new_order_card', (order) => {
-    currentIncomingOrder = order;
+    // เช็คว่ามีออเดอร์นี้ในรายการหรือยัง (ป้องกันซ้ำ)
+    if (!pendingOrders.find(o => o.orderId === order.orderId)) {
+        pendingOrders.push(order);
+    }
     
-    // แสดง UI แจ้งเตือน
-    document.getElementById('orderNotificationOverlay').classList.remove('hidden');
+    updateOrderUI(); // อัปเดตตัวเลขที่ปุ่มข้างจอ
     
-    // 🚩 เริ่มตัวนับเวลาถอยหลัง (10 นาที)
-    let timeLeft = 600; // 600 วินาที
-    const timerDisplay = document.getElementById('alertTimer'); // เพิ่ม element นี้ใน HTML
-    
-    if (timerInterval) clearInterval(timerInterval);
-    
-    timerInterval = setInterval(() => {
-        let mins = Math.floor(timeLeft / 60);
-        let secs = timeLeft % 60;
-        timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-        
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            document.getElementById('orderNotificationOverlay').classList.add('hidden');
-            Swal.fire('Expired', 'ออเดอร์หมดเวลาการยอมรับแล้ว', 'info');
-        }
-        timeLeft--;
-    }, 1000);
+    // เล่นเสียงเตือน
+    const sound = document.getElementById('orderSound');
+    if(sound) sound.play().catch(e => console.log("Sound play blocked"));
 });
 
 // 🚩 2. อัปเดตการแสดงผลปุ่มลอย
@@ -3800,15 +3822,41 @@ function openOrderList() {
 // 🚩 4. ดูรายละเอียดออเดอร์ (ใช้หน้าต่างลอยเดิมที่พี่มี)
 function viewOrderDetail(index) {
     const order = pendingOrders[index];
-    currentIncomingOrder = order; // ใช้ตัวแปรเดิมของพี่
+    currentIncomingOrder = order;
 
-    // ใส่ข้อมูลลงในการ์ดแจ้งเตือน (ตัวเดิม)
+    // ใส่ข้อมูลลงในการ์ด
     document.getElementById('alertOrderId').innerText = order.orderId;
     document.getElementById('alertCustomerName').innerText = order.customer;
     document.getElementById('alertOrderItems').innerText = order.items;
     document.getElementById('alertOrderPrice').innerText = `${order.totalPrice.toLocaleString()} ${order.currency}`;
 
-    // ซ่อนหน้ารายการ และโชว์หน้ารายละเอียด
+    // --- จัดการตัวนับเวลา (Timer) ---
+    if (timerInterval) clearInterval(timerInterval);
+    
+    function updateTimer() {
+        const now = new Date().getTime();
+        const expireTime = new Date(order.expiresAt).getTime();
+        const timeLeft = expireTime - now;
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('alertTimer').innerText = "00:00";
+            document.getElementById('orderNotificationOverlay').classList.add('hidden');
+            // ลบออเดอร์ที่หมดอายุออก
+            pendingOrders = pendingOrders.filter(o => o.orderId !== order.orderId);
+            updateOrderUI();
+            return;
+        }
+
+        const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
+        document.getElementById('alertTimer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    updateTimer(); // รันทันที 1 ครั้ง
+    timerInterval = setInterval(updateTimer, 1000); // รันต่อเนื่อง
+
+    // ซ่อนหน้ารายการ และเปิดหน้าแจ้งเตือน (Overlay)
     closeOrderList();
     document.getElementById('orderNotificationOverlay').classList.remove('hidden');
 }
@@ -3819,22 +3867,18 @@ function closeOrderList() {
 
 
 
-
-socket.on('new_order_card', (order) => {
-    pendingOrders.push(order);
-    updateOrderUI();
-    const sound = document.getElementById('orderSound');
-    if(sound) sound.play().catch(e => console.log("Sound play blocked"));
-    
-    console.log("New order added to list");
-});
-
 // 🚩 ฟังก์ชันเมื่อร้านค้ากดรับออเดอร์
 async function acceptOrder() {
     if (!currentIncomingOrder) return;
 
-    // หยุดเสียง
-    document.getElementById('orderSound').pause();
+    const lang = translations[currentLang]; // ดึงภาษาปัจจุบัน
+
+    // 1. หยุดเสียงแจ้งเตือน
+    const sound = document.getElementById('orderSound');
+    if (sound) sound.pause();
+
+    // 2. หยุดตัวนับเวลา (Timer) ทันทีที่กด
+    if (timerInterval) clearInterval(timerInterval);
 
     try {
         const response = await fetch('/api/merchant/accept-order', {
@@ -3847,34 +3891,57 @@ async function acceptOrder() {
         });
 
         const result = await response.json();
+
         if (result.success) {
+            // 3. ลบออเดอร์นี้ออกจากรายการรอดำเนินการ (Pending)
             pendingOrders = pendingOrders.filter(o => o.orderId !== currentIncomingOrder.orderId);
-			updateOrderUI();
-			document.getElementById('orderNotificationOverlay').classList.add('hidden');
-			Swal.fire({ icon: 'success', text: 'Accepted!' });
+            
+            // 4. อัปเดต UI ปุ่มลอยข้างจอ
+            updateOrderUI();
+            
+            // 5. ปิดหน้าต่าง Overlay รายละเอียด
+            document.getElementById('orderNotificationOverlay').classList.add('hidden');
+
+            // 6. แจ้งเตือนสำเร็จ
+            Swal.fire({ 
+                icon: 'success', 
+                title: lang.accept_success_title, 
+                text: lang.accept_success_text,
+                timer: 2000 
+            });
+        } else {
+            Swal.fire({ icon: 'error', text: result.message || lang.error_generic });
         }
     } catch (e) {
-        Swal.fire({ icon: 'error', text: 'เกิดข้อผิดพลาด' });
+        console.error("Accept Order Error:", e);
+        Swal.fire({ icon: 'error', text: lang.error_connection });
     }
 }
 
+// 🚩 ฟังก์ชันกดปฏิเสธออเดอร์
 async function declineOrder() {
     if (!currentIncomingOrder) return;
 
-    // ถามเพื่อความแน่ใจอีกครั้ง
+    const lang = translations[currentLang];
+
+    // 1. ถามเพื่อความแน่ใจ (Double Confirm)
     const { isConfirmed } = await Swal.fire({
-        title: 'ยืนยันการปฏิเสธ?',
-        text: 'ระบบจะคืนเงินลูกค้า (หักค่าธรรมเนียม) ทันที',
+        title: lang.confirm_reject_title,
+        text: lang.confirm_reject_text,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: 'ยืนยันการปฏิเสธ',
-        cancelButtonText: 'ยกเลิก'
+        cancelButtonColor: '#aaa',
+        confirmButtonText: lang.btn_confirm_reject,
+        cancelButtonText: lang.btn_cancel
     });
 
     if (isConfirmed) {
+        // 2. หยุดตัวนับเวลา
+        if (timerInterval) clearInterval(timerInterval);
+
         try {
-            // หยุดเสียงเตือน
+            // 3. หยุดเสียงเตือน
             const sound = document.getElementById('orderSound');
             if (sound) sound.pause();
 
@@ -3889,19 +3956,31 @@ async function declineOrder() {
             });
 
             const result = await response.json();
+
             if (result.success) {
-                // ลบออเดอร์ออกจากรายการ Pending ในหน้าจอ
+                // 4. ลบออเดอร์ออกจากรายการรอดำเนินการ
                 pendingOrders = pendingOrders.filter(o => o.orderId !== currentIncomingOrder.orderId);
-                updateOrderUI(); // อัปเดตปุ่มลอย
                 
-                // ปิด Modal ทั้งหมด
+                // 5. อัปเดต UI ปุ่มลอย
+                updateOrderUI();
+                
+                // 6. ปิดหน้าต่างรายละเอียดและหน้ารายการ
                 document.getElementById('orderNotificationOverlay').classList.add('hidden');
                 closeOrderList();
                 
-                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'คืนเงินลูกค้าเรียบร้อยแล้ว', timer: 2000 });
+                // 7. แจ้งเตือนสำเร็จ
+                Swal.fire({ 
+                    icon: 'success', 
+                    title: 'Done', 
+                    text: lang.reject_success_text, 
+                    timer: 2000 
+                });
+            } else {
+                Swal.fire({ icon: 'error', text: result.message || lang.error_generic });
             }
         } catch (e) {
-            Swal.fire({ icon: 'error', text: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้' });
+            console.error("Reject Order Error:", e);
+            Swal.fire({ icon: 'error', text: lang.error_connection });
         }
     }
 }
