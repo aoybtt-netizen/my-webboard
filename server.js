@@ -5265,6 +5265,11 @@ io.on('connection', (socket) => {
         socket.join(roomName);
     });
 	
+	socket.on('join', (roomName) => {
+        socket.join(roomName);
+        console.log(`User [${socket.id}] joined room: ${roomName}`);
+    });
+	
 	socket.on('admin_reset_user_status', async ({ targetUsername }) => {
     // เช็คว่าเป็น Admin หรือไม่ (ความปลอดภัย)
     // if (!currentUser || currentUser.adminLevel < 1) return; 

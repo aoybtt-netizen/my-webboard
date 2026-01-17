@@ -806,7 +806,12 @@ input:checked + .slider:before { transform: translateX(20px); }
 	let myOrderTemplates = []; // เก็บชุดออเดอร์สำเร็จรูป
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 	
-	
+
+
+if (myUsername) {
+    socket.emit('join', myUsername);
+    console.log("Joined room:", myUsername);
+}
 
 async function loadOrderTemplates() {
     const res = await fetch(`/api/merchant/templates?username=${myUsername}`);
@@ -3676,17 +3681,25 @@ async function saveMerchantProducts() {
 
 
 socket.on('new_order_card', (order) => {
+    console.log("ได้รับออเดอร์ใหม่:", order);
     currentIncomingOrder = order;
 
     // 1. เล่นเสียงแจ้งเตือน
     const sound = document.getElementById('orderSound');
-    sound.play().catch(e => console.log("ต้องการการคลิกหน้าจอก่อนถึงจะเล่นเสียงได้"));
+    if (sound) {
+        sound.play().catch(e => {
+            console.log("การเล่นเสียงถูกบล็อกโดยเบราว์เซอร์ ต้องมีการคลิกหน้าจอก่อน 1 ครั้ง");
+        });
+    }
 
     // 2. ใส่ข้อมูลลงในการ์ด
     document.getElementById('alertOrderId').innerText = order.orderId;
     document.getElementById('alertCustomerName').innerText = order.customer;
     document.getElementById('alertOrderItems').innerText = order.items;
-    document.getElementById('alertOrderPrice').innerText = `${order.totalPrice.toLocaleString()} ${order.currency}`;
+    
+    // ตรวจสอบว่าใช้ totalPrice หรือ amount
+    const displayPrice = order.totalPrice || order.amount;
+    document.getElementById('alertOrderPrice').innerText = `${displayPrice.toLocaleString()} ${order.currency}`;
 
     // 3. โชว์ Overlay
     document.getElementById('orderNotificationOverlay').classList.remove('hidden');
