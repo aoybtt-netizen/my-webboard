@@ -1181,14 +1181,19 @@ function sendChatMessage() {
 }
 
 // ฟังก์ชันแสดงข้อความในหน้าจอ
-function appendMessage(sender, text, isMe) {
+function appendMessage(senderHtml, text, isMe) {
     const chatContainer = document.getElementById('chatMessages');
     const msgDiv = document.createElement('div');
+    
+    // ตั้งค่า Style พื้นฐาน
     msgDiv.style.maxWidth = '80%';
     msgDiv.style.padding = '10px 15px';
     msgDiv.style.borderRadius = '15px';
     msgDiv.style.fontSize = '0.9rem';
     msgDiv.style.lineHeight = '1.4';
+    msgDiv.style.marginBottom = '10px';
+    msgDiv.style.display = 'flex';
+    msgDiv.style.flexDirection = 'column';
     
     if (isMe) {
         msgDiv.style.alignSelf = 'flex-end';
@@ -1206,8 +1211,9 @@ function appendMessage(sender, text, isMe) {
         <small style="display:block; font-size:0.75rem; font-weight:600; opacity:0.9; margin-bottom:4px;">
             ${senderHtml}
         </small>
-        ${text}
+        <span>${text}</span>
     `;
+    
     chatContainer.appendChild(msgDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
