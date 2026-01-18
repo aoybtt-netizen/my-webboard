@@ -1074,10 +1074,11 @@ async function sendRiderCustomMessage(text) {
         
         if (res.ok) {
             const data = await res.json();
+            // ✅ สั่งวาดข้อความฝั่งตัวเองทันที ไม่ต้องรอ Socket วนกลับมา
+            // data.comment.imageUrl จะเป็น null สำหรับข้อความทั่วไป
             appendRiderMessage(myUsername, text, true, data.comment ? data.comment.imageUrl : null);
         }
     } catch (e) { console.error(e); }
-}  } catch (e) { console.error(e); }
 }
 
 
