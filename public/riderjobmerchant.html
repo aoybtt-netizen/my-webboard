@@ -953,16 +953,26 @@ function closeRiderChat() {
     clearInterval(chatInterval);
 }
 
-function appendRiderMessage(author, text, isMe) {
+function appendRiderMessage(author, text, isMe, imageUrl = null) {
     const container = document.getElementById('chat-messages');
-    const roleLabel = getRiderRoleLabel(author); // 🚩 ดึงป้ายกำกับพร้อมไอคอน
+    const roleLabel = getRiderRoleLabel(author);
     
+    let contentHtml = `<span>${text}</span>`;
+    
+    // ถ้ามีรูปภาพ ให้เพิ่มแท็ก img
+    if (imageUrl) {
+        contentHtml = `
+            <div style="margin-bottom:5px;">${text}</div>
+            <img src="/${imageUrl}" style="width:100%; border-radius:8px; cursor:pointer;" onclick="window.open(this.src)">
+        `;
+    }
+
     const msgHtml = `
-        <div class="chat-bubble ${isMe ? 'bubble-me' : 'bubble-them'}">
+        <div class="chat-bubble ${isMe ? 'bubble-me' : 'bubble-them'}" style="margin-bottom:12px;">
             <small style="display:block; font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">
                 ${roleLabel}
             </small>
-            ${text}
+            ${contentHtml}
         </div>
     `;
     
@@ -1012,6 +1022,101 @@ async function sendRiderChat() {
         alert("Unable to send message.");
     }
 }
+
+function shareRiderLocation() {
+    if (!navigator.geolocation) {
+        alert("เบราว์เซอร์ของคุณไม่รองรับการแชร์ตำแหน่ง");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        const mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        const message = `📍 ตำแหน่งปัจจุบันของฉัน: ${mapLink}`;
+        
+        // ส่งข้อความตำแหน่งเข้าแชท
+        sendRiderCustomMessage(message);
+    }, (err) => {
+        alert("ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาเปิด GPS");
+    });
+}
+
+// ฟังก์ชันส่งข้อความแบบกำหนดเอง (ใช้ร่วมกัน)
+async function sendRiderCustomMessage(text) {
+    if (!jobId) return;
+    try {
+        await fetch(`/api/posts/${jobId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ author: myUsername, text: text })
+        });
+        // ไม่ต้อง append เอง เพราะ socket จะจัดการให้
+    } catch (e) { console.error(e); }
+}
+
+
+async function handlePhotoSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // โชว์ Loading สั้นๆ (ถ้ามี)
+    console.log("กำลังประมวลผลรูปภาพ...");
+
+    const resizedBlob = await compressImage(file, 800, 0.7); // กว้าง 800px, คุณภาพ 70%
+    sendRiderPhoto(resizedBlob);
+}
+
+function compressImage(file, maxWidth, quality) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/jpeg', quality);
+            };
+        };
+    });
+}
+
+async function sendRiderPhoto(blob) {
+    const formData = new FormData();
+    formData.append('image', blob, 'rider_photo.jpg');
+    formData.append('author', myUsername);
+    formData.append('text', '📷 ส่งรูปภาพ');
+
+    try {
+        const res = await fetch(`/api/posts/${jobId}/comments`, {
+            method: 'POST',
+            body: formData
+        });
+        if (res.ok) {
+            console.log("ส่งรูปสำเร็จ");
+        }
+    } catch (e) {
+        alert("ไม่สามารถส่งรูปได้");
+    }
+}
+
+
+
 
 let selectedMerchantRating = 0;
 
@@ -1108,11 +1213,22 @@ socket.on('job-finished-complete', (data) => {
 	<div id="rider-chat-modal" class="chat-modal hidden">
     <div class="chat-header">
         <i class="fas fa-arrow-left" onclick="closeRiderChat()" style="cursor:pointer;"></i>
-        <b id="chat-with-name" data-i18n-key="chat_header_merchant">แชทกับร้านค้า</b>
+        <b id="chat-with-name">แชท</b>
     </div>
     <div id="chat-messages"></div>
-    <div class="chat-input-area">
-        <input type="text" id="rider-chat-input" data-i18n-key="plh_chat_input" placeholder="พิมพ์ข้อความ..." onkeypress="if(event.key==='Enter') sendRiderChat()">
+    
+    <div class="chat-input-area" style="display: flex; align-items: center; gap: 8px; padding: 10px;">
+        <input type="file" id="rider-photo-input" accept="image/*" style="display:none;" onchange="handlePhotoSelect(this)">
+        <button onclick="document.getElementById('rider-photo-input').click()" style="background:none; border:none; color:#11998e; font-size: 1.2rem;">
+            <i class="fas fa-camera"></i>
+        </button>
+
+        <button onclick="shareRiderLocation()" style="background:none; border:none; color:#11998e; font-size: 1.2rem;">
+            <i class="fas fa-map-marker-alt"></i>
+        </button>
+
+        <input type="text" id="rider-chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1;" onkeypress="if(event.key==='Enter') sendRiderChat()">
+        
         <button onclick="sendRiderChat()" style="background:#11998e; color:white; border:none; width:45px; height:45px; border-radius:50%;">
             <i class="fas fa-paper-plane"></i>
         </button>
