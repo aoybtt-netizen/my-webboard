@@ -1792,9 +1792,9 @@ app.get('/api/users-list', async (req, res) => {
 
         // ฟังก์ชันช่วยในการจัดกลุ่มและส่งข้อมูลกลับ
         const mapUserResponse = (u) => {
-            const totalScore = (u.totalRatingScore || 0) + (u.merchantRatingScore || 0);
-            const totalRatingCount = (u.ratingCount || 0) + (u.merchantRatingCount || 0);
-            const averageRating = totalRatingCount > 0 ? (totalScore / totalRatingCount) : 0;
+            const totalScore = u.totalRatingScore || 0;
+            const totalRatingCount = u.ratingCount || 0;
+            const averageRating = totalRatingCount || 0;
             const combinedCompleted = (u.completedJobs || 0) + (u.authorCompletedJobs || 0);
 
             // ดึงชื่อฟิลด์สกุลเงินที่หามาได้ (เช่น 'x')
