@@ -3373,51 +3373,34 @@ app.get('/api/my-active-count', async (req, res) => {
 
 // 23. Add Comment (เวอร์ชันปรับปรุงให้รองรับหน้า Merchant)
 app.post('/api/posts/:id/comments', upload.single('image'), async (req, res) => {
-	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
-    // 🚩 ปรับตรงนี้: รับได้ทั้ง content (แบบเก่า) และ text (แบบใหม่จาก Merchant)
-    const { content, text, author } = req.body;
-    const finalContent = content || text; // เลือกใช้อันที่มีค่า
-
-    const imageUrl = req.file ? req.file.path : null; 
-
-    const post = await postsCollection.findOne({ id: postId });
-    if (!post) return res.status(404).json({ error: 'No posts found' });
+    const { author, text, content } = req.body;
+    const finalContent = text || content; 
+    const imageUrl = req.file ? req.file.path : null;
 
     if (!finalContent && !imageUrl) {
-		return res.status(400).json({ error: serverTranslations[lang].err_empty_content });
-	}
+        return res.status(400).json({ error: 'Content is empty' });
+    }
 
-    const isOwner = (author === post.author);
-    const isAcceptedViewer = (author === post.acceptedViewer);
-    const isAcceptedBy = (author === post.acceptedBy); // 🚩 เพิ่มเช็คคนรับงานขนส่ง
-    const isAdmin = (author === 'Admin');
-
-    if (post.status === 'closed_permanently' && !isAdmin) {
-			return res.status(403).json({ error: serverTranslations[lang].err_closed_perm });
-	}
-
-    // ปรับเงื่อนไขให้ครอบคลุม Rider ที่รับงานด้วย (acceptedBy)
-    if (post.isClosed && !isOwner && !isAcceptedViewer && !isAcceptedBy && !isAdmin && post.status !== 'finished') {
-		return res.status(403).json({ error: serverTranslations[lang].err_restricted_chat });
-	}
-
-    // 🚩 ใช้ชื่อฟิลด์ 'text' ให้ตรงกับระบบใหม่ หรือจะใช้ 'content' ก็ได้แต่ต้องแก้ให้ตรงกัน
-    // ในที่นี้ผมใช้ 'text' เพื่อให้เข้ากับโค้ด Merchant ที่เราเขียนไปก่อนหน้านี้ครับ
-    const newComment = { 
-        id: Date.now(), 
-        author, 
-        text: finalContent, // เก็บลงฟิลด์ text
-        content: finalContent, // เก็บลง content ด้วยเพื่อรองรับหน้า index เดิม (กันเหนียว)
-        imageUrl, 
-        timestamp: Date.now() 
+    const newComment = {
+        id: Date.now(),
+        author,
+        text: finalContent,
+        content: finalContent,
+        imageUrl,
+        timestamp: Date.now()
     };
 
-    await postsCollection.updateOne({ id: postId }, { $push: { comments: newComment } });
-    
-    io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
-    
-    res.json({ success: true, comment: newComment });
+    try {
+        await postsCollection.updateOne({ id: postId }, { $push: { comments: newComment } });
+        
+        // 🚩 ส่ง Socket ออกไปก่อนตอบกลับ res.json
+        io.to(`post-${postId}`).emit('new-comment', { postId, comment: newComment });
+        
+        res.json({ success: true, comment: newComment });
+    } catch (e) {
+        res.status(500).json({ error: 'Database Error' });
+    }
 });
 
 // 24. Set Admin Level (Promote / Demote)
@@ -4142,38 +4125,6 @@ app.get('/api/posts/:id/comments', async (req, res) => {
     }
 });
 
-// API: ส่งข้อความแชท/คอมเมนต์ เข้าไปในโพสต์
-app.post('/api/posts/:id/comments', async (req, res) => {
-	const lang = req.body.lang || 'th';
-    const postId = parseInt(req.params.id);
-    const { author, text } = req.body;
-
-    if (!text) {
-		return res.status(400).json({ 
-        error: serverTranslations[lang].err_empty_chat 
-		});
-	}
-
-    try {
-        const newComment = {
-            id: Date.now(),
-            author: author,
-            text: text,
-            timestamp: Date.now()
-        };
-
-        // ใช้ $push เพื่อเพิ่มคอมเมนต์เข้าไปใน Array ในฐานข้อมูล
-        await postsCollection.updateOne(
-            { id: postId },
-            { $push: { comments: newComment } }
-        );
-
-        res.json({ success: true, comment: newComment });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Database Error' });
-    }
-	io.to(`post-${postId}`).emit('new-comment', { postId: postId, comment: newComment });
-});
 
 	// API: ดึงสถิติของ Rider เพื่อให้ร้านค้าดูประกอบการตัดสินใจ
 app.get('/api/rider-stats/:username', async (req, res) => {
@@ -6468,6 +6419,36 @@ socket.on('newTransactionRequest', (data) => {
         amount: data.amount,
         type: data.type
     });
+});
+
+
+// แชทฝั่งลูกค้า
+socket.on('send-comment', async (data) => {
+    const { postId, author, text } = data;
+    
+    const newComment = {
+        id: Date.now(),
+        author: author,
+        text: text,
+        timestamp: Date.now()
+    };
+
+    try {
+        // 1. บันทึกลงฐานข้อมูล
+        await postsCollection.updateOne(
+            { id: postId },
+            { $push: { comments: newComment } }
+        );
+
+        // 2. กระจายข้อความไปให้คนอื่นในห้อง (รวมถึงร้านค้าและไรเดอร์)
+        // 🚩 ส่งแบบโครงสร้าง { postId, comment } เพื่อให้ตรงกับ API
+        io.to(`post-${postId}`).emit('new-comment', { 
+            postId: postId, 
+            comment: newComment 
+        });
+    } catch (e) {
+        console.error("Socket Chat Error:", e);
+    }
 });
 
 	

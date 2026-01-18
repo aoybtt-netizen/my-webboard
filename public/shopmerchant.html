@@ -1167,8 +1167,10 @@ function appendMessage(sender, text, isMe) {
 
 // รับข้อความใหม่จาก Socket
 socket.on('new-comment', (data) => {
-    if (data.postId === currentChatPostId && data.author !== localStorage.getItem('myUsername')) {
-        appendMessage(data.author, data.text, false);
+    const comment = data.comment; 
+    
+    if (data.postId === currentChatPostId && comment.author !== localStorage.getItem('myUsername')) {
+        appendMessage(comment.author, comment.text, false);
     }
 });
 
