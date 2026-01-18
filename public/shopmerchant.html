@@ -1108,26 +1108,24 @@ async function loadChatHistory(postId) {
     try {
         const res = await fetch(`/api/posts/${postId}`);
         const data = await res.json();
-        
         if (data.success) {
             const post = data.post;
-            // 🚩 ระบุตัวตนร้านค้าและไรเดอร์จากข้อมูลโพสต์
             merchantUser = post.author;     
             riderUser = post.acceptedBy;    
             
             const chatContainer = document.getElementById('chatMessages');
             chatContainer.innerHTML = '';
 
-            if (post.comments && post.comments.length > 0) {
+            if (post.comments) {
                 post.comments.forEach(msg => {
-                    // ใช้ getRoleLabel เพื่อเอาชื่อพร้อมไอคอน
-                    const roleLabel = getRoleLabel(msg.author);
-                    appendMessage(roleLabel, msg.text, msg.author === localStorage.getItem('myUsername'));
+                    const label = getRoleLabel(msg.author);
+                    // ✅ ส่ง msg.imageUrl เข้าไปด้วย
+                    appendMessage(label, msg.text || msg.content, msg.author === localStorage.getItem('myUsername'), msg.imageUrl);
                 });
             }
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-    } catch (e) { console.error("Load chat error:", e); }
+    } catch (e) { console.error(e); }
 }
 
 function getRoleLabel(username) {
@@ -1166,12 +1164,23 @@ function sendChatMessage() {
     }
 }
 
+// ฟังก์ชันช่วยทำให้ลิ้งก์แผนที่กดได้
+function formatCustomerMsgLinks(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;">เปิดแผนที่ 📍</a>`;
+    });
+}
+
+
+
+
 // ฟังก์ชันแสดงข้อความในหน้าจอ
-function appendMessage(senderHtml, text, isMe) {
+function appendMessage(senderHtml, text, isMe, imageUrl = null) {
     const chatContainer = document.getElementById('chatMessages');
     const msgDiv = document.createElement('div');
     
-    // ตั้งค่า Style พื้นฐาน
+    // --- 1. จัดการ Style (คงเดิมที่พี่ชอบ) ---
     msgDiv.style.maxWidth = '80%';
     msgDiv.style.padding = '10px 15px';
     msgDiv.style.borderRadius = '15px';
@@ -1192,12 +1201,27 @@ function appendMessage(senderHtml, text, isMe) {
         msgDiv.style.color = '#333';
         msgDiv.style.borderRadius = '15px 15px 15px 0';
     }
+
+    // --- 2. จัดการเนื้อหา (รองรับลิ้งก์แผนที่) ---
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    let formattedText = text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" style="color: ${isMe ? '#fff' : '#007bff'}; text-decoration: underline; font-weight: bold;">เปิดแผนที่ 📍</a>`;
+    });
+
+    // --- 3. จัดการรูปภาพ (ถ้ามี) ---
+    let imageHtml = '';
+    if (imageUrl) {
+        const fullPath = imageUrl.startsWith('http') ? imageUrl : `/${imageUrl}`;
+        imageHtml = `<img src="${fullPath}" style="width:100%; border-radius:10px; margin-top:8px; cursor:pointer;" onclick="window.open(this.src)">`;
+    }
     
+    // --- 4. วาดเนื้อหาลงไป ---
     msgDiv.innerHTML = `
-        <small style="display:block; font-size:0.75rem; font-weight:600; opacity:0.9; margin-bottom:4px;">
+        <small style="display:block; font-size:0.75rem; font-weight:600; opacity:0.8; margin-bottom:4px;">
             ${senderHtml}
         </small>
-        <span>${text}</span>
+        <div>${formattedText}</div>
+        ${imageHtml}
     `;
     
     chatContainer.appendChild(msgDiv);
@@ -1207,15 +1231,11 @@ function appendMessage(senderHtml, text, isMe) {
 // รับข้อความใหม่จาก Socket
 socket.on('new-comment', (data) => {
     const comment = data.comment || data;
-    
     if (data.postId == currentChatPostId) {
-        const author = comment.author;
-        const text = comment.text || comment.content || "";
-
-        if (author && author !== localStorage.getItem('myUsername')) {
-            // 🚩 แปลงชื่อเป็นชื่อบทบาทพร้อมไอคอน
-            const roleLabel = getRoleLabel(author);
-            appendMessage(roleLabel, text, false);
+        if (comment.author !== localStorage.getItem('myUsername')) {
+            const roleLabel = getRoleLabel(comment.author);
+            // ✅ ส่ง comment.imageUrl เข้าไปด้วย
+            appendMessage(roleLabel, comment.text || comment.content, false, comment.imageUrl);
         }
     }
 });
@@ -1237,6 +1257,50 @@ socket.on('order_accepted_update', (data) => {
         showConfirmButton: false
     });
 });
+
+
+
+// แชร์ตำแหน่งลูกค้า
+function shareCustomerLocation() {
+    if (!navigator.geolocation) return alert("GPS not supported");
+    navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        const mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        const message = `📍 พิกัดของฉัน: ${mapLink}`;
+        
+        // ส่งผ่าน Socket หรือ API ตามสะดวก (ในที่นี้ใช้ Socket ให้เหมือนเดิม)
+        const msgData = { postId: currentChatPostId, author: localStorage.getItem('myUsername'), text: message };
+        socket.emit('send-comment', msgData);
+        appendMessage("ฉัน", message, true);
+    });
+}
+
+// อัปโหลดรูปภาพ
+async function handleCustomerPhotoSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    Swal.fire({ title: 'กำลังส่งรูปภาพ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+    const imageUrl = URL.createObjectURL(file);
+    const resizedBlob = await compressImage(imageUrl, 1024, 0.6); // ใช้ฟังก์ชันบีบอัดเดิม
+    
+    const formData = new FormData();
+    formData.append('image', resizedBlob, `cust_${Date.now()}.jpg`);
+    formData.append('author', localStorage.getItem('myUsername'));
+    formData.append('text', '📷 ส่งรูปภาพ');
+
+    const res = await fetch(`/api/posts/${currentChatPostId}/comments`, { method: 'POST', body: formData });
+    const data = await res.json();
+    
+    if (data.success) {
+        appendMessage("ฉัน", '📷 ส่งรูปภาพ', true, data.comment.imageUrl);
+        URL.revokeObjectURL(imageUrl);
+        Swal.close();
+    }
+    input.value = '';
+}
+
 
 </script>
 
@@ -1341,12 +1405,22 @@ socket.on('order_accepted_update', (data) => {
     <div id="chatMessages" style="flex: 1; overflow-y: auto; padding: 15px; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px;">
         </div>
 
-    <div style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white;">
-        <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ..." style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none;">
-        <button onclick="sendChatMessage()" style="background: #11998e; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer;">
-            <i class="fas fa-paper-plane"></i>
-        </button>
-    </div>
+    <div style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; align-items: center; background: white;">
+    <input type="file" id="customerPhotoInput" accept="image/*" style="display:none;" onchange="handleCustomerPhotoSelect(this)">
+    <button onclick="document.getElementById('customerPhotoInput').click()" style="background:none; border:none; color:#11998e; font-size: 1.3rem; cursor:pointer;">
+        <i class="fas fa-camera"></i>
+    </button>
+
+    <button onclick="shareCustomerLocation()" style="background:none; border:none; color:#11998e; font-size: 1.3rem; cursor:pointer;">
+        <i class="fas fa-map-marker-alt"></i>
+    </button>
+
+    <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ..." style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none;" onkeypress="if(event.key==='Enter') sendChatMessage()">
+    
+    <button onclick="sendChatMessage()" style="background: #11998e; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer;">
+        <i class="fas fa-paper-plane"></i>
+    </button>
+</div>
 </div>
 
 <div id="sidebarOverlay" onclick="closeRightSidebar()" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none;"></div>
