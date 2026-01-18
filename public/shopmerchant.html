@@ -338,6 +338,7 @@ header {
 	let currentZoneFee = 0;
 	let currentSystemZone = 0;
 	let myActiveOrders = [];
+	let currentChatPostId = null;
 	
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -1075,6 +1076,103 @@ function closeMyOrdersModal() {
     document.getElementById('myOrdersModal').classList.add('hidden');
 }
 
+
+
+
+function openRightSidebar(postId) {
+    currentChatPostId = postId;
+    document.getElementById('rightSidebar').style.right = '0';
+    document.getElementById('sidebarOverlay').style.display = 'block';
+    
+    // เคลียร์แชทเก่าและโหลดใหม่
+    const chatContainer = document.getElementById('chatMessages');
+    chatContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">กำลังโหลดข้อความ...</div>';
+    
+    // เข้าร่วมห้องแชทผ่าน Socket
+    socket.emit('join-post', postId);
+    
+    // ดึงประวัติแชทจาก API (ถ้ามี)
+    loadChatHistory(postId);
+}
+
+function closeRightSidebar() {
+    document.getElementById('rightSidebar').style.right = '-100%';
+    document.getElementById('sidebarOverlay').style.display = 'none';
+    currentChatPostId = null;
+}
+
+// ฟังก์ชันโหลดประวัติแชท
+async function loadChatHistory(postId) {
+    try {
+        const res = await fetch(`/api/posts/${postId}`);
+        const data = await res.json();
+        if (data.success) {
+            const chatContainer = document.getElementById('chatMessages');
+            chatContainer.innerHTML = '';
+            data.post.comments.forEach(msg => {
+                appendMessage(msg.author, msg.text, msg.author === localStorage.getItem('myUsername'));
+            });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    } catch (e) { console.error("Load chat error:", e); }
+}
+
+// ฟังก์ชันส่งข้อความ
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    const myUsername = localStorage.getItem('myUsername');
+    
+    if (text && currentChatPostId) {
+        const msgData = {
+            postId: currentChatPostId,
+            author: myUsername,
+            text: text,
+            createdAt: new Date()
+        };
+        
+        socket.emit('send-comment', msgData);
+        input.value = '';
+        // แสดงฝั่งตัวเองทันที
+        appendMessage(myUsername, text, true);
+    }
+}
+
+// ฟังก์ชันแสดงข้อความในหน้าจอ
+function appendMessage(sender, text, isMe) {
+    const chatContainer = document.getElementById('chatMessages');
+    const msgDiv = document.createElement('div');
+    msgDiv.style.maxWidth = '80%';
+    msgDiv.style.padding = '10px 15px';
+    msgDiv.style.borderRadius = '15px';
+    msgDiv.style.fontSize = '0.9rem';
+    msgDiv.style.lineHeight = '1.4';
+    
+    if (isMe) {
+        msgDiv.style.alignSelf = 'flex-end';
+        msgDiv.style.background = '#11998e';
+        msgDiv.style.color = 'white';
+        msgDiv.style.borderRadius = '15px 15px 0 15px';
+    } else {
+        msgDiv.style.alignSelf = 'flex-start';
+        msgDiv.style.background = '#eee';
+        msgDiv.style.color = '#333';
+        msgDiv.style.borderRadius = '15px 15px 15px 0';
+    }
+    
+    msgDiv.innerHTML = `<small style="display:block; font-size:0.7rem; opacity:0.8; margin-bottom:3px;">${sender}</small>${text}`;
+    chatContainer.appendChild(msgDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// รับข้อความใหม่จาก Socket
+socket.on('new-comment', (data) => {
+    if (data.postId === currentChatPostId && data.author !== localStorage.getItem('myUsername')) {
+        appendMessage(data.author, data.text, false);
+    }
+});
+
+
 // ฝั่งลูกค้า (index.html หรือหน้าสั่งซื้อ)
 socket.on('order_accepted_update', (data) => {
     console.log("ออเดอร์ถูกรับแล้ว!", data);
@@ -1184,6 +1282,26 @@ socket.on('order_accepted_update', (data) => {
             </div>
     </div>
 </div>
+
+
+<div id="rightSidebar" class="sidebar-chat" style="position: fixed; top: 0; right: -100%; width: 100%; max-width: 400px; height: 100%; background: white; z-index: 10000; transition: 0.3s; box-shadow: -5px 0 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;">
+    <div style="background: linear-gradient(135deg, #11998e, #38ef7d); padding: 20px; color: white; display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="chatTitle" style="margin: 0; font-size: 1.1rem;">แชทกับร้านค้า/ไรเดอร์</h3>
+        <button onclick="closeRightSidebar()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+    </div>
+    
+    <div id="chatMessages" style="flex: 1; overflow-y: auto; padding: 15px; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px;">
+        </div>
+
+    <div style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white;">
+        <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ..." style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none;">
+        <button onclick="sendChatMessage()" style="background: #11998e; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer;">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<div id="sidebarOverlay" onclick="closeRightSidebar()" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none;"></div>
 
 
 
