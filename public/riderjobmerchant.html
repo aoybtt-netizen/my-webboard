@@ -933,9 +933,19 @@ async function openRiderChat() {
     document.getElementById('chat-with-name').innerText = `Chat: ${currentPostData.storeName || currentPostData.author}`;
     document.getElementById('rider-chat-modal').classList.remove('hidden');
     
-    // โหลดข้อความทันที และตั้งเวลาโหลดซ้ำทุก 3 วินาที (Real-time จำลอง)
     loadRiderMessages();
-    chatInterval = setInterval(loadRiderMessages, 3000);
+}
+
+function getRiderRoleLabel(author) {
+    if (author === myUsername) {
+        return `<i class="fas fa-motorcycle"></i> ฉัน (Rider)`;
+    } else if (currentPostData && author === currentPostData.author) {
+        return `<i class="fas fa-store" style="color: #e67e22;"></i> Merchant`; // ร้านค้า
+    } else if (currentPostData && author === currentPostData.acceptedViewer) {
+        return `<i class="fas fa-user-tag" style="color: #27ae60;"></i> ลูกค้า`; // ลูกค้า
+    } else {
+        return `<i class="fas fa-user"></i> ${author}`; // กรณีอื่นๆ (เช่น แอดมิน)
+    }
 }
 
 function closeRiderChat() {
@@ -943,27 +953,37 @@ function closeRiderChat() {
     clearInterval(chatInterval);
 }
 
+function appendRiderMessage(author, text, isMe) {
+    const container = document.getElementById('chat-messages');
+    const roleLabel = getRiderRoleLabel(author); // 🚩 ดึงป้ายกำกับพร้อมไอคอน
+    
+    const msgHtml = `
+        <div class="chat-bubble ${isMe ? 'bubble-me' : 'bubble-them'}">
+            <small style="display:block; font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">
+                ${roleLabel}
+            </small>
+            ${text}
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', msgHtml);
+    container.scrollTop = container.scrollHeight;
+}
+
 async function loadRiderMessages() {
-    if (!currentPostData) return;
+    if (!jobId) return;
     
     try {
         const res = await fetch(`/api/posts/${jobId}/comments`);
         const messages = await res.json();
         
         const container = document.getElementById('chat-messages');
-        let html = '';
+        container.innerHTML = ''; // ล้างแชทเก่า
         
         messages.forEach(msg => {
             const isMe = msg.author === myUsername;
-            html += `
-                <div class="chat-bubble ${isMe ? 'bubble-me' : 'bubble-them'}">
-                    ${msg.text || msg.content}
-                </div>
-            `;
+            appendRiderMessage(msg.author, msg.text || msg.content, isMe);
         });
-        
-        container.innerHTML = html;
-        container.scrollTop = container.scrollHeight; // เลื่อนลงล่างสุด
     } catch (e) {
         console.error("Chat load error:", e);
     }
@@ -1050,8 +1070,12 @@ window.addEventListener('load', () => {
 
 // รับแชทสดฝั่ง Rider ด้วย
 socket.on('new-comment', (data) => {
+    const comment = data.comment || data;
+    
     if (data.postId == jobId) {
-        loadRiderMessages(); // หรือจะใช้ insertAdjacentHTML แบบร้านค้าก็ได้จะลื่นกว่า
+        if (comment.author !== myUsername) {
+            appendRiderMessage(comment.author, comment.text || comment.content, false);
+        }
     }
 });
 
