@@ -1167,10 +1167,23 @@ function appendMessage(sender, text, isMe) {
 
 // รับข้อความใหม่จาก Socket
 socket.on('new-comment', (data) => {
-    const comment = data.comment; 
-    
-    if (data.postId === currentChatPostId && comment.author !== localStorage.getItem('myUsername')) {
-        appendMessage(comment.author, comment.text, false);
+    console.log("Debug Chat Data:", data); // 🚩 พี่ลองดูใน Console (F12) จะเห็นเลยว่าข้อมูลส่งมาท่าไหน
+
+    // 1. ตรวจสอบว่าข้อมูลอยู่ใน data.comment หรืออยู่ใน data โดยตรง
+    const comment = data.comment || data; 
+    const incomingPostId = data.postId;
+
+    // 2. ใช้ == (เท่ากับ 2 ตัว) เพื่อเช็ค ID โดยไม่สนว่าเป็น String หรือ Number
+    if (incomingPostId == currentChatPostId) {
+        
+        // 3. ป้องกันอาการ undefined โดยการเช็คทั้งฟิลด์ text และ content
+        const author = comment.author;
+        const text = comment.text || comment.content || ""; // ถ้าไม่มีทั้งคู่ให้เป็นค่าว่าง
+
+        // 4. แสดงข้อความถ้าไม่ใช่เราเป็นคนส่ง
+        if (author && author !== localStorage.getItem('myUsername')) {
+            appendMessage(author, text, false);
+        }
     }
 });
 
