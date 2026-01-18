@@ -1911,24 +1911,52 @@ app.get('/api/users-list', async (req, res) => {
 
 // rider ranking
 app.get('/api/rider-ranking', async (req, res) => {
-    const { cycle } = req.query; // รับค่ารอบที่ต้องการดู
-    const adminName = req.query.adminName; // หรือดึงจาก Zone ของ User
-    
-    const zone = await db.collection('zones').findOne({ /* เงื่อนไขหาโซน */ });
-    const targetCycle = (cycle === 'latest' || !cycle) ? zone.currentCycle : parseInt(cycle);
-    const rankingKey = `ranking_data.${zone.id}_v${targetCycle}`;
+    const { cycle, username } = req.query; 
 
-    const leaderboard = await usersCollection.find({ [rankingKey]: { $exists: true } })
+    try {
+        // 1. หาว่าคนดูอยู่โซนไหน (เพื่อดึงอันดับของโซนนั้น)
+        const user = await db.collection('users').findOne({ username: username });
+        
+        // หาโซนที่ใกล้ที่สุด หรือโซนที่กำหนดไว้ในตัว user
+        // (ในที่นี้สมมติว่าหาจากโซนที่แอดมินคุมอยู่ หรือหาจากพิกัดล่าสุด)
+        const zone = await db.collection('zones').findOne({ 
+            // เงื่อนไขหาโซน เช่น ตามรหัสประเทศ หรือพิกัด
+            // สมมติทดสอบดึงโซนแรกก่อนเพื่อดูความถูกต้อง
+        });
+
+        if (!zone) return res.json({ success: false, message: "Zone not found" });
+
+        // 2. กำหนดรอบ (Cycle)
+        const targetCycle = (cycle === 'latest' || !cycle) ? (zone.currentCycle || 1) : parseInt(cycle);
+        
+        // 🚩 3. สร้าง Key จากชื่อตัวแปรภาษาอังกฤษที่แอดมินใหญ่ตั้งไว้ (rankingVariable)
+        // เช่น gedgoPoints_v1
+        const rankingVariable = zone.rankingVariable || 'defaultPoints';
+        const rankingKey = `ranking_data.${rankingVariable}_v${targetCycle}`;
+
+        const leaderboard = await db.collection('users').find({
+            [rankingKey]: { $exists: true }
+        })
         .sort({ [rankingKey]: -1 })
+        .limit(50)
         .toArray();
 
-    res.json({
-        success: true,
-        leaderboard: leaderboard.map(u => ({ username: u.username, totalPoints: u[rankingKey] })),
-        currentCycle: zone.currentCycle,
-        isActive: zone.isCompetitionActive,
-        requireKYC: zone.requireKYC
-    });
+        res.json({
+            success: true,
+            leaderboard: leaderboard.map(u => ({ 
+                username: u.username, 
+                totalPoints: u.ranking_data[rankingVariable + '_v' + targetCycle] // ดึงแต้มจาก Dynamic Key
+            })),
+            currentCycle: zone.currentCycle || 1,
+            isActive: zone.isCompetitionActive || false,
+            requireKYC: zone.requireKYC || false,
+            zoneName: zone.name
+        });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false });
+    }
 });
 
 // 1. เช็คสิทธิ์ว่าเป็นเจ้าของโซนไหม
