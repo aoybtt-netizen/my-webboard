@@ -1985,33 +1985,49 @@ app.post('/api/reset-zone-ranking', async (req, res) => {
     }
 });
 
-app.get('/api/zone-ranking-debug/:zoneId', async (req, res) => {
+
+
+
+app.post('/api/stop-zone-ranking', async (req, res) => {
+    const { adminName } = req.body;
     try {
-        const zone = await db.collection('zones').findOne({ id: parseInt(req.params.zoneId) });
-        if (!zone) return res.status(404).json({ success: false });
+        // 1. อัปเดตสถานะเป็นปิด (isCompetitionActive = false)
+        const result = await db.collection('zones').findOneAndUpdate(
+            { assignedAdmin: adminName },
+            { $set: { isCompetitionActive: false, updatedAt: new Date() } },
+            { returnDocument: 'after' }
+        );
 
-        // สร้างชื่อตัวแปรปัจจุบันให้ดู
+        const zone = result.value || result; // รองรับ MongoDB Driver
+
+        if (!zone) {
+            return res.status(404).json({ success: false, message: "ไม่พบข้อมูลโซน" });
+        }
+
+        // 🚩 ส่วนของ DEBUG (ตรวจสอบสถานะทั้ง 3 ตัว)
         const currentRankingKey = `${zone.rankingVariable || 'NOT_SET'}_v${zone.currentCycle || 1}`;
+        
+        console.log(`\n=== [Ranking Stop Debug] ===`);
+        console.log(`📍 โซน: ${zone.name}`);
+        console.log(`✅ 1. สถานะการแข่ง (isCompetitionActive): ${zone.isCompetitionActive} (ปิดแล้ว)`);
+        console.log(`✅ 2. เงื่อนไข KYC (requireKYC): ${zone.requireKYC}`);
+        console.log(`✅ 3. ชื่อตัวแปรคะแนนล่าสุด (Field Name): ${currentRankingKey}`);
+        console.log(`============================\n`);
 
-        res.json({
-            success: true,
-            debugInfo: {
-                zoneName: zone.name,
-                // ตัวแปรที่ 1: สถานะเปิด/ปิด
-                isCompetitionActive: zone.isCompetitionActive || false,
-                // ตัวแปรที่ 2: เงื่อนไข KYC
-                requireKYC: zone.requireKYC || false,
-                // ตัวแปรที่ 3: ชื่อตัวแปรที่ใช้เก็บคะแนนปัจจุบัน
-                currentRankingField: currentRankingKey,
-                // ข้อมูลเสริม
-                currentCycle: zone.currentCycle || 0,
-                rankingVariableBase: zone.rankingVariable || 'ยังไม่ได้ตั้งชื่อตัวแปรหลัก'
+        res.json({ 
+            success: true, 
+            debug: {
+                isActive: zone.isCompetitionActive,
+                kyc: zone.requireKYC,
+                field: currentRankingKey
             }
         });
-    } catch (e) {
-        res.status(500).json({ success: false });
+    } catch (e) { 
+        console.error("Stop Ranking Error:", e);
+        res.status(500).json({ success: false }); 
     }
 });
+
 
 
 // 4. Contacts (Messages)

@@ -227,6 +227,7 @@
 
     <script>
 	let currentZoneCycle = 1;
+	let isCurrentlyActive = false;
         const myUsername = localStorage.getItem('myUsername');
         const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
@@ -302,6 +303,85 @@ function updateStatusLabel(isActive, isKYC) {
         label.innerHTML = `<span style="color: #11998e;"><i class="fas fa-play-circle"></i> กำลังแข่งขัน</span> ${isKYC ? '<small style="color:#e67e22;">(เฉพาะ KYC)</small>' : ''}`;
     }
 }
+
+
+
+async function openRankingManager() {
+    const adminName = localStorage.getItem('myUsername');
+    
+    // 1. ดึงสถานะปัจจุบันของโซนก่อนเปิด Modal
+    try {
+        const res = await fetch(`/api/check-zone-status/${adminName}`);
+        const data = await res.json();
+        
+        isCurrentlyActive = data.isActive; // true หรือ false
+        const btn = document.getElementById('ranking-action-btn');
+
+        if (isCurrentlyActive) {
+            // 🚩 สถานะ: กำลังแข่งอยู่ -> เปลี่ยนเป็นปุ่ม "จบการแข่ง"
+            btn.innerText = "จบการแข่งขันและสรุปผล";
+            btn.style.background = "#dc3545"; // สีแดง
+            // ปิดช่องกรอกข้อมูล เพราะกำลังแข่งอยู่ แก้ไขไม่ได้จนกว่าจะจบ
+            disableInputs(true);
+        } else {
+            // 🚩 สถานะ: ปิดอยู่ -> เปลี่ยนเป็นปุ่ม "เริ่มรอบใหม่"
+            btn.innerText = "ยืนยันและเริ่มรอบใหม่";
+            btn.style.background = "#11998e"; // สีเขียว
+            disableInputs(false);
+        }
+
+        document.getElementById('ranking-modal').classList.remove('hidden');
+    } catch (e) { console.error(e); }
+}
+
+
+function disableInputs(disabled) {
+    document.getElementById('prize-1').disabled = disabled;
+    document.getElementById('prize-2').disabled = disabled;
+    document.getElementById('prize-3').disabled = disabled;
+    document.getElementById('rank-end-date').disabled = disabled;
+    document.getElementById('require-kyc').disabled = disabled;
+}
+
+async function stopCompetition() {
+    const result = await Swal.fire({
+        title: 'ยืนยันจบการแข่งขัน?',
+        text: 'คะแนนจะถูกหยุดนับ และคุณสามารถตรวจสอบรายชื่อผู้ชนะได้ทันที',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'จบการแข่ง',
+        confirmButtonColor: '#dc3545'
+    });
+
+    if (result.isConfirmed) {
+        const adminName = localStorage.getItem('myUsername');
+        try {
+            const res = await fetch('/api/stop-zone-ranking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('จบการแข่งขันแล้ว', 'ระบบหยุดนับคะแนนในรอบนี้เรียบร้อย', 'success');
+                closeRankingManager();
+                fetchRanking(); // อัปเดตตารางให้โชว์สถานะ "ปิดการแข่ง"
+            }
+        } catch (e) { Swal.fire('Error', 'ไม่สามารถหยุดการแข่งได้', 'error'); }
+    }
+}
+
+
+// ฟังก์ชันตัดสินใจว่าจะ Reset หรือจะ Stop
+function handleRankingAction() {
+    if (isCurrentlyActive) {
+        stopCompetition(); // ถ้าแข่งอยู่ ให้สั่งหยุด
+    } else {
+        saveAndResetRanking(); // ถ้าปิดอยู่ ให้สั่งเริ่มใหม่
+    }
+}
+
+
 
 function changeRankingCycle() {
     const selectedCycle = document.getElementById('cycle-selector').value;
@@ -469,36 +549,6 @@ async function saveAndResetRanking() {
 }
 
 
-async function debugZone(zoneId) {
-    try {
-        const res = await fetch(`/api/zone-ranking-debug/${zoneId}`);
-        const data = await res.json();
-        
-        if (data.success) {
-            const info = data.debugInfo;
-            Swal.fire({
-                title: `Debug: ${info.zoneName}`,
-                html: `
-                    <div style="text-align: left; font-family: monospace; font-size: 0.85em; background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 10px;">
-                        <p style="color: #f1c40f;">// สถานะการแข่ง (ตัวที่ 1)</p>
-                        <b>isCompetitionActive:</b> ${info.isCompetitionActive}<br><br>
-                        
-                        <p style="color: #f1c40f;">// เงื่อนไข KYC (ตัวที่ 2)</p>
-                        <b>requireKYC:</b> ${info.requireKYC}<br><br>
-                        
-                        <p style="color: #f1c40f;">// คะแนนเก็บที่ตัวแปร (ตัวที่ 3)</p>
-                        <b style="color: #55efc4;">field_name:</b> "${info.currentRankingField}"<br>
-                        <b>cycle:</b> ${info.currentCycle}<br>
-                        <b>base_name:</b> "${info.rankingVariableBase}"
-                    </div>
-                `,
-                icon: 'info'
-            });
-        }
-    } catch (e) {
-        Swal.fire('Error', 'ไม่สามารถดึงข้อมูลดีบั๊กได้', 'error');
-    }
-}
 
 
 
@@ -550,9 +600,11 @@ window.addEventListener('DOMContentLoaded', checkAdminStatus);
         </div>
 
         <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeRankingManager()">ยกเลิก</button>
-            <button class="btn-confirm" onclick="saveAndResetRanking()">ยืนยันและเริ่มรอบใหม่</button>
-        </div>
+    <button class="btn-cancel" onclick="closeRankingManager()">ยกเลิก</button>
+    <button id="ranking-action-btn" class="btn-confirm" onclick="handleRankingAction()">
+        ยืนยันและเริ่มรอบใหม่
+    </button>
+</div>
     </div>
 </div>
 
