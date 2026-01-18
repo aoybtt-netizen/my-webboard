@@ -3742,7 +3742,7 @@ async function debugMerchantStatus() {
                 ID: post.id.toString().slice(-4),
                 หัวข้อ: post.title,
                 สถานะ: post.status,
-                ไรเดอร์: post.acceptedBy || post.acceptedViewer || 'ยังไม่มี',
+                ไรเดอร์: post.acceptedBy || post.acceptedViewer || 'do not have yet',
                 เช็คอินครบ: post.stops.filter(s => s.status === 'success').length + "/" + post.stops.length,
                 isClosed: post.isClosed || false
             })));
@@ -3861,7 +3861,7 @@ async function openMerchantProductsModal() {
     // 1. หาข้อมูลร้านค้าจากตัวแปรที่มีอยู่
     const storeLoc = mySavedLocations.find(loc => loc.isStore === true);
     if (!storeLoc) {
-        return Swal.fire({ icon: 'error', text: 'ไม่พบข้อมูลร้านค้า' });
+        return Swal.fire({ icon: 'error', text: 'No store information found.' });
     }
 
     let currency = 'USD'; // ค่าเริ่มต้น
@@ -3884,8 +3884,8 @@ async function openMerchantProductsModal() {
         const p = savedProducts[i] || { name: '', price: '' };
         container.innerHTML += `
             <div class="product-row-item">
-                <input type="text" id="prod-name-${i}" placeholder="เมนูที่ ${i+1}" value="${p.name}">
-                <input type="number" id="prod-price-${i}" placeholder="ราคา" value="${p.price}">
+                <input type="text" id="prod-name-${i}" placeholder="list ${i+1}" value="${p.name}">
+                <input type="number" id="prod-price-${i}" placeholder="price" value="${p.price}">
                 <div class="currency-badge">${currency}</div>
             </div>
         `;
@@ -3930,11 +3930,10 @@ async function saveMerchantProducts() {
         
         const data = await res.json();
         if (data.success) {
-            // อัปเดตข้อมูลในตัวแปร local ด้วย
             const store = mySavedLocations.find(loc => loc.isStore === true);
             if (store) store.products = products;
             
-            Swal.fire({ icon: 'success', text: 'บันทึกเมนูเรียบร้อยแล้ว' });
+            Swal.fire({ icon: 'success', text: 'save data' });
             closeMerchantProductsModal();
         }
     } catch (e) {
@@ -3946,12 +3945,11 @@ async function saveMerchantProducts() {
 
 
 socket.on('new_order_card', (order) => {
-    // เช็คว่ามีออเดอร์นี้ในรายการหรือยัง (ป้องกันซ้ำ)
     if (!pendingOrders.find(o => o.orderId === order.orderId)) {
         pendingOrders.push(order);
     }
     
-    updateOrderUI(); // อัปเดตตัวเลขที่ปุ่มข้างจอ
+    updateOrderUI();
     
     // เล่นเสียงเตือน
     const sound = document.getElementById('orderSound');
@@ -4199,7 +4197,7 @@ async function declineOrder() {
 function formatMerchantChatMessage(text) {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;">เปิดแผนที่ 📍</a>`;
+        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;"> 📍</a>`;
     });
 }
 
@@ -4234,7 +4232,7 @@ function shareMerchantLocation() {
     navigator.geolocation.getCurrentPosition((position) => {
         const { latitude, longitude } = position.coords;
         const mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-        const message = `📍 ตำแหน่งร้านค้า: ${mapLink}`;
+        const message = `📍: ${mapLink}`;
         sendMerchantCustomMessage(message);
     });
 }
@@ -4257,7 +4255,7 @@ async function handleMerchantPhotoSelect(input) {
     if (!file) return;
 
     Swal.fire({
-        title: 'กำลังส่งรูปภาพ...',
+        title: 'sending photo...',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); }
     });
@@ -4268,7 +4266,7 @@ async function handleMerchantPhotoSelect(input) {
     const formData = new FormData();
     formData.append('image', resizedBlob, `merchant_${Date.now()}.jpg`);
     formData.append('author', myUsername);
-    formData.append('text', '📷 ส่งรูปภาพ');
+    formData.append('text', '📷 send photo');
 
     const res = await fetch(`/api/posts/${activeTaskInSidebar.id}/comments`, {
         method: 'POST',
@@ -4277,7 +4275,7 @@ async function handleMerchantPhotoSelect(input) {
     const data = await res.json();
     
     if (data.success) {
-        appendMerchantMessage(myUsername, '📷 ส่งรูปภาพ', true, data.comment.imageUrl);
+        appendMerchantMessage(myUsername, '📷 send photo', true, data.comment.imageUrl);
         URL.revokeObjectURL(imageUrl);
         Swal.close();
     }
