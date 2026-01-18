@@ -339,6 +339,8 @@ header {
 	let currentSystemZone = 0;
 	let myActiveOrders = [];
 	let currentChatPostId = null;
+	let merchantUser = "";
+	let riderUser = "";
 	
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -1106,16 +1108,39 @@ async function loadChatHistory(postId) {
     try {
         const res = await fetch(`/api/posts/${postId}`);
         const data = await res.json();
+        
         if (data.success) {
+            const post = data.post;
+            merchantUser = post.author;     // เจ้าของโพสต์คือร้านค้า
+            riderUser = post.acceptedBy;    // คนรับงานคือไรเดอร์
+            
             const chatContainer = document.getElementById('chatMessages');
             chatContainer.innerHTML = '';
-            data.post.comments.forEach(msg => {
-                appendMessage(msg.author, msg.text, msg.author === localStorage.getItem('myUsername'));
+
+            post.comments.forEach(msg => {
+                // ส่งชื่อที่แปลงแล้วไปแสดงผล
+                const displayName = formatDisplayName(msg.author);
+                appendMessage(displayName, msg.text, msg.author === localStorage.getItem('myUsername'));
             });
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
     } catch (e) { console.error("Load chat error:", e); }
 }
+
+function formatDisplayName(username) {
+    const myUser = localStorage.getItem('myUsername');
+
+    if (username === myUser) {
+        return "You"; // หรือใช้ชื่อตัวเอง
+    } else if (username === merchantUser) {
+        return "🏪 "; // โชว์ว่าเป็นร้านค้า
+    } else if (username === riderUser) {
+        return "🛵 ";   // โชว์ว่าเป็นไรเดอร์
+    } else {
+        return username;      // กรณีแอดมินหรือคนอื่น
+    }
+}
+
 
 // ฟังก์ชันส่งข้อความ
 function sendChatMessage() {
@@ -1167,22 +1192,16 @@ function appendMessage(sender, text, isMe) {
 
 // รับข้อความใหม่จาก Socket
 socket.on('new-comment', (data) => {
-    console.log("Debug Chat Data:", data); // 🚩 พี่ลองดูใน Console (F12) จะเห็นเลยว่าข้อมูลส่งมาท่าไหน
-
-    // 1. ตรวจสอบว่าข้อมูลอยู่ใน data.comment หรืออยู่ใน data โดยตรง
-    const comment = data.comment || data; 
-    const incomingPostId = data.postId;
-
-    // 2. ใช้ == (เท่ากับ 2 ตัว) เพื่อเช็ค ID โดยไม่สนว่าเป็น String หรือ Number
-    if (incomingPostId == currentChatPostId) {
-        
-        // 3. ป้องกันอาการ undefined โดยการเช็คทั้งฟิลด์ text และ content
+    const comment = data.comment || data;
+    
+    if (data.postId == currentChatPostId) {
         const author = comment.author;
-        const text = comment.text || comment.content || ""; // ถ้าไม่มีทั้งคู่ให้เป็นค่าว่าง
+        const text = comment.text || comment.content || "";
 
-        // 4. แสดงข้อความถ้าไม่ใช่เราเป็นคนส่ง
         if (author && author !== localStorage.getItem('myUsername')) {
-            appendMessage(author, text, false);
+            // แปลงชื่อก่อนแสดงผล
+            const displayName = formatDisplayName(author);
+            appendMessage(displayName, text, false);
         }
     }
 });
