@@ -206,6 +206,17 @@
             <span id="my-pts">0 pts</span>
         </div>
     </div>
+	
+	
+	<div style="padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: white; margin: 0 15px 10px; border-radius: 15px;">
+    <span id="comp-status-label" style="font-size: 0.85rem; font-weight: bold;">
+        </span>
+    <select id="cycle-selector" onchange="changeRankingCycle()" style="border: 1px solid #ddd; padding: 5px 10px; border-radius: 10px; outline: none; font-family: 'Kanit';">
+        <option value="latest" data-i18n-key="opt_latest">รอบล่าสุด</option>
+        </select>
+</div>
+
+
 
     <div class="leaderboard" id="leaderboard-list">
         <div class="no-data">
@@ -215,6 +226,7 @@
     </div>
 
     <script>
+	let currentZoneCycle = 1;
         const myUsername = localStorage.getItem('myUsername');
         const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
@@ -249,17 +261,54 @@
             });
         }
 
-        async function fetchRanking() {
-            try {
-                // เรียก API ที่พี่สร้างไว้
-                const res = await fetch('/api/rider-ranking');
-                const data = await res.json();
-                
-                if (data.success) {
-                    renderLeaderboard(data.leaderboard);
-                }
-            } catch (e) { console.error(e); }
+async function fetchRanking(cycle = 'latest') {
+    try {
+        // ส่งตัวแปร cycle ไปด้วย ถ้าเป็น latest ระบบจะดึงรอบปัจจุบัน
+        const res = await fetch(`/api/rider-ranking?cycle=${cycle}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            // 1. อัปเดต Dropdown เฉพาะตอนโหลดครั้งแรก
+            if (cycle === 'latest') {
+                updateCycleSelector(data.currentCycle);
+                updateStatusLabel(data.isActive, data.requireKYC);
+            }
+            
+            // 2. วาดตารางคะแนน
+            renderLeaderboard(data.leaderboard);
         }
+    } catch (e) { console.error(e); }
+}
+
+
+function updateCycleSelector(maxCycle) {
+    const selector = document.getElementById('cycle-selector');
+    selector.innerHTML = '';
+    // วนลูปสร้างตัวเลือกจากปัจจุบันย้อนไปถึง 1
+    for (let i = maxCycle; i >= 1; i--) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.innerText = i === maxCycle ? `รอบปัจจุบัน (รอบที่ ${i})` : `ย้อนหลังรอบที่ ${i}`;
+        selector.appendChild(opt);
+    }
+}
+
+
+function updateStatusLabel(isActive, isKYC) {
+    const label = document.getElementById('comp-status-label');
+    if (!isActive) {
+        label.innerHTML = '<span style="color: #999;"><i class="fas fa-pause-circle"></i> ปิดการแข่งอยู่</span>';
+    } else {
+        label.innerHTML = `<span style="color: #11998e;"><i class="fas fa-play-circle"></i> กำลังแข่งขัน</span> ${isKYC ? '<small style="color:#e67e22;">(เฉพาะ KYC)</small>' : ''}`;
+    }
+}
+
+function changeRankingCycle() {
+    const selectedCycle = document.getElementById('cycle-selector').value;
+    fetchRanking(selectedCycle);
+}
+
+
 
         function getRankIcon(index) {
             if (index === 0) return '<i class="fas fa-medal"></i>';

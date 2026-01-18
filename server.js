@@ -686,49 +686,60 @@ app.get('/api/admin/all-zones', async (req, res) => {
 
 // 3. 🔥 API หัวใจหลัก: Universal Update (เวอร์ชันอัปเดตเพื่อรองรับระบบโซน)
 app.post('/api/admin/universal-update', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     const { adminUsername, targetCollection, targetId, field, newValue } = req.body;
 
     try {
-        // --- 🛡️ ตรวจสอบสิทธิ์แอดมิน (Security Check) ---
         const admin = await db.collection('users').findOne({ username: adminUsername });
         if (!admin || admin.adminLevel < 3) {
             return res.status(403).json({ success: false, message: serverTranslations[lang].error_admin_l3_required });
         }
 
-        // --- ⚙️ จัดการประเภทข้อมูล (Data Casting) ---
         let finalValue = newValue;
 
-        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็นตัวเลข (เพิ่ม systemZone และ zoneFee)
+        // 🚩 [เพิ่มใหม่] ตรวจสอบเงื่อนไขพิเศษสำหรับตัวแปร Ranking
+        if (field === 'rankingVariable') {
+            // Regex: ภาษาอังกฤษ (A-Z, a-z) อย่างน้อย 5 ตัว
+            const engRegex = /^[A-Za-z]{5,}$/;
+            if (!engRegex.test(newValue)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "ชื่อตัวแปรต้องเป็นภาษาอังกฤษล้วน และมีความยาว 5 ตัวอักษรขึ้นไป" 
+                });
+            }
+            // ป้องกันการใช้ชื่อฟิลด์ที่เป็นคำสงวน (Optional)
+            const reserved = ['username', 'id', 'adminLevel', 'coins', 'password'];
+            if (reserved.includes(newValue)) {
+                return res.status(400).json({ success: false, message: "ไม่สามารถใช้ชื่อตัวแปรที่เป็นคำสงวนของระบบได้" });
+            }
+        }
+
+        // --- ส่วนจัดการประเภทข้อมูลเดิมของพี่ ---
         const numericFields = [
             'coins', 'adminLevel', 'id', 'zoneExchangeRate', 
-			'totalPosts', 'completedJobs', 'rating', 
-			'BRL', 'THB', 'VND', 'systemZone', 'zoneFee','changNameMerchant',
-			'kycPrice','kycPriceZone','kycPriceSystem', 'minTopup', 'minWithdraw'
+            'totalPosts', 'completedJobs', 'rating', 
+            'BRL', 'THB', 'VND', 'systemZone', 'zoneFee','changNameMerchant',
+            'kycPrice','kycPriceZone','kycPriceSystem', 'minTopup', 'minWithdraw'
         ];
 
         if (numericFields.includes(field)) {
-            // แยกกรณี parseInt สำหรับ ID/Level และ parseFloat สำหรับยอดเงิน/เรท
             if (field === 'adminLevel' || field === 'id') {
                 finalValue = parseInt(newValue);
             } else {
                 finalValue = parseFloat(newValue);
             }
             
-            // ป้องกันค่า NaN ถ้าใส่ข้อมูลมาผิดประเภท
             if (isNaN(finalValue)) {
                 return res.status(400).json({ success: false, message: "ค่าที่ระบุต้องเป็นตัวเลขเท่านั้น" });
             }
         }
 
-        // 🚩 [เพิ่มแล้ว] รายการฟิลด์ที่เป็น Boolean (เพิ่ม isFree ของโซนเข้าไปด้วย)
         const booleanFields = ['isBanned', 'isFree'];
         if (booleanFields.includes(field)) {
             finalValue = (newValue === 'true' || newValue === true);
         }
 
-        // --- 📝 ทำการอัปเดตลง Database ---
-        // กำหนดเงื่อนไขการหา: ถ้าแก้ user ให้หาจาก username, ถ้าแก้ zone ให้หาจาก id
+        // --- อัปเดตลง Database ---
         const query = targetCollection === 'users' ? { username: targetId } : { id: parseInt(targetId) };
 
         const result = await db.collection(targetCollection).updateOne(
@@ -1900,25 +1911,24 @@ app.get('/api/users-list', async (req, res) => {
 
 // rider ranking
 app.get('/api/rider-ranking', async (req, res) => {
-    try {
-        // ลองเอา { role: 'rider' } ออก เพื่อดูว่ามีข้อมูลออกมาไหม
-        const topRiders = await usersCollection.find({}) 
-            .sort({ rating: -1, ratingCount: -1 })
-            .limit(50)
-            .toArray();
+    const { cycle } = req.query; // รับค่ารอบที่ต้องการดู
+    const adminName = req.query.adminName; // หรือดึงจาก Zone ของ User
+    
+    const zone = await db.collection('zones').findOne({ /* เงื่อนไขหาโซน */ });
+    const targetCycle = (cycle === 'latest' || !cycle) ? zone.currentCycle : parseInt(cycle);
+    const rankingKey = `ranking_data.${zone.id}_v${targetCycle}`;
 
-        console.log("Found riders:", topRiders.length); // เช็คใน Console ของ Server
+    const leaderboard = await usersCollection.find({ [rankingKey]: { $exists: true } })
+        .sort({ [rankingKey]: -1 })
+        .toArray();
 
-        const leaderboard = topRiders.map(rider => ({
-            username: rider.username || "No Name", 
-            totalPoints: rider.rating || 0, 
-            ratingCount: rider.ratingCount || 0
-        }));
-
-        res.json({ success: true, leaderboard: leaderboard });
-    } catch (error) {
-        res.status(500).json({ success: false });
-    }
+    res.json({
+        success: true,
+        leaderboard: leaderboard.map(u => ({ username: u.username, totalPoints: u[rankingKey] })),
+        currentCycle: zone.currentCycle,
+        isActive: zone.isCompetitionActive,
+        requireKYC: zone.requireKYC
+    });
 });
 
 // 1. เช็คสิทธิ์ว่าเป็นเจ้าของโซนไหม

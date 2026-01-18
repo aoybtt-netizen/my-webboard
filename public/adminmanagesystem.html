@@ -514,6 +514,7 @@ function viewZoneDetails(zoneId) {
 					${renderItem('KYC System Zone', 'kycPriceSystem', z.kycPriceSystem, z.id, currency)}
                     ${renderItem('ฝากขั้นต่ำ', 'minTopup', z.minTopup, z.id, currency)}
                     ${renderItem('ถอนขั้นต่ำ', 'minWithdraw', z.minWithdraw, z.id, currency)}
+					${renderItem('ชื่อตัวแปร Ranking', 'rankingVariable', z.rankingVariable || 'ไม่มี (คลิกเพื่อตั้งค่า)', z.id, '(อังกฤษ 5 ตัวขึ้นไป)')}
 
                     ${renderBooleanItem('โหมดโพสต์ฟรีในโซน', 'isFree', z.isFree, z.id)}
                 </div>
