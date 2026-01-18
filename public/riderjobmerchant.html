@@ -1024,13 +1024,14 @@ async function sendRiderChat() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 author: myUsername,
-                text: text // ส่งเป็น text ให้ตรงกับที่เราแก้ใน server.js
+                text: text
             })
         });
 
         if (res.ok) {
+            const data = await res.json();
             input.value = '';
-            loadRiderMessages();
+            appendRiderMessage(myUsername, text, true, null);
         }
     } catch (e) {
         alert("Unable to send message.");
@@ -1059,13 +1060,18 @@ function shareRiderLocation() {
 async function sendRiderCustomMessage(text) {
     if (!jobId) return;
     try {
-        await fetch(`/api/posts/${jobId}/comments`, {
+        const res = await fetch(`/api/posts/${jobId}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ author: myUsername, text: text })
         });
-        // ไม่ต้อง append เอง เพราะ socket จะจัดการให้
+        
+        if (res.ok) {
+            const data = await res.json();
+            appendRiderMessage(myUsername, text, true, data.comment ? data.comment.imageUrl : null);
+        }
     } catch (e) { console.error(e); }
+}  } catch (e) { console.error(e); }
 }
 
 
@@ -1198,10 +1204,8 @@ socket.on('new-comment', (data) => {
     const comment = data.comment || data;
     
     if (data.postId == jobId) {
-        // 🚩 สำคัญ: ต้องไม่โชว์ซ้ำถ้าเป็นคนส่งเอง (เพราะเราสั่งโชว์ทันทีตอน fetch สำเร็จแล้ว)
         if (comment.author !== myUsername) {
-            // ส่ง imageUrl เข้าไปด้วยเพื่อให้ฝั่งรับเห็นรูป
-            appendRiderMessage(comment.author, comment.text, false, comment.imageUrl);
+            appendRiderMessage(comment.author, comment.text || comment.content, false, comment.imageUrl);
         }
     }
 });
