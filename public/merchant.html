@@ -3297,10 +3297,8 @@ async function sendSidebarChat() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     
-    // ถ้าไม่มีข้อความ หรือไม่ได้เปิดงานอยู่ ให้หยุด
     if (!text || !activeTaskInSidebar) return;
 
-    // ส่งข้อมูลไปหา Server
     try {
         const res = await fetch(`/api/posts/${activeTaskInSidebar.id}/comments`, {
             method: 'POST',
@@ -3309,9 +3307,10 @@ async function sendSidebarChat() {
         });
 
         if (res.ok) {
-            // ✅ เคลียร์ช่องพิมพ์อย่างเดียวพอ 
-            // ไม่ต้องเรียก loadSidebarChat() แล้ว เพราะ Socket จะดันข้อความขึ้นมาเอง
+            const data = await res.json();
             input.value = ''; 
+            
+            appendMerchantMessage(myUsername, text, true, null);
         }
     } catch (e) {
         console.error(translations[currentLang].err_chat_send_failed, e);
@@ -3441,12 +3440,12 @@ socket.on('rider-applied', (data) => {
 
 // 🚩 2. ปรับตัวรับสัญญาณใน merchant.html
 socket.on('new-comment', (data) => {
-    // 1. ถ้าเปิด Sidebar งานนั้นอยู่ ให้แสดงข้อความสด
+    const comment = data.comment || data;
+    const author = comment.author;
+
     if (activeTaskInSidebar && activeTaskInSidebar.id == data.postId) {
-        const comment = data.comment || data;
-        if (comment.author !== myUsername) {
-            // ส่ง imageUrl เข้าไปด้วย
-            appendMerchantMessage(comment.author, comment.text || comment.content, false, comment.imageUrl);
+        if (author !== myUsername) {
+            appendMerchantMessage(author, comment.text || comment.content, false, comment.imageUrl);
         }
 
         if (currentTab !== 'chat') {
@@ -3455,7 +3454,7 @@ socket.on('new-comment', (data) => {
         }
     }
 
-    if (data.comment.author !== myUsername) {
+    if (author !== myUsername) {
         if (!(activeTaskInSidebar && activeTaskInSidebar.id == data.postId && currentTab === 'chat')) {          
             const notifBox = document.getElementById(`notif-box-${data.postId}`);
             if (notifBox) {
