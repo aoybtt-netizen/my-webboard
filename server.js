@@ -1811,7 +1811,7 @@ app.get('/api/users-list', async (req, res) => {
                 
                 currency: currencyKey, // ส่งชื่อสกุลเงินไปแสดงเป็นป้ายหน่วย
                 
-                rating: averageRating,
+                rating: u.ratingCount,
                 ratingCount: totalRatingCount,
                 totalPosts: u.totalPosts || 0,
                 totalJobs: u.totalJobs || 0,
