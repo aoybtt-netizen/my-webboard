@@ -1804,15 +1804,11 @@ app.get('/api/users-list', async (req, res) => {
                 name: u.username, 
                 fullName: u.fullName || '', 
                 profileImg: u.profileImg || '', 
+                coins: u[currencyKey] || 0,                 
+                currency: currencyKey,
                 
-                // ✨ จุดสำคัญ: ดึงยอดเงินจากฟิลด์ที่ชื่อตรงกับสกุลเงินโซน ( u['x'] หรือ u['thb'] )
-                // จะได้ค่าดิบๆ จากฟิลด์นั้นเลย ไม่มีการคูณเลข
-                coins: u[currencyKey] || 0, 
-                
-                currency: currencyKey, // ส่งชื่อสกุลเงินไปแสดงเป็นป้ายหน่วย
-                
-                rating: averageRating,
-                ratingCount: totalRatingCount,
+                rating: currentRating, 
+				ratingCount: currentCount,
                 totalPosts: u.totalPosts || 0,
                 totalJobs: u.totalJobs || 0,
                 completedJobs: combinedCompleted,
@@ -4131,23 +4127,19 @@ app.get('/api/rider-stats/:username', async (req, res) => {
     const { username } = req.params;
     try {
         const user = await usersCollection.findOne({ username: username });
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
 
-        // 🚩 แก้ไขจุดนับงาน: เช็คทั้งสองฟิลด์ (acceptedBy และ acceptedViewer) 
-        // และเช็คทุกสถานะที่ถือว่างานสำเร็จ/จบแล้ว
-        const completedJobs = await postsCollection.countDocuments({ 
-            $or: [
-                { acceptedBy: username }, 
-                { acceptedViewer: username }
-            ],
-            status: { $in: ['finished', 'success', 'completed', 'closed_permanently', 'rating_pending'] } 
-        });
         res.json({
             success: true,
             stats: {
                 username: username,
-                rating: user?.rating || 0,
-                totalJobs: completedJobs, 
-                avatar: user?.avatar || null
+                rating: user.rating || 0,
+                ratingCount: user.ratingCount || 0,
+                totalJobs: user.totalJobs || 0, 
+                avatar: user.avatar || null
             }
         });
     } catch (e) {
@@ -4280,23 +4272,31 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
 
         // 🚩 2. ปลดล็อค Rider ทันทีเพื่อให้เขาไปรับงานอื่นได้ (ล้างค่า working)
         if (riderName) {
-            await usersCollection.updateOne(
-                { username: riderName },
-                { $set: { working: null } } // ✅ ล้างงานที่ผูกไว้
-            );
-            
-            // 3. อัปเดตสถิติและคะแนนให้ไรเดอร์ (Rider)
-            await usersCollection.updateOne(
-                { username: riderName },
-                { 
-                    $inc: { 
-                        totalJobs: 1, 
-                        totalRatingScore: parseFloat(rating), 
-                        ratingCount: 1 
-                    }
-                }
-            );
-        }
+		const rider = await usersCollection.findOne({ username: riderName });
+    
+		if (rider) {
+			const newScore = parseFloat(rating);
+			const currentCount = rider.ratingCount || 0;
+			const currentRating = rider.rating || 0;
+
+				// คำนวณค่าเฉลี่ยใหม่
+			const newAverage = ((currentRating * currentCount) + newScore) / (currentCount + 1);
+
+			await usersCollection.updateOne(
+				{ username: riderName },
+				{ 
+					$set: { 
+						working: null,
+						rating: parseFloat(newAverage.toFixed(2)) // บันทึกทศนิยม 2 ตำแหน่ง
+					},
+					$inc: { 
+						ratingCount: 1,
+						totalJobs: 1 // สำหรับใช้ทำ Ranking
+						}
+					}
+				);
+			}
+		}
 
         // 4. อัปเดตสถิติจบงานให้ร้านค้า (Merchant)
         await usersCollection.updateOne(
@@ -5948,7 +5948,29 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
         await postsCollection.updateOne({ id: parseInt(postId) }, { $set: updateField });
 
         let userToRate = isAuthor ? post.acceptedViewer : post.author;
-        if(userToRate) await calculateNewRating(userToRate, parseFloat(rating));
+        if (userToRate) {
+			const target = await usersCollection.findOne({ username: userToRate });
+    
+		if (target) {
+        const newScore = parseFloat(rating);
+        const currentCount = target.ratingCount || 0;
+        const currentRating = target.rating || 0;
+
+        // ใช้สูตรเดียวกันเป๊ะ
+        const newAverage = ((currentRating * currentCount) + newScore) / (currentCount + 1);
+
+        await usersCollection.updateOne(
+            { username: userToRate },
+            { 
+                $set: { rating: parseFloat(newAverage.toFixed(2)) },
+                $inc: { 
+                    ratingCount: 1,
+                    totalJobs: 1 // นับงานให้ด้วยเพื่อใช้แข่ง Ranking
+					}
+				}
+			);
+		}
+	}
 
         const updatedPost = await postsCollection.findOne({ id: parseInt(postId) });
         const otherRoleKey = isAuthor ? 'acceptedViewer' : 'author';

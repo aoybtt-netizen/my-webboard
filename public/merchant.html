@@ -3472,7 +3472,6 @@ socket.on('new-comment', (data) => {
 
 // แก้ไขฟังก์ชัน confirmAndRate ให้เรียกใช้ API กลาง
 async function confirmAndRate(postId, riderName) {
-    // 1. ถามคะแนนด้วยหน้าต่างเด้ง (คุณสามารถเปลี่ยนเป็นระบบ Star Rating ทีหลังได้)
     const rating = prompt(translations[currentLang].prompt_rating(riderName), "5");
     
     if (rating === null) return; // กดยกเลิก
