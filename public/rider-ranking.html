@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>GedGo - Rider Ranking</title>
+    <title>GedGo - Rider Leaderboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
-            --primary-color: #11998e;
-            --secondary-color: #38ef7d;
+            --primary: #11998e;
             --gold: #f1c40f;
             --silver: #bdc3c7;
             --bronze: #e67e22;
@@ -18,162 +17,110 @@
         body {
             font-family: 'Kanit', sans-serif;
             margin: 0;
-            background: #f0f2f5;
+            background: #f8f9fa;
             color: #333;
-            padding-bottom: 50px;
         }
 
-        /* Header Gradient */
+        /* Header */
         .header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 20px 15px 60px;
-            text-align: center;
-            border-radius: 0 0 30px 30px;
-            position: relative;
-        }
-
-        .back-btn {
-            position: absolute;
-            left: 15px;
-            top: 20px;
-            color: white;
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
-
-        /* Podium Section */
-        .podium-container {
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            margin-top: -40px;
-            padding: 0 10px;
-            gap: 10px;
-        }
-
-        .podium-item {
-            background: white;
-            border-radius: 15px 15px 10px 10px;
-            padding: 15px 5px;
-            text-align: center;
-            flex: 1;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            position: relative;
-        }
-
-        .podium-item.rank-1 {
-            height: 160px;
-            z-index: 2;
-            border-top: 5px solid var(--gold);
-        }
-
-        .podium-item.rank-2 {
-            height: 130px;
-            border-top: 5px solid var(--silver);
-        }
-
-        .podium-item.rank-3 {
-            height: 110px;
-            border-top: 5px solid var(--bronze);
-        }
-
-        .avatar-box {
-            width: 50px;
-            height: 50px;
-            background: #eee;
-            border-radius: 50%;
-            margin: -40px auto 10px;
-            border: 3px solid white;
+            background: #fff;
+            padding: 20px 15px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: #666;
-            overflow: hidden;
-        }
-
-        .rank-1 .avatar-box { width: 65px; height: 65px; border-color: var(--gold); margin-top: -50px; }
-        .crown { position: absolute; top: -65px; left: 50%; transform: translateX(-50%); color: var(--gold); font-size: 1.8rem; }
-
-        .name-label { font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .points-label { font-size: 0.9rem; color: var(--primary-color); font-weight: bold; }
-
-        /* Ranking List */
-        .ranking-list {
-            max-width: 500px;
-            margin: 20px auto;
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
-        .list-item {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .list-rank { width: 30px; font-weight: bold; color: #888; }
-        .list-name { flex: 1; font-weight: 500; padding-left: 10px; }
-        .list-points { text-align: right; color: var(--primary-color); font-weight: bold; }
-
-        .my-rank-card {
-            background: #e1f5fe;
+        /* My Rank Section (Card) */
+        .my-rank-container {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
             margin: 15px;
-            padding: 15px;
-            border-radius: 15px;
+            padding: 20px;
+            border-radius: 20px;
+            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border: 1px solid #b3e5fc;
+            box-shadow: 0 10px 20px rgba(17, 153, 142, 0.2);
         }
+
+        /* Leaderboard Table */
+        .leaderboard {
+            margin: 0 15px 30px;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .rank-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #f1f1f1;
+            transition: 0.2s;
+        }
+
+        .rank-number {
+            width: 40px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            color: #888;
+        }
+
+        /* Medals Style */
+        .rank-1 .rank-number { color: var(--gold); font-size: 1.5rem; }
+        .rank-2 .rank-number { color: var(--silver); font-size: 1.3rem; }
+        .rank-3 .rank-number { color: var(--bronze); font-size: 1.2rem; }
+
+        .rank-name {
+            flex: 1;
+            font-weight: 500;
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rank-points {
+            text-align: right;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .highlight-me { background: #f0f9f8; border-left: 5px solid var(--primary); }
+
+        .no-data { text-align: center; padding: 40px; color: #999; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <i class="fas fa-arrow-left back-btn" onclick="history.back()"></i>
-        <h2 data-i18n-key="rank_title">อันดับไรเดอร์</h2>
-        <p style="font-size: 0.8rem; opacity: 0.9;" data-i18n-key="rank_subtitle">คะแนนสะสมประจำเดือนนี้</p>
+        <i class="fas fa-chevron-left" onclick="history.back()" style="cursor:pointer;"></i>
+        <b style="font-size: 1.2rem;" data-i18n-key="rank_title">อันดับไรเดอร์</b>
     </div>
 
-    <div class="podium-container">
-        <div class="podium-item rank-2">
-            <div class="avatar-box" id="avatar-2">2</div>
-            <span class="name-label" id="name-2">---</span>
-            <span class="points-label" id="pts-2">0 pts</span>
-        </div>
-
-        <div class="podium-item rank-1">
-            <i class="fas fa-crown crown"></i>
-            <div class="avatar-box" id="avatar-1">1</div>
-            <span class="name-label" id="name-1">---</span>
-            <span class="points-label" id="pts-1">0 pts</span>
-        </div>
-
-        <div class="podium-item rank-3">
-            <div class="avatar-box" id="avatar-3">3</div>
-            <span class="name-label" id="name-3">---</span>
-            <span class="points-label" id="pts-3">0 pts</span>
-        </div>
-    </div>
-
-    <div class="my-rank-card">
+    <div class="my-rank-container">
         <div>
-            <small style="color:#0288d1" data-i18n-key="my_rank_label">อันดับของคุณ</small>
-            <div style="font-weight: bold; font-size: 1.1rem;" id="my-rank-name">---</div>
+            <span style="opacity: 0.9; font-size: 0.85rem;" data-i18n-key="your_position">อันดับปัจจุบันของคุณ</span>
+            <div style="font-size: 1.4rem; font-weight: 600;" id="my-name">---</div>
         </div>
         <div style="text-align: right;">
-            <div style="font-size: 1.2rem; font-weight: bold; color: var(--primary-color);" id="my-rank-pos">#--</div>
-            <small id="my-rank-pts">0 pts</small>
+            <div style="font-size: 1.8rem; font-weight: bold;" id="my-pos">#--</div>
+            <span id="my-pts">0 pts</span>
         </div>
     </div>
 
-    <div class="ranking-list" id="ranking-list-container">
+    <div class="leaderboard" id="leaderboard-list">
+        <div class="no-data">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p data-i18n-key="loading">กำลังโหลดข้อมูล...</p>
         </div>
+    </div>
 
     <script>
         const myUsername = localStorage.getItem('myUsername');
@@ -182,86 +129,79 @@
         const translations = {
             'th': {
                 'rank_title': 'อันดับไรเดอร์ยอดเยี่ยม',
-                'rank_subtitle': 'สะสมคะแนนเพื่อรับรางวัลประจำสัปดาห์',
-                'my_rank_label': 'อันดับของคุณ',
-                'points_unit': 'คะแนน'
+                'your_position': 'อันดับปัจจุบันของคุณ',
+                'loading': 'กำลังโหลดข้อมูล...',
+                'pts_unit': 'คะแนน'
             },
             'en': {
-                'rank_title': 'Rider Leaderboard',
-                'rank_subtitle': 'Earn points for weekly rewards',
-                'my_rank_label': 'Your Ranking',
-                'points_unit': 'pts'
+                'rank_title': 'Top Riders',
+                'your_position': 'Your Current Rank',
+                'loading': 'Loading...',
+                'pts_unit': 'pts'
             },
             'pt': {
-                'rank_title': 'Ranking de Entregadores',
-                'rank_subtitle': 'Ganhe pontos para prêmios semanais',
-                'my_rank_label': 'Sua Classificação',
-                'points_unit': 'pts'
+                'rank_title': 'Melhores Entregadores',
+                'your_position': 'Sua Posição Atual',
+                'loading': 'Carregando...',
+                'pts_unit': 'pts'
             }
         };
 
         function applyTranslations() {
             document.querySelectorAll('[data-i18n-key]').forEach(el => {
                 const key = el.getAttribute('data-i18n-key');
-                if (translations[currentLang][key]) {
-                    el.innerText = translations[currentLang][key];
-                }
+                if (translations[currentLang][key]) el.innerText = translations[currentLang][key];
             });
         }
 
         async function fetchRanking() {
             try {
-                // เปลี่ยน URL เป็น API จริงของพี่
+                // เรียก API ที่พี่สร้างไว้
                 const res = await fetch('/api/rider-ranking');
                 const data = await res.json();
                 
                 if (data.success) {
-                    const list = data.leaderboard;
-                    renderPodium(list);
-                    renderList(list);
-                    updateMyRank(list);
+                    renderLeaderboard(data.leaderboard);
                 }
-            } catch (e) { console.error("Fetch ranking error:", e); }
+            } catch (e) { console.error(e); }
         }
 
-        function renderPodium(list) {
-            if (list[0]) {
-                document.getElementById('name-1').innerText = list[0].username;
-                document.getElementById('pts-1').innerText = `${list[0].totalPoints} ${translations[currentLang].points_unit}`;
-            }
-            if (list[1]) {
-                document.getElementById('name-2').innerText = list[1].username;
-                document.getElementById('pts-2').innerText = `${list[1].totalPoints} ${translations[currentLang].points_unit}`;
-            }
-            if (list[2]) {
-                document.getElementById('name-3').innerText = list[2].username;
-                document.getElementById('pts-3').innerText = `${list[2].totalPoints} ${translations[currentLang].points_unit}`;
-            }
+        function getRankIcon(index) {
+            if (index === 0) return '<i class="fas fa-medal"></i>';
+            if (index === 1) return '<i class="fas fa-medal"></i>';
+            if (index === 2) return '<i class="fas fa-medal"></i>';
+            return index + 1;
         }
 
-        function renderList(list) {
-            const container = document.getElementById('ranking-list-container');
+        function renderLeaderboard(list) {
+            const container = document.getElementById('leaderboard-list');
             container.innerHTML = '';
-            
-            // แสดงอันดับ 4 เป็นต้นไป
-            list.slice(3).forEach((rider, index) => {
+
+            list.forEach((rider, index) => {
+                const isMe = rider.username === myUsername;
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                const highlightClass = isMe ? 'highlight-me' : '';
+
                 container.innerHTML += `
-                    <div class="list-item">
-                        <div class="list-rank">${index + 4}</div>
-                        <div class="list-name">${rider.username}</div>
-                        <div class="list-points">${rider.totalPoints} ${translations[currentLang].points_unit}</div>
+                    <div class="rank-item ${rankClass} ${highlightClass}">
+                        <div class="rank-number">${getRankIcon(index)}</div>
+                        <div class="rank-name">
+                            ${rider.username}
+                            ${isMe ? '<small style="background:#11998e; color:white; padding:2px 8px; border-radius:10px; font-size:0.6rem;">YOU</small>' : ''}
+                        </div>
+                        <div class="rank-points">
+                            ${rider.totalPoints} <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7;">${translations[currentLang].pts_unit}</span>
+                        </div>
                     </div>
                 `;
-            });
-        }
 
-        function updateMyRank(list) {
-            const myIndex = list.findIndex(r => r.username === myUsername);
-            if (myIndex !== -1) {
-                document.getElementById('my-rank-name').innerText = list[myIndex].username;
-                document.getElementById('my-rank-pos').innerText = `#${myIndex + 1}`;
-                document.getElementById('my-rank-pts').innerText = `${list[myIndex].totalPoints} ${translations[currentLang].points_unit}`;
-            }
+                // อัปเดตการ์ดด้านบนถ้าเป็นตัวเอง
+                if (isMe) {
+                    document.getElementById('my-name').innerText = rider.username;
+                    document.getElementById('my-pos').innerText = `#${index + 1}`;
+                    document.getElementById('my-pts').innerText = `${rider.totalPoints} ${translations[currentLang].pts_unit}`;
+                }
+            });
         }
 
         window.onload = () => {
