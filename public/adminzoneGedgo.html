@@ -2018,16 +2018,9 @@ async function loadMemberList() {
     try {
         const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${search}&limit=100`);
         const data = await res.json();
-        
-        // ตรวจสอบว่ามีข้อมูลส่งกลับมาจริงไหม
-        if (!data.users) {
-            container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">Data format error</p>';
-            return;
-        }
-
         let members = data.users;
 
-        // ✅ กรองข้อมูล
+        // ✅ กรองข้อมูลตามประเภทที่เลือกในฝั่ง Frontend
         if (filterStatus === 'kyc') {
             members = members.filter(u => u.isVerified === true);
         } else if (filterStatus === 'not_kyc') {
@@ -2036,37 +2029,36 @@ async function loadMemberList() {
             members = members.filter(u => u.isBanned === true);
         }
 
-        if (members.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">No members found.</p>';
+        if (!members || members.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">No members were found matching the selected criteria</p>';
             return;
         }
 
+        // วาดรายการสมาชิก (Map ข้อมูลเหมือนเดิม)
         container.innerHTML = members.map(user => {
-            // ดัก Error ของค่าต่างๆ ให้เป็นค่า Default เสมอ
-            const username = user.name || 'Unknown';
-            const coins = typeof user.coins === 'number' ? user.coins : 0;
-            const currency = user.currency || 'USD'; // ใช้ค่าคงที่แทนถ้าไม่มี zoneCurrency
-            const relation = user.relationType || 'OTHER';
+            const username = user.name;
+            const coins = user.coins || 0;
+            const relation = user.relationType;
 
             return `
-                <div class="admin-card" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-left: 5px solid ${user.isBanned ? '#dc3545' : (relation === 'OWNED' ? '#11998e' : '#f1c40f')}; margin-bottom: 10px; background: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <div class="admin-card" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-left: 5px solid ${user.isBanned ? 'var(--danger)' : (relation === 'OWNED' ? 'var(--primary)' : '#f1c40f')};">
                     <img src="${user.profileImg || 'https://via.placeholder.com/50'}" 
                          style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; opacity: ${user.isBanned ? '0.5' : '1'};">
                     
                     <div style="flex: 1;">
                         <div style="display:flex; align-items:center; gap:5px;">
-                            <strong style="font-size: 1em; color: ${user.isBanned ? '#dc3545' : '#333'};">${username}</strong>
-                            ${user.isVerified ? '<i class="fas fa-check-circle" style="color:#11998e; font-size:0.8em;"></i>' : ''}
+                            <strong style="font-size: 1em; color: ${user.isBanned ? 'var(--danger)' : 'var(--dark)'};">${username}</strong>
+                            ${user.isVerified ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size:0.8em;"></i>' : ''}
                             ${user.isBanned ? '<small style="background:#ffebee; color:red; padding:1px 5px; border-radius:5px; font-size:0.6em;">BANNED</small>' : ''}
                         </div>
-                        <div style="font-size: 0.8em; color: #11998e; font-weight: bold;">
-                            Balance: ${coins.toFixed(2)} ${currency}
-                        </div>
+                        <div style="font-size: 0.8em; color: var(--primary); font-weight: bold;">
+							Balance: ${user.coins.toFixed(2)} ${user.currency || zoneCurrency}
+						</div>
                     </div>
 
-                    <div>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
                         <button onclick="viewUserProfile('${username}')" 
-                                style="border: none; background: #f1f5f9; color: #333; padding: 8px 15px; border-radius: 10px; font-size: 0.85em; cursor: pointer; font-family:'Kanit'; font-weight:bold;">
+                                style="border: none; background: #f1f5f9; color: var(--dark); padding: 8px 15px; border-radius: 10px; font-size: 0.85em; cursor: pointer; font-family:'Kanit'; font-weight:bold;">
                             <i class="fas fa-search"></i> Profile
                         </button>
                     </div>
@@ -2075,8 +2067,7 @@ async function loadMemberList() {
         }).join('');
 
     } catch (err) {
-        console.error("LoadMemberList Error:", err);
-        container.innerHTML = `<p style="text-align:center; color:red; padding:20px;">Error: ${err.message}</p>`;
+        container.innerHTML = '<p style="text-align:center; color:red;">Unable to connect.</p>';
     }
 }
 

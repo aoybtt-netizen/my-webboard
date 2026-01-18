@@ -1804,11 +1804,15 @@ app.get('/api/users-list', async (req, res) => {
                 name: u.username, 
                 fullName: u.fullName || '', 
                 profileImg: u.profileImg || '', 
-                coins: u[currencyKey] || 0,                 
-                currency: currencyKey,
                 
-                rating: currentRating, 
-				ratingCount: currentCount,
+                // ✨ จุดสำคัญ: ดึงยอดเงินจากฟิลด์ที่ชื่อตรงกับสกุลเงินโซน ( u['x'] หรือ u['thb'] )
+                // จะได้ค่าดิบๆ จากฟิลด์นั้นเลย ไม่มีการคูณเลข
+                coins: u[currencyKey] || 0, 
+                
+                currency: currencyKey, // ส่งชื่อสกุลเงินไปแสดงเป็นป้ายหน่วย
+                
+                rating: averageRating,
+                ratingCount: totalRatingCount,
                 totalPosts: u.totalPosts || 0,
                 totalJobs: u.totalJobs || 0,
                 completedJobs: combinedCompleted,
