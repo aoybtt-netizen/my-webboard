@@ -1134,27 +1134,13 @@ function getRoleLabel(username) {
     const myUser = localStorage.getItem('myUsername');
 
     if (username === myUser) {
-        return `<i class="fas fa-user-circle"></i> ฉัน`;
+        return `<i class="fas fa-user-circle"></i>`;
     } else if (username === merchantUser) {
-        return `<i class="fas fa-store" style="color: #e67e22;"></i> ร้านค้า`;
+        return `<i class="fas fa-store" style="color: #e67e22;"></i> Business`;
     } else if (username === riderUser) {
         return `<i class="fas fa-motorcycle" style="color: #3498db;"></i> Rider`;
     } else {
         return `<i class="fas fa-user"></i> ${username}`; // กรณีแอดมินหรือคนอื่น
-    }
-}
-
-function formatDisplayName(username) {
-    const myUser = localStorage.getItem('myUsername');
-
-    if (username === myUser) {
-        return "You"; // หรือใช้ชื่อตัวเอง
-    } else if (username === merchantUser) {
-        return "Store 🏪 "; // โชว์ว่าเป็นร้านค้า
-    } else if (username === riderUser) {
-        return "Rider 🛵";   // โชว์ว่าเป็นไรเดอร์
-    } else {
-        return username;      // กรณีแอดมินหรือคนอื่น
     }
 }
 
