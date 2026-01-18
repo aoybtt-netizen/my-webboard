@@ -308,30 +308,36 @@ function updateStatusLabel(isActive, isKYC) {
 
 async function openRankingManager() {
     const adminName = localStorage.getItem('myUsername');
-    
-    // 1. ดึงสถานะปัจจุบันของโซนก่อนเปิด Modal
+    const btn = document.getElementById('ranking-action-btn');
+
     try {
+        // 1. เรียก API ไปเช็คสถานะล่าสุดจากในตาราง Zones
         const res = await fetch(`/api/check-zone-status/${adminName}`);
         const data = await res.json();
         
-        isCurrentlyActive = data.isActive; // true หรือ false
-        const btn = document.getElementById('ranking-action-btn');
+        // 2. อัปเดตตัวแปร Global
+        isCurrentlyActive = data.isActive; 
 
         if (isCurrentlyActive) {
             // 🚩 สถานะ: กำลังแข่งอยู่ -> เปลี่ยนเป็นปุ่ม "จบการแข่ง"
             btn.innerText = "จบการแข่งขันและสรุปผล";
-            btn.style.background = "#dc3545"; // สีแดง
-            // ปิดช่องกรอกข้อมูล เพราะกำลังแข่งอยู่ แก้ไขไม่ได้จนกว่าจะจบ
-            disableInputs(true);
+            btn.className = "btn-confirm btn-danger"; // ใช้ Class สีแดง
+            btn.style.background = "#dc3545"; 
+            disableInputs(true); // ล็อค Input ไม่ให้แก้กติกากลางคัน
         } else {
             // 🚩 สถานะ: ปิดอยู่ -> เปลี่ยนเป็นปุ่ม "เริ่มรอบใหม่"
             btn.innerText = "ยืนยันและเริ่มรอบใหม่";
+            btn.className = "btn-confirm"; 
             btn.style.background = "#11998e"; // สีเขียว
-            disableInputs(false);
+            disableInputs(false); // เปิดให้กรอกรางวัลและวันที่
         }
 
+        // 3. แสดง Modal
         document.getElementById('ranking-modal').classList.remove('hidden');
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error("Fetch status error:", e);
+        Swal.fire('Error', 'ไม่สามารถดึงสถานะโซนได้', 'error');
+    }
 }
 
 
@@ -363,6 +369,7 @@ async function stopCompetition() {
             });
             const data = await res.json();
             if (data.success) {
+				isCurrentlyActive = false;
                 Swal.fire('จบการแข่งขันแล้ว', 'ระบบหยุดนับคะแนนในรอบนี้เรียบร้อย', 'success');
                 closeRankingManager();
                 fetchRanking(); // อัปเดตตารางให้โชว์สถานะ "ปิดการแข่ง"
@@ -499,10 +506,6 @@ async function executeReset() {
 
 
 
-// เปลี่ยนปุ่มเดิมให้เรียกฟังก์ชันนี้
-function openRankingManager() {
-    document.getElementById('ranking-modal').classList.remove('hidden');
-}
 
 function closeRankingManager() {
     document.getElementById('ranking-modal').classList.add('hidden');
@@ -539,6 +542,7 @@ async function saveAndResetRanking() {
         const data = await res.json();
         
         if (data.success) {
+			isCurrentlyActive = true;
             Swal.fire('เริ่มรอบใหม่แล้ว!', `เวอร์ชันปัจจุบัน: ${data.newVersion}`, 'success');
             closeRankingManager();
             fetchRanking(); // รีโหลดตาราง

@@ -2028,6 +2028,22 @@ app.post('/api/stop-zone-ranking', async (req, res) => {
     }
 });
 
+app.get('/api/check-zone-status/:adminName', async (req, res) => {
+    try {
+        const zone = await db.collection('zones').findOne({ assignedAdmin: req.params.adminName });
+        if (!zone) return res.status(404).json({ success: false });
+
+        res.json({
+            success: true,
+            isActive: zone.isCompetitionActive || false // ส่งค่าตัวแปรที่ 1 กลับไป
+        });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+
+
 
 
 // 4. Contacts (Messages)
