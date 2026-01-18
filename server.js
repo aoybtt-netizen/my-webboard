@@ -1939,26 +1939,80 @@ app.get('/api/check-zone-owner/:username', async (req, res) => {
 
 // 2. สั่งรีเซ็ต (เพิ่มเลข Version/Cycle)
 app.post('/api/reset-zone-ranking', async (req, res) => {
-    const { adminName } = req.body;
+    const { adminName, prizes, endDate, requireKYC } = req.body;
+    
     try {
-        // หาโซนที่แอดมินคนนี้คุมอยู่ แล้วเพิ่ม currentCycle ไปอีก 1
-        const zone = await db.collection('zones').findOneAndUpdate(
+        // 1. หาข้อมูลโซนเดิมก่อนเพื่อเอาชื่อตัวแปรหลัก (rankingVariable)
+        const currentZone = await db.collection('zones').findOne({ assignedAdmin: adminName });
+        if (!currentZone) return res.status(404).json({ success: false, message: "ไม่พบโซนที่รับผิดชอบ" });
+
+        // 2. อัปเดตข้อมูลและเพิ่ม Cycle (เวอร์ชัน)
+        const updatedZone = await db.collection('zones').findOneAndUpdate(
             { assignedAdmin: adminName },
-            { $inc: { currentCycle: 1 } },
+            { 
+                $inc: { currentCycle: 1 }, // เพิ่มรอบการแข่ง
+                $set: { 
+                    isCompetitionActive: true, // ตัวแปร 1: เปิดการแข่งอัตโนมัติเมื่อรีเซ็ต
+                    requireKYC: requireKYC,      // ตัวแปร 2: บังคับ KYC ไหม
+                    prizeData: prizes,           // เก็บรายละเอียดรางวัล
+                    endDate: endDate,            // วันสิ้นสุด
+                    updatedAt: new Date()
+                } 
+            },
             { returnDocument: 'after' }
         );
 
-        if (!zone) return res.status(404).json({ success: false });
+        const zone = updatedZone.value || updatedZone; // รองรับ MongoDB Driver หลายเวอร์ชัน
+        
+        // 🚩 ตัวแปร 3: ชื่อตัวแปรเก็บคะแนนในรอบนี้ (เช่น gedgoPoints_v2)
+        const currentRankingKey = `${zone.rankingVariable}_v${zone.currentCycle}`;
+
+        console.log(`[Ranking Debug] โซน: ${zone.name}`);
+        console.log(`- สถานะ: เปิดการแข่ง`);
+        console.log(`- เงื่อนไข KYC: ${zone.requireKYC}`);
+        console.log(`- ชื่อตัวแปรเก็บคะแนนรอบนี้: ${currentRankingKey}`);
 
         res.json({ 
             success: true, 
             newVersion: zone.currentCycle,
-            message: `เข้าสู่รอบที่ ${zone.currentCycle} แล้ว` 
+            rankingKey: currentRankingKey,
+            message: `เริ่มการแข่งขันรอบที่ ${zone.currentCycle} สำเร็จ` 
+        });
+
+    } catch (e) {
+        console.error("Reset Ranking Error:", e);
+        res.status(500).json({ success: false });
+    }
+});
+
+app.get('/api/zone-ranking-debug/:zoneId', async (req, res) => {
+    try {
+        const zone = await db.collection('zones').findOne({ id: parseInt(req.params.zoneId) });
+        if (!zone) return res.status(404).json({ success: false });
+
+        // สร้างชื่อตัวแปรปัจจุบันให้ดู
+        const currentRankingKey = `${zone.rankingVariable || 'NOT_SET'}_v${zone.currentCycle || 1}`;
+
+        res.json({
+            success: true,
+            debugInfo: {
+                zoneName: zone.name,
+                // ตัวแปรที่ 1: สถานะเปิด/ปิด
+                isCompetitionActive: zone.isCompetitionActive || false,
+                // ตัวแปรที่ 2: เงื่อนไข KYC
+                requireKYC: zone.requireKYC || false,
+                // ตัวแปรที่ 3: ชื่อตัวแปรที่ใช้เก็บคะแนนปัจจุบัน
+                currentRankingField: currentRankingKey,
+                // ข้อมูลเสริม
+                currentCycle: zone.currentCycle || 0,
+                rankingVariableBase: zone.rankingVariable || 'ยังไม่ได้ตั้งชื่อตัวแปรหลัก'
+            }
         });
     } catch (e) {
         res.status(500).json({ success: false });
     }
 });
+
 
 // 4. Contacts (Messages)
 app.get('/api/contacts', async (req, res) => {

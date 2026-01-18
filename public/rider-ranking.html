@@ -469,6 +469,38 @@ async function saveAndResetRanking() {
 }
 
 
+async function debugZone(zoneId) {
+    try {
+        const res = await fetch(`/api/zone-ranking-debug/${zoneId}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            const info = data.debugInfo;
+            Swal.fire({
+                title: `Debug: ${info.zoneName}`,
+                html: `
+                    <div style="text-align: left; font-family: monospace; font-size: 0.85em; background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 10px;">
+                        <p style="color: #f1c40f;">// สถานะการแข่ง (ตัวที่ 1)</p>
+                        <b>isCompetitionActive:</b> ${info.isCompetitionActive}<br><br>
+                        
+                        <p style="color: #f1c40f;">// เงื่อนไข KYC (ตัวที่ 2)</p>
+                        <b>requireKYC:</b> ${info.requireKYC}<br><br>
+                        
+                        <p style="color: #f1c40f;">// คะแนนเก็บที่ตัวแปร (ตัวที่ 3)</p>
+                        <b style="color: #55efc4;">field_name:</b> "${info.currentRankingField}"<br>
+                        <b>cycle:</b> ${info.currentCycle}<br>
+                        <b>base_name:</b> "${info.rankingVariableBase}"
+                    </div>
+                `,
+                icon: 'info'
+            });
+        }
+    } catch (e) {
+        Swal.fire('Error', 'ไม่สามารถดึงข้อมูลดีบั๊กได้', 'error');
+    }
+}
+
+
 
 // เรียกใช้เมื่อโหลดหน้า
 window.addEventListener('DOMContentLoaded', checkAdminStatus);
