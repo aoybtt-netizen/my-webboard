@@ -6,6 +6,8 @@
     <title>GedGo - Rider Leaderboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <style>
         :root {
             --primary: #11998e;
@@ -252,9 +254,10 @@
     container.innerHTML = html;
 }
 
-        window.onload = () => {
+window.onload = async () => {
             applyTranslations();
-            fetchRanking();
+            await checkAdminStatus(); // 2. เช็คสิทธิ์แอดมิน (ถ้าเป็นแอดมิน ปุ่มจะโผล่)
+            fetchRanking();         // 3. ดึงอันดับมาโชว์
         };
 		
 
