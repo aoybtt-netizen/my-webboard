@@ -1043,19 +1043,19 @@ async function sendRiderChat() {
 
 function shareRiderLocation() {
     if (!navigator.geolocation) {
-        alert("เบราว์เซอร์ของคุณไม่รองรับการแชร์ตำแหน่ง");
+        alert("Your browser does not support location sharing.");
         return;
     }
 
     navigator.geolocation.getCurrentPosition((position) => {
         const { latitude, longitude } = position.coords;
         const mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-        const message = `📍 ตำแหน่งปัจจุบันของฉัน: ${mapLink}`;
+        const message = `📍: ${mapLink}`;
         
         // ส่งข้อความตำแหน่งเข้าแชท
         sendRiderCustomMessage(message);
     }, (err) => {
-        alert("ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาเปิด GPS");
+        alert("Your location cannot be accessed. Please turn on GPS.");
     });
 }
 
@@ -1083,8 +1083,8 @@ async function handlePhotoSelect(input) {
     const file = input.files[0];
     if (!file) return;
     Swal.fire({
-        title: 'กำลังส่งรูปภาพ...',
-        text: 'กรุณารอสักครู่ ระบบกำลังลดขนาดและอัปโหลดรูป',
+        title: 'Sending photo...',
+        text: 'Please wait uploading the image.',
         allowOutsideClick: false,
         showConfirmButton: false,
         didOpen: () => {
@@ -1100,7 +1100,7 @@ async function handlePhotoSelect(input) {
         
     } catch (e) {
         console.error(e);
-        Swal.fire('ผิดพลาด', 'ไม่สามารถอัปโหลดรูปภาพได้', 'error');
+        Swal.fire('', 'Unable to upload image.', 'error');
     } finally {
         input.value = '';
     }
@@ -1140,7 +1140,7 @@ async function sendRiderPhoto(blob) {
     const formData = new FormData();
     formData.append('image', blob, `rider_${Date.now()}.jpg`);
     formData.append('author', myUsername);
-    formData.append('text', '📷 ส่งรูปภาพ');
+    formData.append('text', '📷 send photo');
 
     try {
         const res = await fetch(`/api/posts/${jobId}/comments`, {
@@ -1151,7 +1151,7 @@ async function sendRiderPhoto(blob) {
         
         if (data.success) {
             // แสดงฝั่งตัวเองทันที
-            appendRiderMessage(myUsername, '📷 ส่งรูปภาพ', true, data.comment.imageUrl);
+            appendRiderMessage(myUsername, '📷 send photo', true, data.comment.imageUrl);
             
             // คืนค่าหน่วยความจำ
             URL.revokeObjectURL(blob);
@@ -1276,7 +1276,7 @@ socket.on('job-finished-complete', (data) => {
             <i class="fas fa-map-marker-alt"></i>
         </button>
 
-        <input type="text" id="rider-chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1;" onkeypress="if(event.key==='Enter') sendRiderChat()">
+        <input type="text" id="rider-chat-input" placeholder="Aa..." style="flex:1;" onkeypress="if(event.key==='Enter') sendRiderChat()">
         
         <button onclick="sendRiderChat()" style="background:#11998e; color:white; border:none; width:45px; height:45px; border-radius:50%;">
             <i class="fas fa-paper-plane"></i>

@@ -3289,18 +3289,8 @@ async function loadSidebarChat(postId) {
     chatBox.innerHTML = '';
     comments.forEach(msg => {
         const isMe = msg.author === myUsername;
-        const roleLabel = getMerchantRoleLabel(msg.author); // 🚩 เรียกใช้ป้ายกำกับ
-        
-        chatBox.innerHTML += `
-            <div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}">
-                <small style="display:block; font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">
-                    ${roleLabel}
-                </small>
-                ${msg.text}
-            </div>
-        `;
+        appendMerchantMessage(msg.author, msg.text || msg.content, isMe, msg.imageUrl);
     });
-    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 async function sendSidebarChat() {
@@ -3453,26 +3443,17 @@ socket.on('rider-applied', (data) => {
 socket.on('new-comment', (data) => {
     // 1. ถ้าเปิด Sidebar งานนั้นอยู่ ให้แสดงข้อความสด
     if (activeTaskInSidebar && activeTaskInSidebar.id == data.postId) {
-        const chatBox = document.getElementById('chat-box');
-		const comment = data.comment || data;
-        const isMe = data.comment.author === myUsername;
-		const roleLabel = getMerchantRoleLabel(comment.author);
-        const newMsgHtml = `
-            <div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}">
-                <small style="display:block; font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">
-                    ${roleLabel}
-                </small>
-                ${comment.text}
-            </div>
-        `;
-        chatBox.insertAdjacentHTML('beforeend', newMsgHtml);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        const comment = data.comment || data;
+        if (comment.author !== myUsername) {
+            // ส่ง imageUrl เข้าไปด้วย
+            appendMerchantMessage(comment.author, comment.text || comment.content, false, comment.imageUrl);
+        }
 
         if (currentTab !== 'chat') {
             const chatIcon = document.querySelector('.tab-item[onclick*="chat"]');
             if (chatIcon) chatIcon.style.color = 'red';
         }
-    } 
+    }
 
     if (data.comment.author !== myUsername) {
         if (!(activeTaskInSidebar && activeTaskInSidebar.id == data.postId && currentTab === 'chat')) {          
@@ -4215,6 +4196,113 @@ async function declineOrder() {
 
 
 
+// ฟังก์ชันช่วยจัดการลิ้งก์แผนที่
+function formatMerchantChatMessage(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;">เปิดแผนที่ 📍</a>`;
+    });
+}
+
+function appendMerchantMessage(author, text, isMe, imageUrl = null) {
+    const chatBox = document.getElementById('chat-box');
+    const roleLabel = getMerchantRoleLabel(author);
+    
+    let imageHtml = '';
+    if (imageUrl) {
+        const fullPath = imageUrl.startsWith('http') ? imageUrl : `/${imageUrl}`;
+        imageHtml = `<img src="${fullPath}" style="width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open(this.src)">`;
+    }
+
+    const newMsgHtml = `
+        <div class="chat-msg ${isMe ? 'msg-me' : 'msg-them'}" style="margin-bottom: 8px;">
+            <small style="display:block; font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">
+                ${roleLabel}
+            </small>
+            <div>${formatMerchantChatMessage(text)}</div>
+            ${imageHtml}
+        </div>
+    `;
+    
+    chatBox.insertAdjacentHTML('beforeend', newMsgHtml);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+
+// แชร์ตำแหน่ง
+function shareMerchantLocation() {
+    if (!navigator.geolocation) return alert("Browser not supported GPS");
+    navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        const mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        const message = `📍 ตำแหน่งร้านค้า: ${mapLink}`;
+        sendMerchantCustomMessage(message);
+    });
+}
+
+async function sendMerchantCustomMessage(text) {
+    if (!activeTaskInSidebar) return;
+    const res = await fetch(`/api/posts/${activeTaskInSidebar.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author: myUsername, text: text })
+    });
+    if (res.ok) {
+        appendMerchantMessage(myUsername, text, true, null);
+    }
+}
+
+// ส่งรูปภาพ
+async function handleMerchantPhotoSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    Swal.fire({
+        title: 'กำลังส่งรูปภาพ...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    const imageUrl = URL.createObjectURL(file);
+    const resizedBlob = await compressMerchantImage(imageUrl, 1024, 0.6);
+    
+    const formData = new FormData();
+    formData.append('image', resizedBlob, `merchant_${Date.now()}.jpg`);
+    formData.append('author', myUsername);
+    formData.append('text', '📷 ส่งรูปภาพ');
+
+    const res = await fetch(`/api/posts/${activeTaskInSidebar.id}/comments`, {
+        method: 'POST',
+        body: formData
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        appendMerchantMessage(myUsername, '📷 ส่งรูปภาพ', true, data.comment.imageUrl);
+        URL.revokeObjectURL(imageUrl);
+        Swal.close();
+    }
+    input.value = '';
+}
+
+function compressMerchantImage(url, maxWidth, quality) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = url;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > maxWidth) { h = (maxWidth / w) * h; w = maxWidth; }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+        };
+    });
+}
+
+
+
 
 
 window.onbeforeunload = function() {
@@ -4379,12 +4467,23 @@ window.onbeforeunload = function() {
 	</div>
 
     <div id="tab-chat" class="tab-content hidden" style="display: flex; flex-direction: column; height: 100%;">
-    <h4 data-i18n-key="sidebar_tab_chat"><i class="fas fa-comments"></i> แชทกับไรเดอร์</h4>
-    <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; margin-bottom: 10px;">
+    <h4 data-i18n-key="sidebar_tab_chat"><i class="fas fa-comments"></i> แชทพูดคุย</h4>
+    <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
     </div>
-    <div style="display: flex; gap: 5px;">
-        <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." style="margin-bottom: 0;" data-i18n-key="plh_chat_input">
-        <button onclick="sendSidebarChat()" style="width: 50px; background: #11998e; color: white; border: none; border-radius: 8px;">
+    
+    <div style="display: flex; gap: 5px; align-items: center; padding: 5px; background: #eee; border-radius: 10px;">
+        <input type="file" id="merchant-photo-input" accept="image/*" style="display:none;" onchange="handleMerchantPhotoSelect(this)">
+        <button onclick="document.getElementById('merchant-photo-input').click()" style="background:none; border:none; color:#11998e; font-size: 1.2rem; cursor:pointer; padding: 5px;">
+            <i class="fas fa-camera"></i>
+        </button>
+
+        <button onclick="shareMerchantLocation()" style="background:none; border:none; color:#11998e; font-size: 1.2rem; cursor:pointer; padding: 5px;">
+            <i class="fas fa-map-marker-alt"></i>
+        </button>
+
+        <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." style="flex:1; margin-bottom: 0; border-radius: 20px; border: 1px solid #ddd; padding: 8px 15px;" onkeypress="if(event.key==='Enter') sendSidebarChat()">
+        
+        <button onclick="sendSidebarChat()" style="width: 40px; height: 40px; background: #11998e; color: white; border: none; border-radius: 50%; cursor:pointer;">
             <i class="fas fa-paper-plane"></i>
         </button>
     </div>
