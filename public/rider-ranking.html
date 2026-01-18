@@ -174,35 +174,51 @@
         }
 
         function renderLeaderboard(list) {
-            const container = document.getElementById('leaderboard-list');
-            container.innerHTML = '';
+    const container = document.getElementById('leaderboard-list');
+    if (!container) return; // ป้องกัน Error ถ้าหา ID ไม่เจอ
 
-            list.forEach((rider, index) => {
-                const isMe = rider.username === myUsername;
-                const rankClass = index < 3 ? `rank-${index + 1}` : '';
-                const highlightClass = isMe ? 'highlight-me' : '';
+    // 1. ถ้าไม่มีข้อมูล ให้แสดงข้อความแจ้งเตือน
+    if (!list || list.length === 0) {
+        container.innerHTML = '<div class="no-data">ไม่พบข้อมูลอันดับในขณะนี้</div>';
+        return;
+    }
 
-                container.innerHTML += `
-                    <div class="rank-item ${rankClass} ${highlightClass}">
-                        <div class="rank-number">${getRankIcon(index)}</div>
-                        <div class="rank-name">
-                            ${rider.username}
-                            ${isMe ? '<small style="background:#11998e; color:white; padding:2px 8px; border-radius:10px; font-size:0.6rem;">YOU</small>' : ''}
-                        </div>
-                        <div class="rank-points">
-                            ${rider.totalPoints} <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7;">${translations[currentLang].pts_unit}</span>
-                        </div>
-                    </div>
-                `;
+    let html = ''; // ใช้ตัวแปรเก็บ HTML ทั้งหมดก่อน
+    
+    list.forEach((rider, index) => {
+        const isMe = rider.username === myUsername;
+        const rankClass = index < 3 ? `rank-${index + 1}` : '';
+        const highlightClass = isMe ? 'highlight-me' : '';
+        
+        // 🚩 เพราะเราใช้ rating ทดสอบ (เช่น 4.36) ควรใช้ .toFixed(2) ให้สวยงามครับ
+        const displayPoints = (typeof rider.totalPoints === 'number') 
+            ? rider.totalPoints.toFixed(2) 
+            : (rider.totalPoints || 0);
 
-                // อัปเดตการ์ดด้านบนถ้าเป็นตัวเอง
-                if (isMe) {
-                    document.getElementById('my-name').innerText = rider.username;
-                    document.getElementById('my-pos').innerText = `#${index + 1}`;
-                    document.getElementById('my-pts').innerText = `${rider.totalPoints} ${translations[currentLang].pts_unit}`;
-                }
-            });
+        html += `
+            <div class="rank-item ${rankClass} ${highlightClass}">
+                <div class="rank-number">${getRankIcon(index)}</div>
+                <div class="rank-name">
+                    ${rider.username}
+                    ${isMe ? '<small style="background:#11998e; color:white; padding:2px 8px; border-radius:10px; font-size:0.6rem;">YOU</small>' : ''}
+                </div>
+                <div class="rank-points">
+                    ${displayPoints} <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7;">${translations[currentLang].pts_unit}</span>
+                </div>
+            </div>
+        `;
+
+        // อัปเดตการ์ดสีเขียวด้านบน (เฉพาะตัวเรา)
+        if (isMe) {
+            if (document.getElementById('my-name')) document.getElementById('my-name').innerText = rider.username;
+            if (document.getElementById('my-pos')) document.getElementById('my-pos').innerText = `#${index + 1}`;
+            if (document.getElementById('my-pts')) document.getElementById('my-pts').innerText = `${displayPoints} ${translations[currentLang].pts_unit}`;
         }
+    });
+
+    // 2. ยัด HTML ทั้งหมดลงไปทีเดียว (เร็วและเสถียรกว่า)
+    container.innerHTML = html;
+}
 
         window.onload = () => {
             applyTranslations();

@@ -1898,31 +1898,26 @@ app.get('/api/users-list', async (req, res) => {
     }
 });
 
+// rider ranking
 app.get('/api/rider-ranking', async (req, res) => {
     try {
-        // 1. ค้นหาผู้ใช้ที่มีบทบาทเป็น 'rider'
-        // 2. เรียงลำดับตาม rating (มากไปน้อย) และ ratingCount (เพื่อเป็นตัวตัดสินกรณีคะแนนเท่ากัน)
-        // 3. จำกัดจำนวนผลลัพธ์ เช่น 50 อันดับแรก
-        const topRiders = await usersCollection.find({ role: 'rider' })
+        // ลองเอา { role: 'rider' } ออก เพื่อดูว่ามีข้อมูลออกมาไหม
+        const topRiders = await usersCollection.find({}) 
             .sort({ rating: -1, ratingCount: -1 })
             .limit(50)
             .toArray();
 
-        // 4. ปรับโครงสร้างข้อมูลให้ตรงกับที่ Frontend ต้องการ (username, totalPoints)
+        console.log("Found riders:", topRiders.length); // เช็คใน Console ของ Server
+
         const leaderboard = topRiders.map(rider => ({
-            username: rider.username,
-            // ในที่นี้เราจะใช้ค่า rating แทน totalPoints ไปก่อนสำหรับการทดสอบ
+            username: rider.username || "No Name", 
             totalPoints: rider.rating || 0, 
             ratingCount: rider.ratingCount || 0
         }));
 
-        res.json({
-            success: true,
-            leaderboard: leaderboard
-        });
+        res.json({ success: true, leaderboard: leaderboard });
     } catch (error) {
-        console.error("Rider Ranking API Error:", error);
-        res.status(500).json({ success: false, error: 'Internal Server Error' });
+        res.status(500).json({ success: false });
     }
 });
 
