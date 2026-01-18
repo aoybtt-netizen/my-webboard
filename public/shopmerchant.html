@@ -384,7 +384,18 @@ const translations = {
 		'contact_phone_label': 'เบอร์ติดต่อ:',
 		'my_orders_btn': 'ออเดอร์ของฉัน',
 		'my_orders_title': 'ติดตามออเดอร์',
-		
+		'status_waiting': 'รอร้านค้าตอบรับ',
+        'status_accepted': 'ร้านค้ารับออเดอร์แล้ว',
+        'no_active_orders': 'ไม่มีออเดอร์ที่กำลังดำเนินรายการ',
+        'chat_wait_merchant': 'กรุณารอร้านค้าตอบรับเพื่อเริ่มการแชท',
+        'confirm_cancel_title': 'ยืนยันการยกเลิก?',
+        'confirm_cancel_text': 'เงินจะถูกคืนเข้ากระเป๋า (หักค่าธรรมเนียมตามระบบ)',
+        'btn_confirm_cancel': 'ยืนยันยกเลิก',
+        'btn_back': 'กลับ',
+        'cancel_success': 'ยกเลิกสำเร็จ',
+        'cancel_failed': 'ล้มเหลว',
+        'err_cancel_msg': 'ไม่สามารถยกเลิกได้',
+        'err_connection': 'การเชื่อมต่อขัดข้อง',
     },
     'en': {
         'shop_nearby': 'Nearby Shops (Outside Zone)',
@@ -424,6 +435,18 @@ const translations = {
 		'contact_phone_label': 'Contact Phone:',
 		'my_orders_btn': 'My Orders',
 		'my_orders_title': 'Order Tracking',
+		'status_waiting': 'Waiting for Merchant',
+        'status_accepted': 'Merchant Accepted',
+        'no_active_orders': 'No active orders at the moment',
+        'chat_wait_merchant': 'Please wait for merchant acceptance to start chatting',
+        'confirm_cancel_title': 'Confirm Cancellation?',
+        'confirm_cancel_text': 'Refund will be processed (system fees may apply)',
+        'btn_confirm_cancel': 'Confirm Cancel',
+        'btn_back': 'Back',
+        'cancel_success': 'Cancelled successfully',
+        'cancel_failed': 'Failed',
+        'err_cancel_msg': 'Unable to cancel',
+        'err_connection': 'Connection Error',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -463,6 +486,18 @@ const translations = {
 		'contact_phone_label': 'Telefone de contato:',
 		'my_orders_btn': 'Meus Pedidos',
 		'my_orders_title': 'Acompanhar Pedidos',
+		'status_waiting': 'Aguardando Lojista',
+        'status_accepted': 'Lojista Aceitou',
+        'no_active_orders': 'Nenhum pedido ativo no momento',
+        'chat_wait_merchant': 'Aguarde a aceitação do lojista para iniciar o chat',
+        'confirm_cancel_title': 'Confirmar Cancelamento?',
+        'confirm_cancel_text': 'O reembolso será processado (taxas do sistema podem ser aplicadas)',
+        'btn_confirm_cancel': 'Confirmar Cancelamento',
+        'btn_back': 'Voltar',
+        'cancel_success': 'Cancelado com sucesso',
+        'cancel_failed': 'Falhou',
+        'err_cancel_msg': 'Não foi possível cancelar',
+        'err_connection': 'Erro de conexão',
     }
 };
 
@@ -974,7 +1009,7 @@ function openMyOrdersModal() {
     const ordersHtml = myActiveOrders.map(order => {
         // --- 1. เตรียมตัวแปรพื้นฐาน ---
         const isWaiting = order.status === 'waiting_merchant';
-        const statusText = isWaiting ? 'รอร้านค้าตอบรับ' : 'ร้านค้ารับออเดอร์แล้ว';
+        const statusText = isWaiting ? translations[currentLang].status_waiting : translations[currentLang].status_accepted;
         const statusClass = isWaiting ? 'status-waiting' : 'status-accepted';
         const shortId = order.orderId.slice(-5);
         const postIdValue = order.postId || 'null';
@@ -985,7 +1020,7 @@ function openMyOrdersModal() {
             : '';
 
         const cancelBtn = '<button class="btn-cancel-order" onclick="cancelOrder(event, \'' + order.orderId + '\')">' +
-                          '<i class="fas fa-trash-alt"></i> ยกเลิก' +
+                          '<i class="fas fa-trash-alt"></i> cancle' +
                           '</button>';
 
         // --- 3. คืนค่าเป็น HTML ก้อนเดียวที่อ่านง่าย ---
@@ -1010,7 +1045,7 @@ function openMyOrdersModal() {
     }).join('');
 
     // ใส่เนื้อหา หรือแสดงข้อความว่างเปล่า
-    container.innerHTML = ordersHtml || '<p style="text-align:center; padding:30px; color:#999;">ไม่มีออเดอร์ที่กำลังดำเนินรายการ</p>';
+    container.innerHTML = ordersHtml || `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].no_active_orders}</p>`;
     
     // แสดง Modal
     const modal = document.getElementById('myOrdersModal');
@@ -1028,7 +1063,7 @@ function handleOrderClick(orderId, status, postId) {
     } else {
         Swal.fire({
             icon: 'info',
-            text: 'กรุณารอร้านค้าตอบรับเพื่อเริ่มการแชท',
+            text: translations[currentLang].chat_wait_merchant,
             timer: 2000,
             showConfirmButton: false
         });
@@ -1040,14 +1075,14 @@ async function cancelOrder(event, orderId) {
     event.stopPropagation();
     
     const { isConfirmed } = await Swal.fire({
-        title: 'ยืนยันการยกเลิก?',
-        text: 'เงินจะถูกคืนเข้ากระเป๋า (หักค่าธรรมเนียมตามระบบ)',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'ยืนยันยกเลิก',
-        cancelButtonText: 'กลับ'
-    });
+        title: translations[currentLang].confirm_cancel_title,
+		text: translations[currentLang].confirm_cancel_text,
+		icon: 'warning',
+		showCancelButton: true,
+		confirmButtonColor: '#d33',
+		confirmButtonText: translations[currentLang].btn_confirm_cancel,
+		cancelButtonText: translations[currentLang].btn_back
+		});
 
     if (isConfirmed) {
         try {
@@ -1063,13 +1098,13 @@ async function cancelOrder(event, orderId) {
             const result = await res.json();
 
             if (res.ok && result.success) {
-                Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ', timer: 2000 });
+                Swal.fire({ icon: 'success', title: translations[currentLang].cancel_success, timer: 2000 });
                 loadMyOrders(); // รีโหลดรายการใหม่
             } else {
-                Swal.fire('ล้มเหลว', result.message || 'ไม่สามารถยกเลิกได้', 'error');
+                Swal.fire(translations[currentLang].cancel_failed, result.message || translations[currentLang].err_cancel_msg, 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'การเชื่อมต่อขัดข้อง', 'error');
+            Swal.fire('Error', translations[currentLang].err_connection, 'error');
         }
     }
 }
@@ -1086,14 +1121,10 @@ function openRightSidebar(postId) {
     document.getElementById('rightSidebar').style.right = '0';
     document.getElementById('sidebarOverlay').style.display = 'block';
     
-    // เคลียร์แชทเก่าและโหลดใหม่
     const chatContainer = document.getElementById('chatMessages');
-    chatContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">กำลังโหลดข้อความ...</div>';
+    chatContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">loading chat...</div>';
     
-    // เข้าร่วมห้องแชทผ่าน Socket
     socket.emit('join-post', postId);
-    
-    // ดึงประวัติแชทจาก API (ถ้ามี)
     loadChatHistory(postId);
 }
 
@@ -1168,7 +1199,7 @@ function sendChatMessage() {
 function formatCustomerMsgLinks(text) {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;">เปิดแผนที่ 📍</a>`;
+        return `<a href="${url}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;"> 📍</a>`;
     });
 }
 
@@ -1205,7 +1236,7 @@ function appendMessage(senderHtml, text, isMe, imageUrl = null) {
     // --- 2. จัดการเนื้อหา (รองรับลิ้งก์แผนที่) ---
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     let formattedText = text.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" style="color: ${isMe ? '#fff' : '#007bff'}; text-decoration: underline; font-weight: bold;">เปิดแผนที่ 📍</a>`;
+        return `<a href="${url}" target="_blank" style="color: ${isMe ? '#fff' : '#007bff'}; text-decoration: underline; font-weight: bold;"> 📍</a>`;
     });
 
     // --- 3. จัดการรูปภาพ (ถ้ามี) ---
@@ -1243,7 +1274,6 @@ socket.on('new-comment', (data) => {
 
 // ฝั่งลูกค้า (index.html หรือหน้าสั่งซื้อ)
 socket.on('order_accepted_update', (data) => {
-    console.log("ออเดอร์ถูกรับแล้ว!", data);
     if (typeof loadMyOrders === 'function') {
         loadMyOrders(); 
     }
@@ -1266,7 +1296,7 @@ function shareCustomerLocation() {
     navigator.geolocation.getCurrentPosition((position) => {
         const { latitude, longitude } = position.coords;
         const mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-        const message = `📍 พิกัดของฉัน: ${mapLink}`;
+        const message = `📍: ${mapLink}`;
         
         // ส่งผ่าน Socket หรือ API ตามสะดวก (ในที่นี้ใช้ Socket ให้เหมือนเดิม)
         const msgData = { postId: currentChatPostId, author: localStorage.getItem('myUsername'), text: message };
@@ -1280,7 +1310,7 @@ async function handleCustomerPhotoSelect(input) {
     const file = input.files[0];
     if (!file) return;
 
-    Swal.fire({ title: 'กำลังส่งรูปภาพ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+    Swal.fire({ title: 'sending photo...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
     const imageUrl = URL.createObjectURL(file);
     const resizedBlob = await compressImage(imageUrl, 1024, 0.6); // ใช้ฟังก์ชันบีบอัดเดิม
@@ -1288,13 +1318,13 @@ async function handleCustomerPhotoSelect(input) {
     const formData = new FormData();
     formData.append('image', resizedBlob, `cust_${Date.now()}.jpg`);
     formData.append('author', localStorage.getItem('myUsername'));
-    formData.append('text', '📷 ส่งรูปภาพ');
+    formData.append('text', '📷 send photo');
 
     const res = await fetch(`/api/posts/${currentChatPostId}/comments`, { method: 'POST', body: formData });
     const data = await res.json();
     
     if (data.success) {
-        appendMessage("ฉัน", '📷 ส่งรูปภาพ', true, data.comment.imageUrl);
+        appendMessage("", '📷 send photo', true, data.comment.imageUrl);
         URL.revokeObjectURL(imageUrl);
         Swal.close();
     }
