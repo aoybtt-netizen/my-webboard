@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>GedGo - Rider Ranking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #11998e;
+            --secondary-color: #38ef7d;
+            --gold: #f1c40f;
+            --silver: #bdc3c7;
+            --bronze: #e67e22;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            margin: 0;
+            background: #f0f2f5;
+            color: #333;
+            padding-bottom: 50px;
+        }
+
+        /* Header Gradient */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px 15px 60px;
+            text-align: center;
+            border-radius: 0 0 30px 30px;
+            position: relative;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 15px;
+            top: 20px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* Podium Section */
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            margin-top: -40px;
+            padding: 0 10px;
+            gap: 10px;
+        }
+
+        .podium-item {
+            background: white;
+            border-radius: 15px 15px 10px 10px;
+            padding: 15px 5px;
+            text-align: center;
+            flex: 1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .podium-item.rank-1 {
+            height: 160px;
+            z-index: 2;
+            border-top: 5px solid var(--gold);
+        }
+
+        .podium-item.rank-2 {
+            height: 130px;
+            border-top: 5px solid var(--silver);
+        }
+
+        .podium-item.rank-3 {
+            height: 110px;
+            border-top: 5px solid var(--bronze);
+        }
+
+        .avatar-box {
+            width: 50px;
+            height: 50px;
+            background: #eee;
+            border-radius: 50%;
+            margin: -40px auto 10px;
+            border: 3px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #666;
+            overflow: hidden;
+        }
+
+        .rank-1 .avatar-box { width: 65px; height: 65px; border-color: var(--gold); margin-top: -50px; }
+        .crown { position: absolute; top: -65px; left: 50%; transform: translateX(-50%); color: var(--gold); font-size: 1.8rem; }
+
+        .name-label { font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .points-label { font-size: 0.9rem; color: var(--primary-color); font-weight: bold; }
+
+        /* Ranking List */
+        .ranking-list {
+            max-width: 500px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .list-rank { width: 30px; font-weight: bold; color: #888; }
+        .list-name { flex: 1; font-weight: 500; padding-left: 10px; }
+        .list-points { text-align: right; color: var(--primary-color); font-weight: bold; }
+
+        .my-rank-card {
+            background: #e1f5fe;
+            margin: 15px;
+            padding: 15px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #b3e5fc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <i class="fas fa-arrow-left back-btn" onclick="history.back()"></i>
+        <h2 data-i18n-key="rank_title">อันดับไรเดอร์</h2>
+        <p style="font-size: 0.8rem; opacity: 0.9;" data-i18n-key="rank_subtitle">คะแนนสะสมประจำเดือนนี้</p>
+    </div>
+
+    <div class="podium-container">
+        <div class="podium-item rank-2">
+            <div class="avatar-box" id="avatar-2">2</div>
+            <span class="name-label" id="name-2">---</span>
+            <span class="points-label" id="pts-2">0 pts</span>
+        </div>
+
+        <div class="podium-item rank-1">
+            <i class="fas fa-crown crown"></i>
+            <div class="avatar-box" id="avatar-1">1</div>
+            <span class="name-label" id="name-1">---</span>
+            <span class="points-label" id="pts-1">0 pts</span>
+        </div>
+
+        <div class="podium-item rank-3">
+            <div class="avatar-box" id="avatar-3">3</div>
+            <span class="name-label" id="name-3">---</span>
+            <span class="points-label" id="pts-3">0 pts</span>
+        </div>
+    </div>
+
+    <div class="my-rank-card">
+        <div>
+            <small style="color:#0288d1" data-i18n-key="my_rank_label">อันดับของคุณ</small>
+            <div style="font-weight: bold; font-size: 1.1rem;" id="my-rank-name">---</div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: var(--primary-color);" id="my-rank-pos">#--</div>
+            <small id="my-rank-pts">0 pts</small>
+        </div>
+    </div>
+
+    <div class="ranking-list" id="ranking-list-container">
+        </div>
+
+    <script>
+        const myUsername = localStorage.getItem('myUsername');
+        const currentLang = localStorage.getItem('preferredLanguage') || 'th';
+
+        const translations = {
+            'th': {
+                'rank_title': 'อันดับไรเดอร์ยอดเยี่ยม',
+                'rank_subtitle': 'สะสมคะแนนเพื่อรับรางวัลประจำสัปดาห์',
+                'my_rank_label': 'อันดับของคุณ',
+                'points_unit': 'คะแนน'
+            },
+            'en': {
+                'rank_title': 'Rider Leaderboard',
+                'rank_subtitle': 'Earn points for weekly rewards',
+                'my_rank_label': 'Your Ranking',
+                'points_unit': 'pts'
+            },
+            'pt': {
+                'rank_title': 'Ranking de Entregadores',
+                'rank_subtitle': 'Ganhe pontos para prêmios semanais',
+                'my_rank_label': 'Sua Classificação',
+                'points_unit': 'pts'
+            }
+        };
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n-key]').forEach(el => {
+                const key = el.getAttribute('data-i18n-key');
+                if (translations[currentLang][key]) {
+                    el.innerText = translations[currentLang][key];
+                }
+            });
+        }
+
+        async function fetchRanking() {
+            try {
+                // เปลี่ยน URL เป็น API จริงของพี่
+                const res = await fetch('/api/rider-ranking');
+                const data = await res.json();
+                
+                if (data.success) {
+                    const list = data.leaderboard;
+                    renderPodium(list);
+                    renderList(list);
+                    updateMyRank(list);
+                }
+            } catch (e) { console.error("Fetch ranking error:", e); }
+        }
+
+        function renderPodium(list) {
+            if (list[0]) {
+                document.getElementById('name-1').innerText = list[0].username;
+                document.getElementById('pts-1').innerText = `${list[0].totalPoints} ${translations[currentLang].points_unit}`;
+            }
+            if (list[1]) {
+                document.getElementById('name-2').innerText = list[1].username;
+                document.getElementById('pts-2').innerText = `${list[1].totalPoints} ${translations[currentLang].points_unit}`;
+            }
+            if (list[2]) {
+                document.getElementById('name-3').innerText = list[2].username;
+                document.getElementById('pts-3').innerText = `${list[2].totalPoints} ${translations[currentLang].points_unit}`;
+            }
+        }
+
+        function renderList(list) {
+            const container = document.getElementById('ranking-list-container');
+            container.innerHTML = '';
+            
+            // แสดงอันดับ 4 เป็นต้นไป
+            list.slice(3).forEach((rider, index) => {
+                container.innerHTML += `
+                    <div class="list-item">
+                        <div class="list-rank">${index + 4}</div>
+                        <div class="list-name">${rider.username}</div>
+                        <div class="list-points">${rider.totalPoints} ${translations[currentLang].points_unit}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateMyRank(list) {
+            const myIndex = list.findIndex(r => r.username === myUsername);
+            if (myIndex !== -1) {
+                document.getElementById('my-rank-name').innerText = list[myIndex].username;
+                document.getElementById('my-rank-pos').innerText = `#${myIndex + 1}`;
+                document.getElementById('my-rank-pts').innerText = `${list[myIndex].totalPoints} ${translations[currentLang].points_unit}`;
+            }
+        }
+
+        window.onload = () => {
+            applyTranslations();
+            fetchRanking();
+        };
+    </script>
+</body>
+</html>
