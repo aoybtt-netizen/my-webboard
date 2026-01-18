@@ -1921,6 +1921,35 @@ app.get('/api/rider-ranking', async (req, res) => {
     }
 });
 
+// 1. เช็คสิทธิ์ว่าเป็นเจ้าของโซนไหม
+app.get('/api/check-zone-owner/:username', async (req, res) => {
+    const zone = await db.collection('zones').findOne({ assignedAdmin: req.params.username });
+    res.json({ isOwner: !!zone });
+});
+
+// 2. สั่งรีเซ็ต (เพิ่มเลข Version/Cycle)
+app.post('/api/reset-zone-ranking', async (req, res) => {
+    const { adminName } = req.body;
+    try {
+        // หาโซนที่แอดมินคนนี้คุมอยู่ แล้วเพิ่ม currentCycle ไปอีก 1
+        const zone = await db.collection('zones').findOneAndUpdate(
+            { assignedAdmin: adminName },
+            { $inc: { currentCycle: 1 } },
+            { returnDocument: 'after' }
+        );
+
+        if (!zone) return res.status(404).json({ success: false });
+
+        res.json({ 
+            success: true, 
+            newVersion: zone.currentCycle,
+            message: `เข้าสู่รอบที่ ${zone.currentCycle} แล้ว` 
+        });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 // 4. Contacts (Messages)
 app.get('/api/contacts', async (req, res) => {
     const { username } = req.query; 

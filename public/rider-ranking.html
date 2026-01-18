@@ -95,6 +95,38 @@
         .highlight-me { background: #f0f9f8; border-left: 5px solid var(--primary); }
 
         .no-data { text-align: center; padding: 40px; color: #999; }
+		
+		
+	
+	.admin-float-btn {
+        position: fixed;
+        right: -90px; /* ซ่อนข้อความไว้กึ่งหนึ่ง */
+        top: 50%;
+        transform: translateY(-50%);
+        background: #dc3545;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 30px 0 0 30px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+        z-index: 9999;
+        box-shadow: -2px 5px 15px rgba(220, 53, 69, 0.4);
+    }
+
+    /* เมื่อเอาเมาส์ไปจ่อ หรือนิ้วไปจิ้ม ให้เด้งออกมา */
+    .admin-float-btn:hover, .admin-float-btn:active {
+        right: 0;
+        background: #c82333;
+    }
+
+    .admin-float-btn i { font-size: 1.2rem; }
+    .btn-text { font-size: 0.85rem; font-weight: bold; }
+    .hidden { display: none !important; }
+	
+	
     </style>
 </head>
 <body>
@@ -224,6 +256,65 @@
             applyTranslations();
             fetchRanking();
         };
+		
+
+// ฟังก์ชันเช็คสิทธิ์แอดมินโซน
+async function checkAdminStatus() {
+    const adminName = localStorage.getItem('myUsername');
+    try {
+        const res = await fetch(`/api/check-zone-owner/${adminName}`);
+        const data = await res.json();
+        
+        if (data.isOwner) {
+            document.getElementById('admin-reset-box').classList.remove('hidden');
+        }
+    } catch (e) { console.error("Admin check failed", e); }
+}
+
+// ฟังก์ชันยืนยันการรีเซ็ต
+function confirmResetRanking() {
+    Swal.fire({
+        title: 'ยืนยันการรีเซ็ต?',
+        text: 'ระบบจะเปลี่ยนไปใช้เวอร์ชันใหม่ คะแนนปัจจุบันจะกลายเป็นประวัติย้อนหลังทันที',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'ยืนยันเริ่มรอบใหม่',
+        cancelButtonText: 'ยกเลิก'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            await executeReset();
+        }
+    });
+}
+
+async function executeReset() {
+    const adminName = localStorage.getItem('myUsername');
+    try {
+        const res = await fetch('/api/reset-zone-ranking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            Swal.fire('สำเร็จ!', `เข้าสู่เวอร์ชัน ${data.newVersion} แล้ว`, 'success');
+            fetchRanking(); // โหลดตารางใหม่ (ซึ่งจะว่างเปล่าเพราะเริ่มรอบใหม่)
+        }
+    } catch (e) { Swal.fire('Error', 'ไม่สามารถรีเซ็ตได้', 'error'); }
+}
+
+// เรียกใช้เมื่อโหลดหน้า
+window.addEventListener('DOMContentLoaded', checkAdminStatus);
+
+
     </script>
+	
+	
+	<div id="admin-reset-box" class="admin-float-btn hidden" onclick="confirmResetRanking()">
+    <i class="fas fa-sync-alt"></i>
+    <span class="btn-text" data-i18n-key="btn_reset_rank">รีเซ็ตการแข่ง</span>
+</div>
+
 </body>
 </html>
