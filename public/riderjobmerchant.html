@@ -2,11 +2,8 @@
 <html lang="th">
 <head>
 
-	<script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-	<script>
-	var vConsole = new window.VConsole();
-	</script>
 	
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 	<meta name="apple-mobile-web-app-title" content="GedGo">
@@ -1085,12 +1082,28 @@ async function sendRiderCustomMessage(text) {
 async function handlePhotoSelect(input) {
     const file = input.files[0];
     if (!file) return;
+    Swal.fire({
+        title: 'กำลังส่งรูปภาพ...',
+        text: 'กรุณารอสักครู่ ระบบกำลังลดขนาดและอัปโหลดรูป',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
 
-    // โชว์ Loading สั้นๆ (ถ้ามี)
-    console.log("กำลังประมวลผลรูปภาพ...");
-
-    const resizedBlob = await compressImage(file, 800, 0.7); // กว้าง 800px, คุณภาพ 70%
-    sendRiderPhoto(resizedBlob);
+    try {
+        const resizedBlob = await compressImage(file, 800, 0.7); 
+        
+        await sendRiderPhoto(resizedBlob);
+        Swal.close();
+        
+    } catch (e) {
+        console.error(e);
+        Swal.fire('ผิดพลาด', 'ไม่สามารถอัปโหลดรูปภาพได้', 'error');
+    } finally {
+        input.value = '';
+    }
 }
 
 function compressImage(file, maxWidth, quality) {
@@ -1125,7 +1138,7 @@ function compressImage(file, maxWidth, quality) {
 
 async function sendRiderPhoto(blob) {
     const formData = new FormData();
-    formData.append('image', blob, 'rider_photo.jpg');
+    formData.append('image', blob, `rider_${Date.now()}.jpg`);
     formData.append('author', myUsername);
     formData.append('text', '📷 ส่งรูปภาพ');
 
@@ -1137,14 +1150,17 @@ async function sendRiderPhoto(blob) {
         const data = await res.json();
         
         if (data.success) {
-            // ✅ แสดงฝั่งตัวเองทันที
+            // แสดงฝั่งตัวเองทันที
             appendRiderMessage(myUsername, '📷 ส่งรูปภาพ', true, data.comment.imageUrl);
             
-            // ล้างหน่วยความจำ Blob
-            URL.revokeObjectURL(blob); 
+            // คืนค่าหน่วยความจำ
+            URL.revokeObjectURL(blob);
+            
+        } else {
+            throw new Error(data.error);
         }
     } catch (e) {
-        alert("ไม่สามารถส่งรูปได้");
+        throw e; // ส่ง Error กลับไปให้ handlePhotoSelect จัดการ
     }
 }
 
