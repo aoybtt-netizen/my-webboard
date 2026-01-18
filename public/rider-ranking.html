@@ -129,6 +129,64 @@
     .hidden { display: none !important; }
 	
 	
+	
+	/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 10001;
+    backdrop-filter: blur(3px);
+}
+
+/* Modal Content Box */
+.modal-content {
+    background: white;
+    width: 90%; max-width: 400px;
+    border-radius: 25px;
+    overflow: hidden;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    background: #f8f9fa; padding: 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-body { padding: 20px; }
+
+.input-group { margin-bottom: 15px; }
+.input-group label { display: block; font-size: 0.85rem; color: #666; margin-bottom: 5px; }
+.input-group input {
+    width: 100%; padding: 12px; border: 1px solid #ddd;
+    border-radius: 12px; box-sizing: border-box; outline: none;
+}
+
+.checkbox-group { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+.checkbox-group input { width: 18px; height: 18px; }
+
+.modal-footer {
+    padding: 15px 20px; display: flex; gap: 10px;
+}
+.modal-footer button {
+    flex: 1; padding: 12px; border: none; border-radius: 12px;
+    font-weight: bold; cursor: pointer;
+}
+
+.btn-confirm { background: #11998e; color: white; }
+.btn-cancel { background: #eee; color: #666; }
+
+.hidden { display: none !important; }
+
+	
+	
     </style>
 </head>
 <body>
@@ -310,6 +368,59 @@ async function executeReset() {
     } catch (e) { Swal.fire('Error', 'ไม่สามารถรีเซ็ตได้', 'error'); }
 }
 
+
+
+// เปลี่ยนปุ่มเดิมให้เรียกฟังก์ชันนี้
+function openRankingManager() {
+    document.getElementById('ranking-modal').classList.remove('hidden');
+}
+
+function closeRankingManager() {
+    document.getElementById('ranking-modal').classList.add('hidden');
+}
+
+// ฟังก์ชันที่จะทำงานเมื่อกด "ยืนยันและเริ่มรอบใหม่" ในหน้าต่างจัดการ
+async function saveAndResetRanking() {
+    const adminName = localStorage.getItem('myUsername');
+    
+    // ดึงข้อมูลจากฟอร์ม
+    const setupData = {
+        adminName: adminName,
+        prizes: {
+            rank1: document.getElementById('prize-1').value,
+            rank2: document.getElementById('prize-2').value,
+            rank3: document.getElementById('prize-3').value
+        },
+        endDate: document.getElementById('rank-end-date').value,
+        requireKYC: document.getElementById('require-kyc').checked
+    };
+
+    if (!setupData.endDate) {
+        return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุวันสิ้นสุดการแข่ง', 'info');
+    }
+
+    try {
+        // ส่งข้อมูลไปหลังบ้านเพื่อ Reset และบันทึกกติกาใหม่
+        const res = await fetch('/api/reset-zone-ranking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(setupData)
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            Swal.fire('เริ่มรอบใหม่แล้ว!', `เวอร์ชันปัจจุบัน: ${data.newVersion}`, 'success');
+            closeRankingManager();
+            fetchRanking(); // รีโหลดตาราง
+        }
+    } catch (e) {
+        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    }
+}
+
+
+
 // เรียกใช้เมื่อโหลดหน้า
 window.addEventListener('DOMContentLoaded', checkAdminStatus);
 
@@ -317,10 +428,54 @@ window.addEventListener('DOMContentLoaded', checkAdminStatus);
     </script>
 	
 	
-	<div id="admin-reset-box" class="admin-float-btn hidden" onclick="confirmResetRanking()">
+	<div id="admin-reset-box" class="admin-float-btn hidden" onclick="openRankingManager()">
     <i class="fas fa-sync-alt"></i>
-    <span class="btn-text" data-i18n-key="btn_reset_rank">รีเซ็ตการแข่ง</span>
+    <span class="btn-text" data-i18n-key="btn_reset_rank">จัดการการแข่ง</span>
 </div>
+
+	
+	<div id="ranking-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 data-i18n-key="manage_rank_title"><i class="fas fa-cog"></i> ตั้งค่าการแข่งขัน</h3>
+            <span class="close-btn" onclick="closeRankingManager()">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <div class="input-group">
+                <label><i class="fas fa-trophy" style="color:#f1c40f;"></i> อันดับ 1</label>
+                <input type="text" id="prize-1" placeholder="เช่น 500 Coins + เสื้อยืด">
+            </div>
+            <div class="input-group">
+                <label><i class="fas fa-medal" style="color:#bdc3c7;"></i> อันดับ 2</label>
+                <input type="text" id="prize-2" placeholder="เช่น 300 Coins">
+            </div>
+            <div class="input-group">
+                <label><i class="fas fa-medal" style="color:#e67e22;"></i> อันดับ 3</label>
+                <input type="text" id="prize-3" placeholder="เช่น 100 Coins">
+            </div>
+
+            <hr>
+
+            <div class="input-group">
+                <label><i class="fas fa-calendar-alt"></i> วันที่สิ้นสุดการแข่ง</label>
+                <input type="date" id="rank-end-date">
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="require-kyc">
+                <label for="require-kyc">เฉพาะสมาชิกที่ยืนยันตัวตนแล้ว (KYC)</label>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeRankingManager()">ยกเลิก</button>
+            <button class="btn-confirm" onclick="saveAndResetRanking()">ยืนยันและเริ่มรอบใหม่</button>
+        </div>
+    </div>
+</div>
+
+
 
 </body>
 </html>
