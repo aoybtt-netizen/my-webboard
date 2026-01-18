@@ -957,14 +957,13 @@ function appendRiderMessage(author, text, isMe, imageUrl = null) {
     const container = document.getElementById('chat-messages');
     const roleLabel = getRiderRoleLabel(author);
     
-    let contentHtml = `<span>${text}</span>`;
+    let formattedText = formatChatMessage(text);
     
-    // ถ้ามีรูปภาพ ให้เพิ่มแท็ก img
+    // 2. จัดการรูปภาพ
+    let imageHtml = '';
     if (imageUrl) {
-        contentHtml = `
-            <div style="margin-bottom:5px;">${text}</div>
-            <img src="/${imageUrl}" style="width:100%; border-radius:8px; cursor:pointer;" onclick="window.open(this.src)">
-        `;
+        const fullPath = imageUrl.startsWith('http') ? imageUrl : `/${imageUrl}`;
+        imageHtml = `<img src="${fullPath}" style="width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open(this.src)">`;
     }
 
     const msgHtml = `
@@ -972,7 +971,8 @@ function appendRiderMessage(author, text, isMe, imageUrl = null) {
             <small style="display:block; font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">
                 ${roleLabel}
             </small>
-            ${contentHtml}
+            <div>${formattedText}</div>
+            ${imageHtml}
         </div>
     `;
     
@@ -997,6 +997,14 @@ async function loadRiderMessages() {
     } catch (e) {
         console.error("Chat load error:", e);
     }
+}
+
+function formatChatMessage(text) {
+    // ตรวจจับ URL และเปลี่ยนเป็นลิ้งก์ที่กดได้
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" style="color: #fff; text-decoration: underline;">เปิดแผนที่ 📍</a>`;
+    });
 }
 
 async function sendRiderChat() {
@@ -1107,8 +1115,14 @@ async function sendRiderPhoto(blob) {
             method: 'POST',
             body: formData
         });
-        if (res.ok) {
-            console.log("ส่งรูปสำเร็จ");
+        const data = await res.json();
+        
+        if (data.success) {
+            // ✅ แสดงฝั่งตัวเองทันที
+            appendRiderMessage(myUsername, '📷 ส่งรูปภาพ', true, data.comment.imageUrl);
+            
+            // ล้างหน่วยความจำ Blob
+            URL.revokeObjectURL(blob); 
         }
     } catch (e) {
         alert("ไม่สามารถส่งรูปได้");
@@ -1178,8 +1192,10 @@ socket.on('new-comment', (data) => {
     const comment = data.comment || data;
     
     if (data.postId == jobId) {
+        // 🚩 สำคัญ: ต้องไม่โชว์ซ้ำถ้าเป็นคนส่งเอง (เพราะเราสั่งโชว์ทันทีตอน fetch สำเร็จแล้ว)
         if (comment.author !== myUsername) {
-            appendRiderMessage(comment.author, comment.text || comment.content, false);
+            // ส่ง imageUrl เข้าไปด้วยเพื่อให้ฝั่งรับเห็นรูป
+            appendRiderMessage(comment.author, comment.text, false, comment.imageUrl);
         }
     }
 });
