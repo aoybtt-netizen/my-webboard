@@ -1111,20 +1111,37 @@ async function loadChatHistory(postId) {
         
         if (data.success) {
             const post = data.post;
-            merchantUser = post.author;     // เจ้าของโพสต์คือร้านค้า
-            riderUser = post.acceptedBy;    // คนรับงานคือไรเดอร์
+            // 🚩 ระบุตัวตนร้านค้าและไรเดอร์จากข้อมูลโพสต์
+            merchantUser = post.author;     
+            riderUser = post.acceptedBy;    
             
             const chatContainer = document.getElementById('chatMessages');
             chatContainer.innerHTML = '';
 
-            post.comments.forEach(msg => {
-                // ส่งชื่อที่แปลงแล้วไปแสดงผล
-                const displayName = formatDisplayName(msg.author);
-                appendMessage(displayName, msg.text, msg.author === localStorage.getItem('myUsername'));
-            });
+            if (post.comments && post.comments.length > 0) {
+                post.comments.forEach(msg => {
+                    // ใช้ getRoleLabel เพื่อเอาชื่อพร้อมไอคอน
+                    const roleLabel = getRoleLabel(msg.author);
+                    appendMessage(roleLabel, msg.text, msg.author === localStorage.getItem('myUsername'));
+                });
+            }
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
     } catch (e) { console.error("Load chat error:", e); }
+}
+
+function getRoleLabel(username) {
+    const myUser = localStorage.getItem('myUsername');
+
+    if (username === myUser) {
+        return `<i class="fas fa-user-circle"></i> ฉัน`;
+    } else if (username === merchantUser) {
+        return `<i class="fas fa-store" style="color: #e67e22;"></i> ร้านค้า`;
+    } else if (username === riderUser) {
+        return `<i class="fas fa-motorcycle" style="color: #3498db;"></i> Rider`;
+    } else {
+        return `<i class="fas fa-user"></i> ${username}`; // กรณีแอดมินหรือคนอื่น
+    }
 }
 
 function formatDisplayName(username) {
@@ -1133,9 +1150,9 @@ function formatDisplayName(username) {
     if (username === myUser) {
         return "You"; // หรือใช้ชื่อตัวเอง
     } else if (username === merchantUser) {
-        return "🏪 "; // โชว์ว่าเป็นร้านค้า
+        return "Store 🏪 "; // โชว์ว่าเป็นร้านค้า
     } else if (username === riderUser) {
-        return "🛵 ";   // โชว์ว่าเป็นไรเดอร์
+        return "Rider 🛵";   // โชว์ว่าเป็นไรเดอร์
     } else {
         return username;      // กรณีแอดมินหรือคนอื่น
     }
@@ -1185,7 +1202,12 @@ function appendMessage(sender, text, isMe) {
         msgDiv.style.borderRadius = '15px 15px 15px 0';
     }
     
-    msgDiv.innerHTML = `<small style="display:block; font-size:0.7rem; opacity:0.8; margin-bottom:3px;">${sender}</small>${text}`;
+    msgDiv.innerHTML = `
+        <small style="display:block; font-size:0.75rem; font-weight:600; opacity:0.9; margin-bottom:4px;">
+            ${senderHtml}
+        </small>
+        ${text}
+    `;
     chatContainer.appendChild(msgDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
@@ -1199,9 +1221,9 @@ socket.on('new-comment', (data) => {
         const text = comment.text || comment.content || "";
 
         if (author && author !== localStorage.getItem('myUsername')) {
-            // แปลงชื่อก่อนแสดงผล
-            const displayName = formatDisplayName(author);
-            appendMessage(displayName, text, false);
+            // 🚩 แปลงชื่อเป็นชื่อบทบาทพร้อมไอคอน
+            const roleLabel = getRoleLabel(author);
+            appendMessage(roleLabel, text, false);
         }
     }
 });
