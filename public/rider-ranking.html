@@ -265,25 +265,29 @@
 async function fetchRanking(cycle = 'latest') {
     const container = document.getElementById('leaderboard-list');
     try {
-        const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}`);
+        // ดึงพิกัดที่เก็บไว้ (เหมือนที่พี่ทำในหน้าโปรไฟล์)
+        const savedLoc = localStorage.getItem('userPrimaryLocation'); 
+        let locationParam = '';
+        if (savedLoc) locationParam = `&location=${encodeURIComponent(savedLoc)}`;
+
+        // ส่งทั้ง username และ location ไปให้ API
+        const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}${locationParam}`);
         const data = await res.json();
         
         if (data.success) {
-            // 1. อัปเดต UI ส่วนหัว
             if (cycle === 'latest') {
-                updateCycleSelector(data.currentCycle || 1);
+                updateCycleSelector(data.currentCycle);
                 updateStatusLabel(data.isActive, data.requireKYC);
+                // แสดงชื่อโซนที่ระบบตรวจเจอด้วย
+                if(document.getElementById('comp-status-label')) {
+                     document.getElementById('comp-status-label').innerHTML += ` <br><small>โซน: ${data.zoneName}</small>`;
+                }
             }
-            
-            // 2. วาดตาราง (ถ้า data.leaderboard เป็นอาเรย์ว่าง มันจะโชว์ "ไม่พบข้อมูล")
-            renderLeaderboard(data.leaderboard || []);
-        } else {
-            // 🚩 ถ้า success: false ให้แสดงข้อความผิดพลาด
-            container.innerHTML = `<div class="no-data">เกิดข้อผิดพลาด: ${data.message || 'ดึงข้อมูลไม่สำเร็จ'}</div>`;
+            renderLeaderboard(data.leaderboard);
         }
     } catch (e) { 
         console.error(e); 
-        container.innerHTML = `<div class="no-data">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้</div>`;
+        container.innerHTML = `<div class="no-data">ไม่สามารถโหลดข้อมูลได้</div>`;
     }
 }
 

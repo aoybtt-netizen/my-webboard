@@ -1917,20 +1917,43 @@ app.get('/api/users-list', async (req, res) => {
 
 // rider ranking
 app.get('/api/rider-ranking', async (req, res) => {
-    const { cycle, username } = req.query; 
+    const { cycle, username, location } = req.query; 
 
     try {
-        // 1. หาว่าผู้ใช้คนนี้สังกัดโซนอะไร (สมมติใน User เก็บ zoneId ไว้)
-        const user = await db.collection('users').findOne({ username: username });
-        if (!user || !user.zoneId) return res.json({ success: false, message: "User zone not found" });
+        let zone = null;
 
-        // 2. 🚩 หาโซนที่ถูกต้องตาม ID ของผู้ใช้
-        const zone = await db.collection('zones').findOne({ id: parseInt(user.zoneId) });
-        if (!zone) return res.json({ success: false, message: "Zone not found" });
+        // 🚩 ขั้นตอนใหม่: ค้นหาโซนจาก Location ที่ส่งมา
+        if (location) {
+            // สมมติว่าพี่มีฟังก์ชัน findZoneByCoords ที่พี่เขียนไว้ในหน้าโปรไฟล์
+            // ตัวอย่างเช่น: zone = await zonesCollection.findOne({ name: location }); 
+            // หรือคำนวณจาก Lat, Lng
+            zone = await db.collection('zones').findOne({ 
+                $or: [
+                    { name: location }, // หาจากชื่อ
+                    { id: parseInt(location) } // หรือหาจาก ID ถ้า location ส่งมาเป็นตัวเลข
+                ]
+            });
+        }
 
-        // 3. กำหนดรอบและ Key (ใช้ rankingVariable จากโซนที่หาเจอ)
+        // Fallback: ถ้ายังไม่เจอ ให้หาโซนที่ User คนนี้สังกัด (zoneId เดิม)
+        if (!zone) {
+            const user = await db.collection('users').findOne({ username: username });
+            if (user && user.zoneId) {
+                zone = await db.collection('zones').findOne({ id: parseInt(user.zoneId) });
+            }
+        }
+
+        // ถ้าสุดท้ายไม่เจอจริงๆ ให้ดึงโซนแรกมาเป็น Default
+        if (!zone) {
+            zone = await db.collection('zones').findOne({});
+        }
+
+        if (!zone) return res.json({ success: false, message: "System Error: No zones found" });
+
+        // --- Logic ดึงอันดับ (เหมือนเดิมแต่ใช้ zone ที่หาเจอ) ---
         const targetCycle = (cycle === 'latest' || !cycle) ? (zone.currentCycle || 1) : parseInt(cycle);
-        const rankingKey = `ranking_data.${zone.rankingVariable || 'defaultPoints'}_v${targetCycle}`;
+        const rankingVariable = zone.rankingVariable || 'points';
+        const rankingKey = `ranking_data.${rankingVariable}_v${targetCycle}`;
 
         const leaderboard = await db.collection('users').find({
             [rankingKey]: { $exists: true }
@@ -1943,7 +1966,7 @@ app.get('/api/rider-ranking', async (req, res) => {
             success: true,
             leaderboard: leaderboard.map(u => ({ 
                 username: u.username, 
-                totalPoints: u.ranking_data[rankingVariable + '_v' + targetCycle] // ดึงแต้มจาก Dynamic Key
+                totalPoints: (u.ranking_data && u.ranking_data[`${rankingVariable}_v${targetCycle}`]) ? u.ranking_data[`${rankingVariable}_v${targetCycle}`] : 0
             })),
             currentCycle: zone.currentCycle || 1,
             isActive: zone.isCompetitionActive || false,
@@ -1952,7 +1975,6 @@ app.get('/api/rider-ranking', async (req, res) => {
         });
 
     } catch (e) {
-        console.error(e);
         res.status(500).json({ success: false });
     }
 });
