@@ -44,7 +44,7 @@
     <div class="hero">
         <h1 id="hero-title">ยักษ์ใหญ่กินส่วนแบ่ง แต่ GedGo กินใจคนในพื้นที่</h1>
         <p id="hero-desc">เปลี่ยน "พื้นที่ของคุณ" ให้เป็นอาณาจักรธุรกิจด้วยระบบ Delivery กระจายอำนาจที่สมบูรณ์ที่สุด เครื่องยนต์นี้ใกล้เสร็จสมบูรณ์แล้ว เหลือเพียงพาร์ทเนอร์ตัวจริงมาสตาร์ทเครื่องไปด้วยกัน</p>
-        <p id="hero-note" style="font-size: 0.9rem; color: var(--gold);">* จำกัดเพียง 1 พาร์ทเนอร์ ต่อ 1 พื้นที่บริหารเท่านั้น เพื่อรักษาผลประโยชน์สูงสุดของเจ้าของโซน</p>
+        <p id="hero-note" style="font-size: 0.9rem; color: var(--gold); margin-bottom: 25px;">* จำกัดเพียง 1 พาร์ทเนอร์ ต่อ 1 พื้นที่บริหารเท่านั้น เพื่อรักษาผลประโยชน์สูงสุดของเจ้าของโซน</p>
         <a href="https://wa.me/66924409224" class="btn-main" id="hero-btn"><i class="fab fa-whatsapp"></i> ติดต่อพาร์ทเนอร์ทาง WhatsApp</a>
         <p id="mail-display" style="margin-top: 15px; opacity: 0.8;">email : aoythai00@hotmail.com</p>
     </div>
@@ -73,6 +73,11 @@
                 <i class="fas fa-user-shield"></i>
                 <h3 id="feat3-title">อำนาจคัดกรองสมาชิก</h3>
                 <p id="feat3-desc">มีอำนาจสิทธิ์ขาดในการตรวจสอบและอนุมัติสมาชิก (KYC) ในพื้นที่ เพื่อรักษามาตรฐานและความปลอดภัยสูงสุด</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-coins"></i>
+                <h3 id="feat5-title">ค่าสมัครเปลี่ยนเป็นเครดิต</h3>
+                <p id="feat5-desc">ค่าสมัครจองโซน (USDT) จะถูกเปลี่ยนเป็นเครดิตในระบบในบัญชีของคุณโดยอัตโนมัติ เพื่อใช้เป็นเงินทุนหมุนเวียน</p>
             </div>
             <div class="card">
                 <i class="fas fa-gift"></i>
@@ -106,6 +111,8 @@
                 feat2Desc: "รับส่วนแบ่งรายได้จากค่าธรรมเนียมในโซนของคุณสูงถึง 70% เปลี่ยนทุกออเดอร์ให้เป็นผลกำไรของคุณโดยตรง",
                 feat3Title: "อำนาจคัดกรองสมาชิก",
                 feat3Desc: "มีอำนาจสิทธิ์ขาดในการตรวจสอบและอนุมัติสมาชิก (KYC) ในพื้นที่ เพื่อรักษามาตรฐานและความปลอดภัยสูงสุด",
+                feat5Title: "ค่าสมัครเปลี่ยนเป็นเครดิต",
+                feat5Desc: "ค่าสมัครจองโซน (USDT) จะถูกเปลี่ยนเป็นเครดิตในระบบในบัญชีของคุณโดยอัตโนมัติ เพื่อใช้เป็นเงินทุนหมุนเวียน",
                 feat4Title: "กำหนดรางวัล Ranking",
                 feat4Desc: "ดึงดูดไรเดอร์ด้วยระบบจัดอันดับอัจฉริยะที่คุณสามารถกำหนดรางวัลเองได้ เพื่อกระตุ้นการทำงานในโซน",
                 ctaTitle: "คุณคือพาร์ทเนอร์เชิงกลยุทธ์ที่ผมกำลังตามหา?",
@@ -128,6 +135,8 @@
                 feat2Desc: "Earn up to 70% of all delivery fees within your zone. Direct profit from every order.",
                 feat3Title: "KYC Authority",
                 feat3Desc: "Complete authority to screen and approve members (KYC) to maintain safety and quality standards.",
+                feat5Title: "Fee Converted to Credit",
+                feat5Desc: "Your registration fee (USDT) will be automatically converted into your in-system account balance as working capital.",
                 feat4Title: "Custom Ranking & Prizes",
                 feat4Desc: "Engage riders with a smart leaderboard system where you define the prizes to drive performance.",
                 ctaTitle: "Are you the Strategic Partner I'm looking for?",
@@ -150,6 +159,8 @@
                 feat2Desc: "Ganhe 70% de todas as taxas de entrega em sua zona. Lucro direto em cada pedido.",
                 feat3Title: "Autoridade KYC",
                 feat3Desc: "Autoridade total para selecionar e aprovar membros (KYC) para manter os padrões de segurança e qualidade.",
+                feat5Title: "Taxa vira Crédito",
+                feat5Desc: "Sua taxa de inscrição (USDT) será convertida automaticamente em saldo na sua conta do sistema como capital de giro.",
                 feat4Title: "Ranking e Prêmios",
                 feat4Desc: "Atraia entregadores com um sistema de ranking inteligente onde você define os prêmios para engajar a zona.",
                 ctaTitle: "Você é o parceiro estratégico que procuro?",
@@ -161,24 +172,20 @@
         };
 
         function switchLang(lang, event) {
-            // Update Active Button
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
             if (event) event.target.classList.add('active');
             
             const c = content[lang];
             
-            // Hero
             document.getElementById('hero-title').innerText = c.heroTitle;
             document.getElementById('hero-desc').innerText = c.heroDesc;
             document.getElementById('hero-note').innerText = c.ctaNote;
             document.getElementById('hero-btn').innerHTML = `<i class="fab fa-whatsapp"></i> ` + c.heroBtn;
             document.getElementById('mail-display').innerText = c.ctaNotemail;
 
-            // Why
             document.getElementById('why-title').innerText = c.whyTitle;
             document.getElementById('why-subtitle').innerText = c.whySubtitle;
             
-            // Cards
             document.getElementById('feat0-title').innerText = c.feat0Title;
             document.getElementById('feat0-desc').innerText = c.feat0Desc;
             document.getElementById('feat1-title').innerText = c.feat1Title;
@@ -187,15 +194,16 @@
             document.getElementById('feat2-desc').innerText = c.feat2Desc;
             document.getElementById('feat3-title').innerText = c.feat3Title;
             document.getElementById('feat3-desc').innerText = c.feat3Desc;
+            document.getElementById('feat5-title').innerText = c.feat5Title;
+            document.getElementById('feat5-desc').innerText = c.feat5Desc;
             document.getElementById('feat4-title').innerText = c.feat4Title;
             document.getElementById('feat4-desc').innerText = c.feat4Desc;
 
-            // CTA
             document.getElementById('cta-title').innerText = c.ctaTitle;
             document.getElementById('cta-desc').innerText = c.ctaDesc;
             document.getElementById('cta-btn').innerHTML = `<i class="fab fa-whatsapp"></i> ` + c.ctaBtn;
             document.getElementById('cta-note').innerText = c.ctaNote;
-            document.getElementById('mail-footer').innerText = "*** " + c.ctaNotemail.replace('email : ', '');
+            document.getElementById('mail-footer').innerText = "*** " + c.ctaNotemail;
         }
     </script>
 </body>
