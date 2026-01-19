@@ -742,29 +742,37 @@
 </div>
     
     <div id="rating-modal" class="modal-overlay hidden">
-    <div class="modal-box" style="text-align:center;">
-        <h2 data-i18n-key="rating_title">⭐ Rate your satisfaction.</h2>
+    <div class="modal-box" style="text-align:center; max-width: 400px;">
+        <h2 data-i18n-key="rating_title">⭐ ให้คะแนนการทำงาน</h2>
         
-        <p data-i18n-key="rating_desc">The task is complete. Please rate the other party to close the job.</p>
-        
-        <div style="font-size: 2em; margin: 20px 0; cursor: pointer;">
-            <span onclick="setRating(1)">⭐</span>
-            <span onclick="setRating(2)">⭐</span>
-            <span onclick="setRating(3)">⭐</span>
-            <span onclick="setRating(4)">⭐</span>
-            <span onclick="setRating(5)">⭐</span>
+        <p style="margin-top:20px; font-weight:bold;">1. ความพึงพอใจทั่วไป</p>
+        <div id="star-general" style="font-size: 2em; cursor: pointer; color: #ccc;">
+            <span onclick="setRate('general', 1)">⭐</span>
+            <span onclick="setRate('general', 2)">⭐</span>
+            <span onclick="setRate('general', 3)">⭐</span>
+            <span onclick="setRate('general', 4)">⭐</span>
+            <span onclick="setRate('general', 5)">⭐</span>
         </div>
         
-        <p>
-            <span data-i18n-key="rating_selected">Selected score:</span> 
-            <strong id="selected-rating" style="font-size:1.5em; color:#ffc107;">0</strong> / 5
-        </p>
+        <p style="margin-top:20px; font-weight:bold;">2. ความรับผิดชอบของไรเดอร์</p>
+        <div id="star-responsibility" style="font-size: 2em; cursor: pointer; color: #ccc;">
+            <span onclick="setRate('responsibility', 1)">⭐</span>
+            <span onclick="setRate('responsibility', 2)">⭐</span>
+            <span onclick="setRate('responsibility', 3)">⭐</span>
+            <span onclick="setRate('responsibility', 4)">⭐</span>
+            <span onclick="setRate('responsibility', 5)">⭐</span>
+        </div>
+        
+        <div style="margin-top:20px; background: #f8f9fa; padding: 10px; border-radius: 10px;">
+             <small>คะแนนที่จะได้รับ: <strong id="calc-preview">0</strong> แต้ม</small>
+        </div>
         
         <button class="send-btn" style="width:100%; margin-top:20px;" onclick="submitRating()" data-i18n-key="btn_submit_rating">
-            Confirm rating
+            ยืนยันการให้คะแนน
         </button>
     </div>
 </div>
+
 
     <div id="handover-modal" class="modal-overlay hidden">
         <div class="modal-box" style="text-align:center;">
@@ -1654,6 +1662,7 @@ function sendLocationInChat() {
         });
         
         let currentRating = 0;
+		let responsibilityRating = 0;
 
         // 1. ฟังคำสั่งเริ่มให้คะแนนจาก Server
         socket.on('start-rating-phase', () => {
@@ -1666,25 +1675,47 @@ function sendLocationInChat() {
             currentRating = score;
             document.getElementById('selected-rating').innerText = score;
         }
+		
+function setRate(type, score) {
+    const pointsMap = { 1: -15, 2: -10, 3: 0, 4: 5, 5: 10 };
+    
+    if (type === 'general') {
+        currentRating = score;
+        updateStarUI('star-general', score);
+    } else {
+        responsibilityRating = score;
+        updateStarUI('star-responsibility', score);
+    }
+    
+    // คำนวณ Preview คะแนนเล่นๆ ให้คนให้เห็น
+    const totalPreview = (pointsMap[currentRating] || 0) + (pointsMap[responsibilityRating] || 0);
+    document.getElementById('calc-preview').innerText = totalPreview;
+}
+
+function updateStarUI(containerId, score) {
+    const stars = document.querySelectorAll(`#${containerId} span`);
+    stars.forEach((s, i) => {
+        s.style.color = i < score ? "#ffc107" : "#ccc";
+    });
+}
 
         // 3. ฟังก์ชันกดส่งคะแนน (Client)
-        window.submitRating = function() {
-            if (currentRating === 0) {
-                showNotification('Please select Rating...', 'fas fa-exclamation-circle', 2000);
-                return;
-            }
-            const comment = "";
-            
-            // 🚀 ส่งข้อมูลไป Server เพื่อปิดงานทันที
-            socket.emit('submit-rating', {
-                postId,
-                rater: myUsername,
-                rating: currentRating,
-                comment: comment
-            });
-            
-            document.getElementById('rating-modal').classList.add('hidden');
-        }
+window.submitRating = function() {
+    if (currentRating === 0 || responsibilityRating === 0) {
+        showNotification('กรุณาให้คะแนนให้ครบทั้ง 2 หัวข้อ', 'fas fa-exclamation-circle', 2000);
+        return;
+    }
+    
+    socket.emit('submit-rating', {
+        postId,
+        rater: myUsername,
+        rating: currentRating,
+        responsibility: responsibilityRating, // ส่งตัวที่ 2 ไปด้วย
+        comment: ""
+    });
+    
+    document.getElementById('rating-modal').classList.add('hidden');
+}
         
         // ฟังก์ชันเปิดรูปภาพขยาย
 window.openImageViewer = function(src) {

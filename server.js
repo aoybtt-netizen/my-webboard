@@ -1486,6 +1486,12 @@ function convertUSD(amountUSD, targetCurrency) {
     return R * c;
 }
 
+//คำนวณคะแนนใรเดอร์
+function calculateRankPoints(s1, s2) {
+    const map = { 1: -15, 2: -10, 3: 0, 4: 5, 5: 10 };
+    return (map[s1] || 0) + (map[s2] || 0);
+}
+
 
 // ฟังก์ชันพนักงานทำความสะอาดหลังบ้าน
 async function runPostCleanup() {
@@ -4424,20 +4430,29 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
 
 // API: ร้านค้ายืนยันจบงาน และให้คะแนนไรเดอร์
 app.post('/api/posts/:postId/finish-job', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     const { postId } = req.params;
-    const { rating, author } = req.body; 
+    // 1. รับค่าจาก body (เอาบรรทัดเดียวพอ)
+    const { rating, responsibility, author } = req.body; 
 
     try {
+        // 2. หาข้อมูลโพสต์ก่อน
         const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) return res.status(404).json({ 
-				success: false, 
-				error: serverTranslations[lang].err_post_not_found_final 
-			});
+            success: false, 
+            error: serverTranslations[lang].err_post_not_found_final 
+        });
 
         const riderName = post.acceptedBy || post.acceptedViewer;
 
-        // 1. อัปเดตสถานะโพสต์เป็นปิดถาวร
+        // 3. หาข้อมูลโซน (สำคัญมาก เพื่อเอาชื่อตัวแปร Ranking)
+        // สมมติหาจากโซนที่ผูกกับโพสต์ หรือใช้พิกัดโพสต์หาโซนที่ใกล้ที่สุด
+        const zone = await db.collection('zones').findOne({ 
+            // เปลี่ยนเงื่อนไขตามระบบพี่ เช่น { id: post.zoneId } หรือตามพิกัด
+            id: post.zoneId 
+        });
+
+        // 4. อัปเดตสถานะโพสต์เป็นปิดถาวร
         await postsCollection.updateOne(
             { id: parseInt(postId) },
             { 
@@ -4450,48 +4465,56 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
             }
         );
 
-        // 🚩 2. ปลดล็อค Rider ทันทีเพื่อให้เขาไปรับงานอื่นได้ (ล้างค่า working)
-        if (riderName) {
+        // 5. จัดการส่วนของ Rider
+        if (riderName && zone) {
 		const rider = await usersCollection.findOne({ username: riderName });
-    
 		if (rider) {
-			const newScore = parseFloat(rating);
-			const currentCount = rider.ratingCount || 0;
-			const currentRating = rider.rating || 0;
+        const score1 = parseFloat(rating);
+        const score2 = parseFloat(responsibility || 3);
+        
+        // 1. คำนวณดาวเฉลี่ย (เก็บไว้ที่เดิมเสมอ)
+        const currentCount = rider.ratingCount || 0;
+        const currentRating = rider.rating || 0;
+        const newAverage = ((currentRating * currentCount) + score1) / (currentCount + 1);
 
-				// คำนวณค่าเฉลี่ยใหม่
-			const newAverage = ((currentRating * currentCount) + newScore) / (currentCount + 1);
+        // 2. 🏆 คำนวณ Key สำหรับ Ranking
+        const ptsToAdd = calculateRankPoints(score1, score2);
+        
+        // ถ้า isCompetitionActive เป็น false หรือ undefined จะเข้า v0 ทันที
+        const targetCycle = (zone.isCompetitionActive === true) ? (zone.currentCycle || 1) : 0;
+        const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
 
-			await usersCollection.updateOne(
-				{ username: riderName },
-				{ 
-					$set: { 
-						working: null,
-						rating: parseFloat(newAverage.toFixed(2)) // บันทึกทศนิยม 2 ตำแหน่ง
-					},
-					$inc: { 
-						ratingCount: 1,
-						totalJobs: 1 // สำหรับใช้ทำ Ranking
-						}
-					}
-				);
-			}
-		}
+        await usersCollection.updateOne(
+            { username: riderName },
+            { 
+                $set: { 
+                    working: null,
+                    rating: parseFloat(newAverage.toFixed(2))
+                },
+                $inc: { 
+                    ratingCount: 1,
+                    totalJobs: 1,
+                    [rankingKey]: ptsToAdd // บันทึกเข้า v0 หรือ v_ปัจจุบัน
+                }
+            }
+        );
+    }
+}
 
-        // 4. อัปเดตสถิติจบงานให้ร้านค้า (Merchant)
+        // 6. อัปเดตสถิติจบงานให้ร้านค้า
         await usersCollection.updateOne(
             { username: post.author },
             { $inc: { totalJobs: 1, authorCompletedJobs: 1, mercNum: -1 } }
         );
 
-        // 5. แจ้งเตือนผ่าน Socket
+        // 7. แจ้งเตือน
         io.to(postId.toString()).emit('job-finished-complete', { postId, rating });
         io.emit('update-post-status'); 
 
         res.json({ 
-			success: true, 
-			message: serverTranslations[lang].msg_finish_unlock 
-		});
+            success: true, 
+            message: serverTranslations[lang].msg_finish_unlock 
+        });
 
     } catch (error) {
         console.error("Finish Job Error:", error);
@@ -6112,62 +6135,74 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
 });
 
     socket.on('submit-rating', async (data) => {
-        const { postId, rater, rating, comment } = data;
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post || post.status !== 'rating_pending') return;
-
-        const isAuthor = rater === post.author;
-        const myRoleKey = isAuthor ? 'author' : 'acceptedViewer';
-        if (post.ratings && post.ratings[myRoleKey]) {
-            io.to(rater).emit('job-completed-success', { msgKey: 'SYS_RATING_ALREADY' });
-            return;
-        }
-
-        const updateField = {};
-        updateField[`ratings.${myRoleKey}`] = { rating: parseFloat(rating), comment };
-        await postsCollection.updateOne({ id: parseInt(postId) }, { $set: updateField });
-
-        let userToRate = isAuthor ? post.acceptedViewer : post.author;
-        if (userToRate) {
-			const target = await usersCollection.findOne({ username: userToRate });
+    // 1. รับ responsibility เพิ่มเข้ามาจากหน้าบ้านด้วย
+    const { postId, rater, rating, responsibility, comment } = data;
     
-		if (target) {
-        const newScore = parseFloat(rating);
-        const currentCount = target.ratingCount || 0;
-        const currentRating = target.rating || 0;
+    const post = await postsCollection.findOne({ id: parseInt(postId) });
+    if (!post || post.status !== 'rating_pending') return;
 
-        // ใช้สูตรเดียวกันเป๊ะ
-        const newAverage = ((currentRating * currentCount) + newScore) / (currentCount + 1);
+    const isAuthor = rater === post.author;
+    const myRoleKey = isAuthor ? 'author' : 'acceptedViewer';
+    
+    if (post.ratings && post.ratings[myRoleKey]) {
+        io.to(rater).emit('job-completed-success', { msgKey: 'SYS_RATING_ALREADY' });
+        return;
+    }
 
-        await usersCollection.updateOne(
-            { username: userToRate },
-            { 
+    // อัปเดตคะแนนดิบลงในตัวโพสต์
+    const updateField = {};
+    updateField[`ratings.${myRoleKey}`] = { rating: parseFloat(rating), responsibility: parseFloat(responsibility || 3), comment };
+    await postsCollection.updateOne({ id: parseInt(postId) }, { $set: updateField });
+
+    let userToRate = isAuthor ? post.acceptedViewer : post.author;
+    if (userToRate) {
+        const target = await usersCollection.findOne({ username: userToRate });
+        
+        // 🚩 จุดสำคัญ: ต้องหาข้อมูลโซนก่อนถึงจะใช้ตัวแปรโซนได้
+        const zone = await db.collection('zones').findOne({ id: post.zoneId });
+
+        if (target && zone) {
+            const newScore = parseFloat(rating);
+            const currentCount = target.ratingCount || 0;
+            const currentRating = target.rating || 0;
+            const newAverage = ((currentRating * currentCount) + newScore) / (currentCount + 1);
+
+            // 🚩 คำนวณแต้ม Ranking และเช็คสถานะ v0
+            const ptsToAdd = calculateRankPoints(rating, responsibility || 3);
+            const targetCycle = (zone.isCompetitionActive === true) ? (zone.currentCycle || 1) : 0;
+            const rankingKey = `ranking_data.${zone.rankingVariable || 'defaultPoints'}_v${targetCycle}`;
+
+            const updateData = {
                 $set: { rating: parseFloat(newAverage.toFixed(2)) },
                 $inc: { 
                     ratingCount: 1,
-                    totalJobs: 1 // นับงานให้ด้วยเพื่อใช้แข่ง Ranking
-					}
-				}
-			);
-		}
-	}
+                    totalJobs: 1,
+                    [rankingKey]: ptsToAdd // บันทึกลงรอบปัจจุบัน หรือ v0
+                }
+            };
 
-        const updatedPost = await postsCollection.findOne({ id: parseInt(postId) });
-        const otherRoleKey = isAuthor ? 'acceptedViewer' : 'author';
-        if (updatedPost.ratings && updatedPost.ratings[otherRoleKey]) {
-            await postsCollection.updateOne({ id: parseInt(postId) }, { $set: { status: 'closed_permanently' } });
-            delete postViewers[postId];
+            await usersCollection.updateOne({ username: userToRate }, updateData);
+            console.log(`[Socket Rating] ${userToRate} ได้ ${ptsToAdd} แต้ม ลงใน ${rankingKey}`);
         }
+    }
 
-        io.to(rater).emit('job-completed-success', { msgKey: 'SYS_RATING_SUCCESS' });
-        const otherUser = isAuthor ? post.acceptedViewer : post.author;
-        if (otherUser && (!updatedPost.ratings || !updatedPost.ratings[otherRoleKey])) {
-             const notifMsg = { sender: 'System', target: otherUser, msgKey: 'SYS_OPPONENT_RATED', msgData: {}, msg: '🔔 อีกฝ่ายให้คะแนนแล้ว', timestamp: Date.now() };
-            await messagesCollection.insertOne(notifMsg);
-            io.to(otherUser).emit('private-message', { ...notifMsg, to: otherUser });
-        }
-        io.emit('update-post-status');
-    });
+    // --- ส่วนปิดงานถาวร (คงเดิม) ---
+    const updatedPost = await postsCollection.findOne({ id: parseInt(postId) });
+    const otherRoleKey = isAuthor ? 'acceptedViewer' : 'author';
+    if (updatedPost.ratings && updatedPost.ratings[otherRoleKey]) {
+        await postsCollection.updateOne({ id: parseInt(postId) }, { $set: { status: 'closed_permanently' } });
+        delete postViewers[postId];
+    }
+
+    io.to(rater).emit('job-completed-success', { msgKey: 'SYS_RATING_SUCCESS' });
+    const otherUser = isAuthor ? post.acceptedViewer : post.author;
+    if (otherUser && (!updatedPost.ratings || !updatedPost.ratings[otherRoleKey])) {
+         const notifMsg = { sender: 'System', target: otherUser, msgKey: 'SYS_OPPONENT_RATED', msgData: {}, msg: '🔔 อีกฝ่ายให้คะแนนแล้ว', timestamp: Date.now() };
+        await messagesCollection.insertOne(notifMsg);
+        io.to(otherUser).emit('private-message', { ...notifMsg, to: otherUser });
+    }
+    io.emit('update-post-status');
+});
 
     // --- Geolocation & Disconnect Logic ---
     socket.on('update-viewer-location', (data) => {
