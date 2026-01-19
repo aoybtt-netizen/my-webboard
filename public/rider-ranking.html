@@ -198,7 +198,7 @@
 
     <div class="my-rank-container">
         <div>
-			<span id="comp-status-label" style="font-size: 1.85rem; font-weight: bold;">
+			<span id="comp-zone-label" style="font-size: 1.85rem; font-weight: bold;">
         </span>
             <span style="opacity: 0.6; font-size: 0.85rem;" data-i18n-key="your_position">อันดับปัจจุบันของคุณ</span>
             <div style="font-size: 0.6rem; font-weight: 600;" id="my-name">---</div>
@@ -283,9 +283,9 @@ async function fetchRanking(cycle = 'latest') {
                 updateStatusLabel(data.isActive, data.requireKYC);
                 
                 // โชว์ชื่อโซนที่คำนวณได้จากพิกัด
-                const statusLabel = document.getElementById('comp-status-label');
+                const statusLabel = document.getElementById('comp-zone-label');
                 if (statusLabel) {
-                    statusLabel.innerHTML += `<br><small style="color:#666">โซน: ${data.zoneName} (${data.zoneOwner})</small>`;
+                    statusLabel.innerHTML += `<br><small style="color:#666"> ${data.zoneName} (${data.zoneOwner})</small>`;
                 }
             }
             renderLeaderboard(data.leaderboard);
