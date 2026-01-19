@@ -1286,6 +1286,17 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // รัศมีโลก (กิโลเมตร)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
 	async function findResponsibleAdmin(location) {
     if (!location || !location.lat || !location.lng) {
         // คืนค่า null ที่ zoneData เพื่อบอกว่าไม่เจอโซน
@@ -1917,61 +1928,49 @@ app.get('/api/users-list', async (req, res) => {
 
 // rider ranking
 app.get('/api/rider-ranking', async (req, res) => {
-    const { cycle, username, location } = req.query; 
+    const { cycle, lat, lng } = req.query;
 
     try {
-        let zone = null;
+        const allZones = await db.collection('zones').find({}).toArray();
+        if (allZones.length === 0) return res.json({ success: false, message: "No zones found" });
 
-        // 🚩 ขั้นตอนใหม่: ค้นหาโซนจาก Location ที่ส่งมา
-        if (location) {
-            // สมมติว่าพี่มีฟังก์ชัน findZoneByCoords ที่พี่เขียนไว้ในหน้าโปรไฟล์
-            // ตัวอย่างเช่น: zone = await zonesCollection.findOne({ name: location }); 
-            // หรือคำนวณจาก Lat, Lng
-            zone = await db.collection('zones').findOne({ 
-                $or: [
-                    { name: location }, // หาจากชื่อ
-                    { id: parseInt(location) } // หรือหาจาก ID ถ้า location ส่งมาเป็นตัวเลข
-                ]
+        // 🚩 1. ค้นหาโซนที่ใกล้พิกัดที่สุด
+        let closestZone = allZones[0];
+        let minDistance = Infinity;
+
+        if (lat && lng) {
+            allZones.forEach(z => {
+                const dist = getDistance(parseFloat(lat), parseFloat(lng), parseFloat(z.lat), parseFloat(z.lng));
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestZone = z;
+                }
             });
         }
 
-        // Fallback: ถ้ายังไม่เจอ ให้หาโซนที่ User คนนี้สังกัด (zoneId เดิม)
-        if (!zone) {
-            const user = await db.collection('users').findOne({ username: username });
-            if (user && user.zoneId) {
-                zone = await db.collection('zones').findOne({ id: parseInt(user.zoneId) });
-            }
-        }
-
-        // ถ้าสุดท้ายไม่เจอจริงๆ ให้ดึงโซนแรกมาเป็น Default
-        if (!zone) {
-            zone = await db.collection('zones').findOne({});
-        }
-
-        if (!zone) return res.json({ success: false, message: "System Error: No zones found" });
-
-        // --- Logic ดึงอันดับ (เหมือนเดิมแต่ใช้ zone ที่หาเจอ) ---
-        const targetCycle = (cycle === 'latest' || !cycle) ? (zone.currentCycle || 1) : parseInt(cycle);
-        const rankingVariable = zone.rankingVariable || 'points';
+        // 2. กำหนดรอบและ Key จากโซนที่ใกล้ที่สุด
+        const targetCycle = (cycle === 'latest' || !cycle) ? (closestZone.currentCycle || 1) : parseInt(cycle);
+        const rankingVariable = closestZone.rankingVariable || 'points';
         const rankingKey = `ranking_data.${rankingVariable}_v${targetCycle}`;
 
+        // 3. ดึงอันดับ
         const leaderboard = await db.collection('users').find({
-            [rankingKey]: { $exists: true }
+            [`ranking_data.${rankingVariable}_v${targetCycle}`]: { $exists: true }
         })
-        .sort({ [rankingKey]: -1 })
+        .sort({ [`ranking_data.${rankingVariable}_v${targetCycle}`]: -1 })
         .limit(50)
         .toArray();
 
         res.json({
             success: true,
-            leaderboard: leaderboard.map(u => ({ 
-                username: u.username, 
-                totalPoints: (u.ranking_data && u.ranking_data[`${rankingVariable}_v${targetCycle}`]) ? u.ranking_data[`${rankingVariable}_v${targetCycle}`] : 0
+            leaderboard: leaderboard.map(u => ({
+                username: u.username,
+                totalPoints: u.ranking_data[`${rankingVariable}_v${targetCycle}`] || 0
             })),
-            currentCycle: zone.currentCycle || 1,
-            isActive: zone.isCompetitionActive || false,
-            requireKYC: zone.requireKYC || false,
-            zoneName: zone.name
+            currentCycle: closestZone.currentCycle || 1,
+            isActive: closestZone.isCompetitionActive || false,
+            requireKYC: closestZone.requireKYC || false,
+            zoneName: closestZone.name
         });
 
     } catch (e) {

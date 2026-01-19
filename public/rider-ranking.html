@@ -265,28 +265,25 @@
 async function fetchRanking(cycle = 'latest') {
     const container = document.getElementById('leaderboard-list');
     try {
-        // ดึงพิกัดที่เก็บไว้ (เหมือนที่พี่ทำในหน้าโปรไฟล์)
-        const savedLoc = localStorage.getItem('userPrimaryLocation'); 
-        let locationParam = '';
-        if (savedLoc) locationParam = `&location=${encodeURIComponent(savedLoc)}`;
+        // ดึงพิกัดที่เก็บไว้ (สมมติเก็บในรูปแบบ "lat,lng")
+        const savedLoc = localStorage.getItem('userPrimaryLocation') || "0,0";
+        const [lat, lng] = savedLoc.split(',');
 
-        // ส่งทั้ง username และ location ไปให้ API
-        const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}${locationParam}`);
+        // ส่งพิกัดไปให้ API ค้นหาโซนที่ใกล้ที่สุด
+        const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}&lat=${lat}&lng=${lng}`);
         const data = await res.json();
         
         if (data.success) {
             if (cycle === 'latest') {
                 updateCycleSelector(data.currentCycle);
                 updateStatusLabel(data.isActive, data.requireKYC);
-                // แสดงชื่อโซนที่ระบบตรวจเจอด้วย
-                if(document.getElementById('comp-status-label')) {
-                     document.getElementById('comp-status-label').innerHTML += ` <br><small>โซน: ${data.zoneName}</small>`;
-                }
+                // แสดงชื่อโซนที่ตรวจเจอ
+                const statusLabel = document.getElementById('comp-status-label');
+                if(statusLabel) statusLabel.innerHTML += `<br><small style="color:#666">โซนปัจจุบัน: ${data.zoneName}</small>`;
             }
             renderLeaderboard(data.leaderboard);
         }
     } catch (e) { 
-        console.error(e); 
         container.innerHTML = `<div class="no-data">ไม่สามารถโหลดข้อมูลได้</div>`;
     }
 }
