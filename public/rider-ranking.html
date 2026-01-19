@@ -263,22 +263,28 @@
         }
 
 async function fetchRanking(cycle = 'latest') {
+    const container = document.getElementById('leaderboard-list');
     try {
-        // ส่งตัวแปร cycle ไปด้วย ถ้าเป็น latest ระบบจะดึงรอบปัจจุบัน
         const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}`);
         const data = await res.json();
         
         if (data.success) {
-            // 1. อัปเดต Dropdown เฉพาะตอนโหลดครั้งแรก
+            // 1. อัปเดต UI ส่วนหัว
             if (cycle === 'latest') {
-                updateCycleSelector(data.currentCycle);
+                updateCycleSelector(data.currentCycle || 1);
                 updateStatusLabel(data.isActive, data.requireKYC);
             }
             
-            // 2. วาดตารางคะแนน
-            renderLeaderboard(data.leaderboard);
+            // 2. วาดตาราง (ถ้า data.leaderboard เป็นอาเรย์ว่าง มันจะโชว์ "ไม่พบข้อมูล")
+            renderLeaderboard(data.leaderboard || []);
+        } else {
+            // 🚩 ถ้า success: false ให้แสดงข้อความผิดพลาด
+            container.innerHTML = `<div class="no-data">เกิดข้อผิดพลาด: ${data.message || 'ดึงข้อมูลไม่สำเร็จ'}</div>`;
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        container.innerHTML = `<div class="no-data">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้</div>`;
+    }
 }
 
 
@@ -404,27 +410,24 @@ function changeRankingCycle() {
             return index + 1;
         }
 
-        function renderLeaderboard(list) {
+function renderLeaderboard(list) {
     const container = document.getElementById('leaderboard-list');
-    if (!container) return; // ป้องกัน Error ถ้าหา ID ไม่เจอ
+    if (!container) return;
 
-    // 1. ถ้าไม่มีข้อมูล ให้แสดงข้อความแจ้งเตือน
     if (!list || list.length === 0) {
         container.innerHTML = '<div class="no-data">ไม่พบข้อมูลอันดับในขณะนี้</div>';
         return;
     }
 
-    let html = ''; // ใช้ตัวแปรเก็บ HTML ทั้งหมดก่อน
-    
+    let html = '';
     list.forEach((rider, index) => {
         const isMe = rider.username === myUsername;
         const rankClass = index < 3 ? `rank-${index + 1}` : '';
         const highlightClass = isMe ? 'highlight-me' : '';
         
-        // 🚩 เพราะเราใช้ rating ทดสอบ (เช่น 4.36) ควรใช้ .toFixed(2) ให้สวยงามครับ
-        const displayPoints = (typeof rider.totalPoints === 'number') 
-            ? rider.totalPoints.toFixed(2) 
-            : (rider.totalPoints || 0);
+        // 🚩 ปรับให้รองรับกรณีค่าเป็น undefined หรือ null
+        const pts = (rider.totalPoints !== undefined && rider.totalPoints !== null) ? rider.totalPoints : 0;
+        const displayPoints = (typeof pts === 'number') ? pts.toFixed(2) : pts;
 
         html += `
             <div class="rank-item ${rankClass} ${highlightClass}">
@@ -439,7 +442,6 @@ function changeRankingCycle() {
             </div>
         `;
 
-        // อัปเดตการ์ดสีเขียวด้านบน (เฉพาะตัวเรา)
         if (isMe) {
             if (document.getElementById('my-name')) document.getElementById('my-name').innerText = rider.username;
             if (document.getElementById('my-pos')) document.getElementById('my-pos').innerText = `#${index + 1}`;
@@ -447,15 +449,14 @@ function changeRankingCycle() {
         }
     });
 
-    // 2. ยัด HTML ทั้งหมดลงไปทีเดียว (เร็วและเสถียรกว่า)
     container.innerHTML = html;
 }
 
 window.onload = async () => {
-            applyTranslations();
-            await checkAdminStatus(); // 2. เช็คสิทธิ์แอดมิน (ถ้าเป็นแอดมิน ปุ่มจะโผล่)
-            fetchRanking();         // 3. ดึงอันดับมาโชว์
-        };
+    applyTranslations();
+    await checkAdminStatus(); // เช็คสิทธิ์แอดมินก่อน
+    fetchRanking();           // แล้วค่อยดึงอันดับ
+};
 		
 
 // ฟังก์ชันเช็คสิทธิ์แอดมินโซน
