@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGo Investment Opportunity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #2c3e50; --gold: #f1c40f; }
+        body { font-family: 'Kanit', sans-serif; margin: 0; color: #333; line-height: 1.6; background: #f4f7f6; }
+        
+        /* Language Switcher */
+        .lang-bar { background: var(--dark); padding: 10px; text-align: right; position: sticky; top: 0; z-index: 1000; }
+        .lang-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 5px 15px; cursor: pointer; border-radius: 20px; font-size: 0.8rem; margin-left: 5px; }
+        .lang-btn.active { background: var(--primary); border-color: var(--primary); }
+
+        /* Hero Section */
+        .hero { background: linear-gradient(135deg, var(--dark), #1a2a3a); color: white; padding: 80px 20px; text-align: center; }
+        .hero h1 { font-size: 3rem; margin-bottom: 20px; }
+        .hero p { font-size: 1.2rem; max-width: 800px; margin: 0 auto 30px; opacity: 0.9; }
+        .highlight { color: var(--secondary); font-weight: bold; }
+
+        /* Grid Section */
+        .section { padding: 60px 20px; max-width: 1100px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 40px; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transition: 0.3s; }
+        .card:hover { transform: translateY(-10px); }
+        .card i { font-size: 2.5rem; color: var(--primary); margin-bottom: 20px; }
+
+        /* Call to Action */
+        .cta { background: var(--primary); color: white; padding: 50px 20px; text-align: center; border-radius: 30px; margin: 40px 20px; }
+        .btn-main { background: var(--gold); color: var(--dark); padding: 18px 40px; border: none; border-radius: 50px; font-size: 1.2rem; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; transition: 0.3s; }
+        .btn-main:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(241, 196, 15, 0.4); }
+
+        @media (max-width: 768px) { .hero h1 { font-size: 2rem; } }
+    </style>
+</head>
+<body>
+
+    <div class="lang-bar">
+        <button class="lang-btn active" onclick="switchLang('th')">TH</button>
+        <button class="lang-btn" onclick="switchLang('en')">EN</button>
+        <button class="lang-btn" onclick="switchLang('pt')">PT</button>
+    </div>
+
+    <div class="hero">
+        <h1 id="hero-title">ยักษ์ใหญ่กินส่วนแบ่ง แต่ GedGo กินใจคนในพื้นที่</h1>
+        <p id="hero-desc">โมเดลธุรกิจ Delivery แบบกระจายอำนาจที่เปลี่ยน "แอดมินโซน" ให้เป็นเจ้าของอาณาจักรธุรกิจตัวเอง 100% เครื่องยนต์ที่ทรงพลังพร้อมแล้ว เหลือเพียงพาร์ทเนอร์ตัวจริงมาสตาร์ทเครื่องไปด้วยกัน</p>
+        <a href="#contact" class="btn-main" id="hero-btn">ติดต่อพาร์ทเนอร์โดยตรง</a>
+    </div>
+
+    <div class="section">
+        <h2 style="text-align:center;" id="why-title">ทำไมต้อง GedGo?</h2>
+        <div class="grid">
+            <div class="card">
+                <i class="fas fa-map-marked-alt"></i>
+                <h3 id="feat1-title">ระบบระบุโซนอัจฉริยะ</h3>
+                <p id="feat1-desc">ใช้ Geofencing คำนวณพิกัดจริงเพื่อสลับสกุลเงิน (THB, BRL, USD) และค่าธรรมเนียมตามพื้นที่โดยอัตโนมัติ</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-trophy"></i>
+                <h3 id="feat2-title">Ranking คุณภาพสูง</h3>
+                <p id="feat2-desc">อัลกอริทึมวัดค่าความรับผิดชอบไรเดอร์ที่ล้ำกว่าคู่แข่ง คัดกรองเฉพาะตัวจริงเพื่อบริการที่เหนือระดับ</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-wallet"></i>
+                <h3 id="feat3-title">อิสระทางการเงิน</h3>
+                <p id="feat3-desc">แอดมินโซนบริหารบัญชีธนาคารและการถอนเงินได้เอง ไม่ต้องรอส่วนแบ่งจากบริษัทแม่</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="cta" id="contact">
+        <h2 id="cta-title">คุณคือพาร์ทเนอร์เชิงกลยุทธ์ที่ผมกำลังตามหา?</h2>
+        <p id="cta-desc">ระบบเสร็จสมบูรณ์ 100% พร้อมขยายผล (Scale-up) ผมเปิดรับหุ้นส่วนหลักเพียงรายเดียวในการขับเคลื่อนโปรเจกต์นี้</p>
+        <br>
+        <a href="mailto:your-email@example.com" class="btn-main">Talk to Founder</a>
+    </div>
+
+    <script>
+        const content = {
+            th: {
+                heroTitle: "ยักษ์ใหญ่กินส่วนแบ่ง แต่ GedGo กินใจคนในพื้นที่",
+                heroDesc: "โมเดลธุรกิจ Delivery แบบกระจายอำนาจที่เปลี่ยน 'แอดมินโซน' ให้เป็นเจ้าของอาณาจักรธุรกิจตัวเอง 100% เครื่องยนต์ที่ทรงพลังพร้อมแล้ว เหลือเพียงพาร์ทเนอร์ตัวจริงมาสตาร์ทเครื่องไปด้วยกัน",
+                heroBtn: "ติดต่อพาร์ทเนอร์โดยตรง",
+                whyTitle: "ทำไมต้อง GedGo?",
+                feat1Title: "ระบบระบุโซนอัจฉริยะ",
+                feat1Desc: "ใช้ Geofencing คำนวณพิกัดจริงเพื่อสลับสกุลเงิน (THB, BRL, USD) และค่าธรรมเนียมตามพื้นที่โดยอัตโนมัติ",
+                feat2Title: "Ranking คุณภาพสูง",
+                feat2Desc: "อัลกอริทึมวัดค่าความรับผิดชอบไรเดอร์ที่ล้ำกว่าคู่แข่ง คัดกรองเฉพาะตัวจริงเพื่อบริการที่เหนือระดับ",
+                feat3Title: "อิสระทางการเงิน",
+                feat3Desc: "แอดมินโซนบริหารบัญชีธนาคารและการถอนเงินได้เอง ไม่ต้องรอส่วนแบ่งจากบริษัทแม่",
+                ctaTitle: "คุณคือพาร์ทเนอร์เชิงกลยุทธ์ที่ผมกำลังตามหา?",
+                ctaDesc: "ระบบเสร็จสมบูรณ์ 100% พร้อมขยายผล (Scale-up) ผมเปิดรับหุ้นส่วนหลักเพียงรายเดียวในการขับเคลื่อนโปรเจกต์นี้"
+            },
+            en: {
+                heroTitle: "Big Apps take the cut, GedGo takes the Local Heart",
+                heroDesc: "A decentralized delivery model turning 'Zone Admins' into 100% business owners. The engine is ready, looking for a strategic partner to start the race.",
+                heroBtn: "Contact Founder Directly",
+                whyTitle: "Why GedGo?",
+                feat1Title: "Smart Geofencing",
+                feat1Desc: "Automatic currency switching (THB, BRL, USD) and localized fees based on real-time user location.",
+                feat2Title: "Advanced Ranking",
+                feat2Desc: "Sophisticated algorithms measuring rider responsibility, ensuring top-tier service quality beyond competitors.",
+                feat3Title: "Financial Freedom",
+                feat3Desc: "Zone Admins manage their own banks and payouts. No more waiting for corporate splits.",
+                ctaTitle: "Are you the Strategic Partner I'm looking for?",
+                ctaDesc: "System 100% ready to scale. Opening for a single key partner to drive this project worldwide."
+            },
+            pt: {
+                heroTitle: "Apps grandes ficam com a parte, GedGo ganha o Coração Local",
+                heroDesc: "Um modelo descentralizado transformando 'Admins de Zona' em donos de 100% do negócio. O motor está pronto, buscando um parceiro estratégico para iniciar a corrida.",
+                heroBtn: "Contate o Fundador Diretamente",
+                whyTitle: "Por que GedGo?",
+                feat1Title: "Geofencing Inteligente",
+                feat1Desc: "Troca automática de moeda (THB, BRL, USD) e taxas locais baseadas na localização em tempo real.",
+                feat2Title: "Ranking Avançado",
+                feat2Desc: "Algoritmos sofisticados medindo a responsabilidade do entregador, garantindo qualidade superior.",
+                feat3Title: "Liberdade Financeira",
+                feat3Desc: "Admins de Zona gerenciam seus próprios bancos e pagamentos. Sem esperar por divisões corporativas.",
+                ctaTitle: "Você é o parceiro estratégico que procuro?",
+                ctaDesc: "Sistema 100% pronto para escalar. Aberto para um único parceiro chave para impulsionar este projeto."
+            }
+        };
+
+        function switchLang(lang) {
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const c = content[lang];
+            document.getElementById('hero-title').innerText = c.heroTitle;
+            document.getElementById('hero-desc').innerText = c.heroDesc;
+            document.getElementById('hero-btn').innerText = c.heroBtn;
+            document.getElementById('why-title').innerText = c.whyTitle;
+            document.getElementById('feat1-title').innerText = c.feat1Title;
+            document.getElementById('feat1-desc').innerText = c.feat1Desc;
+            document.getElementById('feat2-title').innerText = c.feat2Title;
+            document.getElementById('feat2-desc').innerText = c.feat2Desc;
+            document.getElementById('feat3-title').innerText = c.feat3Title;
+            document.getElementById('feat3-desc').innerText = c.feat3Desc;
+            document.getElementById('cta-title').innerText = c.ctaTitle;
+            document.getElementById('cta-desc').innerText = c.ctaDesc;
+        }
+    </script>
+</body>
+</html>
