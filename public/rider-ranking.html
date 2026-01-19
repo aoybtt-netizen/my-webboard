@@ -38,16 +38,23 @@
 
         /* My Rank Section (Card) */
         .my-rank-container {
-            background: linear-gradient(135deg, #11998e, #38ef7d);
-            margin: 15px;
-            padding: 20px;
-            border-radius: 20px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 10px 20px rgba(17, 153, 142, 0.2);
-        }
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    margin: 15px;
+    padding: 25px 20px; /* เพิ่ม padding */
+    border-radius: 20px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 10px 20px rgba(17, 153, 142, 0.2);
+}
+
+#zone-display-name {
+    font-size: 1.8rem; /* ชื่อโซนตัวใหญ่ */
+    font-weight: bold;
+    line-height: 1.2;
+    margin: 5px 0;
+}
 
         /* Leaderboard Table */
         .leaderboard {
@@ -191,29 +198,30 @@
 </head>
 <body>
 
-    <div class="header">
-        <i class="fas fa-chevron-left" onclick="history.back()" style="cursor:pointer;"></i>
-        <b style="font-size: 1.2rem;" data-i18n-key="rank_title">อันดับไรเดอร์</b>
-    </div>
-
-    <div class="my-rank-container">
-        <div>
-            <span style="opacity: 0.9; font-size: 0.85rem;" data-i18n-key="your_position">อันดับปัจจุบันของคุณ</span>
-            <div style="font-size: 1.4rem; font-weight: 600;" id="my-name">---</div>
-        </div>
-        <div style="text-align: right;">
-            <div style="font-size: 1.8rem; font-weight: bold;" id="my-pos">#--</div>
-            <span id="my-pts">0 pts</span>
-        </div>
-    </div>
-	
-	
-	<div style="padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: white; margin: 0 15px 10px; border-radius: 15px;">
-    <span id="comp-status-label" style="font-size: 0.85rem; font-weight: bold;">
+    <div style="padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: white; margin: 0 15px 10px; border-radius: 15px;">
+    <span id="comp-status-text" style="font-size: 0.85rem; font-weight: bold;">
         </span>
     <select id="cycle-selector" onchange="changeRankingCycle()" style="border: 1px solid #ddd; padding: 5px 10px; border-radius: 10px; outline: none; font-family: 'Kanit';">
         <option value="latest" data-i18n-key="opt_latest">รอบล่าสุด</option>
-        </select>
+    </select>
+</div>
+
+<div class="my-rank-container">
+    <div>
+        <span id="card-status-label" style="opacity: 0.9; font-size: 0.85rem; font-weight: bold;">---</span>
+        
+        <div id="zone-display-name">Loading...</div>
+        
+        <div style="font-size: 1rem; opacity: 0.9;" id="my-name">---</div>
+    </div>
+    
+    <div style="text-align: right;">
+        <span style="opacity: 0.9; font-size: 0.85rem;" data-i18n-key="your_position">อันดับปัจจุบันของคุณ</span>
+        
+        <div style="font-size: 2.5rem; font-weight: 800; line-height: 1;" id="my-pos">#--</div>
+        
+        <span id="my-pts" style="font-weight: 600;">0 pts</span>
+    </div>
 </div>
 
 
@@ -276,18 +284,24 @@ async function fetchRanking(cycle = 'latest') {
         const data = await res.json();
         
         if (data.success) {
-            if (cycle === 'latest') {
-                updateCycleSelector(data.currentCycle);
-                updateStatusLabel(data.isActive, data.requireKYC);
-                
-                // โชว์ชื่อโซนที่คำนวณได้จากพิกัด
-                const statusLabel = document.getElementById('comp-status-label');
-                if (statusLabel) {
-                    statusLabel.innerHTML += `<br><small style="color:#666">${data.zoneName} (${data.zoneOwner})</small>`;
-                }
-            }
-            renderLeaderboard(data.leaderboard);
-        } else {
+		if (cycle === 'latest') {
+        updateCycleSelector(data.currentCycle);
+        updateStatusLabel(data.isActive, data.requireKYC);
+        
+        // อัปเดตชื่อโซนตัวใหญ่ใน Card
+        const zoneDisplay = document.getElementById('zone-display-name');
+        if (zoneDisplay) {
+            zoneDisplay.innerHTML = `<i class="fas fa-map-marker-alt" style="font-size: 1rem;"></i> ${data.zoneName}`;
+        }
+        
+        // อัปเดตข้อมูลเจ้าของโซนในแถบสถานะด้านบน
+        const topLabel = document.getElementById('comp-status-text');
+        if (topLabel) {
+            topLabel.innerHTML += `<br><small style="color:#666; font-weight:normal;">Owner: ${data.zoneOwner}</small>`;
+        }
+    }
+    renderLeaderboard(data.leaderboard);
+} else {
             container.innerHTML = `<div class="no-data">${data.message || 'ไม่พบข้อมูล'}</div>`;
         }
     } catch (e) { 
@@ -311,11 +325,17 @@ function updateCycleSelector(maxCycle) {
 
 
 function updateStatusLabel(isActive, isKYC) {
-    const label = document.getElementById('comp-status-label');
+    const topLabel = document.getElementById('comp-status-text');
+    const cardLabel = document.getElementById('card-status-label');
+    
     if (!isActive) {
-        label.innerHTML = '<span style="color: #999;"><i class="fas fa-pause-circle"></i> ปิดการแข่งอยู่</span>';
+        const text = 'OFF-SEASON';
+        topLabel.innerHTML = `<span style="color: #999;"><i class="fas fa-pause-circle"></i> ${text}</span>`;
+        cardLabel.innerText = text;
     } else {
-        label.innerHTML = `<span style="color: #11998e;"><i class="fas fa-play-circle"></i> กำลังแข่งขัน</span> ${isKYC ? '<small style="color:#e67e22;">(เฉพาะ KYC)</small>' : ''}`;
+        const text = 'SEASON ACTIVE';
+        topLabel.innerHTML = `<span style="color: #11998e;"><i class="fas fa-play-circle"></i> ${text}</span> ${isKYC ? '<small style="color:#e67e22;">(เฉพาะ KYC)</small>' : ''}`;
+        cardLabel.innerText = text;
     }
 }
 
