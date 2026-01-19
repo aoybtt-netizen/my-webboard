@@ -126,6 +126,18 @@
         </div>
         <button class="btn btn-edit" onclick="location.reload()"><i class="fas fa-sync"></i> รีเฟรชข้อมูล</button>
     </div>
+	
+	
+	<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+    <div class="card" style="margin-bottom: 0; background: linear-gradient(135deg, #11998e, #38ef7d); color: white;">
+        <h3 style="margin:0; font-size: 0.9em; opacity: 0.8;">📈 ผู้เข้าชมหน้าระดมทุน (Investor Pitch)</h3>
+        <div style="font-size: 2em; font-weight: bold; margin-top: 10px;">
+            <span id="pitch-view-count">0</span> <small style="font-size: 0.4em;">ครั้ง</small>
+        </div>
+    </div>
+    </div>
+	
+	
 
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('members')">👥 สมาชิก</button>
@@ -759,14 +771,32 @@ async function executeURLUpdate(collection, id, field, newValue) {
             }
         }
     }
+	
+	
+async function loadPitchStats() {
+    try {
+        const res = await fetch('/api/analytics/pitch-stats');
+        const data = await res.json();
+        // ใส่เอฟเฟกต์นับเลขวิ่งแบบเท่ๆ
+        document.getElementById('pitch-view-count').innerText = data.views.toLocaleString();
+    } catch (e) {
+        console.error("Load Stats Error:", e);
+    }
+}
+
 
     // เริ่มต้นโหลดข้อมูล
     window.onload = () => {
-		checkAdminAccess();
-        if (!adminUser) { window.location.href = 'index.html'; return; }
-        loadMembers();
-        loadZones();
-    };
+    checkAdminAccess();
+    if (!adminUser) { window.location.href = 'index.html'; return; }
+    
+    loadPitchStats(); // โหลดสถิติหน้า Pitch
+    loadMembers();
+    loadZones();
+
+    // ตั้งเวลาให้รีเฟรชสถิติทุกๆ 30 วินาที (แบบ Real-time)
+    setInterval(loadPitchStats, 30000);
+};
 </script>
 
 </body>

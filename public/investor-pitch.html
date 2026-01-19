@@ -205,6 +205,12 @@
             document.getElementById('cta-note').innerText = c.ctaNote;
             document.getElementById('mail-footer').innerText = "*** " + c.ctaNotemail;
         }
+		
+		
+	window.addEventListener('DOMContentLoaded', () => {
+        fetch('/api/analytics/hit-pitch', { method: 'POST' })
+            .catch(err => console.error('Analytics Error:', err));
+    });
     </script>
 </body>
 </html>
