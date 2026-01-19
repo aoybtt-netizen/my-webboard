@@ -1928,52 +1928,62 @@ app.get('/api/users-list', async (req, res) => {
 
 // rider ranking
 app.get('/api/rider-ranking', async (req, res) => {
-    const { cycle, lat, lng } = req.query;
-
     try {
-        const allZones = await db.collection('zones').find({}).toArray();
-        if (allZones.length === 0) return res.json({ success: false, message: "No zones found" });
+        const { cycle, username, location } = req.query;
+        
+        // 1. หาข้อมูล User เบื้องต้น
+        const user = await usersCollection.findOne({ username: username });
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-        // 🚩 1. ค้นหาโซนที่ใกล้พิกัดที่สุด
-        let closestZone = allZones[0];
-        let minDistance = Infinity;
-
-        if (lat && lng) {
-            allZones.forEach(z => {
-                const dist = getDistance(parseFloat(lat), parseFloat(lng), parseFloat(z.lat), parseFloat(z.lng));
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    closestZone = z;
+        // 🚩 2. หาโซนที่รับผิดชอบด้วยพิกัด (ตัวเดียวกับหน้าโปรไฟล์)
+        let zoneData = null;
+        if (location) {
+            try {
+                const locationObj = JSON.parse(decodeURIComponent(location));
+                const zoneInfo = await findResponsibleAdmin(locationObj);
+                if (zoneInfo && zoneInfo.zoneData) {
+                    zoneData = zoneInfo.zoneData;
                 }
-            });
+            } catch (e) { console.error("Location Parse Error:", e); }
         }
 
-        // 2. กำหนดรอบและ Key จากโซนที่ใกล้ที่สุด
-        const targetCycle = (cycle === 'latest' || !cycle) ? (closestZone.currentCycle || 1) : parseInt(cycle);
-        const rankingVariable = closestZone.rankingVariable || 'points';
+        // Fallback: ถ้าหาจากพิกัดไม่เจอ ให้หาโซนแรกที่แอดมินคนนี้ดูแล หรือโซนที่ user สังกัด
+        if (!zoneData) {
+            zoneData = await db.collection('zones').findOne({ id: parseInt(user.zoneId) }) || 
+                       await db.collection('zones').findOne({});
+        }
+
+        if (!zoneData) return res.json({ success: false, message: "Zone not found" });
+
+        // 3. กำหนดรอบ (Cycle) และ Key ในการดึงคะแนน
+        const targetCycle = (cycle === 'latest' || !cycle) ? (zoneData.currentCycle || 1) : parseInt(cycle);
+        const rankingVariable = zoneData.rankingVariable || 'points';
         const rankingKey = `ranking_data.${rankingVariable}_v${targetCycle}`;
 
-        // 3. ดึงอันดับ
-        const leaderboard = await db.collection('users').find({
-            [`ranking_data.${rankingVariable}_v${targetCycle}`]: { $exists: true }
+        // 4. ดึงข้อมูล Leaderboard ของโซนนี้
+        const leaderboard = await usersCollection.find({
+            [rankingKey]: { $exists: true }
         })
-        .sort({ [`ranking_data.${rankingVariable}_v${targetCycle}`]: -1 })
+        .sort({ [rankingKey]: -1 })
         .limit(50)
         .toArray();
 
+        // 5. ส่งข้อมูลกลับ
         res.json({
             success: true,
             leaderboard: leaderboard.map(u => ({
                 username: u.username,
-                totalPoints: u.ranking_data[`${rankingVariable}_v${targetCycle}`] || 0
+                totalPoints: (u.ranking_data && u.ranking_data[`${rankingVariable}_v${targetCycle}`]) || 0
             })),
-            currentCycle: closestZone.currentCycle || 1,
-            isActive: closestZone.isCompetitionActive || false,
-            requireKYC: closestZone.requireKYC || false,
-            zoneName: closestZone.name
+            currentCycle: zoneData.currentCycle || 1,
+            isActive: zoneData.isCompetitionActive || false,
+            requireKYC: zoneData.requireKYC || false,
+            zoneName: zoneData.name,
+            zoneOwner: zoneData.assignedAdmin
         });
 
     } catch (e) {
+        console.error("Ranking API Error:", e);
         res.status(500).json({ success: false });
     }
 });

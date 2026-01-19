@@ -265,26 +265,34 @@
 async function fetchRanking(cycle = 'latest') {
     const container = document.getElementById('leaderboard-list');
     try {
-        // ดึงพิกัดที่เก็บไว้ (สมมติเก็บในรูปแบบ "lat,lng")
-        const savedLoc = localStorage.getItem('userPrimaryLocation') || "0,0";
-        const [lat, lng] = savedLoc.split(',');
+        // 🚩 ดึงพิกัดจาก localStorage เหมือนหน้าโปรไฟล์เป๊ะๆ
+        const savedLoc = localStorage.getItem('userPrimaryLocation');
+        let locationParam = '';
+        if (savedLoc) {
+            locationParam = `&location=${encodeURIComponent(savedLoc)}`;
+        }
 
-        // ส่งพิกัดไปให้ API ค้นหาโซนที่ใกล้ที่สุด
-        const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}&lat=${lat}&lng=${lng}`);
+        const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}${locationParam}`);
         const data = await res.json();
         
         if (data.success) {
             if (cycle === 'latest') {
                 updateCycleSelector(data.currentCycle);
                 updateStatusLabel(data.isActive, data.requireKYC);
-                // แสดงชื่อโซนที่ตรวจเจอ
+                
+                // โชว์ชื่อโซนที่คำนวณได้จากพิกัด
                 const statusLabel = document.getElementById('comp-status-label');
-                if(statusLabel) statusLabel.innerHTML += `<br><small style="color:#666">โซนปัจจุบัน: ${data.zoneName}</small>`;
+                if (statusLabel) {
+                    statusLabel.innerHTML += `<br><small style="color:#666">โซน: ${data.zoneName} (${data.zoneOwner})</small>`;
+                }
             }
             renderLeaderboard(data.leaderboard);
+        } else {
+            container.innerHTML = `<div class="no-data">${data.message || 'ไม่พบข้อมูล'}</div>`;
         }
     } catch (e) { 
-        container.innerHTML = `<div class="no-data">ไม่สามารถโหลดข้อมูลได้</div>`;
+        console.error(e);
+        container.innerHTML = `<div class="no-data">เชื่อมต่อผิดพลาด</div>`;
     }
 }
 
