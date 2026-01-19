@@ -265,7 +265,7 @@
 async function fetchRanking(cycle = 'latest') {
     try {
         // ส่งตัวแปร cycle ไปด้วย ถ้าเป็น latest ระบบจะดึงรอบปัจจุบัน
-        const res = await fetch(`/api/rider-ranking?cycle=${cycle}`);
+        const res = await fetch(`/api/rider-ranking?cycle=${cycle}&username=${myUsername}`);
         const data = await res.json();
         
         if (data.success) {

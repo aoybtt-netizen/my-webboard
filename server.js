@@ -1920,25 +1920,17 @@ app.get('/api/rider-ranking', async (req, res) => {
     const { cycle, username } = req.query; 
 
     try {
-        // 1. หาว่าคนดูอยู่โซนไหน (เพื่อดึงอันดับของโซนนั้น)
+        // 1. หาว่าผู้ใช้คนนี้สังกัดโซนอะไร (สมมติใน User เก็บ zoneId ไว้)
         const user = await db.collection('users').findOne({ username: username });
-        
-        // หาโซนที่ใกล้ที่สุด หรือโซนที่กำหนดไว้ในตัว user
-        // (ในที่นี้สมมติว่าหาจากโซนที่แอดมินคุมอยู่ หรือหาจากพิกัดล่าสุด)
-        const zone = await db.collection('zones').findOne({ 
-            // เงื่อนไขหาโซน เช่น ตามรหัสประเทศ หรือพิกัด
-            // สมมติทดสอบดึงโซนแรกก่อนเพื่อดูความถูกต้อง
-        });
+        if (!user || !user.zoneId) return res.json({ success: false, message: "User zone not found" });
 
+        // 2. 🚩 หาโซนที่ถูกต้องตาม ID ของผู้ใช้
+        const zone = await db.collection('zones').findOne({ id: parseInt(user.zoneId) });
         if (!zone) return res.json({ success: false, message: "Zone not found" });
 
-        // 2. กำหนดรอบ (Cycle)
+        // 3. กำหนดรอบและ Key (ใช้ rankingVariable จากโซนที่หาเจอ)
         const targetCycle = (cycle === 'latest' || !cycle) ? (zone.currentCycle || 1) : parseInt(cycle);
-        
-        // 🚩 3. สร้าง Key จากชื่อตัวแปรภาษาอังกฤษที่แอดมินใหญ่ตั้งไว้ (rankingVariable)
-        // เช่น gedgoPoints_v1
-        const rankingVariable = zone.rankingVariable || 'defaultPoints';
-        const rankingKey = `ranking_data.${rankingVariable}_v${targetCycle}`;
+        const rankingKey = `ranking_data.${zone.rankingVariable || 'defaultPoints'}_v${targetCycle}`;
 
         const leaderboard = await db.collection('users').find({
             [rankingKey]: { $exists: true }
@@ -6160,6 +6152,11 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
         
         // 🚩 จุดสำคัญ: ต้องหาข้อมูลโซนก่อนถึงจะใช้ตัวแปรโซนได้
         const zone = await db.collection('zones').findOne({ id: post.zoneId });
+			if (!zone) {
+				console.log("🚩 Debug: หาโซนไม่เจอสำหรับ Post ID:", post.id, "ZoneID ในโพสต์คือ:", post.zoneId);
+			} else {
+				console.log("🚩 Debug: สถานะการแข่งของโซน", zone.name, "คือ:", zone.isCompetitionActive);
+			}
 
         if (target && zone) {
             const newScore = parseFloat(rating);
