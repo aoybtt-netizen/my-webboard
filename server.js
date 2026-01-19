@@ -1781,6 +1781,34 @@ app.get('/api/merchant/balance', async (req, res) => {
 });
 
 
+// --- ส่วนเก็บสถิติผู้เข้าชม ---
+
+// 1. API สำหรับกดนับจำนวน (เรียกใช้จากหน้า investor-pitch)
+app.post('/api/analytics/hit-pitch', async (req, res) => {
+    try {
+        // ใช้คำสั่ง $inc ของ MongoDB เพื่อเพิ่มค่าทีละ 1 อัตโนมัติ
+        await adminSettingsCollection.updateOne(
+            { settingName: 'global_stats' },
+            { $inc: { pitchPageViews: 1 } },
+            { upsert: true } // ถ้ายังไม่มีให้สร้างใหม่
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+// 2. API สำหรับให้หน้า Admin มาดึงไปโชว์
+app.get('/api/analytics/pitch-stats', async (req, res) => {
+    try {
+        const stats = await adminSettingsCollection.findOne({ settingName: 'global_stats' });
+        res.json({ views: stats ? stats.pitchPageViews : 0 });
+    } catch (e) {
+        res.json({ views: 0 });
+    }
+});
+
+
 
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
