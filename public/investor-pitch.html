@@ -90,8 +90,10 @@
 
     <div class="cta" id="contact">
         <h2 id="cta-title">คุณคือพาร์ทเนอร์เชิงกลยุทธ์ที่ผมกำลังตามหา?</h2>
-        <p id="cta-desc">ระบบเสร็จสมบูรณ์ 100% พร้อมขยายผล (Scale-up) ผมเปิดรับหุ้นส่วนหลักเพียงรายเดียวในการขับเคลื่อนโปรเจกต์นี้</p>
-        <a href="mailto:your-email@example.com" class="btn-main">Talk to Founder</a>
+        <p id="cta-desc">ระบบใกล้เสร็จสมบูรณ์และพร้อมขยายผล (Scale-up) ผมเปิดรับหุ้นส่วนหลักเพียงรายเดียวในการขับเคลื่อนโปรเจกต์นี้</p>
+        <a href="https://wa.me/66924409224" class="btn-main" id="contact-btn">
+    <i class="fab fa-whatsapp"></i> Chat with Founder
+</a>
         <p class="footer-note" id="cta-note">* จำกัดเพียง 1 พาร์ทเนอร์ ต่อ 1 พื้นที่บริหารเท่านั้น เพื่อรักษาผลประโยชน์สูงสุดของเจ้าของโซน</p>
     </div>
 
@@ -100,7 +102,8 @@
             th: {
                 heroTitle: "ยักษ์ใหญ่กินส่วนแบ่ง แต่ GedGo กินใจคนในพื้นที่",
                 heroDesc: "โมเดลธุรกิจ Delivery แบบกระจายอำนาจที่เปลี่ยน 'แอดมินโซน' ให้เป็นเจ้าของอาณาจักรธุรกิจตัวเอง 100% เครื่องยนต์ที่ทรงพลังพร้อมแล้ว เหลือเพียงพาร์ทเนอร์ตัวจริงมาสตาร์ทเครื่องไปด้วยกัน",
-                heroBtn: "ติดต่อพาร์ทเนอร์โดยตรง",
+                heroBtn: "ติดต่อพาร์ทเนอร์ทาง WhatsApp",
+				ctaBtn: "แชทกับผู้ก่อตั้งโดยตรง",
                 whyTitle: "ทำไมต้อง GedGo?",
                 whySubtitle: "สิทธิประโยชน์เหนือระดับสำหรับ 'เจ้าของโซน'",
                 feat1Title: "บริหารโซนของตัวเอง",
@@ -112,13 +115,15 @@
                 feat4Title: "กำหนดรางวัล Ranking",
                 feat4Desc: "ดึงดูดไรเดอร์ด้วยระบบจัดอันดับอัจฉริยะที่คุณสามารถกำหนดรางวัลเองได้ เพื่อกระตุ้นการทำงานในโซน",
                 ctaTitle: "คุณคือพาร์ทเนอร์เชิงกลยุทธ์ที่ผมกำลังตามหา?",
-                ctaDesc: "ระบบเสร็จสมบูรณ์ 100% พร้อมขยายผล (Scale-up) ผมเปิดรับหุ้นส่วนหลักเพียงรายเดียวในการขับเคลื่อนโปรเจกต์นี้",
+                ctaDesc: "ระบบใกล้เสร็จสมบูรณ์และพร้อมขยายผล (Scale-up) ผมเปิดรับหุ้นส่วนหลักเพียงรายเดียวในการขับเคลื่อนโปรเจกต์นี้",
                 ctaNote: "* จำกัดเพียง 1 พาร์ทเนอร์ ต่อ 1 พื้นที่บริหารเท่านั้น เพื่อรักษาผลประโยชน์สูงสุดของเจ้าของโซน"
             },
             en: {
                 heroTitle: "Big Apps take the cut, GedGo takes the Local Heart",
                 heroDesc: "A decentralized delivery model turning 'Zone Admins' into 100% business owners. The engine is ready; we are looking for a strategic partner to lead the race.",
-                heroBtn: "Contact Founder Directly",
+                heroBtn: "Contato via WhatsApp",
+				ctaBtn: "Falar com o Fundador",
+				ctaBtn: "Chat with Founder",
                 whyTitle: "Why GedGo?",
                 whySubtitle: "Exclusive Benefits for 'Zone Owners'",
                 feat1Title: "Full Zone Management",
@@ -130,7 +135,7 @@
                 feat4Title: "Custom Ranking & Prizes",
                 feat4Desc: "Attract riders with a smart leaderboard system where you define the rewards to drive zone engagement.",
                 ctaTitle: "Are you the Strategic Partner I'm looking for?",
-                ctaDesc: "System 100% complete and ready to scale. Opening for a single key partner to drive this project.",
+                ctaDesc: "The system is nearly complete and ready to scale. Opening for a single key partner to drive this project.",
                 ctaNote: "* Limited to 1 partner per administrative zone to ensure maximum benefit for the owner."
             },
             pt: {
@@ -148,14 +153,14 @@
                 feat4Title: "Ranking e Prêmios",
                 feat4Desc: "Atraia entregadores com um sistema de ranking inteligente onde você define os prêmios para engajar a zona.",
                 ctaTitle: "Você é o parceiro estratégico que procuro?",
-                ctaDesc: "Sistema 100% pronto para escalar. Aberto para um único parceiro chave para impulsionar este projeto.",
+                ctaDesc: "O sistema está quase completo e pronto para escalar. Aberto para um único parceiro chave para impulsionar este projeto.",
                 ctaNote: "* Limitado a 1 parceiro por zona administrativa para garantir o benefício máximo ao proprietário."
             }
         };
 
         function switchLang(lang) {
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event) event.target.classList.add('active');
             
             const c = content[lang];
             document.getElementById('hero-title').innerText = c.heroTitle;
@@ -174,6 +179,7 @@
             document.getElementById('cta-title').innerText = c.ctaTitle;
             document.getElementById('cta-desc').innerText = c.ctaDesc;
             document.getElementById('cta-note').innerText = c.ctaNote;
+			document.getElementById('contact-btn').innerHTML = `<i class="fab fa-whatsapp"></i> ` + content[lang].ctaBtn;
         }
     </script>
 </body>
