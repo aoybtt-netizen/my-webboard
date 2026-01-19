@@ -208,6 +208,7 @@
 		
 		
 	window.addEventListener('DOMContentLoaded', () => {
+		switchLang('pt', event);
         fetch('/api/analytics/hit-pitch', { method: 'POST' })
             .catch(err => console.error('Analytics Error:', err));
     });
