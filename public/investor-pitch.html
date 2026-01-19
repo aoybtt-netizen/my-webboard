@@ -207,11 +207,13 @@
         }
 		
 		
-	window.addEventListener('DOMContentLoaded', () => {
-		switchLang('pt', event);
-        fetch('/api/analytics/hit-pitch', { method: 'POST' })
-            .catch(err => console.error('Analytics Error:', err));
-    });
+window.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/analytics/hit-pitch', { method: 'POST' })
+        .catch(err => console.error('Analytics Error:', err));
+    const ptButton = document.querySelector('button[onclick*="pt"]');
+    switchLang('pt', { target: ptButton });
+});
+	
     </script>
 </body>
 </html>
