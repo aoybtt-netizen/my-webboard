@@ -5084,39 +5084,51 @@ app.post('/api/order/customer-cancel', async (req, res) => {
 
 
 app.post('/api/orders/submit-full-rating', async (req, res) => {
-	console.log(`AOY Timer reset for post `);
+    // 🚩 1. Debug: เช็คว่า Request เข้ามาถึง API หรือยัง
+    console.log("------------------------------------------");
+    console.log("📥 [Incoming Request] POST /api/orders/submit-full-rating");
+    console.log("📦 Body Data:", JSON.stringify(req.body, null, 2));
+
     const { orderId, riderName, merchantName, ratings } = req.body;
-    // ratings = { riderSat: 5, riderPolite: 5, merchantRate: 5 }
 
     try {
-        // 1. หาข้อมูลออเดอร์และโซน
+        // 🚩 2. Debug: เช็คการค้นหาออเดอร์
+        console.log(`🔍 Searching for OrderID: ${orderId}`);
         const order = await db.collection('orders').findOne({ orderId: orderId });
-        if (!order) return res.status(404).json({ success: false, message: "No order found." });
+        
+        if (!order) {
+            console.error("❌ Error: ไม่พบข้อมูลออเดอร์ในคอลเลกชัน orders");
+            return res.status(404).json({ success: false, message: "No order found." });
+        }
+        console.log("✅ Order found! Status:", order.status, "| ZoneID:", order.zoneId);
 
+        // 🚩 3. Debug: เช็คการค้นหาโซน
         const zone = await db.collection('zones').findOne({ id: order.zoneId });
-        if (!zone) return res.status(404).json({ success: false, message: "No zone information found." });
+        if (!zone) {
+            console.error(`❌ Error: ไม่พบโซน ID ${order.zoneId} ในระบบ`);
+            return res.status(404).json({ success: false, message: "No zone information found." });
+        }
+        console.log("✅ Zone found! Competition Active:", zone.isCompetitionActive);
 
-        // 2. จัดการคะแนนไรเดอร์ (Satisfactory + Politeness)
+        // 4. จัดการคะแนนไรเดอร์
         if (riderName) {
+            console.log(`👤 Processing Rider Rating for: ${riderName}`);
             const rider = await db.collection('users').findOne({ username: riderName });
             if (rider) {
-                // คำนวณคะแนน Ranking (ใช้เรตติ้งความพอใจ + ความสุภาพ)
                 const ptsToAdd = calculateRankPoints(ratings.riderSat, ratings.riderPolite);
-
-                // 🚩 Logic เช็ค KYC แบบเดียวกับตอนจบงาน
-                let targetCycle = 0; // พักไว้ที่ v0 ก่อน
+                
+                let targetCycle = 0; 
                 if (zone.isCompetitionActive === true) {
                     if (zone.requireKYC === true) {
-                        // ถ้าโซนบังคับ KYC ต้องผ่าน 'approved' ถึงจะได้คะแนนรอบปัจจุบัน
                         targetCycle = (rider.kycStatus === 'approved') ? (zone.currentCycle || 1) : 0;
                     } else {
                         targetCycle = zone.currentCycle || 1;
                     }
                 }
 
-                const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
+                console.log(`🏆 Rating: ${ratings.riderSat} | Polite: ${ratings.riderPolite} | Pts to add: ${ptsToAdd} | Cycle: v${targetCycle}`);
 
-                // อัปเดตข้อมูลไรเดอร์ (คะแนนเฉลี่ย และ Ranking)
+                const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
                 const currentCount = rider.ratingCount || 0;
                 const currentRating = rider.rating || 0;
                 const newAverage = ((currentRating * currentCount) + ratings.riderSat) / (currentCount + 1);
@@ -5128,15 +5140,19 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
                         $inc: { 
                             ratingCount: 1,
                             [rankingKey]: ptsToAdd,
-                            riderPoliteTotal: ratings.riderPolite // เก็บสะสมคะแนนความสุภาพแยกไว้ดูได้
+                            riderPoliteTotal: ratings.riderPolite 
                         }
                     }
                 );
+                console.log("✅ Rider updated successfully");
+            } else {
+                console.warn(`⚠️ Warning: ไม่พบ User ไรเดอร์ชื่อ ${riderName} ในระบบ`);
             }
         }
 
-        // 3. จัดการคะแนนร้านค้า (Merchant)
+        // 5. จัดการคะแนนร้านค้า
         if (merchantName) {
+            console.log(`🏪 Processing Merchant Rating for: ${merchantName}`);
             const merchant = await db.collection('users').findOne({ username: merchantName });
             if (merchant) {
                 const mCount = merchant.merchantRatingCount || 0;
@@ -5150,19 +5166,23 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
                         $inc: { merchantRatingCount: 1 }
                     }
                 );
+                console.log("✅ Merchant updated successfully");
             }
         }
 
-        // 4. บันทึกว่าออเดอร์นี้ให้คะแนนแล้ว (ป้องกันการให้ซ้ำ)
+        // 6. บันทึกสถานะการให้คะแนน
+        console.log(`📝 Marking order ${orderId} as isRated: true`);
         await db.collection('orders').updateOne(
             { orderId: orderId },
             { $set: { isRated: true, customerRatings: ratings } }
         );
 
+        console.log("✨ [Success] All operations completed!");
+        console.log("------------------------------------------");
         res.json({ success: true, message: "Scores have been successfully recorded." });
 
     } catch (e) {
-        console.error("Submit Rating Error:", e);
+        console.error("🚨 [Critical Error] Submit Rating Error:", e);
         res.status(500).json({ success: false });
     }
 });
