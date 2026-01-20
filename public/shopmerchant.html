@@ -1494,7 +1494,7 @@ async function submitTripleRating() {
     }
 
     try {
-        const res = await fetch('/api/order/submit-full-rating', {
+        const res = await fetch('/api/orders/submit-full-rating', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

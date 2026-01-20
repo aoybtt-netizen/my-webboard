@@ -5083,7 +5083,7 @@ app.post('/api/order/customer-cancel', async (req, res) => {
 });
 
 
-app.post('/api/order/submit-full-rating', async (req, res) => {
+app.post('/api/orders/submit-full-rating', async (req, res) => {
     const { orderId, riderName, merchantName, ratings } = req.body;
     // ratings = { riderSat: 5, riderPolite: 5, merchantRate: 5 }
 
