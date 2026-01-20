@@ -1103,14 +1103,20 @@ function openMyOrdersModal() {
 }
 
 // 4. จัดการการคลิก (ถ้า Accept แล้วให้เปิดแชท)
-async function handleOrderClick(orderId, status, postId) {
-    if (status === 'finished' || status === 'done') {
-        // ถ้าจบงานแล้ว ให้เปิดหน้าต่างให้คะแนน (Triple Rating)
-        openRatingModal(orderId, postId);
+function handleOrderClick(orderId, status, postId) {
+    if (status === 'accepted' && postId) {
+        closeMyOrdersModal();
+        // เรียกฟังก์ชันเปิด Sidebar แชทที่มีอยู่แล้วในระบบ
+        if (typeof openRightSidebar === 'function') {
+            openRightSidebar(postId); 
+        }
     } else {
-        // 🚩 แก้ไขจุดนี้: แทนที่จะใช้ window.location.href
-        // ให้เรียกฟังก์ชันเปิดแชทข้างจอแทน
-        openRightSidebar(postId); 
+        Swal.fire({
+            icon: 'info',
+            text: translations[currentLang].chat_wait_merchant,
+            timer: 2000,
+            showConfirmButton: false
+        });
     }
 }
 
@@ -1405,16 +1411,6 @@ function compressImage(url, maxWidth, quality) {
 }
 
 
-
-async function handleOrderClick(orderId, status, postId) {
-    if (status === 'finished' || status === 'done') {
-        // 🚩 ถ้าจบงานแล้ว เปิดหน้าต่างให้คะแนน 3 อย่าง
-        openRatingModal(orderId, postId);
-    } else {
-        // งานยังไม่จบ เปิดดูแชทหรือรายละเอียดปกติ
-        window.location.href = `post.html?id=${postId}`;
-    }
-}
 
 async function openRatingModal(orderId, postId) {
     currentRatingOrderId = orderId;
