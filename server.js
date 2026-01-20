@@ -5084,80 +5084,88 @@ app.post('/api/order/customer-cancel', async (req, res) => {
 
 
 app.post('/api/orders/submit-full-rating', async (req, res) => {
-    // 🚩 1. Debug: เช็คว่า Request เข้ามาถึง API หรือยัง
-    console.log("------------------------------------------");
-    console.log("📥 [Incoming Request] POST /api/orders/submit-full-rating");
-    console.log("📦 Body Data:", JSON.stringify(req.body, null, 2));
-
     const { orderId, riderName, merchantName, ratings } = req.body;
+    console.log(`📥 [Rating Request] Order: ${orderId}, Merchant: ${merchantName}, Rider: ${riderName}`);
 
     try {
-        // 🚩 2. Debug: เช็คการค้นหาออเดอร์
-        console.log(`🔍 Searching for OrderID: ${orderId}`);
+        // 1. หาข้อมูลออเดอร์
         const order = await db.collection('orders').findOne({ orderId: orderId });
-        
         if (!order) {
-            console.error("❌ Error: ไม่พบข้อมูลออเดอร์ในคอลเลกชัน orders");
+            console.error("❌ ไม่พบ OrderID:", orderId);
             return res.status(404).json({ success: false, message: "No order found." });
         }
-        console.log("✅ Order found! Status:", order.status, "| ZoneID:", order.zoneId);
 
-        // 🚩 3. Debug: เช็คการค้นหาโซน
-        const zone = await db.collection('zones').findOne({ id: order.zoneId });
-        if (!zone) {
-            console.error(`❌ Error: ไม่พบโซน ID ${order.zoneId} ในระบบ`);
-            return res.status(404).json({ success: false, message: "No zone information found." });
-        }
-        console.log("✅ Zone found! Competition Active:", zone.isCompetitionActive);
-
-        // 4. จัดการคะแนนไรเดอร์
-        if (riderName) {
-            console.log(`👤 Processing Rider Rating for: ${riderName}`);
-            const rider = await db.collection('users').findOne({ username: riderName });
-            if (rider) {
-                const ptsToAdd = calculateRankPoints(ratings.riderSat, ratings.riderPolite);
-                
-                let targetCycle = 0; 
-                if (zone.isCompetitionActive === true) {
-                    if (zone.requireKYC === true) {
-                        targetCycle = (rider.kycStatus === 'approved') ? (zone.currentCycle || 1) : 0;
-                    } else {
-                        targetCycle = zone.currentCycle || 1;
-                    }
-                }
-
-                console.log(`🏆 Rating: ${ratings.riderSat} | Polite: ${ratings.riderPolite} | Pts to add: ${ptsToAdd} | Cycle: v${targetCycle}`);
-
-                const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
-                const currentCount = rider.ratingCount || 0;
-                const currentRating = rider.rating || 0;
-                const newAverage = ((currentRating * currentCount) + ratings.riderSat) / (currentCount + 1);
-
-                await db.collection('users').updateOne(
-                    { username: riderName },
-                    { 
-                        $set: { rating: parseFloat(newAverage.toFixed(2)) },
-                        $inc: { 
-                            ratingCount: 1,
-                            [rankingKey]: ptsToAdd,
-                            riderPoliteTotal: ratings.riderPolite 
-                        }
-                    }
-                );
-                console.log("✅ Rider updated successfully");
-            } else {
-                console.warn(`⚠️ Warning: ไม่พบ User ไรเดอร์ชื่อ ${riderName} ในระบบ`);
+        // 🚩 แก้ไขจุดที่พี่เจอ: ถ้าในออเดอร์ไม่มี zoneId ให้ไปดึงจาก merchant_locations แทน
+        let zId = order.zoneId;
+        if (!zId) {
+            console.log("🔍 Order ไม่มี zoneId, กำลังดึงจากโปรไฟล์ร้านค้า...");
+            const merchantLoc = await db.collection('merchant_locations').findOne({ owner: merchantName });
+            if (merchantLoc) {
+                zId = merchantLoc.zoneId;
+                console.log("✅ ดึง zoneId จากร้านค้าสำเร็จ:", zId);
             }
         }
 
-        // 5. จัดการคะแนนร้านค้า
+        // 2. หาข้อมูลโซน
+        const zone = await db.collection('zones').findOne({ id: zId });
+        if (!zone) {
+            console.error("❌ ไม่พบข้อมูลโซน ID:", zId);
+            // ถ้าไม่พบโซนจริงๆ เราจะข้ามส่วน Ranking ไป แต่ยังยอมให้อัปเดตคะแนนดาวเฉลี่ยได้ครับ
+            console.warn("⚠️ ระบบจะบันทึกแค่ดาวเฉลี่ย แต่จะไม่เพิ่มคะแนน Ranking เพราะไม่พบโซน");
+        }
+
+        // 3. จัดการคะแนนไรเดอร์
+        if (riderName) {
+            const rider = await db.collection('users').findOne({ username: riderName });
+            if (rider) {
+                const score1 = parseFloat(ratings.riderSat);
+                const score2 = parseFloat(ratings.riderPolite);
+                
+                // คำนวณดาวเฉลี่ย (Rider Rating)
+                const currentCount = rider.ratingCount || 0;
+                const currentRating = rider.rating || 0;
+                const newAverage = ((currentRating * currentCount) + score1) / (currentCount + 1);
+
+                let updateFields = { 
+                    rating: parseFloat(newAverage.toFixed(2)) 
+                };
+                let incFields = { 
+                    ratingCount: 1,
+                    riderPoliteTotal: score2
+                };
+
+                // 🏆 จัดการ Ranking (เฉพาะถ้าเจอโซน)
+                if (zone) {
+                    const ptsToAdd = calculateRankPoints(score1, score2);
+                    let targetCycle = 0; 
+
+                    if (zone.isCompetitionActive === true) {
+                        if (zone.requireKYC === true) {
+                            targetCycle = (rider.kycStatus === 'approved') ? (zone.currentCycle || 1) : 0;
+                        } else {
+                            targetCycle = zone.currentCycle || 1;
+                        }
+                    }
+                    const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
+                    incFields[rankingKey] = ptsToAdd;
+                    console.log(`✨ เพิ่มคะแนน Ranking: ${ptsToAdd} ลงใน ${rankingKey}`);
+                }
+
+                await db.collection('users').updateOne(
+                    { username: riderName },
+                    { $set: updateFields, $inc: incFields }
+                );
+            }
+        }
+
+        // 4. จัดการคะแนนร้านค้า
         if (merchantName) {
-            console.log(`🏪 Processing Merchant Rating for: ${merchantName}`);
             const merchant = await db.collection('users').findOne({ username: merchantName });
             if (merchant) {
+                const mScore = parseFloat(ratings.merchantRate);
                 const mCount = merchant.merchantRatingCount || 0;
                 const mRating = merchant.merchantRating || 0;
-                const newMAverage = ((mRating * mCount) + ratings.merchantRate) / (mCount + 1);
+                const newMAverage = ((mRating * mCount) + mScore) / (mCount + 1);
 
                 await db.collection('users').updateOne(
                     { username: merchantName },
@@ -5166,24 +5174,21 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
                         $inc: { merchantRatingCount: 1 }
                     }
                 );
-                console.log("✅ Merchant updated successfully");
             }
         }
 
-        // 6. บันทึกสถานะการให้คะแนน
-        console.log(`📝 Marking order ${orderId} as isRated: true`);
+        // 5. บันทึกว่าออเดอร์นี้ให้คะแนนแล้ว
         await db.collection('orders').updateOne(
             { orderId: orderId },
             { $set: { isRated: true, customerRatings: ratings } }
         );
 
-        console.log("✨ [Success] All operations completed!");
-        console.log("------------------------------------------");
-        res.json({ success: true, message: "Scores have been successfully recorded." });
+        console.log("✅ บันทึกคะแนนทั้งหมดสำเร็จ!");
+        res.json({ success: true, message: "Scores recorded successfully." });
 
     } catch (e) {
-        console.error("🚨 [Critical Error] Submit Rating Error:", e);
-        res.status(500).json({ success: false });
+        console.error("🚨 Submit Rating Error:", e);
+        res.status(500).json({ success: false, error: "Database Error" });
     }
 });
 
