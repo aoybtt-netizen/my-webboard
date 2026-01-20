@@ -288,6 +288,60 @@ header {
 
 
 
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); /* สีดำโปร่งแสง */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20000; /* ให้สูงกว่า Sidebar แชท */
+    transition: opacity 0.3s ease;
+}
+
+/* ซ่อน Modal */
+.modal-overlay.hidden {
+    display: none;
+    pointer-events: none;
+}
+
+/* กล่องเนื้อหาตรงกลาง */
+.modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    position: relative;
+    animation: slideUp 0.3s ease-out;
+}
+
+/* เอฟเฟกต์ตอนเด้งขึ้นมา */
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* สไตล์ของดาว */
+.star-rating i {
+    font-size: 2rem; /* ขนาดดาวใหญ่ๆ ให้กดง่าย */
+    color: #ddd;
+    cursor: pointer;
+    margin: 0 5px;
+    transition: transform 0.1s;
+}
+
+.star-rating i:active {
+    transform: scale(1.3); /* ขยายตอนกด */
+}
+
+
+
     </style>
 </head>
 <body>
@@ -1382,13 +1436,19 @@ function compressImage(url, maxWidth, quality) {
 
 async function openRatingModal(orderId, postId) {
     currentRatingOrderId = orderId;
-    // รีเซ็ตดาวก่อนเปิด
-    resetStars();
     
-    // โหลดข้อมูล Rider/Merchant จากสคริปต์ที่พี่ส่งมา (เอามาโชว์ชื่อได้)
+    // 1. ล้างคะแนนเก่าที่เคยเลือกค้างไว้
+    resetStars(); 
+    
+    // 2. โหลดข้อมูลร้าน/ไรเดอร์มาโชว์ (ถ้าต้องการโชว์ชื่อใน Modal)
     await loadChatHistory(postId); 
     
-    document.getElementById('customerRatingModal').classList.remove('hidden');
+    // 3. สั่งแสดงหน้าต่าง (ลบ class hidden)
+    const modal = document.getElementById('customerRatingModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        console.log("⭐ [Debug] เปิดหน้าต่างให้คะแนนสำหรับออเดอร์:", orderId);
+    }
 }
 
 function resetStars() {
@@ -1406,7 +1466,6 @@ function closeRatingModal() {
     const modal = document.getElementById('customerRatingModal');
     if (modal) {
         modal.classList.add('hidden');
-        resetStars(); // ล้างค่าเผื่อไว้
     }
 }
 
