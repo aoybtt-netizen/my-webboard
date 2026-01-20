@@ -1435,6 +1435,25 @@ async function openRatingModal(orderId, postId) {
     document.getElementById('customerRatingModal').classList.remove('hidden');
 }
 
+function resetStars() {
+    ratings = { riderSat: 0, riderPolite: 0, merchantRate: 0 };
+    const allStars = document.querySelectorAll('.star-rating i');
+    allStars.forEach(s => {
+        s.classList.remove('fas');
+        s.classList.add('far');
+        s.style.color = '#ddd';
+    });
+}
+
+// ฟังก์ชันสำหรับปิดหน้าต่างให้คะแนน
+function closeRatingModal() {
+    const modal = document.getElementById('customerRatingModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        resetStars(); // ล้างค่าเผื่อไว้
+    }
+}
+
 // ฟังก์ชันเลือกดาว
 function setStar(el, score) {
     const parent = el.parentElement;
