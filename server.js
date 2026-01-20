@@ -4520,21 +4520,35 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
 
         // 5. จัดการส่วนของ Rider
         if (riderName && zone) {
-		const rider = await usersCollection.findOne({ username: riderName });
-		if (rider) {
+    const rider = await usersCollection.findOne({ username: riderName });
+    if (rider) {
         const score1 = parseFloat(rating);
         const score2 = parseFloat(responsibility || 3);
         
-        // 1. คำนวณดาวเฉลี่ย (เก็บไว้ที่เดิมเสมอ)
+        // 1. คำนวณดาวเฉลี่ย
         const currentCount = rider.ratingCount || 0;
         const currentRating = rider.rating || 0;
         const newAverage = ((currentRating * currentCount) + score1) / (currentCount + 1);
 
-        // 2. 🏆 คำนวณ Key สำหรับ Ranking
+        // 2. 🏆 คำนวณคะแนนที่จะเพิ่ม
         const ptsToAdd = calculateRankPoints(score1, score2);
         
-        // ถ้า isCompetitionActive เป็น false หรือ undefined จะเข้า v0 ทันที
-        const targetCycle = (zone.isCompetitionActive === true) ? (zone.currentCycle || 1) : 0;
+        let targetCycle = 0; // เริ่มต้นที่ v0 เสมอ
+
+        if (zone.isCompetitionActive === true) {
+            if (zone.requireKYC === true) {
+                // ถ้าโซนบังคับ KYC: ไรเดอร์ต้องมี kycStatus === 'approved' ถึงจะได้คะแนนในรอบปัจจุบัน
+                if (rider.kycStatus === 'approved') {
+                    targetCycle = zone.currentCycle || 1;
+                } else {
+                    targetCycle = 0; // ถ้ายังไม่ผ่าน KYC ให้ลง v0
+                }
+            } else {
+                // ถ้าโซนไม่บังคับ KYC: ทุกคนได้คะแนนในรอบปัจจุบัน
+                targetCycle = zone.currentCycle || 1;
+            }
+        }
+
         const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
 
         await usersCollection.updateOne(
@@ -4547,7 +4561,7 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
                 $inc: { 
                     ratingCount: 1,
                     totalJobs: 1,
-                    [rankingKey]: ptsToAdd // บันทึกเข้า v0 หรือ v_ปัจจุบัน
+                    [rankingKey]: ptsToAdd 
                 }
             }
         );
@@ -5002,20 +5016,27 @@ app.post('/api/order/process-payment', async (req, res) => {
 app.get('/api/my-active-orders', async (req, res) => {
     const { username } = req.query;
     try {
-        // 🚩 ดึงเฉพาะออเดอร์ที่สถานะไม่ใช่ cancelled และไม่ใช่ finished
+        // 1. ดึงจาก pending_orders (งานที่รอร้านค้ากดรับ)
         const pending = await db.collection('pending_orders').find({ 
             customer: username, 
-            status: { $ne: 'cancelled' } 
+            status: 'waiting_merchant' 
         }).toArray();
 
-        const accepted = await db.collection('orders').find({ 
+        // 2. ดึงจาก orders (งานที่กำลังดำเนินการ และงานที่จบแล้วเพื่อให้คะแนน)
+        const orders = await db.collection('orders').find({ 
             customer: username, 
-            status: 'accepted' // หรือ status: { $nin: ['cancelled', 'finished'] }
-        }).toArray();
+            status: { $in: ['accepted', 'finished', 'done'] } 
+        })
+        .sort({ createdAt: -1 }) // เรียงออเดอร์ล่าสุดขึ้นก่อน
+        .limit(10) // จำกัดจำนวนรายการล่าสุด เพื่อไม่ให้ปุ่มลอยยาวเกินไป
+        .toArray();
         
-        const all = [...pending, ...accepted];
+        const all = [...pending, ...orders];
         res.json({ success: true, orders: all });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) { 
+        console.error("Fetch orders error:", e);
+        res.status(500).json({ success: false }); 
+    }
 });
 
 // 🚩 2. API ลูกค้ายกเลิกออเดอร์เอง (Logic เหมือน Reject ของร้านค้า)
@@ -5050,6 +5071,90 @@ app.post('/api/order/customer-cancel', async (req, res) => {
         res.json({ success: true, message: "ลบออเดอร์และคืนเงินสำเร็จ" });
     } catch (e) {
         console.error("Cancel & Delete Error:", e);
+        res.status(500).json({ success: false });
+    }
+});
+
+
+app.post('/api/order/submit-full-rating', async (req, res) => {
+    const { orderId, riderName, merchantName, ratings } = req.body;
+    // ratings = { riderSat: 5, riderPolite: 5, merchantRate: 5 }
+
+    try {
+        // 1. หาข้อมูลออเดอร์และโซน
+        const order = await db.collection('orders').findOne({ orderId: orderId });
+        if (!order) return res.status(404).json({ success: false, message: "No order found." });
+
+        const zone = await db.collection('zones').findOne({ id: order.zoneId });
+        if (!zone) return res.status(404).json({ success: false, message: "No zone information found." });
+
+        // 2. จัดการคะแนนไรเดอร์ (Satisfactory + Politeness)
+        if (riderName) {
+            const rider = await db.collection('users').findOne({ username: riderName });
+            if (rider) {
+                // คำนวณคะแนน Ranking (ใช้เรตติ้งความพอใจ + ความสุภาพ)
+                const ptsToAdd = calculateRankPoints(ratings.riderSat, ratings.riderPolite);
+
+                // 🚩 Logic เช็ค KYC แบบเดียวกับตอนจบงาน
+                let targetCycle = 0; // พักไว้ที่ v0 ก่อน
+                if (zone.isCompetitionActive === true) {
+                    if (zone.requireKYC === true) {
+                        // ถ้าโซนบังคับ KYC ต้องผ่าน 'approved' ถึงจะได้คะแนนรอบปัจจุบัน
+                        targetCycle = (rider.kycStatus === 'approved') ? (zone.currentCycle || 1) : 0;
+                    } else {
+                        targetCycle = zone.currentCycle || 1;
+                    }
+                }
+
+                const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
+
+                // อัปเดตข้อมูลไรเดอร์ (คะแนนเฉลี่ย และ Ranking)
+                const currentCount = rider.ratingCount || 0;
+                const currentRating = rider.rating || 0;
+                const newAverage = ((currentRating * currentCount) + ratings.riderSat) / (currentCount + 1);
+
+                await db.collection('users').updateOne(
+                    { username: riderName },
+                    { 
+                        $set: { rating: parseFloat(newAverage.toFixed(2)) },
+                        $inc: { 
+                            ratingCount: 1,
+                            [rankingKey]: ptsToAdd,
+                            riderPoliteTotal: ratings.riderPolite // เก็บสะสมคะแนนความสุภาพแยกไว้ดูได้
+                        }
+                    }
+                );
+            }
+        }
+
+        // 3. จัดการคะแนนร้านค้า (Merchant)
+        if (merchantName) {
+            const merchant = await db.collection('users').findOne({ username: merchantName });
+            if (merchant) {
+                const mCount = merchant.merchantRatingCount || 0;
+                const mRating = merchant.merchantRating || 0;
+                const newMAverage = ((mRating * mCount) + ratings.merchantRate) / (mCount + 1);
+
+                await db.collection('users').updateOne(
+                    { username: merchantName },
+                    { 
+                        $set: { merchantRating: parseFloat(newMAverage.toFixed(2)) },
+                        $inc: { merchantRatingCount: 1 }
+                    }
+                );
+            }
+        }
+
+        // 4. บันทึกว่าออเดอร์นี้ให้คะแนนแล้ว (ป้องกันการให้ซ้ำ)
+        await db.collection('orders').updateOne(
+            { orderId: orderId },
+            { $set: { isRated: true, customerRatings: ratings } }
+        );
+
+        res.json({ success: true, message: "Scores have been successfully recorded." });
+
+    } catch (e) {
+        console.error("Submit Rating Error:", e);
         res.status(500).json({ success: false });
     }
 });

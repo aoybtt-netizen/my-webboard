@@ -472,7 +472,6 @@
 	<button class="sidebar-btn admin-btn" onclick="switchView('closed')" data-i18n-key="admin_closed_posts">🗄️ กระทู้ที่ปิดแล้ว</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminTopicModal()" data-i18n-key="admin_manage_topics">⚙️ จัดการหัวข้อ</button>
     <button class="sidebar-btn admin-btn" onclick="openAdminZoneModal()" data-i18n-key="admin_manage_zones">🗺️ จัดการโซน</button>
-    <button class="sidebar-btn admin-btn" onclick="setPostCost()" data-i18n-key="admin_set_cost">🏷️ กำหนดค่าธรรมเนียม</button>
     <button class="sidebar-btn admin-btn" onclick="openAllUserList()" data-i18n-key="admin_user_list">👥 รายชื่อสมาชิกทั้งหมด</button>
 </div>
 
@@ -2259,10 +2258,7 @@ async function updateUserInfo() {
             adminPanelDiv.classList.add('hidden');
         }
         
-        const setCostBtn = document.querySelector('button[onclick="setPostCost()"]');
-        if (setCostBtn) {
-            setCostBtn.style.display = (myAdminLevel >= 3) ? 'block' : 'none';
-        }
+        
                         
         const giveCoinBtn = document.querySelector('.give-coin-btn');
         const deductCoinBtn = document.querySelector('.deduct-coin-btn');
@@ -4216,32 +4212,6 @@ function getLocation(isPrimaryCheckin = false) {
             document.getElementById('category-select').innerHTML = c.map(x => `<option value="${x.id}">${x.name}</option>`).join(''); 
         }
 
-        async function setPostCost(){ 
-    if (myAdminLevel < 3) return alert('❌ ต้องเป็น Admin Level 3 เท่านั้น');
-    
-    const res = await fetch('/api/user-info?username=Admin&currency=USD');
-    const data = await res.json();
-    const { systemFee, adminFee } = data.postCost;
-    
-    const systemInput = document.getElementById('system-fee-input');
-    const adminInput = document.getElementById('admin-fee-input');
-    const totalDisplay = document.getElementById('total-fee-display');
-    
-    systemInput.value = systemFee;
-    adminInput.value = adminFee;
-    totalDisplay.innerText = (systemFee + adminFee).toFixed(2) + ' USD';
-
-    const updateTotal = () => {
-        const s = parseFloat(systemInput.value) || 0;
-        const a = parseFloat(adminInput.value) || 0;
-        totalDisplay.innerText = (s + a).toFixed(2) + ' USD';
-    };
-
-    systemInput.oninput = updateTotal;
-    adminInput.oninput = updateTotal;
-
-    document.getElementById('set-cost-modal').classList.remove('hidden');
-}
 
 // ฟังก์ชันสำหรับบันทึกค่าธรรมเนียม
 async function savePostCost() {

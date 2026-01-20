@@ -327,6 +327,53 @@ header {
         </div>
 </div>
 
+
+
+<div id="customerRatingModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <h3 style="margin-bottom: 20px;"><i class="fas fa-star" style="color:#f1c40f;"></i> ให้คะแนนบริการ</h3>
+        
+        <div class="rating-group" style="margin-bottom: 20px;">
+            <p style="font-weight: bold; margin-bottom: 5px;">1. ความพอใจในไรเดอร์</p>
+            <div id="rider-satisfaction-stars" class="star-rating" data-category="riderSat">
+                <i class="far fa-star" onclick="setStar(this, 1)"></i>
+                <i class="far fa-star" onclick="setStar(this, 2)"></i>
+                <i class="far fa-star" onclick="setStar(this, 3)"></i>
+                <i class="far fa-star" onclick="setStar(this, 4)"></i>
+                <i class="far fa-star" onclick="setStar(this, 5)"></i>
+            </div>
+        </div>
+
+        <div class="rating-group" style="margin-bottom: 20px;">
+            <p style="font-weight: bold; margin-bottom: 5px;">2. ความสุภาพของไรเดอร์</p>
+            <div id="rider-polite-stars" class="star-rating" data-category="riderPolite">
+                <i class="far fa-star" onclick="setStar(this, 1)"></i>
+                <i class="far fa-star" onclick="setStar(this, 2)"></i>
+                <i class="far fa-star" onclick="setStar(this, 3)"></i>
+                <i class="far fa-star" onclick="setStar(this, 4)"></i>
+                <i class="far fa-star" onclick="setStar(this, 5)"></i>
+            </div>
+        </div>
+
+        <div class="rating-group" style="margin-bottom: 25px;">
+            <p style="font-weight: bold; margin-bottom: 5px;">3. คะแนนร้านค้า</p>
+            <div id="merchant-stars" class="star-rating" data-category="merchantRate">
+                <i class="far fa-star" onclick="setStar(this, 1)"></i>
+                <i class="far fa-star" onclick="setStar(this, 2)"></i>
+                <i class="far fa-star" onclick="setStar(this, 3)"></i>
+                <i class="far fa-star" onclick="setStar(this, 4)"></i>
+                <i class="far fa-star" onclick="setStar(this, 5)"></i>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-cancel" style="flex:1" onclick="closeRatingModal()">ปิด</button>
+            <button class="btn-confirm" style="flex:1" onclick="submitTripleRating()">ส่งคะแนน</button>
+        </div>
+    </div>
+</div>
+
+
 <script>
     let userCoords = null;
     let allShops = [];
@@ -341,6 +388,9 @@ header {
 	let currentChatPostId = null;
 	let merchantUser = "";
 	let riderUser = "";
+	
+	let currentRatingOrderId = null;
+	let ratings = { riderSat: 0, riderPolite: 0, merchantRate: 0 };
 	
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -1358,6 +1408,74 @@ function compressImage(url, maxWidth, quality) {
         };
         img.onerror = (err) => reject(err);
     });
+}
+
+
+
+async function handleOrderClick(orderId, status, postId) {
+    if (status === 'finished' || status === 'done') {
+        // 🚩 ถ้าจบงานแล้ว เปิดหน้าต่างให้คะแนน 3 อย่าง
+        openRatingModal(orderId, postId);
+    } else {
+        // งานยังไม่จบ เปิดดูแชทหรือรายละเอียดปกติ
+        window.location.href = `post.html?id=${postId}`;
+    }
+}
+
+async function openRatingModal(orderId, postId) {
+    currentRatingOrderId = orderId;
+    // รีเซ็ตดาวก่อนเปิด
+    resetStars();
+    
+    // โหลดข้อมูล Rider/Merchant จากสคริปต์ที่พี่ส่งมา (เอามาโชว์ชื่อได้)
+    await loadChatHistory(postId); 
+    
+    document.getElementById('customerRatingModal').classList.remove('hidden');
+}
+
+// ฟังก์ชันเลือกดาว
+function setStar(el, score) {
+    const parent = el.parentElement;
+    const category = parent.getAttribute('data-category');
+    ratings[category] = score;
+    
+    const stars = parent.querySelectorAll('i');
+    stars.forEach((s, idx) => {
+        if (idx < score) {
+            s.classList.replace('far', 'fas');
+            s.style.color = '#f1c40f';
+        } else {
+            s.classList.replace('fas', 'far');
+            s.style.color = '#ddd';
+        }
+    });
+}
+
+
+async function submitTripleRating() {
+    if (ratings.riderSat === 0 || ratings.riderPolite === 0 || ratings.merchantRate === 0) {
+        return Swal.fire('กรุณาให้คะแนนครบทุกหัวข้อ', '', 'warning');
+    }
+
+    try {
+        const res = await fetch('/api/order/submit-full-rating', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId: currentRatingOrderId,
+                riderName: riderUser, // ได้มาจาก loadChatHistory
+                merchantName: merchantUser, // ได้มาจาก loadChatHistory
+                ratings: ratings
+            })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            Swal.fire('ขอบคุณสำหรับการให้คะแนน!', '', 'success');
+            closeRatingModal();
+            loadMyOrders(); // รีโหลดลิสต์เพื่ออัปเดตสถานะการให้คะแนน
+        }
+    } catch (e) { console.error(e); }
 }
 
 
