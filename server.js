@@ -5024,12 +5024,10 @@ app.get('/api/my-active-orders', async (req, res) => {
 
         // 2. ดึงจาก orders (งานที่กำลังดำเนินการ และงานที่จบแล้วเพื่อให้คะแนน)
         const orders = await db.collection('orders').find({ 
-            customer: username, 
-            status: { $in: ['accepted', 'finished', 'done'] } 
-        })
-        .sort({ createdAt: -1 }) // เรียงออเดอร์ล่าสุดขึ้นก่อน
-        .limit(10) // จำกัดจำนวนรายการล่าสุด เพื่อไม่ให้ปุ่มลอยยาวเกินไป
-        .toArray();
+    customer: username, 
+    status: { $in: ['accepted', 'finished', 'done'] },
+    isRated: { $ne: true } // 🚩 กรองออเดอร์ที่ให้คะแนนแล้วออก
+}).sort({ createdAt: -1 }).limit(10).toArray();
         
         const all = [...pending, ...orders];
         res.json({ success: true, orders: all });

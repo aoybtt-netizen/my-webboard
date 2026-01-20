@@ -1059,23 +1059,44 @@ function openMyOrdersModal() {
     const ordersHtml = myActiveOrders.map(order => {
         // --- 1. เตรียมตัวแปรพื้นฐาน ---
         const isWaiting = order.status === 'waiting_merchant';
-        const statusText = isWaiting ? translations[currentLang].status_waiting : translations[currentLang].status_accepted;
-        const statusClass = isWaiting ? 'status-waiting' : 'status-accepted';
+        const isFinished = order.status === 'finished' || order.status === 'done';
+        
+        // กำหนดข้อความสถานะ
+        let statusText = translations[currentLang].status_waiting;
+        let statusClass = 'status-waiting';
+
+        if (order.status === 'accepted') {
+            statusText = translations[currentLang].status_accepted;
+            statusClass = 'status-accepted';
+        } else if (isFinished) {
+            statusText = "ส่งสำเร็จ / รอให้คะแนน"; // หรือใช้ translations[currentLang].status_finished
+            statusClass = 'status-finished'; // เพิ่ม CSS class สีทองหรือเขียวเข้ม
+        }
+
         const shortId = order.orderId.slice(-5);
         const postIdValue = order.postId || 'null';
 
-        // --- 2. สร้าง String ของปุ่มแบบแยกส่วน (ป้องกันการสับสนของ Backticks) ---
-        const chatIcon = !isWaiting 
-            ? '<i class="fas fa-comments" style="color:#11998e; font-size:1.2rem; cursor:pointer;"></i>' 
+        // --- 2. สร้างส่วนของปุ่ม Action (แชท หรือ ให้คะแนน) ---
+        let actionIcon = '';
+        if (isFinished) {
+            // ถ้าจบงานแล้ว โชว์ปุ่มให้คะแนน (รูปดาว)
+            actionIcon = `<i class="fas fa-star" style="color:#f1c40f; font-size:1.3rem; cursor:pointer;" title="ให้คะแนน"></i>`;
+        } else if (!isWaiting) {
+            // ถ้ากำลังวิ่งงาน โชว์ปุ่มแชท
+            actionIcon = `<i class="fas fa-comments" style="color:#11998e; font-size:1.2rem; cursor:pointer;"></i>`;
+        }
+
+        // ปุ่มยกเลิก: จะโชว์เฉพาะตอนที่ยังไม่มีคนรับงาน (waiting_merchant) เท่านั้น
+        const cancelBtn = isWaiting 
+            ? `<button class="btn-cancel-order" onclick="event.stopPropagation(); cancelOrder(event, '${order.orderId}')">
+                <i class="fas fa-trash-alt"></i> cancel
+               </button>`
             : '';
 
-        const cancelBtn = '<button class="btn-cancel-order" onclick="cancelOrder(event, \'' + order.orderId + '\')">' +
-                          '<i class="fas fa-trash-alt"></i> cancle' +
-                          '</button>';
-
-        // --- 3. คืนค่าเป็น HTML ก้อนเดียวที่อ่านง่าย ---
+        // --- 3. คืนค่า HTML ---
         return `
-            <div class="customer-order-item" onclick="handleOrderClick('${order.orderId}', '${order.status}', ${postIdValue})">
+            <div class="customer-order-item" onclick="handleOrderClick('${order.orderId}', '${order.status}', ${postIdValue})" 
+                 style="border-left: 5px solid ${isFinished ? '#f1c40f' : '#11998e'};">
                 <div style="flex: 1;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div style="font-weight:bold; color:#2c3e50;">#${shortId}</div>
@@ -1086,37 +1107,28 @@ function openMyOrdersModal() {
                     </div>
                 </div>
                 <div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        ${chatIcon}
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        ${actionIcon}
                         ${cancelBtn}
                     </div>
                 </div>
             </div>`;
     }).join('');
 
-    // ใส่เนื้อหา หรือแสดงข้อความว่างเปล่า
     container.innerHTML = ordersHtml || `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].no_active_orders}</p>`;
     
-    // แสดง Modal
     const modal = document.getElementById('myOrdersModal');
     if (modal) modal.classList.remove('hidden');
 }
 
 // 4. จัดการการคลิก (ถ้า Accept แล้วให้เปิดแชท)
-function handleOrderClick(orderId, status, postId) {
-    if (status === 'accepted' && postId) {
-        closeMyOrdersModal();
-        // เรียกฟังก์ชันเปิด Sidebar แชทที่มีอยู่แล้วในระบบ
-        if (typeof openRightSidebar === 'function') {
-            openRightSidebar(postId); 
-        }
-    } else {
-        Swal.fire({
-            icon: 'info',
-            text: translations[currentLang].chat_wait_merchant,
-            timer: 2000,
-            showConfirmButton: false
-        });
+async function handleOrderClick(orderId, status, postId) {
+    if (status === 'finished' || status === 'done') {
+        // เปิด Modal ให้คะแนน (ที่คุยกันก่อนหน้าที่มี 3 หัวข้อ)
+        openRatingModal(orderId, postId);
+    } else if (status === 'accepted') {
+        // เปิด Sidebar แชท
+        openRightSidebar(postId);
     }
 }
 
