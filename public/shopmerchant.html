@@ -1473,10 +1473,10 @@ async function submitTripleRating() {
         
         const data = await res.json();
         if (data.success) {
-            Swal.fire('ขอบคุณสำหรับการให้คะแนน!', '', 'success');
-            closeRatingModal();
-            loadMyOrders(); // รีโหลดลิสต์เพื่ออัปเดตสถานะการให้คะแนน
-        }
+    Swal.fire('ขอบคุณสำหรับการให้คะแนน!', '', 'success');
+    closeRatingModal();
+    loadMyOrders(); // 🚩 เรียกโหลดข้อมูลใหม่ทันที การ์ดที่เพิ่งให้คะแนนจะหายไป
+}
     } catch (e) { console.error(e); }
 }
 
