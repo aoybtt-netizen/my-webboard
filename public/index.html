@@ -691,12 +691,8 @@
             <div class="chat-window">
                 <div id="private-chat-messages" class="chat-messages"></div>
                 <div class="chat-input-area">
-                    <div id="admin-chat-tools" class="hidden" style="display:flex; gap:5px;">
-                        <button class="give-coin-btn" title="โอนเหรียญให้สมาชิก" onclick="sendCoinInChat()">💸</button>
-                        <button class="deduct-coin-btn" title="ดึงเหรียญคืนจากสมาชิก" onclick="deductCoinInChat()">🧲</button>
-                    </div>
                     
-                    <input type="text" id="private-chat-input" placeholder="พิมพ์ข้อความ..." style="margin-bottom:0;" autocomplete="off" data-i18n-key="chat_placeholder">
+                    <input type="text" id="private-chat-input" placeholder="Aa..." style="margin-bottom:0;" autocomplete="off" data-i18n-key="chat_placeholder">
                     <button class="sidebar-btn create-btn" style="width:auto; margin-bottom:0;" onclick="sendPrivateMessage()" data-i18n-key="chat_send">ส่ง</button>
                 </div>
             </div>
@@ -3777,38 +3773,6 @@ window.addZoneConfig = addZoneConfig;
     currentDeductRequest = null;
 }
 
-	async function deductCoinInChat() {
-    if (myAdminLevel < 1) return alert('❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันนี้');
-    const promptText = translations[currentLang]['prompt_deduct_admin'] || 'ระบุจำนวนเงินที่ต้องการดึงคืน (USD):';
-    const amount = prompt(`🔴 ${promptText} ${currentChatPartner}:`);
-    
-    if(!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
-    const parsedAmount = parseFloat(amount);
-
-    try {
-        const res = await fetch('/api/admin/deduct-coins', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername })
-        });
-        
-        const data = await res.json();
-        
-        if (data.success) {
-            if (data.waitConfirm) {
-                alert(`⏳ ${data.message}`);
-            } else {
-                alert(`✅ ${data.message}`);
-            }
-        } else {
-            alert(`❌ Error: ${data.error}`);
-        }
-    } catch (e) {
-        console.error(e);
-        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
-    }
-}
-window.deductCoinInChat = deductCoinInChat;
 
 	
 
@@ -4481,47 +4445,9 @@ window.savePostCost = savePostCost;
         input.value = '';
     }
 
-    async function sendCoinInChat() {
-        if (myAdminLevel < 1) return alert('❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันนี้'); 
-        const promptText = translations[currentLang]['prompt_transfer_admin'];
-        const amount = prompt(`${promptText} ${currentChatPartner}:`);
-        if(!amount || isNaN(amount) || parseInt(amount) <= 0) return;
-        const parsedAmount = parseInt(amount);
 
-        const res = await fetch('/api/admin/give-coins', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername }) 
-        });
-        
-        if (res.status === 200) {
-            alert(`✅ โอนเหรียญ ${parsedAmount} ให้ ${currentChatPartner} สำเร็จ!`);
-        } else {
-            const d = await res.json();
-            alert(`❌ โอนเหรียญไม่สำเร็จ: ${d.error || res.statusText}`);
-        }
-    }
     
-    async function deductCoinInChat() {
-        if (myAdminLevel < 1) return alert('❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันนี้'); 
-        const promptText = translations[currentLang]['prompt_deduct_admin'];
-        const amount = prompt(`🔴 ${promptText} ${currentChatPartner}:`);
-        if(!amount || isNaN(amount) || parseInt(amount) <= 0) return;
-        const parsedAmount = parseInt(amount);
 
-        const res = await fetch('/api/admin/deduct-coins', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ targetUser: currentChatPartner, amount: parsedAmount, requestBy: myUsername, lang: currentLang }) 
-        });
-        
-        if (res.status === 200) {
-            alert(`Awaiting confirmation....`);
-        } else {
-            const d = await res.json();
-            alert(`❌ : ${d.error || res.statusText}`);
-        }
-    }
 
     async function checkAndGo(postId) {
         const res = await fetch(`/api/posts/${postId}`);
@@ -5110,7 +5036,7 @@ function openUserDetail(targetUsername) {
     document.getElementById('detail-badges').innerHTML = badgesHtml;
 
     // 2. เตรียมปุ่มจัดการ
-    const chatText = currentLang === 'th' ? '💬 แชท / โอนเหรียญ' : '💬 Chat / Transfer';
+    const chatText = currentLang === 'th' ? '💬 แชท' : '💬 Chat';
     const ratingText = currentLang === 'th' ? '⭐ ตั้งค่าคะแนน' : '⭐ Set Rating';
     const banText = isBanned ? (currentLang === 'th' ? '✅ ปลดแบน' : '✅ Unban') : (currentLang === 'th' ? '❌ แบนสมาชิก' : '❌ Ban User');
     const banBtnColor = isBanned ? '#28a745' : '#dc3545';
@@ -5128,7 +5054,7 @@ function openUserDetail(targetUsername) {
     `;
 
     // ปุ่ม Admin (Rate, Ban, Reset Status)
-    if (myAdminLevel >= 1) { 
+    if (myAdminLevel >= 3) { 
         buttonsHtml += `
             <button class="sidebar-btn admin-btn" style="background:#ffc107; color:black;" onclick="setMemberRating('${u.name}')">
                 ${ratingText}
@@ -5145,9 +5071,6 @@ function openUserDetail(targetUsername) {
     }
 
     // ปุ่ม Promote / Demote
-    if (myAdminLevel >= 2 && targetLevel < 1) {
-        buttonsHtml += `<button class="sidebar-btn" style="background:#17a2b8; color:white;" onclick="setAdminLevel('${u.name}', 1)">👮‍♂️ ตั้งเป็น Admin 1</button>`;
-    }
     if (myAdminLevel >= 3 && targetLevel < 2) {
         buttonsHtml += `<button class="sidebar-btn" style="background:#6610f2; color:white;" onclick="setAdminLevel('${u.name}', 2)">👨‍💼 ตั้งเป็น Admin 2</button>`;
     }
