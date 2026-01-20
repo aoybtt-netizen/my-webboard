@@ -630,9 +630,7 @@
         <h2 id="detail-name" style="margin-top:0; color:#007bff;">User Name</h2>
         <div id="detail-badges" style="margin-bottom: 15px;"></div>
         
-        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
-            💵 <span id="detail-coins" style="color:#28a745;">0.00</span> 
-        </div>
+        
         <div style="color:gray; font-size: 0.9em; margin-bottom: 10px;">
             ⭐ Rating: <span id="detail-rating">0.00</span> / 5.0
         </div>
@@ -4908,9 +4906,6 @@ async function fetchNearestAdminForInbox(elementId) {
                     <div class="user-list-item" style="${rowStyle} display:flex; justify-content:space-between; align-items:center; padding: 15px; cursor: pointer; margin-bottom: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);" onclick="openUserDetail('${u.name}')">
                         <div style="font-weight: bold; font-size: 1.1em;">
                              👤 ${u.name} ${levelBadge} ${banBadge} ${countryBadge}
-                        </div>
-                        <div style="color:#28a745; font-weight: bold;">
-                             💵 ${u.coins.toLocaleString()} USD
                         </div>
                     </div>`;
             };
