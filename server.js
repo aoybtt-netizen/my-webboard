@@ -1998,17 +1998,19 @@ app.get('/api/rider-ranking', async (req, res) => {
 
         // 5. ส่งข้อมูลกลับ
         res.json({
-            success: true,
-            leaderboard: leaderboard.map(u => ({
-                username: u.username,
-                totalPoints: (u.ranking_data && u.ranking_data[`${rankingVariable}_v${targetCycle}`]) || 0
-            })),
-            currentCycle: zoneData.currentCycle || 1,
-            isActive: zoneData.isCompetitionActive || false,
-            requireKYC: zoneData.requireKYC || false,
-            zoneName: zoneData.name,
-            zoneOwner: zoneData.assignedAdmin
-        });
+			success: true,
+			leaderboard: leaderboard.map(u => ({
+			username: u.username,
+			totalPoints: (u.ranking_data && u.ranking_data[`${rankingVariable}_v${targetCycle}`]) || 0
+		})),
+			currentCycle: zoneData.currentCycle || 1,
+			isActive: zoneData.isCompetitionActive || false,
+			requireKYC: zoneData.requireKYC || false,
+			zoneName: zoneData.name,
+			zoneOwner: zoneData.assignedAdmin,
+			prizeData: zoneData.prizeData || null, 
+			endDate: zoneData.endDate || null
+		});
 
     } catch (e) {
         console.error("Ranking API Error:", e);

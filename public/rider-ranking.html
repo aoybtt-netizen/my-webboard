@@ -234,6 +234,19 @@
     </div>
 </div>
 
+	
+	<div id="prize-display-box" style="display: none; margin: 0 15px 15px; padding: 15px; background: white; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #f1c40f;">
+    <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-gift" style="color: #e74c3c;"></i> 
+        <span>รางวัลประจำรอบการแข่ง</span>
+    </div>
+    <div id="prize-details" style="font-size: 0.85rem; color: #555; line-height: 1.6;">
+        </div>
+    <div id="end-date-display" style="font-size: 0.75rem; color: #999; margin-top: 10px; text-align: right; border-top: 1px dashed #eee; padding-top: 5px;">
+    </div>
+</div>
+
+
 
 
     <div class="leaderboard" id="leaderboard-list">
@@ -282,8 +295,11 @@
 
 async function fetchRanking(cycle = 'latest') {
     const container = document.getElementById('leaderboard-list');
+    const prizeBox = document.getElementById('prize-display-box');
+    const prizeDetails = document.getElementById('prize-details');
+    const endDateDisplay = document.getElementById('end-date-display');
+
     try {
-        // 🚩 ดึงพิกัดจาก localStorage เหมือนหน้าโปรไฟล์เป๊ะๆ
         const savedLoc = localStorage.getItem('userPrimaryLocation');
         let locationParam = '';
         if (savedLoc) {
@@ -294,25 +310,41 @@ async function fetchRanking(cycle = 'latest') {
         const data = await res.json();
         
         if (data.success) {
-		if (cycle === 'latest') {
-        updateCycleSelector(data.currentCycle);
-        updateStatusLabel(data.isActive, data.requireKYC);
-        
-        // อัปเดตชื่อโซนตัวใหญ่ใน Card
-        const zoneDisplay = document.getElementById('zone-display-name');
-        if (zoneDisplay) {
-            zoneDisplay.innerHTML = `<i class="fas fa-map-marker-alt" style="font-size: 1rem;"></i> ${data.zoneName}`;
-        }
-        
-        // อัปเดตข้อมูลเจ้าของโซนในแถบสถานะด้านบน
-        const topLabel = document.getElementById('comp-status-text');
-        if (topLabel) {
-            topLabel.innerHTML += `<br><small style="color:#666; font-weight:normal;">Owner: ${data.zoneOwner}</small>`;
-        }
-    }
-    renderLeaderboard(data.leaderboard);
-} else {
+            if (cycle === 'latest') {
+                updateCycleSelector(data.currentCycle);
+                updateStatusLabel(data.isActive, data.requireKYC);
+                
+                // อัปเดตชื่อโซน
+                const zoneDisplay = document.getElementById('zone-display-name');
+                if (zoneDisplay) {
+                    zoneDisplay.innerHTML = `<i class="fas fa-map-marker-alt" style="font-size: 1rem;"></i> ${data.zoneName}`;
+                }
+                
+                // 🚩 เพิ่มส่วนแสดงผลรางวัล
+                if (data.prizeData && data.isActive) {
+                    prizeBox.style.display = 'block';
+                    prizeDetails.innerHTML = `
+                        <div>🥇 <b>อันดับ 1:</b> ${data.prizeData.rank1 || '-'}</div>
+                        <div>🥈 <b>อันดับ 2:</b> ${data.prizeData.rank2 || '-'}</div>
+                        <div>🥉 <b>อันดับ 3:</b> ${data.prizeData.rank3 || '-'}</div>
+                    `;
+                    if (data.endDate) {
+                        endDateDisplay.innerHTML = `<i class="far fa-calendar-alt"></i> สิ้นสุดวันที่: ${data.endDate}`;
+                    }
+                } else {
+                    prizeBox.style.display = 'none'; // ซ่อนถ้าไม่มีการแข่งหรือไม่มีข้อมูลรางวัล
+                }
+
+                // อัปเดตข้อมูลเจ้าของโซน
+                const topLabel = document.getElementById('comp-status-text');
+                if (topLabel) {
+                    topLabel.innerHTML = `<small style="color:#666; font-weight:normal;">Zone Owner: ${data.zoneOwner}</small>`;
+                }
+            }
+            renderLeaderboard(data.leaderboard);
+        } else {
             container.innerHTML = `<div class="no-data">${data.message || 'ไม่พบข้อมูล'}</div>`;
+            prizeBox.style.display = 'none';
         }
     } catch (e) { 
         console.error(e);
