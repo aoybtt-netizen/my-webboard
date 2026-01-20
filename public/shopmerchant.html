@@ -1026,40 +1026,17 @@ function closeShopMenuModal() {
 // 1. เรียกใช้งานเมื่อเปิดหน้าเว็บ หรือเมื่อสั่งซื้อสำเร็จ
 async function loadMyOrders() {
     const username = localStorage.getItem('myUsername');
-    if (!username) {
-        console.warn("⚠️ [Debug] ไม่พบ username ใน localStorage");
-        return;
-    }
+    if (!username) return;
 
     try {
-        console.log(`🚀 [Debug] กำลังดึงออเดอร์ของ: ${username}...`);
         const res = await fetch(`/api/my-active-orders?username=${username}`);
         const data = await res.json();
         
         if (data.success) {
             myActiveOrders = data.orders;
-            
-            // 🚩 ตรวจสอบสถานะออเดอร์ที่ดึงมาได้ทั้งหมดในรูปแบบตาราง
-            if (myActiveOrders.length > 0) {
-                console.log(`✅ [Debug] พบออเดอร์ทั้งหมด ${myActiveOrders.length} รายการ:`);
-                console.table(myActiveOrders.map(o => ({
-                    ID: o.orderId.slice(-5),
-                    Merchant: o.merchant,
-                    Status: o.status,
-                    IsRated: o.isRated || false,
-                    PostID: o.postId
-                })));
-            } else {
-                console.log("ℹ️ [Debug] ไม่มีออเดอร์ที่กำลังทำงาน (Active Orders)");
-            }
-
             updateCustomerUI();
-        } else {
-            console.error("❌ [Debug] ดึงข้อมูลไม่สำเร็จ:", data.message);
         }
-    } catch (e) { 
-        console.error("🚨 [Debug] Load orders error:", e); 
-    }
+    } catch (e) { console.error("Load orders error:", e); }
 }
 
 // 2. อัปเดตการแสดงผลปุ่มลอย
@@ -1146,16 +1123,12 @@ function openMyOrdersModal() {
 
 // 4. จัดการการคลิก (ถ้า Accept แล้วให้เปิดแชท)
 async function handleOrderClick(orderId, status, postId) {
-    console.log(`🖱️ [Debug] คลิกออเดอร์: ${orderId} | สถานะปัจจุบัน: ${status}`);
-
     if (status === 'finished' || status === 'done') {
-        console.log("⭐ [Debug] เข้าสู่โหมดให้คะแนน (Rating Mode)");
+        // เปิด Modal ให้คะแนน (ที่คุยกันก่อนหน้าที่มี 3 หัวข้อ)
         openRatingModal(orderId, postId);
     } else if (status === 'accepted') {
-        console.log("💬 [Debug] เข้าสู่โหมดแชท (Chat Mode)");
+        // เปิด Sidebar แชท
         openRightSidebar(postId);
-    } else {
-        console.warn(`⚠️ [Debug] สถานะ ${status} ยังไม่มีคำสั่งรองรับการคลิก`);
     }
 }
 

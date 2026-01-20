@@ -4485,7 +4485,6 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
 app.post('/api/posts/:postId/finish-job', async (req, res) => {
     const lang = req.body.lang || 'th';
     const { postId } = req.params;
-    // 1. รับค่าจาก body (เอาบรรทัดเดียวพอ)
     const { rating, responsibility, author } = req.body; 
 
     try {
@@ -4498,10 +4497,24 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
 
         const riderName = post.acceptedBy || post.acceptedViewer;
 
-        // 3. หาข้อมูลโซน (สำคัญมาก เพื่อเอาชื่อตัวแปร Ranking)
-        // สมมติหาจากโซนที่ผูกกับโพสต์ หรือใช้พิกัดโพสต์หาโซนที่ใกล้ที่สุด
+        // 🚩 --- ส่วนที่เพิ่มเข้าไป: อัปเดตสถานะในคอลเลกชัน orders ---
+        // เราใช้ orderId ที่เก็บอยู่ใน post มาเป็นตัวอ้างอิง
+        if (post.orderId) {
+            await db.collection('orders').updateOne(
+                { orderId: post.orderId },
+                { 
+                    $set: { 
+                        status: 'finished', 
+                        finishedAt: new Date() 
+                    } 
+                }
+            );
+            console.log(`[System] Order ${post.orderId} updated to finished.`);
+        }
+        // -------------------------------------------------------
+
+        // 3. หาข้อมูลโซน
         const zone = await db.collection('zones').findOne({ 
-            // เปลี่ยนเงื่อนไขตามระบบพี่ เช่น { id: post.zoneId } หรือตามพิกัด
             id: post.zoneId 
         });
 
@@ -4520,53 +4533,49 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
 
         // 5. จัดการส่วนของ Rider
         if (riderName && zone) {
-    const rider = await usersCollection.findOne({ username: riderName });
-    if (rider) {
-        const score1 = parseFloat(rating);
-        const score2 = parseFloat(responsibility || 3);
-        
-        // 1. คำนวณดาวเฉลี่ย
-        const currentCount = rider.ratingCount || 0;
-        const currentRating = rider.rating || 0;
-        const newAverage = ((currentRating * currentCount) + score1) / (currentCount + 1);
+            const rider = await usersCollection.findOne({ username: riderName });
+            if (rider) {
+                const score1 = parseFloat(rating);
+                const score2 = parseFloat(responsibility || 3);
+                
+                const currentCount = rider.ratingCount || 0;
+                const currentRating = rider.rating || 0;
+                const newAverage = ((currentRating * currentCount) + score1) / (currentCount + 1);
 
-        // 2. 🏆 คำนวณคะแนนที่จะเพิ่ม
-        const ptsToAdd = calculateRankPoints(score1, score2);
-        
-        let targetCycle = 0; // เริ่มต้นที่ v0 เสมอ
+                const ptsToAdd = calculateRankPoints(score1, score2);
+                
+                let targetCycle = 0; 
 
-        if (zone.isCompetitionActive === true) {
-            if (zone.requireKYC === true) {
-                // ถ้าโซนบังคับ KYC: ไรเดอร์ต้องมี kycStatus === 'approved' ถึงจะได้คะแนนในรอบปัจจุบัน
-                if (rider.kycStatus === 'approved') {
-                    targetCycle = zone.currentCycle || 1;
-                } else {
-                    targetCycle = 0; // ถ้ายังไม่ผ่าน KYC ให้ลง v0
+                if (zone.isCompetitionActive === true) {
+                    if (zone.requireKYC === true) {
+                        if (rider.kycStatus === 'approved') {
+                            targetCycle = zone.currentCycle || 1;
+                        } else {
+                            targetCycle = 0; 
+                        }
+                    } else {
+                        targetCycle = zone.currentCycle || 1;
+                    }
                 }
-            } else {
-                // ถ้าโซนไม่บังคับ KYC: ทุกคนได้คะแนนในรอบปัจจุบัน
-                targetCycle = zone.currentCycle || 1;
+
+                const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
+
+                await usersCollection.updateOne(
+                    { username: riderName },
+                    { 
+                        $set: { 
+                            working: null,
+                            rating: parseFloat(newAverage.toFixed(2))
+                        },
+                        $inc: { 
+                            ratingCount: 1,
+                            totalJobs: 1,
+                            [rankingKey]: ptsToAdd 
+                        }
+                    }
+                );
             }
         }
-
-        const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
-
-        await usersCollection.updateOne(
-            { username: riderName },
-            { 
-                $set: { 
-                    working: null,
-                    rating: parseFloat(newAverage.toFixed(2))
-                },
-                $inc: { 
-                    ratingCount: 1,
-                    totalJobs: 1,
-                    [rankingKey]: ptsToAdd 
-                }
-            }
-        );
-    }
-}
 
         // 6. อัปเดตสถิติจบงานให้ร้านค้า
         await usersCollection.updateOne(
