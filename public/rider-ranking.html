@@ -201,29 +201,36 @@
 </head>
 <body>
 
-    <div style="padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: white; margin: 0 15px 10px; border-radius: 15px;">
-    <span id="comp-status-text" style="font-size: 0.85rem; font-weight: bold;">
-        </span>
-    <select id="cycle-selector" onchange="changeRankingCycle()" style="border: 1px solid #ddd; padding: 5px 10px; border-radius: 10px; outline: none; font-family: 'Kanit';">
+    <div style="padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: white; margin: 0 15px 10px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="index.html" style="text-decoration: none; color: var(--primary); width: 35px; height: 35px; background: #f0fdfa; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+        <span id="comp-status-text" style="font-size: 0.85rem; font-weight: bold;"></span>
+    </div>
+
+    <select id="cycle-selector" onchange="changeRankingCycle()" style="border: 1px solid #ddd; padding: 5px 10px; border-radius: 10px; outline: none; font-family: 'Kanit'; background: #fff; cursor: pointer;">
         <option value="latest" data-i18n-key="opt_latest">รอบล่าสุด</option>
     </select>
 </div>
 
-<div class="my-rank-container">
+<div class="my-rank-container" style="background: linear-gradient(135deg, #11998e, #38ef7d); margin: 0 15px 20px; padding: 25px 20px; border-radius: 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 20px rgba(17,153,142,0.2);">
     <div>
-        <span id="card-status-label" style="opacity: 0.9; font-size: 0.85rem; font-weight: bold;">---</span>
+        <span id="card-status-label" style="opacity: 0.9; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">---</span>
         
-        <div id="zone-display-name">Loading...</div>
+        <div id="zone-display-name" style="font-size: 1.8rem; font-weight: bold; line-height: 1.2; margin: 5px 0;">
+            <i class="fas fa-map-marker-alt" style="font-size: 1.2rem; opacity: 0.8;"></i> Loading...
+        </div>
         
         <div style="font-size: 1rem; opacity: 0.9;" id="my-name">---</div>
     </div>
     
     <div style="text-align: right;">
-        <span style="opacity: 0.9; font-size: 0.85rem;" data-i18n-key="your_position">อันดับปัจจุบันของคุณ</span>
+        <span style="opacity: 0.9; font-size: 0.75rem;" data-i18n-key="your_position">อันดับปัจจุบันของคุณ</span>
         
-        <div style="font-size: 2.5rem; font-weight: 800; line-height: 1;" id="my-pos">#--</div>
+        <div style="font-size: 2.8rem; font-weight: 800; line-height: 1; margin: 2px 0;" id="my-pos">#--</div>
         
-        <span id="my-pts" style="font-weight: 600;">0 pts</span>
+        <div id="my-pts" style="font-weight: 600; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 10px; display: inline-block;">0 pts</div>
     </div>
 </div>
 
