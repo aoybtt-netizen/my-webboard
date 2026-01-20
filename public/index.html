@@ -4694,11 +4694,7 @@ window.savePostCost = savePostCost;
         unreadUsers.delete(targetUser);
         saveUnreadStatus();
 
-        if (myAdminLevel >= 1) { 
-            document.getElementById('admin-chat-tools').classList.remove('hidden');
-        } else {
-            document.getElementById('admin-chat-tools').classList.add('hidden');
-        }
+        
         
         document.getElementById('private-chat-messages').innerHTML = '<div class="system-msg">กำลังโหลดประวัติ...</div>';
         socket.emit('get-private-history', { me: myUsername, partner: targetUser });
