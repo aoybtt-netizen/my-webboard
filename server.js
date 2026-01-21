@@ -4129,40 +4129,72 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 //ส่วนของร้านค้าาาาา
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
-    // 🚩 ลองใส่ console.log เพื่อดูว่าค่ามาถึง Server หรือไม่
     console.log("🗑️ Delete Request - ID:", req.params.id, "User:", req.body.username);
 
-    const postId = parseInt(req.params.id); // แปลงเป็นตัวเลข
+    const postId = parseInt(req.params.id);
     const { username } = req.body;
 
-    if (!username) return res.status(400).json({ success: false, error: 'The username was not found in... Request' });
+    if (!username) return res.status(400).json({ success: false, error: 'Username not found' });
 
     try {
-        // ค้นหาโดยระบุเลข ID ให้ชัดเจน
-        const post = await postsCollection.findOne({ id: postId });
+        // 1. ค้นหาข้อมูลงานก่อนลบ (เพื่อเอาค่า budget และ zoneId)
+        const post = await db.collection('posts').findOne({ id: postId });
         
         if (!post) {
-            console.log("❌ No jobs found. ID:", postId);
             return res.status(404).json({ success: false, error: 'No jobs found.' });
         }
 
+        // 2. เช็คว่ามีไรเดอร์รับงานหรือยัง (ถ้ามีแล้วห้ามลบ)
         if (post.acceptedBy) {
-            return res.status(400).json({ success: false, error: 'A rider has already accepted the job, so it can t be deleted.' });
+            return res.status(400).json({ success: false, error: 'A rider has already accepted the job.' });
         }
 
-        await postsCollection.deleteOne({ id: postId });
+        // 🚩 3. ขั้นตอนการคืนเงิน (Refund Rider Wage)
+        const refundAmount = parseFloat(post.budget || 0);
         
-        // 🚩 ตรวจสอบว่าลดแต้ม mercNum ถูกคน
-        const updateResult = await usersCollection.updateOne(
-            { username: username }, 
-            { $inc: { mercNum: -1 } }
-        );
+        // หาข้อมูลโซนเพื่อทราบสกุลเงินที่ถูกต้อง (เหมือนตอนหักเงิน)
+        const zone = await db.collection('zones').findOne({ id: post.zoneId });
+        const currency = zone ? zone.zoneCurrency : 'USD'; 
 
-        console.log(`✅ ลบงานสำเร็จและลดแต้มให้ ${username}`);
-        res.json({ success: true });
+        if (refundAmount > 0) {
+            // โอนเงินคืนเข้ากระเป๋าร้านค้าตามสกุลเงินของโซนนั้น
+            await db.collection('users').updateOne(
+                { username: username },
+                { $inc: { [currency]: refundAmount, mercNum: -1 } }
+            );
+
+            // บันทึกประวัติการคืนเงิน
+            await db.collection('transactions').insertOne({
+                id: Date.now(),
+                type: 'REFUND_BUDGET',
+                amount: refundAmount,
+                currency: currency,
+                toUser: username,
+                note: `Refund for cancelled task #${postId.toString().slice(-4)}`,
+                timestamp: Date.now()
+            });
+
+            console.log(`💰 Refunded ${refundAmount} ${currency} to ${username}`);
+        } else {
+            // ถ้าไม่มีค่าจ้าง (budget = 0) ก็แค่ลดแต้ม mercNum ปกติ
+            await db.collection('users').updateOne(
+                { username: username },
+                { $inc: { mercNum: -1 } }
+            );
+        }
+
+        // 4. ลบโพสต์ออกจากระบบ
+        await db.collection('posts').deleteOne({ id: postId });
+
+        // 5. แจ้งอัปเดตยอดเงินให้หน้าบ้านทราบแบบ Real-time
+        io.emit('balance-update', { user: username });
+
+        console.log(`✅ ลบงานสำเร็จและคืนเงินให้ ${username}`);
+        res.json({ success: true, message: "Task deleted and budget refunded." });
+
     } catch (err) {
-        console.error("🚨 Server Error:", err);
-        res.status(500).json({ success: false, error: 'An error occurred at Server' });
+        console.error("🚨 Delete API Error:", err);
+        res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
 
