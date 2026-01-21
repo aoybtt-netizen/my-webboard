@@ -3170,7 +3170,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     const lang = req.body.lang || 'th'; 
     const { author, category, content, location, title, budget, stops, depositAmount } = req.body;
     const isMerchantTask = req.body.isMerchantTask === 'true' || req.body.isMerchantTask === true;
-
+	const riderBudget = parseFloat(budget || 0);
     // 1. ตรวจสอบเงื่อนไขพื้นฐาน (รักษาของเดิมไว้ทั้งหมด)
     if (author !== 'Admin') {
 		if (!location || location === 'null' || location === 'undefined') {
@@ -3226,24 +3226,25 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
     }
 
     // 2. รวมยอดจ่าย (เป็นหน่วยเงินโซนตรงๆ)
-    const totalCostLocal = currentSystemZone + finalAdminFee;
+    const totalFees = isFreePostFinal ? 0 : (currentSystemZone + finalAdminFee);
+    const totalCostLocal = totalFees + riderBudget; 
+
     const zoneCurrency = responsibleData.zoneData?.zoneCurrency || 'USD';
     const postZoneId = responsibleData.zoneData ? responsibleData.zoneData.id : null;
 
     // --- ส่วนการจัดการเงิน ---
-    if (author !== 'Admin' && !isFreePostFinal) {
+    if (author !== 'Admin' && totalCostLocal > 0) {
         const userLocalBalance = user[zoneCurrency] || 0;
 
         // เช็คเงินในกระเป๋าสกุลโซนนั้นๆ
         if (userLocalBalance < totalCostLocal) {
-				const errorMsg = serverTranslations[lang].err_insufficient + 
-                     zoneCurrency + 
-                     serverTranslations[lang].err_insufficient_mid + 
-                     totalCostLocal.toFixed(2) + 
-                     serverTranslations[lang].err_insufficient_end;
-
-				return res.status(400).json({ error: errorMsg });
-			}
+            const errorMsg = serverTranslations[lang].err_insufficient + 
+                             zoneCurrency + 
+                             serverTranslations[lang].err_insufficient_mid + 
+                             totalCostLocal.toFixed(2) + 
+                             serverTranslations[lang].err_insufficient_end;
+            return res.status(400).json({ error: errorMsg });
+        }
 
         // 3. หักเงินสมาชิกจากกระเป๋าโซน
         await usersCollection.updateOne(
@@ -3266,7 +3267,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         }
 
         // 5. โอนเงินให้แอดมินโซน เข้ากระเป๋าสกุลเงินนั้นๆ
-        if (finalAdminFee > 0) {
+        if (finalAdminFee > 0 && !isFreePostFinal) {
             await usersCollection.updateOne(
                 { username: feeReceiver },
                 { $inc: { [zoneCurrency]: finalAdminFee } }
@@ -3339,7 +3340,8 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         // 🚩 ข้อมูลสำหรับการแสดงผล
         isMerchantTask: isMerchantTask,
         storeName: storeName, // ชื่อนี้จะโชว์บนหน้า Post Card
-        budget: budget,
+		budget: riderBudget,
+        //budget: budget,
 		depositAmount: depositAmount ? parseFloat(depositAmount) : 0,
         stops: parsedStops
     };
