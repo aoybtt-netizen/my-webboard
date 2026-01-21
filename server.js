@@ -192,6 +192,7 @@ const serverTranslations = {
 		'note_approve_merchant': 'อนุมัติร้านค้า: {name}',
         'msg_approve_success': 'อนุมัติเรียบร้อย เงินค่าธรรมเนียมเข้ากระเป๋าคุณแล้ว',
         'msg_reject_success': 'ปฏิเสธคำขอเรียบร้อย',
+		'err_insufficient_deposit': 'ยอดเงินในกระเป๋า ({currency}) ไม่เพียงพอสำหรับมัดจำงานนี้ (ต้องการ {amount})',
     },
     'en': {
         'post_not_found': 'Post not found',
@@ -300,6 +301,7 @@ const serverTranslations = {
 		'note_approve_merchant': 'Approved Shop: {name}',
         'msg_approve_success': 'Approved successfully. Fee has been added to your wallet.',
         'msg_reject_success': 'Request rejected successfully.',
+		'err_insufficient_deposit': 'Your wallet balance ({currency}) is insufficient for this job deposit (Required {amount})',
     },'pt': {
         'post_not_found': 'Postagem não encontrada',
         'closed_or_finished': '⛔ Esta postagem foi encerrada ou concluída.',
@@ -407,6 +409,7 @@ const serverTranslations = {
 		'note_approve_merchant': 'Loja aprovada: {name}',
         'msg_approve_success': 'Aprovado com sucesso. A taxa foi adicionada à sua carteira.',
         'msg_reject_success': 'Pedido rejeitado com sucesso.',
+		'err_insufficient_deposit': 'O saldo da sua carteira ({currency}) é insuficiente para o depósito deste trabalho (Necessário {amount})',
     }
 };
 
@@ -1402,6 +1405,66 @@ async function autoRefundOrder(order, reason) {
     // 5. แจ้งเตือน Socket
     io.to(order.customer).emit('order_refunded', { orderId: order.orderId, amount: refundAmount });
     io.to(order.merchant).emit('order_cancelled', { orderId: order.orderId });
+}
+
+// 🚩 ฟังก์ชันจัดการเงิน (คืนมัดจำ + จ่ายค่าจ้าง + จ่ายค่าอาหาร)
+async function processOrderPayout(orderId, postId) {
+    try {
+        // 1. ล็อกออเดอร์ทันที (Atomic Update) 
+        // จะทำงานสำเร็จเฉพาะออเดอร์ที่ paymentStatus ยังไม่เป็น 'paid' เท่านั้น
+        const lockOrder = await db.collection('orders').findOneAndUpdate(
+            { orderId: orderId, paymentStatus: { $ne: 'paid' } }, 
+            { $set: { 
+                paymentStatus: 'paid', 
+                status: 'finished', 
+                paidAt: new Date() 
+            } },
+            { returnDocument: 'after' }
+        );
+
+        // 2. ถ้าพบข้อมูล (แสดงว่าเราเป็นคนแรกที่กดจบงาน) ให้ทำเรื่องโอนเงิน
+        if (lockOrder.value) {
+            const order = lockOrder.value;
+            const post = await db.collection('posts').findOne({ id: parseInt(postId) });
+            const riderName = post.pendingRider || post.acceptedBy;
+            const zoneCurrency = order.currency || 'USD';
+
+            console.log(`💰 [Finance] Processing payout for Order: ${orderId}`);
+
+            // A. ฝั่งไรเดอร์: คืนมัดจำ (depositAmount) + จ่ายค่าจ้าง (riderWage)
+            if (riderName) {
+                const depositAmount = parseFloat(post.depositAmount || 0);
+                const riderWage = parseFloat(order.riderWage || 0);
+                const totalRiderPayout = depositAmount + riderWage;
+
+                await db.collection('users').updateOne(
+                    { username: riderName },
+                    { 
+                        $inc: { [zoneCurrency]: totalRiderPayout },
+                        $set: { working: null, riderWorking: null } // ปลดล็อคไรเดอร์
+                    }
+                );
+                console.log(`✅ Rider ${riderName} received: ${totalRiderPayout} (Refund: ${depositAmount}, Wage: ${riderWage})`);
+            }
+
+            // B. ฝั่งร้านค้า: จ่ายค่าอาหาร (foodPrice)
+            if (order.foodPrice > 0) {
+                await db.collection('users').updateOne(
+                    { username: post.author },
+                    { $inc: { [zoneCurrency]: parseFloat(order.foodPrice) } }
+                );
+                console.log(`✅ Merchant ${post.author} received food price: ${order.foodPrice}`);
+            }
+
+            // แจ้งเตือนอัปเดตยอดเงิน
+            io.to(riderName).emit('balance-update');
+            io.to(post.author).emit('balance-update');
+        } else {
+            console.log(`⚠️ [Finance] Order ${orderId} already processed. Skipping payout.`);
+        }
+    } catch (e) {
+        console.error("🚨 Critical Payout Error:", e);
+    }
 }
 
 
@@ -2967,6 +3030,78 @@ app.get('/api/posts/:id', async (req, res) => {
     }
 });
 
+// 12.1
+app.post('/api/posts/:id/apply', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { riderName, lang = 'th' } = req.body;
+
+    try {
+        // 1. หาข้อมูลโพสต์และไรเดอร์
+        const post = await db.collection('posts').findOne({ id: postId });
+        const rider = await db.collection('users').findOne({ username: riderName });
+
+        if (!post || !rider) return res.status(404).json({ success: false, error: "Data not found" });
+
+        // 2. เช็คว่าไรเดอร์กำลังทำงานอื่นอยู่ไหม (ป้องกันการรับงานซ้อน)
+        if (rider.working || rider.riderWorking) {
+            return res.status(400).json({ success: false, error: serverTranslations[lang].err_rider_busy || "คุณกำลังมีงานค้างอยู่" });
+        }
+
+        // 3. เช็คเงินในกระเป๋า (ต้องมีพอเท่ากับยอดมัดจำ)
+        // หมายเหตุ: ยอดมัดจำเราใช้สกุลเงินตามโซนของโพสต์นั้น
+        const depositReq = parseFloat(post.depositAmount || 0);
+        const zoneCurrency = post.zoneCurrency || 'USD'; 
+        const riderBalance = rider[zoneCurrency] || 0;
+
+        if (riderBalance < depositReq) {
+					let errorMsg = serverTranslations[lang].err_insufficient_deposit;
+						errorMsg = errorMsg.replace('{currency}', zoneCurrency)
+                       .replace('{amount}', depositReq.toLocaleString());
+
+						return res.status(400).json({ success: false, error: errorMsg });
+			}
+
+        // 🚩 4. เริ่มกระบวนการหักมัดจำ
+        if (depositReq > 0) {
+            await db.collection('users').updateOne(
+                { username: riderName },
+                { $inc: { [zoneCurrency]: -depositReq } }
+            );
+            
+            // บันทึกประวัติการหักมัดจำ
+            await db.collection('transactions').insertOne({
+                id: Date.now(),
+                type: 'DEPOSIT_HELD',
+                amount: depositReq,
+                currency: zoneCurrency,
+                fromUser: riderName,
+                note: `Hold deposit for job #${postId.toString().slice(-4)}`,
+                timestamp: Date.now()
+            });
+        }
+
+        // 5. อัปเดตสถานะโพสต์
+        await db.collection('posts').updateOne(
+            { id: postId },
+            { 
+                $set: { 
+                    pendingRider: riderName, 
+                    applyTimestamp: Date.now(),
+                    depositHeld: depositReq // บันทึกไว้ในโพสต์ด้วยว่าหักมาเท่าไหร่
+                } 
+            }
+        );
+
+        // 6. ส่ง Socket บอกร้านค้า
+        io.emit('rider-applied', { postId: postId, riderName: riderName });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Apply Job Error:", e);
+        res.status(500).json({ success: false });
+    }
+});
+
 // 13. Viewer Status
 app.get('/api/posts/:id/viewer-status', async (req, res) => { 
     const postId = parseInt(req.params.id);
@@ -4430,7 +4565,7 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
             updateData.status = 'closed_permanently';
             updateData.isClosed = true;
             updateData.finishTimestamp = Date.now();
-
+			await processOrderPayout(post.orderId, post.id);
             // 🚩 ปลดล็อค Rider ทันที (เพราะร้านค้าเป็นคนปิดงานให้)
             const riderName = post.acceptedBy || post.acceptedViewer;
             if (riderName) {
@@ -4654,6 +4789,8 @@ app.post('/api/posts/:id/checkin', async (req, res) => {
                 { id: postId },
                 { $set: { status: 'finished',riderWorking: null, finishedAt: Date.now() } }
             );
+			const updatedPost = await postsCollection.findOne({ id: postId });
+			await processOrderPayout(updatedPost.orderId, updatedPost.id);
             
             // 🔔 ส่งสัญญาณบอกร้านค้าว่าไรเดอร์ส่งครบแล้ว (เพิ่อให้อัปเดต UI อัตโนมัติ)
             io.emit('update-job-status', { postId: postId, status: 'finished' });
@@ -5042,7 +5179,7 @@ app.post('/api/posts/:postId/customer-bypass', async (req, res) => {
             updateData.status = 'closed_permanently';
             updateData.isClosed = true;
             updateData.finishTimestamp = Date.now();
-
+			await processOrderPayout(post.orderId, post.id);
             // ปลดล็อคไรเดอร์
             await db.collection('users').updateOne(
                 { username: post.acceptedBy },
