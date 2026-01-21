@@ -5448,7 +5448,7 @@ app.post('/api/merchant/accept-order', async (req, res) => {
             
             // 🚩 ยอดที่ไรเดอร์ต้องมัดจำ (ราคาสินค้าเท่านั้น ไม่รวมค่าจ้าง/ค่าธรรมเนียม)
             depositAmount: pending.foodPrice, 
-            
+            currency: pending.currency || 'USD',
             stops: stops,
             orderId: pending.orderId,
             zoneId: officialStore.zoneId, // แนบโซนไปด้วยตามที่เราแก้กันก่อนหน้า
@@ -5462,7 +5462,7 @@ app.post('/api/merchant/accept-order', async (req, res) => {
             status: 'accepted', 
             acceptedAt: new Date(), 
             postId: newPost.id,
-            depositAmount: pending.foodPrice // บันทึกไว้ในออเดอร์ด้วยเพื่อใช้ตรวจสอบตอนจบงาน
+            depositAmount: pending.foodPrice 
         });
         
         // 6. อัปเดตสถิติมือโพสต์ (ร้านค้า)
