@@ -5084,34 +5084,38 @@ app.post('/api/order/customer-cancel', async (req, res) => {
 
 
 app.post('/api/orders/submit-full-rating', async (req, res) => {
-    const { orderId, riderName, merchantName, ratings } = req.body;
-    console.log(`📥 [Rating Request] Order: ${orderId}, Merchant: ${merchantName}, Rider: ${riderName}`);
+    // 🚩 รับ zoneName เพิ่มเข้ามาจาก Body
+    const { orderId, riderName, merchantName, ratings, zoneName } = req.body;
+    console.log(`📥 [Rating Request] Order: ${orderId} | ZoneName: ${zoneName}`);
 
     try {
-        // 1. หาข้อมูลออเดอร์
         const order = await db.collection('orders').findOne({ orderId: orderId });
-        if (!order) {
-            console.error("❌ ไม่พบ OrderID:", orderId);
-            return res.status(404).json({ success: false, message: "No order found." });
+        if (!order) return res.status(404).json({ success: false, message: "No order found." });
+
+        // 🚩 --- ส่วนการหาโซนแบบใหม่ (New Zone Search Logic) ---
+        let zone = null;
+
+        // 1. ลองหาโซนจากชื่อที่ส่งมาจากหน้าจอลูกค้า (แม่นยำที่สุดตามพิกัดปัจจุบัน)
+        if (zoneName) {
+            zone = await db.collection('zones').findOne({ 
+                $or: [{ name: zoneName }, { zoneName: zoneName }] 
+            });
         }
 
-        // 🚩 แก้ไขจุดที่พี่เจอ: ถ้าในออเดอร์ไม่มี zoneId ให้ไปดึงจาก merchant_locations แทน
-        let zId = order.zoneId;
-        if (!zId) {
-            console.log("🔍 Order ไม่มี zoneId, กำลังดึงจากโปรไฟล์ร้านค้า...");
+        // 2. ถ้าหาด้วยชื่อไม่เจอ (เช่น ภาษาไม่ตรง) ให้หาจาก merchant_locations เหมือนเดิม
+        if (!zone) {
+            console.log("🔍 ไม่พบโซนจากชื่อ, กำลังหาจากโปรไฟล์ร้านค้า...");
             const merchantLoc = await db.collection('merchant_locations').findOne({ owner: merchantName });
             if (merchantLoc) {
-                zId = merchantLoc.zoneId;
-                console.log("✅ ดึง zoneId จากร้านค้าสำเร็จ:", zId);
+                zone = await db.collection('zones').findOne({ id: merchantLoc.zoneId });
             }
         }
+        // ---------------------------------------------------
 
-        // 2. หาข้อมูลโซน
-        const zone = await db.collection('zones').findOne({ id: zId });
-        if (!zone) {
-            console.error("❌ ไม่พบข้อมูลโซน ID:", zId);
-            // ถ้าไม่พบโซนจริงๆ เราจะข้ามส่วน Ranking ไป แต่ยังยอมให้อัปเดตคะแนนดาวเฉลี่ยได้ครับ
-            console.warn("⚠️ ระบบจะบันทึกแค่ดาวเฉลี่ย แต่จะไม่เพิ่มคะแนน Ranking เพราะไม่พบโซน");
+        if (zone) {
+            console.log(`✅ พบโซนที่เกี่ยวข้อง: ${zone.rankingVariable}`);
+        } else {
+            console.warn("⚠️ ไม่พบข้อมูลโซน ระบบจะอัปเดตแค่ดาวเฉลี่ย (v0)");
         }
 
         // 3. จัดการคะแนนไรเดอร์
@@ -5121,20 +5125,14 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
                 const score1 = parseFloat(ratings.riderSat);
                 const score2 = parseFloat(ratings.riderPolite);
                 
-                // คำนวณดาวเฉลี่ย (Rider Rating)
                 const currentCount = rider.ratingCount || 0;
                 const currentRating = rider.rating || 0;
                 const newAverage = ((currentRating * currentCount) + score1) / (currentCount + 1);
 
-                let updateFields = { 
-                    rating: parseFloat(newAverage.toFixed(2)) 
-                };
-                let incFields = { 
-                    ratingCount: 1,
-                    riderPoliteTotal: score2
-                };
+                let updateFields = { rating: parseFloat(newAverage.toFixed(2)) };
+                let incFields = { ratingCount: 1, riderPoliteTotal: score2 };
 
-                // 🏆 จัดการ Ranking (เฉพาะถ้าเจอโซน)
+                // 🏆 คำนวณ Ranking คะแนน (v0 หรือ v_รอบปัจจุบัน)
                 if (zone) {
                     const ptsToAdd = calculateRankPoints(score1, score2);
                     let targetCycle = 0; 
@@ -5148,7 +5146,6 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
                     }
                     const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
                     incFields[rankingKey] = ptsToAdd;
-                    console.log(`✨ เพิ่มคะแนน Ranking: ${ptsToAdd} ลงใน ${rankingKey}`);
                 }
 
                 await db.collection('users').updateOne(
@@ -5158,14 +5155,12 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
             }
         }
 
-        // 4. จัดการคะแนนร้านค้า
+        // 4. จัดการคะแนนร้านค้า (Merchant)
         if (merchantName) {
             const merchant = await db.collection('users').findOne({ username: merchantName });
             if (merchant) {
                 const mScore = parseFloat(ratings.merchantRate);
-                const mCount = merchant.merchantRatingCount || 0;
-                const mRating = merchant.merchantRating || 0;
-                const newMAverage = ((mRating * mCount) + mScore) / (mCount + 1);
+                const newMAverage = (((merchant.merchantRating || 0) * (merchant.merchantRatingCount || 0)) + mScore) / ((merchant.merchantRatingCount || 0) + 1);
 
                 await db.collection('users').updateOne(
                     { username: merchantName },
@@ -5177,18 +5172,17 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
             }
         }
 
-        // 5. บันทึกว่าออเดอร์นี้ให้คะแนนแล้ว
+        // 5. บันทึกว่าให้คะแนนแล้ว
         await db.collection('orders').updateOne(
             { orderId: orderId },
             { $set: { isRated: true, customerRatings: ratings } }
         );
 
-        console.log("✅ บันทึกคะแนนทั้งหมดสำเร็จ!");
         res.json({ success: true, message: "Scores recorded successfully." });
 
     } catch (e) {
         console.error("🚨 Submit Rating Error:", e);
-        res.status(500).json({ success: false, error: "Database Error" });
+        res.status(500).json({ success: false });
     }
 });
 

@@ -1501,24 +1501,28 @@ async function submitTripleRating() {
         return Swal.fire('กรุณาให้คะแนนครบทุกหัวข้อ', '', 'warning');
     }
 
+    // 🚩 ดึงชื่อโซนจากหน้าจอ (ที่อัปเดตจากฟังก์ชัน updateTopBalance)
+    const zoneNameDisplay = document.getElementById('currentZoneName').innerText;
+
     try {
         const res = await fetch('/api/orders/submit-full-rating', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 orderId: currentRatingOrderId,
-                riderName: riderUser, // ได้มาจาก loadChatHistory
-                merchantName: merchantUser, // ได้มาจาก loadChatHistory
-                ratings: ratings
+                riderName: riderUser,
+                merchantName: merchantUser,
+                ratings: ratings,
+                zoneName: zoneNameDisplay // 🚩 ส่งชื่อโซนไปให้ Server ด้วย
             })
         });
         
         const data = await res.json();
         if (data.success) {
-    Swal.fire('ขอบคุณสำหรับการให้คะแนน!', '', 'success');
-    closeRatingModal();
-    loadMyOrders(); // 🚩 เรียกโหลดข้อมูลใหม่ทันที การ์ดที่เพิ่งให้คะแนนจะหายไป
-}
+            Swal.fire('ขอบคุณสำหรับการให้คะแนน!', '', 'success');
+            closeRatingModal();
+            loadMyOrders(); 
+        }
     } catch (e) { console.error(e); }
 }
 
