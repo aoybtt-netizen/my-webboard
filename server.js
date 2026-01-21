@@ -3033,7 +3033,7 @@ app.post('/api/posts/:id/handover', async (req, res) => {
 // 15. Create Post (เวอร์ชันรองรับ Merchant โดยเฉพาะ)
 app.post('/api/posts', upload.single('image'), async (req, res) => {
     const lang = req.body.lang || 'th'; 
-    const { author, category, content, location, title, budget, stops } = req.body;
+    const { author, category, content, location, title, budget, stops, depositAmount } = req.body;
     const isMerchantTask = req.body.isMerchantTask === 'true' || req.body.isMerchantTask === true;
 
     // 1. ตรวจสอบเงื่อนไขพื้นฐาน (รักษาของเดิมไว้ทั้งหมด)
@@ -3205,6 +3205,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
         isMerchantTask: isMerchantTask,
         storeName: storeName, // ชื่อนี้จะโชว์บนหน้า Post Card
         budget: budget,
+		depositAmount: depositAmount ? parseFloat(depositAmount) : 0,
         stops: parsedStops
     };
 
@@ -5225,18 +5226,18 @@ app.post('/api/merchant/accept-order', async (req, res) => {
         const pending = await db.collection('pending_orders').findOne({ orderId, merchant: merchantUser });
         if (!pending) return res.status(400).json({ error: "Order not found or expired" });
 
-        // 2. ดึงข้อมูลร้านค้า (เพื่อเอาชื่อร้านและพิกัดที่แท้จริง)
+        // 2. ดึงข้อมูลโปรไฟล์ร้านค้า
         const officialStore = await db.collection('merchant_locations').findOne({ 
             owner: merchantUser, 
             isStore: true 
         });
         if (!officialStore) return res.status(400).json({ error: "Merchant profile not found" });
 
-        // 🚩 3. เตรียม Stops (จุดรับ: ร้านค้า, จุดส่ง: ลูกค้า)
+        // 3. เตรียม Stops (จุดรับ-ส่ง)
         const stops = [
             {
                 step: 1,
-                label: officialStore.label, // ชื่อร้านค้า
+                label: officialStore.label,
                 phone: officialStore.phone || '',
                 lat: parseFloat(officialStore.lat),
                 lng: parseFloat(officialStore.lng),
@@ -5244,7 +5245,7 @@ app.post('/api/merchant/accept-order', async (req, res) => {
             },
             {
                 step: 2,
-                label: "Customer (Delivery)", // จุดส่งลูกค้า
+                label: "Customer (Delivery)",
                 phone: pending.customerPhone || '',
                 lat: parseFloat(pending.customerLocation.lat),
                 lng: parseFloat(pending.customerLocation.lng),
@@ -5252,12 +5253,12 @@ app.post('/api/merchant/accept-order', async (req, res) => {
             }
         ];
 
-        // 🚩 4. สร้างข้อมูลโพสต์ (ใช้ Logic เดียวกับ /api/posts)
+        // 🚩 4. สร้างข้อมูลโพสต์ (เพิ่มฟิลด์ depositAmount)
         const newPost = {
             id: Date.now(),
-            title: officialStore.label, // หัวข้อเป็นชื่อร้านตามที่พี่ต้องการ
+            title: officialStore.label,
             topicId: 'delivery',
-            content: pending.items, // รายการอาหารที่สั่ง
+            content: pending.items,
             author: merchantUser, 
             location: { lat: officialStore.lat, lng: officialStore.lng },
             imageUrl: null, 
@@ -5266,39 +5267,47 @@ app.post('/api/merchant/accept-order', async (req, res) => {
             isPinned: false,
             isMerchantTask: true,
             storeName: officialStore.label,
-            budget: pending.riderWage, // 🚩 ค่าส่งที่ลูกค้ากำหนดตอน Checkout
+            
+            // ยอดที่ไรเดอร์จะได้รับเมื่อจบงาน (ค่าจ้าง)
+            budget: pending.riderWage, 
+            
+            // 🚩 ยอดที่ไรเดอร์ต้องมัดจำ (ราคาสินค้าเท่านั้น ไม่รวมค่าจ้าง/ค่าธรรมเนียม)
+            depositAmount: pending.foodPrice, 
+            
             stops: stops,
             orderId: pending.orderId,
+            zoneId: officialStore.zoneId, // แนบโซนไปด้วยตามที่เราแก้กันก่อนหน้า
             createdAt: new Date()
         };
 
-        // 5. บันทึกลงฐานข้อมูล (ย้ายจาก Pending ไปเป็น Order จริง และสร้าง Post)
+        // 5. บันทึกลงฐานข้อมูล
         await db.collection('posts').insertOne(newPost);
         await db.collection('orders').insertOne({ 
             ...pending, 
             status: 'accepted', 
             acceptedAt: new Date(), 
-            postId: newPost.id 
+            postId: newPost.id,
+            depositAmount: pending.foodPrice // บันทึกไว้ในออเดอร์ด้วยเพื่อใช้ตรวจสอบตอนจบงาน
         });
         
-        // 6. อัปเดตสถิติร้านค้า
+        // 6. อัปเดตสถิติมือโพสต์ (ร้านค้า)
         await db.collection('users').updateOne(
             { username: merchantUser }, 
             { $inc: { totalPosts: 1, mercNum: 1 } }
         );
 
-        // 7. ลบข้อมูลออกจาก Pending
+        // 7. ลบออกจากรายการรอรับ (Pending)
         await db.collection('pending_orders').deleteOne({ orderId });
 
-        // 🚩 8. ส่ง Socket ให้ไรเดอร์ทุกคนเห็นงานใหม่ทันที
-        io.emit('new-post', newPost);
-		io.to(pending.customer).emit('order_accepted_update', { 
-			orderId: pending.orderId, 
-			postId: newPost.id,
-			status: 'accepted'
-		});
+        // 8. กระจายข่าวผ่าน Socket
+        io.emit('new-post', newPost); // ไรเดอร์ทุกคนจะเห็นงานพร้อม "ยอดมัดจำ"
+        io.to(pending.customer).emit('order_accepted_update', { 
+            orderId: pending.orderId, 
+            postId: newPost.id,
+            status: 'accepted'
+        });
 
-        res.json({ success: true, message: "Order accepted and task posted!" });
+        res.json({ success: true, message: "Order accepted and task posted with deposit requirement!" });
     } catch (e) {
         console.error("Accept Order API Error:", e);
         res.status(500).json({ error: "Server Error" });

@@ -994,6 +994,9 @@ input:checked + .slider:before { transform: translateX(20px); }
 
         <label data-i18n-key="lbl_task_budget">งบประมาณจ้างงาน (บาท)</label>
         <input type="number" id="task-budget" data-i18n-key="plh_task_budget" placeholder="ระบุยอดเงิน..." oninput="updateTitlePreview()">
+		
+		<label data-i18n-key="lbl_task_deposit" style="color: #e67e22;">ยอดเงินมัดจำสินค้า/อาหาร (บาท)</label>
+		<input type="number" id="task-deposit" placeholder="ระบุยอดมัดจำ (ถ้ามี)..." style="border: 1px solid #e67e22;">
 
         <div id="stops-container"></div>
 
@@ -2664,6 +2667,8 @@ function updateTitlePreview() {
     formData.append('title', finalTitle);
     formData.append('content', document.getElementById('task-desc').value);
     formData.append('budget', document.getElementById('task-budget').value || 0);
+	const depositVal = document.getElementById('task-deposit').value || 0;
+    formData.append('depositAmount', depositVal);
     formData.append('isMerchantTask', true);
     formData.append('stops', JSON.stringify(stops));
     const mainLocation = { lat: stops[0].lat, lng: stops[0].lng };
@@ -2684,6 +2689,7 @@ function updateTitlePreview() {
             await loadActiveMerchantTasks(); 
             document.getElementById('task-desc').value = '';
             document.getElementById('task-budget').value = '';
+			document.getElementById('task-deposit').value = '';
             document.getElementById('stops-container').innerHTML = '';
             stopCount = 0;
             updateTitlePreview();
@@ -4011,7 +4017,6 @@ socket.on('new_order_card', (order) => {
     if(sound) sound.play().catch(e => console.log("Sound play blocked"));
 });
 
-// 🚩 2. อัปเดตการแสดงผลปุ่มลอย
 function updateOrderUI() {
     const btn = document.getElementById('floatingOrderBtn');
     const badge = document.getElementById('orderCountBadge');
@@ -4024,7 +4029,6 @@ function updateOrderUI() {
     }
 }
 
-// 🚩 3. เปิดดูรายการออเดอร์
 function openOrderList() {
     const container = document.getElementById('orderListContainer');
     container.innerHTML = '';
