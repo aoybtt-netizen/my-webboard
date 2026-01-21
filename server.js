@@ -4150,74 +4150,99 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
     const postId = parseInt(req.params.id);
-    const { username } = req.body; 
+    const { username } = req.body; // ชื่อร้านค้าที่กดยกเลิก
 
     try {
-        // 1. ค้นหาข้อมูลงานก่อนลบ
         const post = await db.collection('posts').findOne({ id: postId });
         if (!post) return res.status(404).json({ success: false, error: 'ไม่พบข้อมูลงาน' });
 
-        // 2. ป้องกันการลบหากมีไรเดอร์รับงานไปแล้ว
         if (post.acceptedBy) {
-            return res.status(400).json({ success: false, error: 'มีไรเดอร์รับงานแล้ว ไม่สามารถลบได้' });
+            return res.status(400).json({ success: false, error: 'มีไรเดอร์รับงานแล้ว ไม่สามารถยกเลิกได้' });
         }
 
         const currency = post.currency || 'USD';
 
-        // 🚩 3. จัดการออเดอร์และคืนเงิน
         if (post.orderId) {
-            // --- กรณี A: งานจากลูกค้า (มี orderId) ---
+            // ==========================================
+            // กรณี A: ยกเลิกงาน "ลูกค้า" (Customer Order)
+            // ==========================================
             const order = await db.collection('orders').findOne({ orderId: post.orderId });
             
             if (order) {
-                // คืนเงินให้ลูกค้า (ยอดรวมทั้งหมด)
-                const refundAmount = parseFloat(order.totalPrice || 0);
-                await db.collection('users').updateOne(
-                    { username: order.customer },
-                    { $inc: { [currency]: refundAmount } }
-                );
-
-                // บันทึกประวัติการคืนเงิน
-                await db.collection('transactions').insertOne({
-                    id: Date.now(),
-                    type: 'ORDER_CANCEL_REFUND',
-                    amount: refundAmount,
-                    currency: currency,
-                    toUser: order.customer,
-                    note: `Refund order #${post.orderId} (Delete order)`,
-                    timestamp: Date.now()
-                });
-
-                // 🚩 ลบออเดอร์ออกจากคอลเลกชัน orders ทันที
-                await db.collection('orders').deleteOne({ orderId: post.orderId });
-                console.log(`🗑️ ลบออเดอร์ #${post.orderId} และคืนเงินให้ลูกค้าเรียบร้อย`);
+                // 1. คืนเงินลูกค้า (คืนเฉพาะ ค่าอาหาร + ค่าจ้างไรเดอร์)
+                // ส่วนค่าธรรมเนียมที่ลูกค้าจ่ายไปตอนแรก ระบบจะถือว่าหักไปแล้วและไม่คืน (ตามนโยบายเดิม)
+                const refundToCustomer = parseFloat(order.foodPrice || 0) + parseFloat(order.riderWage || 0);
                 
+                if (refundToCustomer > 0) {
+                    await db.collection('users').updateOne(
+                        { username: order.customer },
+                        { $inc: { [currency]: refundToCustomer } }
+                    );
+                    
+                    // บันทึก Transaction คืนเงินให้ลูกค้า
+                    await db.collection('transactions').insertOne({
+                        id: Date.now(),
+                        type: 'ORDER_CANCEL_REFUND',
+                        amount: refundToCustomer,
+                        currency: currency,
+                        toUser: order.customer,
+                        note: `Refund for goods + labor costs for the order#${post.orderId}`,
+                        timestamp: Date.now()
+                    });
+                }
+
+                // 🚩 2. หักค่าธรรมเนียมร้านค้า (Penalty) เท่ากับค่าสร้างออเดอร์
+                // คำนวณจาก zoneFee + systemZone ที่บันทึกไว้ในออเดอร์
+                const penaltyFee = parseFloat(order.zoneFee || 0) + parseFloat(order.systemZone || 0);
+
+                if (penaltyFee > 0) {
+                    await db.collection('users').updateOne(
+                        { username: username }, // ร้านค้าที่กดยกเลิก
+                        { $inc: { [currency]: -penaltyFee } }
+                    );
+
+                    // บันทึก Transaction หักค่าปรับร้านค้า
+                    await db.collection('transactions').insertOne({
+                        id: Date.now() + 1,
+                        type: 'MERCHANT_CANCEL_PENALTY',
+                        amount: penaltyFee,
+                        currency: currency,
+                        fromUser: username,
+                        note: `Customer order cancellation fee #${post.orderId}`,
+                        timestamp: Date.now() + 1
+                    });
+                    console.log(`⚠️ [Penalty] หักค่าปรับร้านค้า ${username} จำนวน ${penaltyFee} ${currency}`);
+                }
+
+                // ลบออเดอร์ออกจากระบบ
+                await db.collection('orders').deleteOne({ orderId: post.orderId });
                 io.to(order.customer).emit('balance-update');
             }
         } else {
-            // --- กรณี B: งานที่ร้านค้าสร้างเอง ---
+            // ==========================================
+            // กรณี B: ยกเลิกงาน "ร้านค้าสร้างเอง" (Manual Task)
+            // ==========================================
             const refundAmount = parseFloat(post.budget || 0);
             if (refundAmount > 0) {
                 await db.collection('users').updateOne(
                     { username: username },
                     { $inc: { [currency]: refundAmount } }
                 );
-                console.log(`💰 คืนค่าจ้าง ${refundAmount} ${currency} ให้ร้านค้า`);
             }
         }
 
-        // 4. ลดแต้ม mercNum ของร้านค้า และลบโพสต์งาน
+        // 4. ลดแต้ม mercNum และลบโพสต์งาน
         await db.collection('users').updateOne({ username: username }, { $inc: { mercNum: -1 } });
         await db.collection('posts').deleteOne({ id: postId });
 
-        // 5. แจ้งอัปเดตสถานะและยอดเงิน
+        // 5. แจ้งอัปเดต UI
         io.emit('balance-update', { user: username });
-        io.emit('update-post-status'); // เพื่อให้หน้า Index ไรเดอร์อัปเดต
+        io.emit('update-post-status'); 
 
-        res.json({ success: true, message: "The job and related order information have been successfully deleted." });
+        res.json({ success: true, message: "Order cancelled successfully (customer refunded, store fees deducted)" });
 
     } catch (err) {
-        console.error("🚨 Delete Task/Order Error:", err);
+        console.error("🚨 Delete Task/Penalty Error:", err);
         res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
