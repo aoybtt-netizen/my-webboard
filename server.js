@@ -4488,12 +4488,12 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
     const { rating, responsibility, author } = req.body; 
 
     try {
-        const post = await db.collection('posts').findOne({ id: parseInt(postId) });
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
         if (!post) return res.status(404).json({ success: false });
 
         const riderName = post.acceptedBy || post.acceptedViewer;
 
-        // 1. อัปเดตออเดอร์เป็น Finished
+        // 1. อัปเดตสถานะออเดอร์หลัก
         if (post.orderId) {
             await db.collection('orders').updateOne(
                 { orderId: post.orderId },
@@ -4501,12 +4501,12 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
             );
         }
 
-        // 🚩 2. ปิดโพสต์ถาวร (ย้ายขึ้นมาให้ทำก่อนเพื่อความชัวร์ว่าการ์ดจะหาย)
-        await db.collection('posts').updateOne(
+        // 🚩 2. จุดสำคัญ: เปลี่ยน status เป็น 'closed_by_merchant' เพื่อให้หายจากหน้าจอ
+        await postsCollection.updateOne(
             { id: parseInt(postId) },
             { 
                 $set: { 
-                    status: 'closed_permanently', 
+                    status: 'closed_by_merchant', // เปลี่ยนจาก closed_permanently
                     isClosed: true,
                     merchantRating: rating, 
                     finishTimestamp: Date.now()
@@ -4514,47 +4514,46 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
             }
         );
 
-        // 3. จัดการคะแนนไรเดอร์ (เพิ่มการเช็คโซน)
+        // 3. คำนวณคะแนน Rider และจัดการระบบ Ranking
         const zone = await db.collection('zones').findOne({ id: post.zoneId });
-        
-        if (riderName) {
-            const rider = await db.collection('users').findOne({ username: riderName });
+        if (riderName && zone) {
+            const rider = await usersCollection.findOne({ username: riderName });
             if (rider) {
                 const s1 = parseFloat(rating);
                 const s2 = parseFloat(responsibility || 3);
                 const newAvg = (((rider.rating || 0) * (rider.ratingCount || 0)) + s1) / ((rider.ratingCount || 0) + 1);
 
-                let updateObj = { 
+                // ปลดล็อคสถานะ Rider
+                let updateData = {
                     $set: { working: null, riderWorking: null, rating: parseFloat(newAvg.toFixed(2)) },
                     $inc: { ratingCount: 1, totalJobs: 1 }
                 };
 
-                // อัปเดต Ranking เฉพาะเมื่อพบโซน
-                if (zone) {
-                    const pts = calculateRankPoints(s1, s2);
-                    let cycle = 0;
-                    if (zone.isCompetitionActive) {
-                        cycle = (zone.requireKYC && rider.kycStatus !== 'approved') ? 0 : (zone.currentCycle || 1);
-                    }
-                    const rankingKey = `ranking_data.${zone.rankingVariable}_v${cycle}`;
-                    updateObj.$inc[rankingKey] = pts;
+                // เพิ่มคะแนนการแข่งขัน (ถ้ามีโซน)
+                const pts = calculateRankPoints(s1, s2);
+                let cycle = 0;
+                if (zone.isCompetitionActive) {
+                    cycle = (zone.requireKYC && rider.kycStatus !== 'approved') ? 0 : (zone.currentCycle || 1);
                 }
+                const rankingKey = `ranking_data.${zone.rankingVariable}_v${cycle}`;
+                updateData.$inc[rankingKey] = pts;
 
-                await db.collection('users').updateOne({ username: riderName }, updateObj);
+                await usersCollection.updateOne({ username: riderName }, updateData);
             }
         }
 
-        // 4. อัปเดตสถิติจบงานให้ร้านค้า
-        await db.collection('users').updateOne(
+        // 4. อัปเดตสถิติร้านค้า
+        await usersCollection.updateOne(
             { username: post.author },
             { $inc: { totalJobs: 1, authorCompletedJobs: 1, mercNum: -1 } }
         );
 
-        // 5. แจ้งเตือน Socket
+        // 5. แจ้งเตือนผ่าน Socket ให้หน้าจอรีเฟรชข้อมูล
         io.to(postId.toString()).emit('job-finished-complete', { postId, rating });
         io.emit('update-post-status'); 
 
-        res.json({ success: true });
+        res.json({ success: true, message: "Job finished and hidden." });
+
     } catch (error) {
         console.error("Finish Job Error:", error);
         res.status(500).json({ success: false });
@@ -4778,36 +4777,40 @@ app.post('/api/posts/:id/reject-rider', async (req, res) => {
 
 // API: ไรเดอร์ให้คะแนนร้านค้า (ปลดล็อคสถานะ working)
 app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
-    const lang = req.body.lang || 'th';
+	const lang = req.body.lang || 'th';
     const { postId } = req.params;
     const { rating, riderName } = req.body;
 
     try {
-        const post = await db.collection('posts').findOne({ id: parseInt(postId) });
-        if (!post) return res.status(404).json({ success: false });
+        const post = await postsCollection.findOne({ id: parseInt(postId) });
+        if (!post) {
+					return res.status(404).json({ 
+					success: false, 
+					error: serverTranslations[lang].err_job_not_found_alt 
+				});
+        }
 
-        // 1. บันทึกคะแนนไรเดอร์ลงในงาน
-        await db.collection('posts').updateOne(
+        // 1. บันทึกคะแนนลงในงาน
+        const updatePost = await postsCollection.updateOne(
             { id: parseInt(postId) },
             { $set: { riderToMerchantRating: rating, riderProcessStatus: 'rated' } }
         );
 
-        // 2. ปลดล็อค Rider (ใช้ฟิลด์ working ให้ตรงกับจุดอื่น)
-        await db.collection('users').updateOne(
+        // 🚩 2. ปลดล็อค Rider ให้ว่างงาน (ลบตัวแปร working ออก)
+        const updateRider = await usersCollection.updateOne(
             { username: riderName },
-            { $set: { working: null, riderWorking: null } } // ใส่ไว้ทั้งคู่เพื่อกันเหนียวครับ
+            { $set: { riderWorking: null } }
         );
 
         // 3. อัปเดตคะแนนสะสมให้ร้านค้า
-        await db.collection('users').updateOne(
+        const updateMerchant = await usersCollection.updateOne(
             { username: post.author },
             { $inc: { merchantRatingScore: rating, merchantRatingCount: 1 } }
         );
 
-        // 🚩 4. แจ้งเตือนหน้าจอกลางและร้านค้าให้รีโหลดรายการ
-        io.emit('update-post-status'); 
         res.json({ success: true });
     } catch (err) {
+        console.error("🚨 Rate-Merchant Error:", err);
         res.status(500).json({ success: false });
     }
 });
