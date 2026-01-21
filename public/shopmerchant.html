@@ -401,7 +401,11 @@ header {
 	
 	let currentRatingOrderId = null;
 	let ratings = { riderSat: 0, riderPolite: 0, merchantRate: 0 };
-	
+	const myUsername = localStorage.getItem('myUsername');
+	if (myUsername) {
+    socket.emit('register-user', myUsername);
+    console.log(`🔌 Socket connected as: ${myUsername}`);
+	}
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 				
@@ -434,7 +438,7 @@ const translations = {
 		'rider_wage_label': 'ค่าจ้างไรเดอร์:',
 		'total_deduction_label': 'ยอดหักเงินรวม:',
 		'confirm_btn': 'ยืนยัน หักเงินทันที',
-		'bpconfirm_btn': 'Confirm',
+		'bpconfirm_btn': 'Bypass To Finish Order',
 		'cancel_btn': 'ยกเลิก',
 		'please_select_item': 'กรุณาเลือกสินค้าอย่างน้อย 1 รายการ',
 		'order_success_title': 'สั่งซื้อสำเร็จ!',
@@ -494,7 +498,7 @@ const translations = {
 		'rider_wage_label': 'Rider Wage:',
 		'total_deduction_label': 'Total Amount:',
 		'confirm_btn': 'Confirm & Pay Now',
-		'bpconfirm_btn': 'Confirm',
+		'bpconfirm_btn': 'Bypass To Finish Order',
 		'cancel_btn': 'Cancel',
 		'please_select_item': 'Please select at least 1 item',
 		'order_success_title': 'Order Successful!',
@@ -554,7 +558,7 @@ const translations = {
 		'rider_wage_label': 'Taxa do Entregador:',
 		'total_deduction_label': 'Total:',
 		'confirm_btn': 'Confirmar e Pagar Agora',
-		'bpconfirm_btn': 'Confirm',
+		'bpconfirm_btn': 'Bypass To Finish Order',
 		'cancel_btn': 'Cancelar',
 		'please_select_item': 'Selecione pelo menos 1 item',
 		'order_success_title': 'Pedido com Sucesso!',
@@ -1414,10 +1418,18 @@ socket.on('new-comment', (data) => {
 
 
 // ฝั่งลูกค้า (index.html หรือหน้าสั่งซื้อ)
-socket.on('order_accepted_update', (data) => {
+socket.on('order_accepted_update', async (data) => {
+    console.log("🔔 Order Accepted Update received:", data);
+    
     if (typeof loadMyOrders === 'function') {
-        loadMyOrders(); 
+        await loadMyOrders(); 
+        
+        const modal = document.getElementById('myOrdersModal');
+        if (modal && !modal.classList.contains('hidden')) {
+            openMyOrdersModal();
+        }
     }
+
     Swal.fire({
         icon: 'success',
         title: translations[currentLang].order_accepted_title,

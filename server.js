@@ -5900,6 +5900,11 @@ io.on('connection', (socket) => {
         console.log(`User [${socket.id}] joined room: ${roomName}`);
     });
 	
+	socket.on('register-user', (username) => {
+        socket.join(username);
+        console.log(`👤 User joined personal room: ${username}`);
+    });
+	
 	socket.on('admin_reset_user_status', async ({ targetUsername }) => {
     // เช็คว่าเป็น Admin หรือไม่ (ความปลอดภัย)
     // if (!currentUser || currentUser.adminLevel < 1) return; 
