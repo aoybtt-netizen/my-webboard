@@ -1410,58 +1410,81 @@ async function autoRefundOrder(order, reason) {
 // 🚩 ฟังก์ชันจัดการเงิน (คืนมัดจำ + จ่ายค่าจ้าง + จ่ายค่าอาหาร)
 async function processOrderPayout(orderId, postId) {
     try {
-        // 1. ล็อกออเดอร์ทันที (Atomic Update) 
-        // จะทำงานสำเร็จเฉพาะออเดอร์ที่ paymentStatus ยังไม่เป็น 'paid' เท่านั้น
-        const lockOrder = await db.collection('orders').findOneAndUpdate(
-            { orderId: orderId, paymentStatus: { $ne: 'paid' } }, 
-            { $set: { 
-                paymentStatus: 'paid', 
-                status: 'finished', 
-                paidAt: new Date() 
-            } },
-            { returnDocument: 'after' }
+        console.log(`🔍 [Finance] Attempting payout for Order: ${orderId}, Post: ${postId}`);
+
+        const post = await db.collection('posts').findOne({ id: parseInt(postId) });
+        if (!post) {
+            console.error("❌ [Finance] Post not found");
+            return;
+        }
+
+        const riderName = post.pendingRider || post.acceptedBy;
+        const zoneCurrency = post.currency || 'USD'; // ใช้ currency จาก post เป็นหลัก
+        const depositHeld = parseFloat(post.depositHeld || 0);
+        let riderWage = parseFloat(post.budget || 0); // ค่าจ้างจากหน้าโพสต์
+        let foodPrice = 0;
+
+        // --- กรณีที่ 1: เป็นออเดอร์ระบบ (มี orderId) ---
+        if (orderId) {
+            const lockOrder = await db.collection('orders').findOneAndUpdate(
+                { orderId: orderId, paymentStatus: { $ne: 'paid' } },
+                { $set: { paymentStatus: 'paid', status: 'finished', paidAt: new Date() } },
+                { returnDocument: 'after' }
+            );
+
+            // ตรวจสอบว่า lockOrder มีค่าหรือไม่ (รองรับทั้ง Driver version เก่าและใหม่)
+            const orderDoc = lockOrder.value || lockOrder; 
+
+            if (orderDoc && orderDoc.orderId) {
+                riderWage = parseFloat(orderDoc.riderWage || 0);
+                foodPrice = parseFloat(orderDoc.foodPrice || 0);
+                console.log(`💰 [Finance] System Order detected. Wage: ${riderWage}, Food: ${foodPrice}`);
+            } else {
+                console.log(`⚠️ [Finance] Order ${orderId} already paid or not found. Checking if it's a Manual Task...`);
+                // ถ้าเป็นออเดอร์ระบบแต่จ่ายไปแล้ว ให้หยุดทำงานเพื่อป้องกันเงินเบิ้ล
+                if (orderId.startsWith("ORD")) return; 
+            }
+        }
+
+        // --- กรณีที่ 2: เป็นงานร้านค้าโพสต์เอง หรือ ผ่านการตรวจสอบจากด้านบนแล้ว ---
+        // เช็คอีกครั้งว่าไรเดอร์ยังไม่ได้รับเงิน (ใช้ flag ใน post ป้องกันโอนซ้ำ)
+        const postLock = await db.collection('posts').findOneAndUpdate(
+            { id: parseInt(postId), payoutCompleted: { $ne: true } },
+            { $set: { payoutCompleted: true } }
         );
 
-        // 2. ถ้าพบข้อมูล (แสดงว่าเราเป็นคนแรกที่กดจบงาน) ให้ทำเรื่องโอนเงิน
-        if (lockOrder.value) {
-            const order = lockOrder.value;
-            const post = await db.collection('posts').findOne({ id: parseInt(postId) });
-            const riderName = post.pendingRider || post.acceptedBy;
-            const zoneCurrency = order.currency || 'USD';
+        if (postLock.value || postLock) {
+            const totalRiderPayout = riderWage + depositHeld;
 
-            console.log(`💰 [Finance] Processing payout for Order: ${orderId}`);
-
-            // A. ฝั่งไรเดอร์: คืนมัดจำ (depositAmount) + จ่ายค่าจ้าง (riderWage)
-            if (riderName) {
-                const depositAmount = parseFloat(post.depositAmount || 0);
-                const riderWage = parseFloat(order.riderWage || 0);
-                const totalRiderPayout = depositAmount + riderWage;
-
+            // A. จ่ายเงินให้ไรเดอร์ (ค่าจ้าง + คืนมัดจำ)
+            if (riderName && totalRiderPayout > 0) {
                 await db.collection('users').updateOne(
                     { username: riderName },
                     { 
                         $inc: { [zoneCurrency]: totalRiderPayout },
-                        $set: { working: null, riderWorking: null } // ปลดล็อคไรเดอร์
+                        $set: { working: null, riderWorking: null }
                     }
                 );
-                console.log(`✅ Rider ${riderName} received: ${totalRiderPayout} (Refund: ${depositAmount}, Wage: ${riderWage})`);
+                console.log(`✅ [Finance] Rider ${riderName} received: ${totalRiderPayout} ${zoneCurrency}`);
             }
 
-            // B. ฝั่งร้านค้า: จ่ายค่าอาหาร (foodPrice)
-            if (order.foodPrice > 0) {
+            // B. จ่ายเงินค่าอาหารให้ร้านค้า (ถ้ามี)
+            if (foodPrice > 0) {
                 await db.collection('users').updateOne(
                     { username: post.author },
-                    { $inc: { [zoneCurrency]: parseFloat(order.foodPrice) } }
+                    { $inc: { [zoneCurrency]: foodPrice } }
                 );
-                console.log(`✅ Merchant ${post.author} received food price: ${order.foodPrice}`);
+                console.log(`✅ [Finance] Merchant ${post.author} received food price: ${foodPrice} ${zoneCurrency}`);
             }
 
-            // แจ้งเตือนอัปเดตยอดเงิน
-            io.to(riderName).emit('balance-update');
+            // แจ้งเตือน Socket
+            if (riderName) io.to(riderName).emit('balance-update');
             io.to(post.author).emit('balance-update');
+            
         } else {
-            console.log(`⚠️ [Finance] Order ${orderId} already processed. Skipping payout.`);
+            console.log("⚠️ [Finance] Payout already completed for this post.");
         }
+
     } catch (e) {
         console.error("🚨 Critical Payout Error:", e);
     }
