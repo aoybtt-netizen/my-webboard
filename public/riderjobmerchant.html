@@ -846,7 +846,16 @@ async function handleCheckIn(index, targetLat, targetLng) {
 
 async function acceptJob() {
     if (!myUsername) return alert(translations[currentLang].err_not_logged_in);
-	if (!confirm(translations[currentLang].confirm_request_job)) return;
+
+    // 🚩 ดึงข้อมูลมัดจำจาก currentPostData (ที่ได้มาจาก loadJobDetails)
+    const deposit = currentPostData.depositAmount || 0;
+    const currency = currentPostData.zoneCurrency || 'USD'; // หรือดึงจากระบบโซน
+    
+    // แจ้งเตือนพร้อมระบุยอดมัดจำ
+    const confirmMsg = `${translations[currentLang].confirm_request_job}\n` + 
+                       `(ยอดมัดจำสินค้า: ${deposit.toLocaleString()} ${currency})`;
+
+    if (!confirm(confirmMsg)) return;
 
     const btn = document.querySelector('.btn-accept');
     const originalText = btn.innerHTML;
@@ -858,14 +867,18 @@ async function acceptJob() {
         const res = await fetch(`/api/posts/${jobId}/apply`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ riderName: myUsername })
+            body: JSON.stringify({ 
+                riderName: myUsername,
+                lang: currentLang // ส่งภาษาไปด้วยเพื่อ Error Message ที่ถูกต้อง
+            })
         });
         const data = await res.json();
 
         if (data.success) {
             alert(translations[currentLang].msg_request_success);
-            location.reload(); // โหลดใหม่เพื่อแสดงสถานะ "รอการตอบรับ"
+            location.reload(); 
         } else {
+            // 🚩 ถ้าเงินไม่พอ หรือมีข้อผิดพลาด จะเด้งข้อความจาก Server
             alert("❌ " + data.error);
             btn.disabled = false;
             btn.innerHTML = originalText;
