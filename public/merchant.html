@@ -1292,6 +1292,9 @@ const translations = {
         'order_id': 'เลขที่ออเดอร์:',
         'customer_name': 'ลูกค้า:',
 		'sidebar_order_items_title': 'รายการที่สั่ง:',
+		'rate_rider_title': 'ให้คะแนนไรเดอร์',
+		'rate_rider_text': 'กรุณาให้คะแนนการบริการของ ',
+		'btn_confirm_rating': 'ยืนยันและจบงาน',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1519,6 +1522,9 @@ const translations = {
         'order_id': 'Order ID:',
         'customer_name': 'Customer:',
 		'sidebar_order_items_title': 'Ordered Items:',
+		'rate_rider_title': 'Rate Rider',
+		'rate_rider_text': 'Please rate the service of ',
+		'btn_confirm_rating': 'Confirm & Finish',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1746,6 +1752,9 @@ const translations = {
         'order_id': 'ID do Pedido:',
         'customer_name': 'Cliente:',
 		'sidebar_order_items_title': 'Itens Pedidos:',
+		'rate_rider_title': 'Avaliar Entregador',
+		'rate_rider_text': 'Por favor, avalie o serviço de ',
+		'btn_confirm_rating': 'Confirmar e Finalizar',
     }
 };
 
@@ -3472,47 +3481,92 @@ socket.on('new-comment', (data) => {
 
 // แก้ไขฟังก์ชัน confirmAndRate ให้เรียกใช้ API กลาง
 async function confirmAndRate(postId, riderName) {
-    const rating = prompt(translations[currentLang].prompt_rating(riderName), "5");
-    
-    if (rating === null) return; // กดยกเลิก
-    const score = parseFloat(rating);
-    
-    if (isNaN(score) || score < 1 || score > 5) {
-        alert(translations[currentLang].err_rating_range);
-        return;
-    }
+    let selectedRating = 5; // ค่าเริ่มต้น
 
-    try {
-        const res = await fetch(`/api/posts/${postId}/finish-job`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                rating: score,
-                author: myUsername, 
-				riderName: riderName
-            })
-        });
-
-        const data = await res.json();
-        
-        if (data.success) {
-            const taskCard = document.getElementById(`card-${postId}`);
-            if (taskCard) {
-                taskCard.style.opacity = '0';
-                taskCard.style.transform = 'scale(0.9)';
-                taskCard.style.transition = '0.3s';
-                setTimeout(() => taskCard.remove(), 300); // ค่อยๆ เฟดหายไปแล้วลบ
-            }
-            document.getElementById('right-sidebar').classList.remove('active');
-            document.getElementById('right-sidebar-overlay').classList.add('hidden');
-            loadActiveMerchantTasks(); 
-            socket.emit('confirm-finish-job', { postId: postId, accepted: true });
-        } else {
-            alert("An error occurred: " + data.error);
+    const result = await Swal.fire({
+        title: translations[currentLang].rate_rider_title,
+        html: `
+            <p style="margin-bottom:15px;">${translations[currentLang].rate_rider_text} <strong>${riderName}</strong></p>
+            <div id="swal-star-rating" style="font-size: 2.5rem; color: #ddd; cursor: pointer; display: flex; justify-content: center; gap: 10px;">
+                <i class="fas fa-star" data-value="1" style="color: #f1c40f;"></i>
+                <i class="fas fa-star" data-value="2" style="color: #f1c40f;"></i>
+                <i class="fas fa-star" data-value="3" style="color: #f1c40f;"></i>
+                <i class="fas fa-star" data-value="4" style="color: #f1c40f;"></i>
+                <i class="fas fa-star" data-value="5" style="color: #f1c40f;"></i>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: translations[currentLang].btn_confirm_rating,
+        confirmButtonColor: '#27ae60',
+        cancelButtonText: translations[currentLang].cancel_btn,
+        didOpen: () => {
+            const stars = document.querySelectorAll('#swal-star-rating i');
+            stars.forEach(star => {
+                star.addEventListener('click', (e) => {
+                    selectedRating = parseInt(e.target.getAttribute('data-value'));
+                    // ระบายสีดาวตามที่เลือก
+                    stars.forEach((s, index) => {
+                        if (index < selectedRating) {
+                            s.classList.replace('far', 'fas');
+                            s.style.color = '#f1c40f';
+                        } else {
+                            s.classList.replace('fas', 'far');
+                            s.style.color = '#ddd';
+                        }
+                    });
+                });
+            });
         }
-    } catch (e) {
-        console.error(e);
-        alert("Unable to connect to the server.");
+    });
+
+    // ถ้ากดปุ่มยืนยัน (Confirm)
+    if (result.isConfirmed) {
+        try {
+            const res = await fetch(`/api/posts/${postId}/finish-job`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    rating: selectedRating,
+                    author: myUsername, 
+                    riderName: riderName
+                })
+            });
+
+            const data = await res.json();
+            
+            if (data.success) {
+                // เอฟเฟกต์การ์ดค่อยๆ หายไป (โค้ดเดิมของพี่)
+                const taskCard = document.getElementById(`card-${postId}`);
+                if (taskCard) {
+                    taskCard.style.opacity = '0';
+                    taskCard.style.transform = 'scale(0.9)';
+                    taskCard.style.transition = '0.3s';
+                    setTimeout(() => taskCard.remove(), 300);
+                }
+                
+                // ปิด Sidebar และโหลดงานใหม่
+                document.getElementById('right-sidebar').classList.remove('active');
+                document.getElementById('right-sidebar-overlay').classList.add('hidden');
+                
+                if (typeof loadActiveMerchantTasks === 'function') {
+                    loadActiveMerchantTasks(); 
+                }
+
+                socket.emit('confirm-finish-job', { postId: postId, accepted: true });
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Error', data.error || 'Failed to finish job', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Unable to connect to the server.', 'error');
+        }
     }
 }
 

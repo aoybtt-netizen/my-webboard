@@ -349,7 +349,9 @@ header {
 <header style="background: linear-gradient(135deg, #11998e, #38ef7d); padding: 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
     
     <div style="display: flex; justify-content: space-between; align-items: center; color: white;">
-    <div onclick="history.back()" style="cursor:pointer; width: 40px;"><i class="fas fa-chevron-left"></i></div>
+    <div onclick="safeBack()" style="cursor:pointer; width: 40px;">
+    <i class="fas fa-chevron-left"></i>
+</div>
     
     <div id="currentZoneName" 
      data-i18n-key="shop_loading" 
@@ -469,6 +471,8 @@ const translations = {
         'msg_rating_success': 'ขอบคุณสำหรับการให้คะแนน!',
 		'confirm_delivery_title': 'ได้รับสินค้าแล้ว?',
         'confirm_delivery_text': 'หากคุณได้รับของเรียบร้อยแล้ว สามารถกดเพื่อจบงานได้ทันที',
+		'alert_active_order_title': 'ยังมีออเดอร์ค้างอยู่!',
+        'alert_active_order_text': 'กรุณารอให้ออเดอร์เสร็จสิ้นหรือยกเลิกออเดอร์ก่อนออกจากหน้านี้',
     },
     'en': {
         'shop_nearby': 'Nearby Shops (Outside Zone)',
@@ -529,6 +533,8 @@ const translations = {
         'msg_rating_success': 'Thank you for your feedback!',
 		'confirm_delivery_title': 'Received your items?',
         'confirm_delivery_text': 'If you have received your order, you can confirm to finish the job.',
+		'alert_active_order_title': 'Active Orders Remaining!',
+        'alert_active_order_text': 'Please wait for your orders to complete or cancel them before leaving.',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -589,6 +595,8 @@ const translations = {
         'msg_rating_success': 'Obrigado pela sua avaliação!',
 		'confirm_delivery_title': 'Recebeu seu pedido?',
         'confirm_delivery_text': 'Se você já recebeu seu pedido, pode confirmar para finalizar o serviço.',
+		'alert_active_order_title': 'Pedidos Ativos!',
+        'alert_active_order_text': 'Por favor, aguarde a conclusão dos seus pedidos ou cancele-os antes de sair.',
     }
 };
 
@@ -1079,6 +1087,8 @@ async function loadMyOrders() {
         }
     } catch (e) { console.error("Load orders error:", e); }
 }
+
+
 
 // 2. อัปเดตการแสดงผลปุ่มลอย
 function updateCustomerUI() {
@@ -1603,6 +1613,22 @@ async function submitTripleRating() {
             loadMyOrders(); 
         }
     } catch (e) { console.error(e); }
+}
+
+
+function safeBack() {
+    if (myActiveOrders && myActiveOrders.length > 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: translations[currentLang].alert_active_order_title,
+            text: translations[currentLang].alert_active_order_text,
+            confirmButtonColor: '#11998e',
+            confirmButtonText: 'Confirm'
+        });
+    } else {
+        // ถ้าไม่มีออเดอร์ค้าง สามารถย้อนกลับได้ปกติ
+        history.back();
+    }
 }
 
 
