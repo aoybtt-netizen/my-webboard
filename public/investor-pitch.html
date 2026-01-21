@@ -172,6 +172,7 @@
         };
 
         function switchLang(lang, event) {
+			localStorage.setItem('preferredLanguage', lang);
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
             if (event) event.target.classList.add('active');
             
@@ -210,15 +211,20 @@
 window.addEventListener('DOMContentLoaded', () => {
     fetch('/api/analytics/hit-pitch', { method: 'POST' })
         .catch(err => console.error('Analytics Error:', err));
+
     const urlParams = new URLSearchParams(window.location.search);
     const langParam = urlParams.get('lang'); 
-    if (langParam) {
-        console.log("🌐 Auto switch language to:", langParam);
-        changeLang(langParam);
-    } else {
-        const savedLang = localStorage.getItem('preferredLanguage') || 'th';
-        changeLang(savedLang);
-    }
+    
+    const targetLang = langParam || localStorage.getItem('preferredLanguage') || 'th';
+
+    switchLang(targetLang, null);
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick').includes(`'${targetLang}'`)) {
+            btn.classList.add('active');
+        }
+    });
 });
 	
     </script>
