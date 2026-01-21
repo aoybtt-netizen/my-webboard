@@ -210,8 +210,15 @@
 window.addEventListener('DOMContentLoaded', () => {
     fetch('/api/analytics/hit-pitch', { method: 'POST' })
         .catch(err => console.error('Analytics Error:', err));
-    const ptButton = document.querySelector('button[onclick*="pt"]');
-    switchLang('pt', { target: ptButton });
+    const urlParams = new URLSearchParams(window.location.search);
+    const langParam = urlParams.get('lang'); 
+    if (langParam) {
+        console.log("🌐 Auto switch language to:", langParam);
+        changeLang(langParam);
+    } else {
+        const savedLang = localStorage.getItem('preferredLanguage') || 'th';
+        changeLang(savedLang);
+    }
 });
 	
     </script>
