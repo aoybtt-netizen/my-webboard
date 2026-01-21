@@ -4488,38 +4488,21 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
     const { rating, responsibility, author } = req.body; 
 
     try {
-        // 2. หาข้อมูลโพสต์ก่อน
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) return res.status(404).json({ 
-            success: false, 
-            error: serverTranslations[lang].err_post_not_found_final 
-        });
+        const post = await db.collection('posts').findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ success: false });
 
         const riderName = post.acceptedBy || post.acceptedViewer;
 
-        // 🚩 --- ส่วนที่เพิ่มเข้าไป: อัปเดตสถานะในคอลเลกชัน orders ---
-        // เราใช้ orderId ที่เก็บอยู่ใน post มาเป็นตัวอ้างอิง
+        // 1. อัปเดตออเดอร์เป็น Finished
         if (post.orderId) {
             await db.collection('orders').updateOne(
                 { orderId: post.orderId },
-                { 
-                    $set: { 
-                        status: 'finished', 
-                        finishedAt: new Date() 
-                    } 
-                }
+                { $set: { status: 'finished', finishedAt: new Date() } }
             );
-            console.log(`[System] Order ${post.orderId} updated to finished.`);
         }
-        // -------------------------------------------------------
 
-        // 3. หาข้อมูลโซน
-        const zone = await db.collection('zones').findOne({ 
-            id: post.zoneId 
-        });
-
-        // 4. อัปเดตสถานะโพสต์เป็นปิดถาวร
-        await postsCollection.updateOne(
+        // 🚩 2. ปิดโพสต์ถาวร (ย้ายขึ้นมาให้ทำก่อนเพื่อความชัวร์ว่าการ์ดจะหาย)
+        await db.collection('posts').updateOne(
             { id: parseInt(postId) },
             { 
                 $set: { 
@@ -4531,70 +4514,50 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
             }
         );
 
-        // 5. จัดการส่วนของ Rider
-        if (riderName && zone) {
-            const rider = await usersCollection.findOne({ username: riderName });
+        // 3. จัดการคะแนนไรเดอร์ (เพิ่มการเช็คโซน)
+        const zone = await db.collection('zones').findOne({ id: post.zoneId });
+        
+        if (riderName) {
+            const rider = await db.collection('users').findOne({ username: riderName });
             if (rider) {
-                const score1 = parseFloat(rating);
-                const score2 = parseFloat(responsibility || 3);
-                
-                const currentCount = rider.ratingCount || 0;
-                const currentRating = rider.rating || 0;
-                const newAverage = ((currentRating * currentCount) + score1) / (currentCount + 1);
+                const s1 = parseFloat(rating);
+                const s2 = parseFloat(responsibility || 3);
+                const newAvg = (((rider.rating || 0) * (rider.ratingCount || 0)) + s1) / ((rider.ratingCount || 0) + 1);
 
-                const ptsToAdd = calculateRankPoints(score1, score2);
-                
-                let targetCycle = 0; 
+                let updateObj = { 
+                    $set: { working: null, riderWorking: null, rating: parseFloat(newAvg.toFixed(2)) },
+                    $inc: { ratingCount: 1, totalJobs: 1 }
+                };
 
-                if (zone.isCompetitionActive === true) {
-                    if (zone.requireKYC === true) {
-                        if (rider.kycStatus === 'approved') {
-                            targetCycle = zone.currentCycle || 1;
-                        } else {
-                            targetCycle = 0; 
-                        }
-                    } else {
-                        targetCycle = zone.currentCycle || 1;
+                // อัปเดต Ranking เฉพาะเมื่อพบโซน
+                if (zone) {
+                    const pts = calculateRankPoints(s1, s2);
+                    let cycle = 0;
+                    if (zone.isCompetitionActive) {
+                        cycle = (zone.requireKYC && rider.kycStatus !== 'approved') ? 0 : (zone.currentCycle || 1);
                     }
+                    const rankingKey = `ranking_data.${zone.rankingVariable}_v${cycle}`;
+                    updateObj.$inc[rankingKey] = pts;
                 }
 
-                const rankingKey = `ranking_data.${zone.rankingVariable}_v${targetCycle}`;
-
-                await usersCollection.updateOne(
-                    { username: riderName },
-                    { 
-                        $set: { 
-                            working: null,
-                            rating: parseFloat(newAverage.toFixed(2))
-                        },
-                        $inc: { 
-                            ratingCount: 1,
-                            totalJobs: 1,
-                            [rankingKey]: ptsToAdd 
-                        }
-                    }
-                );
+                await db.collection('users').updateOne({ username: riderName }, updateObj);
             }
         }
 
-        // 6. อัปเดตสถิติจบงานให้ร้านค้า
-        await usersCollection.updateOne(
+        // 4. อัปเดตสถิติจบงานให้ร้านค้า
+        await db.collection('users').updateOne(
             { username: post.author },
             { $inc: { totalJobs: 1, authorCompletedJobs: 1, mercNum: -1 } }
         );
 
-        // 7. แจ้งเตือน
+        // 5. แจ้งเตือน Socket
         io.to(postId.toString()).emit('job-finished-complete', { postId, rating });
         io.emit('update-post-status'); 
 
-        res.json({ 
-            success: true, 
-            message: serverTranslations[lang].msg_finish_unlock 
-        });
-
+        res.json({ success: true });
     } catch (error) {
         console.error("Finish Job Error:", error);
-        res.status(500).json({ success: false, error: 'Database Error' });
+        res.status(500).json({ success: false });
     }
 });
 
@@ -4815,40 +4778,36 @@ app.post('/api/posts/:id/reject-rider', async (req, res) => {
 
 // API: ไรเดอร์ให้คะแนนร้านค้า (ปลดล็อคสถานะ working)
 app.post('/api/posts/:postId/rate-merchant', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     const { postId } = req.params;
     const { rating, riderName } = req.body;
 
     try {
-        const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) {
-					return res.status(404).json({ 
-					success: false, 
-					error: serverTranslations[lang].err_job_not_found_alt 
-				});
-        }
+        const post = await db.collection('posts').findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ success: false });
 
-        // 1. บันทึกคะแนนลงในงาน
-        const updatePost = await postsCollection.updateOne(
+        // 1. บันทึกคะแนนไรเดอร์ลงในงาน
+        await db.collection('posts').updateOne(
             { id: parseInt(postId) },
             { $set: { riderToMerchantRating: rating, riderProcessStatus: 'rated' } }
         );
 
-        // 🚩 2. ปลดล็อค Rider ให้ว่างงาน (ลบตัวแปร working ออก)
-        const updateRider = await usersCollection.updateOne(
+        // 2. ปลดล็อค Rider (ใช้ฟิลด์ working ให้ตรงกับจุดอื่น)
+        await db.collection('users').updateOne(
             { username: riderName },
-            { $set: { riderWorking: null } }
+            { $set: { working: null, riderWorking: null } } // ใส่ไว้ทั้งคู่เพื่อกันเหนียวครับ
         );
 
         // 3. อัปเดตคะแนนสะสมให้ร้านค้า
-        const updateMerchant = await usersCollection.updateOne(
+        await db.collection('users').updateOne(
             { username: post.author },
             { $inc: { merchantRatingScore: rating, merchantRatingCount: 1 } }
         );
 
+        // 🚩 4. แจ้งเตือนหน้าจอกลางและร้านค้าให้รีโหลดรายการ
+        io.emit('update-post-status'); 
         res.json({ success: true });
     } catch (err) {
-        console.error("🚨 Rate-Merchant Error:", err);
         res.status(500).json({ success: false });
     }
 });

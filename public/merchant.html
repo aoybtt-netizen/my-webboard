@@ -3505,7 +3505,6 @@ async function confirmAndRate(postId, riderName) {
             }
             document.getElementById('right-sidebar').classList.remove('active');
             document.getElementById('right-sidebar-overlay').classList.add('hidden');
-            console.log("Job finished successfully");
             loadActiveMerchantTasks(); 
             socket.emit('confirm-finish-job', { postId: postId, accepted: true });
         } else {
