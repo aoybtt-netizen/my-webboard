@@ -5046,6 +5046,73 @@ app.get('/api/my-active-orders', async (req, res) => {
     }
 });
 
+// 1.1
+app.post('/api/posts/:postId/customer-bypass', async (req, res) => {
+    const { postId } = req.params;
+    const { username } = req.body; // รับ username ลูกค้าจากหน้าบ้าน
+    const stopIndex = 1; // ส่วนใหญ่ลูกค้าจะ bypass จุดส่งของ (index 1)
+
+    try {
+        // 1. ค้นหาโพสต์และออเดอร์ที่เกี่ยวข้อง
+        const post = await db.collection('posts').findOne({ id: parseInt(postId) });
+        if (!post) return res.status(404).json({ success: false, error: "Job not found" });
+
+        const order = await db.collection('orders').findOne({ orderId: post.orderId });
+        if (!order || order.customer !== username) {
+            return res.status(403).json({ success: false, error: "No permission" });
+        }
+
+        if (!post.acceptedBy) {
+            return res.status(400).json({ success: false, error: "No rider accepted yet" });
+        }
+
+        // 2. อัปเดตสถานะจุดส่งของ (Step 2) เป็น success
+        const updateKey = `stops.${stopIndex}.status`;
+        let updateData = { [updateKey]: 'success' };
+
+        // 3. เช็คว่าต้องปิดงานเลยไหม (ถ้าจุดที่ 1 สำเร็จแล้ว หรือต้องการปิดงานทันที)
+        const currentStops = post.stops;
+        currentStops[stopIndex].status = 'success';
+        const allFinished = currentStops.every(s => s.status === 'success');
+
+        if (allFinished) {
+            updateData.status = 'closed_permanently';
+            updateData.isClosed = true;
+            updateData.finishTimestamp = Date.now();
+
+            // ปลดล็อคไรเดอร์
+            await db.collection('users').updateOne(
+                { username: post.acceptedBy },
+                { $set: { working: null }, $inc: { totalJobs: 1 } }
+            );
+
+            // อัปเดตออเดอร์เป็น finished เพื่อให้ลูกค้าให้คะแนนต่อได้
+            await db.collection('orders').updateOne(
+                { orderId: post.orderId },
+                { $set: { status: 'finished', finishedAt: new Date() } }
+            );
+        }
+
+        await db.collection('posts').updateOne(
+            { id: parseInt(postId) },
+            { $set: updateData }
+        );
+
+        // 4. แจ้งเตือน Socket
+        io.to(postId.toString()).emit('update-job-status', { postId, stopIndex, status: 'success', allFinished });
+        if (allFinished) {
+            io.to(postId.toString()).emit('job-finished-complete', { postId });
+        }
+        io.emit('update-post-status');
+
+        res.json({ success: true, allFinished });
+
+    } catch (err) {
+        console.error("Customer Bypass Error:", err);
+        res.status(500).json({ success: false });
+    }
+});
+
 // 🚩 2. API ลูกค้ายกเลิกออเดอร์เอง (Logic เหมือน Reject ของร้านค้า)
 app.post('/api/order/customer-cancel', async (req, res) => {
     const { orderId, username } = req.body;

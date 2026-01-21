@@ -434,6 +434,7 @@ const translations = {
 		'rider_wage_label': 'ค่าจ้างไรเดอร์:',
 		'total_deduction_label': 'ยอดหักเงินรวม:',
 		'confirm_btn': 'ยืนยัน หักเงินทันที',
+		'bpconfirm_btn': 'Confirm',
 		'cancel_btn': 'ยกเลิก',
 		'please_select_item': 'กรุณาเลือกสินค้าอย่างน้อย 1 รายการ',
 		'order_success_title': 'สั่งซื้อสำเร็จ!',
@@ -462,6 +463,8 @@ const translations = {
         'order_accepted_text': 'กำลังเตรียมอาหารและหาไรเดอร์ให้คุณ',
         'err_rating_incomplete': 'กรุณาให้คะแนนครบทุกหัวข้อ',
         'msg_rating_success': 'ขอบคุณสำหรับการให้คะแนน!',
+		'confirm_delivery_title': 'ได้รับสินค้าแล้ว?',
+        'confirm_delivery_text': 'หากคุณได้รับของเรียบร้อยแล้ว สามารถกดเพื่อจบงานได้ทันที',
     },
     'en': {
         'shop_nearby': 'Nearby Shops (Outside Zone)',
@@ -491,6 +494,7 @@ const translations = {
 		'rider_wage_label': 'Rider Wage:',
 		'total_deduction_label': 'Total Amount:',
 		'confirm_btn': 'Confirm & Pay Now',
+		'bpconfirm_btn': 'Confirm',
 		'cancel_btn': 'Cancel',
 		'please_select_item': 'Please select at least 1 item',
 		'order_success_title': 'Order Successful!',
@@ -519,6 +523,8 @@ const translations = {
         'order_accepted_text': 'Preparing food and searching for rider...',
         'err_rating_incomplete': 'Please complete all rating categories',
         'msg_rating_success': 'Thank you for your feedback!',
+		'confirm_delivery_title': 'Received your items?',
+        'confirm_delivery_text': 'If you have received your order, you can confirm to finish the job.',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -548,6 +554,7 @@ const translations = {
 		'rider_wage_label': 'Taxa do Entregador:',
 		'total_deduction_label': 'Total:',
 		'confirm_btn': 'Confirmar e Pagar Agora',
+		'bpconfirm_btn': 'Confirm',
 		'cancel_btn': 'Cancelar',
 		'please_select_item': 'Selecione pelo menos 1 item',
 		'order_success_title': 'Pedido com Sucesso!',
@@ -576,6 +583,8 @@ const translations = {
         'order_accepted_text': 'Preparando comida e procurando entregador...',
         'err_rating_incomplete': 'Por favor, complete todas as categorias',
         'msg_rating_success': 'Obrigado pela sua avaliação!',
+		'confirm_delivery_title': 'Recebeu seu pedido?',
+        'confirm_delivery_text': 'Se você já recebeu seu pedido, pode confirmar para finalizar o serviço.',
     }
 };
 
@@ -1085,13 +1094,15 @@ function openMyOrdersModal() {
     container.innerHTML = '';
 
     const ordersHtml = myActiveOrders.map(order => {
+        // --- 1. เตรียมตัวแปรพื้นฐาน ---
         const isWaiting = order.status === 'waiting_merchant';
+        const isAccepted = order.status === 'accepted'; // เพิ่มตัวแปรเช็คสถานะรับงานแล้ว
         const isFinished = order.status === 'finished' || order.status === 'done';
         
         let statusText = translations[currentLang].status_waiting;
         let statusClass = 'status-waiting';
 
-        if (order.status === 'accepted') {
+        if (isAccepted) {
             statusText = translations[currentLang].status_accepted;
             statusClass = 'status-accepted';
         } else if (isFinished) {
@@ -1102,14 +1113,24 @@ function openMyOrdersModal() {
         const shortId = order.orderId.slice(-5);
         const postIdValue = order.postId || 'null';
 
+        // --- 2. สร้างปุ่ม Action (แชท / ให้คะแนน) ---
         let actionIcon = '';
         if (isFinished) {
             actionIcon = `<i class="fas fa-star" style="color:#f1c40f; font-size:1.3rem; cursor:pointer;" 
-               title="${translations[currentLang].btn_rate_service}"></i>`;
+                           title="${translations[currentLang].btn_rate_service}"></i>`;
         } else if (!isWaiting) {
             actionIcon = `<i class="fas fa-comments" style="color:#11998e; font-size:1.2rem; cursor:pointer;"></i>`;
         }
 
+        // --- 🚩 ปุ่ม Bypass สำหรับลูกค้า (โชว์เฉพาะตอน accepted) ---
+        const bypassBtn = isAccepted 
+            ? `<button onclick="event.stopPropagation(); confirmCustomerBypass('${order.postId}', '${order.orderId}')" 
+                style="background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 0.7rem; font-weight: bold; display: flex; align-items: center; gap: 4px;">
+                <i class="fas fa-check-double"></i> Confirm
+               </button>`
+            : '';
+
+        // ปุ่มยกเลิก (โชว์เฉพาะตอนรอร้านรับงาน)
         const cancelBtn = isWaiting 
             ? `<button class="btn-cancel-order" onclick="event.stopPropagation(); cancelOrder(event, '${order.orderId}')">
                 <i class="fas fa-trash-alt"></i> cancel
@@ -1130,7 +1151,8 @@ function openMyOrdersModal() {
                     </div>
                 </div>
                 <div>
-                    <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        ${bypassBtn} 
                         ${actionIcon}
                         ${cancelBtn}
                     </div>
@@ -1143,6 +1165,40 @@ function openMyOrdersModal() {
     const modal = document.getElementById('myOrdersModal');
     if (modal) modal.classList.remove('hidden');
 }
+
+
+async function confirmCustomerBypass(postId, orderId) {
+    const { isConfirmed } = await Swal.fire({
+        title: translations[currentLang].confirm_delivery_title || 'ได้รับสินค้าแล้ว?',
+        text: translations[currentLang].confirm_delivery_text || 'หากคุณได้รับของเรียบร้อยแล้ว สามารถกดเพื่อจบงานได้ทันที',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#11998e',
+        confirmButtonText: translations[currentLang].bpconfirm_btn,
+        cancelButtonText: translations[currentLang].cancel_btn
+    });
+
+    if (isConfirmed) {
+        try {
+            const res = await fetch(`/api/posts/${postId}/customer-bypass`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    username: localStorage.getItem('myUsername') 
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Success', timer: 1500, showConfirmButton: false });
+                loadMyOrders(); // รีโหลดข้อมูลใหม่ เพื่อเปลี่ยนปุ่มเป็นดาวให้คะแนน
+            }
+        } catch (e) {
+            console.error("Bypass error:", e);
+        }
+    }
+}
+
 
 // 4. จัดการการคลิก (ถ้า Accept แล้วให้เปิดแชท)
 async function handleOrderClick(orderId, status, postId) {
