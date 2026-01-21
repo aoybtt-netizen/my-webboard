@@ -456,6 +456,12 @@ const translations = {
         'cancel_failed': 'ล้มเหลว',
         'err_cancel_msg': 'ไม่สามารถยกเลิกได้',
         'err_connection': 'การเชื่อมต่อขัดข้อง',
+		'status_finished_rating': 'ส่งสำเร็จ / รอให้คะแนน',
+        'btn_rate_service': 'ให้คะแนน',
+        'order_accepted_title': 'ร้านค้าได้รับออเดอร์แล้ว!',
+        'order_accepted_text': 'กำลังเตรียมอาหารและหาไรเดอร์ให้คุณ',
+        'err_rating_incomplete': 'กรุณาให้คะแนนครบทุกหัวข้อ',
+        'msg_rating_success': 'ขอบคุณสำหรับการให้คะแนน!',
     },
     'en': {
         'shop_nearby': 'Nearby Shops (Outside Zone)',
@@ -507,6 +513,12 @@ const translations = {
         'cancel_failed': 'Failed',
         'err_cancel_msg': 'Unable to cancel',
         'err_connection': 'Connection Error',
+		'status_finished_rating': 'Delivered / Wait for Rating',
+        'btn_rate_service': 'Rate Now',
+        'order_accepted_title': 'Order Accepted!',
+        'order_accepted_text': 'Preparing food and searching for rider...',
+        'err_rating_incomplete': 'Please complete all rating categories',
+        'msg_rating_success': 'Thank you for your feedback!',
     },
     'pt': {
         'shop_nearby': 'Lojas Próximas (Fora da Zona)',
@@ -558,6 +570,12 @@ const translations = {
         'cancel_failed': 'Falhou',
         'err_cancel_msg': 'Não foi possível cancelar',
         'err_connection': 'Erro de conexão',
+		'status_finished_rating': 'Entregue / Aguardando Avaliação',
+        'btn_rate_service': 'Avaliar Agora',
+        'order_accepted_title': 'Pedido Aceito!',
+        'order_accepted_text': 'Preparando comida e procurando entregador...',
+        'err_rating_incomplete': 'Por favor, complete todas as categorias',
+        'msg_rating_success': 'Obrigado pela sua avaliação!',
     }
 };
 
@@ -1067,11 +1085,9 @@ function openMyOrdersModal() {
     container.innerHTML = '';
 
     const ordersHtml = myActiveOrders.map(order => {
-        // --- 1. เตรียมตัวแปรพื้นฐาน ---
         const isWaiting = order.status === 'waiting_merchant';
         const isFinished = order.status === 'finished' || order.status === 'done';
         
-        // กำหนดข้อความสถานะ
         let statusText = translations[currentLang].status_waiting;
         let statusClass = 'status-waiting';
 
@@ -1079,24 +1095,21 @@ function openMyOrdersModal() {
             statusText = translations[currentLang].status_accepted;
             statusClass = 'status-accepted';
         } else if (isFinished) {
-            statusText = "ส่งสำเร็จ / รอให้คะแนน"; // หรือใช้ translations[currentLang].status_finished
-            statusClass = 'status-finished'; // เพิ่ม CSS class สีทองหรือเขียวเข้ม
+            statusText = translations[currentLang].status_finished_rating;
+            statusClass = 'status-finished';
         }
 
         const shortId = order.orderId.slice(-5);
         const postIdValue = order.postId || 'null';
 
-        // --- 2. สร้างส่วนของปุ่ม Action (แชท หรือ ให้คะแนน) ---
         let actionIcon = '';
         if (isFinished) {
-            // ถ้าจบงานแล้ว โชว์ปุ่มให้คะแนน (รูปดาว)
-            actionIcon = `<i class="fas fa-star" style="color:#f1c40f; font-size:1.3rem; cursor:pointer;" title="ให้คะแนน"></i>`;
+            actionIcon = `<i class="fas fa-star" style="color:#f1c40f; font-size:1.3rem; cursor:pointer;" 
+               title="${translations[currentLang].btn_rate_service}"></i>`;
         } else if (!isWaiting) {
-            // ถ้ากำลังวิ่งงาน โชว์ปุ่มแชท
             actionIcon = `<i class="fas fa-comments" style="color:#11998e; font-size:1.2rem; cursor:pointer;"></i>`;
         }
 
-        // ปุ่มยกเลิก: จะโชว์เฉพาะตอนที่ยังไม่มีคนรับงาน (waiting_merchant) เท่านั้น
         const cancelBtn = isWaiting 
             ? `<button class="btn-cancel-order" onclick="event.stopPropagation(); cancelOrder(event, '${order.orderId}')">
                 <i class="fas fa-trash-alt"></i> cancel
@@ -1222,7 +1235,7 @@ async function loadChatHistory(postId) {
             if (post.comments) {
                 post.comments.forEach(msg => {
                     const label = getRoleLabel(msg.author);
-                    // ✅ ส่ง msg.imageUrl เข้าไปด้วย
+					
                     appendMessage(label, msg.text || msg.content, msg.author === localStorage.getItem('myUsername'), msg.imageUrl);
                 });
             }
@@ -1351,8 +1364,8 @@ socket.on('order_accepted_update', (data) => {
     }
     Swal.fire({
         icon: 'success',
-        title: 'ร้านค้าได้รับออเดอร์แล้ว!',
-        text: 'กำลังเตรียมอาหารและหาไรเดอร์ให้คุณ',
+        title: translations[currentLang].order_accepted_title,
+        text: translations[currentLang].order_accepted_text,
         timer: 3000,
         toast: true,
         position: 'top-end',
@@ -1447,8 +1460,6 @@ async function openRatingModal(orderId, postId) {
     // 2. โหลดข้อมูล (ฟังก์ชันนี้จะเซตค่า riderUser และ merchantUser ให้เรา)
     await loadChatHistory(postId); 
     
-    // 🚩 3. อัปเดตชื่อลงใน Modal
-    // หมายเหตุ: ถ้าใน post object มี storeName ให้ใช้ storeName จะดูดีกว่า username ครับ
     document.getElementById('displayRiderName').innerText = `Rider: ${riderUser || 'ไม่พบข้อมูล'}`;
     document.getElementById('displayMerchantName').innerText = `Shop: ${merchantUser || 'ไม่พบข้อมูล'}`;
     
@@ -1498,7 +1509,7 @@ function setStar(el, score) {
 
 async function submitTripleRating() {
     if (ratings.riderSat === 0 || ratings.riderPolite === 0 || ratings.merchantRate === 0) {
-        return Swal.fire('กรุณาให้คะแนนครบทุกหัวข้อ', '', 'warning');
+        return Swal.fire(translations[currentLang].err_rating_incomplete, '', 'warning');
     }
 
     // 🚩 ดึงชื่อโซนจากหน้าจอ (ที่อัปเดตจากฟังก์ชัน updateTopBalance)
@@ -1519,7 +1530,7 @@ async function submitTripleRating() {
         
         const data = await res.json();
         if (data.success) {
-            Swal.fire('ขอบคุณสำหรับการให้คะแนน!', '', 'success');
+            Swal.fire(translations[currentLang].msg_rating_success, '', 'success');
             closeRatingModal();
             loadMyOrders(); 
         }
