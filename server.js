@@ -3041,31 +3041,28 @@ app.post('/api/posts/:id/apply', async (req, res) => {
         const rider = await db.collection('users').findOne({ username: riderName });
 
         if (!post || !rider) return res.status(404).json({ success: false, error: "Data not found" });
+		
+		const currency = post.currency || 'USD'; 
+        const depositReq = parseFloat(post.depositAmount || 0);
+        const riderBalance = rider[currency] || 0;
 
         // 2. เช็คว่าไรเดอร์กำลังทำงานอื่นอยู่ไหม (ป้องกันการรับงานซ้อน)
         if (rider.working || rider.riderWorking) {
             return res.status(400).json({ success: false, error: serverTranslations[lang].err_rider_busy || "คุณกำลังมีงานค้างอยู่" });
         }
 
-        // 3. เช็คเงินในกระเป๋า (ต้องมีพอเท่ากับยอดมัดจำ)
-        // หมายเหตุ: ยอดมัดจำเราใช้สกุลเงินตามโซนของโพสต์นั้น
-        const depositReq = parseFloat(post.depositAmount || 0);
-        const zoneCurrency = post.zoneCurrency || 'USD'; 
-        const riderBalance = rider[zoneCurrency] || 0;
 
         if (riderBalance < depositReq) {
-					let errorMsg = serverTranslations[lang].err_insufficient_deposit;
-						errorMsg = errorMsg.replace('{currency}', zoneCurrency)
-                       .replace('{amount}', depositReq.toLocaleString());
-
-						return res.status(400).json({ success: false, error: errorMsg });
-			}
+            let errorMsg = serverTranslations[lang].err_insufficient_deposit;
+            errorMsg = errorMsg.replace('{currency}', currency).replace('{amount}', depositReq.toLocaleString());
+            return res.status(400).json({ success: false, error: errorMsg });
+        }
 
         // 🚩 4. เริ่มกระบวนการหักมัดจำ
         if (depositReq > 0) {
             await db.collection('users').updateOne(
                 { username: riderName },
-                { $inc: { [zoneCurrency]: -depositReq } }
+                { $inc: { [currency]: -depositReq } }
             );
             
             // บันทึกประวัติการหักมัดจำ
@@ -3073,7 +3070,7 @@ app.post('/api/posts/:id/apply', async (req, res) => {
                 id: Date.now(),
                 type: 'DEPOSIT_HELD',
                 amount: depositReq,
-                currency: zoneCurrency,
+                currency: currency,
                 fromUser: riderName,
                 note: `Hold deposit for job #${postId.toString().slice(-4)}`,
                 timestamp: Date.now()
@@ -3087,12 +3084,11 @@ app.post('/api/posts/:id/apply', async (req, res) => {
                 $set: { 
                     pendingRider: riderName, 
                     applyTimestamp: Date.now(),
-                    depositHeld: depositReq // บันทึกไว้ในโพสต์ด้วยว่าหักมาเท่าไหร่
+                    depositHeld: depositReq 
                 } 
             }
         );
 
-        // 6. ส่ง Socket บอกร้านค้า
         io.emit('rider-applied', { postId: postId, riderName: riderName });
 
         res.json({ success: true });
@@ -3343,7 +3339,8 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 		budget: riderBudget,
         //budget: budget,
 		depositAmount: depositAmount ? parseFloat(depositAmount) : 0,
-        stops: parsedStops
+        stops: parsedStops,
+		currency: zoneCurrency
     };
 
     await postsCollection.insertOne(newPost);
@@ -4129,41 +4126,32 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 //ส่วนของร้านค้าาาาา
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
-    console.log("🗑️ Delete Request - ID:", req.params.id, "User:", req.body.username);
-
     const postId = parseInt(req.params.id);
     const { username } = req.body;
 
     if (!username) return res.status(400).json({ success: false, error: 'Username not found' });
 
     try {
-        // 1. ค้นหาข้อมูลงานก่อนลบ (เพื่อเอาค่า budget และ zoneId)
         const post = await db.collection('posts').findOne({ id: postId });
         
         if (!post) {
             return res.status(404).json({ success: false, error: 'No jobs found.' });
         }
 
-        // 2. เช็คว่ามีไรเดอร์รับงานหรือยัง (ถ้ามีแล้วห้ามลบ)
         if (post.acceptedBy) {
             return res.status(400).json({ success: false, error: 'A rider has already accepted the job.' });
         }
 
-        // 🚩 3. ขั้นตอนการคืนเงิน (Refund Rider Wage)
         const refundAmount = parseFloat(post.budget || 0);
-        
-        // หาข้อมูลโซนเพื่อทราบสกุลเงินที่ถูกต้อง (เหมือนตอนหักเงิน)
         const zone = await db.collection('zones').findOne({ id: post.zoneId });
         const currency = zone ? zone.zoneCurrency : 'USD'; 
 
         if (refundAmount > 0) {
-            // โอนเงินคืนเข้ากระเป๋าร้านค้าตามสกุลเงินของโซนนั้น
             await db.collection('users').updateOne(
                 { username: username },
                 { $inc: { [currency]: refundAmount, mercNum: -1 } }
             );
 
-            // บันทึกประวัติการคืนเงิน
             await db.collection('transactions').insertOne({
                 id: Date.now(),
                 type: 'REFUND_BUDGET',
@@ -4176,20 +4164,13 @@ app.delete('/api/merchant/tasks/:id', async (req, res) => {
 
             console.log(`💰 Refunded ${refundAmount} ${currency} to ${username}`);
         } else {
-            // ถ้าไม่มีค่าจ้าง (budget = 0) ก็แค่ลดแต้ม mercNum ปกติ
             await db.collection('users').updateOne(
                 { username: username },
                 { $inc: { mercNum: -1 } }
             );
         }
-
-        // 4. ลบโพสต์ออกจากระบบ
         await db.collection('posts').deleteOne({ id: postId });
-
-        // 5. แจ้งอัปเดตยอดเงินให้หน้าบ้านทราบแบบ Real-time
         io.emit('balance-update', { user: username });
-
-        console.log(`✅ ลบงานสำเร็จและคืนเงินให้ ${username}`);
         res.json({ success: true, message: "Task deleted and budget refunded." });
 
     } catch (err) {
