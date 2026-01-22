@@ -5335,7 +5335,6 @@ async function saveZoneCurrency(zoneId, currency, rate) {
     }
 }
 
-
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         console.log('🔄 กลับเข้าสู่หน้าเว็บ: กำลังอัปเดตสถานะข้อมูล...');
@@ -5343,8 +5342,7 @@ document.addEventListener('visibilitychange', () => {
         if (socket && !socket.connected) {
             socket.connect();
         }
-        
-        if (typeof checkPrimaryLocationAndLoad( === 'function') {
+        if (typeof checkPrimaryLocationAndLoad === 'function') {
             checkPrimaryLocationAndLoad();
         }       
     }
