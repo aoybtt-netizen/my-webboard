@@ -3008,7 +3008,7 @@ app.get('/api/posts', async (req, res) => {
         let limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        // ดึงเฉพาะข้อมูลมาแสดงผล (Logic เดิมของคุณ)
+        // ดึงเฉพาะข้อมูลมาแสดงผล 
         const allPosts = await postsCollection.find({}).toArray();
         const sortedPosts = allPosts.sort((a, b) => {
             const aIsPinnedActive = a.isPinned && !a.isClosed;

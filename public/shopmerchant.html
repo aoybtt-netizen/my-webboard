@@ -1687,6 +1687,42 @@ function safeBack() {
 }
 
 
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log('🔄 กลับเข้าสู่หน้าเว็บ: กำลังอัปเดตสถานะข้อมูล...');
+
+        if (socket && !socket.connected) {
+            socket.connect();
+        }
+
+        if (typeof loadMyOrders === 'function') {
+            loadMyOrders();
+        }
+
+        if (typeof loadShops === 'function') {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        loadShops();
+                    },
+                    (err) => {
+                        console.warn("เข้าถึงพิกัดไม่ได้:", err);
+                        loadShops();
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                loadShops();
+            }
+        }
+        if (typeof loadActiveMerchantTasks === 'function') {
+            loadActiveMerchantTasks();
+        }
+    }
+});
+
 </script>
 
 
