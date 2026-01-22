@@ -5336,7 +5336,20 @@ async function saveZoneCurrency(zoneId, currency, rate) {
 }
 
 
-	//จบส่วนหาแอดมิน
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log('🔄 กลับเข้าสู่หน้าเว็บ: กำลังอัปเดตสถานะข้อมูล...');
+
+        if (socket && !socket.connected) {
+            socket.connect();
+        }
+        
+        if (typeof checkPrimaryLocationAndLoad( === 'function') {
+            checkPrimaryLocationAndLoad(();
+        }       
+    }
+});
+
 </script>
 
 <div id="comment-notif-modal" class="hidden" style="
