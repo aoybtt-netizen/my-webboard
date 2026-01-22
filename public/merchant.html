@@ -1298,6 +1298,14 @@ const translations = {
 		'rate_rider_title': 'ให้คะแนนไรเดอร์',
 		'rate_rider_text': 'กรุณาให้คะแนนการบริการของ ',
 		'btn_confirm_rating': 'ยืนยันและจบงาน',
+		'note_title': 'ข้อควรจำ',
+        'note_bypass_title': 'การกดบายพาส',
+        'note_bypass_desc': 'การกดบายพาสจะเป็นการข้ามจุดส่ง ใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ',
+        'note_order_fee_title': 'ค่าธรรมเนียมออเดอร์',
+        'note_order_fee_desc': 'การสั่งงานจากลูกค้า ร้านค้าไม่ต้องจ่ายค่าไรเดอร์เอง (ระบบหักจากลูกค้า)',
+        'note_cancel_penalty_title': 'การยกเลิกงาน',
+        'note_cancel_penalty_desc': 'หากรับออเดอร์ลูกค้ามาแล้วกดยกเลิกทีหลัง ร้านค้าจะเสียค่าธรรมเนียมในการโพสต์งานให้ลูกค้า',
+        'btn_got_it': 'เข้าใจแล้ว',
     },
     'en': {
         'menu_save_store': 'Save Store Location (Base)',
@@ -1528,6 +1536,14 @@ const translations = {
 		'rate_rider_title': 'Rate Rider',
 		'rate_rider_text': 'Please rate the service of ',
 		'btn_confirm_rating': 'Confirm & Finish',
+		'note_title': 'Important Notes',
+        'note_bypass_title': 'Bypass Action',
+        'note_bypass_desc': 'Bypass is used to skip a delivery point if the rider forgets to check-in.',
+        'note_order_fee_title': 'Order Fees',
+        'note_order_fee_desc': 'For customer orders, the merchant does not pay the rider\'s wage (deducted from customer).',
+        'note_cancel_penalty_title': 'Cancellation Policy',
+        'note_cancel_penalty_desc': 'Canceling a customer order after acceptance will result in a penalty fee (postage fee).',
+        'btn_got_it': 'Got it',
     },
     'pt': {
         'menu_save_store': 'Salvar Local da Loja (Base)',
@@ -1758,6 +1774,14 @@ const translations = {
 		'rate_rider_title': 'Avaliar Entregador',
 		'rate_rider_text': 'Por favor, avalie o serviço de ',
 		'btn_confirm_rating': 'Confirmar e Finalizar',
+		'note_title': 'Notas Importantes',
+        'note_bypass_title': 'Ação de Bypass',
+        'note_bypass_desc': 'O Bypass é usado para pular um ponto de entrega se o entregador esquecer de fazer o check-in.',
+        'note_order_fee_title': 'Taxas de Pedido',
+        'note_order_fee_desc': 'Para pedidos de clientes, o lojista não paga o salário do entregador (deduzido do cliente).',
+        'note_cancel_penalty_title': 'Política de Cancelamento',
+        'note_cancel_penalty_desc': 'Cancelar um pedido do cliente após a aceitação resultará em uma taxa de penalidade.',
+        'btn_got_it': 'Entendi',
     }
 };
 
@@ -4673,18 +4697,40 @@ document.addEventListener('visibilitychange', () => {
 	<div id="info-use-modal" class="modal-overlay hidden" style="z-index: 9999;">
     <div class="modal-box" style="max-width: 450px; text-align: left;">
         <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; margin: -20px -20px 20px -20px; border-radius: 15px 15px 0 0; text-align: center;">
-    <i class="fas fa-info" style="font-size: 2.5em; margin-bottom: 10px;"></i>
-    <h3 style="margin: 0;" data-i18n-key="note_title">ข้อควรจำ</h3>
-</div>
+            <i class="fas fa-info-circle" style="font-size: 2.5em; margin-bottom: 10px;"></i>
+            <h3 style="margin: 0;" data-i18n-key="note_title">ข้อควรจำ</h3>
+        </div>
 
-        <div style="padding: 10px;">
-    <p style="font-weight: bold; color: #11998e;" data-i18n-key="note_bypass_title"><i class="fas fa-star"></i> การกดบายพาส</p>
-    <p style="font-size: 0.9em; color: #666; margin-left: 15px;" data-i18n-key="note_bypass_desc">
-        การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ
-    </p>            
-</div>
+        <div style="padding: 10px; max-height: 400px; overflow-y: auto;">
+            <div style="margin-bottom: 15px;">
+                <p style="font-weight: bold; color: #11998e; margin-bottom: 5px;">
+                    <i class="fas fa-forward"></i> <span data-i18n-key="note_bypass_title">การกดบายพาส</span>
+                </p>
+                <p style="font-size: 0.85em; color: #666; margin-left: 22px; line-height: 1.4;" data-i18n-key="note_bypass_desc">
+                    การกดบายพาสจะเป็นการข้ามจุดส่งใช้ในกรณีผู้รับงานลืมกดเช็คอินจุดนั้นๆ
+                </p>
+            </div>
 
-        <button class="btn-submit" onclick="closeInfo()" style="margin-top: 20px;" data-i18n-key="btn_got_it">เข้าใจแล้ว</button>
+            <div style="margin-bottom: 15px;">
+                <p style="font-weight: bold; color: #2980b9; margin-bottom: 5px;">
+                    <i class="fas fa-hand-holding-usd"></i> <span data-i18n-key="note_order_fee_title">ค่าธรรมเนียมออเดอร์</span>
+                </p>
+                <p style="font-size: 0.85em; color: #666; margin-left: 22px; line-height: 1.4;" data-i18n-key="note_order_fee_desc">
+                    การสั่งงานจากลูกค้า ร้านค้าไม่ต้องจ่ายค่าไรเดอร์เอง (ระบบหักจากลูกค้า)
+                </p>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <p style="font-weight: bold; color: #e74c3c; margin-bottom: 5px;">
+                    <i class="fas fa-exclamation-triangle"></i> <span data-i18n-key="note_cancel_penalty_title">การยกเลิกงาน</span>
+                </p>
+                <p style="font-size: 0.85em; color: #666; margin-left: 22px; line-height: 1.4;" data-i18n-key="note_cancel_penalty_desc">
+                    หากรับออเดอร์ลูกค้ามาแล้วกดยกเลิกทีหลัง ร้านค้าจะเสียค่าธรรมเนียมในการโพสต์งานให้ลูกค้า
+                </p>
+            </div>
+        </div>
+
+        <button class="btn-submit" onclick="closeInfo()" style="margin-top: 10px; width: 100%;" data-i18n-key="btn_got_it">เข้าใจแล้ว</button>
     </div>
 </div>
 
