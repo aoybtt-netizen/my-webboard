@@ -1205,6 +1205,7 @@ async function confirmCustomerBypass(postId, orderId) {
 
             if (data.success) {
                 Swal.fire({ icon: 'success', title: 'Success', timer: 1500, showConfirmButton: false });
+				status_accepted();
                 loadMyOrders(); // รีโหลดข้อมูลใหม่ เพื่อเปลี่ยนปุ่มเป็นดาวให้คะแนน
             }
         } catch (e) {
