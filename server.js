@@ -5556,7 +5556,6 @@ app.post('/api/merchant/reject-order', async (req, res) => {
     try {
         const { orderId, merchantUser, reason } = req.body;
 
-        // 1. ค้นหาออเดอร์ใน pending_orders
         const order = await db.collection('pending_orders').findOne({ 
             orderId: orderId, 
             merchant: merchantUser,
@@ -5567,9 +5566,12 @@ app.post('/api/merchant/reject-order', async (req, res) => {
             return res.status(404).json({ success: false, message: "ไม่พบออเดอร์หรือหมดเวลาแล้ว" });
         }
 
-        // 2. เรียกใช้ฟังก์ชันคืนเงิน (ตัวเดียวกับที่ใช้ในระบบ Auto Refund)
-        // สูตร: คืนเงินลูกค้า = ยอดรวม - (zoneFee + systemZone)
         await autoRefundOrder(order, reason || "ร้านค้าปฏิเสธออเดอร์");
+
+        io.to(order.customer).emit('order_rejected_update', { 
+            orderId: orderId, 
+            reason: reason || "ร้านค้าปฏิเสธออเดอร์" 
+        });
 
         res.json({ success: true, message: "ปฏิเสธออเดอร์และคืนเงินลูกค้าแล้ว" });
     } catch (e) {
@@ -6095,12 +6097,15 @@ app.get('/api/admin/merchant-request-list', async (req, res) => {
 io.on('connection', (socket) => {
 	socket.on('set-language', (lang) => {
         socket.lang = lang || 'th'; 
-        console.log(`Socket ${socket.id} set language to: ${socket.lang}`);
     });
 	
 	socket.on('join-post', (postId) => {
         const roomName = `post-${postId}`;
         socket.join(roomName);
+    });
+	
+	socket.on('join-private-room', (username) => {
+        socket.join(username);
     });
 	
 	socket.on('join', (roomName) => {
@@ -6110,7 +6115,6 @@ io.on('connection', (socket) => {
 	
 	socket.on('register-user', (username) => {
         socket.join(username);
-        console.log(`👤 User joined personal room: ${username}`);
     });
 	
 	socket.on('admin_reset_user_status', async ({ targetUsername }) => {

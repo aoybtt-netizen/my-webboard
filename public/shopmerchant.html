@@ -406,7 +406,7 @@ header {
 	const myUsername = localStorage.getItem('myUsername');
 	if (myUsername) {
     socket.emit('register-user', myUsername);
-    console.log(`🔌 Socket connected as: ${myUsername}`);
+    socket.emit('join-private-room', myUsername);
 	}
 	
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
@@ -1100,6 +1100,46 @@ function updateCustomerUI() {
     }
 }
 
+// 2.1
+function renderMyOrdersUI() {
+    const container = document.getElementById('myOrdersContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const ordersHtml = myActiveOrders.map(order => {
+        // ... (โค้ดการสร้าง HTML เดิมของพี่ที่อยู่ใน openMyOrdersModal) ...
+        const isWaiting = order.status === 'waiting_merchant';
+        const isAccepted = order.status === 'accepted';
+        const isFinished = order.status === 'finished' || order.status === 'done';
+        
+        // ตัวอย่างการทำสีสถานะ Reject ถ้าต้องการโชว์ประวัติสั้นๆ (ถ้าพี่ลบออกจาก active orders เลยจุดนี้จะไม่เห็น)
+        let statusText = translations[currentLang].status_waiting;
+        let statusClass = 'status-waiting';
+
+        if (isAccepted) {
+            statusText = translations[currentLang].status_accepted;
+            statusClass = 'status-accepted';
+        } else if (isFinished) {
+            statusText = translations[currentLang].status_finished_rating;
+            statusClass = 'status-finished';
+        }
+
+        return `
+            <div class="customer-order-item" onclick="handleOrderClick('${order.orderId}', '${order.status}', ${order.postId || 'null'})">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="font-weight:bold;">#${order.orderId.slice(-5)}</div>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <small>${order.merchant}</small>
+                </div>
+            </div>`;
+    }).join('');
+
+    container.innerHTML = ordersHtml || `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].no_active_orders}</p>`;
+}
+
+
 // 3. แสดงรายการออเดอร์ใน Modal
 function openMyOrdersModal() {
     const container = document.getElementById('myOrdersContainer');
@@ -1429,25 +1469,40 @@ socket.on('new-comment', (data) => {
 
 // ฝั่งลูกค้า (index.html หรือหน้าสั่งซื้อ)
 socket.on('order_accepted_update', async (data) => {
-    console.log("🔔 Order Accepted Update received:", data);
+    console.log("🔔 Order Accepted!");
+    await loadMyOrders(); // ดึงข้อมูลใหม่จาก DB เข้ามาใน myActiveOrders
     
-    if (typeof loadMyOrders === 'function') {
-        await loadMyOrders(); 
-        
-        const modal = document.getElementById('myOrdersModal');
-        if (modal && !modal.classList.contains('hidden')) {
-            openMyOrdersModal();
-        }
+    // ถ้า Modal เปิดค้างอยู่ ให้วาดข้างในใหม่ทันที
+    const modal = document.getElementById('myOrdersModal');
+    if (modal && !modal.classList.contains('hidden')) {
+        renderMyOrdersUI(); 
     }
 
     Swal.fire({
         icon: 'success',
         title: translations[currentLang].order_accepted_title,
-        text: translations[currentLang].order_accepted_text,
-        timer: 3000,
         toast: true,
         position: 'top-end',
+        timer: 3000,
         showConfirmButton: false
+    });
+});
+
+socket.on('order_rejected_update', async (data) => {
+    console.log("❌ Order Rejected!");
+    await loadMyOrders(); // ข้อมูลใน DB เปลี่ยนเป็น Refunded/Cancelled แล้ว ออเดอร์จะหายไปจาก list
+    
+    // อัปเดต UI ทันที
+    const modal = document.getElementById('myOrdersModal');
+    if (modal && !modal.classList.contains('hidden')) {
+        renderMyOrdersUI(); 
+    }
+
+    Swal.fire({
+        icon: 'error',
+        title: 'ออเดอร์ถูกปฏิเสธ',
+        text: data.reason,
+        confirmButtonColor: '#11998e'
     });
 });
 
