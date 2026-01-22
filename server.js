@@ -1590,67 +1590,94 @@ function calculateRankPoints(s1, s2) {
 }
 
 
+// ฟังก์ชันกลางสำหรับ ยกเลิกงาน และ คืนเงิน/หักค่าปรับ
+async function handleTaskCancellation(postId, initiatorUsername, reason = 'System Timeout') {
+    try {
+        const post = await db.collection('posts').findOne({ id: postId });
+        if (!post) return { success: false, error: 'ไม่พบข้อมูลงาน' };
+        if (post.acceptedBy) return { success: false, error: 'มีไรเดอร์รับงานแล้ว' };
+
+        const currency = post.currency || 'USD';
+
+        if (post.orderId) {
+            // --- กรณีงานลูกค้า (Customer Order) ---
+            const order = await db.collection('orders').findOne({ orderId: post.orderId });
+            if (order) {
+                // 1. คืนเงินลูกค้า (ค่าอาหาร + ค่าจ้าง)
+                const refundToCustomer = parseFloat(order.foodPrice || 0) + parseFloat(order.riderWage || 0);
+                if (refundToCustomer > 0) {
+                    await db.collection('users').updateOne(
+                        { username: order.customer },
+                        { $inc: { [currency]: refundToCustomer } }
+                    );
+                    await db.collection('transactions').insertOne({
+                        id: Date.now(), type: 'ORDER_CANCEL_REFUND', amount: refundToCustomer,
+                        currency: currency, toUser: order.customer,
+                        note: `Refund for order#${post.orderId} (${reason})`, timestamp: Date.now()
+                    });
+                }
+
+                // 2. หักค่าปรับร้านค้า (ถ้าเป็นการกดมือ หรือตามนโยบาย)
+                const penaltyFee = parseFloat(order.zoneFee || 0) + parseFloat(order.systemZone || 0);
+                if (penaltyFee > 0) {
+                    await db.collection('users').updateOne(
+                        { username: post.author },
+                        { $inc: { [currency]: -penaltyFee } }
+                    );
+                    await db.collection('transactions').insertOne({
+                        id: Date.now() + 1, type: 'MERCHANT_CANCEL_PENALTY', amount: penaltyFee,
+                        currency: currency, fromUser: post.author,
+                        note: `Cancellation fee #${post.orderId} (${reason})`, timestamp: Date.now() + 1
+                    });
+                }
+                await db.collection('orders').deleteOne({ orderId: post.orderId });
+                io.to(order.customer).emit('balance-update');
+            }
+        } else {
+            // --- กรณีงานร้านค้าสร้างเอง (Manual Task) ---
+            const refundAmount = parseFloat(post.budget || 0);
+            if (refundAmount > 0) {
+                await db.collection('users').updateOne(
+                    { username: post.author },
+                    { $inc: { [currency]: refundAmount } }
+                );
+            }
+        }
+
+        // ลดแต้ม mercNum และ ลบโพสต์
+        await db.collection('users').updateOne({ username: post.author }, { $inc: { mercNum: -1 } });
+        await db.collection('posts').deleteOne({ id: postId });
+
+        // แจ้งอัปเดต UI
+        io.emit('balance-update', { user: post.author });
+        io.emit('update-post-status');
+
+        return { success: true };
+    } catch (err) {
+        console.error("🚨 Cancellation Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+
 // ฟังก์ชันพนักงานทำความสะอาดหลังบ้าน
 async function runPostCleanup() {
     const ONE_HOUR = 3600000;
     const expirationTime = Date.now() - ONE_HOUR;
 
     try {
-        console.log(`[${new Date().toLocaleTimeString()}] 🧹 เริ่มระบบ Cleanup...`);
-
-        // 1. ค้นหางานร้านค้าที่หมดอายุ (ต้องไม่มีคนรับ และยังไม่ปิด)
-        const expiredMerchantTasks = await postsCollection.find({
+        // ค้นหางานที่หมดอายุและไม่มีคนรับ
+        const expiredTasks = await postsCollection.find({
             isClosed: false,
-            // 🚩 กันพลาด: เช็คทั้งค่า Boolean และ String
-            isMerchantTask: { $in: [true, 'true'] }, 
-            // 🚩 สำคัญ: ปิดเฉพาะงานที่ยังไม่มีไรเดอร์รับ (ไม่มี acceptedBy) 
-            // และสถานะต้องไม่ใช่กำลังทำหรือทำเสร็จแล้ว
             acceptedBy: { $exists: false },
-            status: { $nin: ['in_progress', 'finished'] },
             id: { $lt: expirationTime }
         }).toArray();
 
-        console.log(`🔍 พบงานร้านค้าหมดอายุ: ${expiredMerchantTasks.length} งาน`);
-
-        for (const task of expiredMerchantTasks) {
-            // ลดแต้ม mercNum ให้เจ้าของงาน
-            const userUpdate = await usersCollection.updateOne(
-                { username: task.author },
-                { $inc: { mercNum: -1 } }
-            );
-
-            if (userUpdate.modifiedCount > 0) {
-                console.log(`📉 ลดแต้มสำเร็จ: [${task.author}] mercNum -1 (Job ID: ${task.id})`);
-            } else {
-                console.log(`⚠️ ไม่สามารถลดแต้มได้: ไม่พบผู้ใช้ [${task.author}] หรือ mercNum ไม่เปลี่ยนแปลง`);
-            }
+        for (const task of expiredTasks) {
+            console.log(`🧹 Cleaning up expired task: ${task.id}`);
+            // เรียกฟังก์ชันกลางเพื่อคืนเงินและลบงาน
+            await handleTaskCancellation(task.id, 'System', 'Expired (1 Hour)');
         }
-
-        if (expiredMerchantTasks.length > 0) {
-            const expiredIds = expiredMerchantTasks.map(t => t.id);
-            await postsCollection.updateMany(
-                { id: { $in: expiredIds } },
-                { $set: { isClosed: true, closedAt: Date.now(), closeReason: 'expired' } }
-            );
-        }
-
-        // 2. จัดการงานทั่วไป (Non-Merchant) ที่หมดอายุ
-        const res = await postsCollection.updateMany(
-            { 
-                isClosed: false, 
-                isPinned: false, 
-                // 🚩 ต้องมั่นใจว่าเงื่อนไขนี้ไม่ไปทับซ้อนกับงานร้านค้า
-                isMerchantTask: { $nin: [true, 'true'] }, 
-                id: { $lt: expirationTime } 
-            },
-            { $set: { isClosed: true, closedAt: Date.now() } }
-        );
-
-        if (res.modifiedCount > 0 || expiredMerchantTasks.length > 0) {
-            console.log(`✅ Cleanup เรียบร้อย: ปิดงานทั่วไป ${res.modifiedCount} งาน, งานร้านค้า ${expiredMerchantTasks.length} งาน`);
-            io.emit('update-post-status'); 
-        }
-
     } catch (err) {
         console.error("🚨 Cleanup Error:", err);
     }
@@ -4150,100 +4177,14 @@ app.post('/api/admin/set-assigned-location', async (req, res) => {
 // API: ลบงานร้านค้า และคืนค่า mercNum
 app.delete('/api/merchant/tasks/:id', async (req, res) => {
     const postId = parseInt(req.params.id);
-    const { username } = req.body; // ชื่อร้านค้าที่กดยกเลิก
+    const { username } = req.body; 
 
-    try {
-        const post = await db.collection('posts').findOne({ id: postId });
-        if (!post) return res.status(404).json({ success: false, error: 'ไม่พบข้อมูลงาน' });
-
-        if (post.acceptedBy) {
-            return res.status(400).json({ success: false, error: 'มีไรเดอร์รับงานแล้ว ไม่สามารถยกเลิกได้' });
-        }
-
-        const currency = post.currency || 'USD';
-
-        if (post.orderId) {
-            // ==========================================
-            // กรณี A: ยกเลิกงาน "ลูกค้า" (Customer Order)
-            // ==========================================
-            const order = await db.collection('orders').findOne({ orderId: post.orderId });
-            
-            if (order) {
-                // 1. คืนเงินลูกค้า (คืนเฉพาะ ค่าอาหาร + ค่าจ้างไรเดอร์)
-                // ส่วนค่าธรรมเนียมที่ลูกค้าจ่ายไปตอนแรก ระบบจะถือว่าหักไปแล้วและไม่คืน (ตามนโยบายเดิม)
-                const refundToCustomer = parseFloat(order.foodPrice || 0) + parseFloat(order.riderWage || 0);
-                
-                if (refundToCustomer > 0) {
-                    await db.collection('users').updateOne(
-                        { username: order.customer },
-                        { $inc: { [currency]: refundToCustomer } }
-                    );
-                    
-                    // บันทึก Transaction คืนเงินให้ลูกค้า
-                    await db.collection('transactions').insertOne({
-                        id: Date.now(),
-                        type: 'ORDER_CANCEL_REFUND',
-                        amount: refundToCustomer,
-                        currency: currency,
-                        toUser: order.customer,
-                        note: `Refund for goods + labor costs for the order#${post.orderId}`,
-                        timestamp: Date.now()
-                    });
-                }
-
-                // 🚩 2. หักค่าธรรมเนียมร้านค้า (Penalty) เท่ากับค่าสร้างออเดอร์
-                // คำนวณจาก zoneFee + systemZone ที่บันทึกไว้ในออเดอร์
-                const penaltyFee = parseFloat(order.zoneFee || 0) + parseFloat(order.systemZone || 0);
-
-                if (penaltyFee > 0) {
-                    await db.collection('users').updateOne(
-                        { username: username }, // ร้านค้าที่กดยกเลิก
-                        { $inc: { [currency]: -penaltyFee } }
-                    );
-
-                    // บันทึก Transaction หักค่าปรับร้านค้า
-                    await db.collection('transactions').insertOne({
-                        id: Date.now() + 1,
-                        type: 'MERCHANT_CANCEL_PENALTY',
-                        amount: penaltyFee,
-                        currency: currency,
-                        fromUser: username,
-                        note: `Customer order cancellation fee #${post.orderId}`,
-                        timestamp: Date.now() + 1
-                    });
-                    console.log(`⚠️ [Penalty] หักค่าปรับร้านค้า ${username} จำนวน ${penaltyFee} ${currency}`);
-                }
-
-                // ลบออเดอร์ออกจากระบบ
-                await db.collection('orders').deleteOne({ orderId: post.orderId });
-                io.to(order.customer).emit('balance-update');
-            }
-        } else {
-            // ==========================================
-            // กรณี B: ยกเลิกงาน "ร้านค้าสร้างเอง" (Manual Task)
-            // ==========================================
-            const refundAmount = parseFloat(post.budget || 0);
-            if (refundAmount > 0) {
-                await db.collection('users').updateOne(
-                    { username: username },
-                    { $inc: { [currency]: refundAmount } }
-                );
-            }
-        }
-
-        // 4. ลดแต้ม mercNum และลบโพสต์งาน
-        await db.collection('users').updateOne({ username: username }, { $inc: { mercNum: -1 } });
-        await db.collection('posts').deleteOne({ id: postId });
-
-        // 5. แจ้งอัปเดต UI
-        io.emit('balance-update', { user: username });
-        io.emit('update-post-status'); 
-
-        res.json({ success: true, message: "Order cancelled successfully (customer refunded, store fees deducted)" });
-
-    } catch (err) {
-        console.error("🚨 Delete Task/Penalty Error:", err);
-        res.status(500).json({ success: false, error: 'Server Error' });
+    const result = await handleTaskCancellation(postId, username, 'Merchant Cancelled');
+    
+    if (result.success) {
+        res.json({ success: true, message: "ยกเลิกงานและจัดการการเงินเรียบร้อย" });
+    } else {
+        res.status(400).json({ success: false, error: result.error });
     }
 });
 
