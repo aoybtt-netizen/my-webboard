@@ -1146,7 +1146,7 @@ function openMyOrdersModal() {
 
         // ปุ่มยกเลิก (โชว์เฉพาะตอนรอร้านรับงาน)
         //const cancelBtn = isWaiting 
-		const bypassBtn = isAccepted
+		const cancelBtn = isAccepted
             ? `<button class="btn-cancel-order" onclick="event.stopPropagation(); cancelOrder(event, '${order.orderId}')">
                 <i class="fas fa-trash-alt"></i> cancel
                </button>`
