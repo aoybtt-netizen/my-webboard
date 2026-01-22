@@ -4528,6 +4528,23 @@ app.get('/api/merchant/get-zone-currency', async (req, res) => {
 });
 
 
+// API สำหรับร้านค้าดึงรายการออเดอร์ที่รอยืนยัน (Pending)
+app.get('/api/merchant/pending-orders/:username', async (req, res) => {
+    try {
+        const merchantUser = req.params.username;
+        // ค้นหาใน pending_orders เฉพาะที่เป็นของร้านค้าคนนี้
+        const orders = await db.collection('pending_orders')
+            .find({ merchant: merchantUser })
+            .toArray();
+            
+        res.json({ success: true, orders: orders });
+    } catch (e) {
+        console.error("Get Pending Orders Error:", e);
+        res.status(500).json({ success: false });
+    }
+});
+
+
 
 // API: ดึงงานของร้านค้า (Merchant) เฉพาะที่ยังไม่จบกระบวนการ
 app.get('/api/merchant/tasks', async (req, res) => {

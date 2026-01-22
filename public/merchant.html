@@ -4005,6 +4005,31 @@ async function saveMerchantProducts() {
 
 
 
+// ฟังก์ชันดึงออเดอร์ที่ค้างจาก Database
+async function loadPendingOrders() {
+    const myUsername = localStorage.getItem('myUsername');
+    if (!myUsername) return;
+
+    try {
+        const res = await fetch(`/api/merchant/pending-orders/${myUsername}`);
+        const data = await res.json();
+
+        if (data.success) {
+            // นำข้อมูลที่ได้จาก DB มาใส่ในตัวแปรหลัก
+            pendingOrders = data.orders;
+            // อัปเดต UI ของปุ่มแจ้งเตือนทันที
+            updateOrderUI();
+        }
+    } catch (e) {
+        console.error("Load Pending Orders Error:", e);
+    }
+}
+
+// 🚩 เรียกใช้งานฟังก์ชันนี้ทันทีที่หน้าเว็บโหลดเสร็จ
+window.addEventListener('load', () => {
+    loadPendingOrders();
+});
+
 socket.on('new_order_card', (order) => {
     if (!pendingOrders.find(o => o.orderId === order.orderId)) {
         pendingOrders.push(order);
@@ -4367,6 +4392,21 @@ window.onbeforeunload = function() {
         return translations[currentLang].before_unload_msg;
     }
 };
+
+// ตรวจจับการสลับหน้าจอ (กลับมาที่หน้าเว็บ)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log('🔄 กลับเข้าสู่หน้าเว็บ: กำลังอัปเดตสถานะข้อมูล...');
+
+        if (socket && !socket.connected) {
+            socket.connect();
+        }
+        
+        if (typeof loadActiveMerchantTasks === 'function') {
+            loadActiveMerchantTasks(); // สำหรับหน้าจดงานร้านค้า
+        }       
+    }
+});
 
 </script>
 	
