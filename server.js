@@ -3086,59 +3086,41 @@ app.post('/api/posts/:id/apply', async (req, res) => {
     const { riderName, lang = 'th' } = req.body;
 
     try {
-        // 1. หาข้อมูลโพสต์และไรเดอร์
-        const post = await db.collection('posts').findOne({ id: postId });
-        const rider = await db.collection('users').findOne({ username: riderName });
+        const post = await postsCollection.findOne({ id: postId });
+        const rider = await usersCollection.findOne({ username: riderName });
 
         if (!post || !rider) return res.status(404).json({ success: false, error: "Data not found" });
-		
-		const currency = post.currency || 'USD'; 
+        
+        const currency = post.currency || 'USD'; 
         const depositReq = parseFloat(post.depositAmount || 0);
         const riderBalance = rider[currency] || 0;
 
-        // 2. เช็คว่าไรเดอร์กำลังทำงานอื่นอยู่ไหม (ป้องกันการรับงานซ้อน)
+        // 1. เช็คว่าไรเดอร์กำลังทำงานอื่นอยู่ไหม
         if (rider.working || rider.riderWorking) {
-            return res.status(400).json({ success: false, error: serverTranslations[lang].err_rider_busy || "คุณกำลังมีงานค้างอยู่" });
+            return res.status(400).json({ success: false, error: serverTranslations[lang].err_rider_busy });
         }
 
-
+        // 2. เช็คยอดเงินมัดจำว่าพอไหม (แค่เช็ค ไม่หัก!)
         if (riderBalance < depositReq) {
             let errorMsg = serverTranslations[lang].err_insufficient_deposit;
             errorMsg = errorMsg.replace('{currency}', currency).replace('{amount}', depositReq.toLocaleString());
             return res.status(400).json({ success: false, error: errorMsg });
         }
 
-        // 🚩 4. เริ่มกระบวนการหักมัดจำ
-        if (depositReq > 0) {
-            await db.collection('users').updateOne(
-                { username: riderName },
-                { $inc: { [currency]: -depositReq } }
-            );
-            
-            // บันทึกประวัติการหักมัดจำ
-            await db.collection('transactions').insertOne({
-                id: Date.now(),
-                type: 'DEPOSIT_HELD',
-                amount: depositReq,
-                currency: currency,
-                fromUser: riderName,
-                note: `Hold deposit for job #${postId.toString().slice(-4)}`,
-                timestamp: Date.now()
-            });
-        }
-
-        // 5. อัปเดตสถานะโพสต์
-        await db.collection('posts').updateOne(
+        // 🚩 3. อัปเดตลง Array 'requests' (เปลี่ยนจาก pendingRider เป็น requests)
+        await postsCollection.updateOne(
             { id: postId },
             { 
-                $set: { 
-                    pendingRider: riderName, 
-                    applyTimestamp: Date.now(),
-                    depositHeld: depositReq 
+                $addToSet: { 
+                    requests: { 
+                        username: riderName, 
+                        timestamp: Date.now() 
+                    } 
                 } 
             }
         );
 
+        // 4. ส่งสัญญาณบอกร้านค้า
         io.emit('rider-applied', { postId: postId, riderName: riderName });
 
         res.json({ success: true });
@@ -4888,7 +4870,7 @@ app.post('/api/posts/:id/rate', async (req, res) => {
 // 🚩 2. API สำหรับร้านค้ากดยอมรับ (เช็คสถานะ -> หักเงิน -> เริ่มงาน)
 app.post('/api/posts/:id/approve-rider', async (req, res) => {
     const postId = parseInt(req.params.id);
-    const { riderName, lang } = req.body; 
+    const { riderName, lang = 'th' } = req.body; 
 
     try {
         const post = await postsCollection.findOne({ id: postId });
@@ -4898,7 +4880,12 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
         const currency = post.currency || 'USD';
         const depositAmount = parseFloat(post.depositAmount || 0);
 
-        // 1. หักเงินมัดจำไรเดอร์คนชนะ
+        // 1. เช็คเงินอีกครั้งก่อนหักจริง
+        if ((rider[currency] || 0) < depositAmount) {
+            return res.json({ success: false, error: "ไรเดอร์มียอดเงินไม่เพียงพอในขณะนี้" });
+        }
+
+        // 2. หักเงินมัดจำไรเดอร์คนชนะ และตั้งสถานะว่ากำลังทำงาน
         await usersCollection.updateOne(
             { username: riderName },
             { 
@@ -4907,20 +4894,27 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
             }
         );
 
-        // 2. อัปเดตสถานะงาน
+        // 3. บันทึกประวัติการหักเงิน
+        await transactionsCollection.insertOne({
+            id: Date.now(), type: 'RIDER_DEPOSIT_HELD', amount: depositAmount,
+            currency: currency, fromUser: riderName, toUser: 'System',
+            note: `Deposit held for job #${postId.toString().slice(-4)}`, timestamp: Date.now()
+        });
+
+        // 4. อัปเดตสถานะงาน และล้างรายการคำขอ (Requests) ทิ้งทั้งหมด
         await postsCollection.updateOne(
             { id: postId },
             { 
                 $set: { 
                     acceptedBy: riderName, 
-                    requests: [], // ล้างคำขอคนอื่นทิ้ง
+                    requests: [], // ล้างคนที่ไม่ได้เลือกออก
                     status: 'in_progress',
                     isClosed: false 
                 } 
             }
         );
 
-        // 🚩 3. ส่งสัญญาณเตะทุกคนในห้องงานนี้ (post-ID)
+        // 5. ส่งสัญญาณเตะคนอื่นที่เปิดหน้าจอนี้ค้างไว้ออก
         const roomName = `post-${postId}`;
         io.to(roomName).emit('kick-other-riders', { 
             winner: riderName, 
