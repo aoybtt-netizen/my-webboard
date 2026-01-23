@@ -1904,6 +1904,13 @@ async function loadActiveMerchantTasks() {
                 const postTime = new Date(post.id).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
                 const refCode = post.id.toString().slice(-4);
 
+                // 🚩 คำนวณรหัสออเดอร์ไว้ข้างนอก (แยกเป็นตัวแปรเดียว) เพื่อไม่ให้วงเล็บเพี้ยน
+                let orderBadge = "";
+                if (post.orderId) {
+                    const oCode = post.orderId.slice(-5);
+                    orderBadge = '<span style="background: #e0f2f1; color: #00796b; font-size: 0.7em; padding: 2px 6px; border-radius: 4px; border: 1px solid #b2dfdb; margin-left: 5px; font-weight: bold;">ORD #' + oCode + '</span>';
+                }
+
                 let actionBtnHtml = '';
                 
                 if (post.acceptedBy) {
@@ -1928,13 +1935,14 @@ async function loadActiveMerchantTasks() {
 
                 const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
 
-                // 🚩 แก้ไขจุดนี้: เพิ่ม ID และ Badge Container
+                // 🚩 แสดงผลโดยใช้ตัวแปร orderBadge ที่คำนวณไว้แล้ว
                 finalHtml += `
     <div id="card-${post.id}" class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
         
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
+                ${orderBadge}
                 <small style="color: #999; margin-left: 5px;">${t.post_time_prefix} ${postTime}</small>
                 <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
             </div>
