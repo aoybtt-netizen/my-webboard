@@ -7101,8 +7101,8 @@ socket.on('send-comment', async (data) => {
 });
 
 // --- Initial Tasks ---
-fetchLiveExchangeRates();
-setInterval(fetchLiveExchangeRates, 7200000);
+//fetchLiveExchangeRates();
+//setInterval(fetchLiveExchangeRates, 7200000);
 
 const PORT = process.env.PORT || 3000;
 
