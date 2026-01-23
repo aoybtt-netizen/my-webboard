@@ -1410,7 +1410,6 @@ async function autoRefundOrder(order, reason) {
 // 🚩 ฟังก์ชันจัดการเงิน (คืนมัดจำ + จ่ายค่าจ้าง + จ่ายค่าอาหาร)
 async function processOrderPayout(orderId, postId) {
     try {
-        console.log(`🔍 [Finance] Attempting payout for Order: ${orderId}, Post: ${postId}`);
 
         const post = await db.collection('posts').findOne({ id: parseInt(postId) });
         if (!post) {
@@ -1438,9 +1437,7 @@ async function processOrderPayout(orderId, postId) {
             if (orderDoc && orderDoc.orderId) {
                 riderWage = parseFloat(orderDoc.riderWage || 0);
                 foodPrice = parseFloat(orderDoc.foodPrice || 0);
-                console.log(`💰 [Finance] System Order detected. Wage: ${riderWage}, Food: ${foodPrice}`);
             } else {
-                console.log(`⚠️ [Finance] Order ${orderId} already paid or not found. Checking if it's a Manual Task...`);
                 // ถ้าเป็นออเดอร์ระบบแต่จ่ายไปแล้ว ให้หยุดทำงานเพื่อป้องกันเงินเบิ้ล
                 if (orderId.startsWith("ORD")) return; 
             }
@@ -1465,7 +1462,6 @@ async function processOrderPayout(orderId, postId) {
                         $set: { working: null, riderWorking: null }
                     }
                 );
-                console.log(`✅ [Finance] Rider ${riderName} received: ${totalRiderPayout} ${zoneCurrency}`);
             }
 
             // B. จ่ายเงินค่าอาหารให้ร้านค้า (ถ้ามี)
@@ -1474,7 +1470,6 @@ async function processOrderPayout(orderId, postId) {
                     { username: post.author },
                     { $inc: { [zoneCurrency]: foodPrice } }
                 );
-                console.log(`✅ [Finance] Merchant ${post.author} received food price: ${foodPrice} ${zoneCurrency}`);
             }
 
             // แจ้งเตือน Socket
@@ -1482,7 +1477,7 @@ async function processOrderPayout(orderId, postId) {
             io.to(post.author).emit('balance-update');
             
         } else {
-            console.log("⚠️ [Finance] Payout already completed for this post.");
+            
         }
 
     } catch (e) {
@@ -1504,7 +1499,6 @@ async function isUserBanned(username) {
 async function processJobTimeout(postId, io) {
     try {
         const targetId = parseInt(postId);
-        console.log(`[Timeout Handler] ⏳ เริ่มจัดการหมดเวลาสำหรับ ID: ${targetId}`);
 
         const currentPost = await postsCollection.findOne({ id: targetId });
 
@@ -1535,9 +1529,7 @@ async function processJobTimeout(postId, io) {
             // ส่งเข้าห้องเลขงาน
             io.to(targetId.toString()).emit('force-close-job', kickMsg);
 
-            console.log(`[Timeout Handler] ✅ งาน ${targetId} ถูกปิดถาวรและปลดล็อกสมาชิกแล้ว`);
         } else {
-            console.log(`[Timeout Handler] ℹ️ งาน ${targetId} ไม่ต้องจัดการ (สถานะปัจจุบัน: ${currentPost ? currentPost.status : 'ไม่พบงาน'})`);
         }
 
         if (activePostTimers[postId]) delete activePostTimers[postId];
@@ -6050,7 +6042,6 @@ io.on('connection', (socket) => {
 	
 	socket.on('join', (roomName) => {
         socket.join(roomName);
-        console.log(`User [${socket.id}] joined room: ${roomName}`);
     });
 	
 	socket.on('register-user', (username) => {
