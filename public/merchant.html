@@ -1894,7 +1894,6 @@ async function loadActiveMerchantTasks() {
             let finalHtml = ''; 
 
             data.posts.forEach(post => {
-                // ✅ ถูกต้อง: เข้าห้องแชททุกงานเพื่อให้รับแจ้งเตือนสดได้
                 socket.emit('join-post', post.id);
 
                 const totalStops = post.stops.length;
@@ -1904,7 +1903,6 @@ async function loadActiveMerchantTasks() {
                 const postTime = new Date(post.id).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
                 const refCode = post.id.toString().slice(-4);
 
-                // 🚩 คำนวณรหัสออเดอร์ไว้ข้างนอก (แยกเป็นตัวแปรเดียว) เพื่อไม่ให้วงเล็บเพี้ยน
                 let orderBadge = "";
                 if (post.orderId) {
                     const oCode = post.orderId.slice(-5);
@@ -1914,60 +1912,51 @@ async function loadActiveMerchantTasks() {
                 let actionBtnHtml = '';
                 
                 if (post.acceptedBy) {
-        if (canConfirm) {
-            actionBtnHtml = `<button onclick="event.stopPropagation(); confirmAndRate('${post.id}', '${post.acceptedBy}')" 
-                style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">
-                ${t.btn_confirm_rate}
-            </button>`;
-        } else {
-            actionBtnHtml = `<small style="color: #11998e; font-weight: bold;">${t.status_delivering}</small>`;
-        }
-    } else if (post.pendingRider) {
-        actionBtnHtml = `
-            <div style="text-align:right;">
-                <small style="display:block; margin-bottom:5px; color:#eb9123;">
-                    ${t.status_requesting(post.pendingRider)}
-                </small>
-            </div>`;
-    } else {
-        actionBtnHtml = `<small style="color: #999;">${t.status_waiting}</small>`;
-    }
+                    if (canConfirm) {
+                        actionBtnHtml = `<button onclick="event.stopPropagation(); confirmAndRate('${post.id}', '${post.acceptedBy}')" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; cursor: pointer; font-weight:bold;">${t.btn_confirm_rate}</button>`;
+                    } else {
+                        actionBtnHtml = `<small style="color: #11998e; font-weight: bold;">${t.status_delivering}</small>`;
+                    }
+                } 
+                // 🚩 แก้ไขจุดนี้: เช็คจาก requests (Array) แทน pendingRider
+                else if (post.requests && post.requests.length > 0) {
+                    actionBtnHtml = `
+                        <div style="text-align:right;">
+                            <small style="display:block; margin-bottom:5px; color:#eb9123; font-weight:bold;">
+                                <i class="fas fa-user-clock"></i> มีคำขอจากไรเดอร์ (${post.requests.length})
+                            </small>
+                        </div>`;
+                } else {
+                    actionBtnHtml = `<small style="color: #999;">${t.status_waiting}</small>`;
+                }
 
                 const borderStyle = canConfirm ? 'border-left: 6px solid #27ae60;' : 'border-left: 6px solid #f39c12;';
 
-                // 🚩 แสดงผลโดยใช้ตัวแปร orderBadge ที่คำนวณไว้แล้ว
                 finalHtml += `
-    <div id="card-${post.id}" class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
-        
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
-                ${orderBadge}
-                <small style="color: #999; margin-left: 5px;">${t.post_time_prefix} ${postTime}</small>
-                <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
-            </div>
-            <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
-        </div>
-        
-        <div style="font-size: 0.85em; color: #666; margin: 10px 0; display: flex; align-items: center;">
-        👤 ${t.lbl_rider} <span style="color: #11998e; font-weight: 600; margin-left: 4px;">${post.acceptedBy || t.rider_none}</span>
-        
-        <div id="notif-box-${post.id}" class="notif-inline-wrapper">
-            <i class="fas fa-comment-dots msg-icon-small"></i>
-            <div class="dot-on-icon-small"></div>
-        </div>
-    </div>
-                        
+                    <div id="card-${post.id}" class="active-task-card" onclick="openRightSidebar('${post.id}')" style="${borderStyle} padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor:pointer;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <span style="background: #eee; color: #666; font-size: 0.7em; padding: 2px 6px; border-radius: 4px;">#${refCode}</span>
+                                ${orderBadge}
+                                <small style="color: #999; margin-left: 5px;">${t.post_time_prefix} ${postTime}</small>
+                                <div style="font-weight: bold; font-size: 1.1em; color: #333; margin-top: 3px;">${post.title}</div>
+                            </div>
+                            <b style="color: #e67e22; font-size: 1.2em;">฿${post.budget}</b>
+                        </div>
+                        <div style="font-size: 0.85em; color: #666; margin: 10px 0; display: flex; align-items: center;">
+                            👤 ${t.lbl_rider} <span style="color: #11998e; font-weight: 600; margin-left: 4px;">${post.acceptedBy || t.rider_none}</span>
+                            <div id="notif-box-${post.id}" class="notif-inline-wrapper">
+                                <i class="fas fa-comment-dots msg-icon-small"></i>
+                                <div class="dot-on-icon-small"></div>
+                            </div>
+                        </div>
                         <div class="task-progress-bar" style="height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 5px;">
                             <div class="progress-fill" style="width: ${progressPercent}%; height: 100%; background: #11998e; transition: 0.5s;"></div>
                         </div>
-                        
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-        <small style="color: #888; font-weight: bold;">
-            ${t.progress_prefix} ${completedStops}/${totalStops} ${t.unit_stop}
-        </small>
-        ${actionBtnHtml}
-    </div>
+                            <small style="color: #888; font-weight: bold;">${t.progress_prefix} ${completedStops}/${totalStops} ${t.unit_stop}</small>
+                            ${actionBtnHtml}
+                        </div>
                     </div>
                 `;
             });
@@ -3531,22 +3520,19 @@ async function rejectRider(postId) {
 
 // 🔔 รับสัญญาณเมื่อมีไรเดอร์กด "ของาน"
 socket.on('rider-applied', (data) => {
-    // 1. โหลดรายการงานใหม่ทันทีเพื่อให้ปุ่ม "ตกลงให้งาน" ปรากฏ
+    console.log("🔔 มีไรเดอร์ส่งคำขอใหม่:", data);
+    
+    // 1. อัปเดตการ์ดงานที่หน้าหลักทันที
     loadActiveMerchantTasks();
     
-    // 2. ถ้าเปิด Sidebar งานนั้นอยู่ ให้เพิ่มแจ้งเตือนใน Tab Notif
+    // 2. 🚩 หากร้านค้าเปิด Sidebar ของงานนั้นค้างอยู่ ให้โหลดข้อมูลใน Sidebar ใหม่
+    // เพื่อให้รายชื่อไรเดอร์ใน Array 'requests' อัปเดตล่าสุด
     if (activeTaskInSidebar && activeTaskInSidebar.id === data.postId) {
-        const notifList = document.getElementById('notif-list');
-        notifList.innerHTML = `
-            <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12; margin-bottom: 10px;">
-        <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> ${translations[currentLang].notif_new_request}</b><br>
-        ${translations[currentLang].notif_rider_wants(data.riderName)}<br>
-        <button onclick="approveRider('${data.postId}')" 
-            style="margin-top:10px; background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:20px; width:100%;">
-            ${translations[currentLang].btn_confirm_assign}
-        </button>
-    </div>
-        ` + notifList.innerHTML;
+        openRightSidebar(data.postId);
+        
+        // เล่นเสียงแจ้งเตือนเบาๆ
+        const sound = document.getElementById('orderSound');
+        if(sound) sound.play().catch(e => {});
     }
 });
 
