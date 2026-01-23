@@ -4545,20 +4545,26 @@ app.get('/api/rider-stats/:username', async (req, res) => {
         const user = await usersCollection.findOne({ username: username });
         
         if (!user) {
+            console.log(`❌ [Stats API] ไม่พบผู้ใช้: ${username}`);
             return res.status(404).json({ success: false, message: 'User not found' });
         }
+
+        // 🚩 เพิ่ม Debug Log ตรงนี้
+        console.log(`📊 [Stats API] ไรเดอร์: ${username} | Rating: ${user.rating} (${typeof user.rating})`);
 
         res.json({
             success: true,
             stats: {
                 username: username,
-                rating: user.rating || 0,
-                ratingCount: user.ratingCount || 0,
-                totalJobs: user.totalJobs || 0, 
+                // บังคับให้เป็นตัวเลขด้วย Number() เผื่อใน DB เก็บเป็น String
+                rating: Number(user.rating || 0),
+                ratingCount: Number(user.ratingCount || 0),
+                totalJobs: Number(user.totalJobs || 0), 
                 avatar: user.avatar || null
             }
         });
     } catch (e) {
+        console.error("🚨 [Stats API] Error:", e);
         res.status(500).json({ success: false });
     }
 });
