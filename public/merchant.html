@@ -3128,7 +3128,22 @@ function goToCurrentLocation() {
     }
 }
 
-
+// 🚩 เพิ่มฟังก์ชันนี้ไว้ด้านบนสุดของไฟล์
+function generateRatingStars(rating) {
+    // ป้องกันกรณีค่า rating เป็น undefined หรือ null ให้เป็น 0
+    const score = parseFloat(rating || 0);
+    let stars = '';
+    
+    for (let i = 1; i <= 5; i++) {
+        // เช็คว่าต้องแสดงดาวเต็ม หรือดาวว่าง
+        if (i <= Math.round(score)) {
+            stars += `<i class="fas fa-star" style="color: #f1c40f; font-size: 0.8rem;"></i>`;
+        } else {
+            stars += `<i class="far fa-star" style="color: #ccc; font-size: 0.8rem;"></i>`;
+        }
+    }
+    return stars;
+}
 
 //  ฟังก์ชันปิด Modal
 function closeManageModal() {
@@ -3202,10 +3217,9 @@ function closeManageModal() {
         </div>`;
 
 } else if (activeTaskInSidebar.acceptedBy) {
-    // 🚩 กรณีรับงานไปแล้ว (Accepted)
     const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.acceptedBy}`);
     const statsData = await statsRes.json();
-    const stats = statsData.stats;
+    const stats = statsData.stats || { rating: 0, username: activeTaskInSidebar.acceptedBy }; // กันเหนียวถ้า API พลาด
 
     notifList.innerHTML = `
         <div style="text-align:center; padding: 20px; background: #e8f5e9; border-radius: 15px;">
@@ -3216,7 +3230,7 @@ function closeManageModal() {
             
             <div style="display: inline-flex; align-items: center; gap: 8px; background: white; padding: 5px 15px; border-radius: 20px; border: 1px solid #27ae60; margin-bottom: 10px;">
                 ${generateRatingStars(stats.rating)}
-                <b style="color: #2c3e50;">${stats.rating.toFixed(1)}</b>
+                <b style="color: #2c3e50;">${parseFloat(stats.rating || 0).toFixed(1)}</b>
             </div>
 
             <br>
@@ -3243,13 +3257,6 @@ function closeRightSidebar() {
     activeTaskInSidebar = null;
 }
 
-function generateRatingStars(rating) {
-    let stars = '';
-    for (let i = 1; i <= 5; i++) {
-        stars += `<i class="fa${i <= Math.round(rating) ? 's' : 'r'} fa-star" style="color: #f1c40f; font-size: 0.8rem;"></i>`;
-    }
-    return stars;
-}
 
 
 function switchTab(tabName) {
