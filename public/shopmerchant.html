@@ -1107,12 +1107,10 @@ function renderMyOrdersUI() {
 
     container.innerHTML = '';
     const ordersHtml = myActiveOrders.map(order => {
-        // ... (โค้ดการสร้าง HTML เดิมของพี่ที่อยู่ใน openMyOrdersModal) ...
         const isWaiting = order.status === 'waiting_merchant';
         const isAccepted = order.status === 'accepted';
         const isFinished = order.status === 'finished' || order.status === 'done';
         
-        // ตัวอย่างการทำสีสถานะ Reject ถ้าต้องการโชว์ประวัติสั้นๆ (ถ้าพี่ลบออกจาก active orders เลยจุดนี้จะไม่เห็น)
         let statusText = translations[currentLang].status_waiting;
         let statusClass = 'status-waiting';
 
@@ -1124,14 +1122,36 @@ function renderMyOrdersUI() {
             statusClass = 'status-finished';
         }
 
+        // เตรียมรหัสย่อ
+        const shortOrderId = order.orderId.slice(-5);
+        // ถ้ามี postId (ร้านรับงานแล้ว) ให้เอารหัสท้าย 5 ตัวมาโชว์เป็น Job ID
+        const shortJobId = order.postId ? String(order.postId).slice(-5) : null;
+
         return `
-            <div class="customer-order-item" onclick="handleOrderClick('${order.orderId}', '${order.status}', ${order.postId || 'null'})">
+            <div class="customer-order-item" onclick="handleOrderClick('${order.orderId}', '${order.status}', ${order.postId || 'null'})" 
+                 style="border-left: 5px solid ${isFinished ? '#f1c40f' : '#11998e'}; margin-bottom: 10px; padding: 12px; background: white; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                
                 <div style="flex: 1;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="font-weight:bold;">#${order.orderId.slice(-5)}</div>
-                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div style="font-weight:bold; color:#2c3e50;">#${shortOrderId}</div>
+                        
+                        ${shortJobId ? `
+                            <div style="background: #e0f2f1; color: #00796b; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; border: 1px solid #b2dfdb;">
+                                <i class="fas fa-map-marker-alt"></i> Job #${shortJobId}
+                            </div>
+                        ` : ''}
+
+                        <span class="status-badge ${statusClass}" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 20px;">${statusText}</span>
                     </div>
-                    <small>${order.merchant}</small>
+                    
+                    <div style="margin-top: 4px; display: flex; align-items: center; gap: 5px; color: #7f8c8d; font-size: 0.85rem;">
+                        <i class="fas fa-store"></i> <b>${order.merchant}</b>
+                    </div>
+                </div>
+
+                <div style="text-align: right;">
+                    <div style="font-weight: bold; color: #11998e;">${order.totalPrice.toLocaleString()} ${order.currency}</div>
+                    <i class="fas fa-chevron-right" style="color: #ccc; font-size: 0.8rem;"></i>
                 </div>
             </div>`;
     }).join('');

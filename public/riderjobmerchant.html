@@ -667,7 +667,7 @@ function drawPathOnMap(riderLat, riderLng) {
     const currentLang = localStorage.getItem('preferredLanguage') || 'th'; // ดึงภาษาปัจจุบัน
     const container = document.getElementById('job-details');
     currentPostData = post; 
-
+	const displayOrderId = post.orderId ? post.orderId.slice(-5) : 'N/A';
     // 🚩 1. ค้นหาคิวปัจจุบัน
     const nextPendingIndex = post.stops.findIndex(s => s.status === 'pending');
 
@@ -735,10 +735,16 @@ function drawPathOnMap(riderLat, riderLng) {
     // 🚩 2. แสดงผลทั้งหมด (ดึงคำแปลส่วน Merchant Card)
     container.innerHTML = `
         <div class="merchant-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <small style="color: #888;">${translations[currentLang].lbl_merchant}</small><br>
                     <b style="font-size: 1.2em;"><i class="fas fa-store"></i> ${post.storeName || post.author}</b>
+                    
+                    <div style="margin-top: 5px;">
+                        <span style="background: #e0f2f1; color: #00796b; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; border: 1px solid #b2dfdb;">
+                           <i class="fas fa-receipt"></i> Order #${displayOrderId}
+                        </span>
+                    </div>
                 </div>
                 <div class="budget-badge">฿ ${post.budget}</div>
             </div>
