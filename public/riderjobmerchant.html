@@ -664,11 +664,20 @@ function drawPathOnMap(riderLat, riderLng) {
 
 
     function renderJob(post) {
-    const currentLang = localStorage.getItem('preferredLanguage') || 'th'; // ดึงภาษาปัจจุบัน
+    const currentLang = localStorage.getItem('preferredLanguage') || 'th'; 
     const container = document.getElementById('job-details');
     currentPostData = post; 
-	const displayOrderId = post.orderId ? post.orderId.slice(-5) : 'N/A';
-    // 🚩 1. ค้นหาคิวปัจจุบัน
+
+    // 🚩 1. เตรียมรหัสต่างๆ ไว้ข้างนอก (เพื่อไม่ให้วงเล็บใน HTML เพี้ยน)
+    const refCode = post.id.toString().slice(-4); // รหัสงาน (Job ID)
+    
+    let orderBadge = ""; // รหัสออเดอร์ลูกค้า (ถ้ามี)
+    if (post.orderId) {
+        const oCode = post.orderId.slice(-5);
+        orderBadge = '<span style="background: #e0f2f1; color: #00796b; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; border: 1px solid #b2dfdb; margin-left: 5px;"><i class="fas fa-receipt"></i> Order #' + oCode + '</span>';
+    }
+
+    // 🚩 2. ค้นหาคิวปัจจุบัน
     const nextPendingIndex = post.stops.findIndex(s => s.status === 'pending');
 
     let stopsHtml = '';
@@ -677,12 +686,10 @@ function drawPathOnMap(riderLat, riderLng) {
         const isDone = stop.status === 'success'; 
         const isCurrentTarget = (index === nextPendingIndex); 
 
-        // --- ส่วนที่ 1: เตรียมข้อความเบอร์โทร ---
         const phoneText = stop.phone ? 
             ` <a href="tel:${stop.phone}" onclick="event.stopPropagation();" style="font-size: 0.85em; color: #007bff; text-decoration: underline; font-weight: normal;">(📞 ${stop.phone})</a>` 
             : '';
 
-        // --- ส่วนที่ 2: ปุ่มเช็คอิน (ดึงคำแปล) ---
         let checkinBtnHtml = '';
         if (!isDone) {
             const btnColor = isCurrentTarget ? '#27ae60' : '#ccc';
@@ -698,7 +705,6 @@ function drawPathOnMap(riderLat, riderLng) {
                 </button>`;
         }
 
-        // --- ส่วนที่ 3: ประกอบร่าง HTML (ดึงคำแปลสถานะและหัวข้อ) ---
         const statusText = isDone ? translations[currentLang].status_success : (isCurrentTarget ? translations[currentLang].status_current : translations[currentLang].status_locked);
         const labelText = isPickup ? translations[currentLang].label_pickup : translations[currentLang].label_dropoff_num(index);
 
@@ -730,9 +736,9 @@ function drawPathOnMap(riderLat, riderLng) {
             ${checkinBtnHtml}
         </div>
         `;
-    });
+    }); // <-- ปิด stops.forEach
 
-    // 🚩 2. แสดงผลทั้งหมด (ดึงคำแปลส่วน Merchant Card)
+    // 🚩 3. แสดงผลทั้งหมด
     container.innerHTML = `
         <div class="merchant-card">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -740,10 +746,9 @@ function drawPathOnMap(riderLat, riderLng) {
                     <small style="color: #888;">${translations[currentLang].lbl_merchant}</small><br>
                     <b style="font-size: 1.2em;"><i class="fas fa-store"></i> ${post.storeName || post.author}</b>
                     
-                    <div style="margin-top: 5px;">
-                        <span style="background: #e0f2f1; color: #00796b; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; border: 1px solid #b2dfdb;">
-                           <i class="fas fa-receipt"></i> Order #${displayOrderId}
-                        </span>
+                    <div style="margin-top: 5px; display: flex; align-items: center;">
+                        <span style="background: #eee; color: #666; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">#${refCode}</span>
+                        ${orderBadge}
                     </div>
                 </div>
                 <div class="budget-badge">฿ ${post.budget}</div>
