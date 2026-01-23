@@ -858,9 +858,8 @@ async function handleCheckIn(index, targetLat, targetLng) {
 async function acceptJob() {
     if (!myUsername) return alert(translations[currentLang].err_not_logged_in);
 
-    // 🚩 เปลี่ยนจุดนี้: ดึง currency จากตัวงานที่โหลดมา (currentPostData)
     const deposit = currentPostData.depositAmount || 0;
-    const currency = currentPostData.currency || 'USD'; // ใช้ค่า currency ที่เราบันทึกไว้ใน Post
+    const currency = currentPostData.currency || 'USD';
     
     const confirmMsg = `${translations[currentLang].confirm_request_job}\n` + 
                        `(ยอดมัดจำสินค้า: ${deposit.toLocaleString()} ${currency})`;
@@ -1273,6 +1272,25 @@ socket.on('job-finished-complete', (data) => {
     if (data.postId == jobId) {
         alert(translations[currentLang].msg_merchant_confirmed);
         location.reload(); // หรือจะเปลี่ยนหน้าไปที่หน้าสรุปงานก็ได้
+    }
+});
+
+
+
+socket.on('kick-other-riders', (data) => {
+    if (myUsername !== data.winner) {
+        Swal.fire({
+            icon: 'info',
+            title: 'ขออภัย',
+            text: data.message,
+            timer: 3000,
+            showConfirmButton: false
+        }).then(() => {
+            window.location.href = 'index.html'; 
+        });
+    } else {
+        console.log("🎉 ยินดีด้วย! คุณได้รับงานนี้");
+        loadJobDetails(); 
     }
 });
 

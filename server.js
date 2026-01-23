@@ -4884,58 +4884,86 @@ app.post('/api/posts/:id/rate', async (req, res) => {
     }
 });
 
-// API: Rider ส่งคำขอรับงาน
+// 🚩 1. API สำหรับไรเดอร์ส่งคำขอ (เช็คเงินแต่ยังไม่หัก)
 app.post('/api/posts/:id/apply', async (req, res) => {
     const postId = parseInt(req.params.id);
-    const { riderName } = req.body;
+    const { riderName, lang } = req.body;
+    
     try {
+        const post = await postsCollection.findOne({ id: postId });
+        const rider = await usersCollection.findOne({ username: riderName });
+        const currency = post.currency || 'USD';
+        const depositNeeded = parseFloat(post.depositAmount || 0);
+
+        // เช็คยอดเงินมัดจำว่าพอไหม
+        if ((rider[currency] || 0) < depositNeeded) {
+            return res.json({ success: false, error: "ยอดเงินมัดจำในกระเป๋าไม่เพียงพอ" });
+        }
+
+        // เพิ่มชื่อไรเดอร์ลงใน Array requests (ใช้ $addToSet เพื่อไม่ให้ชื่อซ้ำ)
         await postsCollection.updateOne(
             { id: postId },
-            { $set: { pendingRider: riderName, applyTimestamp: Date.now() } }
+            { 
+                $addToSet: { 
+                    requests: { 
+                        username: riderName, 
+                        timestamp: Date.now() 
+                    } 
+                } 
+            }
         );
 
-        // 🔔 เพิ่มบรรทัดนี้: ส่งสัญญาณบอกร้านค้าว่ามีคนของาน
         io.emit('rider-applied', { postId: postId, riderName: riderName });
-
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// API: ร้านค้ากดยืนยันรับ Rider คนนี้
+// 🚩 2. API สำหรับร้านค้ากดยอมรับ (เช็คสถานะ -> หักเงิน -> เริ่มงาน)
 app.post('/api/posts/:id/approve-rider', async (req, res) => {
-	const lang = req.body.lang || 'th';
     const postId = parseInt(req.params.id);
+    const { riderName, lang } = req.body; 
+
     try {
         const post = await postsCollection.findOne({ id: postId });
-				if (!post || !post.pendingRider) {
-					return res.json({ 
-					success: false, 
-					error: serverTranslations[lang].err_no_rider_request 
-				});
-			}
+        if (!post) return res.json({ success: false, error: "ไม่พบข้อมูลงาน" });
 
-        const acceptedRider = post.pendingRider;
+        const rider = await usersCollection.findOne({ username: riderName });
+        const currency = post.currency || 'USD';
+        const depositAmount = parseFloat(post.depositAmount || 0);
 
-        // 1. อัปเดตฝั่งงาน (Posts)
+        // 1. หักเงินมัดจำไรเดอร์คนชนะ
+        await usersCollection.updateOne(
+            { username: riderName },
+            { 
+                $inc: { [currency]: -depositAmount },
+                $set: { riderWorking: postId } 
+            }
+        );
+
+        // 2. อัปเดตสถานะงาน
         await postsCollection.updateOne(
             { id: postId },
-            { $set: { acceptedBy: acceptedRider, pendingRider: null, status: 'in_progress' } }
+            { 
+                $set: { 
+                    acceptedBy: riderName, 
+                    requests: [], // ล้างคำขอคนอื่นทิ้ง
+                    status: 'in_progress',
+                    isClosed: false 
+                } 
+            }
         );
 
-        // 🚩 2. ผูกงานไว้กับ Rider (เพิ่มจุดนี้)
-        // เพื่อให้ Rider คนนี้ติดสถานะ "กำลังทำงาน" และรับงานอื่นไม่ได้
-        await usersCollection.updateOne(
-            { username: acceptedRider },
-            { $set: { riderWorking: postId } }
-        );
+        // 🚩 3. ส่งสัญญาณเตะทุกคนในห้องงานนี้ (post-ID)
+        const roomName = `post-${postId}`;
+        io.to(roomName).emit('kick-other-riders', { 
+            winner: riderName, 
+            message: 'งานนี้ถูกรับไปแล้วโดยไรเดอร์ท่านอื่น' 
+        });
 
         io.emit('update-post-status');
-        io.to(postId.toString()).emit('update-job-status', { status: 'in_progress' });
-
         res.json({ success: true });
-    } catch (e) { 
-        res.status(500).json({ success: false }); 
-    }
+
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 // API: ร้านค้ากดปฏิเสธคำขอของไรเดอร์

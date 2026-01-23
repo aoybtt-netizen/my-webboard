@@ -3171,7 +3171,6 @@ function closeManageModal() {
 
 
 	async function openRightSidebar(postId) {
-    
     try {
         const res = await fetch(`/api/posts/${postId}`);
         const data = await res.json();
@@ -3183,7 +3182,6 @@ function closeManageModal() {
         
         if (activeTaskInSidebar.isMerchantTask && activeTaskInSidebar.content) {
             itemsContainer.classList.remove('hidden');
-            // แปลง \n เป็น <br> เพื่อให้เว้นบรรทัดสวยงาม
             itemsText.innerHTML = activeTaskInSidebar.content.replace(/\n/g, '<br>');
         } else {
             itemsContainer.classList.add('hidden');
@@ -3197,54 +3195,58 @@ function closeManageModal() {
         const notifList = document.getElementById('notif-list');
         notifList.innerHTML = ''; 
         
-        if (activeTaskInSidebar.pendingRider) {
-    // 🚩 กรณีมีไรเดอร์สนใจ (Pending)
-    const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.pendingRider}`);
-    const statsData = await statsRes.json();
-    const stats = statsData.stats;
-
-    notifList.innerHTML = `
-        <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12;">
-            <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ${translations[currentLang].sidebar_rider_interested}</b>
+        // 🚩 ส่วนที่แก้ไข: รองรับไรเดอร์หลายคนจาก Array 'requests'
+        if (activeTaskInSidebar.requests && activeTaskInSidebar.requests.length > 0 && !activeTaskInSidebar.acceptedBy) {
             
-            <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; background: white; padding: 10px; border-radius: 10px;">
-                <img src="${stats.avatar || 'https://via.placeholder.com/40'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                <div>
-                    <div style="font-weight: bold; color: #333;">${stats.username}</div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
+            let allRequestsHtml = `<b style="color: #e67e22; display:block; margin-bottom:10px;"><i class="fas fa-users"></i> ${translations[currentLang].sidebar_rider_interested} (${activeTaskInSidebar.requests.length})</b>`;
+
+            // วนลูปเพื่อดึงข้อมูลสถิติและสร้างการ์ดให้ไรเดอร์แต่ละคน
+            for (const req of activeTaskInSidebar.requests) {
+                const statsRes = await fetch(`/api/rider-stats/${req.username}`);
+                const statsData = await statsRes.json();
+                const stats = statsData.stats;
+
+                allRequestsHtml += `
+                    <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 10px;">
+                            <img src="${stats.avatar || 'https://via.placeholder.com/40'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #333;">${stats.username}</div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    ${generateRatingStars(stats.rating)}
+                                    <span style="font-size: 0.8rem; color: #666;">(${parseFloat(stats.rating || 0).toFixed(1)})</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button onclick="approveRider('${postId}', '${stats.username}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
+                            <button onclick="rejectRider('${postId}', '${stats.username}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
+                        </div>
+                    </div>`;
+            }
+            notifList.innerHTML = allRequestsHtml;
+
+        } else if (activeTaskInSidebar.acceptedBy) {
+            // ส่วนแสดงผลเมื่อรับงานแล้ว (เหมือนเดิม)
+            const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.acceptedBy}`);
+            const statsData = await statsRes.json();
+            const stats = statsData.stats || { rating: 0, username: activeTaskInSidebar.acceptedBy };
+
+            notifList.innerHTML = `
+                <div style="text-align:center; padding: 20px; background: #e8f5e9; border-radius: 15px;">
+                    <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
+                    <p style="color:#27ae60; font-weight:bold; margin-bottom: 10px;">
+                        ${translations[currentLang].sidebar_assigned_msg(stats.username)}
+                    </p>
+                    <div style="display: inline-flex; align-items: center; gap: 8px; background: white; padding: 5px 15px; border-radius: 20px; border: 1px solid #27ae60; margin-bottom: 10px;">
                         ${generateRatingStars(stats.rating)}
-                        <span style="font-size: 0.8rem; color: #666;">(${stats.rating.toFixed(1)})</span>
+                        <b style="color: #2c3e50;">${parseFloat(stats.rating || 0).toFixed(1)}</b>
                     </div>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
-                <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
-            </div>
-        </div>`;
-
-} else if (activeTaskInSidebar.acceptedBy) {
-    const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.acceptedBy}`);
-    const statsData = await statsRes.json();
-    const stats = statsData.stats || { rating: 0, username: activeTaskInSidebar.acceptedBy }; // กันเหนียวถ้า API พลาด
-
-    notifList.innerHTML = `
-        <div style="text-align:center; padding: 20px; background: #e8f5e9; border-radius: 15px;">
-            <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
-            <p style="color:#27ae60; font-weight:bold; margin-bottom: 10px;">
-                ${translations[currentLang].sidebar_assigned_msg(stats.username)}
-            </p>
-            
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: white; padding: 5px 15px; border-radius: 20px; border: 1px solid #27ae60; margin-bottom: 10px;">
-                ${generateRatingStars(stats.rating)}
-                <b style="color: #2c3e50;">${parseFloat(stats.rating || 0).toFixed(1)}</b>
-            </div>
-
-            <br>
-            <small style="color:#666;">${translations[currentLang].sidebar_track_info}</small>
-        </div>`;
-} else {
+                    <br>
+                    <small style="color:#666;">${translations[currentLang].sidebar_track_info}</small>
+                </div>`;
+        } else {
             notifList.innerHTML = `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].status_waiting_rider}</p>`;
         }
 
@@ -3468,15 +3470,30 @@ async function deleteMerchantTask(postId) {
 }
 
 // 2. ฟังก์ชันอนุมัติไรเดอร์
-async function approveRider(postId) {
-    if (!confirm(translations[currentLang].confirm_approve_rider)) return;
+async function approveRider(postId, riderName) {
+    const confirmMsg = `${translations[currentLang].confirm_approve_rider} (${riderName})?`;
+    if (!confirm(confirmMsg)) return;
     
     try {
-        const res = await fetch(`/api/posts/${postId}/approve-rider`, { method: 'POST' });
+        const res = await fetch(`/api/posts/${postId}/approve-rider`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                riderName: riderName, 
+                lang: currentLang 
+            }) 
+        });
+        
         const data = await res.json();
+        
         if (data.success) {
             alert(translations[currentLang].alert_approve_success);
-            loadActiveMerchantTasks();
+            if (typeof loadActiveMerchantTasks === 'function') {
+                loadActiveMerchantTasks();
+            }
+            openRightSidebar(postId); 
+        } else {
+            alert("❌ " + data.error);
         }
     } catch (e) { 
         alert(translations[currentLang].err_generic); 
