@@ -3175,25 +3175,54 @@ function closeManageModal() {
         notifList.innerHTML = ''; 
         
         if (activeTaskInSidebar.pendingRider) {
-            const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.pendingRider}`);
-            const statsData = await statsRes.json();
-            const stats = statsData.stats;
-            notifList.innerHTML = `
-                <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12;">
-                    <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ${translations[currentLang].sidebar_rider_interested}</b>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
-                        <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
+    // 🚩 กรณีมีไรเดอร์สนใจ (Pending)
+    const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.pendingRider}`);
+    const statsData = await statsRes.json();
+    const stats = statsData.stats;
+
+    notifList.innerHTML = `
+        <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12;">
+            <b style="color: #e67e22;"><i class="fas fa-user-plus"></i> ${translations[currentLang].sidebar_rider_interested}</b>
+            
+            <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; background: white; padding: 10px; border-radius: 10px;">
+                <img src="${stats.avatar || 'https://via.placeholder.com/40'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                <div>
+                    <div style="font-weight: bold; color: #333;">${stats.username}</div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        ${generateRatingStars(stats.rating)}
+                        <span style="font-size: 0.8rem; color: #666;">(${stats.rating.toFixed(1)})</span>
                     </div>
-                </div>`;
-        } else if (activeTaskInSidebar.acceptedBy) {
-            notifList.innerHTML = `
-                <div style="text-align:center; padding: 20px;">
-                    <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
-                    <p style="color:#27ae60; font-weight:bold;">${translations[currentLang].sidebar_assigned_msg(activeTaskInSidebar.acceptedBy)}</p>
-                    <small style="color:#999;">${translations[currentLang].sidebar_track_info}</small>
-                </div>`;
-        } else {
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="approveRider('${postId}')" style="flex:1; background:#27ae60; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
+                <button onclick="rejectRider('${postId}')" style="flex:1; background:#dc3545; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
+            </div>
+        </div>`;
+
+} else if (activeTaskInSidebar.acceptedBy) {
+    // 🚩 กรณีรับงานไปแล้ว (Accepted)
+    const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.acceptedBy}`);
+    const statsData = await statsRes.json();
+    const stats = statsData.stats;
+
+    notifList.innerHTML = `
+        <div style="text-align:center; padding: 20px; background: #e8f5e9; border-radius: 15px;">
+            <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
+            <p style="color:#27ae60; font-weight:bold; margin-bottom: 10px;">
+                ${translations[currentLang].sidebar_assigned_msg(stats.username)}
+            </p>
+            
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: white; padding: 5px 15px; border-radius: 20px; border: 1px solid #27ae60; margin-bottom: 10px;">
+                ${generateRatingStars(stats.rating)}
+                <b style="color: #2c3e50;">${stats.rating.toFixed(1)}</b>
+            </div>
+
+            <br>
+            <small style="color:#666;">${translations[currentLang].sidebar_track_info}</small>
+        </div>`;
+} else {
             notifList.innerHTML = `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].status_waiting_rider}</p>`;
         }
 
@@ -3213,6 +3242,15 @@ function closeRightSidebar() {
     document.getElementById('right-sidebar-overlay').classList.add('hidden');
     activeTaskInSidebar = null;
 }
+
+function generateRatingStars(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        stars += `<i class="fa${i <= Math.round(rating) ? 's' : 'r'} fa-star" style="color: #f1c40f; font-size: 0.8rem;"></i>`;
+    }
+    return stars;
+}
+
 
 function switchTab(tabName) {
     // 🚩 อัปเดตค่า Tab ปัจจุบันลงในตัวแปร
@@ -4425,10 +4463,12 @@ document.addEventListener('visibilitychange', () => {
         if (socket && !socket.connected) {
             socket.connect();
         }
-        
         if (typeof loadActiveMerchantTasks === 'function') {
-            loadActiveMerchantTasks(); // สำหรับหน้าจดงานร้านค้า
-        }       
+            loadActiveMerchantTasks();
+        }
+		if (typeof updateOrderUI === 'function') {
+            updateOrderUI();
+        }
     }
 });
 
