@@ -4930,17 +4930,27 @@ app.post('/api/posts/:id/approve-rider', async (req, res) => {
 // API: ร้านค้ากดปฏิเสธคำขอของไรเดอร์
 app.post('/api/posts/:id/reject-rider', async (req, res) => {
     const postId = parseInt(req.params.id);
+    const { riderName } = req.body; // รับชื่อไรเดอร์ที่จะเตะออก
+
     try {
+        // 🚩 1. ดึงข้อมูลงานมาเช็คก่อน
+        const post = await postsCollection.findOne({ id: postId });
+        if (!post) return res.json({ success: false, error: "ไม่พบข้อมูลงาน" });
+
+        // 🚩 2. ใช้ $pull เพื่อลบไรเดอร์คนนั้นออกจาก Array 'requests'
         await postsCollection.updateOne(
             { id: postId },
-            { $set: { pendingRider: null } } // ล้างค่าไรเดอร์ที่ขอมา
+            { $pull: { requests: { username: riderName } } }
         );
         
-        // ส่งสัญญาณบอกไรเดอร์ว่าคำขอถูกปฏิเสธ (Rider จะได้กดรับงานใหม่ได้)
-        io.emit('rider-rejected', { postId: postId });
+        // 3. ส่งสัญญาณบอกไรเดอร์คนนั้น (ถ้าเขาเปิดหน้างานอยู่ เขาจะได้รับแจ้งว่าโดนปฏิเสธ)
+        io.emit('rider-rejected', { postId: postId, riderName: riderName });
         
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) { 
+        console.error("Reject Rider Error:", e);
+        res.status(500).json({ success: false }); 
+    }
 });
 
 // API: ไรเดอร์ให้คะแนนร้านค้า (ปลดล็อคสถานะ working)

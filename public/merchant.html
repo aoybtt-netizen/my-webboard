@@ -3490,16 +3490,26 @@ async function approveRider(postId, riderName) {
 }
 
 // 3. ฟังก์ชันปฏิเสธไรเดอร์
-async function rejectRider(postId) {
-    if (!confirm(translations[currentLang].confirm_reject_rider)) return;
+async function rejectRider(postId, riderName) {
+    if (!confirm(translations[currentLang].confirm_reject_rider + " (" + riderName + ")?")) return;
     
     try {
-        const res = await fetch(`/api/posts/${postId}/reject-rider`, { method: 'POST' });
+        const res = await fetch(`/api/posts/${postId}/reject-rider`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // 🚩 ส่งชื่อไรเดอร์ไปให้ Server รู้ว่าจะลบคนไหน
+            body: JSON.stringify({ riderName: riderName }) 
+        });
+        
         const data = await res.json();
         if (data.success) {
             alert(translations[currentLang].alert_reject_success);
-            closeRightSidebar();
-            loadActiveMerchantTasks();
+            // โหลดข้อมูล Sidebar ใหม่เพื่อลบรายชื่อคนที่ถูกรีเจคออกหน้าจอ
+            openRightSidebar(postId); 
+            // อัปเดตการ์ดงานหน้าหลัก (เผื่อเลขจำนวนคำขอเปลี่ยน)
+            if (typeof loadActiveMerchantTasks === 'function') {
+                loadActiveMerchantTasks();
+            }
         }
     } catch (e) { 
         alert(translations[currentLang].err_generic); 
