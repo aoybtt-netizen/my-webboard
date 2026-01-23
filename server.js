@@ -4884,39 +4884,6 @@ app.post('/api/posts/:id/rate', async (req, res) => {
     }
 });
 
-// 🚩 1. API สำหรับไรเดอร์ส่งคำขอ (เช็คเงินแต่ยังไม่หัก)
-app.post('/api/posts/:id/apply', async (req, res) => {
-    const postId = parseInt(req.params.id);
-    const { riderName, lang } = req.body;
-    
-    try {
-        const post = await postsCollection.findOne({ id: postId });
-        const rider = await usersCollection.findOne({ username: riderName });
-        const currency = post.currency || 'USD';
-        const depositNeeded = parseFloat(post.depositAmount || 0);
-
-        // เช็คยอดเงินมัดจำว่าพอไหม
-        if ((rider[currency] || 0) < depositNeeded) {
-            return res.json({ success: false, error: "ยอดเงินมัดจำในกระเป๋าไม่เพียงพอ" });
-        }
-
-        // เพิ่มชื่อไรเดอร์ลงใน Array requests (ใช้ $addToSet เพื่อไม่ให้ชื่อซ้ำ)
-        await postsCollection.updateOne(
-            { id: postId },
-            { 
-                $addToSet: { 
-                    requests: { 
-                        username: riderName, 
-                        timestamp: Date.now() 
-                    } 
-                } 
-            }
-        );
-
-        io.emit('rider-applied', { postId: postId, riderName: riderName });
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
-});
 
 // 🚩 2. API สำหรับร้านค้ากดยอมรับ (เช็คสถานะ -> หักเงิน -> เริ่มงาน)
 app.post('/api/posts/:id/approve-rider', async (req, res) => {

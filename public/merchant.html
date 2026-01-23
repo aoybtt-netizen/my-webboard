@@ -3520,22 +3520,19 @@ async function rejectRider(postId) {
 
 // 🔔 รับสัญญาณเมื่อมีไรเดอร์กด "ของาน"
 socket.on('rider-applied', (data) => {
-    // 1. โหลดรายการงานใหม่ทันทีเพื่อให้ปุ่ม "ตกลงให้งาน" ปรากฏ
+    console.log("🔔 มีไรเดอร์ส่งคำขอใหม่:", data);
+    
+    // 1. อัปเดตการ์ดงานที่หน้าหลักทันที
     loadActiveMerchantTasks();
     
-    // 2. ถ้าเปิด Sidebar งานนั้นอยู่ ให้เพิ่มแจ้งเตือนใน Tab Notif
+    // 2. 🚩 หากร้านค้าเปิด Sidebar ของงานนั้นค้างอยู่ ให้โหลดข้อมูลใน Sidebar ใหม่
+    // เพื่อให้รายชื่อไรเดอร์ใน Array 'requests' อัปเดตล่าสุด
     if (activeTaskInSidebar && activeTaskInSidebar.id === data.postId) {
-        const notifList = document.getElementById('notif-list');
-        notifList.innerHTML = `
-            <div style="background: #fff4e5; padding: 15px; border-radius: 10px; border-left: 5px solid #f39c12; margin-bottom: 10px;">
-        <b style="color: #e67e22;"><i class="fas fa-user-tag"></i> ${translations[currentLang].notif_new_request}</b><br>
-        ${translations[currentLang].notif_rider_wants(data.riderName)}<br>
-        <button onclick="approveRider('${data.postId}')" 
-            style="margin-top:10px; background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:20px; width:100%;">
-            ${translations[currentLang].btn_confirm_assign}
-        </button>
-    </div>
-        ` + notifList.innerHTML;
+        openRightSidebar(data.postId);
+        
+        // เล่นเสียงแจ้งเตือนเบาๆ
+        const sound = document.getElementById('orderSound');
+        if(sound) sound.play().catch(e => {});
     }
 });
 
