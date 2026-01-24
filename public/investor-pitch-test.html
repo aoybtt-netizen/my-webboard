@@ -18,7 +18,6 @@
             background: linear-gradient(160deg, #11998e 0%, #38ef7d 100%);
             color: white; padding: 120px 20px 80px; text-align: center; position: relative; overflow: hidden;
         }
-        /* ลายน้ำพื้นหลังให้ดูมีเทคโนโลยี */
         .hero::before {
             content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 20%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 20%);
@@ -28,7 +27,6 @@
         .hero h1 { font-size: 3rem; margin-bottom: 25px; font-weight: 700; line-height: 1.2; text-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .hero p { font-size: 1.2rem; max-width: 800px; margin: 0 auto 30px; opacity: 0.95; font-weight: 400; }
         
-        /* เพิ่มส่วนโชว์รูปมือถือ (Mockup) */
         .mockup-container {
             margin: 40px auto; max-width: 900px;
             display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
@@ -67,7 +65,7 @@
         .btn-outline {
             background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5); color: white;
             padding: 18px 45px; border-radius: 50px; font-size: 1.2rem; font-weight: bold;
-            text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s; cursor: pointer;
         }
         .btn-outline:hover { background: white; color: var(--primary); border-color: white; }
 
@@ -119,12 +117,11 @@
                 <i class="fab fa-whatsapp"></i> <span id="btn-contact-text">ติดต่อพาร์ทเนอร์</span>
             </a>
             
-            <a href="index.html" class="btn-outline">
+            <a onclick="startDemoMode()" class="btn-outline">
                 <i class="fas fa-play-circle"></i> <span id="btn-demo-text">ทดลองระบบจริง (Live Demo)</span>
             </a>
         </div>
-        
-        </div>
+    </div>
 
     <div class="section">
         <div style="text-align: center; margin-bottom: 50px;">
@@ -199,7 +196,7 @@
                 feat0Desc: "คุณสามารถโปรโมทชื่อของคุณในท้องถิ่น ลูกค้าจะจำคุณ ไม่ใช่จำเรา",
                 
                 feat1Title: "ระบบที่เป็นธรรม และมั่นคง",
-				feat1Desc: "ระบบควบคุมราคามาตรฐานเพื่อความยุติธรรมต่อผู้ใช้ แต่ให้สิทธิ์คุณบริหารร้านค้าและจัดการไรเดอร์ในโซนได้อย่างอิสระ 100% โดยไม่มีค่าธรรมเนียมแฝง",
+                feat1Desc: "ระบบควบคุมราคามาตรฐานเพื่อความยุติธรรมต่อผู้ใช้ แต่ให้สิทธิ์คุณบริหารร้านค้าและจัดการไรเดอร์ในโซนได้อย่างอิสระ 100% โดยไม่มีค่าธรรมเนียมแฝง",
                 
                 feat2Title: "กำไรเข้ากระเป๋าทันที",
                 feat2Desc: "รายได้จากการส่งและค่าคอมมิชชั่นร้านค้า เข้ากระเป๋าคุณโดยตรง ไม่ผ่านตัวกลาง",
@@ -233,7 +230,7 @@
                 feat0Desc: "Promote your name locally. Customers will remember YOU, not a global corporation.",
                 
                 feat1Title: "Fair & Stable Ecosystem",
-				feat1Desc: "Standardized pricing for user fairness, while giving you 100% autonomy to manage local merchants and riders without any hidden fees.",
+                feat1Desc: "Standardized pricing for user fairness, while giving you 100% autonomy to manage local merchants and riders without any hidden fees.",
                 
                 feat2Title: "Direct Profit",
                 feat2Desc: "Revenue from deliveries and merchant commissions goes directly to your pocket.",
@@ -267,7 +264,7 @@
                 feat0Desc: "Construa sua reputação local. Os clientes lembrarão de VOCÊ, não de uma multinacional.",
                 
                 feat1Title: "Ecossistema Justo e Estável",
-				feat1Desc: "Preços padronizados para garantir justiça aos usuários, oferecendo a você 100% de autonomia para gerir lojas e entregadores sem taxas ocultas.",
+                feat1Desc: "Preços padronizados para garantir justiça aos usuários, oferecendo a você 100% de autonomia para gerir lojas e entregadores sem taxas ocultas.",
                 
                 feat2Title: "Lucro Direto",
                 feat2Desc: "Fique com a maior parte do lucro. As taxas de entrega vão direto para o seu bolso.",
@@ -287,6 +284,20 @@
                 ctaNote: "<i class='fas fa-lock'></i> Exclusivo: Apenas 1 Parceiro por Zona."
             }
         };
+
+        // 🚩 ฟังก์ชันสร้าง User อัตโนมัติ (Guest Mode)
+        function startDemoMode() {
+            // 1. สุ่มเลข Guest
+            const randomNum = Math.floor(Math.random() * 10000);
+            const guestUser = `Guest_${randomNum}`;
+            
+            // 2. บันทึกลง localStorage (จำลองว่า Login แล้ว)
+            localStorage.setItem('myUsername', guestUser);
+            localStorage.setItem('role', 'guest'); // ใส่ Role เผื่อไว้เช็คสิทธิ์
+            
+            // 3. ดีดไปหน้า Index
+            window.location.href = 'index.html';
+        }
 
         function switchLang(lang, event) {
             localStorage.setItem('preferredLanguage', lang);
@@ -327,7 +338,6 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            fetch('/api/analytics/hit-pitch', { method: 'POST' }).catch(e=>{});
             const urlParams = new URLSearchParams(window.location.search);
             const langParam = urlParams.get('lang'); 
             const targetLang = langParam || localStorage.getItem('preferredLanguage') || 'th';
