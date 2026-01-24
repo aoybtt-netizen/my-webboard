@@ -1069,7 +1069,8 @@ async function updateZoneBackground(lat, lng) {
             sidebarTitle.innerText = data.zoneName || "Webboard";
         }
 
-        const defaultBg = "linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url('https://sv1.img.in.th/7fB1Jg.png')";
+        //const defaultBg = "linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url('https://sv1.img.in.th/7fB1Jg.png')";
+		const defaultBg = "linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5))";
         
         if (data.bgImage) {
             document.body.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url('${data.bgImage}')`;
