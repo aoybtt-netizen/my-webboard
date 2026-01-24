@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GedGo Partner | Exclusive Zone Ownership Opportunity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #11998e; --secondary: #38ef7d; --dark: #1e272e; --gold: #f1c40f; --accent: #ffdd59; }
+        body { font-family: 'Poppins', 'Kanit', sans-serif; margin: 0; color: #333; line-height: 1.6; background: #f8f9fa; }
+        
+        .lang-bar { background: rgba(30, 39, 46, 0.95); padding: 15px; text-align: right; position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(10px); }
+        .lang-btn { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 18px; cursor: pointer; border-radius: 50px; font-size: 0.85rem; margin-left: 8px; transition: 0.3s; font-weight: 600; }
+        .lang-btn.active, .lang-btn:hover { background: var(--primary); border-color: var(--primary); transform: translateY(-2px); }
+
+        .hero { 
+            background: linear-gradient(160deg, #11998e 0%, #38ef7d 100%);
+            color: white; padding: 120px 20px 80px; text-align: center; position: relative; overflow: hidden;
+        }
+        /* ลายน้ำพื้นหลังให้ดูมีเทคโนโลยี */
+        .hero::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 20%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 20%);
+            pointer-events: none;
+        }
+
+        .hero h1 { font-size: 3rem; margin-bottom: 25px; font-weight: 700; line-height: 1.2; text-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .hero p { font-size: 1.2rem; max-width: 800px; margin: 0 auto 30px; opacity: 0.95; font-weight: 400; }
+        
+        /* เพิ่มส่วนโชว์รูปมือถือ (Mockup) */
+        .mockup-container {
+            margin: 40px auto; max-width: 900px;
+            display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+        }
+        .mockup-box {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            padding: 20px; border-radius: 20px; backdrop-filter: blur(5px);
+            width: 200px; text-align: center;
+        }
+        .mockup-box i { font-size: 2.5rem; color: var(--accent); margin-bottom: 10px; }
+        .mockup-box div { font-weight: bold; font-size: 0.9rem; }
+
+        .section { padding: 80px 20px; max-width: 1200px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; margin-top: 50px; }
+        
+        .card { 
+            background: white; padding: 40px 30px; border-radius: 20px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.05); transition: 0.4s; text-align: center; 
+            border-top: 5px solid transparent; position: relative; overflow: hidden;
+        }
+        .card:hover { transform: translateY(-10px); border-top-color: var(--primary); box-shadow: 0 20px 50px rgba(17, 153, 142, 0.15); }
+        .card i { font-size: 3.5rem; background: -webkit-linear-gradient(45deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 25px; }
+        .card h3 { font-size: 1.4rem; margin-bottom: 15px; color: var(--dark); font-weight: 700; }
+        .card p { color: #666; font-size: 0.95rem; }
+
+        .cta { background: var(--dark); color: white; padding: 80px 20px; text-align: center; border-radius: 40px; margin: 60px 20px; position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        
+        .btn-main { 
+            background: var(--gold); color: #000; padding: 18px 45px; border: none; 
+            border-radius: 50px; font-size: 1.2rem; font-weight: bold; cursor: pointer; 
+            text-decoration: none; display: inline-flex; align-items: center; gap: 10px;
+            transition: 0.3s; box-shadow: 0 5px 15px rgba(241, 196, 15, 0.4);
+        }
+        .btn-main:hover { transform: scale(1.05); background: #fff; box-shadow: 0 10px 30px rgba(255,255,255,0.3); }
+        
+        .btn-outline {
+            background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5); color: white;
+            padding: 18px 45px; border-radius: 50px; font-size: 1.2rem; font-weight: bold;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s;
+        }
+        .btn-outline:hover { background: white; color: var(--primary); border-color: white; }
+
+        .trust-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: rgba(39, 174, 96, 0.1); color: #27ae60;
+            padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) { 
+            .hero h1 { font-size: 2rem; } 
+            .hero-btns { flex-direction: column; }
+            .btn-main, .btn-outline { width: 100%; justify-content: center; box-sizing: border-box; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="lang-bar">
+        <button class="lang-btn active" onclick="switchLang('th', event)">🇹🇭 TH</button>
+        <button class="lang-btn" onclick="switchLang('en', event)">🇬🇧 EN</button>
+        <button class="lang-btn" onclick="switchLang('pt', event)">🇧🇷 PT</button>
+    </div>
+    
+    <div class="hero">
+        <div id="hero-badge" style="display:inline-block; background:rgba(255,255,255,0.2); padding:5px 15px; border-radius:30px; font-size:0.85rem; margin-bottom:20px; backdrop-filter:blur(5px);">
+            <i class="fas fa-check-circle" style="color:#00ff88;"></i> Verified Business Opportunity
+        </div>
+        <h1 id="hero-title">ยักษ์ใหญ่กินส่วนแบ่ง แต่ GedGo กินใจคนในพื้นที่</h1>
+        <p id="hero-desc">เปลี่ยน "พื้นที่ของคุณ" ให้เป็นอาณาจักรธุรกิจด้วยระบบ Delivery กระจายอำนาจที่สมบูรณ์ที่สุด</p>
+        
+        <div class="mockup-container">
+            <div class="mockup-box">
+                <i class="fas fa-mobile-alt"></i>
+                <div id="mock-1">App ไรเดอร์</div>
+            </div>
+            <div class="mockup-box">
+                <i class="fas fa-store"></i>
+                <div id="mock-2">App ร้านค้า</div>
+            </div>
+            <div class="mockup-box">
+                <i class="fas fa-map-marked-alt"></i>
+                <div id="mock-3">ระบบหลังบ้าน</div>
+            </div>
+        </div>
+
+        <div class="hero-btns" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 30px;">
+            <a href="https://wa.me/66924409224" class="btn-main" id="hero-btn">
+                <i class="fab fa-whatsapp"></i> <span id="btn-contact-text">ติดต่อพาร์ทเนอร์</span>
+            </a>
+            
+            <a href="index.html" class="btn-outline">
+                <i class="fas fa-play-circle"></i> <span id="btn-demo-text">ทดลองระบบจริง (Live Demo)</span>
+            </a>
+        </div>
+        
+        </div>
+
+    <div class="section">
+        <div style="text-align: center; margin-bottom: 50px;">
+            <h2 style="font-size: 2.5rem; margin-bottom: 10px; color:var(--dark);" id="why-title">ทำไมต้อง GedGo?</h2>
+            <p style="color: #777; font-size: 1.1rem;" id="why-subtitle">สิทธิประโยชน์สำหรับ "Business Partner" เท่านั้น</p>
+            <div style="width: 60px; height: 4px; background: var(--primary); margin: 20px auto; border-radius: 2px;"></div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <i class="fas fa-fingerprint"></i>
+                <h3 id="feat0-title">White Label Branding</h3>
+                <p id="feat0-desc">สร้างแบรนด์ของคุณเองในพื้นที่ ไม่ใช่แค่แฟรนไชส์ แต่คุณคือเจ้าของชื่อเสียงในท้องถิ่น</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-sliders-h"></i>
+                <h3 id="feat1-title">Full Control Dashboard</h3>
+                <p id="feat1-desc">คุณคือ CEO บริหารจัดการร้านค้า พิกัด GPS และตั้งกฎกติกาการรับงานได้เอง 100%</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-percentage"></i>
+                <h3 id="feat2-title">High Revenue Share</h3>
+                <p id="feat2-desc">รับส่วนแบ่งรายได้สูงสุด 70% จากทุกออเดอร์ เปลี่ยน Transaction เป็นกำไรของคุณทันที</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-shield-alt"></i>
+                <h3 id="feat3-title">Local Authority (KYC)</h3>
+                <p id="feat3-desc">อำนาจสิทธิ์ขาดในการอนุมัติไรเดอร์และร้านค้า เพื่อคัดกรองคุณภาพคนในพื้นที่ด้วยตัวคุณเอง</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-wallet"></i>
+                <h3 id="feat5-title">Smart Credit System</h3>
+                <p id="feat5-desc">ค่าธรรมเนียมแรกเข้า ไม่หายไปไหน! เปลี่ยนเป็นเครดิตในระบบเพื่อใช้เป็นทุนหมุนเวียนทันที</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-trophy"></i>
+                <h3 id="feat4-title">Gamification</h3>
+                <p id="feat4-desc">ระบบจัดอันดับและแจกรางวัลอัตโนมัติ กระตุ้นให้ไรเดอร์และร้านค้า Active ตลอดเวลา</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="cta" id="contact">
+        <i class="fas fa-rocket" style="font-size: 5rem; color: rgba(255,255,255,0.1); position: absolute; top: -20px; right: -20px; transform: rotate(15deg);"></i>
+        
+        <h2 id="cta-title">โอกาสเดียวในพื้นที่ของคุณ</h2>
+        <p id="cta-desc" style="font-size: 1.1rem; max-width: 700px; margin: 0 auto 30px; opacity: 0.9;">ระบบพร้อมใช้งานทันที ไม่ต้องเขียนโค้ดเอง ผมเปิดรับพาร์ทเนอร์เพียง 1 ท่านต่อ 1 พื้นที่เท่านั้น</p>
+        
+        <a href="https://wa.me/66924409224" class="btn-main" id="cta-btn">
+            <i class="fab fa-whatsapp"></i> Chat with Founder
+        </a>
+        
+        <p class="footer-note" id="cta-note" style="margin-top: 20px; font-size: 0.85rem; color: #aaa;">
+            <i class="fas fa-lock"></i> Secure Partnership • No Technical Skills Required
+        </p>
+    </div>
+
+    <script>
+        const content = {
+            th: {
+                badge: "<i class='fas fa-check-circle' style='color:#00ff88;'></i> โอกาสทางธุรกิจที่ตรวจสอบได้",
+                heroTitle: "อย่าเป็นแค่ผู้ใช้งาน จงเป็นเจ้าของแพลตฟอร์ม",
+                heroDesc: "ระบบ Delivery สำเร็จรูปที่คุณเป็นเจ้าของได้ 100% พร้อมระบบจัดการร้านค้า ไรเดอร์ และการเงิน ในแอปเดียว",
+                mock1: "แอปไรเดอร์", mock2: "แอปร้านค้า", mock3: "ระบบจัดการ",
+                btnContact: "คุยกับผู้ก่อตั้ง (WhatsApp)",
+                btnDemo: "ทดลองเข้าระบบจริง",
+                
+                whyTitle: "ทำไมต้อง GedGo?",
+                whySubtitle: "เราไม่ได้ขายแฟรนไชส์ แต่เรามอบเทคโนโลยีให้คุณเป็นเจ้าของ",
+                
+                feat0Title: "สร้างแบรนด์ของคุณเอง",
+                feat0Desc: "คุณสามารถโปรโมทชื่อของคุณในท้องถิ่น ลูกค้าจะจำคุณ ไม่ใช่จำเรา",
+                
+                feat1Title: "ระบบจัดการเบ็ดเสร็จ",
+                feat1Desc: "ตั้งค่าราคาค่าส่ง โซนบริการ และโปรโมชั่นได้เองโดยไม่ต้องรออนุมัติจากส่วนกลาง",
+                
+                feat2Title: "กำไรเข้ากระเป๋าทันที",
+                feat2Desc: "รายได้จากการส่งและค่าคอมมิชชั่นร้านค้า เข้ากระเป๋าคุณโดยตรง ไม่ผ่านตัวกลาง",
+                
+                feat3Title: "คัดกรองคนด้วยตัวเอง",
+                feat3Desc: "คุณรู้นิสัยคนในพื้นที่ดีที่สุด ระบบให้สิทธิ์คุณอนุมัติหรือแบนสมาชิกได้ทันที",
+                
+                feat5Title: "เปลี่ยนค่าสมัครเป็นทุน",
+                feat5Desc: "เงินลงทุนของคุณจะถูกเปลี่ยนเป็นเครดิตในระบบ 100% เพื่อใช้บริหารงานต่อได้เลย",
+                
+                feat4Title: "ระบบกระตุ้นยอดขาย",
+                feat4Desc: "ฟีเจอร์จัดอันดับและแจกรางวัล ช่วยให้ไรเดอร์ขยันขึ้นโดยที่คุณไม่ต้องเหนื่อย",
+                
+                ctaTitle: "พร้อมเป็นเจ้าของธุรกิจ Tech หรือยัง?",
+                ctaDesc: "ตลาด Delivery ในบราซิลกำลังโต อย่าปล่อยให้พื้นที่ของคุณตกเป็นของคนอื่น เริ่มต้นวันนี้",
+                ctaBtn: "ขอรายละเอียดพาร์ทเนอร์",
+                ctaNote: "<i class='fas fa-lock'></i> รับจำกัด 1 พื้นที่ 1 เจ้าของเท่านั้น"
+            },
+            en: {
+                badge: "<i class='fas fa-check-circle' style='color:#00ff88;'></i> Verified Business Opportunity",
+                heroTitle: "Don't just use the App. Own the Platform.",
+                heroDesc: "A Turn-key Delivery System where you have 100% control. Manage Merchants, Riders, and Finances all in one place.",
+                mock1: "Rider App", mock2: "Merchant App", mock3: "Admin Panel",
+                btnContact: "Chat with Founder",
+                btnDemo: "Live System Demo",
+                
+                whyTitle: "Why Choose GedGo?",
+                whySubtitle: "We don't sell franchises; we provide technology for you to own.",
+                
+                feat0Title: "Build Your Own Brand",
+                feat0Desc: "Promote your name locally. Customers will remember YOU, not a global corporation.",
+                
+                feat1Title: "Full Control Dashboard",
+                feat1Desc: "Set delivery fees, service zones, and promotions instantly without central approval.",
+                
+                feat2Title: "Direct Profit",
+                feat2Desc: "Revenue from deliveries and merchant commissions goes directly to your pocket.",
+                
+                feat3Title: "Full Authority (KYC)",
+                feat3Desc: "You know your locals best. You have the power to approve or ban members instantly.",
+                
+                feat5Title: "Fee as Working Capital",
+                feat5Desc: "Your setup fee is converted 100% into system credits for you to use immediately.",
+                
+                feat4Title: "Gamification",
+                feat4Desc: "Ranking and reward features to keep riders active and motivated automatically.",
+                
+                ctaTitle: "Ready to own a Tech Business?",
+                ctaDesc: "The delivery market is booming. Don't let your territory be taken by others. Start today.",
+                ctaBtn: "Inquire Partnership",
+                ctaNote: "<i class='fas fa-lock'></i> Exclusive: 1 Partner per Zone only."
+            },
+            pt: {
+                badge: "<i class='fas fa-check-circle' style='color:#00ff88;'></i> Oportunidade de Negócio Verificada",
+                heroTitle: "Não seja apenas usuário. Seja Dono da Plataforma.",
+                heroDesc: "Sistema de Delivery completo onde você tem 100% de controle. Gerencie Lojas, Entregadores e Finanças em um só lugar.",
+                mock1: "App Entregador", mock2: "App Loja", mock3: "Painel Gestor",
+                btnContact: "Falar com Fundador",
+                btnDemo: "Testar Sistema Agora",
+                
+                whyTitle: "Por que GedGo?",
+                whySubtitle: "Não vendemos franquias; fornecemos tecnologia para você ser o dono.",
+                
+                feat0Title: "Sua Marca, Sua Região",
+                feat0Desc: "Construa sua reputação local. Os clientes lembrarão de VOCÊ, não de uma multinacional.",
+                
+                feat1Title: "Painel de Controle Total",
+                feat1Desc: "Defina taxas de entrega, zonas e promoções instantaneamente, sem burocracia.",
+                
+                feat2Title: "Lucro Direto",
+                feat2Desc: "Fique com a maior parte do lucro. As taxas de entrega vão direto para o seu bolso.",
+                
+                feat3Title: "Autoridade Local (KYC)",
+                feat3Desc: "Você conhece sua cidade. Tenha poder total para aprovar ou banir membros suspeitos.",
+                
+                feat5Title: "Taxa vira Crédito",
+                feat5Desc: "Sua taxa de adesão volta 100% como crédito no sistema para você usar como capital de giro.",
+                
+                feat4Title: "Gamificação",
+                feat4Desc: "Sistema de ranking e prêmios automáticos para manter os entregadores motivados.",
+                
+                ctaTitle: "Pronto para ter seu App?",
+                ctaDesc: "O mercado de delivery no Brasil não para de crescer. Garanta sua zona antes que outro leve.",
+                ctaBtn: "Quero ser Parceiro",
+                ctaNote: "<i class='fas fa-lock'></i> Exclusivo: Apenas 1 Parceiro por Zona."
+            }
+        };
+
+        function switchLang(lang, event) {
+            localStorage.setItem('preferredLanguage', lang);
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            if (event) event.target.classList.add('active');
+            
+            const c = content[lang];
+            
+            document.getElementById('hero-badge').innerHTML = c.badge;
+            document.getElementById('hero-title').innerText = c.heroTitle;
+            document.getElementById('hero-desc').innerText = c.heroDesc;
+            document.getElementById('mock-1').innerText = c.mock1;
+            document.getElementById('mock-2').innerText = c.mock2;
+            document.getElementById('mock-3').innerText = c.mock3;
+            document.getElementById('btn-contact-text').innerText = c.btnContact;
+            document.getElementById('btn-demo-text').innerText = c.btnDemo;
+
+            document.getElementById('why-title').innerText = c.whyTitle;
+            document.getElementById('why-subtitle').innerText = c.whySubtitle;
+            
+            document.getElementById('feat0-title').innerText = c.feat0Title;
+            document.getElementById('feat0-desc').innerText = c.feat0Desc;
+            document.getElementById('feat1-title').innerText = c.feat1Title;
+            document.getElementById('feat1-desc').innerText = c.feat1Desc;
+            document.getElementById('feat2-title').innerText = c.feat2Title;
+            document.getElementById('feat2-desc').innerText = c.feat2Desc;
+            document.getElementById('feat3-title').innerText = c.feat3Title;
+            document.getElementById('feat3-desc').innerText = c.feat3Desc;
+            document.getElementById('feat5-title').innerText = c.feat5Title;
+            document.getElementById('feat5-desc').innerText = c.feat5Desc;
+            document.getElementById('feat4-title').innerText = c.feat4Title;
+            document.getElementById('feat4-desc').innerText = c.feat4Desc;
+
+            document.getElementById('cta-title').innerText = c.ctaTitle;
+            document.getElementById('cta-desc').innerText = c.ctaDesc;
+            document.getElementById('cta-btn').innerHTML = `<i class="fab fa-whatsapp"></i> ` + c.ctaBtn;
+            document.getElementById('cta-note').innerHTML = c.ctaNote;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/analytics/hit-pitch', { method: 'POST' }).catch(e=>{});
+            const urlParams = new URLSearchParams(window.location.search);
+            const langParam = urlParams.get('lang'); 
+            const targetLang = langParam || localStorage.getItem('preferredLanguage') || 'th';
+            switchLang(targetLang, null);
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.innerText.toLowerCase().includes(targetLang)) btn.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
