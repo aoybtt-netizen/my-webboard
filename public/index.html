@@ -1299,6 +1299,10 @@ async function updateZoneBackground(lat, lng) {
         'menu_shop': 'ร้านค้า',
         'menu_ranking': 'จัดอันดับไรเดอร์',
         'menu_report': 'รายงานสมาชิก',
+		'cd_title': 'โซน',
+        'cd_waiting': 'จะเปิดให้บริการในอีก',
+        'cd_start_date': 'เริ่มระบบวันที่:',
+        'locale': 'th-TH',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1507,6 +1511,10 @@ async function updateZoneBackground(lat, lng) {
         'menu_shop': 'Shop',
         'menu_ranking': 'Rider Ranking',
         'menu_report': 'Report Member',
+		'cd_title': 'Zone',
+        'cd_waiting': 'Will be available in',
+        'cd_start_date': 'System starts on:',
+        'locale': 'en-US',
     },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
@@ -1710,6 +1718,10 @@ async function updateZoneBackground(lat, lng) {
         'menu_shop': 'Loja',
         'menu_ranking': 'Ranking de Entregadores',
         'menu_report': 'Denunciar Membro',
+		'cd_title': 'Zona',
+        'cd_waiting': 'Estará disponível em',
+        'cd_start_date': 'O sistema começa em:',
+        'locale': 'pt-BR',
     }
 };
 
@@ -2988,28 +3000,43 @@ async function showMyClosedPosts(page = 1) {
 }
 
     function renderPostList() {
+	const t = translations[currentLang];
     const list = document.getElementById('post-list');
     const paginationDiv = document.getElementById('post-pagination');
     list.innerHTML = '';
 	
 	if (currentZoneLaunchTime) {
+		
         const now = new Date().getTime();
         const launchDate = new Date(currentZoneLaunchTime).getTime();
 
-        // ถ้ายังไม่ถึงเวลาเปิดตัว และไม่ใช่ Admin (เลเวล 3)
+        const txtTitle = `${t.cd_title} ${currentZoneName}`;
+		const txtWaiting = t.cd_waiting;
+		const txtStartDate = t.cd_start_date;
+    
+    // จัดฟอร์แมตวันที่ตามภาษา (Locale)
+		const formattedDate = new Date(currentZoneLaunchTime).toLocaleString(t.locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+			});
         if (launchDate > now && myAdminLevel < 3) {
             list.innerHTML = `
-                <div style="text-align:center; padding: 60px 20px; background: white; border-radius: 20px; margin: 10px;">
-                    <h2 style="color: #2c3e50;">โซน ${currentZoneName}</h2>
-                    <p style="color: #777;">จะเปิดให้บริการในอีก</p>
-                    <div id="main-countdown-display" style="font-size: 3rem; font-weight: bold; color: #11998e; margin: 20px 0;">
-                        --:--:--
-                    </div>
-                    <div style="font-size: 0.9em; color: #999;">
-                        เริ่มระบบวันที่: ${new Date(currentZoneLaunchTime).toLocaleString('th-TH')}
-                    </div>
-                </div>
-            `;
+        <div style="text-align:center; padding: 60px 20px; background: white; border-radius: 20px; margin: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
+            <h2 style="color: #2c3e50;">${txtTitle}</h2>
+            <p style="color: #777;">${txtWaiting}</p>
+            
+            <div id="main-countdown-display" style="font-size: 3rem; font-weight: bold; color: #11998e; margin: 20px 0; font-family: 'monospace';">
+                --:--:--
+            </div>
+            
+            <div style="font-size: 0.9em; color: #999; background: #f8f9fa; padding: 10px; border-radius: 10px; display: inline-block;">
+                <i class="far fa-calendar-alt"></i> ${txtStartDate} ${formattedDate}
+            </div>
+        </div>
+    `;
             if (paginationDiv) paginationDiv.style.display = 'none';
 
             // เริ่มนับถอยหลัง (ใช้ฟังก์ชันเดิมที่เราคุยกัน)
