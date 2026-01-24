@@ -1290,6 +1290,11 @@ async function updateZoneBackground(lat, lng) {
         'error_fetch_posts': 'เกิดข้อผิดพลาดในการดึงรายการกระทู้',
 		'no_closed_posts': 'คุณยังไม่มีกระทู้ที่ถูกปิด',
 		'alert_empty_content': 'กรุณาใส่รายละเอียด',
+		'menu_quick_title': 'เลือกรายการ',
+        'menu_post': 'โพสต์งาน',
+        'menu_shop': 'ร้านค้า',
+        'menu_ranking': 'จัดอันดับไรเดอร์',
+        'menu_report': 'รายงานสมาชิก',
     },
     'en': {
         'app_title': 'Webboard',
@@ -1493,6 +1498,11 @@ async function updateZoneBackground(lat, lng) {
         'error_fetch_posts': 'Error fetching post list',
 		'no_closed_posts': 'You have no closed posts yet.',
 		'alert_empty_content': 'Please enter the details',
+		'menu_quick_title': 'Select Menu',
+        'menu_post': 'Post Task',
+        'menu_shop': 'Shop',
+        'menu_ranking': 'Rider Ranking',
+        'menu_report': 'Report Member',
     },'pt': {//==============================================PT
         'app_title': 'Webboard',
         'label_currency': 'Moeda:',
@@ -1691,6 +1701,11 @@ async function updateZoneBackground(lat, lng) {
         'error_fetch_posts': 'Erro ao buscar a lista de postagens',
 		'no_closed_posts': 'Você ainda não tem postagens encerradas.',
 		'alert_empty_content': 'Por favor, insira os detalhes',
+		'menu_quick_title': 'Selecionar Menu',
+        'menu_post': 'Publicar Tarefa',
+        'menu_shop': 'Loja',
+        'menu_ranking': 'Ranking de Entregadores',
+        'menu_report': 'Denunciar Membro',
     }
 };
 
@@ -5351,33 +5366,41 @@ document.addEventListener('visibilitychange', () => {
 
 
 async function openQuickActions() {
-    const t = translations[currentLang]; // ดึงคำแปลภาษา
+    // 🚩 ดึงคำแปลตามภาษาปัจจุบัน (currentLang)
+    const t = translations[currentLang]; 
+
+    // ดึงข้อความเตรียมไว้ก่อนเข้า Template String
+    const titleText = t['menu_quick_title'];
+    const labelPost = t['menu_post'];
+    const labelShop = t['menu_shop'];
+    const labelRank = t['menu_ranking'];
+    const labelReport = t['menu_report'];
 
     const { value: action } = await Swal.fire({
-        title: 'เลือกรายการ', // หรือใช้ t.quick_action_title
-        showConfirmButton: false, // ปิดปุ่มตกลงมาตรฐาน
+        title: titleText,
+        showConfirmButton: false,
         showCloseButton: true,
         html: `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;">
                 
-                <div onclick="Swal.clickConfirm(); handleAction('A')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd; transition: 0.3s;">
+                <div onclick="Swal.clickConfirm(); handleAction('A')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
                     <i class="fas fa-plus" style="font-size: 2em; color: #27ae60;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">Post</div>
+                    <div style="margin-top:10px; font-weight:bold;">${labelPost}</div>
                 </div>
 
                 <div onclick="window.location.href='shopmerchant.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
                     <i class="fas fa-shopping-cart" style="font-size: 2em; color: #2980b9;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">Shop</div>
+                    <div style="margin-top:10px; font-weight:bold;">${labelShop}</div>
                 </div>
 
                 <div onclick="window.location.href='shopmerchant.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
                     <i class="fas fa-trophy" style="font-size: 2em; color: #e67e22;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">Rider Ranking</div>
+                    <div style="margin-top:10px; font-weight:bold;">${labelRank}</div>
                 </div>
 
                 <div onclick="Swal.clickConfirm(); handleAction('D')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
                     <i class="fas fa-headset" style="font-size: 2em; color: #dc3545;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">Report a problem</div>
+                    <div style="margin-top:10px; font-weight:bold;">${labelReport}</div>
                 </div>
 
             </div>
