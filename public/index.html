@@ -5361,23 +5361,23 @@ async function openQuickActions() {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;">
                 
                 <div onclick="Swal.clickConfirm(); handleAction('A')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd; transition: 0.3s;">
-                    <i class="fas fa-wallet" style="font-size: 2em; color: #27ae60;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">เติมเงิน</div>
+                    <i class="fas fa-plus" style="font-size: 2em; color: #27ae60;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">Post</div>
                 </div>
 
-                <div onclick="Swal.clickConfirm(); handleAction('B')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
-                    <i class="fas fa-history" style="font-size: 2em; color: #2980b9;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">ประวัติ</div>
+                <div onclick="window.location.href='shopmerchant.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
+                    <i class="fas fa-shopping-cart" style="font-size: 2em; color: #2980b9;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">Shop</div>
                 </div>
 
-                <div onclick="Swal.clickConfirm(); handleAction('C')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
-                    <i class="fas fa-user-cog" style="font-size: 2em; color: #e67e22;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">ตั้งค่า</div>
+                <div onclick="window.location.href='shopmerchant.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
+                    <i class="fas fa-trophy" style="font-size: 2em; color: #e67e22;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">Rider Ranking</div>
                 </div>
 
                 <div onclick="Swal.clickConfirm(); handleAction('D')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
-                    <i class="fas fa-headset" style="font-size: 2em; color: #dc3545;"></i>
-                    <div style="margin-top:10px; font-weight:bold;">แจ้งปัญหา</div>
+                    <i class="fas fa-trophy" style="font-size: 2em; color: #dc3545;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">fas fa-headset</div>
                 </div>
 
             </div>
@@ -5389,9 +5389,20 @@ async function openQuickActions() {
 function handleAction(type) {
     console.log("User selected action:", type);
     if(type === 'A') {
-        // ไปหน้าเติมเงิน
+        openCreateModal();
     }
-    // ... จัดการตามเงื่อนไข ...
+	
+	if(type === 'B') {
+        setDistanceFilter();
+    }
+	
+	if(type === 'C') {
+        openCreateModal();
+    }
+	
+	if(type === 'D') {
+        openCreateModal();
+    }
 }
 
 </script>
@@ -5768,17 +5779,11 @@ function handleAction(type) {
     <i class="fas fa-route"></i>
 </button>
 
-<button id="sticky-create-btn" class="sticky-create-btn hidden" onclick="openCreateModal()" title="Create New Post">
-    <i class="fas fa-plus"></i>
-</button>
 
 <button id="Ranking-Rider-btn" class="Ranking-Rider-btn" onclick="openQuickActions()" title="RankingRider">
     <i class="fas fa-trophy"></i>
 </button>
 
-<button id="sticky-shop-btn" class="sticky-shop-btn" onclick="window.location.href='shopmerchant.html'" title="shoping">
-    <i class="fas fa-shopping-cart"></i>
-</button>
 
 <button id="bottom-zone-btn" class="sticky-bottom-btn" onclick="window.location.href='investor-pitch.html'">
     Contact
