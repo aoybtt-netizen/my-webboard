@@ -724,6 +724,8 @@ app.post('/api/admin/universal-update', async (req, res) => {
             'BRL', 'THB', 'VND', 'systemZone', 'zoneFee','changNameMerchant',
             'kycPrice','kycPriceZone','kycPriceSystem', 'minTopup', 'minWithdraw'
         ];
+		
+		const dateFields = ['launchTime'];
 
         if (numericFields.includes(field)) {
             if (field === 'adminLevel' || field === 'id') {
