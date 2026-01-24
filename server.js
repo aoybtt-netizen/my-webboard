@@ -1729,6 +1729,8 @@ app.get('/api/user-info', async (req, res) => {
     }
     
     let userZoneId = null;
+	let launchTime = null;
+    let zoneName = '';
     let postCostData;
     let zoneCurrency = 'USD'; // ค่าเริ่มต้น
     
@@ -1747,8 +1749,9 @@ app.get('/api/user-info', async (req, res) => {
 
         if (zoneInfo && zoneInfo.zoneData) {
             userZoneId = zoneInfo.zoneData.id;
-            // ✅ ดึงชื่อสกุลเงินของโซน (เช่น BRL)
             zoneCurrency = zoneInfo.zoneData.zoneCurrency || 'USD';
+			zoneName = zoneInfo.zoneData.name;
+			launchTime = zoneInfo.zoneData.launchTime || null;
         }
 
     } catch (e) {
@@ -1770,7 +1773,9 @@ app.get('/api/user-info', async (req, res) => {
         userZoneId: userZoneId,
         country: user.country || 'TH', 
         totalPosts: user.totalPosts || 0,     
-        completedJobs: user.completedJobs || 0
+        completedJobs: user.completedJobs || 0,
+		launchTime: launchTime,
+        zoneName: zoneName,
     });
 });
 

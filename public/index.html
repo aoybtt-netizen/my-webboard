@@ -757,6 +757,9 @@
 		let currentUserPage = 1;
 		let currentBanTarget = "";
 		let currentReviewUser = "";
+		
+		let currentZoneLaunchTime = null;
+		let currentZoneName = '';
 		// Cooldown Refresh (7 วินาที)
 		const REFRESH_COOLDOWN_MS = 7000;
 		
@@ -2228,6 +2231,9 @@ async function updateUserInfo() {
         const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}&lang=${currentLang}`);
         
         const data = await response.json();
+		currentZoneLaunchTime = data.launchTime;
+		currentZoneName = data.zoneName;
+		myZoneId = data.userZoneId || null;
 
         if (response.status === 403) {
             alert(data.error);
@@ -2985,6 +2991,32 @@ async function showMyClosedPosts(page = 1) {
     const list = document.getElementById('post-list');
     const paginationDiv = document.getElementById('post-pagination');
     list.innerHTML = '';
+	
+	if (currentZoneLaunchTime) {
+        const now = new Date().getTime();
+        const launchDate = new Date(currentZoneLaunchTime).getTime();
+
+        // ถ้ายังไม่ถึงเวลาเปิดตัว และไม่ใช่ Admin (เลเวล 3)
+        if (launchDate > now && myAdminLevel < 3) {
+            list.innerHTML = `
+                <div style="text-align:center; padding: 60px 20px; background: white; border-radius: 20px; margin: 10px;">
+                    <h2 style="color: #2c3e50;">โซน ${currentZoneName}</h2>
+                    <p style="color: #777;">จะเปิดให้บริการในอีก</p>
+                    <div id="main-countdown-display" style="font-size: 3rem; font-weight: bold; color: #11998e; margin: 20px 0;">
+                        --:--:--
+                    </div>
+                    <div style="font-size: 0.9em; color: #999;">
+                        เริ่มระบบวันที่: ${new Date(currentZoneLaunchTime).toLocaleString('th-TH')}
+                    </div>
+                </div>
+            `;
+            if (paginationDiv) paginationDiv.style.display = 'none';
+
+            // เริ่มนับถอยหลัง (ใช้ฟังก์ชันเดิมที่เราคุยกัน)
+            startMainLaunchTimer(currentZoneLaunchTime, 'main-countdown-display');
+            return; // ✋ จบการทำงาน ไม่โชว์กระทู้ด้านล่าง
+        }
+    }
     
     let postsArray = Object.values(postStatusMap).map(item => item);
     let filteredPosts = postsArray;
@@ -3076,6 +3108,43 @@ async function showMyClosedPosts(page = 1) {
                 paginationDiv.style.display = 'none'; 
             }
         }
+		
+
+// 🚩 ฟังก์ชันตัวช่วยนับถอยหลังในหน้า Post List
+function startMainLaunchTimer(launchTime, elementId) {
+    const timer = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = new Date(launchTime).getTime() - now;
+        const display = document.getElementById(elementId);
+
+        // เมื่อถึงเวลาเปิดตัว
+        if (distance < 0) {
+            clearInterval(timer);
+            renderPostList(); // เรียกฟังก์ชันตัวเองใหม่เพื่อโชว์กระทู้
+            return;
+        }
+
+        // ถ้า User เปลี่ยนหน้า หรือ element หายไป ให้หยุด Interval
+        if (!display) {
+            clearInterval(timer);
+            return;
+        }
+
+        const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+        let countdownText = "";
+        if (d > 0) countdownText += d + "ว ";
+        countdownText += h.toString().padStart(2, '0') + ":" + 
+                         m.toString().padStart(2, '0') + ":" + 
+                         s.toString().padStart(2, '0');
+
+        display.innerHTML = countdownText;
+    }, 1000);
+}
+
 
         // ---addPostToDOM (With Winner Display) ---
     function addPostToDOM(post, isOccupied) {

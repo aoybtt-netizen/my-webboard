@@ -515,6 +515,8 @@ function viewZoneDetails(zoneId) {
                         <span>พิกัด (Lat, Lng):</span>
                         <b>${z.lat || 0}, ${z.lng || 0}</b>
                     </div>
+					${renderCountdownItem('เวลาเปิดตัวโซน', 'launchTime', z.launchTime, z.id)}                   
+                    ${renderItem('ชื่อโซน', 'name', z.name|| 'ไม่มี', z.id)}
                     ${renderItem('เจ้าของโซน', 'assignedAdmin', z.assignedAdmin || 'ไม่มี (คลิกเพื่อตั้งค่า)', z.id)}
                     ${renderItem('สกุลเงิน', 'zoneCurrency', currency, z.id)}
                     ${renderItem('เรท (1 USDT =)', 'zoneExchangeRate', z.zoneExchangeRate, z.id, currency)}
@@ -535,16 +537,6 @@ function viewZoneDetails(zoneId) {
                     <i class="fas fa-code"></i> ตรวจสอบตัวแปรทั้งหมด (Debug)
                 </button>
             </div>
-			
-			<div style="text-align: left; font-size: 0.9em; line-height: 1.8; max-height: 500px; overflow-y: auto;">
-                <p style="color: #666; font-size: 0.8em; margin-bottom: 10px;">* คลิกที่ข้อมูลตัวหนาเพื่อแก้ไข</p>
-                
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee;">
-                    ${renderCountdownItem('เวลาเปิดตัวโซน', 'launchTime', z.launchTime, z.id)}
-                    
-                    ${renderItem('ชื่อโซน', 'name', z.name|| 'ไม่มี', z.id)}
-                    </div>
-                </div>
         `,
         didOpen: () => {
             // 🚩 สั่งให้นับถอยหลังทำงานทันทีที่เปิด Popup
