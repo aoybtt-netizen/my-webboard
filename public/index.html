@@ -5348,6 +5348,52 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+
+
+async function openQuickActions() {
+    const t = translations[currentLang]; // ดึงคำแปลภาษา
+
+    const { value: action } = await Swal.fire({
+        title: 'เลือกรายการ', // หรือใช้ t.quick_action_title
+        showConfirmButton: false, // ปิดปุ่มตกลงมาตรฐาน
+        showCloseButton: true,
+        html: `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;">
+                
+                <div onclick="Swal.clickConfirm(); handleAction('A')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd; transition: 0.3s;">
+                    <i class="fas fa-wallet" style="font-size: 2em; color: #27ae60;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">เติมเงิน</div>
+                </div>
+
+                <div onclick="Swal.clickConfirm(); handleAction('B')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
+                    <i class="fas fa-history" style="font-size: 2em; color: #2980b9;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">ประวัติ</div>
+                </div>
+
+                <div onclick="Swal.clickConfirm(); handleAction('C')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
+                    <i class="fas fa-user-cog" style="font-size: 2em; color: #e67e22;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">ตั้งค่า</div>
+                </div>
+
+                <div onclick="Swal.clickConfirm(); handleAction('D')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
+                    <i class="fas fa-headset" style="font-size: 2em; color: #dc3545;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">แจ้งปัญหา</div>
+                </div>
+
+            </div>
+        `
+    });
+}
+
+// ฟังก์ชันรองรับหลังจากกดเลือก
+function handleAction(type) {
+    console.log("User selected action:", type);
+    if(type === 'A') {
+        // ไปหน้าเติมเงิน
+    }
+    // ... จัดการตามเงื่อนไข ...
+}
+
 </script>
 
 <div id="comment-notif-modal" class="hidden" style="
@@ -5626,41 +5672,7 @@ document.addEventListener('visibilitychange', () => {
 
 
 
-	<div id="verify-info-modal" class="modal-overlay hidden">
-    <div class="modal-box" style="max-width: 500px; text-align: center; border-radius: 15px;">
-        <h2 style="color: #28a745; margin-bottom: 20px;">
-            <i class="fas fa-shield-alt"></i> <br>
-            Identity Verification / ยืนยันตัวตน
-        </h2>
-        
-        <div style="text-align: left; margin-bottom: 25px; line-height: 1.6; color: #444; font-size: 0.95em;">
-            <p style="font-weight: bold; color: #28a745; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                English / ไทย
-            </p>
-            
-            <p>To increase reliability and job opportunities, we recommend verifying your identity with real information. / เพื่อเพิ่มความน่าเชื่อถือและโอกาสในงานของคุณ เราแนะนำให้คุณยืนยันตัวตนด้วยข้อมูลจริง</p>
-            
-            <ul style="padding-left: 20px;">
-                <li>Build trust with other users. / เพิ่มความเชื่อมั่นให้กับผู้ใช้อื่น</li>
-                <li>Unrestricted access to all features. / การใช้งานจะไม่ถูกจำกัด</li>
-                <li>Use real ID card or Passport data. / ใช้ข้อมูลจริงตามบัตรประชาชน/พาสปอร์ต</li>
-                <li>Your data is kept strictly confidential. / ข้อมูลของคุณจะถูกเก็บเป็นความลับสูงสุด</li>
-                <li>Must be within 10 meters of the admin. / ต้องอยู่ใกล้แอดมินไม่เกิน 10 เมตร</li>
-                <li>Fee: 50 USD (Deducted from system balance). / ค่าธรรมเนียม 50 USD (หักจากเงินในระบบ)</li>
-				<li><b>The identity verification system is not yet enabled....................</b></li>
-            </ul>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-            <button class="sidebar-btn" onclick="closeVerifyInfo()" style="background: #6c757d; color: white; flex: 1; padding: 12px; border-radius: 8px;">
-                Cancel / ยกเลิก
-            </button>
-            <button class="sidebar-btn" onclick="closeVerifyInfo()" style="background: #28a745; color: white; flex: 1; padding: 12px; border-radius: 8px;">
-                OK
-            </button>
-        </div>
-    </div>
-</div>
+	
 
 
 
@@ -5760,7 +5772,7 @@ document.addEventListener('visibilitychange', () => {
     <i class="fas fa-plus"></i>
 </button>
 
-<button id="Ranking-Rider-btn" class="Ranking-Rider-btn" onclick="window.location.href='rider-ranking.html'" title="RankingRider">
+<button id="Ranking-Rider-btn" class="Ranking-Rider-btn" onclick="openQuickActions()" title="RankingRider">
     <i class="fas fa-trophy"></i>
 </button>
 
