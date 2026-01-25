@@ -2095,6 +2095,14 @@ app.get('/api/users-list', async (req, res) => {
         const totalOwned = finalResults.filter(u => u.relationType === 'OWNED').length;
         const totalRef = finalResults.filter(u => u.relationType === 'REF').length;
         const totalOther = finalResults.filter(u => u.relationType !== 'OWNED' && u.relationType !== 'REF').length;
+		
+		if (filterStatus === 'kyc') {
+            finalResults = finalResults.filter(u => u.isVerified === true);
+        } else if (filterStatus === 'not_kyc') {
+            finalResults = finalResults.filter(u => u.isVerified !== true);
+        } else if (filterStatus === 'banned') {
+            finalResults = finalResults.filter(u => u.isBanned === true);
+        }
 
         const pagedUsers = finalResults.slice(skip, skip + limitNum);
 

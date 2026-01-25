@@ -297,7 +297,7 @@ function debounceSearch() {
     // รอให้หยุดพิมพ์ 500ms (ครึ่งวินาที) ค่อยส่งไปหาที่ Server
     searchTimer = setTimeout(() => {
         loadMembers(1); 
-    }, 500);
+    }, 1500);
 }
 
 function renderPagination(totalPages, current) {

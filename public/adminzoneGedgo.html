@@ -2020,14 +2020,7 @@ async function loadMemberList() {
         const data = await res.json();
         let members = data.users;
 
-        // ✅ กรองข้อมูลตามประเภทที่เลือกในฝั่ง Frontend
-        if (filterStatus === 'kyc') {
-            members = members.filter(u => u.isVerified === true);
-        } else if (filterStatus === 'not_kyc') {
-            members = members.filter(u => u.isVerified !== true);
-        } else if (filterStatus === 'banned') {
-            members = members.filter(u => u.isBanned === true);
-        }
+        
 
         if (!members || members.length === 0) {
             container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">No members were found matching the selected criteria</p>';
