@@ -2016,7 +2016,7 @@ async function loadMemberList() {
     container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">กำลังโหลดข้อมูลสมาชิก...</p>';
 
     try {
-        const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${search}&limit=100`);
+        const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${search}&filterStatus=${filterStatus}&limit=100`);
         const data = await res.json();
         let members = data.users;
 

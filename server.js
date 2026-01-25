@@ -1970,7 +1970,7 @@ app.get('/api/analytics/pitch-stats', async (req, res) => {
 // 3. User List
 app.get('/api/users-list', async (req, res) => {
     try {
-        const { requestBy, search, page = 1, limit = 50 } = req.query;
+        const { requestBy, search, filterStatus, page = 1, limit = 50 } = req.query;
         
         const pageNum = parseInt(page) || 1;
         const limitNum = parseInt(limit) || 50;
