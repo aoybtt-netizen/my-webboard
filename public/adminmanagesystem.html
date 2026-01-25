@@ -375,6 +375,17 @@ async function showUserDetail(user) {
                 style="margin-top:15px; width:100%; padding:10px; background:#f0f2f5; border:1px solid #ddd; border-radius:8px; cursor:pointer; font-family:Kanit;">
             <i class="fas fa-code"></i> ข้อมูลตัวแปร (Raw Data)
         </button>`;
+		
+	inputsHtml += `
+        <button type="button" onclick='viewRawVariables(${JSON.stringify(user).replace(/'/g, "\\'")})' 
+                style="margin-top:15px; width:100%; padding:10px; background:#f0f2f5; border:1px solid #ddd; border-radius:8px; cursor:pointer; font-family:Kanit;">
+            <i class="fas fa-code"></i> ข้อมูลตัวแปร (Raw Data)
+        </button>
+
+        <button type="button" onclick="deleteUserPermanent('${username}')" 
+                style="margin-top:10px; width:100%; padding:10px; background:#fff1f0; border:1px solid #ffa39e; color:#cf1322; border-radius:8px; cursor:pointer; font-family:Kanit; font-weight:bold;">
+            <i class="fas fa-user-slash"></i> ลบไอดีนี้ถาวร (Delete Permanently)
+        </button>`;
 
     const { value: formValues } = await Swal.fire({
         title: `จัดการสมาชิก: ${username}`,
@@ -461,6 +472,62 @@ function changeFilter() {
     currentFilter = document.getElementById('filterStatus').value;
     currentPage = 1; // กลับไปหน้า 1 ทุกครั้งที่กรองใหม่
     loadMembers();
+}
+
+
+async function deleteUserPermanent(targetUsername) {
+    const currentAdminName = localStorage.getItem('myUsername');
+
+    // ยืนยันชั้นที่ 1
+    const { isConfirmed } = await Swal.fire({
+        title: 'ยืนยันการลบถาวร?',
+        text: `คุณกำลังจะลบไอดี "${targetUsername}" ออกจากระบบ ข้อมูลทั้งหมดจะหายไปและกู้คืนไม่ได้!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ใช่, ลบทิ้งเลย!',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (isConfirmed) {
+        // ยืนยันชั้นที่ 2 (ให้พิมพ์ชื่อเพื่อยืนยัน)
+        const { value: confirmName } = await Swal.fire({
+            title: 'พิมพ์ชื่อผู้ใช้เพื่อยืนยัน',
+            input: 'text',
+            inputLabel: `พิมพ์ "${targetUsername}" เพื่อลบ`,
+            inputPlaceholder: 'กรอกชื่อผู้ใช้ที่นี่...',
+            showCancelButton: true,
+            inputValidator: (value) => {
+                if (value !== targetUsername) return 'ชื่อไม่ถูกต้อง!';
+            }
+        });
+
+        if (confirmName) {
+            Swal.fire({ title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const res = await fetch('/api/admin/delete-user', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        adminUsername: currentAdminName,
+                        targetUsername: targetUsername
+                    })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    Swal.fire('ลบแล้ว!', result.message, 'success');
+                    loadMembers(); // โหลดรายการสมาชิกใหม่
+                } else {
+                    Swal.fire('ผิดพลาด', result.message, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+            }
+        }
+    }
 }
 
 

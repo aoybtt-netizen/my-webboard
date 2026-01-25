@@ -672,6 +672,44 @@ app.post('/api/admin/update-user-full', async (req, res) => {
     }
 });
 
+app.delete('/api/admin/delete-user', async (req, res) => {
+    try {
+        const { adminUsername, targetUsername } = req.body;
+
+        if (!adminUsername || !targetUsername) {
+            return res.status(400).json({ success: false, message: "ข้อมูลไม่ครบถ้วน" });
+        }
+
+        // 1. ตรวจสอบสิทธิ์แอดมิน (Lv.3)
+        const admin = await db.collection('users').findOne({ username: adminUsername });
+        if (!admin || parseInt(admin.adminLevel) < 3) {
+            return res.status(403).json({ success: false, message: "สิทธิ์ปฏิเสธ: เฉพาะแอดมินระดับ 3" });
+        }
+
+        // 2. ป้องกันไม่ให้แอดมินลบตัวเอง
+        if (adminUsername === targetUsername) {
+            return res.status(400).json({ success: false, message: "คุณไม่สามารถลบไอดีของตัวเองได้" });
+        }
+
+        // 3. เริ่มการลบข้อมูล (Delete)
+        // หมายเหตุ: พี่อาจจะลบข้อมูลที่เกี่ยวข้องอื่นๆ เช่น merchant_locations ไปด้วยก็ได้ครับ
+        const result = await db.collection('users').deleteOne({ username: targetUsername });
+
+        if (result.deletedCount > 0) {
+            // ลบข้อมูลพิกัดร้านค้า (ถ้ามี)
+            await db.collection('merchant_locations').deleteMany({ owner: targetUsername });
+            
+            res.json({ success: true, message: `ลบไอดี "${targetUsername}" เรียบร้อยแล้ว` });
+        } else {
+            res.status(404).json({ success: false, message: "ไม่พบผู้ใช้งานที่ต้องการลบ" });
+        }
+
+    } catch (error) {
+        console.error("🚨 Delete User Error:", error);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" });
+    }
+});
+
 // 2. API ดึงรายชื่อโซนทั้งหมด
 app.get('/api/admin/all-zones', async (req, res) => {
 	const lang = req.body.lang || 'th';
