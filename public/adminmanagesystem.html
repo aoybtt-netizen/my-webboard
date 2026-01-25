@@ -291,6 +291,15 @@ async function loadMembers(page = 1) {
     } catch (e) { console.error(e); }
 }
 
+let searchTimer;
+function debounceSearch() {
+    clearTimeout(searchTimer);
+    // รอให้หยุดพิมพ์ 500ms (ครึ่งวินาที) ค่อยส่งไปหาที่ Server
+    searchTimer = setTimeout(() => {
+        loadMembers(1); 
+    }, 500);
+}
+
 function renderPagination(totalPages, current) {
     const container = document.getElementById('pagination-controls');
     container.innerHTML = '';
