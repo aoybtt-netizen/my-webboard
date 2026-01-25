@@ -1049,6 +1049,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 	let timerInterval;
 	let detailMap;
 	let detailMarker;
+	let currentZoneLaunchTime = null;
 	const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 	
 
@@ -2004,7 +2005,8 @@ async function fetchAndRefreshMerchantBalance() {
         const res = await fetch(`/api/merchant/balance?username=${encodeURIComponent(username)}`);
         const data = await res.json();
         if (data.success) {
-            // เรียกใช้ฟังก์ชันด้านบน
+            currentZoneLaunchTime = data.launchTime; 
+            myAdminLevel = data.adminLevel || 0;
             updateMerchantHeaderBalance(data);
         }
     } catch (e) {
