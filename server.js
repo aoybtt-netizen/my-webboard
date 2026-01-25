@@ -566,11 +566,16 @@ app.get('/api/admin/all-users', async (req, res) => {
         let page = parseInt(req.query.page) || 1;
         let limit = parseInt(req.query.limit) || 50;
         let filter = req.query.filter || 'all';
+		let search = req.query.search || '';
         let skip = (page - 1) * limit;
 
         let query = {};
         if (filter === 'banned') query.isBanned = true;
         if (filter === 'admin') query.adminLevel = { $gt: 0 }; // เลเวลมากกว่า 0 คือแอดมิน
+		
+		if (search) {
+            query.username = { $regex: search, $options: 'i' }; 
+        }
 
         // 1. นับจำนวนทั้งหมดตามเงื่อนไข
         const totalCount = await db.collection('users').countDocuments(query);
