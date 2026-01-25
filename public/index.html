@@ -4225,12 +4225,18 @@ function getLocation(isPrimaryCheckin = false) {
         if (launchDate > now && myAdminLevel < 3) {
             const t = translations[currentLang];
             // แสดงแจ้งเตือนตามภาษาที่เลือก
-            return Swal.fire({
-                icon: 'info',
-                title: t.cd_waiting,
-                text: `${t.cd_start_date} ${new Date(currentZoneLaunchTime).toLocaleString(t.locale)}`,
-                confirmButtonText: 'OK'
-            });
+           return Swal.fire({
+    icon: 'info',
+    title: t.cd_waiting,
+    text: `${t.cd_start_date} ${new Date(currentZoneLaunchTime).toLocaleString(t.locale)}`,
+    confirmButtonText: 'OK',
+    didOpen: () => {
+        const container = Swal.getContainer();
+        if (container) {
+            container.style.zIndex = '9999';
+        }
+    }
+});
         }
     }
 	
