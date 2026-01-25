@@ -4218,7 +4218,22 @@ function getLocation(isPrimaryCheckin = false) {
 	
 
 	async function createPost() {
-    // --- 1. อ้างอิงปุ่มโพสต์ และเช็คว่าติด Cooldown อยู่หรือไม่ ---
+    if (currentZoneLaunchTime) {
+        const now = new Date().getTime();
+        const launchDate = new Date(currentZoneLaunchTime).getTime();
+
+        if (launchDate > now && myAdminLevel < 3) {
+            const t = translations[currentLang];
+            // แสดงแจ้งเตือนตามภาษาที่เลือก
+            return Swal.fire({
+                icon: 'info',
+                title: t.cd_waiting,
+                text: `${t.cd_start_date} ${new Date(currentZoneLaunchTime).toLocaleString(t.locale)}`,
+                confirmButtonText: 'OK'
+            });
+        }
+    }
+	
     const createBtn = document.querySelector('.create-btn'); 
     if (createBtn && createBtn.disabled) return;
 
