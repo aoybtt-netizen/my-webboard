@@ -1863,15 +1863,16 @@ app.get('/api/merchant/balance', async (req, res) => {
 
         const location = user.lastLocation || null; 
         
-        // 🚩 ตรวจสอบว่าฟังก์ชันหาโซนมีอยู่จริงหรือไม่
         let zoneCurrency = 'USDT';
         let zoneName = 'Global';
+		let launchTime = null;
 
         if (typeof findResponsibleAdmin === 'function') {
             const zoneInfo = await findResponsibleAdmin(location);
             if (zoneInfo && zoneInfo.zoneData) {
                 zoneCurrency = zoneInfo.zoneData.zoneCurrency || 'USDT';
                 zoneName = zoneInfo.zoneName || 'Zone';
+				launchTime = zoneInfo.zoneData.launchTime || null;
             }
         }
 
@@ -1882,6 +1883,7 @@ app.get('/api/merchant/balance', async (req, res) => {
             balance: balance,
             currency: zoneCurrency,
             zoneName: zoneName,
+			launchTime: launchTime,
             storeName: storeData ? storeData.label : "GedGo Merchant"
         });
 

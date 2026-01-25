@@ -2612,6 +2612,22 @@ function updateTitlePreview() {
 
     // 4. ส่งข้อมูลงาน
     async function postMerchantTask() {
+	
+	if (currentZoneLaunchTime) {
+        const now = new Date().getTime();
+        const launchDate = new Date(currentZoneLaunchTime).getTime();
+
+        if (launchDate > now && myAdminLevel < 3) {
+            const t = translations[currentLang];
+            return Swal.fire({
+                icon: 'info',
+                title: t.cd_waiting,
+                text: `${t.cd_start_date} ${new Date(currentZoneLaunchTime).toLocaleString(t.locale)}`,
+                confirmButtonText: 'OK'
+            });
+        }
+    }
+	
     const btn = document.getElementById('submit-btn');
     
     // 🚩 1. เริ่มระบบล็อคปุ่มและหน่วงเวลา 10 วินาที
@@ -3950,6 +3966,24 @@ function displayMerchantLocation(lat, lng, phone) {
 
 
 async function updateMerchantStatus(isOpen) {
+	
+	if (isOpen && currentZoneLaunchTime) {
+        const now = new Date().getTime();
+        const launchDate = new Date(currentZoneLaunchTime).getTime();
+
+        if (launchDate > now && myAdminLevel < 3) {
+            // ดีดสวิตช์กลับเป็นปิด
+            document.getElementById('merchant-status-toggle').checked = false;
+            
+            const t = translations[currentLang];
+            return Swal.fire({
+                icon: 'info',
+                title: t.cd_waiting,
+                text: `ระบบยังไม่เปิดให้บริการในขณะนี้`
+            });
+        }
+    }
+	
     const statusText = document.getElementById('status-text');
     const isMerchant = mySavedLocations && mySavedLocations.some(loc => loc.isStore === true);
 
