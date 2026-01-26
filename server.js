@@ -506,36 +506,45 @@ app.post('/api/auth/set-password', async (req, res) => {
     res.json({ success: true });
 });
 
-// Route สำหรับสมัครสมาชิกใหม่
 app.post('/api/auth/register', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     try {
         const { username, password } = req.body;
 
-        // 1. ตรวจสอบว่าชื่อซ้ำไหม
+        if (!username || !password) {
+            return res.status(400).json({ success: false, error: "กรุณากรอกข้อมูลให้ครบ" });
+        }
+
+        // 🚩 1. ตรวจสอบภาษาอังกฤษ (Server-side)
+        const englishRegex = /^[a-zA-Z0-9]+$/;
+        if (!englishRegex.test(username)) {
+            return res.status(400).json({ success: false, error: "Username ต้องเป็นภาษาอังกฤษเท่านั้น" });
+        }
+
+        // 🚩 2. ตรวจสอบคำต้องห้าม (Server-side)
+        const forbiddenWords = ["admin", "gedgozone", "gedgo"];
+        const lowerUsername = username.toLowerCase();
+        if (forbiddenWords.some(word => lowerUsername.includes(word))) {
+            return res.status(400).json({ success: false, error: "ไม่อนุญาตให้ใช้ชื่อนี้" });
+        }
+
+        // 3. ตรวจสอบว่าชื่อซ้ำไหม (เดิม)
         const existingUser = await usersCollection.findOne({ username: username });
         if (existingUser) {
             return res.status(400).json({ success: false, error: serverTranslations[lang].error_username_exists });
         }
 
-        // 2. Hash รหัสผ่าน
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        // 3. บันทึก User ใหม่ (ใส่ค่าเริ่มต้นที่จำเป็นไปด้วยเลย)
         const newUser = {
             username: username,
             password: hashedPassword,
-            coins: 0,           // เงินในระบบ
-            mercNum: 0,        // สถานะการรับงาน
+            coins: 0,
+            mercNum: 0,
             createdAt: new Date()
         };
 
         await usersCollection.insertOne(newUser);
-
-        res.json({ 
-            success: true, 
-            user: { username: newUser.username } 
-        });
+        res.json({ success: true, user: { username: newUser.username } });
         
     } catch (err) {
         console.error("Register Error:", err);

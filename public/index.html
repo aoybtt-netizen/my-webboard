@@ -1985,6 +1985,21 @@ async function register() {
     if (!username || !password) {
 		return alert(translations[currentLang].alert_fill_all);
 	}
+	
+	const englishRegex = /^[a-zA-Z0-9]+$/;
+    if (!englishRegex.test(username)) {
+        return alert("Username must be English only");
+    }
+
+    // 🚩 2. เช็คคำต้องห้าม (Forbidden Keywords)
+    const forbiddenWords = ["admin", "gedgozone", "gedgo"];
+    const lowerUsername = username.toLowerCase();
+    const hasForbidden = forbiddenWords.some(word => lowerUsername.includes(word));
+    
+    if (hasForbidden) {
+        return alert("This username contains forbidden words");
+    }
+	
     if (username.length < 3) {
 		return alert(translations[currentLang].alert_username_short(3));
 	}
