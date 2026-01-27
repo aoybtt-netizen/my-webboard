@@ -903,6 +903,7 @@ app.get('/api/kyc/my-status', async (req, res) => {
     try {
         const { username } = req.query;
         if (!username) return res.status(400).json({ error: "Missing username" });
+
         const kycRequest = await db.collection('kycRequests')
             .findOne({ username: username }, { sort: { submittedAt: -1 } });
 
@@ -910,6 +911,42 @@ app.get('/api/kyc/my-status', async (req, res) => {
             return res.json({ status: 'none' });
         }
 
+        // 🚩 ตรวจสอบเฉพาะสถานะที่ยังรออนุมัติ (pending) เท่านั้น
+        if (kycRequest.status === 'pending') {
+            const { coords, targetAdmin, feeAmount, feeCurrency } = kycRequest;
+
+            // 1. หาว่าพิกัดที่ส่ง KYC มา ตอนนี้ใครเป็นแอดมินที่ดูแลอยู่
+            const allZones = await db.collection('zones').find({}).toArray();
+            let currentAdminInZone = null;
+            let minDistance = Infinity;
+
+            allZones.forEach(zone => {
+                const dist = getDistanceFromLatLonInKm(coords.lat, coords.lng, zone.lat, zone.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    currentAdminInZone = zone.assignedAdmin; // ชื่อแอดมินปัจจุบันของโซนนี้
+                }
+            });
+
+            // 2. เช็คว่า แอดมินที่เคยส่งไป (targetAdmin) ยังตรงกับ แอดมินปัจจุบัน ไหม
+            if (targetAdmin !== currentAdminInZone) {
+                console.log(`⚠️ Admin changed from ${targetAdmin} to ${currentAdminInZone}. Refunded ${username}.`);
+
+                // 🚩 3. ทำการคืนเงิน (Refund) ให้ผู้ใช้
+                await db.collection('users').updateOne(
+                    { username: username },
+                    { $inc: { [feeCurrency]: feeAmount } } // คืนเงินเข้ากระเป๋าเดิม
+                );
+
+                // 🚩 4. ลบคำขอ KYC เดิมออก (เพื่อให้ผู้ใช้กดใหม่ได้) หรือจะเปลี่ยนเป็นสถานะ 'canceled' ก็ได้
+                await db.collection('kycRequests').deleteOne({ _id: kycRequest._id });
+
+                // ส่งค่ากลับไปบอกหน้าบ้านว่าไม่มีคำขอแล้ว (เพื่อให้กลับเป็นสถานะปกติ)
+                return res.json({ status: 'none', message: 'Admin of this zone has changed. Request canceled and refunded.' });
+            }
+        }
+
+        // ถ้าแอดมินยังเป็นคนเดิม หรือสถานะเป็น approved แล้ว ให้ส่งค่ากลับตามปกติ
         res.json({
             status: kycRequest.status,
             adminName: kycRequest.targetAdmin,
@@ -921,7 +958,9 @@ app.get('/api/kyc/my-status', async (req, res) => {
                 userImg: kycRequest.userImg 
             }
         });
+
     } catch (err) {
+        console.error("🚨 API my-status Error:", err);
         res.status(500).json({ error: "Server Error" });
     }
 });
