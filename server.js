@@ -593,27 +593,42 @@ app.post('/api/auth/register', async (req, res) => {
 //รูป profile
 app.post('/api/user/update-avatar', async (req, res) => {
     try {
-        const { username, image } = req.body; // image คือ Base64 ที่ย่อแล้ว
+        const { username, image } = req.body;
 
-        // 1. ดึงข้อมูล User ปัจจุบันมาเช็คชื่อรูปเดิม
+        // 🚩 1. ตรวจสอบว่ามีโฟลเดอร์ uploads หรือยัง ถ้าไม่มีให้สร้าง
+        const uploadDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadDir)){
+            fs.mkdirSync(uploadDir);
+        }
+
         const user = await db.collection('users').findOne({ username: username });
 
-        // 🚩 2. ลบรูปเดิมออกจากระบบ (ถ้ามี)
+        // 🚩 2. ลบรูปเดิม (แก้การต่อ Path ให้ถูกต้อง)
         if (user && user.profileImg && user.profileImg.startsWith('/uploads/')) {
-            const oldFilePath = path.join(__dirname, user.profileImg);
+            // ตัดเครื่องหมาย / ด้านหน้าออกก่อน join
+            const relativePath = user.profileImg.replace(/^\//, ''); 
+            const oldFilePath = path.join(__dirname, relativePath);
+            
             if (fs.existsSync(oldFilePath)) {
-                fs.unlinkSync(oldFilePath); // ลบไฟล์ถาวรออกจาก Disk
+                try {
+                    fs.unlinkSync(oldFilePath);
+                } catch (e) {
+                    console.error("ลบไฟล์เก่าไม่สำเร็จ:", e);
+                }
             }
         }
 
-        // 3. บันทึกรูปใหม่ (แปลง Base64 กลับเป็นไฟล์)
+        // 3. บันทึกรูปใหม่
         const fileName = `avatar_${username}_${Date.now()}.jpg`;
-        const filePath = `/uploads/${fileName}`;
-        const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
+        const filePath = `/uploads/${fileName}`; // Path ที่จะเก็บลง DB
+        const savePath = path.join(uploadDir, fileName); // Path จริงที่จะเขียนไฟล์
 
-        fs.writeFileSync(path.join(__dirname, filePath), base64Data, 'base64');
+        // ตัด header ของ base64 ออก
+        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-        // 4. อัปเดตชื่อไฟล์ใหม่ลงในฐานข้อมูล
+        fs.writeFileSync(savePath, base64Data, 'base64');
+
+        // 4. อัปเดต DB (ตรวจสอบว่าใช้ db หรือ usersCollection ให้ตรงกับที่คุณประกาศไว้)
         await db.collection('users').updateOne(
             { username: username },
             { $set: { profileImg: filePath, updatedAt: new Date() } }
@@ -621,8 +636,8 @@ app.post('/api/user/update-avatar', async (req, res) => {
 
         res.json({ success: true, profileImg: filePath });
     } catch (error) {
-        console.error("Update Avatar Error:", error);
-        res.status(500).json({ success: false, error: "เกิดข้อผิดพลาดในการจัดการไฟล์" });
+        console.error("🚨 Update Avatar Error:", error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

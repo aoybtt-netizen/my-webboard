@@ -294,32 +294,34 @@
     position: relative;
     margin: 0 auto 15px;
     border: 3px solid var(--primary);
+    background: #f1f5f9; /* สีพื้นหลังอ่อนๆ */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    background: #eee;
 }
 
-.avatar-wrapper img {
+.avatar-placeholder {
+    font-size: 50px; /* ขนาดไอคอน 👤 */
+    position: absolute;
+    z-index: 1;
+}
+
+#main-avatar-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
-}
-
-.avatar-overlay {
     position: absolute;
-    bottom: 0;
-    width: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    color: white;
-    font-size: 12px;
-    padding: 4px 0;
-    text-align: center;
-    transition: 0.3s;
-    opacity: 0; /* ซ่อนไว้ก่อน */
+    top: 0;
+    left: 0;
+    z-index: 2; /* อยู่เหนือไอคอน */
+    transition: opacity 0.3s;
 }
 
-.avatar-wrapper:hover .avatar-overlay {
-    opacity: 1; /* โชว์เมื่อเอาเมาส์วาง */
+/* ถ้า src ว่าง ให้ซ่อนรูป เพื่อโชว์ไอคอนข้างหลัง */
+#main-avatar-img[src=""], 
+#main-avatar-img:not([src]) {
+    opacity: 0;
 }
 
 
@@ -337,11 +339,14 @@
 
 <div class="profile-main">
     <div class="avatar-wrapper" onclick="document.getElementById('avatar-input').click()">
-        <img id="main-avatar-img" src="https://via.placeholder.com/150" alt="Avatar">
-        <div class="avatar-overlay">
-            <i class="fas fa-camera"></i>
-        </div>
+    <div class="avatar-placeholder">👤</div>
+    
+    <img id="main-avatar-img" src="" alt="" onerror="this.style.opacity='0'">
+    
+    <div class="avatar-overlay">
+        <i class="fas fa-camera"></i>
     </div>
+</div>
     
     <input type="file" id="avatar-input" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
     
