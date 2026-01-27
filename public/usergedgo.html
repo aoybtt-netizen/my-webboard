@@ -1317,7 +1317,15 @@ function handleGoogleLinking(e) {
         callback: handleCredentialResponse
     });
     
-    google.accounts.id.prompt(); // แสดงหน้าต่างเลือกบัญชี
+    google.accounts.id.prompt((notification) => {
+    if (notification.isNotDisplayed()) {
+        console.warn("One Tap ไม่แสดงผลเพราะ:", notification.getNotDisplayedReason());
+    } else if (notification.isSkippedMoment()) {
+        console.warn("One Tap ถูกข้ามเพราะ:", notification.getSkippedReason());
+    } else if (notification.isDismissedMoment()) {
+        console.warn("ผู้ใช้ปิด One Tap เพราะ:", notification.getDismissedReason());
+    }
+}); // แสดงหน้าต่างเลือกบัญชี
 }
 
 async function handleCredentialResponse(response) {
