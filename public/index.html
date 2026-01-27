@@ -2258,9 +2258,9 @@ async function updateUserInfo() {
         const response = await fetch(`/api/user-info?username=${myUsername}&currency=${currentCurrency}${locationQuery}&country=${myCountry}&lang=${currentLang}`);
         
         const data = await response.json();
-		currentZoneLaunchTime = data.launchTime;
-		currentZoneName = data.zoneName;
-		myZoneId = data.userZoneId || null;
+        currentZoneLaunchTime = data.launchTime;
+        currentZoneName = data.zoneName;
+        myZoneId = data.userZoneId || null;
 
         if (response.status === 403) {
             alert(data.error);
@@ -2288,29 +2288,40 @@ async function updateUserInfo() {
                 userDisplay.style.fontWeight = "normal";
             }
         }
-                
+
+        // 🚩 แก้ไขเฉพาะส่วนการแสดงผล Avatar (รูปโปรไฟล์) ตรงนี้ครับ
         const avatarEl = document.getElementById('user-avatar-display');
         if (avatarEl) {
-			const myAdminLevel = userData.adminLevel || 0;
-			const profileImg = userData.profileImg;
+            // 1. จัดการส่วนมงกุฎ
             let stars = '';
-            if (myAdminLevel === 1) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑</div>';
-            if (myAdminLevel === 2) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑</div>';
-            if (myAdminLevel === 3) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑👑</div>';
+            if (myAdminLevel === 1) stars = '<div style="font-size:14px; position:absolute; bottom:-5px; width:100%; text-align:center; color:#ffc107; text-shadow: 1px 1px 2px black; z-index:10;">👑</div>';
+            if (myAdminLevel === 2) stars = '<div style="font-size:14px; position:absolute; bottom:-5px; width:100%; text-align:center; color:#ffc107; text-shadow: 1px 1px 2px black; z-index:10;">👑👑</div>';
+            if (myAdminLevel === 3) stars = '<div style="font-size:14px; position:absolute; bottom:-5px; width:100%; text-align:center; color:#ffc107; text-shadow: 1px 1px 2px black; z-index:10;">👑👑👑</div>';
             
+            // 2. ตรวจสอบว่ามีรูปโปรไฟล์มาจาก Server หรือไม่
+            // หมายเหตุ: ต้องตรวจสอบว่า API /api/user-info ส่งค่า profileImg มาให้ด้วยนะครับ
+            const profileImg = data.profileImg; 
+
+            avatarEl.style.position = "relative";
+            avatarEl.style.display = "inline-flex";
+            avatarEl.style.justifyContent = "center";
+            avatarEl.style.alignItems = "center";
+
             if (profileImg) {
-				avatarEl.innerHTML = `
-					<img src="${profileImg}" class="avatar-img-main" onerror="this.src=''; this.parentElement.innerHTML='👤${starsHtml}'">
-					${starsHtml}
-				`;
-			} else {
-				// ถ้าไม่มีรูป ให้แสดงไอคอนเริ่มต้น (หรือรูปแมว 🐱 ตามความต้องการเดิม)
-				avatarEl.style.fontSize = "50px";
-				avatarEl.innerHTML = `👤${starsHtml}`;
-			}
+                // ถ้ามีรูป ให้แสดงรูปโปรไฟล์แบบวงกลม
+                avatarEl.style.fontSize = "0px"; // ซ่อน 👤 ตัวเดิม
+                avatarEl.innerHTML = `
+                    <img src="${profileImg}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    ${stars}
+                `;
+            } else {
+                // ถ้าไม่มีรูป ให้แสดงไอคอน 👤 หรือไอคอนเดิม
+                avatarEl.style.fontSize = "50px";
+                avatarEl.innerHTML = `👤${stars}`;
+            }
         }
-		
-                        
+        
+        // --- ส่วนที่เหลือคงเดิม ---
         const adminPanelDiv = document.getElementById('admin-panel');
         if (myAdminLevel >= 1) {
             adminPanelDiv.classList.remove('hidden');
@@ -2318,8 +2329,6 @@ async function updateUserInfo() {
             adminPanelDiv.classList.add('hidden');
         }
         
-        
-                        
         const giveCoinBtn = document.querySelector('.give-coin-btn');
         const deductCoinBtn = document.querySelector('.deduct-coin-btn');
         
@@ -2385,18 +2394,18 @@ async function updateUserInfo() {
         });
         
         if (modalCostDisplay) {
-			const systemZone = (data.postCost?.systemZone || 0).toFixed(2); 
-			const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
-			const totalCostUSDT = (data.postCost?.totalCost || 0).toFixed(2);
+            const systemZone = (data.postCost?.systemZone || 0).toFixed(2); 
+            const adminFee = (data.postCost?.adminFee || 0).toFixed(2);
+            const totalCostUSDT = (data.postCost?.totalCost || 0).toFixed(2);
 
-		modalCostDisplay.innerHTML = 
+        modalCostDisplay.innerHTML = 
         `<span style="font-size:1.0em; color:#2364cc; font-weight:normal;">(${systemZone} + ${adminFee} ${data.currencySymbol})</span>`;
-		}
+        }
         
         const sidebarRating = document.getElementById('sidebar-rating');
         if (sidebarRating) {
-			sidebarRating.innerText = (data.rating || 0).toFixed(2);
-			}
+            sidebarRating.innerText = (data.rating || 0).toFixed(2);
+            }
 
         const sidebarTotalPosts = document.getElementById('sidebar-total-posts');
         if (sidebarTotalPosts) {
@@ -2407,7 +2416,6 @@ async function updateUserInfo() {
         if (sidebarCompletedJobs) {
             sidebarCompletedJobs.innerText = data.completedJobs || 0;
         }
-        
         
         if (locationQuery) {
                 const locData = JSON.parse(decodeURIComponent(locationQuery.split('=')[1]));
