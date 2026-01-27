@@ -388,7 +388,10 @@
     <i class="fas fa-link" id="link-icon" style="margin-left: auto; font-size: 0.8em; color: #ccc;"></i>
 </a>
 
-<div id="google-button-hidden" style="display: none;"></div>
+<div id="google-button-container" style="padding: 10px; display: none;">
+    <div id="google-login-btn"></div>
+    <p style="font-size: 0.75rem; color: #999; text-align: center; margin-top: 5px;">* คลิกเพื่อเลือกบัญชี Google ที่ต้องการผูก</p>
+</div>
     
 	
     <a href="#" class="menu-item">
@@ -1303,29 +1306,36 @@ function updateCurrentLocation() {
 
 
 function handleGoogleLinking(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     
-    // เช็คว่าถ้าผูกไปแล้ว ไม่ต้องให้กดซ้ำ (หรือจะให้เปลี่ยนเมลก็ได้)
     const currentEmail = document.getElementById('display-email').innerText;
     if (currentEmail !== "ยังไม่ระบุ" && currentEmail !== "Not specified") {
-        return Swal.fire('แจ้งเตือน', 'บัญชีนี้ถูกผูกกับ Google เรียบร้อยแล้ว', 'info');
+        return Swal.fire('แจ้งเตือน', 'บัญชีนี้ถูกผูกเรียบร้อยแล้ว', 'info');
     }
 
-    // เรียกหน้าต่าง Google Login
+    // แสดงพื้นที่วางปุ่ม
+    document.getElementById('google-button-container').style.display = 'block';
+
     google.accounts.id.initialize({
-        client_id: "588474601862-hjtk1iu27cer2114si2947divbvd8v4c.apps.googleusercontent.com", // 🚩 ใส่ Client ID ของพี่
-        callback: handleCredentialResponse
+        client_id: "588474601862-hjtk1iu27cer2114si2947divbvd8v4c.apps.googleusercontent.com",
+        callback: handleCredentialResponse,
+        use_fedcm_for_prompt: true // 🚩 แก้ไขตามที่ Debug แนะนำ (FedCM)
     });
-    
-    google.accounts.id.prompt((notification) => {
-    if (notification.isNotDisplayed()) {
-        console.warn("One Tap ไม่แสดงผลเพราะ:", notification.getNotDisplayedReason());
-    } else if (notification.isSkippedMoment()) {
-        console.warn("One Tap ถูกข้ามเพราะ:", notification.getSkippedReason());
-    } else if (notification.isDismissedMoment()) {
-        console.warn("ผู้ใช้ปิด One Tap เพราะ:", notification.getDismissedReason());
-    }
-}); // แสดงหน้าต่างเลือกบัญชี
+
+    // 🚩 บังคับวาดปุ่ม Google ลงใน div ที่เราเตรียมไว้
+    google.accounts.id.renderButton(
+        document.getElementById("google-login-btn"),
+        { 
+            theme: "outline", 
+            size: "large", 
+            width: "100%",
+            text: "signin_with", // หรือ "continue_with"
+            shape: "rectangular"
+        }
+    );
+
+    // ลองเรียก One Tap ด้วย
+    google.accounts.id.prompt(); 
 }
 
 async function handleCredentialResponse(response) {
