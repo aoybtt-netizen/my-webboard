@@ -598,19 +598,38 @@ app.post('/api/auth/register', async (req, res) => {
 //รูป profile
 app.post('/api/user/update-avatar', async (req, res) => {
     try {
-        const { username, image } = req.body; // image คือ Base64 ที่ resize มาแล้ว
+        const { username, image } = req.body;
 
         if (!username || !image) {
             return res.status(400).json({ success: false, error: "ข้อมูลไม่ครบถ้วน" });
         }
 
-        // 🚩 เปลี่ยนจากการเขียนไฟล์ มาเป็นการบันทึก Base64 ลง MongoDB โดยตรง
-        // วิธีนี้แก้ปัญหา "รูปหายเมื่อรีสตาร์ท" เพราะข้อมูลถูกเก็บในฐานข้อมูลถาวร
+        // 🚩 1. ค้นหาข้อมูล User ปัจจุบันก่อนเพื่อดูว่า "เคย" มี Path รูปเป็นไฟล์ไหม
+        const user = await db.collection('users').findOne({ username: username });
+
+        // 🚩 2. ถ้าเคยมีรูปที่เป็น Path ไฟล์ (เช่น /uploads/...) ให้สั่งลบทิ้งจริงๆ
+        if (user && user.profileImg && user.profileImg.startsWith('/uploads/')) {
+            const fs = require('fs');
+            const path = require('path');
+            const relativePath = user.profileImg.replace(/^\//, ''); // ตัด / ข้างหน้าออก
+            const oldFilePath = path.join(__dirname, relativePath);
+            
+            if (fs.existsSync(oldFilePath)) {
+                try {
+                    fs.unlinkSync(oldFilePath); // ลบไฟล์ออกจากดิสก์
+                    console.log(`✅ ลบไฟล์ขยะเรียบร้อย: ${oldFilePath}`);
+                } catch (e) {
+                    console.error("❌ ลบไฟล์เก่าไม่สำเร็จ (อาจเพราะสิทธิ์เข้าถึง):", e);
+                }
+            }
+        }
+
+        // 🚩 3. อัปเดตข้อมูลเป็น Base64 ลง MongoDB (ทับข้อมูลเก่าใน DB ไปเลย)
         const result = await db.collection('users').updateOne(
             { username: username },
             { 
                 $set: { 
-                    profileImg: image, // เก็บข้อความ data:image/jpeg;base64,... ลงไปเลย
+                    profileImg: image, 
                     updatedAt: new Date() 
                 } 
             }
@@ -620,7 +639,6 @@ app.post('/api/user/update-avatar', async (req, res) => {
             return res.status(404).json({ success: false, error: "ไม่พบชื่อผู้ใช้" });
         }
 
-        // ส่งข้อมูลสำเร็จกลับไป พร้อมกับตัวแปร image เพื่อให้หน้าบ้านแสดงผลทันที
         res.json({ success: true, profileImg: image });
 
     } catch (error) {
