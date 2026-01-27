@@ -471,6 +471,43 @@ app.post('/api/auth/google-register', async (req, res) => {
     res.json({ success: true, user: newUser });
 });
 
+//link mailgoogle
+app.post('/api/auth/link-google', async (req, res) => {
+    try {
+        const { username, idToken } = req.body;
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken: idToken,
+            audience: CLIENT_ID, // ใช้ตัวแปร Global ที่ตั้งไว้
+        });
+        const payload = ticket.getPayload();
+        const googleEmail = payload['email'];
+
+        if (!googleEmail) {
+            return res.status(400).json({ success: false, error: "ไม่สามารถดึงอีเมลจาก Google ได้" });
+        }
+
+        // เช็คว่าอีเมลนี้ถูกใช้ผูกไปหรือยัง
+        const existingUser = await usersCollection.findOne({ email: googleEmail });
+        if (existingUser && existingUser.username !== username) {
+            return res.status(400).json({ success: false, error: "อีเมลนี้ถูกใช้ผูกกับบัญชีอื่นแล้ว" });
+        }
+
+        await usersCollection.updateOne(
+            { username: username },
+            { $set: { 
+                email: googleEmail,
+                googleId: payload['sub'],
+                isEmailVerified: true 
+            }}
+        );
+
+        res.json({ success: true, email: googleEmail });
+    } catch (error) {
+        res.status(500).json({ success: false, error: "ยืนยันตัวตนกับ Google ไม่สำเร็จ" });
+    }
+});
+
 
 //API สำหรับ "Login แบบปกติ" (ชื่อ + รหัสผ่าน)
 app.post('/api/auth/login', async (req, res) => {
