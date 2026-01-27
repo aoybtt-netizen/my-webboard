@@ -413,7 +413,7 @@
      onmouseover="this.style.background='#f0f0f0'; this.style.transform='translateY(-2px)';" 
      onmouseout="this.style.background='#fdfdfd'; this.style.transform='translateY(0)';" >
     
-    <div style="font-size:50px; margin-bottom: 5px;" id="user-avatar-display">👤</div>
+    <div id="user-avatar-display">👤</div>
     <div id="user-display" style="font-weight: bold; font-size: 1.1em; color: #333;">Guest</div>
     
     <div style="color:black; font-weight:bold; margin-top:5px; font-size: 0.9em;">
@@ -2291,12 +2291,23 @@ async function updateUserInfo() {
                 
         const avatarEl = document.getElementById('user-avatar-display');
         if (avatarEl) {
+			const myAdminLevel = userData.adminLevel || 0;
+			const profileImg = userData.profileImg;
             let stars = '';
             if (myAdminLevel === 1) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑</div>';
             if (myAdminLevel === 2) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑</div>';
             if (myAdminLevel === 3) stars = '<div style="font-size:14px; margin-top:-5px; color:#ffc107; text-shadow: 1px 1px 2px black;">👑👑👑</div>';
             
-            avatarEl.innerHTML = `🐱${stars}`;
+            if (profileImg) {
+				avatarEl.innerHTML = `
+					<img src="${profileImg}" class="avatar-img-main" onerror="this.src=''; this.parentElement.innerHTML='👤${starsHtml}'">
+					${starsHtml}
+				`;
+			} else {
+				// ถ้าไม่มีรูป ให้แสดงไอคอนเริ่มต้น (หรือรูปแมว 🐱 ตามความต้องการเดิม)
+				avatarEl.style.fontSize = "50px";
+				avatarEl.innerHTML = `👤${starsHtml}`;
+			}
         }
 		
                         
