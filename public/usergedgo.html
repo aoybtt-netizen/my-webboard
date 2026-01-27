@@ -300,6 +300,25 @@
     justify-content: center;
     cursor: pointer;
 }
+.avatar-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.avatar-overlay {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 12px;
+    padding: 4px 0;
+    text-align: center;
+    transition: 0.3s;
+    opacity: 0; /* ซ่อนไว้ก่อน */
+}
 
 .avatar-placeholder {
     font-size: 50px; /* ขนาดไอคอน 👤 */
@@ -317,12 +336,16 @@
     z-index: 2; /* อยู่เหนือไอคอน */
     transition: opacity 0.3s;
 }
-
-/* ถ้า src ว่าง ให้ซ่อนรูป เพื่อโชว์ไอคอนข้างหลัง */
 #main-avatar-img[src=""], 
 #main-avatar-img:not([src]) {
     opacity: 0;
 }
+
+.avatar-wrapper:hover .avatar-overlay {
+    opacity: 1; /* โชว์เมื่อเอาเมาส์วาง */
+}
+
+
 
 
     </style>
