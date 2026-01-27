@@ -2317,35 +2317,40 @@ async function updateUserInfo() {
 
         // 🚩 แก้ไขเฉพาะส่วนการแสดงผล Avatar (รูปโปรไฟล์) ตรงนี้ครับ
         const avatarEl = document.getElementById('user-avatar-display');
-        if (avatarEl) {
-            // 1. จัดการส่วนมงกุฎ
-            let stars = '';
-            if (myAdminLevel === 1) stars = '<div style="font-size:14px; position:absolute; bottom:-5px; width:100%; text-align:center; color:#ffc107; text-shadow: 1px 1px 2px black; z-index:10;">👑</div>';
-            if (myAdminLevel === 2) stars = '<div style="font-size:14px; position:absolute; bottom:-5px; width:100%; text-align:center; color:#ffc107; text-shadow: 1px 1px 2px black; z-index:10;">👑👑</div>';
-            if (myAdminLevel === 3) stars = '<div style="font-size:14px; position:absolute; bottom:-5px; width:100%; text-align:center; color:#ffc107; text-shadow: 1px 1px 2px black; z-index:10;">👑👑👑</div>';
-            
-            // 2. ตรวจสอบว่ามีรูปโปรไฟล์มาจาก Server หรือไม่
-            // หมายเหตุ: ต้องตรวจสอบว่า API /api/user-info ส่งค่า profileImg มาให้ด้วยนะครับ
-            const profileImg = data.profileImg; 
+if (avatarEl) {
+    // 1. จัดการส่วนมงกุฎ (เหมือนเดิม)
+    let stars = '';
+    if (myAdminLevel === 1) stars = '👑';
+    if (myAdminLevel === 2) stars = '👑👑';
+    if (myAdminLevel === 3) stars = '👑👑👑';
+    
+    const starsHtml = `<div style="font-size:14px; position:absolute; bottom:-5px; width:100%; text-align:center; color:#ffc107; text-shadow: 1px 1px 2px black; z-index:10;">${stars}</div>`;
 
-            avatarEl.style.position = "relative";
-            avatarEl.style.display = "inline-flex";
-            avatarEl.style.justifyContent = "center";
-            avatarEl.style.alignItems = "center";
+    // 2. ข้อมูลรูปโปรไฟล์ (ที่ตอนนี้เป็น Base64 จาก DB)
+    const profileImg = data.profileImg; 
 
-            if (profileImg) {
-                // ถ้ามีรูป ให้แสดงรูปโปรไฟล์แบบวงกลม
-                avatarEl.style.fontSize = "0px"; // ซ่อน 👤 ตัวเดิม
-                avatarEl.innerHTML = `
-                    <img src="${profileImg}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    ${stars}
-                `;
-            } else {
-                // ถ้าไม่มีรูป ให้แสดงไอคอน 👤 หรือไอคอนเดิม
-                avatarEl.style.fontSize = "50px";
-                avatarEl.innerHTML = `👤${stars}`;
-            }
-        }
+    avatarEl.style.position = "relative";
+    avatarEl.style.display = "inline-flex";
+    avatarEl.style.justifyContent = "center";
+    avatarEl.style.alignItems = "center";
+    avatarEl.style.width = "70px";  // กำหนดขนาดให้แน่นอน
+    avatarEl.style.height = "70px";
+
+    if (profileImg && profileImg.length > 100) { 
+        // เช็คความยาวด้วยเพื่อมั่นใจว่าเป็นข้อมูล Base64 จริงๆ
+        avatarEl.style.fontSize = "0px"; 
+        avatarEl.innerHTML = `
+            <img src="${profileImg}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            ${starsHtml}
+        `;
+    } else {
+        // ถ้าไม่มีรูป ให้แสดงไอคอน 👤 และจัดตำแหน่งให้สวยงาม
+        avatarEl.style.fontSize = "50px";
+        avatarEl.style.background = "#f1f5f9"; // เพิ่มพื้นหลังอ่อนๆ ให้วงกลมดูไม่โล่ง
+        avatarEl.style.borderRadius = "50%";
+        avatarEl.innerHTML = `👤${starsHtml}`;
+    }
+}
         
         // --- ส่วนที่เหลือคงเดิม ---
         const adminPanelDiv = document.getElementById('admin-panel');

@@ -23,6 +23,8 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // --- Middleware ---
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.json()); 
 app.use(express.static(path.join(__dirname, 'public')));
 //profile image
@@ -596,48 +598,31 @@ app.post('/api/auth/register', async (req, res) => {
 //รูป profile
 app.post('/api/user/update-avatar', async (req, res) => {
     try {
-        const { username, image } = req.body;
+        const { username, image } = req.body; // image คือ Base64 ที่ resize มาแล้ว
 
-        // 🚩 1. ตรวจสอบว่ามีโฟลเดอร์ uploads หรือยัง ถ้าไม่มีให้สร้าง
-        const uploadDir = path.join(__dirname, 'uploads');
-        if (!fs.existsSync(uploadDir)){
-            fs.mkdirSync(uploadDir);
+        if (!username || !image) {
+            return res.status(400).json({ success: false, error: "ข้อมูลไม่ครบถ้วน" });
         }
 
-        const user = await db.collection('users').findOne({ username: username });
-
-        // 🚩 2. ลบรูปเดิม (แก้การต่อ Path ให้ถูกต้อง)
-        if (user && user.profileImg && user.profileImg.startsWith('/uploads/')) {
-            // ตัดเครื่องหมาย / ด้านหน้าออกก่อน join
-            const relativePath = user.profileImg.replace(/^\//, ''); 
-            const oldFilePath = path.join(__dirname, relativePath);
-            
-            if (fs.existsSync(oldFilePath)) {
-                try {
-                    fs.unlinkSync(oldFilePath);
-                } catch (e) {
-                    console.error("ลบไฟล์เก่าไม่สำเร็จ:", e);
-                }
-            }
-        }
-
-        // 3. บันทึกรูปใหม่
-        const fileName = `avatar_${username}_${Date.now()}.jpg`;
-        const filePath = `/uploads/${fileName}`; // Path ที่จะเก็บลง DB
-        const savePath = path.join(uploadDir, fileName); // Path จริงที่จะเขียนไฟล์
-
-        // ตัด header ของ base64 ออก
-        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-
-        fs.writeFileSync(savePath, base64Data, 'base64');
-
-        // 4. อัปเดต DB (ตรวจสอบว่าใช้ db หรือ usersCollection ให้ตรงกับที่คุณประกาศไว้)
-        await db.collection('users').updateOne(
+        // 🚩 เปลี่ยนจากการเขียนไฟล์ มาเป็นการบันทึก Base64 ลง MongoDB โดยตรง
+        // วิธีนี้แก้ปัญหา "รูปหายเมื่อรีสตาร์ท" เพราะข้อมูลถูกเก็บในฐานข้อมูลถาวร
+        const result = await db.collection('users').updateOne(
             { username: username },
-            { $set: { profileImg: filePath, updatedAt: new Date() } }
+            { 
+                $set: { 
+                    profileImg: image, // เก็บข้อความ data:image/jpeg;base64,... ลงไปเลย
+                    updatedAt: new Date() 
+                } 
+            }
         );
 
-        res.json({ success: true, profileImg: filePath });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, error: "ไม่พบชื่อผู้ใช้" });
+        }
+
+        // ส่งข้อมูลสำเร็จกลับไป พร้อมกับตัวแปร image เพื่อให้หน้าบ้านแสดงผลทันที
+        res.json({ success: true, profileImg: image });
+
     } catch (error) {
         console.error("🚨 Update Avatar Error:", error);
         res.status(500).json({ success: false, error: error.message });

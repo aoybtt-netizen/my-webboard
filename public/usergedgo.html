@@ -839,11 +839,11 @@ window.addEventListener('DOMContentLoaded', () => {
 		
 		// 4. แสดงรูปโปรไฟล์
 		const imgElem = document.getElementById('main-avatar-img');
-        if (data.profileImg) {
+        if (data.profileImg && data.profileImg.length > 100) { 
             imgElem.src = data.profileImg;
             imgElem.style.opacity = '1';
         } else {
-            imgElem.src = '';
+            imgElem.src = ''; 
             imgElem.style.opacity = '0';
         }
 
