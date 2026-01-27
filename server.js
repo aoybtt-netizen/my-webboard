@@ -590,6 +590,43 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 
+//รูป profile
+app.post('/api/user/update-avatar', async (req, res) => {
+    try {
+        const { username, image } = req.body; // image คือ Base64 ที่ย่อแล้ว
+
+        // 1. ดึงข้อมูล User ปัจจุบันมาเช็คชื่อรูปเดิม
+        const user = await db.collection('users').findOne({ username: username });
+
+        // 🚩 2. ลบรูปเดิมออกจากระบบ (ถ้ามี)
+        if (user && user.profileImg && user.profileImg.startsWith('/uploads/')) {
+            const oldFilePath = path.join(__dirname, user.profileImg);
+            if (fs.existsSync(oldFilePath)) {
+                fs.unlinkSync(oldFilePath); // ลบไฟล์ถาวรออกจาก Disk
+            }
+        }
+
+        // 3. บันทึกรูปใหม่ (แปลง Base64 กลับเป็นไฟล์)
+        const fileName = `avatar_${username}_${Date.now()}.jpg`;
+        const filePath = `/uploads/${fileName}`;
+        const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
+
+        fs.writeFileSync(path.join(__dirname, filePath), base64Data, 'base64');
+
+        // 4. อัปเดตชื่อไฟล์ใหม่ลงในฐานข้อมูล
+        await db.collection('users').updateOne(
+            { username: username },
+            { $set: { profileImg: filePath, updatedAt: new Date() } }
+        );
+
+        res.json({ success: true, profileImg: filePath });
+    } catch (error) {
+        console.error("Update Avatar Error:", error);
+        res.status(500).json({ success: false, error: "เกิดข้อผิดพลาดในการจัดการไฟล์" });
+    }
+});
+
+
 //API ADMIN HTML
 // API สำหรับเช็คสิทธิ์แอดมินโดยเฉพาะ
 app.get('/api/admin/verify-auth', async (req, res) => {
