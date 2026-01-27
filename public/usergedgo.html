@@ -836,6 +836,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // 3. แสดงอีเมล
         document.getElementById('display-email').innerText = data.email;
+		
+		// 4. แสดงรูปโปรไฟล์
+		const imgElem = document.getElementById('main-avatar-img');
+        if (data.profileImg) {
+            imgElem.src = data.profileImg;
+            imgElem.style.opacity = '1';
+        } else {
+            imgElem.src = '';
+            imgElem.style.opacity = '0';
+        }
 
     } catch (err) {
         console.error("Load Profile Error:", err);

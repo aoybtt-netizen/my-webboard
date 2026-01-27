@@ -2001,6 +2001,7 @@ app.get('/api/profile-details', async (req, res) => {
 
         // ส่งข้อมูลกลับไปหน้าบ้าน
         res.json({
+			profileImg: user.profileImg,
             coins: currentBalance, 
             currency: currentCurrency,
             kycPrice: kycPrice,
