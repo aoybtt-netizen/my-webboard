@@ -390,7 +390,7 @@
 
 <div id="google-button-container" style="padding: 10px; display: none;">
     <div id="google-login-btn"></div>
-    <p style="font-size: 0.75rem; color: #999; text-align: center; margin-top: 5px;">* คลิกเพื่อเลือกบัญชี Google ที่ต้องการผูก</p>
+    <p style="font-size: 0.75rem; color: #999; text-align: center; margin-top: 5px;">* Link Google Account</p>
 </div>
     
 	
@@ -1309,8 +1309,8 @@ function handleGoogleLinking(e) {
     if (e) e.preventDefault();
     
     const currentEmail = document.getElementById('display-email').innerText;
-    if (currentEmail !== "ยังไม่ระบุ" && currentEmail !== "Not specified") {
-        return Swal.fire('แจ้งเตือน', 'บัญชีนี้ถูกผูกเรียบร้อยแล้ว', 'info');
+    if (currentEmail !== "-" && currentEmail !== "Not specified") {
+        return Swal.fire(':', 'This account has been successfully linked.', 'info');
     }
 
     // แสดงพื้นที่วางปุ่ม
@@ -1341,7 +1341,7 @@ function handleGoogleLinking(e) {
 async function handleCredentialResponse(response) {
     const myUsername = localStorage.getItem('myUsername');
     
-    Swal.fire({ title: 'กำลังผูกบัญชี...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'Linking your Google account...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
         const res = await fetch('/api/auth/link-google', {
@@ -1356,14 +1356,14 @@ async function handleCredentialResponse(response) {
         const data = await res.json();
 
         if (data.success) {
-            Swal.fire('สำเร็จ!', 'ผูกบัญชี Google เรียบร้อยแล้ว', 'success');
+            Swal.fire('success!', 'Google account successfully linked.', 'success');
             document.getElementById('display-email').innerText = data.email;
             document.getElementById('link-icon').style.color = '#11998e';
         } else {
-            Swal.fire('ผิดพลาด', data.error, 'error');
+            Swal.fire('error', data.error, 'error');
         }
     } catch (err) {
-        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        Swal.fire('Error', 'Unable to connect to the server.', 'error');
     }
 }
 
