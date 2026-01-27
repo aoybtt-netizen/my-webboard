@@ -1309,7 +1309,7 @@ function handleGoogleLinking(e) {
     if (e) e.preventDefault();
     
     const currentEmail = document.getElementById('display-email').innerText;
-    if (currentEmail !== "-" && currentEmail !== "Not specified") {
+    if (currentEmail !== "ยังไม่ระบุ" && currentEmail !== "Not specified") {
         return Swal.fire(':', 'This account has been successfully linked.', 'info');
     }
 
