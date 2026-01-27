@@ -26,7 +26,8 @@ const io = new Server(server);
 app.use(express.json()); 
 app.use(express.static(path.join(__dirname, 'public')));
 //profile image
-app.use('/uploads', express.static('uploads'));
+//app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Global Database Variables (ปรับให้เหลือชุดเดียว) ---
 let db;
