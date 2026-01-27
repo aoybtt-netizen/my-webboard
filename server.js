@@ -1948,6 +1948,7 @@ app.get('/api/user-info', async (req, res) => {
     const localBalance = user[zoneCurrency] || 0;
 
     res.json({
+		profileImg: user.profileImg,
         coins: user.coins,             // ส่ง 100 (USDT)
         convertedCoins: localBalance,  // ส่ง 100 (BRL - ค่าดิบจากกระเป๋า)
         currencySymbol: zoneCurrency.toUpperCase(),
