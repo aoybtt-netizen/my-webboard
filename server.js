@@ -2174,9 +2174,10 @@ app.get('/api/users-list', async (req, res) => {
                 isBanned: u.isBanned || false,
                 isVerified: (u.kycStatus === 'approved' || u.isVerified === true),
                 relationType: u.relationType || 'OTHER',
-                idNumber: u.idNumber || '',
-                phone: u.phone || '',
-                address: u.address || ''
+                kycStatus: u.kycStatus || 'none',
+				idNumber: u.idNumber || '',
+				phone: u.phone || '',
+				address: u.address || ''
             };
         };
 
@@ -6099,21 +6100,18 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
         );
 
         await db.collection('users').updateOne(
-            { username: username },
-            { 
-                $set: { 
-                    kycStatus: 'approved',
-                    isVerified: true,
-                    // 🚩 เพิ่มส่วนนี้เพื่อให้ข้อมูลไปโชว์ในหน้า viewUserProfile
-                    fullName: kycReq.fullName,
-                    idNumber: kycReq.idNumber,
-                    phone: kycReq.phone,
-                    address: kycReq.address,
-                    profileImg: kycReq.userImg, // ถ้าต้องการให้รูปที่ส่ง KYC กลายเป็นรูปโปรไฟล์ด้วย
-                    updatedAt: new Date()
-                } 
-            }
-        );
+			{ username: username },
+			{ 
+				$set: { 
+					kycStatus: 'approved',
+					isVerified: true,
+					fullName: kycReq.fullName,
+					idNumber: kycReq.idNumber,
+					phone: kycReq.phone,
+					address: kycReq.address
+				} 
+			}
+		);
 
         // 5. ตอบกลับ
         res.json({ 

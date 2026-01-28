@@ -2100,22 +2100,28 @@ async function viewUserProfile(username) {
         let kycHtml = "";
         if (user.isVerified) {
             kycHtml = `
-                <div style="background: #8cff9d; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
+                <div style="background: #ffffff; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
                     <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 1em;">
                         <i class="fas fa-id-card"></i> Identity verification information
                     </h4>
+                    
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <small style="color: #666; display: block; margin-bottom: 5px;">Verification Photo:</small>
+                        <img src="${user.profileImg}" style="width: 100%; max-height: 200px; border-radius: 10px; object-fit: contain; border: 1px solid #eee;">
+                    </div>
+
                     <div style="display: grid; gap: 10px; font-size: 0.9em;">
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: #666;">National ID number:</span>
+                            <span style="color: #666;">National ID:</span>
                             <b>${user.idNumber || '-'}</b>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: #666;">telephone number:</span>
+                            <span style="color: #666;">Phone:</span>
                             <b>${user.phone || '-'}</b>
                         </div>
-                        <div style="border-top: 1px solid #c8e6c9; padding-top: 10px;">
-                            <small style="color: #666;">Current address:</small>
-                            <div style="font-weight: bold; margin-top: 2px;">${user.address || '-'}</div>
+                        <div style="border-top: 1px solid #eee; padding-top: 10px;">
+                            <small style="color: #666;">Address:</small>
+                            <div style="font-weight: bold;">${user.address || '-'}</div>
                         </div>
                     </div>
                 </div>
