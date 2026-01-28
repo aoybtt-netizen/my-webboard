@@ -2172,7 +2172,7 @@ app.get('/api/users-list', async (req, res) => {
                 totalJobs: u.totalJobs || 0,
                 completedJobs: combinedCompleted,
                 isBanned: u.isBanned || false,
-                isVerified: u.isVerified || false,
+                isVerified: (u.kycStatus === 'approved' || u.isVerified === true),
                 relationType: u.relationType || 'OTHER',
                 idNumber: u.idNumber || '',
                 phone: u.phone || '',
@@ -6100,7 +6100,11 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
 
         await db.collection('users').updateOne(
             { username: username },
-            { $set: { kycStatus: 'approved' } }
+            { $set: { 
+                    kycStatus: 'approved',
+                    isVerified: true
+                } 
+            }
         );
 
         // 5. ตอบกลับ
