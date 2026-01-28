@@ -4743,34 +4743,33 @@ app.get('/api/rider-stats/:username', async (req, res) => {
 
 // API: ร้านค้ากดบายพาสจุดส่ง
 app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
-	const lang = req.body.lang || 'th';
+    const lang = req.body.lang || 'th';
     const { postId, stopIndex } = req.params;
     const { author } = req.body;
-
 
     try {
         // 1. ค้นหางาน
         const post = await postsCollection.findOne({ id: parseInt(postId) });
-        if (!post) {
-			return res.status(404).json({ 
-			success: false, 
-			error: serverTranslations[lang].err_job_not_found_alt 
-			});
-		}
         
+        // ตรวจสอบว่ามีงานอยู่จริงและยังไม่ถูกปิดไปก่อนหน้านี้
+        if (!post) {
+            return res.status(404).json({ success: false, error: serverTranslations[lang].err_job_not_found_alt });
+        }
+        
+        // กันเหนียว: ถ้างานจ่ายเงินไปแล้วหรือปิดไปแล้ว ไม่ต้องทำซ้ำ
+        if (post.payoutCompleted || post.isClosed) {
+            return res.json({ success: true, allFinished: true });
+        }
+
         if (post.author !== author) {
-				return res.status(403).json({ 
-				success: false, 
-				error: serverTranslations[lang].err_no_permission 
-			});
-		}
-		if (!post.acceptedBy) {
-			return res.status(400).json({ 
-			success: false, 
-			error: serverTranslations[lang].err_bypass_no_rider 
-			});
-		}
-        // 2. เตรียมอัปเดตสถานะจุด
+            return res.status(403).json({ success: false, error: serverTranslations[lang].err_no_permission });
+        }
+
+        if (!post.acceptedBy) {
+            return res.status(400).json({ success: false, error: serverTranslations[lang].err_bypass_no_rider });
+        }
+
+        // 2. เตรียมอัปเดตสถานะจุดรายทาง
         const updateKey = `stops.${stopIndex}.status`;
         let updateData = { [updateKey]: 'success' };
 
@@ -4780,56 +4779,32 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
         const allFinished = currentStops.every(s => s.status === 'success');
 
         if (allFinished) {
+            // ตั้งค่าสถานะปิดงานในก้อนข้อมูลที่จะ Update
             updateData.status = 'closed_permanently';
             updateData.isClosed = true;
             updateData.finishTimestamp = Date.now();
 
-            // จ่ายค่าจ้างให้ไรเดอร์ (ยอด budget)
+            // 💰 🚩 เรียกฟังก์ชันจ่ายเงิน (ตัวนี้จะจ่ายค่าจ้าง + คืนมัดจำ + จ่ายร้านค้า ในที่เดียว)
+            // ฟังก์ชันนี้มีด่านตรวจ payoutCompleted อยู่ข้างใน จึงไม่มีการโอนซ้ำแน่นอน
             await processOrderPayout(post.orderId, post.id);
 
-            const riderName = post.acceptedBy || post.acceptedViewer;
+            const riderName = post.acceptedBy;
             if (riderName) {
-                const currency = post.currency || 'USD';
-                const depositAmount = parseFloat(post.depositAmount || 0);
-
-                // 🚩 1. คืนเงินมัดจำให้ไรเดอร์ (เพิ่มส่วนนี้)
-                if (depositAmount > 0) {
-                    await usersCollection.updateOne(
-                        { username: riderName },
-                        { $inc: { [currency]: depositAmount } }
-                    );
-
-                    // 🚩 2. บันทึกประวัติการคืนเงินมัดจำ
-                    await transactionsCollection.insertOne({
-                        id: Date.now(),
-                        type: 'RIDER_DEPOSIT_REFUND',
-                        amount: depositAmount,
-                        currency: currency,
-                        fromUser: 'System',
-                        toUser: riderName,
-                        note: `คืนเงินมัดจำงาน #${postId.toString().slice(-4)} (Bypass Finish)`,
-                        timestamp: Date.now()
-                    });
-                }
-                await usersCollection.updateOne(
-                    { username: riderName },
-                    { $set: { riderWorking: null } }
-                );
-                
-                // อัปเดตสถิติไรเดอร์ (optional)
+                // อัปเดตสถิติจำนวนงานของไรเดอร์ (เฉพาะยอดจำนวนงาน ไม่เกี่ยวกับเงิน)
                 await usersCollection.updateOne(
                     { username: riderName },
                     { $inc: { totalJobs: 1 } }
                 );
             }
 
-            // อัปเดตสถิติร้านค้า
+            // อัปเดตสถิติจำนวนงานของร้านค้า
             await usersCollection.updateOne(
                 { username: author },
                 { $inc: { totalJobs: 1, authorCompletedJobs: 1 } }
             );
         }
 
+        // บันทึกการเปลี่ยนแปลงทั้งหมดลง Database (จุดเช็คอิน และ สถานะปิดงานถ้าทำครบ)
         await postsCollection.updateOne(
             { id: parseInt(postId) },
             { $set: updateData }
@@ -4843,7 +4818,6 @@ app.post('/api/posts/:postId/bypass-stop/:stopIndex', async (req, res) => {
             allFinished 
         });
 
-        // ถ้าจบงาน ให้ส่งสัญญาณให้ Rider เด้งหน้าให้คะแนน (ถ้าคุณยังต้องการให้ไรเดอร์ประเมินร้าน)
         if (allFinished) {
             io.to(postId.toString()).emit('job-finished-complete', { postId });
         }
