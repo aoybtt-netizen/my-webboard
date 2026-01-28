@@ -6100,9 +6100,17 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
 
         await db.collection('users').updateOne(
             { username: username },
-            { $set: { 
+            { 
+                $set: { 
                     kycStatus: 'approved',
-                    isVerified: true
+                    isVerified: true,
+                    // 🚩 เพิ่มส่วนนี้เพื่อให้ข้อมูลไปโชว์ในหน้า viewUserProfile
+                    fullName: kycReq.fullName,
+                    idNumber: kycReq.idNumber,
+                    phone: kycReq.phone,
+                    address: kycReq.address,
+                    profileImg: kycReq.userImg, // ถ้าต้องการให้รูปที่ส่ง KYC กลายเป็นรูปโปรไฟล์ด้วย
+                    updatedAt: new Date()
                 } 
             }
         );
