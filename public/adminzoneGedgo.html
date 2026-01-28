@@ -2078,7 +2078,6 @@ async function viewUserProfile(username) {
 
     try {
         const adminName = localStorage.getItem('myUsername');
-        // ค้นหาผ่าน API เดิม
         const res = await fetch(`/api/users-list?requestBy=${adminName}&search=${username}`);
         const data = await res.json();
         const user = data.users.find(u => u.name === username);
@@ -2088,91 +2087,77 @@ async function viewUserProfile(username) {
             return;
         }
 
+        // 🚩 ส่วนที่เพิ่ม: ดึงข้อมูลหลักฐาน KYC จริงๆ มาโชว์
+        let kycData = null;
+        if (user.isVerified) {
+            const kycRes = await fetch(`/api/admin/kyc-info/${username}`);
+            const kycResult = await kycRes.json();
+            if (kycResult.success) kycData = kycResult.details;
+        }
+
         Swal.close();
         const content = document.getElementById('user-profile-content');
-		
-		const modalContainer = document.getElementById('user-profile-modal').querySelector('.modal-content');
+        
+        // เปลี่ยนสีพื้นหลังตามสถานะ (เหมือนเดิม)
+        const modalContainer = document.getElementById('user-profile-modal').querySelector('.modal-content');
         if (modalContainer) {
             modalContainer.style.background = user.isVerified ? '#8cff9d' : '#ffffff';
         }
         
-        // ส่วนข้อมูล KYC (จะโชว์เฉพาะคนที่ Verified แล้ว)
+        // 🚩 ปรับ kycHtml ให้ใช้ข้อมูล kycData ที่ดึงมาใหม่
         let kycHtml = "";
-        if (user.isVerified) {
+        if (user.isVerified && kycData) {
             kycHtml = `
                 <div style="background: #ffffff; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
                     <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 1em;">
-                        <i class="fas fa-id-card"></i> Identity verification information
+                        <i class="fas fa-id-card"></i> Identity verification information (Proof)
                     </h4>
                     
                     <div style="text-align: center; margin-bottom: 15px;">
                         <small style="color: #666; display: block; margin-bottom: 5px;">Verification Photo:</small>
-                        <img src="${user.profileImg}" style="width: 100%; max-height: 200px; border-radius: 10px; object-fit: contain; border: 1px solid #eee;">
+                        <img src="${kycData.userImg || user.profileImg}" style="width: 100%; max-height: 250px; border-radius: 10px; object-fit: contain; border: 1px solid #eee;">
                     </div>
 
                     <div style="display: grid; gap: 10px; font-size: 0.9em;">
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: #666;">National ID:</span>
-                            <b>${user.idNumber || '-'}</b>
+                            <b>${kycData.idNumber || '-'}</b>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: #666;">Phone:</span>
-                            <b>${user.phone || '-'}</b>
+                            <b>${kycData.phone || '-'}</b>
                         </div>
                         <div style="border-top: 1px solid #eee; padding-top: 10px;">
                             <small style="color: #666;">Address:</small>
-                            <div style="font-weight: bold;">${user.address || '-'}</div>
+                            <div style="font-weight: bold;">${kycData.address || '-'}</div>
                         </div>
                     </div>
                 </div>
             `;
         }
-
+        
+        // content.innerHTML ส่วนที่เหลือ (เหมือนเดิมแต่ใช้ user.fullName และข้อมูลสถิติอื่นๆ)
         content.innerHTML = `
             <div style="text-align: center; margin-bottom: 25px;">
                 <div style="position: relative; display: inline-block;">
                     <img src="${user.profileImg || 'https://via.placeholder.com/120'}" 
                          style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    ${user.isVerified ? '<div style="position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;"><i class="fas fa-check" style="font-size: 0.8em;"></i></div>' : ''}
+                    ${user.isVerified ? '<div style="position: absolute; bottom: 0; right: 0; background: #27ae60; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;"><i class="fas fa-check" style="font-size: 0.8em;"></i></div>' : ''}
                 </div>
                 <h3 style="margin: 15px 0 5px;">@${user.name}</h3>
-                <div style="color: #f1c40f; font-weight: bold;">
-                    <i class="fas fa-star"></i> ${user.rating.toFixed(1)} 
-                    <span style="color: #94a3b8; font-weight: normal; font-size: 0.8em;">(${user.ratingCount} review)</span>
-                </div>
-                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${user.fullName || 'Name not yet specified.'}</p>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${kycData ? kycData.fullName : (user.fullName || 'Name not yet specified.')}</p>
             </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
-                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
-                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">Post</div>
-                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalPosts}</div>
-                </div>
-                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
-                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">Job</div>
-                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalJobs}</div>
-                </div>
-                <div style="background: #e8f5e9; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #c8e6c9;">
-                    <div style="font-size: 0.7em; color: #2e7d32; text-transform: uppercase;">Success</div>
-                    <div style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">${user.completedJobs}</div>
-                </div>
-            </div>
-
+            
             <div style="background: white; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-    <span style="color: #666;">
-    <i class="fas fa-coins" style="color: #f1c40f;"></i> 
-    <span data-i18n-key="lbl_balance">Balance</span>
-</span>
-    <b style="font-size: 1.2em; color: var(--primary);">
-        ${user.coins.toFixed(2)} ${user.currency || zoneCurrency || 'USD'}
-    </b>
-</div>
+                <span style="color: #666;"><i class="fas fa-coins" style="color: #f1c40f;"></i> Balance</span>
+                <b style="font-size: 1.2em; color: var(--primary);">${user.coins.toFixed(2)} ${user.currency}</b>
+            </div>
 
             ${kycHtml}
 
             <div style="padding-bottom: 30px;">
                 <button onclick="manageUserBan('${user.name}', ${user.isBanned})" 
-                        style="width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-family: 'Kanit';
+                        style="width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer;
                         background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; 
                         color: ${user.isBanned ? 'white' : '#c62828'};">
                     <i class="fas fa-ban"></i> ${user.isBanned ? 'Un ban' : 'BAN'}
@@ -2184,7 +2169,7 @@ async function viewUserProfile(username) {
 
     } catch (err) {
         console.error(err);
-        Swal.fire({ title: 'An error occurred.', text: 'Unable to load profile information.', icon: 'error', target: document.getElementById('user-profile-modal') });
+        Swal.fire({ title: 'An error occurred.', icon: 'error' });
     }
 }
 

@@ -2262,6 +2262,33 @@ app.get('/api/users-list', async (req, res) => {
     }
 });
 
+// 3.1
+app.get('/api/admin/kyc-info/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        // ดึงใบคำขอล่าสุดที่ได้รับอนุมัติแล้ว
+        const kycReq = await db.collection('kycRequests')
+            .findOne({ username: username, status: 'approved' }, { sort: { submittedAt: -1 } });
+
+        if (!kycReq) {
+            return res.json({ success: false });
+        }
+
+        res.json({
+            success: true,
+            details: {
+                fullName: kycReq.fullName,
+                idNumber: kycReq.idNumber,
+                phone: kycReq.phone,
+                address: kycReq.address,
+                userImg: kycReq.userImg // รูปต้นฉบับที่ส่งยืนยันตัวตน
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false });
+    }
+});
+
 // rider ranking
 app.get('/api/rider-ranking', async (req, res) => {
     try {
