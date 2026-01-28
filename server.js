@@ -6132,10 +6132,6 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
 				$set: { 
 					kycStatus: 'approved',
 					isVerified: true,
-					fullName: kycReq.fullName,
-					idNumber: kycReq.idNumber,
-					phone: kycReq.phone,
-					address: kycReq.address
 				} 
 			}
 		);
