@@ -3249,23 +3249,45 @@ function closeManageModal() {
             notifList.innerHTML = allRequestsHtml;
 
         } else if (activeTaskInSidebar.acceptedBy) {
-            // ส่วนแสดงผลเมื่อรับงานแล้ว (เหมือนเดิม)
+            // 🚩 ส่วนแสดงผลเมื่อเลือกไรเดอร์แล้ว (แสดงรูปโปรไฟล์และ KYC)
             const statsRes = await fetch(`/api/rider-stats/${activeTaskInSidebar.acceptedBy}`);
             const statsData = await statsRes.json();
-            const stats = statsData.stats || { rating: 0, username: activeTaskInSidebar.acceptedBy };
+            const stats = statsData.stats || { rating: 0, username: activeTaskInSidebar.acceptedBy, isVerified: false };
+
+            // 1. จัดการรูปโปรไฟล์ (ถ้าไม่มีใช้ 👤)
+            const riderAvatarHtml = stats.profileImg 
+                ? `<img src="${stats.profileImg}" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">`
+                : `<div style="width: 70px; height: 70px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 35px; border: 2px solid #eee; color: #ccc; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">👤</div>`;
+
+            // 2. กำหนดสีพื้นหลังตามสถานะ KYC
+            const assignedBg = stats.isVerified ? '#e8f5e9' : '#f8fafc';
+            const statusColor = stats.isVerified ? '#2e7d32' : '#2c3e50';
 
             notifList.innerHTML = `
-                <div style="text-align:center; padding: 20px; background: #e8f5e9; border-radius: 15px;">
-                    <div style="font-size: 2em; color: #27ae60; margin-bottom: 10px;"><i class="fas fa-check-circle"></i></div>
-                    <p style="color:#27ae60; font-weight:bold; margin-bottom: 10px;">
-                        ${translations[currentLang].sidebar_assigned_msg(stats.username)}
-                    </p>
-                    <div style="display: inline-flex; align-items: center; gap: 8px; background: white; padding: 5px 15px; border-radius: 20px; border: 1px solid #27ae60; margin-bottom: 10px;">
-                        ${generateRatingStars(stats.rating)}
-                        <b style="color: #2c3e50;">${parseFloat(stats.rating || 0).toFixed(1)}</b>
+                <div style="text-align:center; padding: 25px 20px; background: ${assignedBg}; border-radius: 20px; border: 1px solid ${stats.isVerified ? '#c8e6c9' : '#eee'};">
+                    <div style="position: relative; display: inline-block; margin-bottom: 15px;">
+                        ${riderAvatarHtml}
+                        ${stats.isVerified ? '<i class="fas fa-check-circle" style="position: absolute; bottom: 2px; right: 2px; color: #2e7d32; background: white; border-radius: 50%; font-size: 18px; border: 2px solid white;"></i>' : ''}
                     </div>
-                    <br>
-                    <small style="color:#666;">${translations[currentLang].sidebar_track_info}</small>
+                    
+                    <p style="color: ${statusColor}; font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">
+                        @${stats.username} ${stats.isVerified ? '<br><small style="background:#2e7d32; color:white; padding:2px 8px; border-radius:10px; font-size:0.6em; vertical-align:middle;">VERIFIED RIDER</small>' : ''}
+                    </p>
+                    
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                        ${translations[currentLang].sidebar_assigned_msg('')}
+                    </p>
+
+                    <div style="display: inline-flex; align-items: center; gap: 8px; background: white; padding: 8px 20px; border-radius: 25px; border: 1px solid #ddd; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                        ${generateRatingStars(stats.rating)}
+                        <b style="color: #2c3e50; font-size: 1.1em;">${parseFloat(stats.rating || 0).toFixed(1)}</b>
+                    </div>
+                    
+                    <div style="border-top: 1px dashed #ccc; padding-top: 15px; margin-top: 5px;">
+                        <small style="color:#7f8c8d; font-style: italic;">
+                            <i class="fas fa-info-circle"></i> ${translations[currentLang].sidebar_track_info}
+                        </small>
+                    </div>
                 </div>`;
         } else {
             notifList.innerHTML = `<p style="text-align:center; padding:30px; color:#999;">${translations[currentLang].status_waiting_rider}</p>`;
