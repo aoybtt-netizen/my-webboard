@@ -2034,7 +2034,7 @@ async function loadMemberList() {
                 : `<div style="width: 50px; height: 50px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid #eee; color: #94a3b8;">👤</div>`;
 
             // 🚩 2. จัดการสีพื้นหลังถ้า KYC แล้วจะเป็นสีเขียวอ่อน
-            const cardBg = user.isVerified ? '#e8f5e9' : '#ffffff';
+            const cardBg = user.isVerified ? '#61c0ff' : '#ffffff';
             const borderCol = user.isBanned ? 'var(--danger)' : (relation === 'OWNED' ? 'var(--primary)' : '#f1c40f');
 
             return `
@@ -2090,43 +2090,91 @@ async function viewUserProfile(username) {
 
         Swal.close();
         const content = document.getElementById('user-profile-content');
-		const modalBg = user.isVerified ? '#e8f5e9' : '#ffffff';
-		document.getElementById('user-profile-modal').querySelector('.modal-content').style.background = modalBg;
+		
+		const modalContainer = document.getElementById('user-profile-modal').querySelector('.modal-content');
+        if (modalContainer) {
+            modalContainer.style.background = user.isVerified ? '#61c0ff' : '#ffffff';
+        }
         
         // ส่วนข้อมูล KYC (จะโชว์เฉพาะคนที่ Verified แล้ว)
-        const profileAvatarHtml = user.profileImg 
-        ? `<img src="${user.profileImg}" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">`
-        : `<div style="width: 110px; height: 110px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 60px; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); color: #94a3b8;">👤</div>`;
-
-    let kycHtml = "";
-    if (user.isVerified) {
-        kycHtml = `
-            <div style="background: #ffffff; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
-                <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 1em;">
-                    <i class="fas fa-id-card"></i> Identity verification information
-                </h4>
+        let kycHtml = "";
+        if (user.isVerified) {
+            kycHtml = `
+                <div style="background: #61c0ff; border-radius: 20px; padding: 20px; border: 1px solid #c8e6c9; margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 1em;">
+                        <i class="fas fa-id-card"></i> Identity verification information
+                    </h4>
+                    <div style="display: grid; gap: 10px; font-size: 0.9em;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #666;">National ID number:</span>
+                            <b>${user.idNumber || '-'}</b>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #666;">telephone number:</span>
+                            <b>${user.phone || '-'}</b>
+                        </div>
+                        <div style="border-top: 1px solid #c8e6c9; padding-top: 10px;">
+                            <small style="color: #666;">Current address:</small>
+                            <div style="font-weight: bold; margin-top: 2px;">${user.address || '-'}</div>
+                        </div>
+                    </div>
                 </div>
-        `;
-    }
+            `;
+        }
 
         content.innerHTML = `
-        <div style="text-align: center; margin-bottom: 25px; padding-top: 10px;">
-            <div style="position: relative; display: inline-block;">
-                ${profileAvatarHtml}
-                ${user.isVerified ? '<div style="position: absolute; bottom: 5px; right: 5px; background: #2e7d32; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white;"><i class="fas fa-check" style="font-size: 0.9em;"></i></div>' : ''}
+            <div style="text-align: center; margin-bottom: 25px;">
+                <div style="position: relative; display: inline-block;">
+                    <img src="${user.profileImg || 'https://via.placeholder.com/120'}" 
+                         style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    ${user.isVerified ? '<div style="position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;"><i class="fas fa-check" style="font-size: 0.8em;"></i></div>' : ''}
+                </div>
+                <h3 style="margin: 15px 0 5px;">@${user.name}</h3>
+                <div style="color: #f1c40f; font-weight: bold;">
+                    <i class="fas fa-star"></i> ${user.rating.toFixed(1)} 
+                    <span style="color: #94a3b8; font-weight: normal; font-size: 0.8em;">(${user.ratingCount} review)</span>
+                </div>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${user.fullName || 'Name not yet specified.'}</p>
             </div>
-            <h3 style="margin: 15px 0 5px;">@${user.name}</h3>
-            </div>
-        
-        <div style="background: ${user.isVerified ? '#c8e6c9' : 'white'}; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-             <span style="color: #666;"><i class="fas fa-coins" style="color: #f1c40f;"></i> Balance</span>
-             <b style="font-size: 1.2em; color: #2e7d32;">${user.coins.toFixed(2)} ${user.currency || 'USD'}</b>
-        </div>
 
-        ${kycHtml}
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
+                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">Post</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalPosts}</div>
+                </div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                    <div style="font-size: 0.7em; color: #94a3b8; text-transform: uppercase;">Job</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">${user.totalJobs}</div>
+                </div>
+                <div style="background: #e8f5e9; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #c8e6c9;">
+                    <div style="font-size: 0.7em; color: #2e7d32; text-transform: uppercase;">Success</div>
+                    <div style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">${user.completedJobs}</div>
+                </div>
+            </div>
+
+            <div style="background: white; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+    <span style="color: #666;">
+    <i class="fas fa-coins" style="color: #f1c40f;"></i> 
+    <span data-i18n-key="lbl_balance">Balance</span>
+</span>
+    <b style="font-size: 1.2em; color: var(--primary);">
+        ${user.coins.toFixed(2)} ${user.currency || zoneCurrency || 'USD'}
+    </b>
+</div>
+
+            ${kycHtml}
+
+            <div style="padding-bottom: 30px;">
+                <button onclick="manageUserBan('${user.name}', ${user.isBanned})" 
+                        style="width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-family: 'Kanit';
+                        background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; 
+                        color: ${user.isBanned ? 'white' : '#c62828'};">
+                    <i class="fas fa-ban"></i> ${user.isBanned ? 'Un ban' : 'BAN'}
+                </button>
+            </div>
         `;
-    
-    document.getElementById('user-profile-modal').style.display = 'block';
+
+        document.getElementById('user-profile-modal').style.display = 'block';
 
     } catch (err) {
         console.error(err);
