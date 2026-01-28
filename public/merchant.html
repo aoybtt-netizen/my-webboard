@@ -3207,18 +3207,32 @@ function closeManageModal() {
             
             let allRequestsHtml = `<b style="color: #e67e22; display:block; margin-bottom:10px;"><i class="fas fa-users"></i> ${translations[currentLang].sidebar_rider_interested} (${activeTaskInSidebar.requests.length})</b>`;
 
-            // วนลูปเพื่อดึงข้อมูลสถิติและสร้างการ์ดให้ไรเดอร์แต่ละคน
             for (const req of activeTaskInSidebar.requests) {
                 const statsRes = await fetch(`/api/rider-stats/${req.username}`);
                 const statsData = await statsRes.json();
                 const stats = statsData.stats;
 
+                // 🚩 1. กำหนดสีตามสถานะ KYC
+                const cardBg = stats.isVerified ? '#e8f5e9' : '#fff4e5'; // เขียวอ่อนถ้า KYC / ส้มอ่อนถ้าปกติ
+                const borderColor = stats.isVerified ? '#2e7d32' : '#f39c12';
+
+                // 🚩 2. จัดการรูปโปรไฟล์ (ถ้าไม่มีใช้ 👤)
+                const riderAvatar = stats.profileImg 
+                    ? `<img src="${stats.profileImg}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid white;">`
+                    : `<div style="width: 45px; height: 45px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid #eee; color: #ccc;">👤</div>`;
+
                 allRequestsHtml += `
-                    <div style="background: #fff4e5; padding: 15px; border-radius: 15px; border-left: 5px solid #f39c12; margin-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 10px;">
-                            <img src="${stats.avatar || 'https://via.placeholder.com/40'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                    <div style="background: ${cardBg}; padding: 15px; border-radius: 15px; border-left: 5px solid ${borderColor}; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="position: relative;">
+                                ${riderAvatar}
+                                ${stats.isVerified ? '<i class="fas fa-check-circle" style="position: absolute; bottom: -2px; right: -2px; color: #2e7d32; background: white; border-radius: 50%; font-size: 12px;"></i>' : ''}
+                            </div>
                             <div style="flex: 1;">
-                                <div style="font-weight: bold; color: #333;">${stats.username}</div>
+                                <div style="font-weight: bold; color: #333; display: flex; align-items: center; gap: 5px;">
+                                    ${stats.username}
+                                    ${stats.isVerified ? '<small style="font-size: 10px; background: #2e7d32; color: white; padding: 2px 6px; border-radius: 10px;">KYC</small>' : ''}
+                                </div>
                                 <div style="display: flex; align-items: center; gap: 5px;">
                                     ${generateRatingStars(stats.rating)}
                                     <span style="font-size: 0.8rem; color: #666;">(${parseFloat(stats.rating || 0).toFixed(1)})</span>
@@ -3227,8 +3241,8 @@ function closeManageModal() {
                         </div>
 
                         <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button onclick="approveRider('${postId}', '${stats.username}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_approve}</button>
-                            <button onclick="rejectRider('${postId}', '${stats.username}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px; font-weight:bold; cursor:pointer;">${translations[currentLang].sidebar_btn_reject}</button>
+                            <button onclick="approveRider('${postId}', '${stats.username}')" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:10px; font-weight:bold; cursor:pointer; font-family:'Kanit';">ยอมรับ</button>
+                            <button onclick="rejectRider('${postId}', '${stats.username}')" style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:10px; font-weight:bold; cursor:pointer; font-family:'Kanit';">ปฏิเสธ</button>
                         </div>
                     </div>`;
             }

@@ -4735,8 +4735,9 @@ app.get('/api/rider-stats/:username', async (req, res) => {
                 username: username,
                 rating: user.rating || 0,
                 ratingCount: user.ratingCount || 0,
-                totalJobs: user.totalJobs || 0, 
-                avatar: user.avatar || null
+                totalJobs: user.totalJobs || 0,
+                profileImg: user.profileImg || null, 
+                isVerified: user.isVerified || false 
             }
         });
     } catch (e) {
