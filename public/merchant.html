@@ -3274,9 +3274,7 @@ function closeManageModal() {
                         @${stats.username} ${stats.isVerified ? '<br><small style="background:#2e7d32; color:white; padding:2px 8px; border-radius:10px; font-size:0.6em; vertical-align:middle;">VERIFIED RIDER</small>' : ''}
                     </p>
                     
-                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
-                        ${translations[currentLang].sidebar_assigned_msg('')}
-                    </p>
+                    <p style="color:#27ae60; font-weight:bold;">${translations[currentLang].sidebar_assigned_msg(activeTaskInSidebar.acceptedBy)}</p>
 
                     <div style="display: inline-flex; align-items: center; gap: 8px; background: white; padding: 8px 20px; border-radius: 25px; border: 1px solid #ddd; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                         ${generateRatingStars(stats.rating)}
