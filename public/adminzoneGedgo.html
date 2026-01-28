@@ -2122,16 +2122,20 @@ async function viewUserProfile(username) {
                     </div>
 
                     <div style="display: grid; gap: 10px; font-size: 0.9em;">
+						<div style="display: flex; justify-content: space-between;">
+                            <span style="color: #666;">Name :</span>
+                            <b>${kycData.fullName || '-'}</b>
+                        </div>
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: #666;">เลขบัตรประชาชน:</span>
+                            <span style="color: #666;">National ID number :</span>
                             <b>${kycData.idNumber || '-'}</b>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: #666;">เบอร์โทรศัพท์:</span>
+                            <span style="color: #666;">Tel :</span>
                             <b>${kycData.phone || '-'}</b>
                         </div>
                         <div style="border-top: 1px solid #eee; padding-top: 10px;">
-                            <small style="color: #666;">ที่อยู่ที่ลงทะเบียน:</small>
+                            <small style="color: #666;">Registered address :</small>
                             <div style="font-weight: bold; margin-top: 3px;">${kycData.address || '-'}</div>
                         </div>
                     </div>
@@ -2152,7 +2156,7 @@ async function viewUserProfile(username) {
                     <i class="fas fa-star"></i> ${user.rating.toFixed(1)} 
                     <span style="color: #94a3b8; font-weight: normal; font-size: 0.8em;">(${user.ratingCount} review)</span>
                 </div>
-                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${user.fullName || 'ยังไม่ได้ระบุชื่อ-นามสกุล'}</p>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">${kycData ? kycData.fullName : (user.fullName || 'Name not yet specified.')}</p>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
@@ -2187,7 +2191,7 @@ async function viewUserProfile(username) {
                         style="width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-family: 'Kanit';
                         background: ${user.isBanned ? 'var(--primary)' : '#ffebee'}; 
                         color: ${user.isBanned ? 'white' : '#c62828'};">
-                    <i class="fas fa-ban"></i> ${user.isBanned ? 'ปลดแบน' : 'สั่งแบนผู้ใช้นี้'}
+                    <i class="fas fa-ban"></i> ${user.isBanned ? 'Unban' : 'Ban'}
                 </button>
             </div>
         `;
@@ -2196,7 +2200,7 @@ async function viewUserProfile(username) {
 
     } catch (err) {
         console.error(err);
-        Swal.fire({ title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถโหลดข้อมูลโปรไฟล์ได้', icon: 'error' });
+        Swal.fire({ title: 'error', text: 'Unable to load profile information.', icon: 'error' });
     }
 }
 
