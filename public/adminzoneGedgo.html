@@ -1481,7 +1481,8 @@ function sendAdminMessage() {
         requestId: currentChatRequestId,
         sender: localStorage.getItem('myUsername'),
         message: message,
-        type: 'text'
+        type: 'text',
+        category: 'kyc'
     };
 
     socket.emit('sendMessage', chatData); // ส่งไป Server
