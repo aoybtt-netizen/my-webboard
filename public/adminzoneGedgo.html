@@ -1481,8 +1481,7 @@ function sendAdminMessage() {
         requestId: currentChatRequestId,
         sender: localStorage.getItem('myUsername'),
         message: message,
-        type: 'text',
-        category: 'kyc'
+        type: 'text'
     };
 
     socket.emit('sendMessage', chatData); // ส่งไป Server
@@ -2806,8 +2805,8 @@ async function deleteMerchantRequest(id) {
         <i class="fas fa-image"></i>
     </button>
 
-    <input type="text" id="admin-chat-input" placeholder="Text..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
-    <button onclick="sendAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px;">
+    <input type="text" id="kyc-admin-input" placeholder="Text..." style="flex:1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+    <button onclick="sendKYCAdminMessage()" style="background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 10px;">
         <i class="fas fa-paper-plane"></i>
     </button>
 </div>
