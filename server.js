@@ -6137,6 +6137,7 @@ app.post('/api/admin/approve-kyc', async (req, res) => {
 		);
 
         // 5. ตอบกลับ
+		await db.collection('kyc_chats').deleteMany({ requestId: username });
         res.json({ 
             success: true, 
             message: `Approved! Transferred to your wallet. ${zone.kycPrice} ${kycReq.feeCurrency} And the system settings have been successfully accessed.` 
