@@ -259,6 +259,7 @@
     <script>
 	let currentZoneCycle = 1;
 	let isCurrentlyActive = false;
+	let rankingTimer = null;
         const myUsername = localStorage.getItem('myUsername');
         const currentLang = localStorage.getItem('preferredLanguage') || 'th';
 
@@ -314,13 +315,14 @@ async function fetchRanking(cycle = 'latest') {
                 updateCycleSelector(data.currentCycle);
                 updateStatusLabel(data.isActive, data.requireKYC);
                 
-                // อัปเดตชื่อโซน
                 const zoneDisplay = document.getElementById('zone-display-name');
                 if (zoneDisplay) {
                     zoneDisplay.innerHTML = `<i class="fas fa-map-marker-alt" style="font-size: 1rem;"></i> ${data.zoneName}`;
                 }
                 
-                // 🚩 เพิ่มส่วนแสดงผลรางวัล
+                // 🚩 เคลียร์นาฬิกาเก่าก่อนเริ่มใหม่
+                if (rankingTimer) clearInterval(rankingTimer);
+
                 if (data.prizeData && data.isActive) {
                     prizeBox.style.display = 'block';
                     prizeDetails.innerHTML = `
@@ -328,14 +330,37 @@ async function fetchRanking(cycle = 'latest') {
                         <div>🥈 <b>อันดับ 2:</b> ${data.prizeData.rank2 || '-'}</div>
                         <div>🥉 <b>อันดับ 3:</b> ${data.prizeData.rank3 || '-'}</div>
                     `;
+
+                    // 🚩 เริ่มระบบนับถอยหลัง (Countdown)
                     if (data.endDate) {
-                        endDateDisplay.innerHTML = `<i class="far fa-calendar-alt"></i> สิ้นสุดวันที่: ${data.endDate}`;
+                        const targetDate = new Date(data.endDate).getTime();
+                        
+                        rankingTimer = setInterval(() => {
+                            const now = new Date().getTime();
+                            const distance = targetDate - now;
+
+                            if (distance < 0) {
+                                clearInterval(rankingTimer);
+                                endDateDisplay.innerHTML = `<i class="fas fa-clock"></i> จบการแข่งขันแล้ว`;
+                                updateStatusLabel(false, data.requireKYC); // ปรับป้ายสถานะเป็นปิด
+                                return;
+                            }
+
+                            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                            endDateDisplay.innerHTML = `<i class="fas fa-stopwatch"></i> เหลือเวลา: ${days}วัน ${hours}:${minutes}:${seconds}`;
+                        }, 1000);
                     }
                 } else {
-                    prizeBox.style.display = 'none'; // ซ่อนถ้าไม่มีการแข่งหรือไม่มีข้อมูลรางวัล
+                    prizeBox.style.display = 'none';
+                    if (!data.isActive) {
+                        endDateDisplay.innerHTML = `<i class="fas fa-calendar-times"></i> การแข่งขันสิ้นสุดแล้ว`;
+                    }
                 }
 
-                // อัปเดตข้อมูลเจ้าของโซน
                 const topLabel = document.getElementById('comp-status-text');
                 if (topLabel) {
                     topLabel.innerHTML = `<small style="color:#666; font-weight:normal;">Zone Owner: ${data.zoneOwner}</small>`;

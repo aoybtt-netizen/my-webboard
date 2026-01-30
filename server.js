@@ -2294,11 +2294,9 @@ app.get('/api/rider-ranking', async (req, res) => {
     try {
         const { cycle, username, location } = req.query;
         
-        // 1. หาข้อมูล User เบื้องต้น
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-        // 🚩 2. หาโซนที่รับผิดชอบด้วยพิกัด (ตัวเดียวกับหน้าโปรไฟล์)
         let zoneData = null;
         if (location) {
             try {
@@ -2310,7 +2308,6 @@ app.get('/api/rider-ranking', async (req, res) => {
             } catch (e) { console.error("Location Parse Error:", e); }
         }
 
-        // Fallback: ถ้าหาจากพิกัดไม่เจอ ให้หาโซนแรกที่แอดมินคนนี้ดูแล หรือโซนที่ user สังกัด
         if (!zoneData) {
             zoneData = await db.collection('zones').findOne({ id: parseInt(user.zoneId) }) || 
                        await db.collection('zones').findOne({});
@@ -2318,12 +2315,22 @@ app.get('/api/rider-ranking', async (req, res) => {
 
         if (!zoneData) return res.json({ success: false, message: "Zone not found" });
 
-        // 3. กำหนดรอบ (Cycle) และ Key ในการดึงคะแนน
+        // 🚩 ส่วนที่เพิ่ม: Lazy Check เช็คเวลาหมดอายุตอนโหลดข้อมูล
+        let isActive = zoneData.isCompetitionActive || false;
+        const now = new Date();
+        if (isActive && zoneData.endDate && now > new Date(zoneData.endDate)) {
+            isActive = false;
+            // อัปเดตลงฐานข้อมูลแบบเนียนๆ (Lazy Update) เพื่อให้ครั้งหน้าไม่ต้องเช็คซ้ำ
+            await db.collection('zones').updateOne(
+                { _id: zoneData._id },
+                { $set: { isCompetitionActive: false, updatedAt: now } }
+            );
+        }
+
         const targetCycle = (cycle === 'latest' || !cycle) ? (zoneData.currentCycle || 1) : parseInt(cycle);
         const rankingVariable = zoneData.rankingVariable || 'points';
         const rankingKey = `ranking_data.${rankingVariable}_v${targetCycle}`;
 
-        // 4. ดึงข้อมูล Leaderboard ของโซนนี้
         const leaderboard = await usersCollection.find({
             [rankingKey]: { $exists: true }
         })
@@ -2331,21 +2338,20 @@ app.get('/api/rider-ranking', async (req, res) => {
         .limit(50)
         .toArray();
 
-        // 5. ส่งข้อมูลกลับ
         res.json({
-			success: true,
-			leaderboard: leaderboard.map(u => ({
-			username: u.username,
-			totalPoints: (u.ranking_data && u.ranking_data[`${rankingVariable}_v${targetCycle}`]) || 0
-		})),
-			currentCycle: zoneData.currentCycle || 1,
-			isActive: zoneData.isCompetitionActive || false,
-			requireKYC: zoneData.requireKYC || false,
-			zoneName: zoneData.name,
-			zoneOwner: zoneData.assignedAdmin,
-			prizeData: zoneData.prizeData || null, 
-			endDate: zoneData.endDate || null
-		});
+            success: true,
+            leaderboard: leaderboard.map(u => ({
+                username: u.username,
+                totalPoints: (u.ranking_data && u.ranking_data[`${rankingVariable}_v${targetCycle}`]) || 0
+            })),
+            currentCycle: zoneData.currentCycle || 1,
+            isActive: isActive, // 🚩 ส่งค่าที่เช็คแล้วกลับไป
+            requireKYC: zoneData.requireKYC || false,
+            zoneName: zoneData.name,
+            zoneOwner: zoneData.assignedAdmin,
+            prizeData: zoneData.prizeData || null, 
+            endDate: zoneData.endDate || null
+        });
 
     } catch (e) {
         console.error("Ranking API Error:", e);
