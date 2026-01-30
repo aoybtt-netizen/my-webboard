@@ -4905,6 +4905,15 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
         if (riderName && zone) {
             const rider = await usersCollection.findOne({ username: riderName });
             if (rider) {
+				
+					const now = new Date();
+					let currentStatus = zone.isCompetitionActive;
+					if (currentStatus && zone.endDate && now > new Date(zone.endDate)) {
+					currentStatus = false;
+					// อัปเดตสถานะโซนเป็นปิดถาวรใน DB
+					await db.collection('zones').updateOne({ _id: zone._id }, { $set: { isCompetitionActive: false } });
+				}
+		
                 const s1 = parseFloat(rating);
                 const s2 = parseFloat(responsibility || 3);
                 const newAvg = (((rider.rating || 0) * (rider.ratingCount || 0)) + s1) / ((rider.ratingCount || 0) + 1);
@@ -4918,13 +4927,13 @@ app.post('/api/posts/:postId/finish-job', async (req, res) => {
                 // เพิ่มคะแนนการแข่งขัน (ถ้ามีโซน)
                 const pts = calculateRankPoints(s1, s2);
                 let cycle = 0;
-                if (zone.isCompetitionActive) {
-                    cycle = (zone.requireKYC && rider.kycStatus !== 'approved') ? 0 : (zone.currentCycle || 1);
-                }
-                const rankingKey = `ranking_data.${zone.rankingVariable}_v${cycle}`;
-                updateData.$inc[rankingKey] = pts;
+                if (currentStatus) {
+				cycle = (zone.requireKYC && rider.kycStatus !== 'approved') ? 0 : (zone.currentCycle || 1);
+				}
+				const rankingKey = `ranking_data.${zone.rankingVariable}_v${cycle}`;
+				updateData.$inc[rankingKey] = pts;
 
-                await usersCollection.updateOne({ username: riderName }, updateData);
+				await usersCollection.updateOne({ username: riderName }, updateData);
             }
         }
 
@@ -5518,7 +5527,6 @@ app.post('/api/order/customer-cancel', async (req, res) => {
 
 
 app.post('/api/orders/submit-full-rating', async (req, res) => {
-    // 🚩 รับ zoneName เพิ่มเข้ามาจาก Body
     const { orderId, riderName, merchantName, ratings, zoneName } = req.body;
     console.log(`📥 [Rating Request] Order: ${orderId} | ZoneName: ${zoneName}`);
 
@@ -5528,15 +5536,12 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
 
         // 🚩 --- ส่วนการหาโซนแบบใหม่ (New Zone Search Logic) ---
         let zone = null;
-
-        // 1. ลองหาโซนจากชื่อที่ส่งมาจากหน้าจอลูกค้า (แม่นยำที่สุดตามพิกัดปัจจุบัน)
         if (zoneName) {
             zone = await db.collection('zones').findOne({ 
                 $or: [{ name: zoneName }, { zoneName: zoneName }] 
             });
         }
 
-        // 2. ถ้าหาด้วยชื่อไม่เจอ (เช่น ภาษาไม่ตรง) ให้หาจาก merchant_locations เหมือนเดิม
         if (!zone) {
             console.log("🔍 ไม่พบโซนจากชื่อ, กำลังหาจากโปรไฟล์ร้านค้า...");
             const merchantLoc = await db.collection('merchant_locations').findOne({ owner: merchantName });
@@ -5544,10 +5549,24 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
                 zone = await db.collection('zones').findOne({ id: merchantLoc.zoneId });
             }
         }
-        // ---------------------------------------------------
 
+        let isCompetitionLive = false;
         if (zone) {
             console.log(`✅ พบโซนที่เกี่ยวข้อง: ${zone.rankingVariable}`);
+            
+            isCompetitionLive = zone.isCompetitionActive;
+            const now = new Date();
+            
+            // ถ้าสถานะยังเปิดอยู่ แต่เวลาในเครื่องเซิร์ฟเวอร์เลย endDate ไปแล้ว
+            if (isCompetitionLive && zone.endDate && now > new Date(zone.endDate)) {
+                isCompetitionLive = false;
+                // อัปเดตสถานะในฐานข้อมูลทิ้งไว้เลย เพื่อให้คนอื่นที่โหลดหน้า Ranking เห็นข้อมูลที่ถูกต้อง
+                await db.collection('zones').updateOne(
+                    { _id: zone._id },
+                    { $set: { isCompetitionActive: false, updatedAt: now } }
+                );
+                console.log(`🕒 [Auto-Stop] โซน ${zone.name} หมดเวลาแข่งขัน ระบบปรับสถานะเป็นปิดอัตโนมัติ`);
+            }
         } else {
             console.warn("⚠️ ไม่พบข้อมูลโซน ระบบจะอัปเดตแค่ดาวเฉลี่ย (v0)");
         }
@@ -5571,7 +5590,8 @@ app.post('/api/orders/submit-full-rating', async (req, res) => {
                     const ptsToAdd = calculateRankPoints(score1, score2);
                     let targetCycle = 0; 
 
-                    if (zone.isCompetitionActive === true) {
+                    // 🚩 ใช้ตัวแปร isCompetitionLive ที่ผ่านการเช็คเวลามาแล้ว
+                    if (isCompetitionLive === true) {
                         if (zone.requireKYC === true) {
                             targetCycle = (rider.kycStatus === 'approved') ? (zone.currentCycle || 1) : 0;
                         } else {
@@ -6808,6 +6828,13 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
 			}
 
         if (target && zone) {
+			const now = new Date();
+			let isCompetitionLive = zone.isCompetitionActive;
+			if (isCompetitionLive && zone.endDate && now > new Date(zone.endDate)) {
+				isCompetitionLive = false;
+				await db.collection('zones').updateOne({ _id: zone._id }, { $set: { isCompetitionActive: false } });
+			}
+			
             const newScore = parseFloat(rating);
             const currentCount = target.ratingCount || 0;
             const currentRating = target.rating || 0;
@@ -6815,17 +6842,17 @@ socket.on('confirm-finish-job-post', async ({ postId, accepted, requester }) => 
 
             // 🚩 คำนวณแต้ม Ranking และเช็คสถานะ v0
             const ptsToAdd = calculateRankPoints(rating, responsibility || 3);
-            const targetCycle = (zone.isCompetitionActive === true) ? (zone.currentCycle || 1) : 0;
-            const rankingKey = `ranking_data.${zone.rankingVariable || 'defaultPoints'}_v${targetCycle}`;
+            const targetCycle = (isCompetitionLive === true) ? (zone.currentCycle || 1) : 0;
+			const rankingKey = `ranking_data.${zone.rankingVariable || 'defaultPoints'}_v${targetCycle}`;
 
-            const updateData = {
-                $set: { rating: parseFloat(newAverage.toFixed(2)) },
-                $inc: { 
-                    ratingCount: 1,
-                    totalJobs: 1,
-                    [rankingKey]: ptsToAdd // บันทึกลงรอบปัจจุบัน หรือ v0
-                }
-            };
+			const updateData = {
+				$set: { rating: parseFloat(newAverage.toFixed(2)) },
+				$inc: { 
+				ratingCount: 1,
+				totalJobs: 1,
+				[rankingKey]: ptsToAdd 
+				}
+			};
 
             await usersCollection.updateOne({ username: userToRate }, updateData);
             console.log(`[Socket Rating] ${userToRate} ได้ ${ptsToAdd} แต้ม ลงใน ${rankingKey}`);
