@@ -1142,14 +1142,32 @@ async function saveAutoMessage() {
 
 	async function updateBadges() {
     const myUsername = localStorage.getItem('myUsername');
+    if (!myUsername) return;
+
     try {
         const res = await fetch(`/api/admin/pending-counts?admin=${myUsername}`);
-        if (!res.ok) throw new Error('API Not Ready');
+        if (!res.ok) throw new Error('Network response was not ok');
+        
         const data = await res.json();
-        document.getElementById('topup-count').innerText = data.topupCount || 0;
-        document.getElementById('kyc-count').innerText = data.kycCount || 0;
+
+        if (data.success) {
+            const topupBadge = document.getElementById('topup-count');
+            const kycBadge = document.getElementById('kyc-count');
+
+            if (topupBadge) {
+                const count = data.topupCount || 0;
+                topupBadge.innerText = count;
+                topupBadge.style.display = count > 0 ? 'inline-block' : 'none';
+            }
+
+            if (kycBadge) {
+                const count = data.kycCount || 0;
+                kycBadge.innerText = count;
+                kycBadge.style.display = count > 0 ? 'inline-block' : 'none';
+            }
+        }
     } catch(e) {
-        console.warn("Badge API Not yet available.");
+        console.warn("Badge API Error:", e.message);
     }
 }
 

@@ -5890,12 +5890,25 @@ app.get('/api/topup/history', async (req, res) => {
 app.get('/api/admin/pending-counts', async (req, res) => {
     try {
         const { admin } = req.query;
-        const topupCount = await db.collection('topupRequests').countDocuments({ targetAdmin: admin, status: 'pending' });
-        const kycCount = await db.collection('kycRequests').countDocuments({ targetAdmin: admin, status: 'pending' });
+        const topupCount = await db.collection('topup_requests').countDocuments({ 
+            adminId: admin, 
+            status: 'pending' 
+        });
+
+        // 🚩 ส่วนของ KYC ตรวจสอบชื่อ Collection 
+        const kycCount = await db.collection('kycRequests').countDocuments({ 
+            adminId: admin, 
+            status: 'pending' 
+        });
         
-        res.json({ topupCount, kycCount });
+        res.json({ 
+            success: true, 
+            topupCount: topupCount || 0, 
+            kycCount: kycCount || 0 
+        });
     } catch (e) {
-        res.json({ topupCount: 0, kycCount: 0 });
+        console.error("Badge Error:", e);
+        res.json({ success: false, topupCount: 0, kycCount: 0 });
     }
 });
 
