@@ -2799,7 +2799,7 @@ function getTransactionDetail(t) {
                     <strong>${typeText}</strong> ${detail}<br>
                     <small style="color:gray;">${new Date(t.timestamp).toLocaleString()} | ${fromToPrefix}: ${relatedUser}</small>
                 </div>
-                <span class="${styleClass}">${amountSign}${(t.amount || 0).toFixed(2)} USD</span>
+                <span class="${styleClass}">${amountSign}${(t.amount || 0).toFixed(2)} </span>
             </div>
         `;
     }).join('');
