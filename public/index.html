@@ -1322,7 +1322,8 @@ async function updateZoneBackground(lat, lng) {
 		'alert_empty_content': 'กรุณาใส่รายละเอียด',
 		'menu_quick_title': 'เลือกรายการ',
         'menu_post': 'โพสต์งาน',
-        'menu_shop': 'ร้านค้า',
+        'menu_shop': 'ร้านค้าในพื้นที่',
+		'menu_merchant': 'ส่วนร้านค้า',
         'menu_ranking': 'จัดอันดับไรเดอร์',
         'menu_report': 'รายงานสมาชิก',
 		'cd_title': 'โซน',
@@ -1534,7 +1535,8 @@ async function updateZoneBackground(lat, lng) {
 		'alert_empty_content': 'Please enter the details',
 		'menu_quick_title': 'Select Menu',
         'menu_post': 'Post Task',
-        'menu_shop': 'Shop',
+        'menu_shop': 'Local shops',
+		'menu_merchant': 'Shop section',
         'menu_ranking': 'Rider Ranking',
         'menu_report': 'Report Member',
 		'cd_title': 'Zone',
@@ -1742,6 +1744,7 @@ async function updateZoneBackground(lat, lng) {
 		'menu_quick_title': 'Selecionar Menu',
         'menu_post': 'Publicar Tarefa',
         'menu_shop': 'Loja',
+		'menu_merchant': 'Seção de compras',
         'menu_ranking': 'Ranking de Entregadores',
         'menu_report': 'Denunciar Membro',
 		'cd_title': 'Zona',
@@ -5556,6 +5559,7 @@ async function openQuickActions() {
     const titleText = t['menu_quick_title'];
     const labelPost = t['menu_post'];
     const labelShop = t['menu_shop'];
+	const labelMerchant = t['menu_merchant'];
     const labelRank = t['menu_ranking'];
     const labelReport = t['menu_report'];
 
@@ -5574,6 +5578,11 @@ async function openQuickActions() {
                 <div onclick="window.location.href='shopmerchant.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
                     <i class="fas fa-shopping-cart" style="font-size: 2em; color: #2980b9;"></i>
                     <div style="margin-top:10px; font-weight:bold;">${labelShop}</div>
+                </div>
+				
+				<div onclick="window.location.href='merchant.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
+                    <i class="fas fa-store" style="font-size: 2em; color: #2980b9;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">${labelMerchant}</div>
                 </div>
 
                 <div onclick="window.location.href='rider-ranking.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
