@@ -1325,6 +1325,7 @@ async function updateZoneBackground(lat, lng) {
         'menu_shop': 'ร้านค้าในพื้นที่',
 		'menu_merchant': 'ส่วนร้านค้า',
         'menu_ranking': 'จัดอันดับไรเดอร์',
+		'menu_question': 'แนะนำ',
         'menu_report': 'รายงานสมาชิก',
 		'cd_title': 'โซน',
         'cd_waiting': 'จะเปิดให้บริการในอีก',
@@ -1538,6 +1539,7 @@ async function updateZoneBackground(lat, lng) {
         'menu_shop': 'Local shops',
 		'menu_merchant': 'Shop section',
         'menu_ranking': 'Rider Ranking',
+		'menu_question': 'Question',
         'menu_report': 'Report Member',
 		'cd_title': 'Zone',
         'cd_waiting': 'Will be available in',
@@ -1746,6 +1748,7 @@ async function updateZoneBackground(lat, lng) {
         'menu_shop': 'Loja',
 		'menu_merchant': 'Seção de compras',
         'menu_ranking': 'Ranking de Entregadores',
+		'menu_question': 'Pergunta',
         'menu_report': 'Denunciar Membro',
 		'cd_title': 'Zona',
         'cd_waiting': 'Estará disponível em',
@@ -5562,6 +5565,7 @@ async function openQuickActions() {
 	const labelMerchant = t['menu_merchant'];
     const labelRank = t['menu_ranking'];
     const labelReport = t['menu_report'];
+	const labelQuestion = t['menu_question'];
 
     const { value: action } = await Swal.fire({
         title: titleText,
@@ -5588,6 +5592,11 @@ async function openQuickActions() {
                 <div onclick="window.location.href='rider-ranking.html'" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
                     <i class="fas fa-trophy" style="font-size: 2em; color: #e67e22;"></i>
                     <div style="margin-top:10px; font-weight:bold;">${labelRank}</div>
+                </div>
+				
+				<div onclick="Swal.clickConfirm(); handleAction('C')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
+                    <i class="fas fa-question" style="font-size: 2em; color: #dc3545;"></i>
+                    <div style="margin-top:10px; font-weight:bold;">${labelQuestion}</div>
                 </div>
 
                 <div onclick="Swal.clickConfirm(); handleAction('D')" style="cursor:pointer; background:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #ddd;">
