@@ -776,8 +776,8 @@
 		let currentDeductRequest = null;
 		let targetUserForLocation = null;
 		let geoLookupTimeout = null;
-		let currentAddressName = ''; // เก็บชื่อสถานที่ล่าสุดที่หาเจอ
-		let currentLat = null;       // เก็บ Lat ล่าสุด
+		let currentAddressName = ''; 
+		let currentLat = null;      
 		let currentLng = null;
 		let currentZoneIdForRef = null;
 		let currentUserPage = 1;
@@ -791,12 +791,12 @@
 		
 		//  Cooldown state Distance Filter
 		let lastFilterTime = 0; 
-		const FILTER_COOLDOWN_MS = 20000; // 20 วินาที
+		const FILTER_COOLDOWN_MS = 15000; // 15 วินาที
 		
 		let userSearchTimeout = null;
 		
-		let tempGoogleData = null; // เก็บข้อมูล Google ไว้รอตั้งชื่อ
-		let tempUsername = null;   // เก็บชื่อยูสเซอร์เก่าไว้รอตั้งรหัส
+		let tempGoogleData = null;
+		let tempUsername = null;
 		
 		
 		
@@ -828,7 +828,6 @@ function onGoogleLoginSuccess(response) {
     .then(res => res.json())
     .then(data => {
         if (data.isNewUser) {
-            // เป็นคนใหม่จาก Google ให้เก็บข้อมูลไว้แล้วเปิดหน้าตั้งชื่อ
             tempGoogleData = data.googleData;
             document.getElementById('google-setup-modal').classList.remove('hidden');
         } else if (data.success) {
@@ -840,7 +839,6 @@ function onGoogleLoginSuccess(response) {
 
 		
 		let currentZoneToAssign = null;
-		// ฟังก์ชันสำหรับเปิด Modal เลือก Admin
 	async function openAdminAssignModal(zoneId, zoneName, lat, lng) {
     if (myAdminLevel < 2) {
 			return alert(translations[currentLang].alert_no_permission);
@@ -860,13 +858,11 @@ function onGoogleLoginSuccess(response) {
     adminListEl.innerHTML = `<p style="text-align:center;">${t['handover_status_loading_msg']}</p>`;
 
     try {
-        // Fetch Admin list from the new API endpoint
         const res = await fetch(`/api/admin/admins-list?requestBy=${myUsername}`);
         const data = await res.json();
         
         if (data && data.length > 0) {
             adminListEl.innerHTML = data.map(admin => {
-                // Filter out banned admins
                 if (admin.isBanned) return ''; 
                 
                 const levelDisplay = admin.level > 0 ? `L${admin.level}` : '';
@@ -889,7 +885,6 @@ function onGoogleLoginSuccess(response) {
     }
 }
 
-// ฟังก์ชันสำหรับบันทึก Admin ผู้รับผิดชอบ
 async function assignAdminToZone(zoneId, adminUsername, zoneName) {
     if (myAdminLevel < 2) return;
     
@@ -942,7 +937,6 @@ async function openZoneRefSelectModal(zoneId) {
 
         if (data.success && data.admins.length > 0) {
             listDiv.innerHTML = data.admins.map(admin => {
-                // แก้ปัญหา undefined: ลองใช้ name ถ้าไม่มีให้ใช้ username
                 const displayName = admin.name || admin.username || "ไม่ทราบชื่อ";
                 
                 const locName = admin.assignedLocation.addressName || 
@@ -970,7 +964,7 @@ async function openZoneRefSelectModal(zoneId) {
     }
 }
 
-// 2. ฟังก์ชันบันทึกเมื่อเลือก Admin
+
 async function saveZoneRefFromAdmin(targetAdmin) {
     if (!currentZoneIdForRef) return;
     
@@ -991,7 +985,7 @@ async function saveZoneRefFromAdmin(targetAdmin) {
         if (data.success) {
             alert(data.message);
             document.getElementById('zone-ref-select-modal').classList.add('hidden');
-            fetchAndRenderAllZones(); // รีเฟรชหน้าโซน
+            fetchAndRenderAllZones();
         } else {
             alert('❌ Error: ' + data.error);
         }
@@ -1000,18 +994,16 @@ async function saveZoneRefFromAdmin(targetAdmin) {
     }
 }
 
-        // ฟังก์ชันตั้งค่าการกรอง (กดปุ่มเช็คอิน)
+    
     function setDistanceFilter() {
     const now = Date.now();
     
-    // [COOLDOWN CHECK]
     if (now - lastFilterTime < FILTER_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((FILTER_COOLDOWN_MS - (now - lastFilterTime)) / 1000);
         alert(translations[currentLang].alert_cooldown(remainingSeconds));
         return;
     }
 
-    // [UPDATE TIMESTAMP]
     lastFilterTime = now;
 
     const t = translations[currentLang];
@@ -1757,7 +1749,7 @@ async function updateZoneBackground(lat, lng) {
     }
 };
 
-		// ฟังก์ชันหลักในการเปลี่ยนภาษา (ต้องเรียกใช้ใน startApp)
+	
 	function setLanguage(lang) {
         if (!translations[lang]) return;
         currentLang = lang;
@@ -1766,7 +1758,6 @@ async function updateZoneBackground(lat, lng) {
 		if (lang === 'en') msg = "Changing language...";
 		if (lang === 'pt') msg = "Alterando o idioma...";
         
-        // 1. แปลข้อความทั่วไปที่มี data-i18n-key
         document.querySelectorAll('[data-i18n-key]').forEach(element => {
             const key = element.getAttribute('data-i18n-key');
             const translatedText = translations[lang][key];
@@ -1775,7 +1766,6 @@ async function updateZoneBackground(lat, lng) {
                 if (element.placeholder) {
                     element.placeholder = translatedText;
                 } else {
-                    // โค้ดจัดการ icon/emoji คงเดิม
                     const textOnly = element.innerText.replace(/(<i[^>]*><\/i>|[\u2600-\u26FF\u2700-\u27BF\u1F600-\u1F64F\u1F300-\u1F5FF\u2B06-\u2B07\u2B50\u23F3\u231B\u23E9-\u23EC\u23F0\u23F8-\u23FA\u23CF\u21AA\u21A9\u2190-\u21FF\u25AA-\u25FE\u2B1B\u2B1C\u2B55\u23E3\u2705\u274C\u274E\u2714\u2716\u2728\u2733\u2734\u2753\u2754\u2755\u2795-\u2797\u27A1\u27B0\u27BF\u27C0-\u27FF\u1F000-\u1F6FF\u1F900-\u1F9FF]+)/g, '').trim();
                     const icon = element.innerHTML.substring(0, element.innerHTML.indexOf(textOnly));
                     
@@ -1798,7 +1788,7 @@ if (homeBtn) {
     homeBtn.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)'; // เพิ่มเงา
 }
 
-        // 3. โหลดข้อมูลพื้นฐานใหม่
+        
         updateUserInfo(); 
         renderPostList();
 
