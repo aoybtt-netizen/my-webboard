@@ -9,7 +9,6 @@
         :root {
             --neon-blue: #00d2ff;
             --neon-green: #38ef7d;
-            --neon-red: #ff4b2b;
             --glass: rgba(15, 25, 35, 0.85);
         }
 
@@ -18,11 +17,11 @@
             width: 100%; height: 100%;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             color: white;
         }
 
-        /* --- พื้นหลังสถานีอวกาศ --- */
+        /* --- พื้นหลังสถานีอวกาศ (เพิ่ม Transition สำหรับการทึบแสง) --- */
         #game-background {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -30,108 +29,52 @@
             background-size: cover;
             background-position: center;
             z-index: 1;
+            transition: filter 0.6s ease, transform 0.6s ease;
         }
 
-        /* --- Canvas สำหรับวาด Hex Grid --- */
+        /* คลาสสำหรับทำให้พื้นหลังทึบแสงและซูมออกเล็กน้อย */
+        .bg-dimmed {
+            filter: brightness(0.15) saturate(0.5) blur(2px);
+            transform: scale(1.05);
+        }
+
+        /* --- Canvas สำหรับ Hex Grid (วงกลมตรงกลาง) --- */
         #hex-canvas {
             position: fixed;
             top: 0; left: 0;
-            z-index: 2;
-            pointer-events: none; /* ให้คลิกทะลุไปหา UI ได้ */
-            opacity: 0.5;
-            transition: opacity 0.5s;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
         }
 
-        /* --- HUD ด้านบน (Resources) --- */
+        /* --- HUD & Navigation --- */
         .hud-top {
-            position: fixed;
-            top: calc(10px + env(safe-area-inset-top));
-            left: 10px; right: 10px;
-            display: flex; gap: 10px;
-            z-index: 100;
+            position: fixed; top: calc(10px + env(safe-area-inset-top));
+            left: 10px; right: 10px; display: flex; gap: 10px; z-index: 100;
         }
+        .res-item { background: var(--glass); padding: 5px 15px; border-radius: 5px; backdrop-filter: blur(5px); border-left: 3px solid var(--neon-blue); font-size: 0.8rem; }
 
-        .res-item {
-            background: var(--glass);
-            border-left: 3px solid var(--neon-blue);
-            padding: 5px 15px;
-            border-radius: 5px;
-            backdrop-filter: blur(5px);
-            font-size: 0.8rem;
-        }
-
-        /* --- ปุ่มนำทางด้านล่าง --- */
         .bottom-nav {
-            position: fixed;
-            bottom: 30px; left: 50%;
-            transform: translateX(-50%);
-            display: flex; gap: 15px;
-            z-index: 1000;
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; z-index: 1000;
         }
-
         .nav-btn {
-            width: 65px; height: 65px;
-            background: var(--glass);
-            border: 1px solid var(--neon-blue);
-            border-radius: 12px;
-            color: var(--neon-blue);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            cursor: pointer; transition: 0.3s;
-            font-size: 0.7rem; gap: 5px;
-            backdrop-filter: blur(10px);
+            width: 65px; height: 65px; background: var(--glass); border: 1px solid var(--neon-blue);
+            border-radius: 12px; color: var(--neon-blue); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; font-size: 0.7rem; gap: 5px;
         }
-        .nav-btn:active { transform: scale(0.9); border-color: var(--neon-green); }
-        .nav-btn i { font-size: 1.4rem; }
+        .nav-btn:active { transform: scale(0.9); }
 
-        /* --- UI Overlay (Menus) --- */
+        /* --- Menu Overlay --- */
         .menu-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            display: none;
-            z-index: 2000;
-            align-items: center; justify-content: center;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px);
+            display: none; z-index: 2000; align-items: center; justify-content: center;
         }
-
-        .glass-panel {
-            background: var(--glass);
-            border: 1px solid var(--neon-blue);
-            border-radius: 20px;
-            width: 85%; max-width: 400px;
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
-        }
-
-        .panel-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px; border-bottom: 1px solid rgba(0, 210, 255, 0.2);
-            padding-bottom: 10px;
-        }
-
-        .list-item {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px; border-radius: 12px;
-            margin-bottom: 10px; display: flex; align-items: center; gap: 15px;
-            border: 1px solid transparent;
-        }
-        .list-item:active { border-color: var(--neon-green); }
-
-        .btn-close { font-size: 1.5rem; cursor: pointer; color: #fff; }
-
-        /* --- ย้อนกลับ --- */
-        .back-nav {
-            position: fixed;
-            top: calc(15px + env(safe-area-inset-top));
-            right: 15px;
-            z-index: 100;
-            background: rgba(255,255,255,0.1);
-            width: 35px; height: 35px;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: white; text-decoration: none;
-        }
+        .glass-panel { background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 20px; width: 85%; max-width: 400px; padding: 20px; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .list-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; }
     </style>
 </head>
 <body>
@@ -140,82 +83,48 @@
     <canvas id="hex-canvas"></canvas>
 
     <div class="hud-top">
-        <div class="res-item">
-            <i class="fas fa-cube" style="color:var(--neon-blue)"></i> METAL: <span id="res-metal">500</span>
-        </div>
-        <div class="res-item" style="border-color: var(--neon-green);">
-            <i class="fas fa-bolt" style="color:var(--neon-green)"></i> ENERGY: <span id="res-energy">100%</span>
-        </div>
+        <div class="res-item"><i class="fas fa-cube"></i> METAL: 500</div>
+        <div class="res-item" style="border-color: var(--neon-green);"><i class="fas fa-bolt"></i> ENERGY: 100%</div>
     </div>
-
-    <a href="gedgozonegame.html" class="back-nav"><i class="fas fa-times"></i></a>
 
     <div class="bottom-nav">
         <div class="nav-btn" onclick="openMenu('ship-menu')">
-            <i class="fas fa-rocket"></i>
-            <span>ยาน</span>
+            <i class="fas fa-rocket"></i><span>ยาน</span>
         </div>
-        <div class="nav-btn" onclick="openMenu('map-menu')">
-            <i class="fas fa-map-marked-alt"></i>
-            <span>แผนที่</span>
+        <div class="nav-btn" onclick="openMapMode()">
+            <i class="fas fa-map-marked-alt"></i><span>แผนที่</span>
         </div>
-        <div class="nav-btn" style="border-color: var(--neon-green); color: var(--neon-green);" onclick="alert('ศูนย์วิจัย GedGo กำลังก่อสร้าง...')">
-            <i class="fas fa-microscope"></i>
-            <span>วิจัย</span>
+        <div class="nav-btn" style="border-color: var(--neon-green); color: var(--neon-green);" onclick="alert('วิจัย...')">
+            <i class="fas fa-microscope"></i><span>วิจัย</span>
         </div>
     </div>
 
-    <div id="ship-menu" class="menu-overlay" onclick="checkClose(event)">
+    <div id="map-menu" class="menu-overlay" onclick="closeMapMode(event)">
         <div class="glass-panel">
             <div class="panel-header">
-                <h3><i class="fas fa-satellite"></i> กองยานสำรวจ</h3>
-                <i class="fas fa-times btn-close" onclick="closeMenus()"></i>
+                <h3><i class="fas fa-map"></i> ยุทธการ GedGoZone</h3>
+                <i class="fas fa-times" style="cursor:pointer" onclick="closeMapMode()"></i>
             </div>
             <div class="list-item">
-                <i class="fas fa-space-shuttle fa-2x" style="color:var(--neon-blue)"></i>
-                <div style="flex:1">
-                    <b>GedGo Scout-01</b><br>
-                    <small style="color:var(--neon-green)">สถานะ: พร้อมปฏิบัติการ</small>
-                </div>
+                <i class="fas fa-satellite-dish"></i>
+                <div style="flex:1">รัศมีการสแกน: 250 LY</div>
             </div>
-            <div class="list-item" style="opacity: 0.5;">
-                <i class="fas fa-plus-circle fa-2x"></i>
-                <div style="flex:1">
-                    <b>สร้างยานลำใหม่</b><br>
-                    <small>ต้องการ: 200 Metal</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="map-menu" class="menu-overlay" onclick="checkClose(event)">
-        <div class="glass-panel">
-            <div class="panel-header">
-                <h3><i class="fas fa-map"></i> แผนที่หกเหลี่ยม</h3>
-                <i class="fas fa-times btn-close" onclick="closeMenus()"></i>
-            </div>
-            <div class="list-item" onclick="toggleGrid()">
-                <i class="fas fa-draw-polygon"></i>
-                <div style="flex:1">แสดง Hex Grid</div>
-                <div id="grid-status" style="color:var(--neon-blue)">เปิด</div>
-            </div>
-            <div class="list-item">
-                <i class="fas fa-search-location"></i>
-                <div style="flex:1">สแกนหาแหล่งแร่</div>
-            </div>
+            <p style="font-size:0.8rem; opacity:0.7; text-align:center;">จิ้มที่ช่องหกเหลี่ยมเพื่อสั่งการยาน</p>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('hex-canvas');
         const ctx = canvas.getContext('2d');
-        let showGrid = true;
+        const bg = document.getElementById('game-background');
+        
+        let mapActive = false;
 
-        // --- ระบบวาดแผนที่หกเหลี่ยม (Hex Grid) ---
+        // --- ระบบวาดหกเหลี่ยมวงกลมตรงกลาง ---
         function drawHex(x, y, radius) {
             ctx.beginPath();
             for (let i = 0; i < 6; i++) {
-                ctx.lineTo(x + radius * Math.cos(a = i * Math.PI / 3), y + radius * Math.sin(a));
+                ctx.lineTo(x + radius * Math.cos(i * Math.PI / 3), y + radius * Math.sin(i * Math.PI / 3));
             }
             ctx.closePath();
             ctx.stroke();
@@ -226,49 +135,59 @@
             canvas.height = window.innerHeight;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            if (!showGrid) return;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const hexRadius = 35; // ลดขนาดหกเหลี่ยมลง
+            const gridAreaRadius = 220; // รัศมีวงกลมที่ Grid จะแสดง
+            
+            const h = hexRadius * Math.sqrt(3);
+            const w = hexRadius * 1.5;
 
             ctx.strokeStyle = '#00d2ff';
-            ctx.lineWidth = 1;
-            
-            const r = 50; // รัศมีหกเหลี่ยม
-            const h = r * Math.sqrt(3); // ความสูงหกเหลี่ยม
-            
-            // เริ่มวาดจากกึ่งกลางสถานี
-            for (let y = 0; y + h < canvas.height + h; y += h) {
-                for (let x = 0; x + r < canvas.width + r; x += r * 1.5) {
+            ctx.lineWidth = 1.5;
+
+            // วาด Grid ภายในขอบเขตวงกลม
+            for (let x = centerX - gridAreaRadius - w; x < centerX + gridAreaRadius + w; x += w) {
+                for (let y = centerY - gridAreaRadius - h; y < centerY + gridAreaRadius + h; y += h) {
                     const xPos = x;
-                    const yPos = y + ( (x / (r * 1.5) % 2) ? h / 2 : 0);
-                    drawHex(xPos, yPos, r);
+                    // จัดการ offset ของรังผึ้ง
+                    const column = Math.round((x - centerX) / w);
+                    const yPos = y + (Math.abs(column) % 2 === 1 ? h / 2 : 0);
+
+                    // เช็คระยะห่างจากจุดศูนย์กลางจอ
+                    const dist = Math.sqrt(Math.pow(xPos - centerX, 2) + Math.pow(yPos - centerY, 2));
+                    
+                    if (dist < gridAreaRadius) {
+                        drawHex(xPos, yPos, hexRadius - 2); // -2 เพื่อให้มีช่องว่างเล็กน้อยดูเท่
+                    }
                 }
             }
         }
 
-        // --- ระบบเมนู ---
+        // --- ระบบเปิด/ปิด โหมดแผนที่ ---
+        function openMapMode() {
+            mapActive = true;
+            bg.classList.add('bg-dimmed'); // พื้นหลังทึบแสง
+            canvas.style.opacity = "1"; // แสดง Grid
+            document.getElementById('map-menu').style.display = 'flex';
+            renderGrid();
+        }
+
+        function closeMapMode(e) {
+            // ถ้าคลิกข้างนอกแผงเมนู หรือกดปุ่มปิด
+            if (!e || e.target.classList.contains('menu-overlay') || e.target.classList.contains('fa-times')) {
+                mapActive = false;
+                bg.classList.remove('bg-dimmed');
+                canvas.style.opacity = "0";
+                document.getElementById('map-menu').style.display = 'none';
+            }
+        }
+
         function openMenu(id) {
             document.getElementById(id).style.display = 'flex';
         }
 
-        function closeMenus() {
-            document.querySelectorAll('.menu-overlay').forEach(m => m.style.display = 'none');
-        }
-
-        function checkClose(e) {
-            if (e.target.classList.contains('menu-overlay')) closeMenus();
-        }
-
-        function toggleGrid() {
-            showGrid = !showGrid;
-            document.getElementById('grid-status').innerText = showGrid ? "เปิด" : "ปิด";
-            document.getElementById('grid-status').style.color = showGrid ? "var(--neon-blue)" : "#666";
-            canvas.style.opacity = showGrid ? "0.5" : "0";
-            renderGrid();
-        }
-
-        // เริ่มต้นระบบ
-        window.addEventListener('resize', renderGrid);
-        renderGrid();
-
+        window.addEventListener('resize', () => { if(mapActive) renderGrid(); });
     </script>
 </body>
 </html>
