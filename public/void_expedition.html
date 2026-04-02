@@ -2,133 +2,87 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GedGoZone: Void Expedition</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     <style>
-        :root {
-            --space-bg: #05070a;
-            --neon-blue: #00d2ff;
-            --neon-green: #38ef7d;
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: #000; /* สีดำกันสำรองระหว่างโหลด */
         }
-        body { margin: 0; background: var(--space-bg); color: white; overflow: hidden; font-family: sans-serif; }
-        
-        /* HUD UI */
-        .hud { position: fixed; z-index: 10; padding: 15px; pointer-events: none; width: 100%; box-sizing: border-box; }
-        .stat-card { background: rgba(0,0,0,0.7); border: 1px solid var(--neon-blue); padding: 10px; border-radius: 8px; display: inline-block; pointer-events: auto; }
-        
-        canvas { display: block; touch-action: none; }
 
-        .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 20px; pointer-events: auto; }
-        .btn { width: 60px; height: 60px; background: rgba(0,0,0,0.8); border: 2px solid var(--neon-green); border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        /* Container สำหรับพื้นหลัง */
+        #game-container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            /* 🚩 เรียกใช้ไฟล์ภาพจากเซิร์ฟเวอร์ */
+            background-image: url('/images/station_bg.jpg'); 
+            background-size: cover; /* ให้ภาพคลุมพื้นที่ทั้งหมด */
+            background-position: center; /* จัดภาพให้อยู่ตรงกลาง */
+            background-repeat: no-repeat;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Overlay ตกแต่งแบบล้ำๆ (Vignette) */
+        #game-container::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.6) 100%);
+            pointer-events: none;
+        }
+
+        /* UI เบื้องต้น */
+        .loading-text {
+            color: #38ef7d;
+            font-family: 'Segoe UI', sans-serif;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(56, 239, 125, 0.8);
+            z-index: 10;
+        }
+
+        /* ปุ่มกลับหน้าเลือกเกม */
+        .back-nav {
+            position: fixed;
+            top: calc(20px + env(safe-area-inset-top));
+            left: 20px;
+            z-index: 100;
+            color: white;
+            text-decoration: none;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+        }
     </style>
 </head>
 <body>
 
-    <div class="hud">
-        <div class="stat-card">
-            <i class="fas fa-rocket"></i> <span id="status-text">SYSTEM ONLINE</span><br>
-            <i class="fas fa-gem" style="color: var(--neon-blue);"></i> ORE: <span id="ore-display">0</span>
-        </div>
+    <a href="gedgozonegame.html" class="back-nav">
+        <i class="fas fa-chevron-left"></i> ย้อนกลับ
+    </a>
+
+    <div id="game-container">
+        <div class="loading-text" id="status">Establishing Link...</div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
-
-    <div class="controls">
-        <div class="btn" onclick="mine()"><i class="fas fa-hammer"></i></div>
-        <div class="btn" style="border-color: #ff4b2b;" onclick="location.href='gedgozonegame.html'"><i class="fas fa-sign-out-alt"></i></div>
-    </div>
-
-<script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // ตั้งค่าขนาด Canvas ให้เต็มจอ
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    // 🚩 1. โหลด Sprite จากโฟลเดอร์บนเซิร์ฟเวอร์ (/images/...)
-    const shipSprite = new Image();
-    shipSprite.src = '/images/ship.png'; // ตรวจสอบว่ามีไฟล์นี้ใน public/images/
-
-    const asteroidSprite = new Image();
-    asteroidSprite.src = '/images/asteroid.png'; // ตรวจสอบว่ามีไฟล์นี้ใน public/images/
-
-    // ข้อมูลตัวละครและวัตถุ
-    let player = {
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        size: 60,
-        angle: 0
-    };
-
-    let oreCount = 0;
-    let asteroids = [
-        { x: 100, y: 150, size: 50 },
-        { x: canvas.width - 150, y: 200, size: 70 },
-        { x: 200, y: canvas.height - 200, size: 40 }
-    ];
-
-    // 🚩 2. Game Loop (ฟังก์ชันวาดภาพซ้ำๆ)
-    function update() {
-        // ล้างหน้าจอ
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // วาดพื้นหลังดาวแบบง่ายๆ
-        drawStars();
-
-        // วาดอุกกาบาต (Asteroids)
-        asteroids.forEach(ast => {
-            if (asteroidSprite.complete) {
-                ctx.drawImage(asteroidSprite, ast.x, ast.y, ast.size, ast.size);
-            } else {
-                // ถ้าภาพยังโหลดไม่เสร็จ ให้วาดวงกลมสีเทาแทนก่อน
-                ctx.fillStyle = "#555";
-                ctx.beginPath();
-                ctx.arc(ast.x + ast.size/2, ast.y + ast.size/2, ast.size/2, 0, Math.PI*2);
-                ctx.fill();
-            }
-        });
-
-        // วาดตัวละคร (Ship)
-        if (shipSprite.complete) {
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            ctx.rotate(player.angle);
-            // วาดรูปยาน (จัดให้อยู่ตรงกลางพิกัด x, y)
-            ctx.drawImage(shipSprite, -player.size/2, -player.size/2, player.size, player.size);
-            ctx.restore();
-        }
-
-        requestAnimationFrame(update);
-    }
-
-    function drawStars() {
-        ctx.fillStyle = "white";
-        for(let i=0; i<50; i++) {
-            ctx.beginPath();
-            ctx.arc((i*137)%canvas.width, (i*251)%canvas.height, 1, 0, Math.PI*2);
-            ctx.fill();
-        }
-    }
-
-    function mine() {
-        oreCount += 1;
-        document.getElementById('ore-display').innerText = oreCount;
-        // ใส่ Effect สั่นหน้าจอเบาๆ
-        canvas.style.transform = "translate(2px, 2px)";
-        setTimeout(() => canvas.style.transform = "translate(0, 0)", 50);
-    }
-
-    // เริ่มรันเกม
-    update();
-
-    // ปรับขนาด Canvas เมื่อหมุนจอ
-    window.onresize = () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    };
-</script>
-
+    <script>
+        window.onload = () => {
+            const status = document.getElementById('status');
+            // จำลองการโหลดระบบ
+            setTimeout(() => {
+                status.innerHTML = "GedGoZone Station: Online";
+                status.style.opacity = "0.5"; // ให้จางลงเมื่อโหลดเสร็จ
+            }, 1500);
+        };
+    </script>
 </body>
 </html>
