@@ -7,147 +7,128 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     <style>
         :root {
-            --space-bg: #0b0e14;
-            --ui-panel: rgba(15, 25, 35, 0.9);
-            --neon-green: #38ef7d;
+            --space-bg: #05070a;
             --neon-blue: #00d2ff;
-            --neon-red: #ff4b2b;
+            --neon-green: #38ef7d;
         }
+        body { margin: 0; background: var(--space-bg); color: white; overflow: hidden; font-family: sans-serif; }
+        
+        /* HUD UI */
+        .hud { position: fixed; z-index: 10; padding: 15px; pointer-events: none; width: 100%; box-sizing: border-box; }
+        .stat-card { background: rgba(0,0,0,0.7); border: 1px solid var(--neon-blue); padding: 10px; border-radius: 8px; display: inline-block; pointer-events: auto; }
+        
+        canvas { display: block; touch-action: none; }
 
-        body {
-            margin: 0; padding: 0;
-            background-color: var(--space-bg);
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden; /* กันสกอร์บอร์ดเลื่อน */
-        }
-
-        /* ส่วนแสดงผลสเตตัสยาน (Top Bar) */
-        .hud-top {
-            position: fixed; top: 10px; left: 10px; right: 10px;
-            display: flex; justify-content: space-between;
-            z-index: 100;
-        }
-
-        .stat-box {
-            background: var(--ui-panel);
-            padding: 8px 15px;
-            border: 1px solid var(--neon-blue);
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
-        }
-
-        .gauge-bar {
-            width: 100px; height: 6px;
-            background: #222; margin-top: 5px;
-            border-radius: 3px; overflow: hidden;
-        }
-
-        .gauge-fill { height: 100%; transition: 0.3s; }
-
-        /* พื้นที่เล่นเกม (Game Viewport) */
-        #game-canvas {
-            width: 100vw; height: 100vh;
-            display: block;
-            background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
-                              radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px);
-            background-size: 550px 550px, 350px 350px;
-            background-position: 0 0, 40px 60px;
-        }
-
-        /* แผงควบคุมด้านล่าง (Action Menu) */
-        .hud-bottom {
-            position: fixed; bottom: 20px; left: 50%;
-            transform: translateX(-50%);
-            display: flex; gap: 15px;
-            z-index: 100;
-        }
-
-        .action-btn {
-            width: 60px; height: 60px;
-            border-radius: 50%;
-            background: var(--ui-panel);
-            border: 2px solid var(--neon-green);
-            color: var(--neon-green);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; cursor: pointer;
-            box-shadow: 0 0 15px rgba(56, 239, 125, 0.2);
-        }
-
-        .action-btn:active { transform: scale(0.9); }
-
-        /* ระบบอัปเดตแร่ (Inventory) */
-        .cargo-box {
-            position: fixed; right: 10px; bottom: 100px;
-            background: var(--ui-panel);
-            padding: 10px; border-left: 3px solid var(--neon-blue);
-        }
+        .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 20px; pointer-events: auto; }
+        .btn { width: 60px; height: 60px; background: rgba(0,0,0,0.8); border: 2px solid var(--neon-green); border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="hud-top">
-        <div class="stat-box">
-            <small><i class="fas fa-gas-pump"></i> FUEL</small>
-            <div class="gauge-bar"><div class="gauge-fill" style="width: 80%; background: var(--neon-green);"></div></div>
-        </div>
-        <div class="stat-box" style="border-color: var(--neon-red);">
-            <small><i class="fas fa-shield-alt"></i> HULL</small>
-            <div class="gauge-bar"><div class="gauge-fill" style="width: 100%; background: var(--neon-blue);"></div></div>
+    <div class="hud">
+        <div class="stat-card">
+            <i class="fas fa-rocket"></i> <span id="status-text">SYSTEM ONLINE</span><br>
+            <i class="fas fa-gem" style="color: var(--neon-blue);"></i> ORE: <span id="ore-display">0</span>
         </div>
     </div>
 
-    <div class="cargo-box" id="inventory">
-        <div style="font-size: 0.7em; color: #aaa;">CARGO HOLD</div>
-        <div><i class="fas fa-gem" style="color: var(--neon-blue);"></i> ORE: <span id="ore-count">0</span></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="controls">
+        <div class="btn" onclick="mine()"><i class="fas fa-hammer"></i></div>
+        <div class="btn" style="border-color: #ff4b2b;" onclick="location.href='gedgozonegame.html'"><i class="fas fa-sign-out-alt"></i></div>
     </div>
 
-    <canvas id="game-canvas"></canvas>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // ตั้งค่าขนาด Canvas ให้เต็มจอ
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    <div class="hud-bottom">
-        <div class="action-btn" onclick="mineOre()"><i class="fas fa-hammer"></i></div>
-        <div class="action-btn" onclick="openUpgrades()" style="border-color: var(--neon-blue); color: var(--neon-blue);"><i class="fas fa-tools"></i></div>
-        <div class="action-btn" onclick="returnToStation()" style="border-color: var(--neon-red); color: var(--neon-red);"><i class="fas fa-home"></i></div>
-    </div>
+    // 🚩 1. โหลด Sprite จากโฟลเดอร์บนเซิร์ฟเวอร์ (/images/...)
+    const shipSprite = new Image();
+    shipSprite.src = '/images/ship.png'; // ตรวจสอบว่ามีไฟล์นี้ใน public/images/
 
-    <script>
-        let ore = 0;
+    const asteroidSprite = new Image();
+    asteroidSprite.src = '/images/asteroid.png'; // ตรวจสอบว่ามีไฟล์นี้ใน public/images/
 
-        function mineOre() {
-            // โค้ดส่วนขุดแร่
-            ore += 1;
-            document.getElementById('ore-count').innerText = ore;
-            // เพิ่มเอฟเฟกต์สั่นหรือเสียงตรงนี้
-        }
+    // ข้อมูลตัวละครและวัตถุ
+    let player = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        size: 60,
+        angle: 0
+    };
 
-        function openUpgrades() {
-            alert("ไปที่ Hub เพื่ออัปเดตเครื่องยนต์และเลเซอร์ขุดเจาะ");
-        }
+    let oreCount = 0;
+    let asteroids = [
+        { x: 100, y: 150, size: 50 },
+        { x: canvas.width - 150, y: 200, size: 70 },
+        { x: 200, y: canvas.height - 200, size: 40 }
+    ];
 
-        function returnToStation() {
-            if(confirm("ต้องการกลับไปที่ GedGo Station เพื่อขายแร่ใช่หรือไม่?")) {
-                location.href = 'gedgozonegame.html';
+    // 🚩 2. Game Loop (ฟังก์ชันวาดภาพซ้ำๆ)
+    function update() {
+        // ล้างหน้าจอ
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // วาดพื้นหลังดาวแบบง่ายๆ
+        drawStars();
+
+        // วาดอุกกาบาต (Asteroids)
+        asteroids.forEach(ast => {
+            if (asteroidSprite.complete) {
+                ctx.drawImage(asteroidSprite, ast.x, ast.y, ast.size, ast.size);
+            } else {
+                // ถ้าภาพยังโหลดไม่เสร็จ ให้วาดวงกลมสีเทาแทนก่อน
+                ctx.fillStyle = "#555";
+                ctx.beginPath();
+                ctx.arc(ast.x + ast.size/2, ast.y + ast.size/2, ast.size/2, 0, Math.PI*2);
+                ctx.fill();
             }
+        });
+
+        // วาดตัวละคร (Ship)
+        if (shipSprite.complete) {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.angle);
+            // วาดรูปยาน (จัดให้อยู่ตรงกลางพิกัด x, y)
+            ctx.drawImage(shipSprite, -player.size/2, -player.size/2, player.size, player.size);
+            ctx.restore();
         }
 
-        // เริ่มต้นวาดฉากหลัง หรือ แผนที่หกเหลี่ยม
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        requestAnimationFrame(update);
+    }
 
-        // ฟังก์ชันวาดรูปยานเบื้องต้น (เดี๋ยวพี่ค่อยเอา Sprite มาใส่)
-        function drawShip() {
-            ctx.fillStyle = "#00d2ff";
+    function drawStars() {
+        ctx.fillStyle = "white";
+        for(let i=0; i<50; i++) {
             ctx.beginPath();
-            ctx.moveTo(canvas.width/2, canvas.height/2 - 20);
-            ctx.lineTo(canvas.width/2 - 15, canvas.height/2 + 15);
-            ctx.lineTo(canvas.width/2 + 15, canvas.height/2 + 15);
-            ctx.closePath();
+            ctx.arc((i*137)%canvas.width, (i*251)%canvas.height, 1, 0, Math.PI*2);
             ctx.fill();
         }
-        
-        drawShip();
-    </script>
+    }
+
+    function mine() {
+        oreCount += 1;
+        document.getElementById('ore-display').innerText = oreCount;
+        // ใส่ Effect สั่นหน้าจอเบาๆ
+        canvas.style.transform = "translate(2px, 2px)";
+        setTimeout(() => canvas.style.transform = "translate(0, 0)", 50);
+    }
+
+    // เริ่มรันเกม
+    update();
+
+    // ปรับขนาด Canvas เมื่อหมุนจอ
+    window.onresize = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    };
+</script>
+
 </body>
 </html>

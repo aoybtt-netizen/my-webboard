@@ -31,6 +31,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 //app.use('/uploads', express.static('uploads'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+//spritegamepng
+app.use(express.static('public'));
 // --- Global Database Variables (ปรับให้เหลือชุดเดียว) ---
 let db;
 let usersCollection, postsCollection, configCollection, transactionsCollection;
