@@ -6,83 +6,269 @@
     <title>GedGoZone: Void Expedition</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     <style>
+        :root {
+            --neon-blue: #00d2ff;
+            --neon-green: #38ef7d;
+            --neon-red: #ff4b2b;
+            --glass: rgba(15, 25, 35, 0.85);
+        }
+
         body, html {
             margin: 0; padding: 0;
             width: 100%; height: 100%;
             overflow: hidden;
-            background-color: #000; /* สีดำกันสำรองระหว่างโหลด */
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            color: white;
         }
 
-        /* Container สำหรับพื้นหลัง */
-        #game-container {
-            position: relative;
-            width: 100vw; height: 100vh;
-            /* 🚩 เรียกใช้ไฟล์ภาพจากเซิร์ฟเวอร์ */
-            background-image: url('/images/station_bg.png'); 
-            background-size: cover; /* ให้ภาพคลุมพื้นที่ทั้งหมด */
-            background-position: center; /* จัดภาพให้อยู่ตรงกลาง */
-            background-repeat: no-repeat;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Overlay ตกแต่งแบบล้ำๆ (Vignette) */
-        #game-container::after {
-            content: '';
-            position: absolute;
+        /* --- พื้นหลังสถานีอวกาศ --- */
+        #game-background {
+            position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.6) 100%);
-            pointer-events: none;
+            background-image: url('/images/station_bg.png'); 
+            background-size: cover;
+            background-position: center;
+            z-index: 1;
         }
 
-        /* UI เบื้องต้น */
-        .loading-text {
-            color: #38ef7d;
-            font-family: 'Segoe UI', sans-serif;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(56, 239, 125, 0.8);
-            z-index: 10;
+        /* --- Canvas สำหรับวาด Hex Grid --- */
+        #hex-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 2;
+            pointer-events: none; /* ให้คลิกทะลุไปหา UI ได้ */
+            opacity: 0.5;
+            transition: opacity 0.5s;
         }
 
-        /* ปุ่มกลับหน้าเลือกเกม */
+        /* --- HUD ด้านบน (Resources) --- */
+        .hud-top {
+            position: fixed;
+            top: calc(10px + env(safe-area-inset-top));
+            left: 10px; right: 10px;
+            display: flex; gap: 10px;
+            z-index: 100;
+        }
+
+        .res-item {
+            background: var(--glass);
+            border-left: 3px solid var(--neon-blue);
+            padding: 5px 15px;
+            border-radius: 5px;
+            backdrop-filter: blur(5px);
+            font-size: 0.8rem;
+        }
+
+        /* --- ปุ่มนำทางด้านล่าง --- */
+        .bottom-nav {
+            position: fixed;
+            bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            display: flex; gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            width: 65px; height: 65px;
+            background: var(--glass);
+            border: 1px solid var(--neon-blue);
+            border-radius: 12px;
+            color: var(--neon-blue);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.3s;
+            font-size: 0.7rem; gap: 5px;
+            backdrop-filter: blur(10px);
+        }
+        .nav-btn:active { transform: scale(0.9); border-color: var(--neon-green); }
+        .nav-btn i { font-size: 1.4rem; }
+
+        /* --- UI Overlay (Menus) --- */
+        .menu-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            z-index: 2000;
+            align-items: center; justify-content: center;
+        }
+
+        .glass-panel {
+            background: var(--glass);
+            border: 1px solid var(--neon-blue);
+            border-radius: 20px;
+            width: 85%; max-width: 400px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+        }
+
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; border-bottom: 1px solid rgba(0, 210, 255, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .list-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px; border-radius: 12px;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 15px;
+            border: 1px solid transparent;
+        }
+        .list-item:active { border-color: var(--neon-green); }
+
+        .btn-close { font-size: 1.5rem; cursor: pointer; color: #fff; }
+
+        /* --- ย้อนกลับ --- */
         .back-nav {
             position: fixed;
-            top: calc(20px + env(safe-area-inset-top));
-            left: 20px;
+            top: calc(15px + env(safe-area-inset-top));
+            right: 15px;
             z-index: 100;
-            color: white;
-            text-decoration: none;
-            background: rgba(0,0,0,0.5);
-            padding: 10px 15px;
-            border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.2);
-            font-size: 0.9rem;
-            backdrop-filter: blur(5px);
+            background: rgba(255,255,255,0.1);
+            width: 35px; height: 35px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: white; text-decoration: none;
         }
     </style>
 </head>
 <body>
 
-    <a href="gedgozonegame.html" class="back-nav">
-        <i class="fas fa-chevron-left"></i> ย้อนกลับ
-    </a>
+    <div id="game-background"></div>
+    <canvas id="hex-canvas"></canvas>
 
-    <div id="game-container">
-        <div class="loading-text" id="status">Establishing Link...</div>
+    <div class="hud-top">
+        <div class="res-item">
+            <i class="fas fa-cube" style="color:var(--neon-blue)"></i> METAL: <span id="res-metal">500</span>
+        </div>
+        <div class="res-item" style="border-color: var(--neon-green);">
+            <i class="fas fa-bolt" style="color:var(--neon-green)"></i> ENERGY: <span id="res-energy">100%</span>
+        </div>
+    </div>
+
+    <a href="gedgozonegame.html" class="back-nav"><i class="fas fa-times"></i></a>
+
+    <div class="bottom-nav">
+        <div class="nav-btn" onclick="openMenu('ship-menu')">
+            <i class="fas fa-rocket"></i>
+            <span>ยาน</span>
+        </div>
+        <div class="nav-btn" onclick="openMenu('map-menu')">
+            <i class="fas fa-map-marked-alt"></i>
+            <span>แผนที่</span>
+        </div>
+        <div class="nav-btn" style="border-color: var(--neon-green); color: var(--neon-green);" onclick="alert('ศูนย์วิจัย GedGo กำลังก่อสร้าง...')">
+            <i class="fas fa-microscope"></i>
+            <span>วิจัย</span>
+        </div>
+    </div>
+
+    <div id="ship-menu" class="menu-overlay" onclick="checkClose(event)">
+        <div class="glass-panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-satellite"></i> กองยานสำรวจ</h3>
+                <i class="fas fa-times btn-close" onclick="closeMenus()"></i>
+            </div>
+            <div class="list-item">
+                <i class="fas fa-space-shuttle fa-2x" style="color:var(--neon-blue)"></i>
+                <div style="flex:1">
+                    <b>GedGo Scout-01</b><br>
+                    <small style="color:var(--neon-green)">สถานะ: พร้อมปฏิบัติการ</small>
+                </div>
+            </div>
+            <div class="list-item" style="opacity: 0.5;">
+                <i class="fas fa-plus-circle fa-2x"></i>
+                <div style="flex:1">
+                    <b>สร้างยานลำใหม่</b><br>
+                    <small>ต้องการ: 200 Metal</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map-menu" class="menu-overlay" onclick="checkClose(event)">
+        <div class="glass-panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-map"></i> แผนที่หกเหลี่ยม</h3>
+                <i class="fas fa-times btn-close" onclick="closeMenus()"></i>
+            </div>
+            <div class="list-item" onclick="toggleGrid()">
+                <i class="fas fa-draw-polygon"></i>
+                <div style="flex:1">แสดง Hex Grid</div>
+                <div id="grid-status" style="color:var(--neon-blue)">เปิด</div>
+            </div>
+            <div class="list-item">
+                <i class="fas fa-search-location"></i>
+                <div style="flex:1">สแกนหาแหล่งแร่</div>
+            </div>
+        </div>
     </div>
 
     <script>
-        window.onload = () => {
-            const status = document.getElementById('status');
-            // จำลองการโหลดระบบ
-            setTimeout(() => {
-                status.innerHTML = "GedGoZone Station: Online";
-                status.style.opacity = "0.5"; // ให้จางลงเมื่อโหลดเสร็จ
-            }, 1500);
-        };
+        const canvas = document.getElementById('hex-canvas');
+        const ctx = canvas.getContext('2d');
+        let showGrid = true;
+
+        // --- ระบบวาดแผนที่หกเหลี่ยม (Hex Grid) ---
+        function drawHex(x, y, radius) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                ctx.lineTo(x + radius * Math.cos(a = i * Math.PI / 3), y + radius * Math.sin(a));
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        function renderGrid() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!showGrid) return;
+
+            ctx.strokeStyle = '#00d2ff';
+            ctx.lineWidth = 1;
+            
+            const r = 50; // รัศมีหกเหลี่ยม
+            const h = r * Math.sqrt(3); // ความสูงหกเหลี่ยม
+            
+            // เริ่มวาดจากกึ่งกลางสถานี
+            for (let y = 0; y + h < canvas.height + h; y += h) {
+                for (let x = 0; x + r < canvas.width + r; x += r * 1.5) {
+                    const xPos = x;
+                    const yPos = y + ( (x / (r * 1.5) % 2) ? h / 2 : 0);
+                    drawHex(xPos, yPos, r);
+                }
+            }
+        }
+
+        // --- ระบบเมนู ---
+        function openMenu(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+
+        function closeMenus() {
+            document.querySelectorAll('.menu-overlay').forEach(m => m.style.display = 'none');
+        }
+
+        function checkClose(e) {
+            if (e.target.classList.contains('menu-overlay')) closeMenus();
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            document.getElementById('grid-status').innerText = showGrid ? "เปิด" : "ปิด";
+            document.getElementById('grid-status').style.color = showGrid ? "var(--neon-blue)" : "#666";
+            canvas.style.opacity = showGrid ? "0.5" : "0";
+            renderGrid();
+        }
+
+        // เริ่มต้นระบบ
+        window.addEventListener('resize', renderGrid);
+        renderGrid();
+
     </script>
 </body>
 </html>
