@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GedGoZone: Void Expedition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    <style>
+        :root {
+            --space-bg: #0b0e14;
+            --ui-panel: rgba(15, 25, 35, 0.9);
+            --neon-green: #38ef7d;
+            --neon-blue: #00d2ff;
+            --neon-red: #ff4b2b;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--space-bg);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* กันสกอร์บอร์ดเลื่อน */
+        }
+
+        /* ส่วนแสดงผลสเตตัสยาน (Top Bar) */
+        .hud-top {
+            position: fixed; top: 10px; left: 10px; right: 10px;
+            display: flex; justify-content: space-between;
+            z-index: 100;
+        }
+
+        .stat-box {
+            background: var(--ui-panel);
+            padding: 8px 15px;
+            border: 1px solid var(--neon-blue);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+        }
+
+        .gauge-bar {
+            width: 100px; height: 6px;
+            background: #222; margin-top: 5px;
+            border-radius: 3px; overflow: hidden;
+        }
+
+        .gauge-fill { height: 100%; transition: 0.3s; }
+
+        /* พื้นที่เล่นเกม (Game Viewport) */
+        #game-canvas {
+            width: 100vw; height: 100vh;
+            display: block;
+            background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+                              radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px);
+            background-size: 550px 550px, 350px 350px;
+            background-position: 0 0, 40px 60px;
+        }
+
+        /* แผงควบคุมด้านล่าง (Action Menu) */
+        .hud-bottom {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            display: flex; gap: 15px;
+            z-index: 100;
+        }
+
+        .action-btn {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: var(--ui-panel);
+            border: 2px solid var(--neon-green);
+            color: var(--neon-green);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer;
+            box-shadow: 0 0 15px rgba(56, 239, 125, 0.2);
+        }
+
+        .action-btn:active { transform: scale(0.9); }
+
+        /* ระบบอัปเดตแร่ (Inventory) */
+        .cargo-box {
+            position: fixed; right: 10px; bottom: 100px;
+            background: var(--ui-panel);
+            padding: 10px; border-left: 3px solid var(--neon-blue);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud-top">
+        <div class="stat-box">
+            <small><i class="fas fa-gas-pump"></i> FUEL</small>
+            <div class="gauge-bar"><div class="gauge-fill" style="width: 80%; background: var(--neon-green);"></div></div>
+        </div>
+        <div class="stat-box" style="border-color: var(--neon-red);">
+            <small><i class="fas fa-shield-alt"></i> HULL</small>
+            <div class="gauge-bar"><div class="gauge-fill" style="width: 100%; background: var(--neon-blue);"></div></div>
+        </div>
+    </div>
+
+    <div class="cargo-box" id="inventory">
+        <div style="font-size: 0.7em; color: #aaa;">CARGO HOLD</div>
+        <div><i class="fas fa-gem" style="color: var(--neon-blue);"></i> ORE: <span id="ore-count">0</span></div>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <div class="hud-bottom">
+        <div class="action-btn" onclick="mineOre()"><i class="fas fa-hammer"></i></div>
+        <div class="action-btn" onclick="openUpgrades()" style="border-color: var(--neon-blue); color: var(--neon-blue);"><i class="fas fa-tools"></i></div>
+        <div class="action-btn" onclick="returnToStation()" style="border-color: var(--neon-red); color: var(--neon-red);"><i class="fas fa-home"></i></div>
+    </div>
+
+    <script>
+        let ore = 0;
+
+        function mineOre() {
+            // โค้ดส่วนขุดแร่
+            ore += 1;
+            document.getElementById('ore-count').innerText = ore;
+            // เพิ่มเอฟเฟกต์สั่นหรือเสียงตรงนี้
+        }
+
+        function openUpgrades() {
+            alert("ไปที่ Hub เพื่ออัปเดตเครื่องยนต์และเลเซอร์ขุดเจาะ");
+        }
+
+        function returnToStation() {
+            if(confirm("ต้องการกลับไปที่ GedGo Station เพื่อขายแร่ใช่หรือไม่?")) {
+                location.href = 'gedgozonegame.html';
+            }
+        }
+
+        // เริ่มต้นวาดฉากหลัง หรือ แผนที่หกเหลี่ยม
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // ฟังก์ชันวาดรูปยานเบื้องต้น (เดี๋ยวพี่ค่อยเอา Sprite มาใส่)
+        function drawShip() {
+            ctx.fillStyle = "#00d2ff";
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/2, canvas.height/2 - 20);
+            ctx.lineTo(canvas.width/2 - 15, canvas.height/2 + 15);
+            ctx.lineTo(canvas.width/2 + 15, canvas.height/2 + 15);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        drawShip();
+    </script>
+</body>
+</html>
