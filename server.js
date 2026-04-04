@@ -1255,6 +1255,95 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
 });
 
 
+//========API GAME
+// ==========================================
+// --- Void Expedition: Game API Section ---
+// ==========================================
+
+// 1. API สำหรับดึงข้อมูลทรัพยากรล่าสุด (ใช้ตอนเข้าหน้าเกม)
+app.get('/api/game/stats/:username', async (req, res) => {
+    const { username } = req.params;
+    try {
+        const user = await usersCollection.findOne({ username: username });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // ถ้ายังไม่มีฟิลด์เกม ให้กำหนดค่าเริ่มต้น
+        const gameData = {
+            metal: user.metal ?? 500,
+            energy: user.energy ?? 100,
+            drillLevel: user.drillLevel ?? 1
+        };
+
+        res.json(gameData);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. API สำหรับการขุดแร่ (Mining)
+app.post('/api/mine', async (req, res) => {
+    const { username, drillLevel } = req.body;
+
+    try {
+        const user = await usersCollection.findOne({ username: username });
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        // ตั้งค่าตัวเลข (Business Logic)
+        const currentEnergy = user.energy ?? 100;
+        const currentMetal = user.metal ?? 500;
+        const energyCost = 10;
+        const minedAmount = 50 * (drillLevel || 1);
+
+        if (currentEnergy >= energyCost) {
+            // อัปเดตลง MongoDB โดยใช้ $inc เพื่อความแม่นยำ (ป้องกัน Race Condition)
+            const result = await usersCollection.updateOne(
+                { username: username },
+                { 
+                    $inc: { metal: minedAmount, energy: -energyCost },
+                    $set: { lastMiningUpdate: new Date() }
+                }
+            );
+
+            // ดึงค่าใหม่ส่งกลับไปอัปเดตหน้าจอ
+            const updatedUser = await usersCollection.findOne({ username: username });
+            
+            res.json({
+                success: true,
+                metal: updatedUser.metal,
+                energy: updatedUser.energy,
+                mined: minedAmount
+            });
+        } else {
+            res.status(400).json({ success: false, message: "Energy Low" });
+        }
+    } catch (e) {
+        console.error("Game API Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 3. ระบบฟื้นฟูพลังงานอัตโนมัติ (Energy Regeneration)
+// ใส่ไว้ใน Task ที่รันทุกๆ 5 นาที หรือใช้ระบบคำนวณเวลาตอน Login ก็ได้
+setInterval(async () => {
+    try {
+        // เพิ่ม Energy ให้ทุกคน 5 หน่วย แต่ไม่เกิน 100
+        await usersCollection.updateMany(
+            { energy: { $lt: 100 } },
+            { $inc: { energy: 5 } }
+        );
+        // ป้องกันค่าเกิน 100
+        await usersCollection.updateMany(
+            { energy: { $gt: 100 } },
+            { $set: { energy: 100 } }
+        );
+    } catch (e) {
+        console.error("Energy Regen Error:", e);
+    }
+}, 1000 * 60 * 5); // รันทุก 5 นาที
+
+
+
+
 
 // ==========================================
 // Helper Functions for MongoDB

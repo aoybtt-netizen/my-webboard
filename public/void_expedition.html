@@ -9,6 +9,7 @@
         :root {
             --neon-blue: #00d2ff;
             --neon-green: #38ef7d;
+            --neon-red: #ff4b2b;
             --glass: rgba(15, 25, 35, 0.85);
         }
 
@@ -21,213 +22,118 @@
             color: white;
         }
 
-        /* --- พื้นหลังสถานีอวกาศ --- */
+        /* --- View Management --- */
+        .view { display: none; width: 100%; height: 100%; position: fixed; top: 0; left: 0; }
+        .view.active { display: block; }
+
+        /* --- Map View Style --- */
         #game-background {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('/images/station_bg.png'); 
-            background-size: cover;
-            background-position: center;
-            z-index: 1;
-            transition: filter 0.6s ease, transform 0.6s ease;
-        }
-
-        .bg-dimmed {
-            filter: brightness(0.2) blur(3px);
-            transform: scale(1.05);
-        }
-
-        /* --- Canvas สำหรับ Hex Grid --- */
-        #hex-canvas {
-            position: fixed;
-            top: 0; left: 0;
-            z-index: 5;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-
-        /* --- HUD ด้านบน --- */
-        .hud-top {
-            position: fixed; top: calc(10px + env(safe-area-inset-top));
-            left: 10px; right: 10px; display: flex; gap: 10px; z-index: 100;
-        }
-        .res-item { 
-            background: var(--glass); padding: 5px 15px; 
-            border-radius: 5px; backdrop-filter: blur(5px); 
-            border-left: 3px solid var(--neon-blue); font-size: 0.8rem; 
-        }
-
-        /* --- ปุ่มนำทางด้านล่าง --- */
-        .bottom-nav {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 15px; z-index: 1000;
-        }
-        .nav-btn {
-            width: 65px; height: 65px; background: var(--glass); border: 1px solid var(--neon-blue);
-            border-radius: 12px; color: var(--neon-blue); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; font-size: 0.7rem; gap: 5px;
-            backdrop-filter: blur(10px);
-        }
-        .nav-btn.active {
-            border-color: var(--neon-green);
-            color: var(--neon-green);
-            box-shadow: 0 0 15px rgba(56, 239, 125, 0.4);
-        }
-
-        /* --- UI Overlay & Glass Panel --- */
-        .menu-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);
-            display: none; z-index: 2000; align-items: center; justify-content: center;
+            background-image: url('/images/station_bg.png'); 
+            background-size: cover; background-position: center;
+            z-index: 1; transition: filter 0.6s ease;
+        }
+        .bg-dimmed { filter: brightness(0.2) blur(3px); }
+
+        #hex-canvas {
+            position: fixed; top: 0; left: 0; z-index: 5;
+            pointer-events: auto; /* เปิดให้คลิกบน Canvas ได้ */
+            opacity: 0; transition: opacity 0.4s ease;
         }
 
-        .glass-panel {
-            background: var(--glass); border: 1px solid var(--neon-blue);
-            border-radius: 20px; width: 85%; max-width: 450px; padding: 20px;
-            box-shadow: 0 0 30px rgba(0, 210, 255, 0.3); color: white;
-            overflow: hidden;
+        /* --- Mining View Style --- */
+        #mining-view {
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            z-index: 3000; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        .panel-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px; border-bottom: 1px solid rgba(0, 210, 255, 0.2);
-            padding-bottom: 10px;
+        .asteroid-display {
+            width: 250px; height: 250px;
+            background: url('/images/asteroid_target.png') no-repeat center; /* พี่ต้องมีรูปอุกกาบาตอันนี้ */
+            background-size: contain;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 20px rgba(0,210,255,0.2));
+            animation: float 4s ease-in-out infinite;
         }
 
-        .btn-close { font-size: 1.5rem; cursor: pointer; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
 
-        /* --- ส่วนแสดงภาพยาน --- */
-        .ship-display-container {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 10px;
+        .progress-container {
+            width: 80%; max-width: 400px; height: 12px;
+            background: rgba(255,255,255,0.1); border-radius: 6px;
+            border: 1px solid var(--neon-blue); overflow: hidden;
         }
-        .ship-display-container img {
-            max-width: 90%;
-            max-height: 150px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+        .progress-bar { width: 0%; height: 100%; background: var(--neon-blue); transition: width 0.1s linear; }
+
+        /* --- Alert System --- */
+        #alert-overlay {
+            position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 75, 43, 0.9); padding: 15px 30px;
+            border-radius: 10px; border: 2px solid white;
+            z-index: 4000; display: none; font-weight: bold;
+            box-shadow: 0 0 20px var(--neon-red);
+            animation: blink 0.5s infinite;
         }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        /* --- Ship Module Grid Layout --- */
-        .ship-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px; margin-top: 15px;
-        }
+        /* --- HUD & UI --- */
+        .hud-top { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
+        .res-item { background: var(--glass); padding: 5px 15px; border-radius: 5px; border-left: 3px solid var(--neon-blue); font-size: 0.8rem; }
+        
+        .bottom-nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 1000; }
+        .nav-btn { width: 65px; height: 65px; background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 12px; color: var(--neon-blue); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+        .nav-btn.active { border-color: var(--neon-green); color: var(--neon-green); }
 
-        .module-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(0, 210, 255, 0.2);
-            border-radius: 12px; padding: 15px;
-            display: flex; flex-direction: column; align-items: center;
-            text-align: center; transition: 0.3s; position: relative; overflow: hidden;
-        }
-
-        .module-installed { border-color: var(--neon-blue); background: rgba(0, 210, 255, 0.05); }
-        .module-installed i { color: var(--neon-blue); margin-bottom: 8px; filter: drop-shadow(0 0 5px var(--neon-blue)); }
-
-        .module-empty { border: 1px dashed #444; background: rgba(0, 0, 0, 0.3); cursor: pointer; }
-        .module-empty:hover { border-color: var(--neon-green); background: rgba(56, 239, 125, 0.05); }
-        .module-empty i { color: #555; margin-bottom: 8px; }
-
-        .module-title { font-size: 0.8rem; font-weight: bold; margin-bottom: 4px; }
-        .module-desc { font-size: 0.65rem; opacity: 0.6; line-height: 1.2; }
-
-        .module-tag {
-            position: absolute; top: 0; right: 0;
-            background: var(--neon-blue); color: #000;
-            font-size: 0.5rem; padding: 2px 6px; font-weight: bold; border-bottom-left-radius: 5px;
-        }
+        /* --- Ship Menu --- */
+        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        .glass-panel { background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 20px; width: 85%; max-width: 450px; padding: 20px; }
+        .ship-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .module-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(0,210,255,0.2); }
     </style>
 </head>
-<body onclick="handleGlobalClick(event)">
+<body>
 
-    <div id="game-background"></div>
-    <canvas id="hex-canvas"></canvas>
+    <div id="alert-overlay">⚠️ WARNING: VOID PARASITE DETECTED!</div>
 
-    <div class="hud-top">
-        <div class="res-item"><i class="fas fa-cube"></i> METAL: 500</div>
-        <div class="res-item" style="border-color: var(--neon-green);"><i class="fas fa-bolt"></i> ENERGY: 100%</div>
-    </div>
-
-    <div class="bottom-nav">
-        <div class="nav-btn" id="btn-ship" onclick="openMenu('ship-menu', event)">
-            <i class="fas fa-rocket"></i><span>ยาน</span>
+    <div id="view-map" class="view active">
+        <div id="game-background"></div>
+        <canvas id="hex-canvas"></canvas>
+        
+        <div class="hud-top">
+            <div class="res-item">METAL: <span id="val-metal">500</span></div>
+            <div class="res-item">ENERGY: <span id="val-energy">100%</span></div>
         </div>
-        <div class="nav-btn" id="btn-map" onclick="toggleMapMode(event)">
-            <i class="fas fa-map-marked-alt"></i><span>แผนที่</span>
-        </div>
-        <div class="nav-btn" style="border-color: #666; color: #666;">
-            <i class="fas fa-lock"></i><span>ล็อค</span>
+
+        <div class="bottom-nav">
+            <div class="nav-btn" onclick="openMenu('ship-menu')"><i class="fas fa-rocket"></i><span>ยาน</span></div>
+            <div class="nav-btn" id="btn-map" onclick="toggleMapMode()"><i class="fas fa-map-marked-alt"></i><span>แผนที่</span></div>
         </div>
     </div>
 
-    <div id="ship-menu" class="menu-overlay" onclick="checkClose(event)">
+    <div id="view-mining" class="view">
+        <div style="text-align: center;">
+            <h2 id="mining-status">EXTRACTING RESOURCES...</h2>
+            <div class="asteroid-display"></div>
+            <div class="progress-container">
+                <div id="mining-bar" class="progress-bar"></div>
+            </div>
+            <p style="margin-top: 20px; opacity: 0.7;">Mining Level: 1.0x</p>
+            <button onclick="exitMining()" style="margin-top: 30px; background: transparent; color: var(--neon-red); border: 1px solid var(--neon-red); padding: 10px 20px; border-radius: 5px;">ABORT MISSION</button>
+        </div>
+    </div>
+
+    <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
         <div class="glass-panel">
-            <div class="panel-header">
-                <h3><i class="fas fa-satellite-dish"></i> การสำรวจ GedGo-X1</h3>
-                <i class="fas fa-times btn-close" onclick="closeMenus()"></i>
-            </div>
-
-            <div class="ship-display-container">
-                <img src="/images/ship.png" alt="GedGo-X1 Exploration Ship" />
-                <div style="font-size:0.8rem; margin-top: 5px;">ยานสำรวจรุ่นเริ่มต้น: <span style="color:var(--neon-blue)">GedGo-X1</span></div>
-            </div>
-
-            <div style="text-align: center; margin-bottom: 15px;">
-                <small style="opacity: 0.7;">ผังบล็อกโมดูลยาน v.1.0</small>
-            </div>
-
+            <div style="text-align:center"><img src="/images/ship.png" style="width: 150px; margin-bottom: 10px;"></div>
+            <h3>SHIP MODULAR SYSTEM</h3>
             <div class="ship-grid">
-                <div class="module-card module-installed">
-                    <div class="module-tag">STORAGE</div>
-                    <i class="fas fa-boxes fa-2x"></i>
-                    <div class="module-title">คลังเก็บแร่</div>
-                    <div class="module-desc">ความจุ: 100 หน่วย<br>เลเวล: 1</div>
-                </div>
-
-                <div class="module-card module-installed">
-                    <div class="module-tag">ENGINE</div>
-                    <i class="fas fa-propeller fa-2x"></i>
-                    <div class="module-title">เครื่องยนต์ไอพ่น</div>
-                    <div class="module-desc">ความเร็ว: 15.0 LY/h<br>เลเวล: 1</div>
-                </div>
-
-                <div class="module-card module-installed">
-                    <div class="module-tag" style="background:var(--neon-green)">MINING</div>
-                    <i class="fas fa-tools fa-2x" style="color:var(--neon-green)"></i>
-                    <div class="module-title">หัวเจาะเลเซอร์</div>
-                    <div class="module-desc">อัตราขุด: 5.0/min<br>เลเวล: 1</div>
-                </div>
-
-                <div class="module-card module-installed">
-                    <div class="module-tag" style="background:#ffc107">POWER</div>
-                    <i class="fas fa-atom fa-2x" style="color:#ffc107"></i>
-                    <div class="module-title">เตาปฏิกรณ์</div>
-                    <div class="module-desc">จ่ายไฟ: 25.0 kW<br>เลเวล: 1</div>
-                </div>
-
-                <div class="module-card module-empty" onclick="alert('ไปที่ร้านค้าเพื่อซื้อโมดูลใหม่')">
-                    <i class="fas fa-plus-circle fa-2x"></i>
-                    <div class="module-title">ช่องว่าง</div>
-                    <div class="module-desc">คลิกเพื่อติดตั้ง</div>
-                </div>
-
-                <div class="module-card module-empty" onclick="alert('ไปที่ร้านค้าเพื่อซื้อโมดูลใหม่')">
-                    <i class="fas fa-plus-circle fa-2x"></i>
-                    <div class="module-title">ช่องว่าง</div>
-                    <div class="module-desc">คลิกเพื่อติดตั้ง</div>
-                </div>
+                <div class="module-card"><b>STORAGE</b><br><small>Level 1</small></div>
+                <div class="module-card"><b>ENGINE</b><br><small>Level 1</small></div>
+                <div class="module-card"><b>DRILL</b><br><small>Level 1</small></div>
+                <div class="module-card"><b>POWER</b><br><small>Level 1</small></div>
+                <div class="module-card" style="border-style: dashed;">EMPTY</div>
+                <div class="module-card" style="border-style: dashed;">EMPTY</div>
             </div>
-
-            <button style="width:100%; margin-top:20px; background:transparent; border:1px solid var(--neon-blue); color:var(--neon-blue); padding:10px; border-radius:10px; cursor:pointer;" onclick="alert('ระบบอัปเกรดจะปลดล็อคในเลเวลถัดไป')">
-                <i class="fas fa-arrow-up"></i> อัปเกรดสถานีวิจัย
-            </button>
         </div>
     </div>
 
@@ -236,104 +142,124 @@
         const ctx = canvas.getContext('2d');
         const bg = document.getElementById('game-background');
         const mapBtn = document.getElementById('btn-map');
-        
+
         let mapActive = false;
+        let isMining = false;
 
-        // --- ระบบวาดหกเหลี่ยม ---
-        function drawHex(x, y, radius, color, lineWidth, fill = false) {
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = lineWidth;
-            for (let i = 0; i < 6; i++) {
-                ctx.lineTo(x + radius * Math.cos(i * Math.PI / 3), y + radius * Math.sin(i * Math.PI / 3));
-            }
-            ctx.closePath();
-            if (fill) {
-                ctx.fillStyle = 'rgba(56, 239, 125, 0.1)';
-                ctx.fill();
-            }
-            ctx.stroke();
-        }
-
+        // --- ระบบวาด Hex Grid ---
         function renderGrid() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            const hexRadius = 40; 
-            const gridAreaRadius = 200; 
-            
+            const hexRadius = 40;
+            const gridAreaRadius = 200;
             const h = hexRadius * Math.sqrt(3);
             const w = hexRadius * 1.5;
 
-            for (let x = centerX - gridAreaRadius - w; x < centerX + gridAreaRadius + w; x += w) {
-                for (let y = centerY - gridAreaRadius - h; y < centerY + gridAreaRadius + h; y += h) {
-                    const column = Math.round((x - centerX) / w);
-                    const yPos = y + (Math.abs(column) % 2 === 1 ? h / 2 : 0);
-                    const xPos = x;
-                    const dist = Math.sqrt(Math.pow(xPos - centerX, 2) + Math.pow(yPos - centerY, 2));
-                    const isCenter = dist < 5;
-
+            for (let x = centerX - 250; x < centerX + 250; x += w) {
+                for (let y = centerY - 250; y < centerY + 250; y += h) {
+                    const col = Math.round((x - centerX) / w);
+                    const yPos = y + (Math.abs(col) % 2 === 1 ? h / 2 : 0);
+                    const dist = Math.sqrt((x - centerX)**2 + (yPos - centerY)**2);
                     if (dist < gridAreaRadius) {
-                        if (isCenter) {
-                            drawHex(xPos, yPos, hexRadius - 2, '#38ef7d', 3, true);
-                            ctx.setLineDash([5, 5]);
-                            drawHex(xPos, yPos, hexRadius + 5, 'rgba(56, 239, 125, 0.5)', 1);
-                            ctx.setLineDash([]);
-                        } else {
-                            drawHex(xPos, yPos, hexRadius - 2, 'rgba(0, 210, 255, 0.6)', 1);
+                        ctx.beginPath();
+                        ctx.strokeStyle = (dist < 10) ? '#38ef7d' : 'rgba(0, 210, 255, 0.4)';
+                        ctx.lineWidth = (dist < 10) ? 3 : 1;
+                        for (let i = 0; i < 6; i++) {
+                            ctx.lineTo(x + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
                         }
+                        ctx.closePath();
+                        ctx.stroke();
                     }
                 }
             }
         }
 
-        // --- ระบบเมนู ---
-        function openMenu(id, e) {
-            if(e) e.stopPropagation();
-            exitMapMode(); 
-            document.getElementById(id).style.display = 'flex';
-        }
-
-        function closeMenus() {
-            document.querySelectorAll('.menu-overlay').forEach(m => m.style.display = 'none');
-        }
-
-        function checkClose(e) {
-            if (e.target.classList.contains('menu-overlay')) closeMenus();
-        }
-
-        // --- ระบบแผนที่ ---
-        function toggleMapMode(e) {
-            e.stopPropagation();
+        // --- ระบบสลับ View ---
+        function toggleMapMode() {
             mapActive = !mapActive;
-            if (mapActive) {
-                closeMenus(); 
-                bg.classList.add('bg-dimmed');
-                canvas.style.opacity = "1";
-                mapBtn.classList.add('active');
-                renderGrid();
-            } else {
-                exitMapMode();
-            }
+            bg.classList.toggle('bg-dimmed', mapActive);
+            canvas.style.opacity = mapActive ? "1" : "0";
+            mapBtn.classList.toggle('active', mapActive);
+            if(mapActive) renderGrid();
         }
 
-        function exitMapMode() {
+        // คลิกที่ช่อง Hex (จำลองการเลือกจุดขุด)
+        canvas.onclick = (e) => {
+            if(!mapActive) return;
+            // ในอนาคตจะเช็คพิกัด แต่ตอนนี้จิ้มตรงไหนก็ได้ขุดครับ
+            startMiningSequence();
+        };
+
+        // --- ระบบขุดแร่ (Mining Logic) ---
+        function startMiningSequence() {
             mapActive = false;
-            bg.classList.remove('bg-dimmed');
-            canvas.style.opacity = "0";
-            mapBtn.classList.remove('active');
+            exitMapMode();
+            document.getElementById('view-map').classList.remove('active');
+            document.getElementById('view-mining').classList.add('active');
+            document.getElementById('view-mining').style.display = 'flex';
+            
+            isMining = true;
+            let progress = 0;
+            const bar = document.getElementById('mining-bar');
+
+            let mineTimer = setInterval(() => {
+                if(!isMining) { clearInterval(mineTimer); return; }
+                
+                progress += 1;
+                bar.style.width = progress + "%";
+
+                // สุ่มศัตรูโผล่ที่ 40%
+                if(progress === 40 && Math.random() > 0.5) {
+                    showThreatAlert();
+                }
+
+                if(progress >= 100) {
+                    clearInterval(mineTimer);
+                    sendMiningData();
+                }
+            }, 50); // ความเร็วในการขุด
         }
 
-        function handleGlobalClick(e) {
-            if (mapActive && !e.target.closest('.nav-btn')) {
-                exitMapMode();
+        function showThreatAlert() {
+            const alertUI = document.getElementById('alert-overlay');
+            alertUI.style.display = 'block';
+            setTimeout(() => { alertUI.style.display = 'none'; }, 3000);
+        }
+
+        async function sendMiningData() {
+            // ส่งไปหา Server (Railway)
+            try {
+                const res = await fetch('/api/mine', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: 'gedgo_user_1', drillLevel: 1 })
+                });
+                const data = await res.json();
+                document.getElementById('val-metal').innerText = data.metal;
+                document.getElementById('val-energy').innerText = data.energy + "%";
+                alert("Extraction Complete! Metal Received.");
+                exitMining();
+            } catch(e) {
+                alert("Server Connection Failed!");
+                exitMining();
             }
         }
 
-        window.addEventListener('resize', () => { if(mapActive) renderGrid(); });
+        function exitMining() {
+            isMining = false;
+            document.getElementById('view-mining').classList.remove('active');
+            document.getElementById('view-mining').style.display = 'none';
+            document.getElementById('view-map').classList.add('active');
+            document.getElementById('mining-bar').style.width = "0%";
+        }
+
+        function openMenu(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeMenus(e) { if(e.target.className === 'menu-overlay') e.target.style.display = 'none'; }
+        function exitMapMode() { bg.classList.remove('bg-dimmed'); canvas.style.opacity = "0"; mapBtn.classList.remove('active'); }
+
     </script>
 </body>
 </html>
