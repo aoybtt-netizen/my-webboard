@@ -26,470 +26,272 @@
         .view { display: none; width: 100%; height: 100%; position: fixed; top: 0; left: 0; }
         .view.active { display: block; }
 
-        /* --- Map View Style --- */
-        #game-background {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('/images/station_bg.png'); 
-            background-size: cover; background-position: center;
-            z-index: 1; transition: filter 0.6s ease;
+        /* --- Auth View Style --- */
+        #view-auth {
+            background: radial-gradient(circle, #001a33 0%, #000 100%);
+            z-index: 5000;
+            display: none;
+            align-items: center; justify-content: center;
         }
+        #view-auth.active { display: flex; }
+
+        .auth-input {
+            width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px;
+            border: 1px solid rgba(0, 210, 255, 0.3); background: rgba(0,0,0,0.6);
+            color: white; box-sizing: border-box; outline: none;
+        }
+        .auth-btn {
+            width: 100%; padding: 12px; border-radius: 8px; border: none;
+            background: var(--neon-blue); color: #000; font-weight: bold;
+            cursor: pointer; transition: 0.3s;
+        }
+
+        /* --- UI Overlay (Modals) --- */
+        .menu-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); 
+            z-index: 4000; display: none; align-items: center; justify-content: center; 
+        }
+        .glass-panel { 
+            background: var(--glass); border: 1px solid var(--neon-blue); 
+            border-radius: 20px; width: 85%; max-width: 400px; padding: 30px; 
+            text-align: center; box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+        }
+
+        /* --- Game Styles --- */
+        #game-background { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('/images/station_bg.png'); background-size: cover; background-position: center; z-index: 1; transition: filter 0.6s ease; }
         .bg-dimmed { filter: brightness(0.2) blur(3px); }
-
-        #hex-canvas {
-            position: fixed; top: 0; left: 0; z-index: 5;
-            pointer-events: auto; /* เปิดให้คลิกบน Canvas ได้ */
-            opacity: 0; transition: opacity 0.4s ease;
-        }
-
-        /* --- Mining View Style --- */
-        #mining-view {
-            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-            z-index: 3000; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        .asteroid-display {
-            width: 250px; height: 250px;
-            background: url('/images/asteroid_target.png') no-repeat center; /* พี่ต้องมีรูปอุกกาบาตอันนี้ */
-            background-size: contain;
-            margin-bottom: 30px;
-            filter: drop-shadow(0 0 20px rgba(0,210,255,0.2));
-            animation: float 4s ease-in-out infinite;
-        }
-
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
-
-        .progress-container {
-            width: 80%; max-width: 400px; height: 12px;
-            background: rgba(255,255,255,0.1); border-radius: 6px;
-            border: 1px solid var(--neon-blue); overflow: hidden;
-        }
-        .progress-bar { width: 0%; height: 100%; background: var(--neon-blue); transition: width 0.1s linear; }
-
-        /* --- Alert System --- */
-        #alert-overlay {
-            position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 75, 43, 0.9); padding: 15px 30px;
-            border-radius: 10px; border: 2px solid white;
-            z-index: 4000; display: none; font-weight: bold;
-            box-shadow: 0 0 20px var(--neon-red);
-            animation: blink 0.5s infinite;
-        }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-        /* --- HUD & UI --- */
+        #hex-canvas { position: fixed; top: 0; left: 0; z-index: 5; opacity: 0; transition: opacity 0.4s ease; pointer-events: auto; }
         .hud-top { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
-        .res-item { background: var(--glass); padding: 5px 15px; border-radius: 5px; border-left: 3px solid var(--neon-blue); font-size: 0.8rem; }
-        
+        .res-item { background: var(--glass); padding: 5px 15px; border-radius: 5px; border-left: 3px solid var(--neon-blue); font-size: 0.8rem; backdrop-filter: blur(5px); }
         .bottom-nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 1000; }
-        .nav-btn { width: 65px; height: 65px; background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 12px; color: var(--neon-blue); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        .nav-btn.active { border-color: var(--neon-green); color: var(--neon-green); }
-
-        /* --- Ship Menu --- */
-        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; }
-        .glass-panel { background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 20px; width: 85%; max-width: 450px; padding: 20px; }
-        .ship-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .module-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(0,210,255,0.2); }
-		
-		
-		
-		.auth-input {
-    width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px;
-    border: 1px solid rgba(0, 210, 255, 0.3); background: rgba(0,0,0,0.6);
-    color: white; box-sizing: border-box; outline: none;
-}
-.auth-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
-
-.auth-btn {
-    width: 100%; padding: 12px; border-radius: 8px; border: none;
-    background: var(--neon-blue); color: #000; font-weight: bold;
-    cursor: pointer; transition: 0.3s;
-}
-.auth-btn:hover { transform: scale(1.02); filter: brightness(1.2); }
-
-
+        .nav-btn { width: 65px; height: 65px; background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 12px; color: var(--neon-blue); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; }
+        
+        /* Mining View */
+        #view-mining { z-index: 3000; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .progress-container { width: 80%; max-width: 400px; height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; border: 1px solid var(--neon-blue); overflow: hidden; margin: 20px 0; }
+        .progress-bar { width: 0%; height: 100%; background: var(--neon-blue); transition: width 0.1s linear; }
     </style>
 </head>
 <body>
 
-	<div id="view-auth" class="view" style="z-index: 5000; background: radial-gradient(circle, #001a33 0%, #000 100%);">
-    <div class="glass-panel" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <div id="login-form">
-            <h2 style="color:var(--neon-blue); text-align:center;"><i class="fas fa-key"></i> ACCESS GRANTED</h2>
-            <p style="text-align:center; font-size:0.8rem; opacity:0.7;">กรุณาระบุรหัสผ่านเพื่อเข้าสู่ระบบ GedGoZone</p>
-            <input type="text" id="login-user" placeholder="ชื่อผู้ใช้ (Username)" class="auth-input">
-            <input type="password" id="login-pass" placeholder="รหัสผ่าน" class="auth-input">
-            <button onclick="handleLogin()" class="auth-btn">เข้าสู่ระบบ</button>
-            <p style="text-align:center; font-size:0.8rem; margin-top:15px;">ยังไม่มีบัญชี? <a href="#" onclick="toggleAuth('register')" style="color:var(--neon-green)">สมัครสมาชิกใหม่</a></p>
-        </div>
-
-        <div id="register-form" style="display:none;">
-            <h2 style="color:var(--neon-green); text-align:center;"><i class="fas fa-user-plus"></i> NEW ENLISTMENT</h2>
-            <p style="text-align:center; font-size:0.8rem; opacity:0.7;">ลงทะเบียนนักบินใหม่ของ GedGoZone</p>
-            <input type="text" id="reg-user" placeholder="เลือกชื่อผู้ใช้" class="auth-input">
-            <input type="password" id="reg-pass" placeholder="ตั้งรหัสผ่าน" class="auth-input">
-            <button onclick="handleRegister()" class="auth-btn" style="background:var(--neon-green)">สมัครสมาชิก</button>
-            <p style="text-align:center; font-size:0.8rem; margin-top:15px;">เป็นสมาชิกอยู่แล้ว? <a href="#" onclick="toggleAuth('login')" style="color:var(--neon-blue)">กลับไปหน้าล็อคอิน</a></p>
+    <div id="view-auth" class="view">
+        <div class="glass-panel">
+            <div id="login-form">
+                <h2 style="color:var(--neon-blue)"><i class="fas fa-terminal"></i> LOGIN</h2>
+                <input type="text" id="login-user" placeholder="ชื่อผู้ใช้" class="auth-input">
+                <input type="password" id="login-pass" placeholder="รหัสผ่าน" class="auth-input">
+                <button onclick="handleLogin()" class="auth-btn">เข้าสู่ระบบภารกิจ</button>
+                <p style="font-size:0.8rem; margin-top:15px;">ยังไม่ได้รับอนุญาต? <a href="#" onclick="toggleAuth('register')" style="color:var(--neon-green)">ลงทะเบียนใหม่</a></p>
+            </div>
+            <div id="register-form" style="display:none;">
+                <h2 style="color:var(--neon-green)"><i class="fas fa-user-plus"></i> REGISTER</h2>
+                <input type="text" id="reg-user" placeholder="ตั้งชื่อผู้ใช้" class="auth-input">
+                <input type="password" id="reg-pass" placeholder="ตั้งรหัสผ่าน" class="auth-input">
+                <button onclick="handleRegister()" class="auth-btn" style="background:var(--neon-green)">สมัครสมาชิก</button>
+                <p style="font-size:0.8rem; margin-top:15px;">มีรหัสผ่านแล้ว? <a href="#" onclick="toggleAuth('login')" style="color:var(--neon-blue)">กลับไปหน้าล็อคอิน</a></p>
+            </div>
         </div>
     </div>
-</div>
 
+    <div id="nickname-modal" class="menu-overlay">
+        <div class="glass-panel">
+            <h2 style="color:var(--neon-blue)">รหัสเรียกขานนักบิน</h2>
+            <p style="font-size: 0.8rem; opacity: 0.7;">กรุณาตั้งชื่อที่ใช้เรียกในภารกิจ Void Expedition</p>
+            <input type="text" id="input-nickname" placeholder="ชื่อในเกม..." class="auth-input" style="text-align: center;">
+            <button onclick="saveGameNickname()" class="auth-btn">ยืนยัน</button>
+        </div>
+    </div>
 
-    <div id="alert-overlay">⚠️ WARNING: VOID PARASITE DETECTED!</div>
-
-    <div id="view-map" class="view active">
+    <div id="view-map" class="view">
         <div id="game-background"></div>
         <canvas id="hex-canvas"></canvas>
-        
         <div class="hud-top">
-            <div class="res-item">METAL: <span id="val-metal">500</span></div>
-            <div class="res-item">ENERGY: <span id="val-energy">100%</span></div>
+            <div class="res-item" style="border-color: var(--neon-green);">
+                <i class="fas fa-user-astronaut"></i> <span id="display-nickname">PILOT</span>
+            </div>
+            <div class="res-item">METAL: <span id="val-metal">0</span></div>
+            <div class="res-item">ENERGY: <span id="val-energy">0%</span></div>
         </div>
-
         <div class="bottom-nav">
             <div class="nav-btn" onclick="openMenu('ship-menu')"><i class="fas fa-rocket"></i><span>ยาน</span></div>
             <div class="nav-btn" id="btn-map" onclick="toggleMapMode()"><i class="fas fa-map-marked-alt"></i><span>แผนที่</span></div>
+            <div class="nav-btn" onclick="handleLogout()" style="border-color:var(--neon-red); color:var(--neon-red);"><i class="fas fa-power-off"></i><span>ออก</span></div>
         </div>
     </div>
 
     <div id="view-mining" class="view">
-        <div style="text-align: center;">
-            <h2 id="mining-status">EXTRACTING RESOURCES...</h2>
-            <div class="asteroid-display"></div>
-            <div class="progress-container">
-                <div id="mining-bar" class="progress-bar"></div>
-            </div>
-            <p style="margin-top: 20px; opacity: 0.7;">Mining Level: 1.0x</p>
-            <button onclick="exitMining()" style="margin-top: 30px; background: transparent; color: var(--neon-red); border: 1px solid var(--neon-red); padding: 10px 20px; border-radius: 5px;">ABORT MISSION</button>
-        </div>
+        <h2 id="mining-status">EXTRACTING...</h2>
+        <div class="progress-container"><div id="mining-bar" class="progress-bar"></div></div>
+        <button onclick="exitMining()" style="background:transparent; border:1px solid var(--neon-red); color:var(--neon-red); padding:10px 20px; border-radius:8px;">ABORT</button>
     </div>
 
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
         <div class="glass-panel">
-            <div style="text-align:center"><img src="/images/ship.png" style="width: 150px; margin-bottom: 10px;"></div>
-            <h3>SHIP MODULAR SYSTEM</h3>
-            <div class="ship-grid">
-                <div class="module-card"><b>STORAGE</b><br><small>Level 1</small></div>
-                <div class="module-card"><b>ENGINE</b><br><small>Level 1</small></div>
-                <div class="module-card"><b>DRILL</b><br><small>Level 1</small></div>
-                <div class="module-card"><b>POWER</b><br><small>Level 1</small></div>
-                <div class="module-card" style="border-style: dashed;">EMPTY</div>
-                <div class="module-card" style="border-style: dashed;">EMPTY</div>
+            <h3>MODULAR SYSTEM</h3>
+            <div id="module-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px;">
+                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">STORAGE</div>
+                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">ENGINE</div>
+                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">DRILL</div>
+                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">POWER</div>
             </div>
         </div>
     </div>
-	
-	
-	<div id="nickname-modal" class="menu-overlay" style="display: none; z-index: 9999;">
-    <div class="glass-panel" style="text-align: center;">
-        <h3><i class="fas fa-id-badge"></i> ยินดีต้อนรับนักบินใหม่</h3>
-        <p>กรุณาระบุชื่อเรียกขาน (Callsign) ของคุณในภารกิจนี้</p>
-        <input type="text" id="input-nickname" placeholder="ระบุชื่อในเกมของคุณ..." 
-            style="width: 80%; padding: 12px; border-radius: 8px; border: 1px solid var(--neon-blue); background: rgba(0,0,0,0.5); color: white; margin-bottom: 20px; text-align: center;">
-        <button onclick="saveGameNickname()" class="nav-btn" style="width: 100%; height: 50px; flex-direction: row; gap: 10px;">
-            <i class="fas fa-check"></i> ยืนยันชื่อ
-        </button>
-    </div>
-</div>
-
 
     <script>
-		
-		const currentUser = localStorage.getItem('username');
-		const userToken = localStorage.getItem('token');
-		if (!currentUser || !userToken) {
-					alert("กรุณาเข้าสู่ระบบ GedGoZone ก่อนเข้าเล่นเกมครับ");
-					window.location.href = "index.html"; // กลับไปหน้า Login
-				}
-
         const canvas = document.getElementById('hex-canvas');
         const ctx = canvas.getContext('2d');
         const bg = document.getElementById('game-background');
-        const mapBtn = document.getElementById('btn-map');
-
-		let gameNickname = "";
+        
+        let currentUser = localStorage.getItem('username');
         let mapActive = false;
         let isMining = false;
-		
-		
-	async function checkGameProfile() {
-    try {
-        // ดึงข้อมูล Profile เกมจาก Server
-        const res = await fetch(`/api/game/stats/${currentUser}`);
-        const data = await res.json();
 
-        if (!data.gameNickname) {
-            // 🚩 ถ้ายังไม่มีชื่อในเกม ให้แสดง Modal ตั้งชื่อ
-            document.getElementById('nickname-modal').style.display = 'flex';
-        } else {
-            gameNickname = data.gameNickname;
-            updateGameUI();
+        // --- ระบบ Auth ---
+        function toggleAuth(mode) {
+            document.getElementById('login-form').style.display = (mode === 'login') ? 'block' : 'none';
+            document.getElementById('register-form').style.display = (mode === 'register') ? 'block' : 'none';
         }
-    } catch (e) {
-        console.error("Profile Load Error:", e);
-    }
-}
 
-async function saveGameNickname() {
-    const name = document.getElementById('input-nickname').value.trim();
-    if (!name) return alert("กรุณาระบุชื่อก่อนครับ");
-
-    try {
-        const res = await fetch('/api/game/set-nickname', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: currentUser, nickname: name })
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-            gameNickname = name;
-            document.getElementById('nickname-modal').style.display = 'none';
-            updateGameUI();
-            alert(`ยินดีต้อนรับนักบิน ${name}!`);
+        async function handleLogin() {
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: user, password: pass})
+            });
+            const data = await res.json();
+            if(data.success) {
+                localStorage.setItem('username', data.username);
+                localStorage.setItem('token', data.token);
+                location.reload();
+            } else { alert("รหัสผ่านไม่ถูกต้อง"); }
         }
-    } catch (e) {
-        alert("ไม่สามารถบันทึกชื่อได้");
-    }
-}
 
-function updateGameUI() {
-    // แสดงชื่อในเกมบน HUD
-    document.getElementById('player-name').innerText = gameNickname;
-}
-
-
-function toggleAuth(mode) {
-    document.getElementById('login-form').style.display = (mode === 'login') ? 'block' : 'none';
-    document.getElementById('register-form').style.display = (mode === 'register') ? 'block' : 'none';
-}
-
-
-window.onload = () => {
-    const user = localStorage.getItem('username');
-    if (!user) {
-        document.getElementById('view-auth').classList.add('active'); // โชว์หน้าล็อคอิน
-    } else {
-        checkGameProfile(); // ไปเช็ค Nickname ต่อ
-    }
-    renderGrid();
-};
-
-
-// ฟังก์ชัน Login
-async function handleLogin() {
-    const user = document.getElementById('login-user').value;
-    const pass = document.getElementById('login-pass').value;
-
-    try {
-        const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username: user, password: pass })
-        });
-        const data = await res.json();
-        if (data.success) {
-            localStorage.setItem('username', data.username);
-            localStorage.setItem('token', data.token);
-            location.reload(); // รีโหลดเพื่อเข้าเกม
-        } else {
-            alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        async function handleRegister() {
+            const user = document.getElementById('reg-user').value;
+            const pass = document.getElementById('reg-pass').value;
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: user, password: pass})
+            });
+            const data = await res.json();
+            if(data.success) { alert("สมัครสำเร็จ! กรุณาล็อคอิน"); toggleAuth('login'); }
         }
-    } catch (e) { alert("Server Error"); }
-}
 
-// ฟังก์ชันสมัครสมาชิก
-async function handleRegister() {
-    const user = document.getElementById('reg-user').value;
-    const pass = document.getElementById('reg-pass').value;
-
-    try {
-        const res = await fetch('/api/register', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username: user, password: pass })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
-            toggleAuth('login');
-        } else {
-            alert(data.message || "ไม่สามารถสมัครสมาชิกได้");
+        function handleLogout() {
+            localStorage.clear();
+            location.reload();
         }
-    } catch (e) { alert("Server Error"); }
-}
 
+        // --- เช็คโปรไฟล์หลังโหลดหน้า ---
+        window.onload = async () => {
+            if (!currentUser) {
+                document.getElementById('view-auth').classList.add('active');
+            } else {
+                document.getElementById('view-map').classList.add('active');
+                checkGameProfile();
+            }
+        };
 
+        async function checkGameProfile() {
+            try {
+                const res = await fetch(`/api/game/stats/${currentUser}`);
+                const data = await res.json();
+                if (!data.gameNickname) {
+                    document.getElementById('nickname-modal').style.display = 'flex';
+                } else {
+                    document.getElementById('display-nickname').innerText = data.gameNickname.toUpperCase();
+                    document.getElementById('val-metal').innerText = data.metal;
+                    document.getElementById('val-energy').innerText = data.energy + "%";
+                }
+            } catch(e) { console.error(e); }
+        }
 
+        async function saveGameNickname() {
+            const nick = document.getElementById('input-nickname').value.trim();
+            if(nick.length < 3) return alert("ชื่อสั้นเกินไป");
+            const res = await fetch('/api/game/set-nickname', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: currentUser, nickname: nick})
+            });
+            if((await res.json()).success) location.reload();
+        }
 
-        // --- ระบบวาด Hex Grid ---
+        // --- ระบบวาด Grid (Radius 30, 5x5) ---
         function renderGrid() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const hexRadius = 30;
+            const h = hexRadius * Math.sqrt(3);
+            const w = hexRadius * 1.5;
 
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const hexRadius = 30; // 🚩 ลดขนาดตามสั่ง
-    const h = hexRadius * Math.sqrt(3);
-    const w = hexRadius * 1.5;
+            for (let q = -2; q <= 2; q++) {
+                for (let r = -2; r <= 2; r++) {
+                    const xPos = centerX + (q * w);
+                    const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h/2 : 0);
+                    const isCenter = (q === 0 && r === 0);
 
-    // วาดจาก -2 ถึง 2 (รวมเป็น 5x5 ช่อง รอบจุดกึ่งกลาง)
-    for (let q = -2; q <= 2; q++) {
-        for (let r = -2; r <= 2; r++) {
-            
-            // คำนวณพิกัด X
-            const xPos = centerX + (q * w);
-            
-            // คำนวณพิกัด Y พร้อมทำ Zig-zag (Offset)
-            // ถ้าคอลัมน์ (q) เป็นเลขคี่ ให้ขยับตำแหน่ง Y ลงมาครึ่งหนึ่งของความสูงหกเหลี่ยม
-            const yOffset = (Math.abs(q) % 2 === 1) ? h / 2 : 0;
-            const yPos = centerY + (r * h) + yOffset;
-
-            // 🚩 ตรวจสอบว่าเป็นจุดกึ่งกลางเป๊ะๆ (q=0, r=0) หรือไม่
-            const isCenter = (q === 0 && r === 0);
-
-            ctx.beginPath();
-            // สีเขียวสำหรับจุดกลาง, สีฟ้าจางสำหรับจุดรอบๆ
-            ctx.strokeStyle = isCenter ? '#38ef7d' : 'rgba(0, 210, 255, 0.3)';
-            ctx.lineWidth = isCenter ? 3 : 1;
-
-            // วาดรูป 6 เหลี่ยม
-            for (let i = 0; i < 6; i++) {
-                const angle = i * Math.PI / 3;
-                ctx.lineTo(
-                    xPos + hexRadius * Math.cos(angle),
-                    yPos + hexRadius * Math.sin(angle)
-                );
+                    ctx.beginPath();
+                    ctx.strokeStyle = isCenter ? '#38ef7d' : 'rgba(0, 210, 255, 0.3)';
+                    ctx.lineWidth = isCenter ? 3 : 1;
+                    for (let i = 0; i < 6; i++) {
+                        ctx.lineTo(xPos + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
+                    }
+                    ctx.closePath();
+                    if(isCenter) { ctx.fillStyle = 'rgba(56, 239, 125, 0.1)'; ctx.fill(); }
+                    ctx.stroke();
+                }
             }
-            ctx.closePath();
-
-            // ถ้าเป็นจุดกลาง ให้ใส่สีพื้นหลังจางๆ ให้เด่นขึ้นด้วย
-            if (isCenter) {
-                ctx.fillStyle = 'rgba(56, 239, 125, 0.15)';
-                ctx.fill();
-            }
-
-            ctx.stroke();
         }
-    }
-}
 
-        // --- ระบบสลับ View ---
         function toggleMapMode() {
             mapActive = !mapActive;
             bg.classList.toggle('bg-dimmed', mapActive);
             canvas.style.opacity = mapActive ? "1" : "0";
-            mapBtn.classList.toggle('active', mapActive);
             if(mapActive) renderGrid();
         }
 
-        // คลิกที่ช่อง Hex (จำลองการเลือกจุดขุด)
+        // ระบบขุดแร่
         canvas.onclick = (e) => {
-    if (!mapActive) return;
+            if(!mapActive) return;
+            startMining();
+        };
 
-    // 1. หาตำแหน่งที่จิ้มจริงบน Canvas
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const hexRadius = 30;
-    const h = hexRadius * Math.sqrt(3);
-    const w = hexRadius * 1.5;
-
-    // 2. วนลูปเช็คว่า "จุดที่จิ้ม" ใกล้กับจุดศูนย์กลางของ Hex ช่องไหนที่สุด
-    let clickedQ = null;
-    let clickedR = null;
-
-    for (let q = -2; q <= 2; q++) {
-        for (let r = -2; r <= 2; r++) {
-            const xPos = centerX + (q * w);
-            const yOffset = (Math.abs(q) % 2 === 1) ? h / 2 : 0;
-            const yPos = centerY + (r * h) + yOffset;
-
-            // คำนวณระยะห่างระหว่างนิ้วกับกลาง Hex
-            const dist = Math.sqrt((mouseX - xPos)**2 + (mouseY - yPos)**2);
-
-            // ถ้าจิ้มห่างจากกลาง Hex ไม่เกินรัศมี แสดงว่าจิ้มช่องนี้แหละ!
-            if (dist < hexRadius) {
-                clickedQ = q;
-                clickedR = r;
-                break;
-            }
-        }
-    }
-
-    if (clickedQ !== null) {
-        console.log(`จิ้มที่พิกัดช่อง: Q=${clickedQ}, R=${clickedR}`);
-        
-        if (clickedQ === 0 && clickedR === 0) {
-            alert("นี่คือฐานทัพของคุณ!");
-        } else {
-            // ถ้าไม่ใช่ช่องกลาง ให้เริ่มขุดแร่
-            startMiningSequence();
-        }
-    }
-};
-
-        // --- ระบบขุดแร่ (Mining Logic) ---
-        function startMiningSequence() {
-            mapActive = false;
-            exitMapMode();
+        function startMining() {
             document.getElementById('view-map').classList.remove('active');
-            document.getElementById('view-mining').classList.add('active');
             document.getElementById('view-mining').style.display = 'flex';
-            
             isMining = true;
-            let progress = 0;
-            const bar = document.getElementById('mining-bar');
-
-            let mineTimer = setInterval(() => {
-                if(!isMining) { clearInterval(mineTimer); return; }
-                
-                progress += 1;
-                bar.style.width = progress + "%";
-
-                // สุ่มศัตรูโผล่ที่ 40%
-                if(progress === 40 && Math.random() > 0.5) {
-                    showThreatAlert();
-                }
-
-                if(progress >= 100) {
-                    clearInterval(mineTimer);
-                    sendMiningData();
-                }
-            }, 50); // ความเร็วในการขุด
+            let p = 0;
+            let t = setInterval(() => {
+                if(!isMining) { clearInterval(t); return; }
+                p += 2;
+                document.getElementById('mining-bar').style.width = p + "%";
+                if(p >= 100) { clearInterval(t); finishMining(); }
+            }, 100);
         }
 
-        function showThreatAlert() {
-            const alertUI = document.getElementById('alert-overlay');
-            alertUI.style.display = 'block';
-            setTimeout(() => { alertUI.style.display = 'none'; }, 3000);
-        }
-
-        async function sendMiningData() {
-            // ส่งไปหา Server
-            try {
-                const res = await fetch('/api/mine', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: 'gedgo_user_1', drillLevel: 1 })
-                });
-                const data = await res.json();
-                document.getElementById('val-metal').innerText = data.metal;
-                document.getElementById('val-energy').innerText = data.energy + "%";
-                alert("Extraction Complete! Metal Received.");
-                exitMining();
-            } catch(e) {
-                alert("Server Connection Failed!");
-                exitMining();
-            }
+        async function finishMining() {
+            const res = await fetch('/api/mine', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: currentUser, drillLevel: 1})
+            });
+            const data = await res.json();
+            document.getElementById('val-metal').innerText = data.metal;
+            document.getElementById('val-energy').innerText = data.energy + "%";
+            alert("ขุดสำเร็จ!");
+            exitMining();
         }
 
         function exitMining() {
             isMining = false;
-            document.getElementById('view-mining').classList.remove('active');
             document.getElementById('view-mining').style.display = 'none';
             document.getElementById('view-map').classList.add('active');
             document.getElementById('mining-bar').style.width = "0%";
@@ -497,8 +299,6 @@ async function handleRegister() {
 
         function openMenu(id) { document.getElementById(id).style.display = 'flex'; }
         function closeMenus(e) { if(e.target.className === 'menu-overlay') e.target.style.display = 'none'; }
-        function exitMapMode() { bg.classList.remove('bg-dimmed'); canvas.style.opacity = "0"; mapBtn.classList.remove('active'); }
-
     </script>
 </body>
 </html>
