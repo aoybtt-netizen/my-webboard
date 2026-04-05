@@ -89,9 +89,50 @@
         .glass-panel { background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 20px; width: 85%; max-width: 450px; padding: 20px; }
         .ship-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .module-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(0,210,255,0.2); }
+		
+		
+		
+		.auth-input {
+    width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px;
+    border: 1px solid rgba(0, 210, 255, 0.3); background: rgba(0,0,0,0.6);
+    color: white; box-sizing: border-box; outline: none;
+}
+.auth-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
+
+.auth-btn {
+    width: 100%; padding: 12px; border-radius: 8px; border: none;
+    background: var(--neon-blue); color: #000; font-weight: bold;
+    cursor: pointer; transition: 0.3s;
+}
+.auth-btn:hover { transform: scale(1.02); filter: brightness(1.2); }
+
+
     </style>
 </head>
 <body>
+
+	<div id="view-auth" class="view" style="z-index: 5000; background: radial-gradient(circle, #001a33 0%, #000 100%);">
+    <div class="glass-panel" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <div id="login-form">
+            <h2 style="color:var(--neon-blue); text-align:center;"><i class="fas fa-key"></i> ACCESS GRANTED</h2>
+            <p style="text-align:center; font-size:0.8rem; opacity:0.7;">กรุณาระบุรหัสผ่านเพื่อเข้าสู่ระบบ GedGoZone</p>
+            <input type="text" id="login-user" placeholder="ชื่อผู้ใช้ (Username)" class="auth-input">
+            <input type="password" id="login-pass" placeholder="รหัสผ่าน" class="auth-input">
+            <button onclick="handleLogin()" class="auth-btn">เข้าสู่ระบบ</button>
+            <p style="text-align:center; font-size:0.8rem; margin-top:15px;">ยังไม่มีบัญชี? <a href="#" onclick="toggleAuth('register')" style="color:var(--neon-green)">สมัครสมาชิกใหม่</a></p>
+        </div>
+
+        <div id="register-form" style="display:none;">
+            <h2 style="color:var(--neon-green); text-align:center;"><i class="fas fa-user-plus"></i> NEW ENLISTMENT</h2>
+            <p style="text-align:center; font-size:0.8rem; opacity:0.7;">ลงทะเบียนนักบินใหม่ของ GedGoZone</p>
+            <input type="text" id="reg-user" placeholder="เลือกชื่อผู้ใช้" class="auth-input">
+            <input type="password" id="reg-pass" placeholder="ตั้งรหัสผ่าน" class="auth-input">
+            <button onclick="handleRegister()" class="auth-btn" style="background:var(--neon-green)">สมัครสมาชิก</button>
+            <p style="text-align:center; font-size:0.8rem; margin-top:15px;">เป็นสมาชิกอยู่แล้ว? <a href="#" onclick="toggleAuth('login')" style="color:var(--neon-blue)">กลับไปหน้าล็อคอิน</a></p>
+        </div>
+    </div>
+</div>
+
 
     <div id="alert-overlay">⚠️ WARNING: VOID PARASITE DETECTED!</div>
 
@@ -136,15 +177,149 @@
             </div>
         </div>
     </div>
+	
+	
+	<div id="nickname-modal" class="menu-overlay" style="display: none; z-index: 9999;">
+    <div class="glass-panel" style="text-align: center;">
+        <h3><i class="fas fa-id-badge"></i> ยินดีต้อนรับนักบินใหม่</h3>
+        <p>กรุณาระบุชื่อเรียกขาน (Callsign) ของคุณในภารกิจนี้</p>
+        <input type="text" id="input-nickname" placeholder="ระบุชื่อในเกมของคุณ..." 
+            style="width: 80%; padding: 12px; border-radius: 8px; border: 1px solid var(--neon-blue); background: rgba(0,0,0,0.5); color: white; margin-bottom: 20px; text-align: center;">
+        <button onclick="saveGameNickname()" class="nav-btn" style="width: 100%; height: 50px; flex-direction: row; gap: 10px;">
+            <i class="fas fa-check"></i> ยืนยันชื่อ
+        </button>
+    </div>
+</div>
+
 
     <script>
+		
+		const currentUser = localStorage.getItem('username');
+		const userToken = localStorage.getItem('token');
+		if (!currentUser || !userToken) {
+					alert("กรุณาเข้าสู่ระบบ GedGoZone ก่อนเข้าเล่นเกมครับ");
+					window.location.href = "index.html"; // กลับไปหน้า Login
+				}
+
         const canvas = document.getElementById('hex-canvas');
         const ctx = canvas.getContext('2d');
         const bg = document.getElementById('game-background');
         const mapBtn = document.getElementById('btn-map');
 
+		let gameNickname = "";
         let mapActive = false;
         let isMining = false;
+		
+		
+	async function checkGameProfile() {
+    try {
+        // ดึงข้อมูล Profile เกมจาก Server
+        const res = await fetch(`/api/game/stats/${currentUser}`);
+        const data = await res.json();
+
+        if (!data.gameNickname) {
+            // 🚩 ถ้ายังไม่มีชื่อในเกม ให้แสดง Modal ตั้งชื่อ
+            document.getElementById('nickname-modal').style.display = 'flex';
+        } else {
+            gameNickname = data.gameNickname;
+            updateGameUI();
+        }
+    } catch (e) {
+        console.error("Profile Load Error:", e);
+    }
+}
+
+async function saveGameNickname() {
+    const name = document.getElementById('input-nickname').value.trim();
+    if (!name) return alert("กรุณาระบุชื่อก่อนครับ");
+
+    try {
+        const res = await fetch('/api/game/set-nickname', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, nickname: name })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            gameNickname = name;
+            document.getElementById('nickname-modal').style.display = 'none';
+            updateGameUI();
+            alert(`ยินดีต้อนรับนักบิน ${name}!`);
+        }
+    } catch (e) {
+        alert("ไม่สามารถบันทึกชื่อได้");
+    }
+}
+
+function updateGameUI() {
+    // แสดงชื่อในเกมบน HUD
+    document.getElementById('player-name').innerText = gameNickname;
+}
+
+
+function toggleAuth(mode) {
+    document.getElementById('login-form').style.display = (mode === 'login') ? 'block' : 'none';
+    document.getElementById('register-form').style.display = (mode === 'register') ? 'block' : 'none';
+}
+
+
+window.onload = () => {
+    const user = localStorage.getItem('username');
+    if (!user) {
+        document.getElementById('view-auth').classList.add('active'); // โชว์หน้าล็อคอิน
+    } else {
+        checkGameProfile(); // ไปเช็ค Nickname ต่อ
+    }
+    renderGrid();
+};
+
+
+// ฟังก์ชัน Login
+async function handleLogin() {
+    const user = document.getElementById('login-user').value;
+    const pass = document.getElementById('login-pass').value;
+
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (data.success) {
+            localStorage.setItem('username', data.username);
+            localStorage.setItem('token', data.token);
+            location.reload(); // รีโหลดเพื่อเข้าเกม
+        } else {
+            alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        }
+    } catch (e) { alert("Server Error"); }
+}
+
+// ฟังก์ชันสมัครสมาชิก
+async function handleRegister() {
+    const user = document.getElementById('reg-user').value;
+    const pass = document.getElementById('reg-pass').value;
+
+    try {
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
+            toggleAuth('login');
+        } else {
+            alert(data.message || "ไม่สามารถสมัครสมาชิกได้");
+        }
+    } catch (e) { alert("Server Error"); }
+}
+
+
+
 
         // --- ระบบวาด Hex Grid ---
         function renderGrid() {
