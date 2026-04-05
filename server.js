@@ -1259,6 +1259,28 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
 // ==========================================
 // --- Void Expedition: Game API Section ---
 // ==========================================
+// API สำหรับตั้งชื่อในเกม (Callsign) แยกจากชื่อหลัก
+app.post('/api/game/set-nickname', async (req, res) => {
+    const { username, nickname } = req.body;
+    
+    try {
+        // 1. เช็คก่อนว่ามีคนอื่นใช้ชื่อในเกมนี้ไปหรือยัง
+        const nicknameExists = await usersCollection.findOne({ gameNickname: nickname });
+        if (nicknameExists) {
+            return res.json({ success: false, error: "This name has already been used." });
+        }
+
+        // 2. บันทึกชื่อในเกมลงใน User นั้นๆ
+        await usersCollection.updateOne(
+            { username: username },
+            { $set: { gameNickname: nickname } }
+        );
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 // 1. API สำหรับดึงข้อมูลทรัพยากรล่าสุด (ใช้ตอนเข้าหน้าเกม)
 app.get('/api/game/stats/:username', async (req, res) => {

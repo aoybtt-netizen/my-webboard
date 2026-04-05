@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+
+	<script src="https://accounts.google.com/gsi/client" async defer></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GedGoZone: Void Expedition</title>
@@ -75,33 +77,28 @@
 </head>
 <body>
 
-    <div id="view-auth" class="view">
-        <div class="glass-panel">
-            <div id="login-form">
-                <h2 style="color:var(--neon-blue)"><i class="fas fa-terminal"></i> LOGIN</h2>
-                <input type="text" id="login-user" placeholder="ชื่อผู้ใช้" class="auth-input">
-                <input type="password" id="login-pass" placeholder="รหัสผ่าน" class="auth-input">
-                <button onclick="handleLogin()" class="auth-btn">เข้าสู่ระบบภารกิจ</button>
-                <p style="font-size:0.8rem; margin-top:15px;">ยังไม่ได้รับอนุญาต? <a href="#" onclick="toggleAuth('register')" style="color:var(--neon-green)">ลงทะเบียนใหม่</a></p>
-            </div>
-            <div id="register-form" style="display:none;">
-                <h2 style="color:var(--neon-green)"><i class="fas fa-user-plus"></i> REGISTER</h2>
-                <input type="text" id="reg-user" placeholder="ตั้งชื่อผู้ใช้" class="auth-input">
-                <input type="password" id="reg-pass" placeholder="ตั้งรหัสผ่าน" class="auth-input">
-                <button onclick="handleRegister()" class="auth-btn" style="background:var(--neon-green)">สมัครสมาชิก</button>
-                <p style="font-size:0.8rem; margin-top:15px;">มีรหัสผ่านแล้ว? <a href="#" onclick="toggleAuth('login')" style="color:var(--neon-blue)">กลับไปหน้าล็อคอิน</a></p>
-            </div>
+    <div id="view-auth" class="view active" style="z-index: 5000; background: radial-gradient(circle, #001a33 0%, #000 100%);">
+    <div class="glass-panel" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <h2 style="color:var(--neon-blue); text-align:center;"><i class="fab fa-google"></i> GEDGO EXPEDITION</h2>
+        <p style="text-align:center; font-size:0.8rem; opacity:0.7; margin-bottom: 25px;">ยืนยันตัวตนผ่าน Google เพื่อเริ่มการสำรวจ</p>
+        
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
         </div>
+        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_blue" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
     </div>
+</div>
 
-    <div id="nickname-modal" class="menu-overlay">
-        <div class="glass-panel">
-            <h2 style="color:var(--neon-blue)">รหัสเรียกขานนักบิน</h2>
-            <p style="font-size: 0.8rem; opacity: 0.7;">กรุณาตั้งชื่อที่ใช้เรียกในภารกิจ Void Expedition</p>
-            <input type="text" id="input-nickname" placeholder="ชื่อในเกม..." class="auth-input" style="text-align: center;">
-            <button onclick="saveGameNickname()" class="auth-btn">ยืนยัน</button>
-        </div>
+<div id="nickname-modal" class="menu-overlay">
+    <div class="glass-panel">
+        <h3 style="color:var(--neon-green)">CALLSIGN REQUIRED</h3>
+        <p style="font-size:0.8rem;">ระบุชื่อเรียกขานของคุณในระบบ GedGoZone</p>
+        <input type="text" id="input-nickname" placeholder="ตั้งชื่อในเกม..." class="auth-input" style="text-align:center;">
+        <button onclick="saveGameNickname()" class="auth-btn" style="background:var(--neon-green)">เริ่มภารกิจ</button>
     </div>
+</div>
 
     <div id="view-map" class="view">
         <div id="game-background"></div>
@@ -185,6 +182,47 @@
             localStorage.clear();
             location.reload();
         }
+		
+		
+		
+		// ฟังก์ชันรับข้อมูลจาก Google
+async function handleCredentialResponse(response) {
+    try {
+        const res = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ token: response.credential })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (data.isNewUser) {
+                // 🚩 กรณีสมาชิกใหม่ซิงๆ: ให้ไปหน้าตั้ง Username หลักก่อน (หรือตั้งรวบยอด)
+                showRegisterModal(data.googleData);
+            } else {
+                // ✅ สมาชิกเดิม: เช็คต่อว่ามี "ชื่อในเกม" หรือยัง
+                localStorage.setItem('username', data.user.username);
+                localStorage.setItem('token', 'session_token_here'); // ตามระบบของพี่
+                
+                if (!data.user.gameNickname) {
+                    document.getElementById('nickname-modal').style.display = 'flex';
+                } else {
+                    location.reload(); // เข้าเกมเลย
+                }
+            }
+        }
+    } catch (e) { console.error("Google Login Error", e); }
+}
+
+// ฟังก์ชันถอดรหัส Token เบื้องต้น (สำหรับแสดงผลหน้าจอ)
+function decodeJwtResponse(token) {
+    let base64Url = token.split('.')[1];
+    let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(window.atob(base64));
+}
+
+
+
 
         // --- เช็คโปรไฟล์หลังโหลดหน้า ---
         window.onload = async () => {
