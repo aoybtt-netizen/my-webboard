@@ -73,6 +73,49 @@
         #view-mining { z-index: 3000; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; }
         .progress-container { width: 80%; max-width: 400px; height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; border: 1px solid var(--neon-blue); overflow: hidden; margin: 20px 0; }
         .progress-bar { width: 0%; height: 100%; background: var(--neon-blue); transition: width 0.1s linear; }
+		
+		
+	/* --- Profile HUD Style --- */
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--glass);
+    padding: 5px 15px 5px 5px;
+    border-radius: 50px; /* ทรงแคปซูล */
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    cursor: pointer;
+    transition: 0.3s;
+    backdrop-filter: blur(10px);
+}
+.profile-trigger:hover {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+    transform: translateY(-2px);
+}
+.profile-icon {
+    width: 35px;
+    height: 35px;
+    background: var(--neon-blue);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 1.2rem;
+    box-shadow: 0 0 10px var(--neon-blue);
+}
+
+/* --- Profile Detail List --- */
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.detail-label { opacity: 0.6; font-size: 0.8rem; }
+.detail-value { color: var(--neon-blue); font-weight: bold; }
+
     </style>
 </head>
 <body>
@@ -113,6 +156,62 @@
         <button onclick="saveGameNickname()" class="auth-btn" style="background:var(--neon-green)">เริ่มภารกิจ</button>
     </div>
 </div>
+
+
+
+<div class="hud-top">
+    <div class="profile-trigger" onclick="openMenu('profile-modal')">
+        <div class="profile-icon">
+            <i class="fas fa-user-astronaut"></i>
+        </div>
+        <div style="display: flex; flex-direction: column;">
+            <span id="display-nickname" style="font-weight: bold; font-size: 0.85rem; letter-spacing: 1px;">LOADING...</span>
+            <span style="font-size: 0.6rem; color: var(--neon-green); opacity: 0.8;">RANK: NOVICE</span>
+        </div>
+    </div>
+</div>
+
+<div id="profile-modal" class="menu-overlay" onclick="closeMenus(event)">
+    <div class="glass-panel">
+        <div style="text-align: right;">
+            <i class="fas fa-times" onclick="document.getElementById('profile-modal').style.display='none'" style="cursor:pointer; opacity:0.5;"></i>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div class="profile-icon" style="width: 70px; height: 70px; margin: 0 auto 15px; font-size: 2.5rem;">
+                <i class="fas fa-user-astronaut"></i>
+            </div>
+            <h3 id="profile-full-name" style="margin: 0; color: var(--neon-blue);">นักบินนิรนาม</h3>
+            <span id="account-type-tag" style="font-size: 0.7rem; background: #444; padding: 2px 10px; border-radius: 10px; opacity: 0.8;">GUEST ACCOUNT</span>
+        </div>
+
+        <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px;">
+            <div class="detail-row">
+                <span class="detail-label">สถานะพลังงาน</span>
+                <span class="detail-value" id="prof-energy">0%</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">แร่โลหะสะสม (Metal)</span>
+                <span class="detail-value" id="prof-metal">0</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">เครดิต (Coins)</span>
+                <span class="detail-value">0 GC</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">เลเวลเครื่องเจาะ</span>
+                <span class="detail-value">LV. 1</span>
+            </div>
+        </div>
+
+        <button onclick="handleLogout()" style="width: 100%; margin-top: 20px; background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red); padding: 10px; border-radius: 10px; cursor: pointer;">
+            <i class="fas fa-power-off"></i> ตัดการเชื่อมต่อ (Logout)
+        </button>
+    </div>
+</div>
+
+
+
 
     <div id="view-map" class="view">
         <div id="game-background"></div>
@@ -303,20 +402,27 @@ function decodeJwtResponse(token) {
         const res = await fetch(`/api/game/stats/${currentUser}`);
         const data = await res.json();
         
-        // ตรวจสอบว่ามีชื่อในเกมหรือยัง
-        if (!data.gameNickname || data.gameNickname === "" || data.gameNickname === null) {
+        if (!data.gameNickname) {
             document.getElementById('nickname-modal').style.display = 'flex';
         } else {
-            // ซ่อน modal เผื่อกรณีค้างอยู่
-            document.getElementById('nickname-modal').style.display = 'none';
-            
-            document.getElementById('display-nickname').innerText = data.gameNickname.toUpperCase();
-            document.getElementById('val-metal').innerText = data.metal;
+            // อัปเดตข้อมูลบน HUD
+            const nick = data.gameNickname.toUpperCase();
+            document.getElementById('display-nickname').innerText = nick;
+
+            // อัปเดตข้อมูลในหน้า Profile Modal
+            document.getElementById('profile-full-name').innerText = nick;
+            document.getElementById('prof-metal').innerText = data.metal.toLocaleString();
+            document.getElementById('prof-energy').innerText = data.energy + "%";
+            document.getElementById('val-metal').innerText = data.metal.toLocaleString(); // เผื่อพี่ยังใช้ ID เดิมใน HUD อื่น
             document.getElementById('val-energy').innerText = data.energy + "%";
+
+            // เช็คประเภทบัญชี
+            const isGuest = currentUser.startsWith('GUEST_');
+            const tag = document.getElementById('account-type-tag');
+            tag.innerText = isGuest ? "GUEST ACCOUNT" : "VERIFIED PILOT (GOOGLE)";
+            tag.style.color = isGuest ? "#ffc107" : "var(--neon-green)";
         }
-    } catch(e) { 
-        console.error("Fetch stats error:", e); 
-    }
+    } catch(e) { console.error(e); }
 }
 
         async function saveGameNickname() {
