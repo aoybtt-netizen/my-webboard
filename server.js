@@ -1260,22 +1260,28 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
 // --- Void Expedition: Game API Section ---
 // ==========================================
 // API สำหรับตั้งชื่อในเกม (Callsign) แยกจากชื่อหลัก
+const FORBIDDEN_NAMES = ['admin', 'gedgo', 'gedgozone', 'admingedgozone', 'admingedgo'];
+
 app.post('/api/game/set-nickname', async (req, res) => {
     const { username, nickname } = req.body;
-    
-    try {
-        // 1. เช็คก่อนว่ามีคนอื่นใช้ชื่อในเกมนี้ไปหรือยัง
-        const nicknameExists = await usersCollection.findOne({ gameNickname: nickname });
-        if (nicknameExists) {
-            return res.json({ success: false, error: "This name has already been used." });
-        }
+    const cleanNickname = nickname.toLowerCase().trim();
 
-        // 2. บันทึกชื่อในเกมลงใน User นั้นๆ
+    // 🚩 เช็คคำต้องห้ามที่ Server
+    const isForbidden = FORBIDDEN_NAMES.some(forbidden => cleanNickname.includes(forbidden));
+    
+    if (isForbidden) {
+        return res.json({ success: false, error: "This name is not permitted." });
+    }
+
+    try {
+        // ... โค้ดบันทึกลง MongoDB เดิมของพี่ ...
+        const exists = await usersCollection.findOne({ gameNickname: nickname });
+        if (exists) return res.json({ success: false, error: "This name has already been used." });
+
         await usersCollection.updateOne(
             { username: username },
             { $set: { gameNickname: nickname } }
         );
-
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });

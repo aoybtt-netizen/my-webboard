@@ -153,6 +153,7 @@
         const canvas = document.getElementById('hex-canvas');
         const ctx = canvas.getContext('2d');
         const bg = document.getElementById('game-background');
+		const FORBIDDEN_NAMES = ['admin', 'gedgo', 'gedgozone', 'admingedgozone', 'admingedgo'];
         
         let currentUser = localStorage.getItem('username');
 		let isGuest = localStorage.getItem('isGuest') === 'true';
@@ -225,10 +226,31 @@ function decodeJwtResponse(token) {
     renderGrid();
 };
 
+	function validateNickname(name) {
+    const cleanName = name.toLowerCase().trim();
+    
+    // 1. เช็คว่าว่างไหม
+    if (cleanName.length < 3) {
+        alert("ชื่อนักบินต้องมีอย่างน้อย 3 ตัวอักษรครับ");
+        return false;
+    }
+
+    // 2. เช็คคำต้องห้าม (แบบตรงตัวหรือมีคำนั้นผสมอยู่)
+    const isForbidden = FORBIDDEN_NAMES.some(forbidden => cleanName.includes(forbidden));
+    
+    if (isForbidden) {
+        alert("ขออภัยครับ ชื่อนี้เป็นชื่อสำรองของระบบ ไม่สามารถใช้งานได้");
+        return false;
+    }
+
+    return true;
+}
+
+
 	function startAsGuest() {
     const nickname = document.getElementById('input-callsign').value.trim();
     if (nickname.length < 3) return alert("กรุณาตั้งชื่ออย่างน้อย 3 ตัวอักษร");
-
+	if (!validateNickname(nickname)) return;
     // สร้าง ID ชั่วคราวให้ Guest
     const guestId = 'GUEST_' + Date.now();
     
