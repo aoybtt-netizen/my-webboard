@@ -1335,8 +1335,9 @@ app.get('/api/game/stats/:username', async (req, res) => {
         const user = await usersCollection.findOne({ username: username });
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        // ถ้ายังไม่มีฟิลด์เกม ให้กำหนดค่าเริ่มต้น
+        // ✅ เพิ่ม gameNickname เข้าไปในนี้เพื่อให้หน้าบ้านตรวจสอบได้
         const gameData = {
+            gameNickname: user.gameNickname, // ดึงชื่อจากฐานข้อมูลมาส่งคืน
             metal: user.metal ?? 500,
             energy: user.energy ?? 100,
             drillLevel: user.drillLevel ?? 1

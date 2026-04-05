@@ -298,19 +298,26 @@ function decodeJwtResponse(token) {
 }
 
 
-        async function checkGameProfile() {
-            try {
-                const res = await fetch(`/api/game/stats/${currentUser}`);
-                const data = await res.json();
-                if (!data.gameNickname) {
-                    document.getElementById('nickname-modal').style.display = 'flex';
-                } else {
-                    document.getElementById('display-nickname').innerText = data.gameNickname.toUpperCase();
-                    document.getElementById('val-metal').innerText = data.metal;
-                    document.getElementById('val-energy').innerText = data.energy + "%";
-                }
-            } catch(e) { console.error(e); }
+    async function checkGameProfile() {
+    try {
+        const res = await fetch(`/api/game/stats/${currentUser}`);
+        const data = await res.json();
+        
+        // ตรวจสอบว่ามีชื่อในเกมหรือยัง
+        if (!data.gameNickname || data.gameNickname === "" || data.gameNickname === null) {
+            document.getElementById('nickname-modal').style.display = 'flex';
+        } else {
+            // ซ่อน modal เผื่อกรณีค้างอยู่
+            document.getElementById('nickname-modal').style.display = 'none';
+            
+            document.getElementById('display-nickname').innerText = data.gameNickname.toUpperCase();
+            document.getElementById('val-metal').innerText = data.metal;
+            document.getElementById('val-energy').innerText = data.energy + "%";
         }
+    } catch(e) { 
+        console.error("Fetch stats error:", e); 
+    }
+}
 
         async function saveGameNickname() {
             const nick = document.getElementById('input-nickname').value.trim();
