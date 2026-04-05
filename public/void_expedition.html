@@ -148,34 +148,56 @@
 
         // --- ระบบวาด Hex Grid ---
         function renderGrid() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const hexRadius = 30;
-            const gridAreaRadius = 200;
-            const h = hexRadius * Math.sqrt(3);
-            const w = hexRadius * 1.5;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            for (let x = centerX - 250; x < centerX + 250; x += w) {
-                for (let y = centerY - 250; y < centerY + 250; y += h) {
-                    const col = Math.round((x - centerX) / w);
-                    const yPos = y + (Math.abs(col) % 2 === 1 ? h / 2 : 0);
-                    const dist = Math.sqrt((x - centerX)**2 + (yPos - centerY)**2);
-                    if (dist < gridAreaRadius) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = (dist < 10) ? '#38ef7d' : 'rgba(0, 210, 255, 0.4)';
-                        ctx.lineWidth = (dist < 10) ? 3 : 1;
-                        for (let i = 0; i < 6; i++) {
-                            ctx.lineTo(x + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
-                        }
-                        ctx.closePath();
-                        ctx.stroke();
-                    }
-                }
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const hexRadius = 30; // 🚩 ลดขนาดตามสั่ง
+    const h = hexRadius * Math.sqrt(3);
+    const w = hexRadius * 1.5;
+
+    // วาดจาก -2 ถึง 2 (รวมเป็น 5x5 ช่อง รอบจุดกึ่งกลาง)
+    for (let q = -2; q <= 2; q++) {
+        for (let r = -2; r <= 2; r++) {
+            
+            // คำนวณพิกัด X
+            const xPos = centerX + (q * w);
+            
+            // คำนวณพิกัด Y พร้อมทำ Zig-zag (Offset)
+            // ถ้าคอลัมน์ (q) เป็นเลขคี่ ให้ขยับตำแหน่ง Y ลงมาครึ่งหนึ่งของความสูงหกเหลี่ยม
+            const yOffset = (Math.abs(q) % 2 === 1) ? h / 2 : 0;
+            const yPos = centerY + (r * h) + yOffset;
+
+            // 🚩 ตรวจสอบว่าเป็นจุดกึ่งกลางเป๊ะๆ (q=0, r=0) หรือไม่
+            const isCenter = (q === 0 && r === 0);
+
+            ctx.beginPath();
+            // สีเขียวสำหรับจุดกลาง, สีฟ้าจางสำหรับจุดรอบๆ
+            ctx.strokeStyle = isCenter ? '#38ef7d' : 'rgba(0, 210, 255, 0.3)';
+            ctx.lineWidth = isCenter ? 3 : 1;
+
+            // วาดรูป 6 เหลี่ยม
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3;
+                ctx.lineTo(
+                    xPos + hexRadius * Math.cos(angle),
+                    yPos + hexRadius * Math.sin(angle)
+                );
             }
+            ctx.closePath();
+
+            // ถ้าเป็นจุดกลาง ให้ใส่สีพื้นหลังจางๆ ให้เด่นขึ้นด้วย
+            if (isCenter) {
+                ctx.fillStyle = 'rgba(56, 239, 125, 0.15)';
+                ctx.fill();
+            }
+
+            ctx.stroke();
         }
+    }
+}
 
         // --- ระบบสลับ View ---
         function toggleMapMode() {
