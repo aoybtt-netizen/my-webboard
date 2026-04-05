@@ -210,10 +210,52 @@
 
         // คลิกที่ช่อง Hex (จำลองการเลือกจุดขุด)
         canvas.onclick = (e) => {
-            if(!mapActive) return;
-            // ในอนาคตจะเช็คพิกัด แต่ตอนนี้จิ้มตรงไหนก็ได้ขุดครับ
+    if (!mapActive) return;
+
+    // 1. หาตำแหน่งที่จิ้มจริงบน Canvas
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const hexRadius = 30;
+    const h = hexRadius * Math.sqrt(3);
+    const w = hexRadius * 1.5;
+
+    // 2. วนลูปเช็คว่า "จุดที่จิ้ม" ใกล้กับจุดศูนย์กลางของ Hex ช่องไหนที่สุด
+    let clickedQ = null;
+    let clickedR = null;
+
+    for (let q = -2; q <= 2; q++) {
+        for (let r = -2; r <= 2; r++) {
+            const xPos = centerX + (q * w);
+            const yOffset = (Math.abs(q) % 2 === 1) ? h / 2 : 0;
+            const yPos = centerY + (r * h) + yOffset;
+
+            // คำนวณระยะห่างระหว่างนิ้วกับกลาง Hex
+            const dist = Math.sqrt((mouseX - xPos)**2 + (mouseY - yPos)**2);
+
+            // ถ้าจิ้มห่างจากกลาง Hex ไม่เกินรัศมี แสดงว่าจิ้มช่องนี้แหละ!
+            if (dist < hexRadius) {
+                clickedQ = q;
+                clickedR = r;
+                break;
+            }
+        }
+    }
+
+    if (clickedQ !== null) {
+        console.log(`จิ้มที่พิกัดช่อง: Q=${clickedQ}, R=${clickedR}`);
+        
+        if (clickedQ === 0 && clickedR === 0) {
+            alert("นี่คือฐานทัพของคุณ!");
+        } else {
+            // ถ้าไม่ใช่ช่องกลาง ให้เริ่มขุดแร่
             startMiningSequence();
-        };
+        }
+    }
+};
 
         // --- ระบบขุดแร่ (Mining Logic) ---
         function startMiningSequence() {
