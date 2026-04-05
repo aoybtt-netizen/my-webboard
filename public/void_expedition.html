@@ -77,17 +77,31 @@
 </head>
 <body>
 
-    <div id="view-auth" class="view active" style="z-index: 5000; background: radial-gradient(circle, #001a33 0%, #000 100%);">
-    <div class="glass-panel" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <h2 style="color:var(--neon-blue); text-align:center;"><i class="fab fa-google"></i> GEDGO EXPEDITION</h2>
-        <p style="text-align:center; font-size:0.8rem; opacity:0.7; margin-bottom: 25px;">ยืนยันตัวตนผ่าน Google เพื่อเริ่มการสำรวจ</p>
+    <div id="view-auth" class="view" style="z-index: 5000; background: radial-gradient(circle, #001a33 0%, #000 100%);">
+    <div class="glass-panel" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 380px;">
+        <h2 style="color:var(--neon-blue); text-align:center;"><i class="fas fa-satellite"></i> GEDGO EXPEDITION</h2>
         
-        <div id="g_id_onload"
-             data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-             data-callback="handleCredentialResponse"
-             data-auto_prompt="false">
+        <div id="setup-step">
+            <p style="text-align:center; font-size:0.85rem; opacity:0.8;">ระบุรหัสเรียกขาน (In-game Name)</p>
+            <input type="text" id="input-callsign" placeholder="ชื่อนักบินของคุณ..." 
+                style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--neon-blue); background: rgba(0,0,0,0.5); color: white; margin-bottom: 20px; text-align: center; box-sizing: border-box;">
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button onclick="startAsGuest()" class="auth-btn" style="background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green);">
+                    <i class="fas fa-user-secret"></i> เล่นโดยไม่ผูกบัญชี (Guest)
+                </button>
+
+                <div style="text-align: center; margin: 10px 0; font-size: 0.7rem; opacity: 0.5;">- หรือ -</div>
+
+                <div id="g_id_onload"
+                     data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                     data-callback="handleCredentialResponse"
+                     data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_blue" data-text="signin_with" data-size="large" data-logo_alignment="left" style="width: 100%;"></div>
+            </div>
+            <p style="font-size: 0.65rem; opacity: 0.6; margin-top: 15px; text-align: center;">* ข้อมูลแบบ Guest จะหายไปหากล้าง Cache เบราว์เซอร์</p>
         </div>
-        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_blue" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
     </div>
 </div>
 
@@ -141,8 +155,10 @@
         const bg = document.getElementById('game-background');
         
         let currentUser = localStorage.getItem('username');
+		let isGuest = localStorage.getItem('isGuest') === 'true';
         let mapActive = false;
         let isMining = false;
+		
 
         // --- ระบบ Auth ---
         function toggleAuth(mode) {
@@ -184,35 +200,7 @@
         }
 		
 		
-		
-		// ฟังก์ชันรับข้อมูลจาก Google
-async function handleCredentialResponse(response) {
-    try {
-        const res = await fetch('/api/auth/google', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ token: response.credential })
-        });
-        const data = await res.json();
 
-        if (data.success) {
-            if (data.isNewUser) {
-                // 🚩 กรณีสมาชิกใหม่ซิงๆ: ให้ไปหน้าตั้ง Username หลักก่อน (หรือตั้งรวบยอด)
-                showRegisterModal(data.googleData);
-            } else {
-                // ✅ สมาชิกเดิม: เช็คต่อว่ามี "ชื่อในเกม" หรือยัง
-                localStorage.setItem('username', data.user.username);
-                localStorage.setItem('token', 'session_token_here'); // ตามระบบของพี่
-                
-                if (!data.user.gameNickname) {
-                    document.getElementById('nickname-modal').style.display = 'flex';
-                } else {
-                    location.reload(); // เข้าเกมเลย
-                }
-            }
-        }
-    } catch (e) { console.error("Google Login Error", e); }
-}
 
 // ฟังก์ชันถอดรหัส Token เบื้องต้น (สำหรับแสดงผลหน้าจอ)
 function decodeJwtResponse(token) {
@@ -226,13 +214,58 @@ function decodeJwtResponse(token) {
 
         // --- เช็คโปรไฟล์หลังโหลดหน้า ---
         window.onload = async () => {
-            if (!currentUser) {
-                document.getElementById('view-auth').classList.add('active');
-            } else {
-                document.getElementById('view-map').classList.add('active');
-                checkGameProfile();
-            }
-        };
+    if (!currentUser) {
+        // ถ้าไม่มีข้อมูลเลย ให้แสดงหน้า Auth
+        document.getElementById('view-auth').classList.add('active');
+    } else {
+        // ถ้ามีข้อมูลแล้ว (ไม่ว่าจะ Guest หรือ Google) ให้เข้าเกม
+        document.getElementById('view-map').classList.add('active');
+        checkGameProfile();
+    }
+    renderGrid();
+};
+
+	function startAsGuest() {
+    const nickname = document.getElementById('input-callsign').value.trim();
+    if (nickname.length < 3) return alert("กรุณาตั้งชื่ออย่างน้อย 3 ตัวอักษร");
+
+    // สร้าง ID ชั่วคราวให้ Guest
+    const guestId = 'GUEST_' + Date.now();
+    
+    localStorage.setItem('username', guestId);
+    localStorage.setItem('gameNickname', nickname);
+    localStorage.setItem('isGuest', 'true');
+
+    // เข้าสู่เกมทันที
+    location.reload();
+}
+
+	async function handleCredentialResponse(response) {
+    const nickname = document.getElementById('input-callsign').value.trim();
+    if (nickname.length < 3) return alert("กรุณาระบุชื่อเรียกขานก่อนผูกบัญชี Google");
+
+    try {
+        const res = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                token: response.credential,
+                gameNickname: nickname // ส่งชื่อที่ตั้งไว้ไปบันทึกพร้อมกันเลย
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            localStorage.setItem('username', data.user.username);
+            localStorage.setItem('token', 'token_จาก_server');
+            localStorage.setItem('isGuest', 'false');
+            location.reload();
+        }
+    } catch (e) {
+        alert("การเชื่อมต่อ Google ผิดพลาด");
+    }
+}
+
 
         async function checkGameProfile() {
             try {
