@@ -1288,6 +1288,46 @@ app.post('/api/game/set-nickname', async (req, res) => {
     }
 });
 
+// ฟังก์ชันสุ่มชื่อนักบิน (ตัวอย่าง: UNIT-A1B2)
+function generateRandomCallsign() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = 'UNIT-';
+    for (let i = 0; i < 4; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+// API สำหรับสร้าง Guest ใหม่พร้อมชื่อสุ่ม
+app.post('/api/auth/guest-init', async (req, res) => {
+    try {
+        let uniqueNickname = "";
+        let isUnique = false;
+
+        // 🚩 ลูปจนกว่าจะได้ชื่อที่ไม่ซ้ำในฐานข้อมูล
+        while (!isUnique) {
+            uniqueNickname = generateRandomCallsign();
+            const exists = await usersCollection.findOne({ gameNickname: uniqueNickname });
+            if (!exists) isUnique = true;
+        }
+
+        const guestUsername = `GUEST_${Date.now()}`; // ID สำหรับ Login
+        const newUser = {
+            username: guestUsername,
+            gameNickname: uniqueNickname,
+            metal: 500,
+            energy: 100,
+            isGuest: true,
+            createdAt: new Date()
+        };
+
+        await usersCollection.insertOne(newUser);
+        res.json({ success: true, username: guestUsername, nickname: uniqueNickname });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 // 1. API สำหรับดึงข้อมูลทรัพยากรล่าสุด (ใช้ตอนเข้าหน้าเกม)
 app.get('/api/game/stats/:username', async (req, res) => {
     const { username } = req.params;

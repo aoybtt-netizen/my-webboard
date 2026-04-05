@@ -247,19 +247,28 @@ function decodeJwtResponse(token) {
 }
 
 
-	function startAsGuest() {
-    const nickname = document.getElementById('input-callsign').value.trim();
-    if (nickname.length < 3) return alert("กรุณาตั้งชื่ออย่างน้อย 3 ตัวอักษร");
-	if (!validateNickname(nickname)) return;
-    // สร้าง ID ชั่วคราวให้ Guest
-    const guestId = 'GUEST_' + Date.now();
-    
-    localStorage.setItem('username', guestId);
-    localStorage.setItem('gameNickname', nickname);
-    localStorage.setItem('isGuest', 'true');
+	// --- ฟังก์ชันเล่นแบบ Guest (สุ่มชื่ออัตโนมัติ) ---
+	async function startAsGuest() {
+    try {
+        // 1. เรียก API เพื่อขอสร้างบัญชี Guest และสุ่มชื่อที่ไม่ซ้ำ
+        const res = await fetch('/api/auth/guest-init', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        const data = await res.json();
 
-    // เข้าสู่เกมทันที
-    location.reload();
+        if (data.success) {
+            // 2. เก็บข้อมูลที่ระบบสุ่มให้ลง LocalStorage
+            localStorage.setItem('username', data.username); // เป็น ID สุ่ม เช่น GUEST_67890
+            localStorage.setItem('gameNickname', data.nickname); // เป็นชื่อสุ่ม เช่น UNIT-X42
+            localStorage.setItem('isGuest', 'true');
+
+            alert(`ยินดีต้อนรับนักบินรหัสสุ่ม: ${data.nickname}`);
+            location.reload(); // เข้าสู่เกม
+        }
+    } catch (e) {
+        alert("ไม่สามารถติดต่อศูนย์บัญชาการได้");
+    }
 }
 
 	async function handleCredentialResponse(response) {
