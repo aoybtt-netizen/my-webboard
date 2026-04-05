@@ -64,8 +64,44 @@
         #game-background { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('/images/station_bg.png'); background-size: cover; background-position: center; z-index: 1; transition: filter 0.6s ease; }
         .bg-dimmed { filter: brightness(0.2) blur(3px); }
         #hex-canvas { position: fixed; top: 0; left: 0; z-index: 5; opacity: 0; transition: opacity 0.4s ease; pointer-events: auto; }
-        .hud-top { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
-        .res-item { background: var(--glass); padding: 5px 15px; border-radius: 5px; border-left: 3px solid var(--neon-blue); font-size: 0.8rem; backdrop-filter: blur(5px); }
+    
+	.hud-top {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top)); /* รองรับรอยบากมือถือ */
+    left: 15px;
+    right: 15px;
+    display: flex;
+    justify-content: space-between; /* แยกซ้าย-ขวา */
+    align-items: flex-start;
+    z-index: 1000;
+    pointer-events: none; /* เพื่อไม่ให้ขวางการคลิกแผนที่ในจุดที่ไม่มีปุ่ม */
+}
+
+.hud-top > * {
+    pointer-events: auto; /* เปิดให้ปุ่มใน HUD คลิกได้ปกติ */
+}
+
+    /* ฝั่งแสดงทรัพยากร (ขวาบน) */
+.resource-bar {
+    display: flex;
+    flex-direction: column; /* เรียงลงมาเป็นแถวจะประหยัดพื้นที่กว่า */
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.res-item {
+    background: var(--glass);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border-right: 3px solid var(--neon-blue); /* ย้ายเส้นไปด้านขวาให้เข้ากับตำแหน่ง */
+    font-size: 0.75rem;
+    backdrop-filter: blur(8px);
+    min-width: 100px;
+    text-align: right;
+    box-shadow: -5px 5px 15px rgba(0,0,0,0.3);
+}
+
+
         .bottom-nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 1000; }
         .nav-btn { width: 65px; height: 65px; background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 12px; color: var(--neon-blue); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; }
         
@@ -79,14 +115,15 @@
 .profile-trigger {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     background: var(--glass);
-    padding: 5px 15px 5px 5px;
-    border-radius: 50px; /* ทรงแคปซูล */
-    border: 1px solid rgba(0, 210, 255, 0.3);
+    padding: 4px 12px 4px 4px;
+    border-radius: 40px;
+    border: 1px solid rgba(0, 210, 255, 0.2);
     cursor: pointer;
     transition: 0.3s;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(8px);
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
 }
 .profile-trigger:hover {
     border-color: var(--neon-blue);
