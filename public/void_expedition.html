@@ -498,6 +498,11 @@ function decodeJwtResponse(token) {
     canvas.height = window.innerHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // ดึงค่าสีจาก CSS Variables
+    const style = getComputedStyle(document.documentElement);
+    const neonBlue = style.getPropertyValue('--neon-blue').trim() || '#00d2ff';
+    const neonGreen = style.getPropertyValue('--neon-green').trim() || '#38ef7d';
+
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const hexRadius = 30;
@@ -509,20 +514,18 @@ function decodeJwtResponse(token) {
             const xPos = centerX + (q * w);
             const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h/2 : 0);
             
-            // ตรวจสอบสถานะของช่องนี้
             const isCenter = (q === 0 && r === 0);
             const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
 
             ctx.beginPath();
             
-            // --- ตั้งค่าสีและเส้น ---
             if (isSelected) {
-                ctx.strokeStyle = '#ffffff'; // สีขาวสว่างตอนเลือก
-                ctx.lineWidth = 4;           // เส้นหนาพิเศษ
-                ctx.shadowBlur = 15;        // เพิ่มแสงเรืองแสง (Glow)
-                ctx.shadowColor = var(--neon-blue);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = neonBlue;
             } else if (isCenter) {
-                ctx.strokeStyle = '#38ef7d';
+                ctx.strokeStyle = neonGreen;
                 ctx.lineWidth = 3;
                 ctx.shadowBlur = 0;
             } else {
@@ -536,9 +539,8 @@ function decodeJwtResponse(token) {
             }
             ctx.closePath();
 
-            // --- การระบายสีพื้นหลังช่อง ---
             if (isSelected) {
-                ctx.fillStyle = 'rgba(0, 210, 255, 0.3)'; // สีฟ้าจางๆ เมื่อเลือก
+                ctx.fillStyle = 'rgba(0, 210, 255, 0.3)';
                 ctx.fill();
             } else if (isCenter) {
                 ctx.fillStyle = 'rgba(56, 239, 125, 0.1)';
@@ -546,9 +548,7 @@ function decodeJwtResponse(token) {
             }
 
             ctx.stroke();
-            
-            // Reset shadow หลังจากวาดเสร็จเพื่อไม่ให้กระทบช่องอื่น
-            ctx.shadowBlur = 0;
+            ctx.shadowBlur = 0; // Reset shadow
         }
     }
 }
