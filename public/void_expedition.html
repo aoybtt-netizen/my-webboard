@@ -268,7 +268,16 @@
             <div class="nav-btn" id="btn-map" onclick="toggleMapMode()"><i class="fas fa-map-marked-alt"></i><span>แผนที่</span></div>
             <div class="nav-btn" onclick="handleLogout()" style="border-color:var(--neon-red); color:var(--neon-red);"><i class="fas fa-power-off"></i><span>ออก</span></div>
         </div>
+		
+		<div id="map-coordinate-display" style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; opacity: 0; transition: 0.3s;">
+    <div style="background: rgba(0, 210, 255, 0.1); border: 1px solid var(--neon-blue); padding: 5px 20px; border-radius: 20px; backdrop-filter: blur(5px); display: flex; gap: 15px; align-items: center;">
+        <i class="fas fa-crosshairs" style="color: var(--neon-blue); font-size: 0.8rem;"></i>
+        <span style="font-size: 0.8rem; letter-spacing: 2px; color: white;">COORD: <span id="target-qr" style="color: var(--neon-blue); font-weight: bold;">0, 0</span></span>
     </div>
+</div>
+
+    </div>
+	
 
     <div id="view-mining" class="view">
         <h2 id="mining-status">EXTRACTING...</h2>
