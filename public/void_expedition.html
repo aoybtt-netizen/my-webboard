@@ -287,6 +287,15 @@
             </div>
         </div>
     </div>
+	
+	
+	<div id="map-coordinate-display" style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; opacity: 0; transition: 0.3s;">
+    <div style="background: rgba(0, 210, 255, 0.1); border: 1px solid var(--neon-blue); padding: 5px 20px; border-radius: 20px; backdrop-filter: blur(5px); display: flex; gap: 15px; align-items: center;">
+        <i class="fas fa-crosshairs" style="color: var(--neon-blue); font-size: 0.8rem;"></i>
+        <span style="font-size: 0.8rem; letter-spacing: 2px; color: white;">COORD: <span id="target-qr" style="color: var(--neon-blue); font-weight: bold;">0, 0</span></span>
+    </div>
+</div>
+
 
     <script>
         const canvas = document.getElementById('hex-canvas');
@@ -298,6 +307,7 @@
 		let isGuest = localStorage.getItem('isGuest') === 'true';
         let mapActive = false;
         let isMining = false;
+		let selectedHex = null;
 		
 
         // --- ระบบ Auth ---
@@ -479,34 +489,65 @@ function decodeJwtResponse(token) {
         }
 
         // --- ระบบวาด Grid (Radius 30, 5x5) ---
-        function renderGrid() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const hexRadius = 30;
-            const h = hexRadius * Math.sqrt(3);
-            const w = hexRadius * 1.5;
+    function renderGrid() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const hexRadius = 30;
+    const h = hexRadius * Math.sqrt(3);
+    const w = hexRadius * 1.5;
 
-            for (let q = -2; q <= 2; q++) {
-                for (let r = -2; r <= 2; r++) {
-                    const xPos = centerX + (q * w);
-                    const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h/2 : 0);
-                    const isCenter = (q === 0 && r === 0);
+    for (let q = -2; q <= 2; q++) {
+        for (let r = -2; r <= 2; r++) {
+            const xPos = centerX + (q * w);
+            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h/2 : 0);
+            
+            // ตรวจสอบสถานะของช่องนี้
+            const isCenter = (q === 0 && r === 0);
+            const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
 
-                    ctx.beginPath();
-                    ctx.strokeStyle = isCenter ? '#38ef7d' : 'rgba(0, 210, 255, 0.3)';
-                    ctx.lineWidth = isCenter ? 3 : 1;
-                    for (let i = 0; i < 6; i++) {
-                        ctx.lineTo(xPos + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
-                    }
-                    ctx.closePath();
-                    if(isCenter) { ctx.fillStyle = 'rgba(56, 239, 125, 0.1)'; ctx.fill(); }
-                    ctx.stroke();
-                }
+            ctx.beginPath();
+            
+            // --- ตั้งค่าสีและเส้น ---
+            if (isSelected) {
+                ctx.strokeStyle = '#ffffff'; // สีขาวสว่างตอนเลือก
+                ctx.lineWidth = 4;           // เส้นหนาพิเศษ
+                ctx.shadowBlur = 15;        // เพิ่มแสงเรืองแสง (Glow)
+                ctx.shadowColor = var(--neon-blue);
+            } else if (isCenter) {
+                ctx.strokeStyle = '#38ef7d';
+                ctx.lineWidth = 3;
+                ctx.shadowBlur = 0;
+            } else {
+                ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.shadowBlur = 0;
             }
+
+            for (let i = 0; i < 6; i++) {
+                ctx.lineTo(xPos + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
+            }
+            ctx.closePath();
+
+            // --- การระบายสีพื้นหลังช่อง ---
+            if (isSelected) {
+                ctx.fillStyle = 'rgba(0, 210, 255, 0.3)'; // สีฟ้าจางๆ เมื่อเลือก
+                ctx.fill();
+            } else if (isCenter) {
+                ctx.fillStyle = 'rgba(56, 239, 125, 0.1)';
+                ctx.fill();
+            }
+
+            ctx.stroke();
+            
+            // Reset shadow หลังจากวาดเสร็จเพื่อไม่ให้กระทบช่องอื่น
+            ctx.shadowBlur = 0;
         }
+    }
+}
 
         function toggleMapMode() {
             mapActive = !mapActive;
@@ -519,51 +560,50 @@ function decodeJwtResponse(token) {
     canvas.onclick = (e) => {
     if (!mapActive) return;
 
-    // 1. หาตำแหน่งเมาส์/นิ้วที่จิ้มจริงบน Canvas (เทียบกับขนาดจอ)
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // 2. ค่ากำหนดของ Grid (ต้องตรงกับในฟังก์ชัน renderGrid)
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const hexRadius = 30;
     const h = hexRadius * Math.sqrt(3);
     const w = hexRadius * 1.5;
 
-    let clickedHex = null;
+    let foundHex = null;
 
-    // 3. วนลูปเช็คพิกัดทุกช่อง (วนลูปเดียวกับตอนวาด)
     for (let q = -2; q <= 2; q++) {
         for (let r = -2; r <= 2; r++) {
-            // คำนวณหาจุดศูนย์กลางของ Hex ช่องนั้นๆ
             const xPos = centerX + (q * w);
             const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h / 2 : 0);
-
-            // 4. ใช้สูตรหาระยะห่างระหว่าง "จุดที่จิ้ม" กับ "จุดศูนย์กลางของ Hex"
             const distance = Math.sqrt((mouseX - xPos) ** 2 + (mouseY - yPos) ** 2);
 
-            // ถ้าจิ้มห่างจากจุดศูนย์กลางไม่เกินรัศมี (30) แสดงว่าจิ้มโดนช่องนี้
             if (distance < hexRadius) {
-                clickedHex = { q, r };
+                foundHex = { q, r };
                 break;
             }
         }
-        if (clickedHex) break;
+        if (foundHex) break;
     }
 
-    // 5. ประมวลผลหลังการคลิก
-    if (clickedHex) {
-        // จิ้มโดน Grid: โชว์พิกัด
-        console.log(`จิ้มโดนพิกัด: Q=${clickedHex.q}, R=${clickedHex.r}`);
+    if (foundHex) {
+        // 1. บันทึกช่องที่เลือก
+        selectedHex = foundHex;
+
+        // 2. อัปเดต UI ด้านบน (แทน alert)
+        const coordDisplay = document.getElementById('map-coordinate-display');
+        document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
+        coordDisplay.style.opacity = "1";
+
+        // 3. สั่งวาด Grid ใหม่เพื่อให้เห็นเส้นหนาๆ
+        renderGrid();
         
-        // พี่สามารถเปลี่ยนจาก alert เป็นการโชว์เมนูคำสั่งในอนาคตได้ครับ
-        alert(`พิกัดเป้าหมาย: Q: ${clickedHex.q}, R: ${clickedHex.r}`);
-        
-        // --- ตัด startMining(); ออกเรียบร้อยตามที่ขอครับ ---
+        console.log(`Target Set: Q=${foundHex.q}, R=${foundHex.r}`);
     } else {
-        // จิ้มนอก Grid: ไม่เกิดอะไรขึ้น
-        console.log("จิ้มนอกขอบเขตแผนที่");
+        // ถ้าคลิกข้างนอก ให้ยกเลิกการเลือก (Optional)
+        // selectedHex = null;
+        // document.getElementById('map-coordinate-display').style.opacity = "0";
+        // renderGrid();
     }
 };
 
