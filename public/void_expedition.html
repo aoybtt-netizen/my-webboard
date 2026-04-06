@@ -306,6 +306,17 @@
         const ctx = canvas.getContext('2d');
         const bg = document.getElementById('game-background');
 		const FORBIDDEN_NAMES = ['admin', 'gedgo', 'gedgozone', 'admingedgozone', 'admingedgo'];
+		const images = {}; // ตัวแปรเก็บ Object รูปภาพ
+		const imageSources = {
+			// กำหนดชื่อคีย์และพาธของไฟล์รูปภาพ
+			'metal': 'images/star/starB0.png',
+			'energy': 'images/star/starC0.png',
+			'base': 'images/star/starHome.png',
+			// พี่สามารถเพิ่มรูปอื่นๆ ตรงนี้ได้ครับ เช่น 'ship': 'images/ship.png'
+		};
+		let imagesLoaded = false;
+		let loadedCount = 0;
+		const totalImages = Object.keys(imageSources).length;
         
         let currentUser = localStorage.getItem('username');
 		let isGuest = localStorage.getItem('isGuest') === 'true';
@@ -491,9 +502,43 @@ function decodeJwtResponse(token) {
             });
             if((await res.json()).success) location.reload();
         }
+		
+	
+	function loadGridImages(callback) {
+    if (totalImages === 0) {
+        imagesLoaded = true;
+        callback();
+        return;
+    }
+
+    for (const key in imageSources) {
+        images[key] = new Image();
+        images[key].src = imageSources[key];
+        images[key].onload = () => {
+            loadedCount++;
+            if (loadedCount === totalImages) {
+                imagesLoaded = true;
+                console.log("All grid images loaded.");
+                callback(); // เมื่อโหลดครบทุกรูป ให้รันฟังก์ชัน Callback (เช่น renderGrid)
+            }
+        };
+        images[key].onerror = () => {
+            console.error(`Failed to load image: ${imageSources[key]}`);
+            loadedCount++; // นับเพิ่มเพื่อไม่ให้แอปค้าง แม้โหลดไม่สำเร็จ
+            if (loadedCount === totalImages) {
+                imagesLoaded = true;
+                callback();
+            }
+        };
+    }
+}
+
 
         // --- ระบบวาด Grid (Radius 30, 5x5) ---
     function renderGrid() {
+    // ถ้ายังโหลดรูปไม่เสร็จ ไม่ต้องวาด (ป้องกัน Error)
+    if (!imagesLoaded) return;
+
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -511,10 +556,13 @@ function decodeJwtResponse(token) {
     for (let q = -2; q <= 2; q++) {
         for (let r = -2; r <= 2; r++) {
             const xPos = centerX + (q * w);
-            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h/2 : 0);           
+            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h/2 : 0);
+            
             const isCenter = (q === 0 && r === 0);
             const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
-            ctx.beginPath();           
+
+            // --- วาดเส้นขอบหกเหลี่ยม (เหมือนเดิม) ---
+            ctx.beginPath();
             if (isSelected) {
                 ctx.strokeStyle = '#ffffff'; 
                 ctx.lineWidth = 4;           
@@ -529,27 +577,69 @@ function decodeJwtResponse(token) {
                 ctx.lineWidth = 1;
                 ctx.shadowBlur = 0;
             }
-            // วาดรูปทรงหกเหลี่ยม
             for (let i = 0; i < 6; i++) {
                 ctx.lineTo(xPos + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
             }
             ctx.closePath();
+
+            // ระบายสีพื้นหลังเฉพาะจุดศูนย์กลาง
             if (isCenter) {
                 ctx.fillStyle = 'rgba(56, 239, 125, 0.1)';
                 ctx.fill();
             }
             ctx.stroke();
             ctx.shadowBlur = 0; 
+
+            // --- 🚩 ส่วนใหม่: วาดรูปภาพลงในกริด ---
+            
+            // กำหนดขนาดรูปภาพ (ให้เล็กกว่ารัศมีหกเหลี่ยมเล็กน้อย)
+            const imgSize = hexRadius * 1.2; 
+            
+            let imgToDraw = null;
+
+            // ตรรกะการเลือกรูปภาพที่จะวาดในแต่ละช่อง
+            if (isCenter) {
+                imgToDraw = images['base']; // ช่องกลางวาดรูปฐานทัพ
+            } else {
+                // ตัวอย่างสุ่มวาดรูปทรัพยากรในช่องอื่นๆ (พี่สามารถเปลี่ยนเป็นตรรกะจริงได้)
+                // เช่น ถ้ามีแร่ให้วาดรูปแร่ ถ้ามีพลังงานให้วาดรูปพลังงาน
+                const randomValue = Math.abs(q + r) % 3; // สุ่มแบบง่ายๆ
+                if (randomValue === 1) {
+                    imgToDraw = images['metal'];
+                } else if (randomValue === 2) {
+                    imgToDraw = images['energy'];
+                }
+            }
+
+            // ถ้ามีรูปที่ต้องวาด ให้ทำการวาดลงใน Canvas
+            if (imgToDraw && imgToDraw.complete) {
+                ctx.drawImage(
+                    imgToDraw, 
+                    xPos - imgSize / 2, // ปรับตำแหน่ง X ให้รูปอยู่ตรงกลาง
+                    yPos - imgSize / 2, // ปรับตำแหน่ง Y ให้รูปอยู่ตรงกลาง
+                    imgSize,            // ความกว้างรูป
+                    imgSize             // ความสูงรูป
+                );
+            }
         }
     }
 }
 
-        function toggleMapMode() {
-            mapActive = !mapActive;
-            bg.classList.toggle('bg-dimmed', mapActive);
-            canvas.style.opacity = mapActive ? "1" : "0";
-            if(mapActive) renderGrid();
+    function toggleMapMode() {
+    mapActive = !mapActive;
+    bg.classList.toggle('bg-dimmed', mapActive);
+    canvas.style.opacity = mapActive ? "1" : "0";
+    
+    if(mapActive) {
+        // เช็คก่อนว่าโหลดรูปเสร็จหรือยัง ถ้ายังให้โหลดก่อนแล้วค่อยวาด
+        if (!imagesLoaded) {
+            console.log("Loading images before opening map...");
+            loadGridImages(renderGrid);
+        } else {
+            renderGrid(); // ถ้าโหลดเสร็จแล้วก็วาดได้เลย
         }
+    }
+}
 
         // ระบบขุดแร่
     canvas.onclick = (e) => {
