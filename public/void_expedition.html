@@ -516,43 +516,58 @@ function decodeJwtResponse(token) {
         }
 
         // ระบบขุดแร่
-        canvas.onclick = (e) => {
-            if(!mapActive) return;
-            startMining();
-        };
+    canvas.onclick = (e) => {
+    if (!mapActive) return;
 
-        function startMining() {
-            document.getElementById('view-map').classList.remove('active');
-            document.getElementById('view-mining').style.display = 'flex';
-            isMining = true;
-            let p = 0;
-            let t = setInterval(() => {
-                if(!isMining) { clearInterval(t); return; }
-                p += 2;
-                document.getElementById('mining-bar').style.width = p + "%";
-                if(p >= 100) { clearInterval(t); finishMining(); }
-            }, 100);
-        }
+    // 1. หาตำแหน่งเมาส์/นิ้วที่จิ้มจริงบน Canvas (เทียบกับขนาดจอ)
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-        async function finishMining() {
-            const res = await fetch('/api/mine', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username: currentUser, drillLevel: 1})
-            });
-            const data = await res.json();
-            document.getElementById('val-metal').innerText = data.metal;
-            document.getElementById('val-energy').innerText = data.energy + "%";
-            alert("ขุดสำเร็จ!");
-            exitMining();
-        }
+    // 2. ค่ากำหนดของ Grid (ต้องตรงกับในฟังก์ชัน renderGrid)
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const hexRadius = 30;
+    const h = hexRadius * Math.sqrt(3);
+    const w = hexRadius * 1.5;
 
-        function exitMining() {
-            isMining = false;
-            document.getElementById('view-mining').style.display = 'none';
-            document.getElementById('view-map').classList.add('active');
-            document.getElementById('mining-bar').style.width = "0%";
+    let clickedHex = null;
+
+    // 3. วนลูปเช็คพิกัดทุกช่อง (วนลูปเดียวกับตอนวาด)
+    for (let q = -2; q <= 2; q++) {
+        for (let r = -2; r <= 2; r++) {
+            // คำนวณหาจุดศูนย์กลางของ Hex ช่องนั้นๆ
+            const xPos = centerX + (q * w);
+            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h / 2 : 0);
+
+            // 4. ใช้สูตรหาระยะห่างระหว่าง "จุดที่จิ้ม" กับ "จุดศูนย์กลางของ Hex"
+            const distance = Math.sqrt((mouseX - xPos) ** 2 + (mouseY - yPos) ** 2);
+
+            // ถ้าจิ้มห่างจากจุดศูนย์กลางไม่เกินรัศมี (30) แสดงว่าจิ้มโดนช่องนี้
+            if (distance < hexRadius) {
+                clickedHex = { q, r };
+                break;
+            }
         }
+        if (clickedHex) break;
+    }
+
+    // 5. ประมวลผลหลังการคลิก
+    if (clickedHex) {
+        // จิ้มโดน Grid: โชว์พิกัด
+        console.log(`จิ้มโดนพิกัด: Q=${clickedHex.q}, R=${clickedHex.r}`);
+        
+        // พี่สามารถเปลี่ยนจาก alert เป็นการโชว์เมนูคำสั่งในอนาคตได้ครับ
+        alert(`พิกัดเป้าหมาย: Q: ${clickedHex.q}, R: ${clickedHex.r}`);
+        
+        // --- ตัด startMining(); ออกเรียบร้อยตามที่ขอครับ ---
+    } else {
+        // จิ้มนอก Grid: ไม่เกิดอะไรขึ้น
+        console.log("จิ้มนอกขอบเขตแผนที่");
+    }
+};
+
+
 
         function openMenu(id) { document.getElementById(id).style.display = 'flex'; }
         function closeMenus(e) { if(e.target.className === 'menu-overlay') e.target.style.display = 'none'; }
