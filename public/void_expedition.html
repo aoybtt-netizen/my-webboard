@@ -469,7 +469,7 @@ function decodeJwtResponse(token) {
 			document.getElementById('display-energy-small').innerText = (data.energy || 0) + "%";
             document.getElementById('prof-metal').innerText = data.metal.toLocaleString();
             document.getElementById('prof-energy').innerText = data.energy + "%";
-            document.getElementById('val-metal').innerText = data.metal.toLocaleString(); // เผื่อพี่ยังใช้ ID เดิมใน HUD อื่น
+            //document.getElementById('val-metal').innerText = data.metal.toLocaleString();
             document.getElementById('val-energy').innerText = data.energy + "%";
 
             // เช็คประเภทบัญชี
