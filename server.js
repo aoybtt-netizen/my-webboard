@@ -1254,31 +1254,36 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
     }
 });
 
+//======== API GAME ========
+// =========================================
+// --- Void Expedition: Game API Section --
+// =========================================
 
-//========API GAME
-// ==========================================
-// --- Void Expedition: Game API Section ---
-// ==========================================
-// API สำหรับตั้งชื่อในเกม (Callsign) แยกจากชื่อหลัก
 const FORBIDDEN_NAMES = ['admin', 'gedgo', 'gedgozone', 'admingedgozone', 'admingedgo'];
 
-app.post('/api/game/set-nickname', async (req, res) => {
-    const { username, nickname } = req.body;
-    const cleanNickname = nickname.toLowerCase().trim();
+// ฟังก์ชันเลือก Database ตามโหมด
+const getDB = (mode) => {
+    // ปรับให้รองรับกรณี mode ไม่ถูกส่งมา ให้ไป Main เสมอ
+    const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
+    return client.db(dbName).collection("users");
+};
 
-    // 🚩 เช็คคำต้องห้ามที่ Server
+// 1. API ตั้งชื่อ (Callsign) - เพิ่ม :mode
+app.post('/api/:mode/game/set-nickname', async (req, res) => {
+    const { mode } = req.params;
+    const { username, nickname } = req.body;
+    const db = getDB(mode); // 🚩 ใช้ DB ตามโหมด
+    
+    const cleanNickname = nickname.toLowerCase().trim();
     const isForbidden = FORBIDDEN_NAMES.some(forbidden => cleanNickname.includes(forbidden));
     
-    if (isForbidden) {
-        return res.json({ success: false, error: "This name is not permitted." });
-    }
+    if (isForbidden) return res.json({ success: false, error: "This name is not permitted." });
 
     try {
-        // ... โค้ดบันทึกลง MongoDB เดิมของพี่ ...
-        const exists = await usersCollection.findOne({ gameNickname: nickname });
+        const exists = await db.findOne({ gameNickname: nickname });
         if (exists) return res.json({ success: false, error: "This name has already been used." });
 
-        await usersCollection.updateOne(
+        await db.updateOne(
             { username: username },
             { $set: { gameNickname: nickname } }
         );
@@ -1288,94 +1293,82 @@ app.post('/api/game/set-nickname', async (req, res) => {
     }
 });
 
-// ฟังก์ชันสุ่มชื่อนักบิน (ตัวอย่าง: UNIT-A1B2)
-function generateRandomCallsign() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = 'UNIT-';
-    for (let i = 0; i < 4; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
+// 2. API สร้าง Guest - เพิ่ม :mode
+app.post('/api/:mode/auth/guest-init', async (req, res) => {
+    const { mode } = req.params;
+    const db = getDB(mode); // 🚩 ใช้ DB ตามโหมด
 
-// API สำหรับสร้าง Guest ใหม่พร้อมชื่อสุ่ม
-app.post('/api/auth/guest-init', async (req, res) => {
     try {
         let uniqueNickname = "";
         let isUnique = false;
 
-        // 🚩 ลูปจนกว่าจะได้ชื่อที่ไม่ซ้ำในฐานข้อมูล
         while (!isUnique) {
             uniqueNickname = generateRandomCallsign();
-            const exists = await usersCollection.findOne({ gameNickname: uniqueNickname });
+            const exists = await db.findOne({ gameNickname: uniqueNickname });
             if (!exists) isUnique = true;
         }
 
-        const guestUsername = `GUEST_${Date.now()}`; // ID สำหรับ Login
+        const guestUsername = `GUEST_${Date.now()}`;
         const newUser = {
             username: guestUsername,
             gameNickname: uniqueNickname,
             metal: 500,
             energy: 100,
             isGuest: true,
-            createdAt: new Date()
+            createdAt: Date.now()
         };
 
-        await usersCollection.insertOne(newUser);
+        await db.insertOne(newUser);
         res.json({ success: true, username: guestUsername, nickname: uniqueNickname });
     } catch (e) {
         res.status(500).json({ success: false });
     }
 });
 
-// 1. API สำหรับดึงข้อมูลทรัพยากรล่าสุด (ใช้ตอนเข้าหน้าเกม)
-app.get('/api/game/stats/:username', async (req, res) => {
-    const { username } = req.params;
+// 3. API ดึงข้อมูลทรัพยากร (Stats)
+app.get('/api/:mode/game/stats/:username', async (req, res) => {
+    const { mode, username } = req.params; // 🚩 ดึงจาก params ทั้งคู่
+    const db = getDB(mode);
+
     try {
-        const user = await usersCollection.findOne({ username: username });
+        const user = await db.findOne({ username: username });
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        // ✅ เพิ่ม gameNickname เข้าไปในนี้เพื่อให้หน้าบ้านตรวจสอบได้
-        const gameData = {
-            gameNickname: user.gameNickname, // ดึงชื่อจากฐานข้อมูลมาส่งคืน
+        res.json({
+            gameNickname: user.gameNickname,
             metal: user.metal ?? 500,
             energy: user.energy ?? 100,
             drillLevel: user.drillLevel ?? 1
-        };
-
-        res.json(gameData);
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 2. API สำหรับการขุดแร่ (Mining)
-app.post('/api/mine', async (req, res) => {
+// 4. API การขุดแร่ (Mining) - เพิ่ม :mode
+app.post('/api/:mode/mine', async (req, res) => {
+    const { mode } = req.params;
     const { username, drillLevel } = req.body;
+    const db = getDB(mode);
 
     try {
-        const user = await usersCollection.findOne({ username: username });
+        const user = await db.findOne({ username: username });
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // ตั้งค่าตัวเลข (Business Logic)
         const currentEnergy = user.energy ?? 100;
-        const currentMetal = user.metal ?? 500;
         const energyCost = 10;
         const minedAmount = 50 * (drillLevel || 1);
 
         if (currentEnergy >= energyCost) {
-            // อัปเดตลง MongoDB โดยใช้ $inc เพื่อความแม่นยำ (ป้องกัน Race Condition)
-            const result = await usersCollection.updateOne(
+            await db.updateOne(
                 { username: username },
                 { 
                     $inc: { metal: minedAmount, energy: -energyCost },
-                    $set: { lastMiningUpdate: new Date() }
+                    $set: { lastMiningUpdate: Date.now() }
                 }
             );
 
-            // ดึงค่าใหม่ส่งกลับไปอัปเดตหน้าจอ
-            const updatedUser = await usersCollection.findOne({ username: username });
-            
+            const updatedUser = await db.findOne({ username: username });
             res.json({
                 success: true,
                 metal: updatedUser.metal,
@@ -1386,29 +1379,21 @@ app.post('/api/mine', async (req, res) => {
             res.status(400).json({ success: false, message: "Energy Low" });
         }
     } catch (e) {
-        console.error("Game API Error:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });
 
-// 3. ระบบฟื้นฟูพลังงานอัตโนมัติ (Energy Regeneration)
-// ใส่ไว้ใน Task ที่รันทุกๆ 5 นาที หรือใช้ระบบคำนวณเวลาตอน Login ก็ได้
+// 5. ระบบฟื้นฟูพลังงาน (คงเดิม - ถูกต้องแล้ว)
 setInterval(async () => {
     try {
-        // เพิ่ม Energy ให้ทุกคน 5 หน่วย แต่ไม่เกิน 100
-        await usersCollection.updateMany(
-            { energy: { $lt: 100 } },
-            { $inc: { energy: 5 } }
-        );
-        // ป้องกันค่าเกิน 100
-        await usersCollection.updateMany(
-            { energy: { $gt: 100 } },
-            { $set: { energy: 100 } }
-        );
-    } catch (e) {
-        console.error("Energy Regen Error:", e);
-    }
-}, 1000 * 60 * 5); // รันทุก 5 นาที
+        const modes = ['test', 'main'];
+        for (const mode of modes) {
+            const db = getDB(mode);
+            await db.updateMany({ energy: { $lt: 100 } }, { $inc: { energy: 5 } });
+            await db.updateMany({ energy: { $gt: 100 } }, { $set: { energy: 100 } });
+        }
+    } catch (e) { console.error("Energy Regen Error:", e); }
+}, 1000 * 60 * 5);
 
 
 
