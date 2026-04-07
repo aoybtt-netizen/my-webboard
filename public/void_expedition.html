@@ -311,19 +311,37 @@
 	const API_BASE = isDevMode ? '/api/test' : '/api/main';
 	console.log(`📡 Connected to: ${isDevMode ? 'TEST SERVER' : 'LIVE SERVER'}`);
 	
+	const STATIC_STARS = {
+		"0,0":   { img: 'starHome', name: 'HOME BASE' },
+		"0,-1":  { img: 'star0',    name: 'GEDGOZONE1' },
+		"1,-1":  { img: 'star1',    name: 'GEDGOZONE2' },
+		"1,0":   { img: 'star2',    name: 'GEDGOZONE3' },
+		"0,1":   { img: 'star3',    name: 'GEDGOZONE4' },
+		"-1,0":  { img: 'star4',    name: 'GEDGOZONE5' },
+		"-1,-1": { img: 'star5',    name: 'GEDGOZONE6' }
+	};
+
+	let serverMapData = {};
+	
 
         const canvas = document.getElementById('hex-canvas');
         const ctx = canvas.getContext('2d');
         const bg = document.getElementById('game-background');
 		const FORBIDDEN_NAMES = ['admin', 'gedgo', 'gedgozone', 'admingedgozone', 'admingedgo'];
-		const images = {}; // ตัวแปรเก็บ Object รูปภาพ
+		const images = {};
 		const imageSources = {
-			// กำหนดชื่อคีย์และพาธของไฟล์รูปภาพ
-			'metal': 'images/star/starB0.png',
-			'energy': 'images/star/starC0.png',
+			// รูปฐานหลักและรูปปกปิด (Fog of War)
 			'base': 'images/star/starHome.png',
-			// พี่สามารถเพิ่มรูปอื่นๆ ตรงนี้ได้ครับ เช่น 'ship': 'images/ship.png'
+			'conceal': 'images/conceal.png',
+			'meteor0': 'images/meteorite/meteor0.png',
+			'star0': 'images/star/star0.png',
+			'star1': 'images/star/star1.png',
+			'star2': 'images/star/star2.png',
+			'star3': 'images/star/star3.png',
+			'star4': 'images/star/star4.png',
+			'star5': 'images/star/star5.png'
 		};
+
 		let imagesLoaded = false;
 		let loadedCount = 0;
 		const totalImages = Object.keys(imageSources).length;
@@ -388,7 +406,7 @@ function decodeJwtResponse(token) {
 
 
         // --- เช็คโปรไฟล์หลังโหลดหน้า ---
-        window.onload = async () => {
+window.onload = async () => {
     if (!currentUser) {
         // ถ้าไม่มีข้อมูลเลย ให้แสดงหน้า Auth
         document.getElementById('view-auth').classList.add('active');
@@ -551,7 +569,6 @@ function decodeJwtResponse(token) {
 
         // --- ระบบวาด Grid (Radius 30, 5x5) ---
     function renderGrid() {
-    // ถ้ายังโหลดรูปไม่เสร็จ ไม่ต้องวาด (ป้องกัน Error)
     if (!imagesLoaded) return;
 
     canvas.width = window.innerWidth;
@@ -568,73 +585,71 @@ function decodeJwtResponse(token) {
     const h = hexRadius * Math.sqrt(3);
     const w = hexRadius * 1.5;
 
-    for (let q = -2; q <= 2; q++) {
-        for (let r = -2; r <= 2; r++) {
+    // พี่ปรับ Loop ตรงนี้ให้กว้างขึ้นตามขนาดแผนที่ได้ครับ เช่น -5 ถึง 5
+    for (let q = -3; q <= 3; q++) { 
+        for (let r = -3; r <= 3; r++) {
             const xPos = centerX + (q * w);
-            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h/2 : 0);
+            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h / 2 : 0);
+            const coordKey = `${q},${r}`;
             
+            let imgToDraw = null;
+            let label = "";
+            let labelColor = "rgba(255,255,255,0.7)";
+
+            // --- 1. ตรวจสอบเงื่อนไขรูปภาพ (ลำดับความสำคัญ) ---
+            if (STATIC_STARS[coordKey]) {
+                const starData = STATIC_STARS[coordKey];
+                imgToDraw = images[starData.img]; // ดึงจากที่ Preload ไว้
+                label = starData.name;
+                labelColor = neonGreen;
+            } else {
+                const serverTile = serverMapData[coordKey];
+                if (serverTile && serverTile.progress >= 100) {
+                    // ถ้าสำรวจแล้ว ให้ใช้รูปที่ Server ส่งมา 
+                    // (แนะนำว่าควรใช้ระบบ Cache รูปภาพ ไม่ควร new Image() ในนี้)
+                    imgToDraw = images[serverTile.id] || images['conceal']; 
+                    label = serverTile.name;
+                } else {
+                    imgToDraw = images['conceal'];
+                    label = serverTile ? `${serverTile.progress}%` : "0%";
+                }
+            }
+
             const isCenter = (q === 0 && r === 0);
             const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
 
-            // --- วาดเส้นขอบหกเหลี่ยม (เหมือนเดิม) ---
+            // --- 2. วาดเส้นขอบหกเหลี่ยม ---
             ctx.beginPath();
-            if (isSelected) {
-                ctx.strokeStyle = '#ffffff'; 
-                ctx.lineWidth = 4;           
-                ctx.shadowBlur = 15;         
-                ctx.shadowColor = neonBlue;
-            } else if (isCenter) {
-                ctx.strokeStyle = neonGreen;
-                ctx.lineWidth = 3;
-                ctx.shadowBlur = 0;
-            } else {
-                ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)';
-                ctx.lineWidth = 1;
-                ctx.shadowBlur = 0;
-            }
+            ctx.shadowBlur = isSelected ? 15 : 0;
+            ctx.shadowColor = neonBlue;
+            ctx.strokeStyle = isSelected ? '#ffffff' : (isCenter ? neonGreen : 'rgba(0, 210, 255, 0.2)');
+            ctx.lineWidth = isSelected ? 4 : (isCenter ? 3 : 1);
+
             for (let i = 0; i < 6; i++) {
                 ctx.lineTo(xPos + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
             }
             ctx.closePath();
-
-            // ระบายสีพื้นหลังเฉพาะจุดศูนย์กลาง
+            
             if (isCenter) {
-                ctx.fillStyle = 'rgba(56, 239, 125, 0.1)';
+                ctx.fillStyle = 'rgba(56, 239, 125, 0.05)';
                 ctx.fill();
             }
             ctx.stroke();
-            ctx.shadowBlur = 0; 
+            ctx.shadowBlur = 0;
 
-            // --- 🚩 ส่วนใหม่: วาดรูปภาพลงในกริด ---
-            
-            // กำหนดขนาดรูปภาพ (ให้เล็กกว่ารัศมีหกเหลี่ยมเล็กน้อย)
-            const imgSize = hexRadius * 1.2; 
-            
-            let imgToDraw = null;
-
-            // ตรรกะการเลือกรูปภาพที่จะวาดในแต่ละช่อง
-            if (isCenter) {
-                imgToDraw = images['base']; // ช่องกลางวาดรูปฐานทัพ
-            } else {
-                // ตัวอย่างสุ่มวาดรูปทรัพยากรในช่องอื่นๆ (พี่สามารถเปลี่ยนเป็นตรรกะจริงได้)
-                // เช่น ถ้ามีแร่ให้วาดรูปแร่ ถ้ามีพลังงานให้วาดรูปพลังงาน
-                const randomValue = Math.abs(q + r) % 3; // สุ่มแบบง่ายๆ
-                if (randomValue === 1) {
-                    imgToDraw = images['metal'];
-                } else if (randomValue === 2) {
-                    imgToDraw = images['energy'];
-                }
+            // --- 3. วาดรูปภาพดาว/หมอก ---
+            if (imgToDraw && imgToDraw.complete) {
+                const imgSize = hexRadius * 1.3;
+                ctx.drawImage(imgToDraw, xPos - imgSize/2, yPos - imgSize/2, imgSize, imgSize);
             }
 
-            // ถ้ามีรูปที่ต้องวาด ให้ทำการวาดลงใน Canvas
-            if (imgToDraw && imgToDraw.complete) {
-                ctx.drawImage(
-                    imgToDraw, 
-                    xPos - imgSize / 2, // ปรับตำแหน่ง X ให้รูปอยู่ตรงกลาง
-                    yPos - imgSize / 2, // ปรับตำแหน่ง Y ให้รูปอยู่ตรงกลาง
-                    imgSize,            // ความกว้างรูป
-                    imgSize             // ความสูงรูป
-                );
+            // --- 4. วาดตัวหนังสือ (Label) ---
+            if (label) {
+                ctx.fillStyle = labelColor;
+                ctx.font = "bold 9px 'Segoe UI'";
+                ctx.textAlign = "center";
+                // วาดไว้ใต้รูปหกเหลี่ยมเล็กน้อย
+                ctx.fillText(label, xPos, yPos + hexRadius + 12);
             }
         }
     }

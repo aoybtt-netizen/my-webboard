@@ -1404,6 +1404,70 @@ setInterval(async () => {
     } catch (e) { console.error("Energy Regen Error:", e); }
 }, 1000 * 60 * 5);
 
+// ฟังก์ชันสุ่มชื่อดาว เช่น PX-99 หรือ NOVA-X7
+function generateStarName() {
+    const prefixes = ['PX', 'NOVA', 'ZETA', 'CORE', 'VOID', 'ALPHA'];
+    const code = Math.floor(1000 + Math.random() * 9000);
+    return `${prefixes[Math.floor(Math.random() * prefixes.length)]}-${code}`;
+}
+
+// 6. ดึงข้อมูลแผนที่ทั้งหมด
+app.get('/api/:mode/map/all', async (req, res) => {
+    const db = client.db(req.params.mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+    const mapCollection = db.collection("map_tiles");
+    try {
+        const tiles = await mapCollection.find({}).toArray();
+        res.json(tiles);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 7. อัปเดตการสำรวจ (เมื่อครบ 100% ให้สุ่มดาว)
+app.post('/api/:mode/map/explore', async (req, res) => {
+    const { mode } = req.params;
+    const { q, r, username } = req.body;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+    const mapCollection = db.collection("map_tiles");
+
+    try {
+        let tile = await mapCollection.findOne({ q, r });
+        
+        // ถ้ายังไม่มีข้อมูลในพิกัดนี้ หรือยังสำรวจไม่เสร็จ
+        if (!tile || tile.progress < 100) {
+            // ในที่นี้สมมติว่าส่งมา 1 ครั้งคือเพิ่ม 10% (พี่ไปปรับตามความยากที่ต้องการได้)
+            const newProgress = (tile ? tile.progress : 0) + 10;
+            
+            let updateData = { progress: newProgress };
+
+            if (newProgress >= 100) {
+                // 🚩 จุดตัดสิน: สุ่มว่าเป็นดาวหรืออุตกาบาต
+                const isStar = Math.random() < 0.3; // 30% เป็นดาว
+                if (isStar) {
+                    const starNum = Math.floor(Math.random() * 101);
+                    updateData.type = 'star';
+                    updateData.image = `images/star/star${starNum}.png`;
+                    updateData.name = generateStarName();
+                } else {
+                    updateData.type = 'meteorite';
+                    updateData.image = `images/meteorite/meteor0.png`;
+                    updateData.name = 'METEOROID FIELD';
+                }
+                updateData.discoveredBy = username;
+            }
+
+            await mapCollection.updateOne(
+                { q, r },
+                { $set: updateData },
+                { upsert: true }
+            );
+            
+            const updatedTile = await mapCollection.findOne({ q, r });
+            return res.json({ success: true, tile: updatedTile });
+        }
+        res.json({ success: false, message: "Already explored" });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
 
 
 
