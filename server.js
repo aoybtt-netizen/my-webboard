@@ -1325,6 +1325,15 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
     }
 });
 
+function generateRandomCallsign() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = 'UNIT-';
+    for (let i = 0; i < 4; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 // 3. API ดึงข้อมูลทรัพยากร (Stats)
 app.get('/api/:mode/game/stats/:username', async (req, res) => {
     const { mode, username } = req.params; // 🚩 ดึงจาก params ทั้งคู่
