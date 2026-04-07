@@ -643,15 +643,6 @@ window.onload = async () => {
                 const imgSize = hexRadius * 1.3;
                 ctx.drawImage(imgToDraw, xPos - imgSize/2, yPos - imgSize/2, imgSize, imgSize);
             }
-
-            // --- 4. วาดตัวหนังสือ (Label) ---
-            if (label) {
-                ctx.fillStyle = labelColor;
-                ctx.font = "bold 9px 'Segoe UI'";
-                ctx.textAlign = "center";
-                // วาดไว้ใต้รูปหกเหลี่ยมเล็กน้อย
-                ctx.fillText(label, xPos, yPos + hexRadius + 12);
-            }
         }
     }
 }
