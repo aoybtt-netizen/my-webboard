@@ -425,7 +425,7 @@ function decodeJwtResponse(token) {
 	async function startAsGuest() {
     try {
         // 1. เรียก API เพื่อขอสร้างบัญชี Guest และสุ่มชื่อที่ไม่ซ้ำ
-        const res = await fetch('/api/auth/guest-init', {
+			const res = await fetch(`${API_BASE}/auth/guest-init`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'}
         });
