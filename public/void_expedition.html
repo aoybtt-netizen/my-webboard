@@ -473,6 +473,13 @@ function decodeJwtResponse(token) {
     async function checkGameProfile() {
     try {
         const res = await fetch(`${API_BASE}/game/stats/${currentUser}`);
+		if (res.status === 404) {
+            console.warn("User not found in this server, clearing local data...");
+            localStorage.removeItem('username');
+            localStorage.removeItem('gameNickname');
+            location.reload();
+            return;
+        }
         const data = await res.json();
         
         if (!data.gameNickname) {
