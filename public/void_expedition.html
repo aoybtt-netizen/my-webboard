@@ -817,6 +817,23 @@ function getHexDistance(q1, r1, q2, r2) {
             Math.abs(r1 - r2)) / 2;
 }
 
+// ฟังก์ชันเช็คว่าพิกัดเป้าหมายอยู่ติดกับจุดที่สำรวจแล้วหรือไม่
+function canReach(targetQ, targetR) {
+    const neighbors = [
+        {q: targetQ + 1, r: targetR}, {q: targetQ - 1, r: targetR},
+        {q: targetQ, r: targetR + 1}, {q: targetQ, r: targetR - 1},
+        {q: targetQ + 1, r: targetR - 1}, {q: targetQ - 1, r: targetR + 1}
+    ];
+
+    for (let pos of neighbors) {
+        const key = `${pos.q},${pos.r}`;
+        if (STATIC_STARS[key]) return true; // ติดกับดาวหลัก
+        const tile = serverMapData[key];
+        if (tile && tile.progress >= 100) return true; // ติดกับดาวที่สำรวจแล้ว
+    }
+    return false;
+}
+
 //เช็คเงื่อนไขการสำรวจ
 function canExplore(targetQ, targetR) {
     // 1. กำหนดพิกัดรอบข้างทั้ง 6 ทิศ
@@ -845,6 +862,25 @@ function canExplore(targetQ, targetR) {
 }
 
 
+function travelTo(q, r) {
+    if (q === playerQ && r === playerR) {
+        alert("คุณอยู่ที่พิกัดนี้อยู่แล้ว");
+        return;
+    }
+    
+    // ตรงนี้ในอนาคตพี่อาจจะหัก Energy หรือมีระบบรอเวลาเดินทาง
+    if (confirm(`ยืนยันการเดินทางไปที่พิกัด ${q}, ${r}?`)) {
+        playerQ = q;
+        playerR = r;
+        closeStarDetail();
+        renderGrid(); // วาดใหม่เพื่อให้ไอคอนยานย้ายที่
+        
+        // อย่าลืมส่งข้อมูลไปอัปเดตที่ Server ด้วยนะครับ (ถ้ามี API รองรับแล้ว)
+        // updatePlayerLocation(q, r);
+    }
+}
+
+
 
 	// ฟังก์ชันเปิดหน้าต่างรายละเอียด
 function openStarDetail() {
@@ -855,35 +891,68 @@ function openStarDetail() {
     const coordKey = `${q},${r}`;
     
     let name = "UNKNOWN SECTOR";
-    let imgSrc = "images/conceal.png"; // Default
+    let imgSrc = "images/conceal.png";
     let status = "ยังไม่ได้สำรวจ";
+    let isExplored = false;
 
+    // --- 1. ตรวจสอบข้อมูลพื้นฐาน ---
     if (STATIC_STARS[coordKey]) {
-        const starData = STATIC_STARS[coordKey];
-        name = starData.name;
-        // ดึงจาก imageSources โดยตรงเพื่อให้ Path ถูกต้อง
-        imgSrc = imageSources[starData.img] || `images/star/${starData.img}.png`;
-        status = "สถานีพันธมิตร (Fixed)";
+        name = STATIC_STARS[coordKey].name;
+        imgSrc = imageSources[STATIC_STARS[coordKey].img] || `images/star/${STATIC_STARS[coordKey].img}.png`;
+        status = "สถานีพันธมิตร";
+        isExplored = true;
     } else {
         const tile = serverMapData[coordKey];
         if (tile && tile.progress >= 100) {
             name = tile.name;
             imgSrc = tile.image;
             status = tile.type === 'star' ? "ดาวเคราะห์" : "กลุ่มอุกกาบาต";
+            isExplored = true;
         } else {
-            name = "หมอกนิรนาม";
-            imgSrc = "images/conceal.png";
             status = tile ? `กำลังสำรวจ: ${tile.progress}%` : "ยังไม่ถูกค้นพบ";
         }
     }
 
+    // --- 2. คำนวณระยะทางและเงื่อนไขปุ่ม ---
+    const dist = getHexDistance(playerQ, playerR, q, r);
+    const reachable = canReach(q, r);
+    
+    let actionBtn = "";
+    if (isExplored) {
+        // ถ้าสำรวจแล้ว ให้โชว์ปุ่มเดินทาง
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="travelTo(${q},${r})">
+                        <i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง
+                     </button>`;
+    } else if (reachable) {
+        // ถ้ายังไม่สำรวจแต่เข้าถึงได้ ให้โชว์ปุ่มส่งโดรน
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-blue); color:#000;" onclick="startExplore(${q},${r})">
+                        <i class="fas fa-satellite"></i> ส่งโดรนสำรวจ
+                     </button>`;
+    } else {
+        // ถ้าเข้าถึงไม่ได้
+        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">
+                        ⚠️ พิกัดอยู่นอกระยะการเชื่อมต่อ<br>ต้องสำรวจพิกัดข้างเคียงก่อน
+                     </p>`;
+    }
+
+    // --- 3. อัปเดต UI ---
     document.getElementById('detail-name').innerText = name.toUpperCase();
     document.getElementById('detail-img').src = imgSrc;
     document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
     document.getElementById('detail-status').innerText = status;
     
+    // ใส่ข้อมูลระยะทางและปุ่มลงในส่วน Extra
+    document.getElementById('detail-extra').innerHTML = `
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:rgba(255,255,255,0.7);">
+            <span>ระยะห่างจากยาน:</span>
+            <span style="color:var(--neon-blue); font-weight:bold;">${dist} Units</span>
+        </div>
+        ${actionBtn}
+    `;
+    
     document.getElementById('star-detail-modal').style.display = 'flex';
 }
+
 
 // ปรับฟังก์ชันปิดให้กันการคลิกโดนแผงข้างในแล้วปิดเอง
 function closeStarDetail(e) {
