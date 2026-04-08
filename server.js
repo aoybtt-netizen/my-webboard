@@ -1314,6 +1314,8 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
             gameNickname: uniqueNickname,
             metal: 500,
             energy: 100,
+			currentQ: 0, 
+			currentR: 0,
             isGuest: true,
             createdAt: Date.now()
         };
@@ -1347,6 +1349,8 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
             gameNickname: user.gameNickname,
             metal: user.metal ?? 500,
             energy: user.energy ?? 100,
+			currentQ: user.currentQ ?? 0,
+			currentR: user.currentR ?? 0,
             drillLevel: user.drillLevel ?? 1
         });
     } catch (e) {

@@ -291,7 +291,7 @@
         <span style="font-size: 0.65rem; letter-spacing: 2px; color: var(--neon-blue); opacity: 0.8;">
             COORD: <span id="target-qr">0, 0</span>
         </span>
-        <div style="font-size: 0.5rem; color: #fff; margin-top: 4px; opacity: 0.5;">[ CLICK TO SCAN ]</div>
+        <div style="font-size: 0.5rem; color: #fff; margin-top: 4px; opacity: 0.5;">[ Click Details ]</div>
     </div>
 </div>
 
@@ -378,6 +378,7 @@
 			// รูปฐานหลักและรูปปกปิด (Fog of War)
 			'base': 'images/star/starHome.png',
 			'conceal': 'images/conceal.png',
+			'ship': 'images/ship.png',
 			'meteor0': 'images/meteorite/meteor0.png',
 			'star0': 'images/star/star0.png',
 			'star1': 'images/star/star1.png',
@@ -397,6 +398,9 @@
         let mapActive = false;
         let isMining = false;
 		let selectedHex = null;
+		
+		let playerQ = 0;
+		let playerR = 0;
 		
 
         // --- ระบบ Auth ---
@@ -565,6 +569,9 @@ window.onload = async () => {
             const tag = document.getElementById('account-type-tag');
             tag.innerText = isGuest ? "GUEST ACCOUNT" : "VERIFIED PILOT (GOOGLE)";
             tag.style.color = isGuest ? "#ffc107" : "var(--neon-green)";
+			
+			playerQ = data.currentQ || 0;
+			playerR = data.currentR || 0;
         }
     } catch(e) { console.error(e); }
 }
@@ -685,6 +692,28 @@ window.onload = async () => {
             if (imgToDraw && imgToDraw.complete) {
                 const imgSize = hexRadius * 1.3;
                 ctx.drawImage(imgToDraw, xPos - imgSize/2, yPos - imgSize/2, imgSize, imgSize);
+            }
+			
+			if (q === playerQ && r === playerR) {
+                const shipImg = images['ship'];
+                if (shipImg && shipImg.complete) {
+                    // ปรับขนาดความกว้างยาน (ให้เล็กกว่าดาวนิดนึงเพื่อให้เห็นดาวข้างหลัง)
+                    const shipSize = hexRadius * 0.8; 
+                    
+                    // ใส่ Shadow ให้ยานดูเด่นขึ้น
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+                    
+                    ctx.drawImage(
+                        shipImg, 
+                        xPos - shipSize / 2, 
+                        yPos - shipSize / 2, 
+                        shipSize, 
+                        shipSize
+                    );
+                    
+                    ctx.shadowBlur = 0; // ล้างค่า Shadow เพื่อไม่ให้กระทบช่องอื่น
+                }
             }
         }
     }
