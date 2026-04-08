@@ -284,14 +284,18 @@
      onclick="openStarDetail()" 
      style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: auto; opacity: 0; transition: 0.3s; cursor: pointer;">
     
-    <div style="background: rgba(0, 210, 255, 0.1); border: 1px solid var(--neon-blue); padding: 5px 20px; border-radius: 20px; backdrop-filter: blur(5px); display: flex; gap: 15px; align-items: center;">
-        <i class="fas fa-crosshairs" style="color: var(--neon-blue); font-size: 0.8rem;"></i>
-        <span style="font-size: 0.8rem; letter-spacing: 2px; color: white;">
-            COORD: <span id="target-qr" style="color: var(--neon-blue); font-weight: bold;">0, 0</span>
+    <div style="background: rgba(0, 210, 255, 0.15); border: 1px solid var(--neon-blue); padding: 8px 25px; border-radius: 15px; backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; border-left: 4px solid var(--neon-blue);">
+        
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 2px;">
+            <i class="fas fa-crosshairs" style="color: var(--neon-blue); font-size: 0.7rem;"></i>
+            <span id="target-name" style="font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 1px; text-transform: uppercase;">UNKNOWN SECTOR</span>
+        </div>
+
+        <span style="font-size: 0.65rem; letter-spacing: 2px; color: var(--neon-blue); opacity: 0.8;">
+            COORD: <span id="target-qr">0, 0</span>
         </span>
+        <div style="text-align: center; font-size: 0.5rem; color: #fff; margin-top: 5px; opacity: 0.5;">[ CLICK TO VIEW DETAILS ]</div>
     </div>
-    <div style="text-align: center; font-size: 0.5rem; color: #fff; margin-top: 5px; opacity: 0.5;">[ CLICK TO VIEW DETAILS ]</div>
-</div>
 </div>
 
 <div id="star-detail-modal" class="menu-overlay" onclick="closeStarDetail(event)" style="display: none; align-items: center; justify-content: center;">
