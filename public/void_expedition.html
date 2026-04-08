@@ -295,7 +295,7 @@
     </div>
 </div>
 
-<div id="star-detail-modal" class="modal" style="display: none; align-items: center; justify-content: center;">
+<div id="star-detail-modal" class="menu-overlay" onclick="closeStarDetail(event)" style="display: none; align-items: center; justify-content: center;">
     <div style="background: var(--glass); border: 1px solid var(--neon-blue); width: 85%; max-width: 400px; padding: 25px; border-radius: 20px; position: relative; text-align: center; box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);">
         
         <div onclick="closeStarDetail()" style="position: absolute; top: 15px; right: 20px; color: var(--neon-blue); cursor: pointer;">
@@ -787,14 +787,14 @@ function openStarDetail() {
     const coordKey = `${q},${r}`;
     
     let name = "UNKNOWN SECTOR";
-    let imgSrc = "images/conceal.png";
+    let imgSrc = "images/conceal.png"; // Default
     let status = "ยังไม่ได้สำรวจ";
 
-    // ดึงข้อมูลภาพและชื่อตามตรรกะเดียวกับ renderGrid
     if (STATIC_STARS[coordKey]) {
         const starData = STATIC_STARS[coordKey];
         name = starData.name;
-        imgSrc = `images/star/${starData.img}.png`; // ปรับ path ให้ตรงกับที่พี่ใช้
+        // ดึงจาก imageSources โดยตรงเพื่อให้ Path ถูกต้อง
+        imgSrc = imageSources[starData.img] || `images/star/${starData.img}.png`;
         status = "สถานีพันธมิตร (Fixed)";
     } else {
         const tile = serverMapData[coordKey];
@@ -809,20 +809,22 @@ function openStarDetail() {
         }
     }
 
-    // อัปเดตข้อมูลลงใน Modal
     document.getElementById('detail-name').innerText = name.toUpperCase();
     document.getElementById('detail-img').src = imgSrc;
     document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
     document.getElementById('detail-status').innerText = status;
     
-    // แสดงหน้าต่าง
     document.getElementById('star-detail-modal').style.display = 'flex';
 }
 
-// ฟังก์ชันปิดหน้าต่าง
-function closeStarDetail() {
-    document.getElementById('star-detail-modal').style.display = 'none';
+// ปรับฟังก์ชันปิดให้กันการคลิกโดนแผงข้างในแล้วปิดเอง
+function closeStarDetail(e) {
+    // ถ้ามีการส่ง event มา (คลิกพื้นหลัง) หรือไม่ได้ส่งมา (กดปุ่มปิด)
+    if (!e || e.target.id === 'star-detail-modal' || e.target.className.includes('fa-times') || e.target.className.includes('auth-btn')) {
+        document.getElementById('star-detail-modal').style.display = 'none';
+    }
 }
+
 
 
 
