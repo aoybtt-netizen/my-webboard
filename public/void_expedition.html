@@ -270,9 +270,14 @@
         </div>
 		
 		<div id="map-coordinate-display" style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; opacity: 0; transition: 0.3s;">
-    <div style="background: rgba(0, 210, 255, 0.1); border: 1px solid var(--neon-blue); padding: 5px 20px; border-radius: 20px; backdrop-filter: blur(5px); display: flex; gap: 15px; align-items: center;">
-        <i class="fas fa-crosshairs" style="color: var(--neon-blue); font-size: 0.8rem;"></i>
-        <span style="font-size: 0.8rem; letter-spacing: 2px; color: white;">COORD: <span id="target-qr" style="color: var(--neon-blue); font-weight: bold;">0, 0</span></span>
+    <div style="background: rgba(0, 210, 255, 0.1); border: 1px solid var(--neon-blue); padding: 8px 25px; border-radius: 15px; backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; border-left: 4px solid var(--neon-blue);">
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 2px;">
+            <i class="fas fa-crosshairs" style="color: var(--neon-blue); font-size: 0.7rem;"></i>
+            <span id="target-name" style="font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 1px; text-transform: uppercase;">UNKNOWN SECTOR</span>
+        </div>
+        <span style="font-size: 0.65rem; letter-spacing: 2px; color: var(--neon-blue); opacity: 0.8;">
+            COORD: <span id="target-qr">0, 0</span>
+        </span>
     </div>
 </div>
 
@@ -428,7 +433,7 @@ window.onload = async () => {
         return false;
     }
 
-    // 2. เช็คคำต้องห้าม (แบบตรงตัวหรือมีคำนั้นผสมอยู่)
+    // 2. เช็คคำต้องห้าม
     const isForbidden = FORBIDDEN_NAMES.some(forbidden => cleanName.includes(forbidden));
     
     if (isForbidden) {
@@ -472,7 +477,7 @@ window.onload = async () => {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ 
                 token: response.credential,
-                gameNickname: nickname // ส่งชื่อที่ตั้งไว้ไปบันทึกพร้อมกันเลย
+                gameNickname: nickname
             })
         });
         const data = await res.json();
@@ -514,8 +519,6 @@ window.onload = async () => {
 			document.getElementById('display-energy-small').innerText = (data.energy || 0) + "%";
             document.getElementById('prof-metal').innerText = data.metal.toLocaleString();
             document.getElementById('prof-energy').innerText = data.energy + "%";
-            //document.getElementById('val-metal').innerText = data.metal.toLocaleString();
-            //document.getElementById('val-energy').innerText = data.energy + "%";
 
             // เช็คประเภทบัญชี
             const isGuest = currentUser.startsWith('GUEST_');
@@ -553,12 +556,12 @@ window.onload = async () => {
             if (loadedCount === totalImages) {
                 imagesLoaded = true;
                 console.log("All grid images loaded.");
-                callback(); // เมื่อโหลดครบทุกรูป ให้รันฟังก์ชัน Callback (เช่น renderGrid)
+                callback();
             }
         };
         images[key].onerror = () => {
             console.error(`Failed to load image: ${imageSources[key]}`);
-            loadedCount++; // นับเพิ่มเพื่อไม่ให้แอปค้าง แม้โหลดไม่สำเร็จ
+            loadedCount++;
             if (loadedCount === totalImages) {
                 imagesLoaded = true;
                 callback();
@@ -663,7 +666,7 @@ window.onload = async () => {
     }
 }
 
-        // ระบบขุดแร่
+    
     canvas.onclick = (e) => {
     if (!mapActive) return;
 
@@ -679,6 +682,7 @@ window.onload = async () => {
 
     let foundHex = null;
 
+    // วนลูปเช็คพิกัด
     for (let q = -MAP_RANGE; q <= MAP_RANGE; q++) {
         for (let r = -MAP_RANGE; r <= MAP_RANGE; r++) {
             const xPos = centerX + (q * w);
@@ -696,20 +700,39 @@ window.onload = async () => {
     if (foundHex) {
         // 1. บันทึกช่องที่เลือก
         selectedHex = foundHex;
+        const coordKey = `${foundHex.q},${foundHex.r}`;
 
-        // 2. อัปเดต UI ด้านบน (แทน alert)
+        // 2. ค้นหารายละเอียดเพื่อแสดงผลบน HUD
+        let displayName = "DEEP SPACE"; // ค่าเริ่มต้น
+        
+        if (STATIC_STARS[coordKey]) {
+            // กรณีเป็นดาวรอบฐาน (0,0 และ GEDGOZONE 1-6)
+            displayName = STATIC_STARS[coordKey].name;
+        } else {
+            const tile = serverMapData[coordKey];
+            if (tile) {
+                // ถ้าสำรวจแล้วโชว์ชื่อดาว/อุกกาบาต ถ้ายังไม่ครบโชว์ %
+                displayName = tile.progress >= 100 ? tile.name : `EXPLORING: ${tile.progress}%`;
+            } else {
+                // กรณีเป็นหมอกที่ยังไม่มีใครแตะเลย
+                displayName = "UNEXPLORED SECTOR";
+            }
+        }
+
+        // 3. อัปเดตข้อมูลลง UI
         const coordDisplay = document.getElementById('map-coordinate-display');
+        document.getElementById('target-name').innerText = displayName;
         document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
         coordDisplay.style.opacity = "1";
 
-        // 3. สั่งวาด Grid ใหม่เพื่อให้เห็นเส้นหนาๆ
+        // 4. วาด Grid ใหม่เพื่อแสดงขอบหนา
         renderGrid();
         
-        console.log(`Target Set: Q=${foundHex.q}, R=${foundHex.r}`);
+        console.log(`Target Set: ${displayName} at ${foundHex.q},${foundHex.r}`);
     } else {
-        // ถ้าคลิกข้างนอก ให้ยกเลิกการเลือก (Optional)
-        // selectedHex = null;
+        // (Optional) คลิกพื้นที่ว่างให้ซ่อนรายละเอียด
         // document.getElementById('map-coordinate-display').style.opacity = "0";
+        // selectedHex = null;
         // renderGrid();
     }
 };
