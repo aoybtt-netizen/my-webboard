@@ -153,6 +153,17 @@
 .detail-label { opacity: 0.6; font-size: 0.8rem; }
 .detail-value { color: var(--neon-blue); font-weight: bold; }
 
+
+.target-btn-effect:hover {
+    background: rgba(0, 210, 255, 0.25) !important;
+    transform: scale(1.05);
+    transition: 0.2s;
+}
+.target-btn-effect:active {
+    transform: scale(0.95);
+}
+
+
     </style>
 </head>
 <body>
@@ -269,8 +280,10 @@
             <div class="nav-btn" onclick="handleLogout()" style="border-color:var(--neon-red); color:var(--neon-red);"><i class="fas fa-power-off"></i><span>ออก</span></div>
         </div>
 		
-		<div id="map-coordinate-display" style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; opacity: 0; transition: 0.3s;">
-    <div style="background: rgba(0, 210, 255, 0.1); border: 1px solid var(--neon-blue); padding: 8px 25px; border-radius: 15px; backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; border-left: 4px solid var(--neon-blue);">
+		<div id="map-coordinate-display" 
+     onclick="openStarDetail()" 
+     style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: auto; opacity: 0; transition: 0.3s; cursor: pointer;">
+    <div class="target-btn-effect" style="background: rgba(0, 210, 255, 0.15); border: 1px solid var(--neon-blue); padding: 8px 25px; border-radius: 15px; backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; border-left: 4px solid var(--neon-blue);">
         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 2px;">
             <i class="fas fa-crosshairs" style="color: var(--neon-blue); font-size: 0.7rem;"></i>
             <span id="target-name" style="font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 1px; text-transform: uppercase;">UNKNOWN SECTOR</span>
@@ -278,6 +291,33 @@
         <span style="font-size: 0.65rem; letter-spacing: 2px; color: var(--neon-blue); opacity: 0.8;">
             COORD: <span id="target-qr">0, 0</span>
         </span>
+        <div style="font-size: 0.5rem; color: #fff; margin-top: 4px; opacity: 0.5;">[ CLICK TO SCAN ]</div>
+    </div>
+</div>
+
+<div id="star-detail-modal" class="modal" style="display: none; align-items: center; justify-content: center;">
+    <div style="background: var(--glass); border: 1px solid var(--neon-blue); width: 85%; max-width: 400px; padding: 25px; border-radius: 20px; position: relative; text-align: center; box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);">
+        
+        <div onclick="closeStarDetail()" style="position: absolute; top: 15px; right: 20px; color: var(--neon-blue); cursor: pointer;">
+            <i class="fas fa-times"></i>
+        </div>
+
+        <h3 id="detail-name" style="margin-top: 0; color: var(--neon-blue); letter-spacing: 2px;">STAR NAME</h3>
+        
+        <div style="width: 150px; height: 150px; margin: 20px auto; border-radius: 50%; background: radial-gradient(circle, rgba(0,210,255,0.2) 0%, transparent 70%); display: flex; align-items: center; justify-content: center;">
+            <img id="detail-img" src="" style="width: 120px; height: 120px; object-fit: contain;">
+        </div>
+
+        <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-size: 0.85rem; line-height: 1.6;">
+            <div style="color: var(--neon-blue);">พิกัด: <span id="detail-coord" style="color: white; float: right;">0, 0</span></div>
+            <div style="color: var(--neon-blue);">สถานะ: <span id="detail-status" style="color: white; float: right;">SCANNING...</span></div>
+            <hr style="border: 0; border-top: 1px solid rgba(0,210,255,0.2); margin: 10px 0;">
+            <div id="detail-extra" style="color: rgba(255,255,255,0.7); font-size: 0.75rem; text-align: center;">
+                (รอข้อมูลเพิ่มเติมจากเซนเซอร์...)
+            </div>
+        </div>
+
+        <button class="auth-btn" style="margin-top: 20px; width: 100%;" onclick="closeStarDetail()">ปิดหน้าต่าง</button>
     </div>
 </div>
 
@@ -736,6 +776,54 @@ window.onload = async () => {
         // renderGrid();
     }
 };
+
+
+	// ฟังก์ชันเปิดหน้าต่างรายละเอียด
+function openStarDetail() {
+    if (!selectedHex) return;
+
+    const q = selectedHex.q;
+    const r = selectedHex.r;
+    const coordKey = `${q},${r}`;
+    
+    let name = "UNKNOWN SECTOR";
+    let imgSrc = "images/conceal.png";
+    let status = "ยังไม่ได้สำรวจ";
+
+    // ดึงข้อมูลภาพและชื่อตามตรรกะเดียวกับ renderGrid
+    if (STATIC_STARS[coordKey]) {
+        const starData = STATIC_STARS[coordKey];
+        name = starData.name;
+        imgSrc = `images/star/${starData.img}.png`; // ปรับ path ให้ตรงกับที่พี่ใช้
+        status = "สถานีพันธมิตร (Fixed)";
+    } else {
+        const tile = serverMapData[coordKey];
+        if (tile && tile.progress >= 100) {
+            name = tile.name;
+            imgSrc = tile.image;
+            status = tile.type === 'star' ? "ดาวเคราะห์" : "กลุ่มอุกกาบาต";
+        } else {
+            name = "หมอกนิรนาม";
+            imgSrc = "images/conceal.png";
+            status = tile ? `กำลังสำรวจ: ${tile.progress}%` : "ยังไม่ถูกค้นพบ";
+        }
+    }
+
+    // อัปเดตข้อมูลลงใน Modal
+    document.getElementById('detail-name').innerText = name.toUpperCase();
+    document.getElementById('detail-img').src = imgSrc;
+    document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
+    document.getElementById('detail-status').innerText = status;
+    
+    // แสดงหน้าต่าง
+    document.getElementById('star-detail-modal').style.display = 'flex';
+}
+
+// ฟังก์ชันปิดหน้าต่าง
+function closeStarDetail() {
+    document.getElementById('star-detail-modal').style.display = 'none';
+}
+
 
 
 
