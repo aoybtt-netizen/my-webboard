@@ -412,7 +412,13 @@
 			'star2': 'images/star/star2.png',
 			'star3': 'images/star/star3.png',
 			'star4': 'images/star/star4.png',
-			'star5': 'images/star/star5.png'
+			'star5': 'images/star/star5.png',
+			'ast1': 'images/meteorite/asteroids1.png',
+			'ast2': 'images/meteorite/asteroids2.png',
+			'ast3': 'images/meteorite/asteroids3.png',
+			'ast4': 'images/meteorite/asteroids4.png',
+			'ast5': 'images/meteorite/asteroids5.png',
+			'ast6': 'images/meteorite/asteroids6.png'
 		};
 
 		let imagesLoaded = false;
@@ -1049,53 +1055,70 @@ function updateTravel() {
     if (!travelGameActive) return;
 
     tctx.clearRect(0, 0, travelCanvas.width, travelCanvas.height);
-
-    // 1. วาดดาวพื้นหลัง (ให้ดูเหมือนพุ่งไปข้างหน้า)
     drawWarpEffect();
 
-    // 2. จัดการอุกกาบาต
-    if (Math.random() < 0.1) { // สุ่มสร้างอุกกาบาต
+    // --- ส่วนการสร้างอุตกาบาตใหม่ ---
+    if (Math.random() < 0.1) { 
+        const type = getWeightedAsteroidType(); // เรียกใช้ฟังก์ชันสุ่มตามโอกาส
         asteroids.push({
             x: Math.random() * travelCanvas.width,
             y: -50,
-            size: 20 + Math.random() * 30,
-            speed: 5 + Math.random() * 5
+            size: 40 + Math.random() * 40,
+            speed: 3 + Math.random() * 5,
+            type: type // เก็บประเภทที่สุ่มได้ไว้
         });
     }
 
     asteroids.forEach((ast, index) => {
         ast.y += ast.speed;
         
-        // วาดอุกกาบาต
-        tctx.fillStyle = "#555";
-        tctx.beginPath();
-        tctx.arc(ast.x, ast.y, ast.size/2, 0, Math.PI * 2);
-        tctx.fill();
+        // --- ส่วนการวาดภาพอุตกาบาต ---
+        const imgKey = `ast${ast.type}`;
+        const astImg = images[imgKey];
 
-        // เช็คการชน
+        if (astImg && astImg.complete) {
+            tctx.drawImage(
+                astImg, 
+                ast.x - ast.size / 2, 
+                ast.y - ast.size / 2, 
+                ast.size, 
+                ast.size
+            );
+        } else {
+            // กรณีรูปโหลดยังไม่เสร็จ ให้วาดวงกลมสีเทาสำรองไว้
+            tctx.fillStyle = "#555";
+            tctx.beginPath();
+            tctx.arc(ast.x, ast.y, ast.size / 2, 0, Math.PI * 2);
+            tctx.fill();
+        }
+
+        // เช็คการชน (Collision Detection)
         const dx = ast.x - shipX;
         const dy = ast.y - (travelCanvas.height - 100);
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < ast.size/2 + 20) {
+        if (distance < (ast.size / 2) + 15) {
             triggerDamage();
             asteroids.splice(index, 1);
         }
 
-        if (ast.y > travelCanvas.height) asteroids.splice(index, 1);
+        if (ast.y > travelCanvas.height + 50) asteroids.splice(index, 1);
     });
 
-    // 3. วาดรูปยาน (ใช้รูปที่โหลดไว้แล้ว)
+    // วาดรูปยาน
     const shipImg = images['ship'];
     if (shipImg) {
         tctx.drawImage(shipImg, shipX - 25, travelCanvas.height - 120, 50, 50);
     }
 
-    // 4. อัปเดตระยะทาง (ลดลงเรื่อยๆ)
-    travelDistance -= 0.0005; // ปรับความเร็วตรงนี้
+    // อัปเดตระยะทาง
+    travelDistance -= 0.005;
     const progress = ((totalTravelDistance - travelDistance) / totalTravelDistance) * 100;
-    document.getElementById('travel-progress-bar').style.width = `${progress}%`;
-    document.getElementById('travel-distance-text').innerText = `DISTANCE: ${Math.max(0, travelDistance).toFixed(2)}u`;
+    const progressBar = document.getElementById('travel-progress-bar');
+    if (progressBar) progressBar.style.width = `${progress}%`;
+    
+    const distText = document.getElementById('travel-distance-text');
+    if (distText) distText.innerText = `DISTANCE: ${Math.max(0, travelDistance).toFixed(2)}u`;
 
     if (travelDistance <= 0) {
         endTravel();
@@ -1121,6 +1144,17 @@ function triggerDamage() {
     setTimeout(() => flash.style.display = 'none', 100);
     console.log("ยานได้รับความเสียหาย!");
     // ในอนาคตพี่สามารถใส่โค้ดลดเลือด (HP) ตรงนี้ได้ครับ
+}
+
+function getWeightedAsteroidType() {
+    const rand = Math.random() * 100; // สุ่มเลข 0-99.99
+    
+    if (rand < 30) return 1;      // 0 - 29 (30%)
+    if (rand < 60) return 2;      // 30 - 59 (30%)
+    if (rand < 80) return 3;      // 60 - 79 (20%)
+    if (rand < 90) return 4;      // 80 - 89 (10%)
+    if (rand < 97) return 5;      // 90 - 96 (7%)
+    return 6;                     // 97 - 99 (3%)
 }
 
 function endTravel() {
