@@ -1101,15 +1101,26 @@ function updateTravel() {
             tctx.fill();
         }
 
-        // เช็คการชน (Collision Detection)
-        const dx = ast.x - shipX;
-        const dy = ast.y - (travelCanvas.height - 100);
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // --- 🚩 ปรับปรุงส่วนเช็คการชนใหม่ ---
+		// 1. หาจุดศูนย์กลางของยาน (Center of Ship)
+		const shipCenterX = shipX;
+		const shipCenterY = travelCanvas.height - 120; // คำนวณจาก (height - 150) + (ขนาดภาพ 60/2)
 
-        if (distance < (ast.size / 2) + 15) {
-            triggerDamage();
-            asteroids.splice(index, 1);
-        }
+		// 2. หาระยะห่างระหว่างจุดศูนย์กลางอุกกาบาตกับยาน
+		const dx = ast.x - shipCenterX;
+		const dy = ast.y - shipCenterY;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+
+		// 3. กำหนดรัศมีการชน (Hitbox Radius)
+		// อุกกาบาต = ast.size / 2
+		// ยาน = ประมาณ 25-30 พิกเซล (จากภาพขนาด 60)
+		const shipHitboxRadius = 25; 
+		const asteroidHitboxRadius = ast.size / 2;
+
+		if (distance < (shipHitboxRadius + asteroidHitboxRadius)) {
+			triggerDamage(); // เกิดการชน
+			asteroids.splice(index, 1); // ลบอุกกาบาตก้อนนั้นออก
+		}
 
         if (ast.y > travelCanvas.height + 50) asteroids.splice(index, 1);
     });
@@ -1122,7 +1133,7 @@ function updateTravel() {
             shipImg, 
             (shipX - 25) + shake,             // เลื่อนจุดเริ่มวาดตามความกว้าง (ปรับจาก 25 เป็น 30 ถ้าภาพใหญ่ขึ้น)
             (travelCanvas.height - 150) + shake, // ปรับระดับความสูงให้พ้นขอบล่างนิดหน่อย
-            50,                     // ความกว้าง (Width)
+            40,                     // ความกว้าง (Width)
             60                      // ความสูง (Height)
         );
     }
