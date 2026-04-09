@@ -418,7 +418,8 @@
 			'ast3': 'images/meteorite/asteroids3.png',
 			'ast4': 'images/meteorite/asteroids4.png',
 			'ast5': 'images/meteorite/asteroids5.png',
-			'ast6': 'images/meteorite/asteroids6.png'
+			'ast6': 'images/meteorite/asteroids6.png',
+			'ast7': 'images/meteorite/asteroids7.png'
 		};
 
 		let imagesLoaded = false;
@@ -1159,9 +1160,10 @@ function getWeightedAsteroidType() {
     if (rand < 30) return 1;      // 0 - 29 (30%)
     if (rand < 60) return 2;      // 30 - 59 (30%)
     if (rand < 80) return 3;      // 60 - 79 (20%)
-    if (rand < 90) return 4;      // 80 - 89 (10%)
-    if (rand < 97) return 5;      // 90 - 96 (7%)
-    return 6;                     // 97 - 99 (3%)
+    if (rand < 90) return 4;     
+    if (rand < 95) return 5; 
+	if (rand < 98) return 6;
+    return 7;                     
 }
 
 function endTravel() {
