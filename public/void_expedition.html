@@ -1073,19 +1073,24 @@ function updateTravel() {
 
     asteroids.forEach((ast, index) => {
         ast.y += ast.speed;
+		ast.rotation += ast.rotationSpeed;
         
         // --- ส่วนการวาดภาพอุตกาบาต ---
         const imgKey = `ast${ast.type}`;
         const astImg = images[imgKey];
 
         if (astImg && astImg.complete) {
+			tctx.save();
+			tctx.translate(ast.x, ast.y);
+			tctx.rotate(ast.rotation);
             tctx.drawImage(
                 astImg, 
-                ast.x - ast.size / 2, 
-                ast.y - ast.size / 2, 
-                ast.size, 
-                ast.size
+				-ast.size / 2, 
+				-ast.size / 2, 
+				ast.size, 
+				ast.size
             );
+			tctx.restore();
         } else {
             // กรณีรูปโหลดยังไม่เสร็จ ให้วาดวงกลมสีเทาสำรองไว้
             tctx.fillStyle = "#555";
