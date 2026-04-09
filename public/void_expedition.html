@@ -950,8 +950,8 @@ function openStarDetail() {
              </button>`;
     } else if (reachable) {
         // ถ้ายังไม่สำรวจแต่เข้าถึงได้ ให้โชว์ปุ่มส่งโดรน
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-blue); color:#000;" onclick="startExplore(${q},${r})">
-                        <i class="fas fa-satellite"></i> ส่งโดรนสำรวจ
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-blue); color:#000;" onclick="startTravel(${q},${r})">
+                        <i class="fas fa-satellite"></i> สำรวจ
                      </button>`;
     } else {
         // ถ้าเข้าถึงไม่ได้
@@ -1054,7 +1054,7 @@ function updateTravel() {
     drawWarpEffect();
 
     // 2. จัดการอุกกาบาต
-    if (Math.random() < 0.05) { // สุ่มสร้างอุกกาบาต
+    if (Math.random() < 0.1) { // สุ่มสร้างอุกกาบาต
         asteroids.push({
             x: Math.random() * travelCanvas.width,
             y: -50,
@@ -1092,7 +1092,7 @@ function updateTravel() {
     }
 
     // 4. อัปเดตระยะทาง (ลดลงเรื่อยๆ)
-    travelDistance -= 0.005; // ปรับความเร็วตรงนี้
+    travelDistance -= 0.0005; // ปรับความเร็วตรงนี้
     const progress = ((totalTravelDistance - travelDistance) / totalTravelDistance) * 100;
     document.getElementById('travel-progress-bar').style.width = `${progress}%`;
     document.getElementById('travel-distance-text').innerText = `DISTANCE: ${Math.max(0, travelDistance).toFixed(2)}u`;
