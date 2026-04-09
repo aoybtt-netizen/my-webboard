@@ -1116,9 +1116,17 @@ function updateTravel() {
 
     // วาดรูปยาน
     const shipImg = images['ship1'];
-    if (shipImg) {
-        tctx.drawImage(shipImg, shipX - 25, travelCanvas.height - 120, 50, 50);
+    if (shipImg && shipImg.complete) {
+        const shake = Math.random() * 2; // สั่น 0-2 พิกเซล
+        tctx.drawImage(
+            shipImg, 
+            (shipX - 30) + shake,             // เลื่อนจุดเริ่มวาดตามความกว้าง (ปรับจาก 25 เป็น 30 ถ้าภาพใหญ่ขึ้น)
+            (travelCanvas.height - 150) + shake, // ปรับระดับความสูงให้พ้นขอบล่างนิดหน่อย
+            60,                     // ความกว้าง (Width)
+            60                      // ความสูง (Height)
+        );
     }
+	
 
     // อัปเดตระยะทาง
     travelDistance -= 0.0005;
