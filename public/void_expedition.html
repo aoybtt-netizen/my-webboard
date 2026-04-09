@@ -1064,8 +1064,10 @@ function updateTravel() {
             x: Math.random() * travelCanvas.width,
             y: -50,
             size: 40 + Math.random() * 40,
-            speed: 3 + Math.random() * 5,
+            speed: 1.5 + Math.random() * 2,
             type: type // เก็บประเภทที่สุ่มได้ไว้
+			rotation: Math.random() * Math.PI * 2, // มุมเริ่มต้นสุ่ม
+			rotationSpeed: (Math.random() - 0.5) * 0.03 // ความเร็วการหมุน (สุ่มซ้าย/ขวา ช้าๆ)
         });
     }
 
@@ -1112,7 +1114,7 @@ function updateTravel() {
     }
 
     // อัปเดตระยะทาง
-    travelDistance -= 0.0005;
+    travelDistance -= 0.001;
     const progress = ((totalTravelDistance - travelDistance) / totalTravelDistance) * 100;
     const progressBar = document.getElementById('travel-progress-bar');
     if (progressBar) progressBar.style.width = `${progress}%`;
