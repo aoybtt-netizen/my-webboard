@@ -164,6 +164,13 @@
 }
 
 
+#travel-canvas {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #0a1118 0%, #000 100%);
+}
+
+
     </style>
 </head>
 <body>
@@ -344,6 +351,23 @@
             </div>
         </div>
     </div>
+	
+	
+	
+	
+	<div id="view-travel" class="view">
+    <canvas id="travel-canvas"></canvas>
+    
+    <div style="position: fixed; top: 30px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; pointer-events: none;">
+        <div style="font-size: 0.8rem; color: var(--neon-blue); letter-spacing: 2px; margin-bottom: 5px;">HYPERSPACE TUNNEL</div>
+        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; border: 1px solid rgba(0,210,255,0.3); overflow: hidden;">
+            <div id="travel-progress-bar" style="width: 0%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); transition: 0.1s;"></div>
+        </div>
+        <div id="travel-distance-text" style="font-size: 0.7rem; color: white; margin-top: 5px; opacity: 0.7;">DISTANCE: 0u</div>
+    </div>
+
+    <div id="damage-flash" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.3); display: none; pointer-events: none; z-index: 5000;"></div>
+</div>
 	
 	
 	
@@ -920,9 +944,10 @@ function openStarDetail() {
     let actionBtn = "";
     if (isExplored) {
         // ถ้าสำรวจแล้ว ให้โชว์ปุ่มเดินทาง
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="travelTo(${q},${r})">
-                        <i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง
-                     </button>`;
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" 
+              onclick="startTravel(${q},${r})">
+                <i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง
+             </button>`;
     } else if (reachable) {
         // ถ้ายังไม่สำรวจแต่เข้าถึงได้ ให้โชว์ปุ่มส่งโดรน
         actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-blue); color:#000;" onclick="startExplore(${q},${r})">
@@ -959,6 +984,157 @@ function closeStarDetail(e) {
     if (!e || e.target.id === 'star-detail-modal' || e.target.className.includes('fa-times') || e.target.className.includes('auth-btn')) {
         document.getElementById('star-detail-modal').style.display = 'none';
     }
+}
+
+
+function travelLoop() {
+    if (currentDistance > 0) {
+        // 1. ขยับอุกกาบาตลงมาข้างล่าง
+        updateAsteroids();
+        
+        // 2. สุ่มเจอสลัดอวกาศ
+        if (Math.random() < 0.001) { // โอกาสเล็กน้อยในทุกๆ Frame
+            isPaused = true;
+            showPirateMenu(); // แสดงหน้าต่างเลือก "สู้" หรือ "หนี"
+        }
+        
+        // 3. ลดระยะทางที่เหลือ
+        currentDistance -= 0.01; 
+        updateProgressBar();
+        
+        requestAnimationFrame(travelLoop);
+    } else {
+        arrival(); // ถึงจุดหมาย
+    }
+}
+
+
+let travelGameActive = false;
+let travelDistance = 0;
+let totalTravelDistance = 0;
+let asteroids = [];
+let shipX = window.innerWidth / 2;
+let travelCanvas, tctx;
+
+// เริ่มต้นมินิเกมเดินทาง
+function startTravel(targetQ, targetR) {
+    const dist = getHexDistance(playerQ, playerR, targetQ, targetR);
+    if (dist === 0) return;
+
+    // เซ็ตค่าเริ่มต้น
+    travelDistance = dist;
+    totalTravelDistance = dist;
+    travelGameActive = true;
+    asteroids = [];
+    
+    // เปลี่ยนหน้าจอ
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-travel').classList.add('active');
+    closeStarDetail();
+
+    // เริ่ม Loop เกม
+    travelCanvas = document.getElementById('travel-canvas');
+    tctx = travelCanvas.getContext('2d');
+    travelCanvas.width = window.innerWidth;
+    travelCanvas.height = window.innerHeight;
+
+    // การควบคุม (เลื่อนซ้ายขวา)
+    window.ontouchmove = (e) => { if(travelGameActive) shipX = e.touches[0].clientX; };
+    window.onmousemove = (e) => { if(travelGameActive) shipX = e.clientX; };
+
+    requestAnimationFrame(updateTravel);
+}
+
+function updateTravel() {
+    if (!travelGameActive) return;
+
+    tctx.clearRect(0, 0, travelCanvas.width, travelCanvas.height);
+
+    // 1. วาดดาวพื้นหลัง (ให้ดูเหมือนพุ่งไปข้างหน้า)
+    drawWarpEffect();
+
+    // 2. จัดการอุกกาบาต
+    if (Math.random() < 0.05) { // สุ่มสร้างอุกกาบาต
+        asteroids.push({
+            x: Math.random() * travelCanvas.width,
+            y: -50,
+            size: 20 + Math.random() * 30,
+            speed: 5 + Math.random() * 5
+        });
+    }
+
+    asteroids.forEach((ast, index) => {
+        ast.y += ast.speed;
+        
+        // วาดอุกกาบาต
+        tctx.fillStyle = "#555";
+        tctx.beginPath();
+        tctx.arc(ast.x, ast.y, ast.size/2, 0, Math.PI * 2);
+        tctx.fill();
+
+        // เช็คการชน
+        const dx = ast.x - shipX;
+        const dy = ast.y - (travelCanvas.height - 100);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < ast.size/2 + 20) {
+            triggerDamage();
+            asteroids.splice(index, 1);
+        }
+
+        if (ast.y > travelCanvas.height) asteroids.splice(index, 1);
+    });
+
+    // 3. วาดรูปยาน (ใช้รูปที่โหลดไว้แล้ว)
+    const shipImg = images['ship'];
+    if (shipImg) {
+        tctx.drawImage(shipImg, shipX - 25, travelCanvas.height - 120, 50, 50);
+    }
+
+    // 4. อัปเดตระยะทาง (ลดลงเรื่อยๆ)
+    travelDistance -= 0.005; // ปรับความเร็วตรงนี้
+    const progress = ((totalTravelDistance - travelDistance) / totalTravelDistance) * 100;
+    document.getElementById('travel-progress-bar').style.width = `${progress}%`;
+    document.getElementById('travel-distance-text').innerText = `DISTANCE: ${Math.max(0, travelDistance).toFixed(2)}u`;
+
+    if (travelDistance <= 0) {
+        endTravel();
+    } else {
+        requestAnimationFrame(updateTravel);
+    }
+}
+
+function drawWarpEffect() {
+    tctx.strokeStyle = "rgba(0, 210, 255, 0.2)";
+    for(let i=0; i<10; i++) {
+        let x = Math.random() * travelCanvas.width;
+        tctx.beginPath();
+        tctx.moveTo(x, 0);
+        tctx.lineTo(x, travelCanvas.height);
+        tctx.stroke();
+    }
+}
+
+function triggerDamage() {
+    const flash = document.getElementById('damage-flash');
+    flash.style.display = 'block';
+    setTimeout(() => flash.style.display = 'none', 100);
+    console.log("ยานได้รับความเสียหาย!");
+    // ในอนาคตพี่สามารถใส่โค้ดลดเลือด (HP) ตรงนี้ได้ครับ
+}
+
+function endTravel() {
+    travelGameActive = false;
+    // อัปเดตพิกัดจริง
+    playerQ = selectedHex.q;
+    playerR = selectedHex.r;
+    
+    alert("ถึงจุดหมายปลายทางแล้ว!");
+    
+    // กลับไปหน้าแผนที่
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-map').classList.add('active');
+    renderGrid();
 }
 
 
