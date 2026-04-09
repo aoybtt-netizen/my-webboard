@@ -1058,7 +1058,7 @@ function updateTravel() {
     drawWarpEffect();
 
     // --- ส่วนการสร้างอุตกาบาตใหม่ ---
-    if (Math.random() < 0.005) { 
+    if (Math.random() < 0.01) { 
         const type = getWeightedAsteroidType(); // เรียกใช้ฟังก์ชันสุ่มตามโอกาส
         asteroids.push({
             x: Math.random() * travelCanvas.width,
