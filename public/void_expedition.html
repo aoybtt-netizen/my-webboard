@@ -569,7 +569,7 @@ button:hover { opacity: 0.8; }
 			'oret10': 'images/ore/technology/ore10.png',
 			'terret1': 'images/terret/terret1.png',
 			'terret2': 'images/terret/terret2.png',
-			'alian1': 'images/alian/alian1.png',
+			'alian1': 'images/alian/alian1.png'
 		};
 
 		let imagesLoaded = false;
@@ -1635,30 +1635,28 @@ function drawMiningEnvironment(ctx) {
 }
 
 function drawTurretWithBase(ctx) {
-    const baseImg = images['terret1']; // ฐาน
-    const headImg = images['terret2']; // ปืน
+    const baseImg = images['terret1'];
+    const headImg = images['terret2'];
 
-    // 1. วาดฐาน (อยู่กับที่)
-    if (baseImg && baseImg.complete) {
+    // 1. วาดฐาน - เพิ่มการเช็ค naturalWidth !== 0
+    if (baseImg && baseImg.complete && baseImg.naturalWidth !== 0) {
         ctx.drawImage(baseImg, turret.x - 40, turret.y - 40, 80, 80);
     } else {
-        // ถ้าภาพยังไม่มา วาดวงกลมสีเทาสำรองไว้
+        // ถ้าภาพ "พัง" หรือ "ยังไม่มา" ให้วาดรูปทรงสำรอง
         ctx.fillStyle = "#333";
         ctx.beginPath();
         ctx.arc(turret.x, turret.y, 30, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // 2. วาดส่วนหัวปืน (หมุนตามเป้าหมาย)
+    // 2. วาดส่วนหัวปืน - เพิ่มการเช็ค naturalWidth !== 0
     ctx.save();
     ctx.translate(turret.x, turret.y);
     ctx.rotate(turret.rotation);
     
-    if (headImg && headImg.complete) {
-        // วาดให้จุดศูนย์กลางภาพตรงกับ turret.x, turret.y
+    if (headImg && headImg.complete && headImg.naturalWidth !== 0) {
         ctx.drawImage(headImg, -40, -40, 80, 80);
     } else {
-        // ถ้าภาพยังไม่มา วาดแท่งสี่เหลี่ยมสีเขียวสำรองไว้
         ctx.fillStyle = "lime";
         ctx.fillRect(-5, -40, 10, 40); 
     }
