@@ -1117,17 +1117,36 @@ function openStarDetail() {
     }
 
     // --- 3. คำนวณระยะทางและเงื่อนไขปุ่ม ---
-    const dist = getHexDistance(playerQ, playerR, q, r);
-    const reachable = canReach(q, r);
-    
-    let actionBtn = "";
+const dist = getHexDistance(playerQ, playerR, q, r);
+const reachable = canReach(q, r);
+
+let actionBtn = "";
+
+// ตรวจสอบว่า "ผู้เล่นอยู่ที่พิกัดนี้แล้วหรือยัง"
+if (playerQ === q && playerR === r) {
+    // กรณีอยู่ที่พิกัดนี้แล้ว
+    if (q === 0 && r === 0) {
+        // ถ้าเป็น HOME BASE ไม่ต้องมีปุ่มขุด
+        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
+                        <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
+                     </p>`;
+    } else {
+        // ถ้าเป็นดาวดวงอื่น ให้แสดงปุ่มขุดแร่
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" 
+                        onclick="startMiningProcess()">
+                        <i class="fas fa-hammer"></i> เริ่มต้นการขุดแร่
+                     </button>`;
+    }
+} else {
+    // กรณีที่ยังไม่อยู่ที่พิกัดนี้ (ใช้ Logic การเดินทางเดิมของคุณ)
     if (isExplored) {
         actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" 
-                      onclick="startTravel(${q},${r})">
+                        onclick="startTravel(${q},${r})">
                         <i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง
                      </button>`;
     } else if (reachable) {
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-blue); color:#000;" onclick="startTravel(${q},${r})">
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-blue); color:#000;" 
+                        onclick="startTravel(${q},${r})">
                         <i class="fas fa-satellite"></i> สำรวจ
                      </button>`;
     } else {
@@ -1135,6 +1154,7 @@ function openStarDetail() {
                         ⚠️ พิกัดอยู่นอกระยะการเชื่อมต่อ<br>ต้องสำรวจพิกัดข้างเคียงก่อน
                      </p>`;
     }
+}
 
     // --- 4. อัปเดต UI ทั้งหมด ---
     document.getElementById('detail-name').innerText = name.toUpperCase();
