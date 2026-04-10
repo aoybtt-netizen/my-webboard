@@ -1445,26 +1445,30 @@ function startMiningProcess() {
     const miningView = document.getElementById('view-mining');
     if (miningView) miningView.classList.add('active');
 
-    // ตรวจสอบว่ามี Canvas หรือไม่ก่อนตั้งค่า
-    const miningCanvas = document.getElementById('mining-canvas'); // เปลี่ยนชื่อ ID ให้ตรงกับใน HTML
+    // --- จุดที่แก้ไข: ไม่ใช้ const แต่เป็นการกำหนดค่าให้ตัวแปร Global ---
+    miningCanvas = document.getElementById('mining-canvas'); 
+    
     if (miningCanvas) {
-        // ตอนนี้ turret ถูกประกาศไว้แล้ว จะไม่ error
+        // เก็บ Context ไว้ในตัวแปร Global mctx เพื่อให้ updateMining ใช้งานได้
+        mctx = miningCanvas.getContext('2d'); 
+
+        // ตั้งค่าตำแหน่งป้อม
         turret.x = miningCanvas.width / 2;
         turret.y = miningCanvas.height - 80;
-    }
 
-    console.log("Starting defense phase...");
-    
-    // เริ่ม Loop เกม
-    miningGameActive = true;
-    requestAnimationFrame(updateMining); 
+        console.log("Starting defense phase...");
+        
+        // เริ่ม Loop เกม
+        miningGameActive = true;
+        requestAnimationFrame(updateMining); 
+    } else {
+        console.error("หาไอดี 'mining-canvas' ไม่เจอใน HTML!");
+    }
 }
 
 
 function updateMining(currentTime) {
     if (!miningGameActive) return;
-
-    const mctx = miningCanvas.getContext('2d');
     mctx.clearRect(0, 0, miningCanvas.width, miningCanvas.height);
 
     // --- A. วาดพื้นหลังดาว/เครื่องขุด ---
