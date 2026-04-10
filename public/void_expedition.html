@@ -1035,7 +1035,7 @@ function openStarDetail() {
         starData.minerals.forEach(m => {
             const oreImg = imageSources[m.img] || 'images/ore/default.png'; // ดึงจาก orem1, oree1 เป็นต้น
             mineralHTML += `
-                <div style="display:flex; align-items:center; background:rgba(0,0,0,0.3); border-radius:10px; padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
+                <div style="display:flex; align-items:center; background:rgba(40, 150, 208, 0.38); border-radius:10px; padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
                     <img src="${oreImg}" style="width:35px; height:35px; margin-right:12px; object-fit:contain;">
                     <div style="flex:1; text-align:left;">
                         <div style="font-size:0.8rem; font-weight:bold; color:white;">${m.name}</div>
