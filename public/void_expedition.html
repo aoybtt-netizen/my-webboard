@@ -596,6 +596,7 @@ button:hover { opacity: 0.8; }
 		let miningCanvas;
 		let mctx;
 		let miningGameActive = false;
+		let drillHealth = 100;
 		let setupProgress = 0; // 0 - 100%
 		let aliens = [];
 		let bullets = [];
@@ -1623,6 +1624,110 @@ function drawTurret(ctx) {
     ctx.drawImage(img, -25, -25, 50, 50); // วาดโดยให้จุดศูนย์กลางอยู่ที่ 0,0
 
     ctx.restore();
+}
+
+
+// A. วาดพื้นหลังและเครื่องขุด
+function drawMiningEnvironment(ctx) {
+    // วาดพื้นดินง่ายๆ
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
+    
+    // วาดตัวเครื่องขุด (อยู่ตรงกลางล่าง)
+    const drillImg = images['drill']; // ถ้ามีรูป
+    if (drillImg) {
+        ctx.drawImage(drillImg, miningCanvas.width/2 - 50, miningCanvas.height - 150, 100, 100);
+    } else {
+        // ถ้ายังไม่มีรูป ให้วาดสี่เหลี่ยมแทนก่อน
+        ctx.fillStyle = "#555";
+        ctx.fillRect(miningCanvas.width/2 - 40, miningCanvas.height - 120, 80, 80);
+    }
+}
+
+// B. สร้างเอเลี่ยนตัวใหม่
+function spawnAlien() {
+    aliens.push({
+        x: Math.random() * (miningCanvas.width - 40) + 20,
+        y: -20,
+        speed: 1 + Math.random() * 1.5,
+        hp: 2,
+        size: 30
+    });
+}
+
+// C. วาดเอเลี่ยน
+function drawAlien(ctx, alien) {
+    const alienImg = images['star0']; // ใช้รูปดาว 0 เป็นตัวแทนเอเลี่ยนก่อนได้ครับ
+    if (alienImg) {
+        ctx.drawImage(alienImg, alien.x - alien.size/2, alien.y - alien.size/2, alien.size, alien.size);
+    } else {
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(alien.x, alien.y, alien.size/2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// D. ระบบรับดาเมจ
+function takeDamage(amount) {
+    drillHealth -= amount;
+    console.log("Drill HP:", drillHealth);
+    if (drillHealth <= 0) {
+        alert("เครื่องขุดถูกทำลาย!");
+        exitMining();
+    }
+}
+
+// E. อัปเดต UI (Progress Bar)
+function updateMiningUI() {
+    const bar = document.getElementById('mining-bar');
+    const statusText = document.getElementById('mining-status');
+    
+    if (bar) bar.style.width = `${setupProgress}%`;
+    if (statusText) statusText.innerText = `SETTING UP... ${Math.floor(setupProgress)}% (HP: ${drillHealth})`;
+}
+
+// F. เมื่อตั้งเครื่องเสร็จ
+function completeSetup() {
+    miningGameActive = false;
+    alert("การตั้งเครื่องเสร็จสมบูรณ์! เริ่มการขุดแร่จริง...");
+    // หลังจากนี้อาจจะเปลี่ยนสถานะเป็นขุดแร่แบบสงบ (Mining Phase)
+    exitMining(); 
+}
+
+function fireBullet(target) {
+    bullets.push({
+        x: turret.x,
+        y: turret.y,
+        vx: (target.x - turret.x) * 0.1,
+        vy: (target.y - turret.y) * 0.1,
+        speed: 7
+    });
+}
+
+function updateBullets(ctx) {
+    bullets.forEach((b, bIndex) => {
+        b.x += b.vx;
+        b.y += b.vy;
+        
+        // วาดกระสุน
+        ctx.fillStyle = "yellow";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // เช็คการชนกับเอเลี่ยน
+        aliens.forEach((a, aIndex) => {
+            const dist = Math.hypot(b.x - a.x, b.y - a.y);
+            if (dist < a.size) {
+                bullets.splice(bIndex, 1);
+                aliens.splice(aIndex, 1); // เอเลี่ยนตาย
+            }
+        });
+
+        // ลบกระสุนที่ออกนอกจอ
+        if (b.y < 0 || b.x < 0 || b.x > miningCanvas.width) bullets.splice(bIndex, 1);
+    });
 }
 
 
