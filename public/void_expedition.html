@@ -577,10 +577,7 @@ button:hover { opacity: 0.8; }
 		let playerQ = 0;
 		let playerR = 0;
 		
-		let miningGameActive = false;
-		let setupProgress = 0; // 0 - 100%
-		let aliens = [];
-		let bullets = [];
+		
 		let turret = {
 			x: 0,
 			y: 0,
@@ -590,8 +587,12 @@ button:hover { opacity: 0.8; }
 			fireRate: 500,
 			lastShot: 0
 		};
+		let miningGameActive = false;
+		let setupProgress = 0; // 0 - 100%
+		let aliens = [];
+		let bullets = [];
 		
-
+		
         // --- ระบบ Auth ---
         function toggleAuth(mode) {
             document.getElementById('login-form').style.display = (mode === 'login') ? 'block' : 'none';
@@ -1425,26 +1426,30 @@ function showArrivalUI(star, q, r) {
 
 
 function startMiningProcess() {
-    // 1. ปิด Modal
+    // ปิดหน้าต่างแจ้งเตือน
     document.getElementById('arrival-modal').classList.remove('active');
-    document.getElementById('star-detail-modal').style.display = 'none';
-    
-    // 2. สลับ View (สมมติว่าคุณมี <div id="view-mining" class="view">)
+    if(document.getElementById('star-detail-modal')) {
+        document.getElementById('star-detail-modal').style.display = 'none';
+    }
+
+    // สลับหน้าจอ View
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('view-mining').classList.add('active');
+    const miningView = document.getElementById('view-mining');
+    if (miningView) miningView.classList.add('active');
 
-    // 3. Reset ค่าต่างๆ สำหรับเริ่มเกมใหม่
-    miningGameActive = true;
-    setupProgress = 0;
-    aliens = [];
-    bullets = [];
+    // ตรวจสอบว่ามี Canvas หรือไม่ก่อนตั้งค่า
+    const miningCanvas = document.getElementById('mining-canvas'); // เปลี่ยนชื่อ ID ให้ตรงกับใน HTML
+    if (miningCanvas) {
+        // ตอนนี้ turret ถูกประกาศไว้แล้ว จะไม่ error
+        turret.x = miningCanvas.width / 2;
+        turret.y = miningCanvas.height - 80;
+    }
+
+    console.log("Starting defense phase...");
     
-    // ตั้งพิกัดป้อมไว้ที่ด้านล่างกลางจอ
-    turret.x = miningCanvas.width / 2;
-    turret.y = miningCanvas.height - 80;
-
-    // 4. เริ่ม Loop การทำงาน
-    requestAnimationFrame(updateMining);
+    // เริ่ม Loop เกม
+    miningGameActive = true;
+    requestAnimationFrame(updateMining); 
 }
 
 
