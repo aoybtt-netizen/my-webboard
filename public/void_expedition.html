@@ -383,10 +383,16 @@ button:hover { opacity: 0.8; }
 	
 
     <div id="view-mining" class="view">
-        <h2 id="mining-status">EXTRACTING...</h2>
-        <div class="progress-container"><div id="mining-bar" class="progress-bar"></div></div>
-        <button onclick="exitMining()" style="background:transparent; border:1px solid var(--neon-red); color:var(--neon-red); padding:10px 20px; border-radius:8px;">ABORT</button>
+    <h2 id="mining-status">PREPARING DRILL...</h2>
+    <div class="progress-container">
+        <div id="mining-bar" class="progress-bar"></div>
     </div>
+
+    <canvas id="mining-canvas" width="400" height="600" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,255,255,0.1); margin: 20px 0;"></canvas>
+
+    <br>
+    <button onclick="exitMining()" style="background:transparent; border:1px solid var(--neon-red); color:var(--neon-red); padding:10px 20px; border-radius:8px;">ABORT</button>
+</div>
 
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
         <div class="glass-panel">
