@@ -564,7 +564,10 @@ button:hover { opacity: 0.8; }
 			'oret7': 'images/ore/technology/ore7.png',
 			'oret8': 'images/ore/technology/ore8.png',
 			'oret9': 'images/ore/technology/ore9.png',
-			'oret10': 'images/ore/technology/ore10.png'
+			'oret10': 'images/ore/technology/ore10.png',
+			'terret1': 'images/terret/terret1.png',
+			'terret2': 'images/terret/terret2.png',
+			'alian1': 'images/alian/alian1.png',
 		};
 
 		let imagesLoaded = false;
@@ -1468,40 +1471,44 @@ function startMiningProcess() {
 
 function updateMining(currentTime) {
     if (!miningGameActive) return;
+    
+    // ตรวจสอบความปลอดภัยของ Context
+    if (!mctx) return;
+
+    // 1. เคลียร์จอ
     mctx.clearRect(0, 0, miningCanvas.width, miningCanvas.height);
 
-    // --- A. วาดพื้นหลังดาว/เครื่องขุด ---
-    drawMiningEnvironment(mctx);
+    // 2. วาดฉากหลัง (ดาว)
+    drawMiningEnvironment(mctx); 
 
-    // --- B. จัดการเอเลี่ยน ---
-    if (Math.random() < 0.02) spawnAlien(); // สุ่มเกิดเอเลี่ยน
-    
+    // 3. จัดการและวาดเอเลี่ยน
+    if (Math.random() < 0.02) spawnAlien();
     aliens.forEach((alien, index) => {
-        alien.y += alien.speed; // เดินลงมาข้างล่าง
-        drawAlien(mctx, alien);
+        alien.y += alien.speed;
+        drawAlien(mctx, alien); // ใช้ภาพ alian1
 
-        // เช็คว่าเอเลี่ยนถึงเครื่องขุดหรือยัง (ด้านล่างจอ)
-        if (alien.y > miningCanvas.height - 120) {
-            takeDamage(10); // ลดเลือดเครื่องขุด
+        // ชนเครื่องขุด
+        if (alien.y > miningCanvas.height - 100) {
+            takeDamage(5);
             aliens.splice(index, 1);
         }
     });
 
-    // --- C. จัดการป้อม (หมุนตามเป้าหมาย) ---
-    updateTurretLogic(currentTime);
-    drawTurretWithBase(mctx);
+    // 4. จัดการป้อม (หมุนและวาด)
+    updateTurretLogic(currentTime); 
+    drawTurretWithBase(mctx); // ใช้ภาพ terret1 และ terret2
 
-    // --- D. จัดการกระสุน ---
+    // 5. จัดการกระสุน
     updateBullets(mctx);
 
-    // --- E. อัปเดต Progress การตั้งเครื่อง ---
-    setupProgress += 0.05; // ค่อยๆ เพิ่มความคืบหน้า
+    // 6. อัปเดต UI
+    setupProgress += 0.05;
     updateMiningUI();
 
-    if (setupProgress >= 100) {
-        completeSetup();
-    } else {
+    if (setupProgress < 100 && drillHealth > 0) {
         requestAnimationFrame(updateMining);
+    } else if (setupProgress >= 100) {
+        completeSetup();
     }
 }
 
@@ -1623,25 +1630,32 @@ function drawMiningEnvironment(ctx) {
 }
 
 function drawTurretWithBase(ctx) {
-    // วาดฐานป้อม
-    const baseImg = images['turret_base'];
+    const baseImg = images['terret1']; // ฐาน
+    const headImg = images['terret2']; // ปืน
+
+    // 1. วาดฐาน (อยู่กับที่)
     if (baseImg && baseImg.complete) {
-        ctx.drawImage(baseImg, turret.x - 30, turret.y - 30, 60, 60);
+        ctx.drawImage(baseImg, turret.x - 40, turret.y - 40, 80, 80);
     } else {
-        ctx.fillStyle = "#555";
-        ctx.fillRect(turret.x - 20, turret.y - 20, 40, 40); // ฐานเทา
+        // ถ้าภาพยังไม่มา วาดวงกลมสีเทาสำรองไว้
+        ctx.fillStyle = "#333";
+        ctx.beginPath();
+        ctx.arc(turret.x, turret.y, 30, 0, Math.PI * 2);
+        ctx.fill();
     }
 
-    // วาดปืน
+    // 2. วาดส่วนหัวปืน (หมุนตามเป้าหมาย)
     ctx.save();
     ctx.translate(turret.x, turret.y);
     ctx.rotate(turret.rotation);
-    const headImg = images['turret_head'];
+    
     if (headImg && headImg.complete) {
-        ctx.drawImage(headImg, -30, -30, 60, 60);
+        // วาดให้จุดศูนย์กลางภาพตรงกับ turret.x, turret.y
+        ctx.drawImage(headImg, -40, -40, 80, 80);
     } else {
-        ctx.fillStyle = "#00ff00";
-        ctx.fillRect(-5, -30, 10, 30); // ลำกล้องสีเขียว
+        // ถ้าภาพยังไม่มา วาดแท่งสี่เหลี่ยมสีเขียวสำรองไว้
+        ctx.fillStyle = "lime";
+        ctx.fillRect(-5, -40, 10, 40); 
     }
     ctx.restore();
 }
@@ -1659,10 +1673,12 @@ function spawnAlien() {
 
 // C. วาดเอเลี่ยน
 function drawAlien(ctx, alien) {
-    const alienImg = images['star0']; // ใช้รูปดาว 0 เป็นตัวแทนเอเลี่ยนก่อนได้ครับ
-    if (alienImg) {
+    const alienImg = images['alian1'];
+    
+    if (alienImg && alienImg.complete) {
         ctx.drawImage(alienImg, alien.x - alien.size/2, alien.y - alien.size/2, alien.size, alien.size);
     } else {
+        // สำรอง: วาดวงกลมสีแดงถ้าโหลดภาพไม่ทัน
         ctx.fillStyle = "red";
         ctx.beginPath();
         ctx.arc(alien.x, alien.y, alien.size/2, 0, Math.PI * 2);
