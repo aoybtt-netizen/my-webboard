@@ -382,12 +382,14 @@ button:hover { opacity: 0.8; }
     </div>
 	
 
-    <div id="view-mining" class="view" style="flex-direction: column; align-items: center; justify-content: center;">
+    <div id="view-mining" class="view" style="flex-direction: column; align-items: center; justify-content: center; background: #000;">
     <h2 id="mining-status" style="color: var(--neon-blue); margin-top: 20px;">PREPARING DRILL...</h2>
     
-    <canvas id="mining-canvas" width="400" height="600" style="background: #050a12; border: 2px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,210,255,0.3); margin: 15px 0;"></canvas>
+    <canvas id="mining-canvas" width="400" height="600" style="border: 2px solid var(--neon-blue); background: #050a12; margin: 15px 0;"></canvas>
 
-    <div class="progress-container" style="width: 80%; max-width: 400px;"><div id="mining-bar" class="progress-bar"></div></div>
+    <div class="progress-container" style="width: 80%; max-width: 400px;">
+        <div id="mining-bar" class="progress-bar"></div>
+    </div>
     
     <button onclick="exitMining()" style="margin-top: 15px; background:transparent; border:1px solid var(--neon-red); color:var(--neon-red); padding:10px 20px; border-radius:8px; cursor: pointer;">ABORT MISSION</button>
 </div>
@@ -1436,35 +1438,37 @@ function showArrivalUI(star, q, r) {
 
 
 function startMiningProcess() {
-    // ปิดหน้าต่างแจ้งเตือน
+    // ปิด UI เดิม
     document.getElementById('arrival-modal').classList.remove('active');
     if(document.getElementById('star-detail-modal')) {
         document.getElementById('star-detail-modal').style.display = 'none';
     }
 
-    // สลับหน้าจอ View
+    // สลับ View
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    const miningView = document.getElementById('view-mining');
-    if (miningView) miningView.classList.add('active');
+    document.getElementById('view-mining').classList.add('active');
 
-    // --- จุดที่แก้ไข: ไม่ใช้ const แต่เป็นการกำหนดค่าให้ตัวแปร Global ---
+    // --- แก้ไขตรงนี้: ลบ const ออกเพื่อให้มันไปใส่ค่าในตัวแปร Global ---
     miningCanvas = document.getElementById('mining-canvas'); 
     
     if (miningCanvas) {
-        // เก็บ Context ไว้ในตัวแปร Global mctx เพื่อให้ updateMining ใช้งานได้
-        mctx = miningCanvas.getContext('2d'); 
+        mctx = miningCanvas.getContext('2d'); // เก็บพู่กันไว้ใน mctx
 
-        // ตั้งค่าตำแหน่งป้อม
+        // ตั้งค่าป้อม
         turret.x = miningCanvas.width / 2;
         turret.y = miningCanvas.height - 80;
-
-        console.log("Starting defense phase...");
         
-        // เริ่ม Loop เกม
+        // รีเซ็ตค่าเกม
         miningGameActive = true;
+        drillHealth = 100;
+        setupProgress = 0;
+        aliens = [];
+        bullets = [];
+
+        console.log("Defense phase started on canvas.");
         requestAnimationFrame(updateMining); 
     } else {
-        console.error("หาไอดี 'mining-canvas' ไม่เจอใน HTML!");
+        console.error("Critical: 'mining-canvas' not found in HTML!");
     }
 }
 
@@ -1476,6 +1480,7 @@ function updateMining(currentTime) {
     if (!mctx) return;
 
     // 1. เคลียร์จอ
+	mctx.fillStyle = "#050a12";
     mctx.clearRect(0, 0, miningCanvas.width, miningCanvas.height);
 
     // 2. วาดฉากหลัง (ดาว)
