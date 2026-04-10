@@ -1559,15 +1559,6 @@ function closeArrivalUI() {
 
 
 
-const turret = {
-    x: travelCanvas.width / 2, // อยู่กลางจอด้านล่าง
-    y: travelCanvas.height - 80,
-    range: 300,        // ระยะที่ป้อมจะเริ่มยิง (พิกเซล)
-    rotation: 0,       // มุมที่ป้อมหันไป (เรเดียน)
-    target: null,      // เก็บตัวเอเลี่ยนที่เป็นเป้าหมาย
-    fireRate: 500,     // ยิงทุกๆ 500ms
-    lastShot: 0
-};
 
 function updateTurret(aliens, currentTime) {
     // 1. หาเป้าหมายที่อยู่ในระยะ
