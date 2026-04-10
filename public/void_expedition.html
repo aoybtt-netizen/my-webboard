@@ -581,6 +581,15 @@ button:hover { opacity: 0.8; }
 		let setupProgress = 0; // 0 - 100%
 		let aliens = [];
 		let bullets = [];
+		let turret = {
+			x: 0,
+			y: 0,
+			rotation: 0,
+			target: null,
+			range: 400,
+			fireRate: 500,
+			lastShot: 0
+		};
 		
 
         // --- ระบบ Auth ---
