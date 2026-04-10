@@ -382,16 +382,14 @@ button:hover { opacity: 0.8; }
     </div>
 	
 
-    <div id="view-mining" class="view">
-    <h2 id="mining-status">PREPARING DRILL...</h2>
-    <div class="progress-container">
-        <div id="mining-bar" class="progress-bar"></div>
-    </div>
+    <div id="view-mining" class="view" style="flex-direction: column; align-items: center; justify-content: center;">
+    <h2 id="mining-status" style="color: var(--neon-blue); margin-top: 20px;">PREPARING DRILL...</h2>
+    
+    <canvas id="mining-canvas" width="400" height="600" style="background: #050a12; border: 2px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,210,255,0.3); margin: 15px 0;"></canvas>
 
-    <canvas id="mining-canvas" width="400" height="600" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,255,255,0.1); margin: 20px 0;"></canvas>
-
-    <br>
-    <button onclick="exitMining()" style="background:transparent; border:1px solid var(--neon-red); color:var(--neon-red); padding:10px 20px; border-radius:8px;">ABORT</button>
+    <div class="progress-container" style="width: 80%; max-width: 400px;"><div id="mining-bar" class="progress-bar"></div></div>
+    
+    <button onclick="exitMining()" style="margin-top: 15px; background:transparent; border:1px solid var(--neon-red); color:var(--neon-red); padding:10px 20px; border-radius:8px; cursor: pointer;">ABORT MISSION</button>
 </div>
 
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
@@ -1508,27 +1506,6 @@ function updateMining(currentTime) {
 }
 
 
-function drawTurretWithBase(ctx) {
-    const baseImg = images['turret_base'];
-    const headImg = images['turret_head'];
-
-    // 1. วาดฐาน (Static - ไม่หมุน)
-    if (baseImg) {
-        ctx.drawImage(baseImg, turret.x - 40, turret.y - 40, 80, 80);
-    }
-
-    // 2. วาดส่วนปืน (Rotate - หมุนตามเป้าหมาย)
-    if (headImg) {
-        ctx.save();
-        ctx.translate(turret.x, turret.y);
-        ctx.rotate(turret.rotation); // มุมที่คำนวณจากเป้าหมาย
-        
-        // วาดให้กึ่งกลางภาพทับจุดศูนย์กลาง
-        ctx.drawImage(headImg, -40, -40, 80, 80); 
-        ctx.restore();
-    }
-}
-
 
 function updateTurretLogic(currentTime) {
     let target = null;
@@ -1629,19 +1606,44 @@ function drawTurret(ctx) {
 
 // A. วาดพื้นหลังและเครื่องขุด
 function drawMiningEnvironment(ctx) {
-    // วาดพื้นดินง่ายๆ
-    ctx.fillStyle = "#1a1a2e";
+    // 1. วาดพื้นหลัง (ให้เป็นสีเทาเข้มเพื่อให้เห็นขอบเขต Canvas)
+    ctx.fillStyle = "#0a1525";
     ctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
-    
-    // วาดตัวเครื่องขุด (อยู่ตรงกลางล่าง)
-    const drillImg = images['drill']; // ถ้ามีรูป
-    if (drillImg) {
+
+    // 2. วาดตำแหน่งเครื่องขุด (ใช้สี่เหลี่ยมสีชมพูไว้ก่อนเพื่อเช็คว่าวาดติดไหม)
+    const drillImg = images['drill']; 
+    if (drillImg && drillImg.complete) {
         ctx.drawImage(drillImg, miningCanvas.width/2 - 50, miningCanvas.height - 150, 100, 100);
     } else {
-        // ถ้ายังไม่มีรูป ให้วาดสี่เหลี่ยมแทนก่อน
-        ctx.fillStyle = "#555";
-        ctx.fillRect(miningCanvas.width/2 - 40, miningCanvas.height - 120, 80, 80);
+        ctx.fillStyle = "#ff00ff"; // สีชมพูสะท้อนแสง (ถ้าจอยังดำ แสดงว่าระบบวาดมีปัญหา)
+        ctx.fillRect(miningCanvas.width/2 - 25, miningCanvas.height - 130, 50, 50);
+        ctx.fillStyle = "white";
+        ctx.fillText("DRILL UNIT", miningCanvas.width/2 - 25, miningCanvas.height - 140);
     }
+}
+
+function drawTurretWithBase(ctx) {
+    // วาดฐานป้อม
+    const baseImg = images['turret_base'];
+    if (baseImg && baseImg.complete) {
+        ctx.drawImage(baseImg, turret.x - 30, turret.y - 30, 60, 60);
+    } else {
+        ctx.fillStyle = "#555";
+        ctx.fillRect(turret.x - 20, turret.y - 20, 40, 40); // ฐานเทา
+    }
+
+    // วาดปืน
+    ctx.save();
+    ctx.translate(turret.x, turret.y);
+    ctx.rotate(turret.rotation);
+    const headImg = images['turret_head'];
+    if (headImg && headImg.complete) {
+        ctx.drawImage(headImg, -30, -30, 60, 60);
+    } else {
+        ctx.fillStyle = "#00ff00";
+        ctx.fillRect(-5, -30, 10, 30); // ลำกล้องสีเขียว
+    }
+    ctx.restore();
 }
 
 // B. สร้างเอเลี่ยนตัวใหม่
