@@ -171,6 +171,54 @@
 }
 
 
+
+/* หน้าต่าง UI */
+.arrival-ui {
+    display: none; /* ซ่อนไว้เริ่มต้น */
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.arrival-ui.active {
+    display: flex; /* แสดงเมื่อมี class active */
+}
+
+.ui-content {
+    background: #1a1a2e;
+    border: 2px solid #00f2ff;
+    padding: 30px;
+    text-align: center;
+    color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 20px #00f2ff;
+    min-width: 300px;
+}
+
+.ui-buttons {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+button {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+}
+
+.btn-mine { background: #ffcc00; color: #000; }
+.btn-close { background: #555; color: #fff; }
+
+button:hover { opacity: 0.8; }
+
+
     </style>
 </head>
 <body>
@@ -367,6 +415,20 @@
     </div>
 
     <div id="damage-flash" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.3); display: none; pointer-events: none; z-index: 5000;"></div>
+</div>
+
+
+
+<div id="arrival-modal" class="arrival-ui">
+    <div class="ui-content">
+        <h2 id="arrival-title">ARRIVED AT: ---</h2>
+        <p>คุณต้องการดำเนินการอย่างไรต่อ?</p>
+        
+        <div class="ui-buttons">
+            <button id="btn-start-mining" class="btn-mine" onclick="startMiningProcess()">START MINING</button>
+            <button class="btn-close" onclick="closeArrivalUI()">BACK TO MAP</button>
+        </div>
+    </div>
 </div>
 	
 	
@@ -1295,11 +1357,54 @@ function getWeightedAsteroidType() {
 
 function endTravel() {
     travelGameActive = false;
-    // อัปเดตพิกัดจริง
+    
+    // อัปเดตพิกัดปัจจุบันของผู้เล่น
     playerQ = selectedHex.q;
     playerR = selectedHex.r;
+
+    // ดึงข้อมูลดาวจาก STATIC_STARS โดยใช้พิกัด q,r เป็น Key
+    const starKey = `${playerQ},${playerR}`;
+    const starData = STATIC_STARS[starKey] || { name: "Unknown Space" };
+
+    // เรียกใช้ฟังก์ชันเปิดหน้าต่าง UI
+    showArrivalUI(starData, playerQ, playerR);
+}
+
+function showArrivalUI(star, q, r) {
+    const modal = document.getElementById('arrival-modal');
+    const title = document.getElementById('arrival-title');
+    const btnMine = document.getElementById('btn-start-mining');
+
+    // 1. ใส่ชื่อดาว
+    title.innerText = `ARRIVED AT: ${star.name}`;
+
+    // 2. เช็คว่าเป็นดาวสถานี (0,0) หรือไม่
+    if (q === 0 && r === 0) {
+        btnMine.style.display = "none"; // ถ้าเป็น 0,0 ให้ซ่อนปุ่มขุด
+    } else {
+        btnMine.style.display = "block"; // ดาวดวงอื่นให้แสดงปุ่มขุด
+    }
+
+    // 3. แสดงหน้าต่าง Modal
+    modal.classList.add('active');
+}
+
+
+function startMiningProcess() {
+    // ปิดหน้าต่างแจ้งเตือน
+    document.getElementById('arrival-modal').classList.remove('active');
     
-    alert("ถึงจุดหมายปลายทางแล้ว!");
+    // TODO: สลับไปหน้า Mining View 
+    // และเริ่มช่วงตั้งเครื่องขุดที่มีเอเลี่ยนบุก!
+    console.log("Starting defense phase..."); 
+    // logic ต่อไปของคุณจะเริ่มที่นี่
+}
+
+
+
+// ฟังก์ชันสำหรับปิดหน้าต่างและกลับไปหน้าแผนที่
+function closeArrivalUI() {
+    document.getElementById('arrival-modal').classList.remove('active');
     
     // กลับไปหน้าแผนที่
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
