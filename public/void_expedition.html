@@ -577,6 +577,11 @@ button:hover { opacity: 0.8; }
 		let playerQ = 0;
 		let playerR = 0;
 		
+		let miningGameActive = false;
+		let setupProgress = 0; // 0 - 100%
+		let aliens = [];
+		let bullets = [];
+		
 
         // --- ระบบ Auth ---
         function toggleAuth(mode) {
@@ -1411,14 +1416,124 @@ function showArrivalUI(star, q, r) {
 
 
 function startMiningProcess() {
-    // ปิดหน้าต่างแจ้งเตือน
+    // 1. ปิด Modal
     document.getElementById('arrival-modal').classList.remove('active');
+    document.getElementById('star-detail-modal').style.display = 'none';
     
-    // TODO: สลับไปหน้า Mining View 
-    // และเริ่มช่วงตั้งเครื่องขุดที่มีเอเลี่ยนบุก!
-    console.log("Starting defense phase..."); 
-    // logic ต่อไปของคุณจะเริ่มที่นี่
+    // 2. สลับ View (สมมติว่าคุณมี <div id="view-mining" class="view">)
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-mining').classList.add('active');
+
+    // 3. Reset ค่าต่างๆ สำหรับเริ่มเกมใหม่
+    miningGameActive = true;
+    setupProgress = 0;
+    aliens = [];
+    bullets = [];
+    
+    // ตั้งพิกัดป้อมไว้ที่ด้านล่างกลางจอ
+    turret.x = miningCanvas.width / 2;
+    turret.y = miningCanvas.height - 80;
+
+    // 4. เริ่ม Loop การทำงาน
+    requestAnimationFrame(updateMining);
 }
+
+
+function updateMining(currentTime) {
+    if (!miningGameActive) return;
+
+    const mctx = miningCanvas.getContext('2d');
+    mctx.clearRect(0, 0, miningCanvas.width, miningCanvas.height);
+
+    // --- A. วาดพื้นหลังดาว/เครื่องขุด ---
+    drawMiningEnvironment(mctx);
+
+    // --- B. จัดการเอเลี่ยน ---
+    if (Math.random() < 0.02) spawnAlien(); // สุ่มเกิดเอเลี่ยน
+    
+    aliens.forEach((alien, index) => {
+        alien.y += alien.speed; // เดินลงมาข้างล่าง
+        drawAlien(mctx, alien);
+
+        // เช็คว่าเอเลี่ยนถึงเครื่องขุดหรือยัง (ด้านล่างจอ)
+        if (alien.y > miningCanvas.height - 120) {
+            takeDamage(10); // ลดเลือดเครื่องขุด
+            aliens.splice(index, 1);
+        }
+    });
+
+    // --- C. จัดการป้อม (หมุนตามเป้าหมาย) ---
+    updateTurretLogic(currentTime);
+    drawTurretWithBase(mctx);
+
+    // --- D. จัดการกระสุน ---
+    updateBullets(mctx);
+
+    // --- E. อัปเดต Progress การตั้งเครื่อง ---
+    setupProgress += 0.05; // ค่อยๆ เพิ่มความคืบหน้า
+    updateMiningUI();
+
+    if (setupProgress >= 100) {
+        completeSetup();
+    } else {
+        requestAnimationFrame(updateMining);
+    }
+}
+
+
+function drawTurretWithBase(ctx) {
+    const baseImg = images['turret_base'];
+    const headImg = images['turret_head'];
+
+    // 1. วาดฐาน (Static - ไม่หมุน)
+    if (baseImg) {
+        ctx.drawImage(baseImg, turret.x - 40, turret.y - 40, 80, 80);
+    }
+
+    // 2. วาดส่วนปืน (Rotate - หมุนตามเป้าหมาย)
+    if (headImg) {
+        ctx.save();
+        ctx.translate(turret.x, turret.y);
+        ctx.rotate(turret.rotation); // มุมที่คำนวณจากเป้าหมาย
+        
+        // วาดให้กึ่งกลางภาพทับจุดศูนย์กลาง
+        ctx.drawImage(headImg, -40, -40, 80, 80); 
+        ctx.restore();
+    }
+}
+
+
+function updateTurretLogic(currentTime) {
+    let target = null;
+    let minDistance = 500; // ระยะยิงสูงสุด
+
+    // ค้นหาเอเลี่ยนที่ใกล้ที่สุด
+    aliens.forEach(alien => {
+        const dist = Math.hypot(alien.x - turret.x, alien.y - turret.y);
+        if (dist < minDistance) {
+            minDistance = dist;
+            target = alien;
+        }
+    });
+
+    if (target) {
+        // 1. คำนวณมุม (ถ้าภาพตั้งตรงให้ + PI/2)
+        const dx = target.x - turret.x;
+        const dy = target.y - turret.y;
+        turret.rotation = Math.atan2(dy, dx) + Math.PI / 2;
+
+        // 2. ยิงกระสุน
+        if (currentTime - turret.lastShot > turret.fireRate) {
+            fireBullet(target);
+            turret.lastShot = currentTime;
+        }
+    }
+}
+
+
+
+
+
 
 
 
@@ -1430,6 +1545,67 @@ function closeArrivalUI() {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-map').classList.add('active');
     renderGrid();
+}
+
+
+
+
+const turret = {
+    x: travelCanvas.width / 2, // อยู่กลางจอด้านล่าง
+    y: travelCanvas.height - 80,
+    range: 300,        // ระยะที่ป้อมจะเริ่มยิง (พิกเซล)
+    rotation: 0,       // มุมที่ป้อมหันไป (เรเดียน)
+    target: null,      // เก็บตัวเอเลี่ยนที่เป็นเป้าหมาย
+    fireRate: 500,     // ยิงทุกๆ 500ms
+    lastShot: 0
+};
+
+function updateTurret(aliens, currentTime) {
+    // 1. หาเป้าหมายที่อยู่ในระยะ
+    turret.target = null;
+    let closestDist = turret.range;
+
+    aliens.forEach(alien => {
+        const dx = alien.x - turret.x;
+        const dy = alien.y - turret.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < closestDist) {
+            closestDist = distance;
+            turret.target = alien; // ล็อคเป้าตัวที่ใกล้ที่สุด
+        }
+    });
+
+    // 2. ถ้ามีเป้าหมาย ให้คำนวณมุม (Rotation)
+    if (turret.target) {
+        const dx = turret.target.x - turret.x;
+        const dy = turret.target.y - turret.y;
+        
+        // Math.atan2 จะคืนค่ามุมเป็นเรเดียนจากจุด A ไปจุด B
+        // เราต้อง + Math.PI / 2 (90 องศา) เพื่อให้หัวป้อมตรงกับภาพที่คุณวาด
+        turret.rotation = Math.atan2(dy, dx) + Math.PI / 2;
+
+        // 3. ยิง (ถ้ารอบการยิงพร้อม)
+        if (currentTime - turret.lastShot > turret.fireRate) {
+            shootBullet(turret.target);
+            turret.lastShot = currentTime;
+        }
+    }
+}
+
+
+function drawTurret(ctx) {
+    ctx.save();
+    // ย้ายจุดศูนย์กลางไปที่ตำแหน่งป้อม
+    ctx.translate(turret.x, turret.y);
+    // หมุน Canvas ตามมุมที่คำนวณได้
+    ctx.rotate(turret.rotation);
+
+    // วาดภาพป้อม (สมมติว่าภาพป้อมหันหน้าขึ้นด้านบน)
+    const img = images['turret_top']; 
+    ctx.drawImage(img, -25, -25, 50, 50); // วาดโดยให้จุดศูนย์กลางอยู่ที่ 0,0
+
+    ctx.restore();
 }
 
 
