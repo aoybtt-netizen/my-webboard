@@ -1697,9 +1697,10 @@ function drawAlien(ctx, alien) {
 // D. ระบบรับดาเมจ
 function takeDamage(amount) {
     drillHealth -= amount;
-    console.log("Drill HP:", drillHealth);
     if (drillHealth <= 0) {
-        alert("เครื่องขุดถูกทำลาย!");
+        drillHealth = 0;
+        miningGameActive = false;
+        alert("MISSION FAILED: เครื่องขุดถูกทำลาย!");
         exitMining();
     }
 }
@@ -1747,12 +1748,42 @@ function updateMining(currentTime) {
     }
 }
 
+function updateMiningUI() {
+    // 1. อัปเดตหลอดความคืบหน้า (Progress Bar)
+    const bar = document.getElementById('mining-bar');
+    if (bar) {
+        bar.style.width = `${setupProgress}%`;
+    }
+
+    // 2. อัปเดตข้อความสถานะและเลือดเครื่องขุด
+    const statusText = document.getElementById('mining-status');
+    if (statusText) {
+        // แสดงเปอร์เซ็นต์ และ HP ของเครื่องขุด
+        statusText.innerText = `PREPARING DRILL... ${Math.floor(setupProgress)}% (HP: ${drillHealth})`;
+        
+        // ถ้าเลือดเหลือน้อย ให้เปลี่ยนเป็นสีแดงเตือน
+        if (drillHealth < 30) {
+            statusText.style.color = "#ff4b2b"; // neon-red
+        } else {
+            statusText.style.color = "#00d2ff"; // neon-blue
+        }
+    }
+}
+
 // F. เมื่อตั้งเครื่องเสร็จ
 function completeSetup() {
     miningGameActive = false;
-    alert("การตั้งเครื่องเสร็จสมบูรณ์! เริ่มการขุดแร่จริง...");
-    // หลังจากนี้อาจจะเปลี่ยนสถานะเป็นขุดแร่แบบสงบ (Mining Phase)
-    exitMining(); 
+    alert("SET-UP COMPLETE: เริ่มการเก็บเกี่ยวทรัพยากร!");
+    // ตรงนี้คุณสามารถเพิ่ม Logic การแจกแร่ได้ในอนาคต
+    exitMining();
+}
+
+function exitMining() {
+    miningGameActive = false;
+    // กลับไปหน้าแผนที่
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-map').classList.add('active');
+    if (typeof renderGrid === 'function') renderGrid();
 }
 
 function fireBullet(target) {
