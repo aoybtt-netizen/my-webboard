@@ -916,86 +916,83 @@ window.onload = async () => {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const hexRadius = 30;
+    
+    // ระยะห่างสำหรับการวาดหกเหลี่ยมแบบ Axial
     const h = hexRadius * Math.sqrt(3);
     const w = hexRadius * 1.5;
 
-    // พี่ปรับ Loop ตรงนี้ให้กว้างขึ้นตามขนาดแผนที่ได้ครับ เช่น -5 ถึง 5
-    for (let q = -MAP_RANGE; q <= MAP_RANGE; q++) { 
-        for (let r = -MAP_RANGE; r <= MAP_RANGE; r++) {
-            const xPos = centerX + (q * w);
-            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h / 2 : 0);
-            const coordKey = `${q},${r}`;
+    // dq, dr คือระยะห่าง (offset) จากตัวผู้เล่น
+    for (let dq = -MAP_RANGE; dq <= MAP_RANGE; dq++) { 
+        for (let dr = -MAP_RANGE; dr <= MAP_RANGE; dr++) {
+            
+            // คำนวณพิกัดจริงบนแผนที่
+            const actualQ = playerQ + dq;
+            const actualR = playerR + dr;
+            const coordKey = `${actualQ},${actualR}`;
+
+            // คำนวณตำแหน่งบนหน้าจอ (ให้ผู้เล่นอยู่กลางเสมอ)
+            // ใช้สูตร Axial to Pixel
+            const xPos = centerX + (dq * w);
+            const yPos = centerY + (dq * h / 2) + (dr * h);
             
             let imgToDraw = null;
             let label = "";
-            let labelColor = "rgba(255,255,255,0.7)";
 
-            // --- 1. ตรวจสอบเงื่อนไขรูปภาพ (ลำดับความสำคัญ) ---
+            // --- 1. ดึงข้อมูลตามพิกัดจริง (actualQ, actualR) ---
             if (STATIC_STARS[coordKey]) {
                 const starData = STATIC_STARS[coordKey];
-                imgToDraw = images[starData.img]; // ดึงจากที่ Preload ไว้
+                imgToDraw = images[starData.img];
                 label = starData.name;
-                labelColor = neonGreen;
             } else {
                 const serverTile = serverMapData[coordKey];
                 if (serverTile && serverTile.progress >= 100) {
-                    // ถ้าสำรวจแล้ว ให้ใช้รูปที่ Server ส่งมา 
-                    // (แนะนำว่าควรใช้ระบบ Cache รูปภาพ ไม่ควร new Image() ในนี้)
                     imgToDraw = images[serverTile.id] || images['conceal']; 
                     label = serverTile.name;
                 } else {
                     imgToDraw = images['conceal'];
-                    label = serverTile ? `${serverTile.progress}%` : "0%";
+                    label = coordKey; // แสดงพิกัดให้ดูง่ายตอนพัฒนา
                 }
             }
 
-            const isCenter = (q === 0 && r === 0);
-            const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
+            // เช็คสถานะพิเศษ
+            const isPlayerHere = (dq === 0 && dr === 0);
+            const isSelected = (selectedHex && selectedHex.q === actualQ && selectedHex.r === actualR);
+            const distFromPlayer = getHexDistance(playerQ, playerR, actualQ, actualR);
 
-            // --- 2. วาดเส้นขอบหกเหลี่ยม ---
+            // --- 2. วาดหกเหลี่ยม ---
             ctx.beginPath();
-            ctx.shadowBlur = isSelected ? 15 : 0;
-            ctx.shadowColor = neonBlue;
-            ctx.strokeStyle = isSelected ? '#ffffff' : (isCenter ? neonGreen : 'rgba(0, 210, 255, 0.2)');
-            ctx.lineWidth = isSelected ? 4 : (isCenter ? 3 : 1);
+            ctx.strokeStyle = isSelected ? '#ffffff' : (isPlayerHere ? neonGreen : 'rgba(0, 210, 255, 0.2)');
+            ctx.lineWidth = isSelected ? 4 : (isPlayerHere ? 3 : 1);
 
+            // วาดรูปทรง
             for (let i = 0; i < 6; i++) {
-                ctx.lineTo(xPos + hexRadius * Math.cos(i * Math.PI / 3), yPos + hexRadius * Math.sin(i * Math.PI / 3));
+                const angle = i * Math.PI / 3;
+                ctx.lineTo(xPos + hexRadius * Math.cos(angle), yPos + hexRadius * Math.sin(angle));
             }
             ctx.closePath();
             
-            if (isCenter) {
-                ctx.fillStyle = 'rgba(56, 239, 125, 0.05)';
+            // ไฮไลท์เฉพาะจุดที่ไปได้ (ระยะห่าง 1)
+            if (distFromPlayer === 1) {
+                ctx.fillStyle = 'rgba(0, 210, 255, 0.05)';
                 ctx.fill();
             }
             ctx.stroke();
-            ctx.shadowBlur = 0;
 
-            // --- 3. วาดรูปภาพดาว/หมอก ---
+            // --- 3. วาดภาพดาว/หมอก ---
             if (imgToDraw && imgToDraw.complete) {
                 const imgSize = hexRadius * 1.3;
                 ctx.drawImage(imgToDraw, xPos - imgSize/2, yPos - imgSize/2, imgSize, imgSize);
             }
-			
-			if (q === playerQ && r === playerR) {
+            
+            // --- 4. วาดยานผู้เล่น (อยู่กลางจอเสมอ) ---
+            if (isPlayerHere) {
                 const shipImg = images['ship'];
                 if (shipImg && shipImg.complete) {
-                    // ปรับขนาดความกว้างยาน (ให้เล็กกว่าดาวนิดนึงเพื่อให้เห็นดาวข้างหลัง)
                     const shipSize = hexRadius * 0.8; 
-                    
-                    // ใส่ Shadow ให้ยานดูเด่นขึ้น
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-                    
-                    ctx.drawImage(
-                        shipImg, 
-                        xPos - shipSize / 2, 
-                        yPos - shipSize / 2, 
-                        shipSize, 
-                        shipSize
-                    );
-                    
-                    ctx.shadowBlur = 0; // ล้างค่า Shadow เพื่อไม่ให้กระทบช่องอื่น
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = neonGreen;
+                    ctx.drawImage(shipImg, xPos - shipSize / 2, yPos - shipSize / 2, shipSize, shipSize);
+                    ctx.shadowBlur = 0;
                 }
             }
         }
@@ -1034,15 +1031,16 @@ window.onload = async () => {
 
     let foundHex = null;
 
-    // วนลูปเช็คพิกัด
-    for (let q = -MAP_RANGE; q <= MAP_RANGE; q++) {
-        for (let r = -MAP_RANGE; r <= MAP_RANGE; r++) {
-            const xPos = centerX + (q * w);
-            const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h / 2 : 0);
+    // วนลูปหาว่า dq, dr ไหนที่ตรงกับจุดคลิก
+    for (let dq = -MAP_RANGE; dq <= MAP_RANGE; dq++) {
+        for (let dr = -MAP_RANGE; dr <= MAP_RANGE; dr++) {
+            const xPos = centerX + (dq * w);
+            const yPos = centerY + (dq * h / 2) + (dr * h);
+            
             const distance = Math.sqrt((mouseX - xPos) ** 2 + (mouseY - yPos) ** 2);
 
             if (distance < hexRadius) {
-                foundHex = { q, r };
+                foundHex = { q: playerQ + dq, r: playerR + dr };
                 break;
             }
         }
@@ -1050,42 +1048,25 @@ window.onload = async () => {
     }
 
     if (foundHex) {
-        // 1. บันทึกช่องที่เลือก
         selectedHex = foundHex;
         const coordKey = `${foundHex.q},${foundHex.r}`;
+        const dist = getHexDistance(playerQ, playerR, foundHex.q, foundHex.r);
 
-        // 2. ค้นหารายละเอียดเพื่อแสดงผลบน HUD
-        let displayName = "DEEP SPACE"; // ค่าเริ่มต้น
-        
-        if (STATIC_STARS[coordKey]) {
-            // กรณีเป็นดาวรอบฐาน (0,0 และ GEDGOZONE 1-6)
-            displayName = STATIC_STARS[coordKey].name;
-        } else {
-            const tile = serverMapData[coordKey];
-            if (tile) {
-                // ถ้าสำรวจแล้วโชว์ชื่อดาว/อุกกาบาต ถ้ายังไม่ครบโชว์ %
-                displayName = tile.progress >= 100 ? tile.name : `EXPLORING: ${tile.progress}%`;
-            } else {
-                // กรณีเป็นหมอกที่ยังไม่มีใครแตะเลย
-                displayName = "UNEXPLORED SECTOR";
-            }
-        }
+        // ดึงชื่อดาว
+        let displayName = STATIC_STARS[coordKey] ? STATIC_STARS[coordKey].name : "UNKNOWN SECTOR";
+        if (serverMapData[coordKey]) displayName = serverMapData[coordKey].name;
 
-        // 3. อัปเดตข้อมูลลง UI
-        const coordDisplay = document.getElementById('map-coordinate-display');
+        // อัปเดต UI
         document.getElementById('target-name').innerText = displayName;
         document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
-        coordDisplay.style.opacity = "1";
-
-        // 4. วาด Grid ใหม่เพื่อแสดงขอบหนา
-        renderGrid();
         
-        console.log(`Target Set: ${displayName} at ${foundHex.q},${foundHex.r}`);
-    } else {
-        // (Optional) คลิกพื้นที่ว่างให้ซ่อนรายละเอียด
-        // document.getElementById('map-coordinate-display').style.opacity = "0";
-        // selectedHex = null;
-        // renderGrid();
+        // แสดงปุ่มเดินทางเฉพาะเมื่อระยะทาง = 1
+        const travelBtn = document.getElementById('btn-travel'); // สมมติว่ามีปุ่มนี้ใน HTML
+        if (travelBtn) {
+            travelBtn.style.display = (dist === 1) ? "block" : "none";
+        }
+
+        renderGrid();
     }
 };
 
@@ -1143,20 +1124,30 @@ function canExplore(targetQ, targetR) {
 
 
 function travelTo(q, r) {
+    const distance = getHexDistance(playerQ, playerR, q, r);
+
     if (q === playerQ && r === playerR) {
-        alert("คุณอยู่ที่พิกัดนี้อยู่แล้ว");
+        alert("คุณอยู่ที่นี่แล้ว");
         return;
     }
-    
-    // ตรงนี้ในอนาคตพี่อาจจะหัก Energy หรือมีระบบรอเวลาเดินทาง
-    if (confirm(`ยืนยันการเดินทางไปที่พิกัด ${q}, ${r}?`)) {
+
+    if (distance > 1) {
+        alert("พิกัดไกลเกินไป! คุณเดินทางได้เฉพาะช่องที่ติดกันเท่านั้น");
+        return;
+    }
+
+    if (confirm(`ใช้เชื้อเพลิงเพื่อเดินทางไปที่ ${q}, ${r}?`)) {
         playerQ = q;
         playerR = r;
-        closeStarDetail();
-        renderGrid(); // วาดใหม่เพื่อให้ไอคอนยานย้ายที่
         
-        // อย่าลืมส่งข้อมูลไปอัปเดตที่ Server ด้วยนะครับ (ถ้ามี API รองรับแล้ว)
-        // updatePlayerLocation(q, r);
+        // รีเซ็ตการเลือกและวาดใหม่
+        selectedHex = null;
+        renderGrid(); 
+        
+        // ปิดหน้าต่างรายละเอียด
+        closeStarDetail();
+        
+        console.log(`Moved to new location: ${playerQ}, ${playerR}`);
     }
 }
 
