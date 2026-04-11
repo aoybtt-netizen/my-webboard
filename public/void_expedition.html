@@ -756,6 +756,7 @@ function decodeJwtResponse(token) {
 
         // --- เช็คโปรไฟล์หลังโหลดหน้า ---
 window.onload = async () => {
+	fetchMapData();
     if (!currentUser) {
         // ถ้าไม่มีข้อมูลเลย ให้แสดงหน้า Auth
         document.getElementById('view-auth').classList.add('active');
@@ -1008,6 +1009,30 @@ window.onload = async () => {
         }
     }
 }
+
+
+// ฟังก์ชันดึงข้อมูลแผนที่ทั้งหมด
+async function fetchMapData() {
+    try {
+        const response = await fetch(`${API_BASE}/map/all`);
+        const tiles = await response.json();
+        
+        // แปลง Array จาก DB ให้มาอยู่ในรูปแบบ Object serverMapData
+        tiles.forEach(tile => {
+            const key = `${tile.q},${tile.r}`;
+            serverMapData[key] = tile;
+        });
+
+        console.log("Map data synchronized with server.");
+        
+        // ถ้าหน้าแผนที่เปิดอยู่ ให้วาดใหม่
+        if (mapActive) renderGrid();
+        
+    } catch (err) {
+        console.error("Error fetching map data:", err);
+    }
+}
+
 
     
     canvas.onclick = (e) => {
@@ -1443,19 +1468,12 @@ function getWeightedAsteroidType() {
 
 async function endTravel() {
     travelGameActive = false;
-    
     playerQ = selectedHex.q;
     playerR = selectedHex.r;
 
-    // เตรียมข้อมูลส่งไปที่ API
-    const payload = {
-        q: playerQ,
-        r: playerR,
-        username: localStorage.getItem('username') // ดึงชื่อคนสำรวจ
-    };
+    const payload = { q: playerQ, r: playerR, username: currentUser };
 
     try {
-        // 🚩 เรียกใช้ API เพื่อสำรวจ/สุ่มดาว
         const response = await fetch(`${API_BASE}/map/explore`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1465,17 +1483,17 @@ async function endTravel() {
         const result = await response.json();
 
         if (result.success) {
-            // อัปเดตข้อมูลในเครื่องผู้เล่น (Local Cache)
-            serverMapData[`${playerQ},${playerR}`] = result.tile;
+            // ✅ สำคัญ: บันทึกข้อมูลดาวดวงใหม่ลงใน Cache ทันที
+            const key = `${playerQ},${playerR}`;
+            serverMapData[key] = result.tile;
             
-            // แสดงหน้าต่าง Arrival พร้อมข้อมูลจาก Server
+            // ✅ สั่งวาด Grid ใหม่เพื่อให้หมอกหายไปและดาวปรากฏขึ้น
+            renderGrid(); 
+            
             showArrivalUI(result.tile, playerQ, playerR);
-            renderGrid(); // วาดแผนที่ใหม่เพื่อให้เห็นดาวที่เพิ่งสุ่มได้
-        } else {
-            console.error("Exploration failed:", result.message);
         }
     } catch (err) {
-        console.error("Network error during exploration:", err);
+        console.error(err);
     }
 }
 
