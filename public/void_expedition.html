@@ -685,6 +685,14 @@ button:hover { opacity: 0.8; }
 		
 		let playerQ = 0;
 		let playerR = 0;
+		// เก็บพิกัดที่ "เรา" เคยไปถึงแล้ว (ดึงจาก LocalStorage เพื่อให้รีเฟรชแล้วไม่หาย)
+		let visitedTiles = JSON.parse(localStorage.getItem(`visited_${currentUser}`) || '[]');
+
+		// เพิ่มพิกัดเริ่มต้น (0,0) เข้าไปในรายการเสมอ
+		if (!visitedTiles.includes("0,0")) {
+			visitedTiles.push("0,0");
+			localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
+		}
 		
 		
 		let miningCanvas;
@@ -953,34 +961,25 @@ window.onload = async () => {
             const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
 
             // --- 1. เลือกรูปที่จะวาด (ปรับปรุงใหม่) ---
-            let imgKey = 'conceal'; // ค่าเริ่มต้น
+            let imgKey = 'conceal';
 
             if (STATIC_STARS[coordKey]) {
+                // ดาวแม่และสถานีเริ่มต้น ให้เห็นตลอด
                 imgKey = STATIC_STARS[coordKey].img;
-            } else if (serverMapData[coordKey] && serverMapData[coordKey].progress >= 100) {
-                // แก้จาก .id เป็น .img ให้ตรงกับข้อมูลที่ Server ส่งมา
+            } else if (serverMapData[coordKey] && isVisitedByMe) {
+                // 🚩 เงื่อนไขใหม่: ต้องมีข้อมูลในเซิร์ฟเวอร์ "และ" เราต้องเคยไปถึงแล้วเท่านั้นถึงจะเห็นภาพดาว
                 imgKey = serverMapData[coordKey].img || 'conceal';
+            } else {
+                // ถ้ายังไม่เคยไป หรือยังไม่มีข้อมูล ให้เป็นหมอก (conceal)
+                imgKey = 'conceal';
             }
 
-            // 🔥 ระบบโหลดรูป "สด" สำหรับดาวดวงใหม่ที่ยังไม่มีใน Cache
+            // ระบบ Lazy Load รูป (เหมือนที่เราทำกันไปก่อนหน้า)
             if (imgKey !== 'conceal' && !images[imgKey]) {
                 images[imgKey] = new Image();
-                
-                // กำหนด Path ตามประเภท (star หรือ ast)
-                if (imgKey.startsWith('star')) {
-                    images[imgKey].src = `images/star/${imgKey}.png`;
-                } else if (imgKey.startsWith('ast')) {
-                    // ถ้าเป็น ast0 ให้ใช้รูปอุกกาบาต
-                    images[imgKey].src = `images/meteorite/meteor0.png`;
-                }
-
-                // เมื่อโหลดเสร็จ ให้สั่งวาดใหม่ทันที
-                images[imgKey].onload = () => {
-                    renderGrid(); 
-                };
-                
-                // ระหว่างรอโหลด ให้ใช้รูปหมอกไปก่อน
-                imgKey = 'conceal';
+                images[imgKey].src = imgKey.startsWith('star') ? `images/star/${imgKey}.png` : `images/meteorite/meteor0.png`;
+                images[imgKey].onload = () => renderGrid();
+                imgKey = 'conceal'; 
             }
 
             let imgToDraw = images[imgKey] || images['conceal'];
@@ -1185,7 +1184,8 @@ function openStarDetail() {
     const q = selectedHex.q;
     const r = selectedHex.r;
     const coordKey = `${q},${r}`;
-    
+    const isVisitedByMe = visitedTiles.includes(coordKey);
+	
     let name = "UNKNOWN SECTOR";
     let imgSrc = "images/conceal.png";
     let status = "พิกัดในอวกาศ";
@@ -1194,18 +1194,20 @@ function openStarDetail() {
 
     // --- 1. ตรวจสอบข้อมูลพื้นฐาน (เพื่อแสดงชื่อและรูป) ---
     if (STATIC_STARS[coordKey]) {
+        // ดาวแม่เห็นข้อมูลปกติ
         name = starData.name;
         imgSrc = imageSources[starData.img] || `images/star/${starData.img}.png`;
         status = "สถานีพันธมิตร";
+    } else if (starData && isVisitedByMe) {
+        // 🚩 ถ้าคนอื่นสำรวจแล้ว "และ" เราเคยไปแล้ว ถึงจะเห็นข้อมูลจริง
+        name = starData.name;
+        imgSrc = starData.image;
+        status = starData.type === 'star' ? "ดาวเคราะห์" : "กลุ่มอุกกาบาต";
     } else {
-        const tile = serverMapData[coordKey];
-        if (tile && tile.progress >= 100) {
-            name = tile.name;
-            imgSrc = tile.image;
-            status = tile.type === 'star' ? "ดาวเคราะห์" : "กลุ่มอุกกาบาต";
-        } else {
-            status = "เขตนอกการสำรวจ";
-        }
+        // ถ้ายังไม่เคยไป (แม้คนอื่นจะสำรวจแล้ว) ให้โชว์เป็น Unknown
+        name = "UNEXPLORED SECTOR";
+        imgSrc = "images/conceal.png";
+        status = "ยังไม่มีข้อมูลพิกัดนี้ในฐานข้อมูลของคุณ";
     }
 
     // --- 2. การสร้าง HTML สำหรับรายการแร่ ---
@@ -1493,6 +1495,13 @@ async function endTravel() {
     travelGameActive = false;
     playerQ = selectedHex.q;
     playerR = selectedHex.r;
+    const key = `${playerQ},${playerR}`;
+
+    // ✅ บันทึกว่า "เรามาถึงที่นี่แล้ว" เพื่อเปิดหมอก
+    if (!visitedTiles.includes(key)) {
+        visitedTiles.push(key);
+        localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
+    }
 
     const payload = { q: playerQ, r: playerR, username: currentUser };
 
@@ -1502,17 +1511,10 @@ async function endTravel() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-
         const result = await response.json();
-
         if (result.success) {
-            // ✅ สำคัญ: บันทึกข้อมูลดาวดวงใหม่ลงใน Cache ทันที
-            const key = `${playerQ},${playerR}`;
             serverMapData[key] = result.tile;
-            
-            // ✅ สั่งวาด Grid ใหม่เพื่อให้หมอกหายไปและดาวปรากฏขึ้น
-            renderGrid(); 
-            
+            renderGrid(); // วาดใหม่ หมอกจะหายไปเพราะเพิ่งเพิ่ม key ลงใน visitedTiles
             showArrivalUI(result.tile, playerQ, playerR);
         }
     } catch (err) {
