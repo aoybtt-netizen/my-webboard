@@ -1120,22 +1120,36 @@ function canExplore(targetQ, targetR) {
 }
 
 
-function travelTo(q, r) {
-    if (getHexDistance(playerQ, playerR, q, r) !== 1) {
-        alert("คุณเดินทางได้เฉพาะช่องที่อยู่ติดกันเท่านั้น");
+function travelTo(q, r, isWarp = false) {
+    // ถ้าเป็นการวาร์ป ให้ถือว่าระยะทางเป็น 1 เสมอ ตามโจทย์
+    const distance = isWarp ? 1 : getHexDistance(playerQ, playerR, q, r);
+
+    if (q === playerQ && r === playerR) {
+        alert("คุณอยู่ที่พิกัดนี้อยู่แล้ว");
         return;
     }
 
-    if (confirm(`เดินทางไปที่พิกัด ${q}, ${r}?`)) {
+    // ตรวจสอบระยะทาง (ต้องเป็น 1 เท่านั้น ยกเว้นจะวาร์ป)
+    if (distance > 1) {
+        alert("พิกัดไกลเกินไป! คุณเดินทางได้เฉพาะช่องที่ติดกันเท่านั้น");
+        return;
+    }
+
+    const message = isWarp ? "ยืนยันการวาร์ปกลับดาวหลัก?" : `ยืนยันการเดินทางไปที่พิกัด ${q}, ${r}?`;
+
+    if (confirm(message)) {
         playerQ = q;
         playerR = r;
-        selectedHex = null; // ล้างการเลือก
         
-        // ถ้ามีหน้าต่าง Detail เปิดอยู่ให้ปิดด้วย
-        if (typeof closeStarDetail === 'function') closeStarDetail();
+        // ปิด Modal และรีเฟรชแผนที่
+        if(document.getElementById('star-detail-modal')) {
+            document.getElementById('star-detail-modal').style.display = 'none';
+        }
         
-        renderGrid(); // แผนที่จะเลื่อนให้พิกัดใหม่มาอยู่กลางจอทันที
-        console.log(`Moved to: ${q}, ${r}`);
+        selectedHex = null;
+        renderGrid(); // วาดใหม่เพื่อให้ยานไปอยู่ที่กลางจอ (0,0)
+        
+        console.log(`Travel Successful: Moved to ${q}, ${r}`);
     }
 }
 
