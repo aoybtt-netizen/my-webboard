@@ -952,15 +952,38 @@ window.onload = async () => {
             const isPlayerHere = (q === playerQ && r === playerR);
             const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
 
-            // --- 1. เลือกรูปที่จะวาด ---
-            let imgToDraw = images['conceal'];
-            let label = "";
+            // --- 1. เลือกรูปที่จะวาด (ปรับปรุงใหม่) ---
+            let imgKey = 'conceal'; // ค่าเริ่มต้น
 
             if (STATIC_STARS[coordKey]) {
-                imgToDraw = images[STATIC_STARS[coordKey].img];
+                imgKey = STATIC_STARS[coordKey].img;
             } else if (serverMapData[coordKey] && serverMapData[coordKey].progress >= 100) {
-                imgToDraw = images[serverMapData[coordKey].id] || images['conceal'];
+                // แก้จาก .id เป็น .img ให้ตรงกับข้อมูลที่ Server ส่งมา
+                imgKey = serverMapData[coordKey].img || 'conceal';
             }
+
+            // 🔥 ระบบโหลดรูป "สด" สำหรับดาวดวงใหม่ที่ยังไม่มีใน Cache
+            if (imgKey !== 'conceal' && !images[imgKey]) {
+                images[imgKey] = new Image();
+                
+                // กำหนด Path ตามประเภท (star หรือ ast)
+                if (imgKey.startsWith('star')) {
+                    images[imgKey].src = `images/star/${imgKey}.png`;
+                } else if (imgKey.startsWith('ast')) {
+                    // ถ้าเป็น ast0 ให้ใช้รูปอุกกาบาต
+                    images[imgKey].src = `images/meteorite/meteor0.png`;
+                }
+
+                // เมื่อโหลดเสร็จ ให้สั่งวาดใหม่ทันที
+                images[imgKey].onload = () => {
+                    renderGrid(); 
+                };
+                
+                // ระหว่างรอโหลด ให้ใช้รูปหมอกไปก่อน
+                imgKey = 'conceal';
+            }
+
+            let imgToDraw = images[imgKey] || images['conceal'];
 
             // --- 2. วาดขอบหกเหลี่ยม ---
             ctx.beginPath();
