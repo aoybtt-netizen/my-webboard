@@ -959,7 +959,7 @@ window.onload = async () => {
             const coordKey = `${q},${r}`;
             const isPlayerHere = (q === playerQ && r === playerR);
             const isSelected = (selectedHex && selectedHex.q === q && selectedHex.r === r);
-
+			const isVisitedByMe = visitedTiles.includes(coordKey);
             // --- 1. เลือกรูปที่จะวาด (ปรับปรุงใหม่) ---
             let imgKey = 'conceal';
 
