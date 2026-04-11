@@ -1182,15 +1182,15 @@ function openStarDetail() {
     const r = selectedHex.r;
     const coordKey = `${q},${r}`;
     const isVisitedByMe = visitedTiles.includes(coordKey);
-	const isStatic = !!STATIC_STARS[coordKey];
-	
+    const isStatic = !!STATIC_STARS[coordKey];
+    
     let name = "UNKNOWN SECTOR";
     let imgSrc = "images/conceal.png";
     let status = "พิกัดในอวกาศ";
     
     const starData = STATIC_STARS[coordKey] || serverMapData[coordKey];
 
-    // --- 1. ตรวจสอบข้อมูลพื้นฐาน (เพื่อแสดงชื่อและรูป) ---
+    // --- 1. ตรวจสอบข้อมูลพื้นฐาน ---
     if (isStatic) {
         name = starData.name;
         imgSrc = imageSources[starData.img] || `images/star/${starData.img}.png`;
@@ -1205,73 +1205,74 @@ function openStarDetail() {
         status = "ยังไม่มีข้อมูลพิกัดนี้ในฐานข้อมูลของคุณ";
     }
 
-    // --- 2. การสร้าง HTML สำหรับรายการแร่ ---
+    // --- 2. การสร้าง HTML สำหรับสภาพแวดล้อม (กรด/อุณหภูมิ) และแร่ ---
+    let envHTML = ""; // ส่วนที่เพิ่มใหม่สำหรับ กรด/อุณหภูมิ
     let mineralHTML = "";
-    // 🚩 แก้ไข: ต้องเคยไป (isVisitedByMe) หรือเป็นดาวแม่ (isStatic) ถึงจะเห็นแร่
-    if ((isStatic || isVisitedByMe) && starData && starData.minerals && starData.minerals.length > 0) {
-        mineralHTML = `<div style="margin-top:15px; border-top:1px solid rgba(0,210,255,0.2); padding-top:10px;">
-                        <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px; letter-spacing:1px; text-align:left;">ทรัพยากรที่ตรวจพบ:</div>`;
-        
-        starData.minerals.forEach(m => {
-            const oreImg = imageSources[m.img] || 'images/ore/default.png';
-            mineralHTML += `
-                <div style="display:flex; align-items:center; background:rgba(99, 142, 99, 0.38); border-radius:10px; padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
-                    <img src="${oreImg}" style="width:35px; height:35px; margin-right:12px; object-fit:contain;">
-                    <div style="flex:1; text-align:left;">
-                        <div style="font-size:0.8rem; font-weight:bold; color:white;">${m.name}</div>
-                        <div style="font-size:0.6rem; color:rgba(255,255,255,0.5);">TYPE: ${m.type.toUpperCase()}</div>
-                    </div>
+
+    if ((isStatic || isVisitedByMe) && starData) {
+        // --- เช็คค่ากรด ---
+        if (starData.corrosionAcid && starData.corrosionAcid > 0) {
+            envHTML += `
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#ff4b2b; margin-top:5px; padding: 2px 0;">
+                    <span><i class="fas fa-biohazard"></i> กรดกัดกร่อนโลหะ:</span>
+                    <span style="color: white; font-weight:bold;">${starData.corrosionAcid}%</span>
                 </div>`;
-        });
-        mineralHTML += `</div>`;
+        }
+        // --- เช็คค่าอุณหภูมิ ---
+        if (starData.temperature && starData.temperature > 0) {
+            envHTML += `
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#ffaa00; margin-top:5px; padding: 2px 0;">
+                    <span><i class="fas fa-thermometer-half"></i> อุณหภูมิพื้นผิว:</span>
+                    <span style="color: white; font-weight:bold;">${starData.temperature}°C</span>
+                </div>`;
+        }
+
+        // --- ส่วนรายการแร่ (เดิม) ---
+        if (starData.minerals && starData.minerals.length > 0) {
+            mineralHTML = `<div style="margin-top:15px; border-top:1px solid rgba(0,210,255,0.2); padding-top:10px;">
+                            <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px; letter-spacing:1px; text-align:left;">ทรัพยากรที่ตรวจพบ:</div>`;
+            starData.minerals.forEach(m => {
+                const oreImg = imageSources[m.img] || 'images/ore/default.png';
+                mineralHTML += `
+                    <div style="display:flex; align-items:center; background:rgba(99, 142, 99, 0.38); border-radius:10px; padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
+                        <img src="${oreImg}" style="width:35px; height:35px; margin-right:12px; object-fit:contain;">
+                        <div style="flex:1; text-align:left;">
+                            <div style="font-size:0.8rem; font-weight:bold; color:white;">${m.name}</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.5);">TYPE: ${m.type.toUpperCase()}</div>
+                        </div>
+                    </div>`;
+            });
+            mineralHTML += `</div>`;
+        }
     } else if (!isStatic && !isVisitedByMe) {
-        // 🚩 ถ้ายังไม่เคยไป ให้โชว์ข้อความปิดผนึกแทน
         mineralHTML = `<div style="margin-top:15px; padding:15px; background:rgba(255,255,255,0.05); border-radius:10px; text-align:center; border:1px dashed rgba(255,255,255,0.2);">
                         <i class="fas fa-lock" style="color:rgba(255,255,255,0.2); margin-bottom:5px;"></i>
                         <div style="font-size:0.6rem; color:rgba(255,255,255,0.4);">DATA ENCRYPTED<br>เดินทางไปที่พิกัดเพื่อปลดล็อกข้อมูล</div>
                       </div>`;
     }
 
-    // --- 3. คำนวณระยะทางและเงื่อนไขปุ่ม (ปรับปรุงใหม่ตามคำขอ) ---
+    // --- 3. คำนวณระยะทางและปุ่ม (คงเดิม) ---
     const dist = getHexDistance(playerQ, playerR, q, r);
     let actionBtn = "";
-
     if (dist === 0) {
-        // กรณีอยู่ที่พิกัดนี้แล้ว
         if (q === 0 && r === 0) {
-            actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
-                            <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
-                         </p>`;
+            actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;"><i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก</p>`;
         } else {
-            actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" 
-                            onclick="startMiningProcess()">
-                            <i class="fas fa-hammer"></i> เริ่มต้นการขุดแร่
-                         </button>`;
-			actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" 
-                            onclick="travelTo(0, 0, true)">
-                            <i class="fas fa-rocket"></i> วาร์ปกลับดาวหลัก (1 Unit)
-                         </button>`;
+            actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" onclick="startMiningProcess()"><i class="fas fa-hammer"></i> เริ่มต้นการขุดแร่</button>`;
+            actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="travelTo(0, 0, true)"><i class="fas fa-rocket"></i> วาร์ปกลับดาวหลัก (1 Unit)</button>`;
         }
     } else if (dist === 1) {
-        // กรณีอยู่รอบตำแหน่งผู้เล่น (ระยะ 1) -> ให้เดินทางได้เสมอ และตัดปุ่มสำรวจออก
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" 
-                        onclick="startTravel(${q},${r})">
-                        <i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง
-                     </button>`;
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="startTravel(${q},${r})"><i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง</button>`;
     } else {
-        // กรณีห่างเกิน 1 ช่อง
-        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">
-                        ⚠️ พิกัดไกลเกินระยะเดินทาง<br>คุณสามารถเดินทางได้ครั้งละ 1 ช่องเท่านั้น
-                     </p>`;
+        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">⚠️ พิกัดไกลเกินระยะเดินทาง</p>`;
     }
 
     // --- 4. อัปเดต UI ทั้งหมด ---
     document.getElementById('detail-name').innerText = name.toUpperCase();
     document.getElementById('detail-img').src = imgSrc;
-    document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
+    document.getElementById('detail-coord').innerText = `${q}, ${r}`;
     document.getElementById('detail-status').innerText = status;
     
-    // จัดการชื่อผู้ค้นพบ (เช็คว่าต้องเคยไปถึงจะเห็นชื่อคนค้นพบ หรือจะให้เห็นเลยก็ได้แล้วแต่ดีไซน์)
     let discovererHTML = "";
     if (starData && starData.discoveredBy && (isStatic || isVisitedByMe)) {
         discovererHTML = `
@@ -1287,7 +1288,8 @@ function openStarDetail() {
             <span style="color:var(--neon-blue); font-weight:bold;">${dist} Units</span>
         </div>
         ${discovererHTML}
-        ${mineralHTML}
+        <hr style="border: 0; border-top: 1px solid rgba(0,210,255,0.1); margin: 10px 0;">
+        ${envHTML} ${mineralHTML}
         ${actionBtn}
     `;
     
