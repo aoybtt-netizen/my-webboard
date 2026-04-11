@@ -587,15 +587,6 @@ button:hover { opacity: 0.8; }
 		let playerR = 0;
 		
 		
-		let turret = {
-			x: 0,
-			y: 0,
-			rotation: 0,
-			target: null,
-			range: 400,
-			fireRate: 500,
-			lastShot: 0
-		};
 		let miningCanvas;
 		let mctx;
 		let miningGameActive = false;
@@ -603,10 +594,14 @@ button:hover { opacity: 0.8; }
 		let setupProgress = 0; // 0 - 100%
 		let aliens = [];
 		let bullets = [];
-		if (typeof turret === 'undefined') {
-			var turret = { x: 0, y: 0, rotation: 0, lastShot: 0, fireRate: 500 };
-		}
-		
+		let turret = { 
+			x: 0, 
+			y: 0, 
+			rotation: 0, 
+			lastShot: 0, 
+			fireRate: 500,
+			range: 400 
+		};
         // --- ระบบ Auth ---
         function toggleAuth(mode) {
             document.getElementById('login-form').style.display = (mode === 'login') ? 'block' : 'none';
