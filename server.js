@@ -1425,7 +1425,8 @@ app.get('/api/:mode/map/all', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 7. อัปเดตการสำรวจ (เมื่อครบ 100% ให้สุ่มดาว)
+
+// 7. อัปเดตการสำรวจและสร้างดวงดาว (ปรับปรุงใหม่)
 app.post('/api/:mode/map/explore', async (req, res) => {
     const { mode } = req.params;
     const { q, r, username } = req.body;
@@ -1435,40 +1436,74 @@ app.post('/api/:mode/map/explore', async (req, res) => {
     try {
         let tile = await mapCollection.findOne({ q, r });
         
-        // ถ้ายังไม่มีข้อมูลในพิกัดนี้ หรือยังสำรวจไม่เสร็จ
-        if (!tile || tile.progress < 100) {
-            // ในที่นี้สมมติว่าส่งมา 1 ครั้งคือเพิ่ม 10% (พี่ไปปรับตามความยากที่ต้องการได้)
-            const newProgress = (tile ? tile.progress : 0) + 10;
-            
-            let updateData = { progress: newProgress };
+        // ถ้าพิกัดนี้ถูกสร้างถาวรไปแล้ว (progress >= 100) ไม่ต้องทำซ้ำ
+        if (tile && tile.progress >= 100) {
+            return res.json({ success: true, tile });
+        }
 
-            if (newProgress >= 100) {
-                // 🚩 จุดตัดสิน: สุ่มว่าเป็นดาวหรืออุตกาบาต
-                const isStar = Math.random() < 0.3; // 30% เป็นดาว
-                if (isStar) {
-                    const starNum = Math.floor(Math.random() * 101);
-                    updateData.type = 'star';
-                    updateData.image = `images/star/star${starNum}.png`;
-                    updateData.name = generateStarName();
-                } else {
-                    updateData.type = 'meteorite';
-                    updateData.image = `images/meteorite/meteor0.png`;
-                    updateData.name = 'METEOROID FIELD';
-                }
-                updateData.discoveredBy = username;
+        // --- เริ่ม Logic การสุ่มตามเงื่อนไขพี่ ---
+        const hasStar = Math.random() < 0.5; // โอกาส 50%
+        let updateData = { 
+            q, r, 
+            progress: 100, 
+            discoveredBy: username,
+            createdAt: Date.now() 
+        };
+
+        if (!hasStar) {
+            // กรณีไม่มีดวงดาว
+            updateData.type = 'empty';
+            updateData.image = 'images/meteorite/meteor0.png';
+            updateData.img = 'ast0';
+            updateData.name = 'EMPTY SPACE';
+        } else {
+            // กรณีมีดวงดาว
+            updateData.type = 'star';
+            const starNum = Math.floor(Math.random() * 19) + 1; // 1-19
+            updateData.img = `star${starNum}`;
+            updateData.image = `images/star/star${starNum}.png`;
+            updateData.name = generateStarName();
+
+            // สุ่มสถานะ (กรด / อุณหภูมิ)
+            if (starNum <= 14) {
+                updateData.corrosionAcid = Math.random() < 0.65 ? Math.floor(Math.random() * 91) + 10 : 0;
+            } else {
+                if (starNum <= 16) updateData.temperature = Math.floor(Math.random() * 101) + 100;
+                else if (starNum <= 18) updateData.temperature = Math.floor(Math.random() * 201) + 200;
+                else updateData.temperature = Math.floor(Math.random() * 201) + 400;
             }
 
-            await mapCollection.updateOne(
-                { q, r },
-                { $set: updateData },
-                { upsert: true }
-            );
+            // คำนวณระยะทางเพื่อกำหนดช่องแร่ (Mineral Slots)
+            // สูตรคำนวณระยะทางแบบ Hex (Flat-top)
+            const getDist = (q1, r1, q2, r2) => {
+                const x1 = q1, z1 = r1 - (q1 - (Math.abs(q1) % 2)) / 2, y1 = -x1 - z1;
+                const x2 = q2, z2 = r2 - (q2 - (Math.abs(q2) % 2)) / 2, y2 = -x2 - z2;
+                return Math.max(Math.abs(x1-x2), Math.abs(y1-y2), Math.abs(z1-z2));
+            };
+            const distance = getDist(0, 0, q, r);
+
+            let slots = 1;
+            if (distance <= 2) slots = Math.floor(Math.random() * 3) + 1;
+            else if (distance === 3) slots = Math.floor(Math.random() * 2) + 2;
+            else if (distance === 4) slots = Math.floor(Math.random() * 4) + 1;
+            else if (distance === 5) slots = Math.floor(Math.random() * 3) + 2;
+            else slots = Math.floor(Math.random() * 5) + 1;
             
-            const updatedTile = await mapCollection.findOne({ q, r });
-            return res.json({ success: true, tile: updatedTile });
+            updateData.mineralSlots = slots;
+            updateData.minerals = []; // ยังไม่สุ่มแร่ จนกว่าจะมีการขุดครั้งแรก
         }
-        res.json({ success: false, message: "Already explored" });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+
+        // บันทึกลง Database
+        await mapCollection.updateOne(
+            { q, r },
+            { $set: updateData },
+            { upsert: true }
+        );
+
+        res.json({ success: true, tile: updateData });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 

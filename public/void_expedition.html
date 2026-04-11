@@ -613,6 +613,22 @@ button:hover { opacity: 0.8; }
 			'star3': 'images/star/star3.png',
 			'star4': 'images/star/star4.png',
 			'star5': 'images/star/star5.png',
+			'star6': 'images/star/star6.png',
+			'star7': 'images/star/star7.png',
+			'star8': 'images/star/star8.png',
+			'star9': 'images/star/star9.png',
+			'star10': 'images/star/star10.png',
+			'star11': 'images/star/star11.png',
+			'star12': 'images/star/star12.png',
+			'star13': 'images/star/star13.png',
+			'star14': 'images/star/star14.png',
+			'star15': 'images/star/star15.png',
+			'star16': 'images/star/star16.png',
+			'star17': 'images/star/star17.png',
+			'star18': 'images/star/star18.png',
+			'star19': 'images/star/star19.png',
+			'star20': 'images/star/star20.png',
+			'ast0': 'images/meteorite/asteroids0.png',
 			'ast1': 'images/meteorite/asteroids1.png',
 			'ast2': 'images/meteorite/asteroids2.png',
 			'ast3': 'images/meteorite/asteroids3.png',
@@ -1075,49 +1091,8 @@ function getHexDistance(q1, r1, q2, r2) {
     );
 }
 
-// ฟังก์ชันเช็คว่าพิกัดเป้าหมายอยู่ติดกับจุดที่สำรวจแล้วหรือไม่
-function canReach(targetQ, targetR) {
-    const neighbors = [
-        {q: targetQ + 1, r: targetR}, {q: targetQ - 1, r: targetR},
-        {q: targetQ, r: targetR + 1}, {q: targetQ, r: targetR - 1},
-        {q: targetQ + 1, r: targetR - 1}, {q: targetQ - 1, r: targetR + 1}
-    ];
 
-    for (let pos of neighbors) {
-        const key = `${pos.q},${pos.r}`;
-        if (STATIC_STARS[key]) return true; // ติดกับดาวหลัก
-        const tile = serverMapData[key];
-        if (tile && tile.progress >= 100) return true; // ติดกับดาวที่สำรวจแล้ว
-    }
-    return false;
-}
 
-//เช็คเงื่อนไขการสำรวจ
-function canExplore(targetQ, targetR) {
-    // 1. กำหนดพิกัดรอบข้างทั้ง 6 ทิศ
-    const neighbors = [
-        {q: targetQ + 1, r: targetR},
-        {q: targetQ - 1, r: targetR},
-        {q: targetQ,     r: targetR + 1},
-        {q: targetQ,     r: targetR - 1},
-        {q: targetQ + 1, r: targetR - 1},
-        {q: targetQ - 1, r: targetR + 1}
-    ];
-
-    // 2. เช็คว่าพิกัดรอบข้างลำดับใดลำดับหนึ่งสำรวจแล้วหรือยัง
-    for (let pos of neighbors) {
-        const key = `${pos.q},${pos.r}`;
-        
-        // ก. เช็คว่าเป็นดาวเริ่มต้น (Static Stars) หรือไม่ (ถือว่าสำรวจแล้ว 100%)
-        if (STATIC_STARS[key]) return true;
-
-        // ข. เช็คข้อมูลจาก Server ว่าสำรวจครบ 100% หรือยัง
-        const tile = serverMapData[key];
-        if (tile && tile.progress >= 100) return true;
-    }
-
-    return false; // ถ้าไม่มีรอบข้างดวงไหนสำรวจแล้วเลย จะสำรวจดวงนี้ไม่ได้
-}
 
 
 function travelTo(q, r, isWarp = false) {
@@ -1244,12 +1219,22 @@ function openStarDetail() {
     document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
     document.getElementById('detail-status').innerText = status;
     
+    // เตรียม HTML สำหรับชื่อผู้ค้นพบ
+    let discovererHTML = "";
+    if (starData && starData.discoveredBy) {
+        discovererHTML = `
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:5px;">
+                <span>ผู้ค้นพบคนแรก:</span>
+                <span style="color:var(--neon-green); font-weight:bold;">${starData.discoveredBy}</span>
+            </div>`;
+    }
+
     document.getElementById('detail-extra').innerHTML = `
         <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:rgba(255,255,255,0.7);">
             <span>ระยะห่างจากยาน:</span>
             <span style="color:var(--neon-blue); font-weight:bold;">${dist} Units</span>
         </div>
-        ${mineralHTML}
+        ${discovererHTML}  ${mineralHTML}
         ${actionBtn}
     `;
     
@@ -1456,38 +1441,58 @@ function getWeightedAsteroidType() {
     return 7;                     
 }
 
-function endTravel() {
+async function endTravel() {
     travelGameActive = false;
     
-    // อัปเดตพิกัดปัจจุบันของผู้เล่น
     playerQ = selectedHex.q;
     playerR = selectedHex.r;
 
-    // ดึงข้อมูลดาวจาก STATIC_STARS โดยใช้พิกัด q,r เป็น Key
-    const starKey = `${playerQ},${playerR}`;
-    const starData = STATIC_STARS[starKey] || { name: "Unknown Space" };
+    // เตรียมข้อมูลส่งไปที่ API
+    const payload = {
+        q: playerQ,
+        r: playerR,
+        username: localStorage.getItem('username') // ดึงชื่อคนสำรวจ
+    };
 
-    // เรียกใช้ฟังก์ชันเปิดหน้าต่าง UI
-    showArrivalUI(starData, playerQ, playerR);
+    try {
+        // 🚩 เรียกใช้ API เพื่อสำรวจ/สุ่มดาว
+        const response = await fetch(`${API_BASE}/map/explore`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // อัปเดตข้อมูลในเครื่องผู้เล่น (Local Cache)
+            serverMapData[`${playerQ},${playerR}`] = result.tile;
+            
+            // แสดงหน้าต่าง Arrival พร้อมข้อมูลจาก Server
+            showArrivalUI(result.tile, playerQ, playerR);
+            renderGrid(); // วาดแผนที่ใหม่เพื่อให้เห็นดาวที่เพิ่งสุ่มได้
+        } else {
+            console.error("Exploration failed:", result.message);
+        }
+    } catch (err) {
+        console.error("Network error during exploration:", err);
+    }
 }
 
-function showArrivalUI(star, q, r) {
+
+function showArrivalUI(starData, q, r) {
     const modal = document.getElementById('arrival-modal');
     const title = document.getElementById('arrival-title');
-    const btnMine = document.getElementById('btn-start-mining');
-
-    // 1. ใส่ชื่อดาว
-    title.innerText = `ARRIVED AT: ${star.name}`;
-
-    // 2. เช็คว่าเป็นดาวสถานี (0,0) หรือไม่
-    if (q === 0 && r === 0) {
-        btnMine.style.display = "none"; // ถ้าเป็น 0,0 ให้ซ่อนปุ่มขุด
-    } else {
-        btnMine.style.display = "block"; // ดาวดวงอื่นให้แสดงปุ่มขุด
+    
+    if (modal && title) {
+        title.innerText = `ARRIVED AT: ${starData.name}`;
+        
+        // หากต้องการเปลี่ยนสีชื่อตามประเภทดาว
+        title.style.color = starData.type === 'meteor' ? 'var(--neon-red)' : 'var(--neon-blue)';
+        
+        modal.classList.add('active');
+        console.log(`Welcome to ${starData.name} (${q}, ${r})`);
     }
-
-    // 3. แสดงหน้าต่าง Modal
-    modal.classList.add('active');
 }
 
 
