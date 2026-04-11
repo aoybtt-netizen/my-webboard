@@ -1137,38 +1137,34 @@ function openStarDetail() {
     
     let name = "UNKNOWN SECTOR";
     let imgSrc = "images/conceal.png";
-    let status = "ยังไม่ได้สำรวจ";
-    let isExplored = false;
+    let status = "พิกัดในอวกาศ";
     
-    // ดึงข้อมูลตัวเต็มเพื่อไปเช็คแร่
     const starData = STATIC_STARS[coordKey] || serverMapData[coordKey];
 
-    // --- 1. ตรวจสอบข้อมูลพื้นฐาน ---
+    // --- 1. ตรวจสอบข้อมูลพื้นฐาน (เพื่อแสดงชื่อและรูป) ---
     if (STATIC_STARS[coordKey]) {
         name = starData.name;
         imgSrc = imageSources[starData.img] || `images/star/${starData.img}.png`;
         status = "สถานีพันธมิตร";
-        isExplored = true;
     } else {
         const tile = serverMapData[coordKey];
         if (tile && tile.progress >= 100) {
             name = tile.name;
             imgSrc = tile.image;
             status = tile.type === 'star' ? "ดาวเคราะห์" : "กลุ่มอุกกาบาต";
-            isExplored = true;
         } else {
-            status = tile ? `กำลังสำรวจ: ${tile.progress}%` : "ยังไม่ถูกค้นพบ";
+            status = "เขตนอกการสำรวจ";
         }
     }
 
-    // --- 2. การสร้าง HTML สำหรับรายการแร่ (เพิ่มใหม่) ---
+    // --- 2. การสร้าง HTML สำหรับรายการแร่ ---
     let mineralHTML = "";
     if (starData && starData.minerals && starData.minerals.length > 0) {
         mineralHTML = `<div style="margin-top:15px; border-top:1px solid rgba(0,210,255,0.2); padding-top:10px;">
                         <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px; letter-spacing:1px; text-align:left;">ทรัพยากรที่ตรวจพบ:</div>`;
         
         starData.minerals.forEach(m => {
-            const oreImg = imageSources[m.img] || 'images/ore/default.png'; // ดึงจาก orem1, oree1 เป็นต้น
+            const oreImg = imageSources[m.img] || 'images/ore/default.png';
             mineralHTML += `
                 <div style="display:flex; align-items:center; background:rgba(99, 142, 99, 0.38); border-radius:10px; padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
                     <img src="${oreImg}" style="width:35px; height:35px; margin-right:12px; object-fit:contain;">
@@ -1176,58 +1172,39 @@ function openStarDetail() {
                         <div style="font-size:0.8rem; font-weight:bold; color:white;">${m.name}</div>
                         <div style="font-size:0.6rem; color:rgba(255,255,255,0.5);">TYPE: ${m.type.toUpperCase()}</div>
                     </div>
-                    <div style="text-align:right;">
-                        <span style="font-size:0.6rem; padding:2px 6px; border-radius:4px; 
-                            background:${m.isResearched ? 'rgba(56, 239, 125, 0.1)' : 'rgba(255, 75, 43, 0.1)'}; 
-                            color:${m.isResearched ? 'var(--neon-green)' : 'var(--neon-red)'}; 
-                            border:1px solid ${m.isResearched ? 'var(--neon-green)' : 'var(--neon-red)'};">
-                            ${m.isResearched ? 'วิจัยแล้ว' : 'ยังไม่วิจัย'}
-                        </span>
-                    </div>
                 </div>`;
         });
         mineralHTML += `</div>`;
     }
 
-    // --- 3. คำนวณระยะทางและเงื่อนไขปุ่ม ---
-const dist = getHexDistance(playerQ, playerR, q, r);
-const reachable = canReach(q, r);
+    // --- 3. คำนวณระยะทางและเงื่อนไขปุ่ม (ปรับปรุงใหม่ตามคำขอ) ---
+    const dist = getHexDistance(playerQ, playerR, q, r);
+    let actionBtn = "";
 
-let actionBtn = "";
-
-// ตรวจสอบว่า "ผู้เล่นอยู่ที่พิกัดนี้แล้วหรือยัง"
-if (playerQ === q && playerR === r) {
-    // กรณีอยู่ที่พิกัดนี้แล้ว
-    if (q === 0 && r === 0) {
-        // ถ้าเป็น HOME BASE ไม่ต้องมีปุ่มขุด
-        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
-                        <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
-                     </p>`;
-    } else {
-        // ถ้าเป็นดาวดวงอื่น ให้แสดงปุ่มขุดแร่
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" 
-                        onclick="startMiningProcess()">
-                        <i class="fas fa-hammer"></i> เริ่มต้นการขุดแร่
-                     </button>`;
-    }
-} else {
-    // กรณีที่ยังไม่อยู่ที่พิกัดนี้ (ใช้ Logic การเดินทางเดิมของคุณ)
-    if (isExplored) {
+    if (dist === 0) {
+        // กรณีอยู่ที่พิกัดนี้แล้ว
+        if (q === 0 && r === 0) {
+            actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
+                            <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
+                         </p>`;
+        } else {
+            actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" 
+                            onclick="startMiningProcess()">
+                            <i class="fas fa-hammer"></i> เริ่มต้นการขุดแร่
+                         </button>`;
+        }
+    } else if (dist === 1) {
+        // กรณีอยู่รอบตำแหน่งผู้เล่น (ระยะ 1) -> ให้เดินทางได้เสมอ และตัดปุ่มสำรวจออก
         actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" 
                         onclick="startTravel(${q},${r})">
                         <i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง
                      </button>`;
-    } else if (reachable) {
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-blue); color:#000;" 
-                        onclick="startTravel(${q},${r})">
-                        <i class="fas fa-satellite"></i> สำรวจ
-                     </button>`;
     } else {
+        // กรณีห่างเกิน 1 ช่อง
         actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">
-                        ⚠️ พิกัดอยู่นอกระยะการเชื่อมต่อ<br>ต้องสำรวจพิกัดข้างเคียงก่อน
+                        ⚠️ พิกัดไกลเกินระยะเดินทาง<br>คุณสามารถเดินทางได้ครั้งละ 1 ช่องเท่านั้น
                      </p>`;
     }
-}
 
     // --- 4. อัปเดต UI ทั้งหมด ---
     document.getElementById('detail-name').innerText = name.toUpperCase();
@@ -1235,7 +1212,6 @@ if (playerQ === q && playerR === r) {
     document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
     document.getElementById('detail-status').innerText = status;
     
-    // รวมข้อมูลระยะทาง, รายการแร่ และปุ่มเข้าด้วยกัน
     document.getElementById('detail-extra').innerHTML = `
         <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:rgba(255,255,255,0.7);">
             <span>ระยะห่างจากยาน:</span>
