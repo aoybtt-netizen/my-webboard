@@ -1822,6 +1822,31 @@ function updateBullets(ctx) {
 }
 
 
+function spawnAlien() {
+    if (!miningCanvas) return;
+
+    // สุ่มขนาดเอเลี่ยนนิดหน่อยให้ดูหลากหลาย
+    const size = 30 + Math.random() * 20; 
+
+    // สร้าง Object เอเลี่ยนตัวใหม่
+    const newAlien = {
+        // x: สุ่มตำแหน่งแนวนอน (ไม่ให้ล้นขอบจอ)
+        x: Math.random() * (miningCanvas.width - size) + (size / 2),
+        // y: ให้เริ่มจากด้านบนสุด (นอกจอเล็กน้อย)
+        y: -size, 
+        // speed: สุ่มความเร็วในการเดินลงมา
+        speed: 1 + Math.random() * 1.5, 
+        // hp: เลือดของเอเลี่ยน
+        hp: 2,
+        // size: ขนาดตัว
+        size: size
+    };
+
+    // เพิ่มเข้าไปในตัวแปร array 'aliens' ที่เราประกาศไว้ด้านบนสุด
+    aliens.push(newAlien);
+}
+
+
 
 
 
