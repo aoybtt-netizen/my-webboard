@@ -1054,11 +1054,25 @@ window.onload = async () => {
 };
 
 
-//เช็คระยะ
+// --- ฟังก์ชันคำนวณระยะทางสำหรับ Offset Grid (Flat-top)
 function getHexDistance(q1, r1, q2, r2) {
-    return (Math.abs(q1 - q2) + 
-            Math.abs(q1 + r1 - q2 - r2) + 
-            Math.abs(r1 - r2)) / 2;
+    // ฟังก์ชันช่วยแปลง Offset เป็น Cube
+    function offsetToCube(q, r) {
+        const x = q;
+        const z = r - (q - (Math.abs(q) % 2)) / 2;
+        const y = -x - z;
+        return { x, y, z };
+    }
+
+    const c1 = offsetToCube(q1, r1);
+    const c2 = offsetToCube(q2, r2);
+
+    // ระยะทางคือค่าสูงสุดของผลต่างในแต่ละแกน
+    return Math.max(
+        Math.abs(c1.x - c2.x),
+        Math.abs(c1.y - c2.y),
+        Math.abs(c1.z - c2.z)
+    );
 }
 
 // ฟังก์ชันเช็คว่าพิกัดเป้าหมายอยู่ติดกับจุดที่สำรวจแล้วหรือไม่
