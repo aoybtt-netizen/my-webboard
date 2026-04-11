@@ -107,13 +107,70 @@
         
         /* Mining View */
         #view-mining {
+			display: none;
+			width: 100vw;
+			height: 100vh;
+			justify-content: center;
+			align-items: center;
+			overflow: hidden;
+		}
+		.mining-game-container {
+			position: relative;
+			width: 400px;
+			height: 600px;
+			display: flex;
 			flex-direction: column;
 		}
-		@media (max-height: 700px) {
-			.mining-layout {
-			transform: scale(0.8); /* ย่อลง 20% */
-			transform-origin: center;
+		/* ปรับขนาดอัตโนมัติสำหรับหน้าจอเล็ก/มือถือ */
+		@media (max-height: 700px) or (max-width: 420px) {
+				.mining-game-container {
+				transform: scale(0.85); /* ย่อขนาดลง 15% */
+				transform-origin: center center;
 			}
+		}
+		@media (max-height: 600px) {
+			.mining-game-container {
+				transform: scale(0.7); /* ย่อลงอีกถ้าจอเตี้ยมาก */
+			}
+		}
+		
+		.mining-hud-top {
+			position: absolute;
+			top: 15px;
+			left: 0;
+			width: 100%;
+			z-index: 10;
+			pointer-events: none; /* เพื่อให้ยังคลิกผ่านไปยิงเอเลี่ยนได้ */
+			text-align: center;
+		}
+		#mining-status {
+			font-size: 18px;
+			margin: 0 0 10px 0;
+			text-shadow: 0 0 10px #000, 0 0 5px #000; /* กันกลืนกับพื้นหลัง */
+		}
+		/* UI ส่วนล่าง (ปุ่ม) */
+		.mining-hud-bottom {
+			position: absolute;
+			bottom: 20px;
+			left: 0;
+			width: 100%;
+			text-align: center;
+			z-index: 10;
+		}
+		.btn-abort {
+			background: rgba(255, 75, 43, 0.15);
+			border: 1px solid var(--neon-red);
+			color: var(--neon-red);
+			padding: 10px 25px;
+			border-radius: 20px;
+			cursor: pointer;
+			backdrop-filter: blur(5px);
+		}
+		/* สไตล์ Canvas */
+		#mining-canvas {
+			border: 2px solid var(--neon-blue);
+			background: #050a12;
+			box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
 		}
         .progress-container {
 			height: 10px;
@@ -401,20 +458,22 @@ button:hover { opacity: 0.8; }
     </div>
 	
 
-    <div id="view-mining" class="view" style="background: #000; display: none; align-items: center; justify-content: center;">
-    <div class="mining-layout" style="position: relative; width: 400px; height: 600px;">
+    <div id="view-mining" class="view" style="background: #000; display: none;">
+    <div class="mining-game-container">
         
-        <div class="mining-ui-overlay" style="position: absolute; top: 10px; left: 0; width: 100%; text-align: center; pointer-events: none;">
-            <h2 id="mining-status" style="color: var(--neon-blue); margin: 0; font-size: 1.2rem; text-shadow: 0 0 10px #000;">PREPARING DRILL...</h2>
-            
-            <div class="progress-container" style="width: 80%; margin: 10px auto; background: rgba(0,0,0,0.5);">
+        <div class="mining-hud-top">
+            <h2 id="mining-status">PREPARING DRILL...</h2>
+            <div class="progress-container">
                 <div id="mining-bar" class="progress-bar"></div>
             </div>
         </div>
 
-        <canvas id="mining-canvas" width="400" height="600" style="border: 2px solid var(--neon-blue); background: #050a12; display: block;"></canvas>
+        <canvas id="mining-canvas" width="400" height="600"></canvas>
 
-        <button onclick="exitMining()" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(255, 75, 43, 0.2); border: 1px solid var(--neon-red); color: var(--neon-red); padding: 8px 16px; border-radius: 8px; cursor: pointer;">ABORT</button>
+        <div class="mining-hud-bottom">
+            <button onclick="exitMining()" class="btn-abort">ABORT MISSION</button>
+        </div>
+
     </div>
 </div>
 
