@@ -1110,7 +1110,7 @@ async function fetchMapData() {
         // อัปเดตลง UI
         document.getElementById('target-name').innerText = displayName;
         document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
-        
+        openStarDetail();
         renderGrid();
     }
 };
