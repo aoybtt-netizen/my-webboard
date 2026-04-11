@@ -1120,36 +1120,22 @@ function canExplore(targetQ, targetR) {
 }
 
 
-function travelTo(q, r, isWarp = false) {
-    // ถ้าเป็นการวาร์ป ให้ถือว่าระยะทางเป็น 1 เสมอ ตามโจทย์
-    const distance = isWarp ? 1 : getHexDistance(playerQ, playerR, q, r);
-
-    if (q === playerQ && r === playerR) {
-        alert("คุณอยู่ที่พิกัดนี้อยู่แล้ว");
+function travelTo(q, r) {
+    if (getHexDistance(playerQ, playerR, q, r) !== 1) {
+        alert("คุณเดินทางได้เฉพาะช่องที่อยู่ติดกันเท่านั้น");
         return;
     }
 
-    // ตรวจสอบระยะทาง (ต้องเป็น 1 เท่านั้น ยกเว้นจะวาร์ป)
-    if (distance > 1) {
-        alert("พิกัดไกลเกินไป! คุณเดินทางได้เฉพาะช่องที่ติดกันเท่านั้น");
-        return;
-    }
-
-    const message = isWarp ? "ยืนยันการวาร์ปกลับดาวหลัก?" : `ยืนยันการเดินทางไปที่พิกัด ${q}, ${r}?`;
-
-    if (confirm(message)) {
+    if (confirm(`เดินทางไปที่พิกัด ${q}, ${r}?`)) {
         playerQ = q;
         playerR = r;
+        selectedHex = null; // ล้างการเลือก
         
-        // ปิด Modal และรีเฟรชแผนที่
-        if(document.getElementById('star-detail-modal')) {
-            document.getElementById('star-detail-modal').style.display = 'none';
-        }
+        // ถ้ามีหน้าต่าง Detail เปิดอยู่ให้ปิดด้วย
+        if (typeof closeStarDetail === 'function') closeStarDetail();
         
-        selectedHex = null;
-        renderGrid(); // วาดใหม่เพื่อให้ยานไปอยู่ที่กลางจอ (0,0)
-        
-        console.log(`Travel Successful: Moved to ${q}, ${r}`);
+        renderGrid(); // แผนที่จะเลื่อนให้พิกัดใหม่มาอยู่กลางจอทันที
+        console.log(`Moved to: ${q}, ${r}`);
     }
 }
 
@@ -1210,35 +1196,35 @@ function openStarDetail() {
     let actionBtn = "";
 
     if (dist === 0) {
+        // กรณีอยู่ที่พิกัดนี้แล้ว
         if (q === 0 && r === 0) {
             actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
                             <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
                          </p>`;
         } else {
-            // ปุ่มเริ่มต้นการขุดแร่
             actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" 
                             onclick="startMiningProcess()">
                             <i class="fas fa-hammer"></i> เริ่มต้นการขุดแร่
                          </button>`;
-            
-            // --- เพิ่มปุ่มกลับดาวหลักตรงนี้ ---
-            actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" 
+			actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" 
                             onclick="travelTo(0, 0, true)">
                             <i class="fas fa-rocket"></i> วาร์ปกลับดาวหลัก (1 Unit)
                          </button>`;
         }
     } else if (dist === 1) {
+        // กรณีอยู่รอบตำแหน่งผู้เล่น (ระยะ 1) -> ให้เดินทางได้เสมอ และตัดปุ่มสำรวจออก
         actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" 
-                        onclick="travelTo(${q},${r})">
+                        onclick="startTravel(${q},${r})">
                         <i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง
                      </button>`;
     } else {
+        // กรณีห่างเกิน 1 ช่อง
         actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">
-                        ⚠️ พิกัดไกลเกินระยะเดินทาง
+                        ⚠️ พิกัดไกลเกินระยะเดินทาง<br>คุณสามารถเดินทางได้ครั้งละ 1 ช่องเท่านั้น
                      </p>`;
     }
 
-    // --- 4. อัปเดต UI (เหมือนเดิม) ---
+    // --- 4. อัปเดต UI ทั้งหมด ---
     document.getElementById('detail-name').innerText = name.toUpperCase();
     document.getElementById('detail-img').src = imgSrc;
     document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
