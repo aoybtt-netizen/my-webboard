@@ -1485,9 +1485,9 @@ function updateMining(currentTime) {
         mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
 
         // --- 2. วาดพื้นหลัง/เครื่องขุด ---
-        if (typeof drawMiningEnvironment === 'function') {
-            drawMiningEnvironment(mctx);
-        }
+        //if (typeof drawMiningEnvironment === 'function') {
+        //    drawMiningEnvironment(mctx);
+        //}
 
         // --- 3. จัดการเอเลี่ยน ---
         if (Math.random() < 0.02 && typeof spawnAlien === 'function') spawnAlien();
@@ -1622,15 +1622,26 @@ function updateTurret(aliens, currentTime) {
 
 
 function drawTurret(ctx) {
+    const img = images['turret_top']; 
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+
     ctx.save();
-    // ย้ายจุดศูนย์กลางไปที่ตำแหน่งป้อม
     ctx.translate(turret.x, turret.y);
-    // หมุน Canvas ตามมุมที่คำนวณได้
     ctx.rotate(turret.rotation);
 
-    // วาดภาพป้อม (สมมติว่าภาพป้อมหันหน้าขึ้นด้านบน)
-    const img = images['turret_top']; 
-    ctx.drawImage(img, -25, -25, 50, 50); // วาดโดยให้จุดศูนย์กลางอยู่ที่ 0,0
+    // --- วิธีแก้: คำนวณสัดส่วน ---
+    const baseWidth = 50; // กำหนดความกว้างที่ต้องการ
+    const aspectRatio = img.naturalHeight / img.naturalWidth;
+    const calculatedHeight = baseWidth * aspectRatio; // คำนวณความสูงตามรูปจริง
+
+    // วาดโดยให้กึ่งกลางรูปอยู่ที่ 0,0
+    ctx.drawImage(
+        img, 
+        -baseWidth / 2, 
+        -calculatedHeight / 2, 
+        baseWidth, 
+        calculatedHeight
+    );
 
     ctx.restore();
 }
@@ -1683,16 +1694,6 @@ function drawAlien(ctx, alien) {
     });
 }
 
-// C. วาดเอเลี่ยน
-function drawAlien(ctx, alien) {
-    const alienImg = images['alian1'];
-    if (alienImg && alienImg.complete && alienImg.naturalWidth !== 0) {
-        ctx.drawImage(alienImg, alien.x - alien.size/2, alien.y - alien.size/2, alien.size, alien.size);
-    } else {
-        ctx.fillStyle = "red";
-        ctx.beginPath(); ctx.arc(alien.x, alien.y, alien.size/2, 0, Math.PI*2); ctx.fill();
-    }
-}
 
 // D. ระบบรับดาเมจ
 function takeDamage(amount) {
@@ -1712,7 +1713,7 @@ function updateMining(currentTime) {
     try {
         // 1. ล้างกระดานและวาดฉาก
         mctx.clearRect(0, 0, miningCanvas.width, miningCanvas.height);
-        drawMiningEnvironment(mctx);
+        //drawMiningEnvironment(mctx);
 
         // 2. จัดการเอเลี่ยน
         if (Math.random() < 0.02) spawnAlien();
