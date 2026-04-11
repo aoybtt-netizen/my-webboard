@@ -880,6 +880,7 @@ window.onload = async () => {
 			
 			playerQ = data.currentQ || 0;
 			playerR = data.currentR || 0;
+			if (typeof renderGrid === 'function') renderGrid();
         }
     } catch(e) { console.error(e); }
 }
@@ -1101,27 +1102,19 @@ async function fetchMapData() {
             displayName = serverMapData[coordKey].name;
         }
 
-        // --- ✅ คืนค่าส่วนแสดงผล HUD ด้านบน ---
+        // --- ส่วนแสดงผล HUD ด้านบน ---
         const HUD = document.getElementById('map-coordinate-display');
         if (HUD) {
             document.getElementById('target-name').innerText = displayName;
             document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
-            HUD.style.opacity = "1"; // บรรทัดนี้ที่หายไป กลับมาแล้วครับ!
-        }
-
-        // --- 🚩 เลือกโหมดการทำงานตรงนี้ ---
-        // ถ้าพี่อยากให้ "คลิกปุ๊บ เปิดหน้าต่างใหญ่ปั๊บ" ให้เปิดบรรทัดข้างล่างนี้ไว้:
-        //openStarDetail(); 
-
-        // แต่ถ้าพี่อยากให้ "คลิกปุ๊บ แค่แถบด้านบนโชว์ แล้วต้องกดแถบด้านบนอีกทีถึงจะเปิดหน้าต่างใหญ่"
-        // ให้ใส่ // ไว้หน้า openStarDetail(); ครับ
-        
+            HUD.style.opacity = "1";
+        }     
         renderGrid();
     }
 };
 
 
-// --- ฟังก์ชันคำนวณระยะทางสำหรับ Offset Grid (Flat-top)
+// --- ฟังก์ชันคำนวณระยะทาง Grid
 function getHexDistance(q1, r1, q2, r2) {
     // ฟังก์ชันช่วยแปลง Offset เป็น Cube
     function offsetToCube(q, r) {
@@ -1507,28 +1500,39 @@ async function endTravel() {
     playerR = selectedHex.r;
     const key = `${playerQ},${playerR}`;
 
-    // ✅ บันทึกว่า "เรามาถึงที่นี่แล้ว" เพื่อเปิดหมอก
+    // บันทึก Fog of War ลง Local
     if (!visitedTiles.includes(key)) {
         visitedTiles.push(key);
         localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
     }
 
-    const payload = { q: playerQ, r: playerR, username: currentUser };
-
     try {
-        const response = await fetch(`${API_BASE}/map/explore`, {
+        // 1. อัปเดตข้อมูลแผนที่ (ดึงข้อมูลดาว)
+        const mapRes = await fetch(`${API_BASE}/map/explore`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ q: playerQ, r: playerR, username: currentUser })
         });
-        const result = await response.json();
-        if (result.success) {
-            serverMapData[key] = result.tile;
-            renderGrid(); // วาดใหม่ หมอกจะหายไปเพราะเพิ่งเพิ่ม key ลงใน visitedTiles
-            showArrivalUI(result.tile, playerQ, playerR);
+        const mapResult = await mapRes.json();
+
+        // 🚩 2. บันทึกตำแหน่งปัจจุบันลงโปรไฟล์ผู้เล่นบน Server (เพิ่มส่วนนี้)
+        await fetch(`${API_BASE}/game/update-location`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: currentUser, 
+                q: playerQ, 
+                r: playerR 
+            })
+        });
+
+        if (mapResult.success) {
+            serverMapData[key] = mapResult.tile;
+            renderGrid(); // วาดแผนที่ใหม่โดยมีผู้เล่นเป็นศูนย์กลาง
+            showArrivalUI(mapResult.tile, playerQ, playerR);
         }
     } catch (err) {
-        console.error(err);
+        console.error("Update error:", err);
     }
 }
 
