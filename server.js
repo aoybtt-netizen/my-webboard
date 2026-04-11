@@ -1336,7 +1336,25 @@ function generateRandomCallsign() {
     return result;
 }
 
-// 3. API ดึงข้อมูลทรัพยากร (Stats)
+
+// 3. API อัปเดตตำแหน่งปัจจุบันของผู้เล่น
+app.post('/api/:mode/game/update-location', async (req, res) => {
+    const { mode } = req.params;
+    const { username, q, r } = req.body;
+    const db = getDB(mode);
+
+    try {
+        await db.updateOne(
+            { username: username },
+            { $set: { currentQ: q, currentR: r } }
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 3.1 API ดึงข้อมูลทรัพยากร (Stats)
 app.get('/api/:mode/game/stats/:username', async (req, res) => {
     const { mode, username } = req.params; // 🚩 ดึงจาก params ทั้งคู่
     const db = getDB(mode);
