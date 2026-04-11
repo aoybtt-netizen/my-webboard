@@ -603,7 +603,9 @@ button:hover { opacity: 0.8; }
 		let setupProgress = 0; // 0 - 100%
 		let aliens = [];
 		let bullets = [];
-		
+		if (typeof turret === 'undefined') {
+			var turret = { x: 0, y: 0, rotation: 0, lastShot: 0, fireRate: 500 };
+		}
 		
         // --- ระบบ Auth ---
         function toggleAuth(mode) {
@@ -1474,41 +1476,56 @@ function startMiningProcess() {
 
 
 function updateMining(currentTime) {
-    if (!miningGameActive || !mctx) return;
+    if (!miningGameActive) return;
 
-    // 1. บังคับถมสีพื้นหลังก่อนเลย (ใช้สีน้ำเงินมืดๆ จะได้รู้ว่า Canvas มาแล้ว)
-    mctx.fillStyle = "#0a1525"; 
-    mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
+    // ตรวจสอบพู่กัน (mctx)
+    if (!mctx) {
+        miningCanvas = document.getElementById('mining-canvas');
+        if (miningCanvas) mctx = miningCanvas.getContext('2d');
+        if (!mctx) return;
+    }
 
-    // 2. วาดระบบอื่นๆ (ต้องใส่ตัวกัน Error ไว้ข้างในด้วย)
     try {
-        drawMiningEnvironment(mctx);
+        // --- 1. ถมพื้นหลังด้วยสีน้ำเงินเข้ม (ถ้าเห็นสีนี้ แสดงว่า Canvas ทำงาน) ---
+        mctx.fillStyle = "#0a1a2f";
+        mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
+
+        // --- 2. วาดพื้นหลัง/เครื่องขุด ---
+        if (typeof drawMiningEnvironment === 'function') {
+            drawMiningEnvironment(mctx);
+        }
+
+        // --- 3. จัดการเอเลี่ยน ---
+        if (Math.random() < 0.02 && typeof spawnAlien === 'function') spawnAlien();
         
-        if (Math.random() < 0.02) spawnAlien();
         aliens.forEach((alien, index) => {
             alien.y += alien.speed;
-            drawAlien(mctx, alien);
+            if (typeof drawAlien === 'function') drawAlien(mctx, alien);
             if (alien.y > miningCanvas.height - 100) {
-                takeDamage(5);
+                if (typeof takeDamage === 'function') takeDamage(5);
                 aliens.splice(index, 1);
             }
         });
 
-        updateTurretLogic(currentTime);
-        drawTurretWithBase(mctx);
-        updateBullets(mctx);
-        
+        // --- 4. จัดการป้อม ---
+        if (typeof updateTurretLogic === 'function') updateTurretLogic(currentTime);
+        if (typeof drawTurretWithBase === 'function') drawTurretWithBase(mctx);
+        if (typeof updateBullets === 'function') updateBullets(mctx);
+
+        // --- 5. อัปเดต UI ---
         setupProgress += 0.05;
-        updateMiningUI();
-    } catch (e) {
-        // ถ้ามี Error อะไรใน Loop ให้ข้ามไปก่อน ไม่ให้เครื่องค้าง
-        console.error("Drawing error:", e);
+        if (typeof updateMiningUI === 'function') updateMiningUI();
+
+    } catch (err) {
+        // ถ้าค้างตรงไหน ให้พ่น Error ออกมาดูแต่ไม่ต้องหยุดทำงาน
+        console.error("เกิดข้อผิดพลาดในการวาดเฟรม:", err);
     }
 
+    // วน Loop ต่อ
     if (setupProgress < 100 && miningGameActive) {
         requestAnimationFrame(updateMining);
     } else if (setupProgress >= 100) {
-        completeSetup();
+        if (typeof completeSetup === 'function') completeSetup();
     }
 }
 
@@ -1630,27 +1647,26 @@ function drawMiningEnvironment(ctx) {
 }
 
 function drawTurretWithBase(ctx) {
+    // วาดฐาน
+    ctx.fillStyle = "#333"; // สีสำรอง
     const baseImg = images['terret1'];
-    const headImg = images['terret2'];
-
-    // วาดฐาน - ถ้าภาพโหลดไม่ได้ (naturalWidth === 0) ให้วาดวงกลมแทน
-    if (baseImg && baseImg.complete && baseImg.naturalWidth !== 0) {
+    if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) {
         ctx.drawImage(baseImg, turret.x - 40, turret.y - 40, 80, 80);
     } else {
-        ctx.fillStyle = "#333";
+        // วาดวงกลมแทนถ้าภาพพัง
         ctx.beginPath(); ctx.arc(turret.x, turret.y, 35, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = "#00d2ff"; ctx.stroke();
     }
 
+    // วาดหัวปืน
     ctx.save();
     ctx.translate(turret.x, turret.y);
     ctx.rotate(turret.rotation);
-    // วาดปืน - ถ้าภาพโหลดไม่ได้ ให้วาดแท่งสี่เหลี่ยมแทน
-    if (headImg && headImg.complete && headImg.naturalWidth !== 0) {
+    const headImg = images['terret2'];
+    if (headImg && headImg.complete && headImg.naturalWidth > 0) {
         ctx.drawImage(headImg, -40, -40, 80, 80);
     } else {
         ctx.fillStyle = "lime";
-        ctx.fillRect(-5, -40, 10, 40); 
+        ctx.fillRect(-5, -40, 10, 40); // วาดแท่งปืนสีเขียวสำรอง
     }
     ctx.restore();
 }
