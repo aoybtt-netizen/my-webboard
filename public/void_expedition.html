@@ -1095,24 +1095,23 @@ async function fetchMapData() {
     if (foundHex) {
         selectedHex = foundHex;
         const coordKey = `${foundHex.q},${foundHex.r}`;
-        const dist = getHexDistance(playerQ, playerR, foundHex.q, foundHex.r);
+        const isVisited = visitedTiles.includes(coordKey); // 🚩 เช็คประวัติการไปถึง
 
-        // แสดงข้อมูลบน UI
-        let displayName = "UNEXPLORED SECTOR";
-        if (STATIC_STARS[coordKey]) displayName = STATIC_STARS[coordKey].name;
-        if (serverMapData[coordKey]) displayName = serverMapData[coordKey].name;
+        let displayName = "UNEXPLORED SECTOR"; // ค่าเริ่มต้นสำหรับจุดที่ยังไม่เคยไป
 
-        document.getElementById('target-name').innerText = displayName;
-        document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
-        document.getElementById('map-coordinate-display').style.opacity = "1";
-
-        // แสดง/ซ่อนปุ่มเดินทาง (เดินทางได้เฉพาะระยะ = 1)
-        const travelBtn = document.getElementById('btn-travel'); 
-        if (travelBtn) {
-            travelBtn.style.display = (dist === 1) ? "block" : "none";
+        if (STATIC_STARS[coordKey]) {
+            // ถ้าเป็นดาวแม่ ให้โชว์ชื่อปกติ
+            displayName = STATIC_STARS[coordKey].name;
+        } else if (serverMapData[coordKey] && isVisited) {
+            // 🚩 ต้องมีข้อมูล "และ" เราต้องเคยไปถึงแล้วเท่านั้นถึงจะโชว์ชื่อจริง
+            displayName = serverMapData[coordKey].name;
         }
 
-        renderGrid(); // วาดใหม่เพื่อโชว์ขอบขาวที่เลือก
+        // อัปเดตลง UI
+        document.getElementById('target-name').innerText = displayName;
+        document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
+        
+        renderGrid();
     }
 };
 
