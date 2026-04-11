@@ -1070,18 +1070,15 @@ async function fetchMapData() {
     const h = hexRadius * Math.sqrt(3);
     const w = hexRadius * 1.5;
 
-    // คำนวณพิกัด Pixel ของผู้เล่นเหมือนใน renderGrid
     const playerXOffset = playerQ * w;
     const playerYOffset = (playerR * h) + (Math.abs(playerQ) % 2 === 1 ? h / 2 : 0);
 
     let foundHex = null;
 
-    // วนลูปเช็คพิกัดรอบตัวผู้เล่น
     for (let q = playerQ - MAP_RANGE; q <= playerQ + MAP_RANGE; q++) {
         for (let r = playerR - MAP_RANGE; r <= playerR + MAP_RANGE; r++) {
             const xPos = centerX + (q * w) - playerXOffset;
             const yPos = centerY + (r * h) + (Math.abs(q) % 2 === 1 ? h / 2 : 0) - playerYOffset;
-
             const distance = Math.sqrt((mouseX - xPos) ** 2 + (mouseY - yPos) ** 2);
 
             if (distance < hexRadius) {
@@ -1095,22 +1092,30 @@ async function fetchMapData() {
     if (foundHex) {
         selectedHex = foundHex;
         const coordKey = `${foundHex.q},${foundHex.r}`;
-        const isVisited = visitedTiles.includes(coordKey); // 🚩 เช็คประวัติการไปถึง
+        const isVisited = visitedTiles.includes(coordKey);
 
-        let displayName = "UNEXPLORED SECTOR"; // ค่าเริ่มต้นสำหรับจุดที่ยังไม่เคยไป
-
+        let displayName = "UNEXPLORED SECTOR";
         if (STATIC_STARS[coordKey]) {
-            // ถ้าเป็นดาวแม่ ให้โชว์ชื่อปกติ
             displayName = STATIC_STARS[coordKey].name;
         } else if (serverMapData[coordKey] && isVisited) {
-            // 🚩 ต้องมีข้อมูล "และ" เราต้องเคยไปถึงแล้วเท่านั้นถึงจะโชว์ชื่อจริง
             displayName = serverMapData[coordKey].name;
         }
 
-        // อัปเดตลง UI
-        document.getElementById('target-name').innerText = displayName;
-        document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
-        openStarDetail();
+        // --- ✅ คืนค่าส่วนแสดงผล HUD ด้านบน ---
+        const HUD = document.getElementById('map-coordinate-display');
+        if (HUD) {
+            document.getElementById('target-name').innerText = displayName;
+            document.getElementById('target-qr').innerText = `${foundHex.q}, ${foundHex.r}`;
+            HUD.style.opacity = "1"; // บรรทัดนี้ที่หายไป กลับมาแล้วครับ!
+        }
+
+        // --- 🚩 เลือกโหมดการทำงานตรงนี้ ---
+        // ถ้าพี่อยากให้ "คลิกปุ๊บ เปิดหน้าต่างใหญ่ปั๊บ" ให้เปิดบรรทัดข้างล่างนี้ไว้:
+        //openStarDetail(); 
+
+        // แต่ถ้าพี่อยากให้ "คลิกปุ๊บ แค่แถบด้านบนโชว์ แล้วต้องกดแถบด้านบนอีกทีถึงจะเปิดหน้าต่างใหญ่"
+        // ให้ใส่ // ไว้หน้า openStarDetail(); ครับ
+        
         renderGrid();
     }
 };
