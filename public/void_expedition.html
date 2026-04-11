@@ -1184,6 +1184,7 @@ function openStarDetail() {
     const r = selectedHex.r;
     const coordKey = `${q},${r}`;
     const isVisitedByMe = visitedTiles.includes(coordKey);
+	const isStatic = !!STATIC_STARS[coordKey];
 	
     let name = "UNKNOWN SECTOR";
     let imgSrc = "images/conceal.png";
@@ -1192,18 +1193,15 @@ function openStarDetail() {
     const starData = STATIC_STARS[coordKey] || serverMapData[coordKey];
 
     // --- 1. ตรวจสอบข้อมูลพื้นฐาน (เพื่อแสดงชื่อและรูป) ---
-    if (STATIC_STARS[coordKey]) {
-        // ดาวแม่เห็นข้อมูลปกติ
+    if (isStatic) {
         name = starData.name;
         imgSrc = imageSources[starData.img] || `images/star/${starData.img}.png`;
         status = "สถานีพันธมิตร";
     } else if (starData && isVisitedByMe) {
-        // 🚩 ถ้าคนอื่นสำรวจแล้ว "และ" เราเคยไปแล้ว ถึงจะเห็นข้อมูลจริง
         name = starData.name;
         imgSrc = starData.image;
         status = starData.type === 'star' ? "ดาวเคราะห์" : "กลุ่มอุกกาบาต";
     } else {
-        // ถ้ายังไม่เคยไป (แม้คนอื่นจะสำรวจแล้ว) ให้โชว์เป็น Unknown
         name = "UNEXPLORED SECTOR";
         imgSrc = "images/conceal.png";
         status = "ยังไม่มีข้อมูลพิกัดนี้ในฐานข้อมูลของคุณ";
@@ -1211,7 +1209,8 @@ function openStarDetail() {
 
     // --- 2. การสร้าง HTML สำหรับรายการแร่ ---
     let mineralHTML = "";
-    if (starData && starData.minerals && starData.minerals.length > 0) {
+    // 🚩 แก้ไข: ต้องเคยไป (isVisitedByMe) หรือเป็นดาวแม่ (isStatic) ถึงจะเห็นแร่
+    if ((isStatic || isVisitedByMe) && starData && starData.minerals && starData.minerals.length > 0) {
         mineralHTML = `<div style="margin-top:15px; border-top:1px solid rgba(0,210,255,0.2); padding-top:10px;">
                         <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px; letter-spacing:1px; text-align:left;">ทรัพยากรที่ตรวจพบ:</div>`;
         
@@ -1227,6 +1226,12 @@ function openStarDetail() {
                 </div>`;
         });
         mineralHTML += `</div>`;
+    } else if (!isStatic && !isVisitedByMe) {
+        // 🚩 ถ้ายังไม่เคยไป ให้โชว์ข้อความปิดผนึกแทน
+        mineralHTML = `<div style="margin-top:15px; padding:15px; background:rgba(255,255,255,0.05); border-radius:10px; text-align:center; border:1px dashed rgba(255,255,255,0.2);">
+                        <i class="fas fa-lock" style="color:rgba(255,255,255,0.2); margin-bottom:5px;"></i>
+                        <div style="font-size:0.6rem; color:rgba(255,255,255,0.4);">DATA ENCRYPTED<br>เดินทางไปที่พิกัดเพื่อปลดล็อกข้อมูล</div>
+                      </div>`;
     }
 
     // --- 3. คำนวณระยะทางและเงื่อนไขปุ่ม (ปรับปรุงใหม่ตามคำขอ) ---
@@ -1268,9 +1273,9 @@ function openStarDetail() {
     document.getElementById('detail-coord').innerText = `Q: ${q}, R: ${r}`;
     document.getElementById('detail-status').innerText = status;
     
-    // เตรียม HTML สำหรับชื่อผู้ค้นพบ
+    // จัดการชื่อผู้ค้นพบ (เช็คว่าต้องเคยไปถึงจะเห็นชื่อคนค้นพบ หรือจะให้เห็นเลยก็ได้แล้วแต่ดีไซน์)
     let discovererHTML = "";
-    if (starData && starData.discoveredBy) {
+    if (starData && starData.discoveredBy && (isStatic || isVisitedByMe)) {
         discovererHTML = `
             <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:5px;">
                 <span>ผู้ค้นพบคนแรก:</span>
@@ -1283,7 +1288,8 @@ function openStarDetail() {
             <span>ระยะห่างจากยาน:</span>
             <span style="color:var(--neon-blue); font-weight:bold;">${dist} Units</span>
         </div>
-        ${discovererHTML}  ${mineralHTML}
+        ${discovererHTML}
+        ${mineralHTML}
         ${actionBtn}
     `;
     
