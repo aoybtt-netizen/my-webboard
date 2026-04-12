@@ -1525,6 +1525,25 @@ app.post('/api/:mode/map/explore', async (req, res) => {
 });
 
 
+// 8. API สำหรับบันทึกแร่ที่สุ่มได้ครั้งแรกของดาวนั้นๆ
+app.post('/api/:mode/map/update-minerals', async (req, res) => {
+    const { mode } = req.params;
+    const { q, r, minerals } = req.body;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+    const mapCollection = db.collection("map_tiles");
+
+    try {
+        await mapCollection.updateOne(
+            { q, r },
+            { $set: { minerals: minerals } }
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+
 
 
 

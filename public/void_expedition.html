@@ -295,6 +295,73 @@ button {
 button:hover { opacity: 0.8; }
 
 
+
+#view-mining {
+    background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%);
+    color: white;
+    display: none; /* ซ่อนไว้ก่อน */
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.mining-container {
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+}
+
+/* แถบความเสถียร */
+.stability-gauge {
+    position: relative;
+    width: 100%;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid var(--neon-blue);
+    border-radius: 15px;
+    margin: 15px 0;
+    overflow: hidden;
+}
+
+.target-zone {
+    position: absolute;
+    height: 100%;
+    background: rgba(56, 239, 125, 0.4); /* สีเขียวโปร่งแสง */
+    border-left: 2px solid #38ef7d;
+    border-right: 2px solid #38ef7d;
+    transition: 0.3s;
+}
+
+.needle {
+    position: absolute;
+    width: 4px;
+    height: 100%;
+    background: #ff4b2b;
+    box-shadow: 0 0 10px #ff4b2b;
+    left: 50%;
+}
+
+.mining-btn {
+    width: 100%;
+    padding: 20px;
+    font-size: 1.2rem;
+    background: transparent;
+    border: 2px solid var(--neon-blue);
+    color: var(--neon-blue);
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: inset 0 0 10px rgba(0, 210, 255, 0.2);
+    transition: 0.2s;
+}
+
+.mining-btn:active {
+    background: var(--neon-blue);
+    color: black;
+}
+
+
+
+
     </style>
 </head>
 <body>
@@ -519,6 +586,46 @@ button:hover { opacity: 0.8; }
         </div>
     </div>
 </div>
+
+
+
+<div id="view-mining" class="view">
+    <div class="mining-container">
+        <div class="mining-header">
+            <h2 id="mining-star-name">MINING OPERATION</h2>
+            <div class="mining-stats">
+                <div class="stat-box">DRILL HP: <span id="drill-hp">100</span>%</div>
+                <div class="stat-box">HEAT: <span id="drill-heat">0</span>%</div>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div id="mining-progress-bar" class="progress-fill"></div>
+            <span class="progress-text">EXTRACTION PROGRESS</span>
+        </div>
+
+        <canvas id="mining-canvas"></canvas>
+
+        <div class="stability-wrapper">
+            <div class="stability-label">CORE STABILITY</div>
+            <div class="stability-gauge">
+                <div id="stability-target" class="target-zone"></div>
+                <div id="stability-needle" class="needle"></div>
+            </div>
+            <div class="stability-hint">KEEP NEEDLE IN GREEN ZONE</div>
+        </div>
+
+        <div class="mining-controls">
+            <button id="btn-stabilize" class="mining-btn" onmousedown="startStabilizing()" onmouseup="stopStabilizing()" ontouchstart="startStabilizing()" ontouchend="stopStabilizing()">
+                STABILIZE CORE
+            </button>
+        </div>
+    </div>
+</div>
+
+<button onclick="testMiningSystem()" style="position: fixed; top: 10px; left: 10px; z-index: 9999; background: #ff4b2b; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-family: monospace;">
+    DEBUG: TEST MINING
+</button>
 	
 	
 	
@@ -710,6 +817,23 @@ button:hover { opacity: 0.8; }
 			fireRate: 500,
 			range: 400 
 		};
+		
+		
+		let miningActive = false;
+		let miningProgress = 0;
+		let drillHP = 100;
+		let drillHeat = 0;
+		let needlePos = 50; // 0 - 100
+		let needleVelocity = 0;
+		let targetPos = 50;
+		let isPressing = false;
+
+		// ค่าสถานะจากดาวปัจจุบัน
+		let currentStarAcid = 0;
+		let currentStarTemp = 0;
+
+
+
         // --- ระบบ Auth ---
         function toggleAuth(mode) {
             document.getElementById('login-form').style.display = (mode === 'login') ? 'block' : 'none';
@@ -1642,6 +1766,120 @@ function updateMining(currentTime) {
         if (typeof completeSetup === 'function') completeSetup();
     }
 }
+
+
+// --- ฟังก์ชันเข้าสู่มินิเกมขุดแร่ (เวอร์ชัน 2) ---
+function startMiningProcess2() {
+    // ดึงข้อมูลดาว (รองรับทั้ง key พิกัดปกติ และ key 'TEST')
+    const starData = serverMapData[playerQ + (playerR ? ',' + playerR : '')] || serverMapData['TEST'];
+    
+    if (!starData) {
+        alert("กรุณาเลือกดาวหรือเข้าสู่ระบบทดสอบ");
+        return;
+    }
+
+    // เซ็ตค่าสถานะเริ่มต้น
+    currentStarAcid = starData.corrosionAcid || 0;
+    currentStarTemp = starData.temperature || 0;
+    
+    miningActive = true;
+    miningProgress = 0;
+    drillHP = 100;
+    drillHeat = 0;
+    needlePos = 50;
+    needleVelocity = 0;
+    targetPos = 30 + Math.random() * 40; // สุ่มโซนเขียวให้อยู่แถวๆ กลาง (30-70%)
+
+    // จัดการ UI
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const miningView = document.getElementById('view-mining');
+    if(miningView) {
+        miningView.style.display = 'flex'; // แสดงหน้าขุด
+        miningView.classList.add('active');
+    }
+    
+    document.getElementById('mining-star-name').innerText = starData.name;
+
+    // เริ่ม Loop เกม
+    requestAnimationFrame(updateMining);
+}
+
+// --- ฟังก์ชันเมื่อขุดสำเร็จ: ระบบสุ่มดรอปแร่ ---
+async function handleMiningSuccess(starData) {
+    const starKey = `${playerQ},${playerR}`;
+    
+    // 1. ตรวจสอบว่าดาวดวงนี้เคยมีการสุ่มชนิดแร่ไปหรือยัง
+    // ถ้ายัง (minerals ว่าง) ให้ทำการสุ่มตามจำนวน mineralSlots
+    if (!starData.minerals || starData.minerals.length === 0) {
+        console.log("First time mining here! Rolling minerals...");
+        const possibleMinerals = [
+            { name: 'O-METAL', type: 'metal', img: 'orem1' },
+            { name: 'O-ENERGY', type: 'energy', img: 'oree1' },
+            { name: 'O-TECH', type: 'technology', img: 'oret1' }
+        ];
+
+        const rolledMinerals = [];
+        const slots = starData.mineralSlots || 1;
+
+        for (let i = 0; i < slots; i++) {
+            const randomMin = possibleMinerals[Math.floor(Math.random() * possibleMinerals.length)];
+            // เช็คไม่ให้สุ่มได้แร่ซ้ำในดาวดวงเดียว
+            if (!rolledMinerals.find(m => m.name === randomMin.name)) {
+                rolledMinerals.push(randomMin);
+            }
+        }
+        
+        // บันทึกแร่ที่สุ่มได้กลับไปที่ Server เพื่อให้คนอื่นเห็นเหมือนกัน
+        starData.minerals = rolledMinerals;
+        await saveStarMineralsToServer(starKey, rolledMinerals);
+    }
+
+    // 2. คำนวณรางวัลที่ผู้เล่นได้รับ (ตัวอย่าง: เพิ่มแร่เข้าคลังผู้เล่น)
+    let rewardText = starData.minerals.map(m => m.name).join(", ");
+    
+    alert(`การขุดสำเร็จ! ตรวจพบสายแร่: ${rewardText}\nทรัพยากรถูกส่งไปยังคลังเสบียงแล้ว`);
+    
+    // กลับหน้าแผนที่
+    location.reload(); // รีโหลดเพื่อให้ข้อมูลแร่ที่เพิ่งสุ่มใหม่แสดงผลใน UI
+}
+
+async function saveStarMineralsToServer(key, minerals) {
+    // ส่งข้อมูลแร่ไปบันทึกในฐานข้อมูล map_tiles
+    const [q, r] = key.split(',').map(Number);
+    try {
+        await fetch(`${API_BASE}/map/update-minerals`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q, r, minerals, mode: 'test' }) // หรือ 'main'
+        });
+    } catch (e) { console.error("Save minerals error:", e); }
+}
+
+
+function testMiningSystem() {
+    console.log("🛠️ Debug: Starting Mining Test...");
+    
+    // 1. สร้างข้อมูลจำลอง (Mock Data) สำหรับการทดสอบ
+    const testStar = {
+        name: "TEST-SECTOR-99",
+        corrosionAcid: Math.random() < 0.5 ? Math.floor(Math.random() * 80) + 10 : 0, // สุ่มกรด 10-90% หรือไม่มีเลย
+        temperature: Math.random() < 0.5 ? Math.floor(Math.random() * 400) + 100 : 0, // สุ่มอุณหภูมิ 100-500C หรือไม่มีเลย
+        mineralSlots: 3,
+        minerals: []
+    };
+
+    // 2. ยัดข้อมูลใส่ตัวแปรที่เราใช้ในเครื่อง (เพื่อให้ฟังก์ชันขุดหาเจอ)
+    // ใช้คีย์ 'TEST' เป็นคีย์ชั่วคราว
+    serverMapData['TEST'] = testStar;
+    playerQ = 'TEST'; // หลอกพิกัดชั่วคราว
+    playerR = '';
+
+    // 3. เรียกฟังก์ชันเริ่มขุด (เวอร์ชัน 2)
+    startMiningProcess2();
+    
+    console.log(`Test Environment: Acid ${testStar.corrosionAcid}% | Temp ${testStar.temperature}°C`);
+}
+
 
 
 
