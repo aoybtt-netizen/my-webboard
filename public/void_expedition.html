@@ -853,12 +853,10 @@ button:hover { opacity: 0.8; }
 		let miningProgress = 0;
 		let drillHP = 100;
 		let drillHeat = 0;
-		let needlePos = 50; // 0 - 100
+		let needlePos = 50;
 		let needleVelocity = 0;
 		let targetPos = 50;
 		let isPressing = false;
-
-		// ค่าสถานะจากดาวปัจจุบัน
 		let currentStarAcid = 0;
 		let currentStarTemp = 0;
 
@@ -1802,15 +1800,16 @@ function updateMining(currentTime) {
 
 // --- ฟังก์ชันเข้าสู่มินิเกมขุดแร่ (เวอร์ชัน 2) ---
 function startMiningProcess2() {
-    // ดึงข้อมูลดาว (รองรับทั้ง key พิกัดปกติ และ key 'TEST')
-    const starData = serverMapData[playerQ + (playerR ? ',' + playerR : '')] || serverMapData['TEST'];
+    // 1. ดึงข้อมูลดาว (ใช้พิกัดจริง หรือค่า TEST)
+    const coordKey = (playerR !== undefined && playerR !== "") ? `${playerQ},${playerR}` : playerQ;
+    const starData = serverMapData[coordKey] || serverMapData['TEST'];
     
     if (!starData) {
         alert("กรุณาเลือกดาวหรือเข้าสู่ระบบทดสอบ");
         return;
     }
 
-    // เซ็ตค่าสถานะเริ่มต้น
+    // 2. เซ็ตค่าสถานะเริ่มต้น
     currentStarAcid = starData.corrosionAcid || 0;
     currentStarTemp = starData.temperature || 0;
     
@@ -1820,19 +1819,27 @@ function startMiningProcess2() {
     drillHeat = 0;
     needlePos = 50;
     needleVelocity = 0;
-    targetPos = 30 + Math.random() * 40; // สุ่มโซนเขียวให้อยู่แถวๆ กลาง (30-70%)
+    targetPos = 30 + Math.random() * 40;
 
-    // จัดการ UI
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    const miningView = document.getElementById('view-mining');
-    if(miningView) {
-        miningView.style.display = 'flex'; // แสดงหน้าขุด
-        miningView.classList.add('active');
+    // 3. สลับหน้าจอมาที่ตัวใหม่ (view-active-mining)
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.remove('active');
+        v.style.display = 'none';
+    });
+
+    const activeMiningView = document.getElementById('view-active-mining'); // ✅ เปลี่ยนเป็นตัวใหม่
+    if(activeMiningView) {
+        activeMiningView.style.display = 'block'; 
+        activeMiningView.classList.add('active');
     }
     
-    document.getElementById('mining-star-name').innerText = starData.name;
+    // 4. อัปเดตชื่อดาว (แก้จุดที่ Error)
+    const nameDisplay = document.getElementById('active-mining-name'); // ✅ ใช้ ID ใหม่ที่เพิ่งตั้งใน HTML
+    if (nameDisplay) {
+        nameDisplay.innerText = starData.name;
+    }
 
-    // เริ่ม Loop เกม
+    // 5. เริ่ม Loop เกม (เรียกตัวใหม่)
     requestAnimationFrame(updateMining2);
 }
 
