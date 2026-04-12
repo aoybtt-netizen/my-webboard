@@ -385,6 +385,30 @@ button:hover { opacity: 0.8; }
     border-radius: 10px; cursor: pointer;
 }
 
+.mining-skill-btn {
+    background: rgba(0,0,0,0.5);
+    border: 2px solid;
+    padding: 15px 5px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    transition: 0.2s;
+}
+.mining-skill-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
+
+.mineral-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(0,210,255,0.3);
+    padding: 15px;
+    border-radius: 15px;
+    width: 100px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.mineral-card:hover { border-color: #00d2ff; background: rgba(0,210,255,0.1); }
+
 
 
 
@@ -634,22 +658,32 @@ button:hover { opacity: 0.8; }
         </div>
 
         <div class="mining-hud-controls">
-            <div class="stability-meter-container">
-                <div class="stability-label">STABILIZATION SYSTEM</div>
-                <div class="stability-track">
-                    <div id="active-stability-target" class="target-zone-new"></div>
-                    <div id="active-stability-needle" class="needle-new"></div>
-                </div>
-            </div>
-            
-            <button id="btn-active-stabilize" class="stabilize-action-btn" 
-                    onmousedown="startStabilizing()" onmouseup="stopStabilizing()" 
-                    ontouchstart="startStabilizing()" ontouchend="stopStabilizing()">
-                HOLD TO STABILIZE
-            </button>
-            
-            <div style="font-size: 0.6rem; margin-top: 10px; opacity: 0.5;">[ EMERGENCY ABORT NOT AVAILABLE DURING EXTRACTION ]</div>
+    <div style="margin-bottom: 10px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#00d2ff;">
+            <span>DRILL ENERGY</span>
+            <span id="active-drill-energy-val">100/100</span>
         </div>
+        <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; margin-top:5px;">
+            <div id="active-drill-energy-fill" style="width:100%; height:100%; background:#00d2ff; box-shadow:0 0 10px #00d2ff; transition:0.3s;"></div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="mining-skill-btn" onclick="useCoolant()" style="border-color:#ffaa00; color:#ffaa00;">
+            <i class="fas fa-snowflake"></i> COOLANT (-30 HEAT)
+        </button>
+        <button class="mining-skill-btn" onclick="useShield()" style="border-color:#38ef7d; color:#38ef7d;">
+            <i class="fas fa-shield-alt"></i> SHIELD (5s PROTECT)
+        </button>
+    </div>
+</div>
+
+<div id="mineral-choice-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:3000; align-items:center; justify-content:center; flex-direction:column;">
+    <h3 style="color:#00d2ff; letter-spacing:2px;">SCANNED RESOURCES DETECTED</h3>
+    <p style="font-size:0.7rem; color:rgba(255,255,255,0.6); margin-bottom:20px;">CHOOSE ONE TO EXTRACT</p>
+    <div id="mineral-choices-container" style="display:flex; gap:15px;">
+        </div>
+</div>
     </div>
 </div>
 
@@ -859,6 +893,10 @@ button:hover { opacity: 0.8; }
 		let isPressing = false;
 		let currentStarAcid = 0;
 		let currentStarTemp = 0;
+		
+		let drillEnergy = 100;
+		let isShieldActive = false;
+		let nextMineralScanTime = 10; // วินาทีที่จะสุ่มแร่
 
 
 
@@ -1846,72 +1884,98 @@ function startMiningProcess2() {
 function updateMining2() {
     if (!miningActive) return;
 
-    // --- 1. การคำนวณฟิสิกส์ของเข็ม (Stability Physics) ---
-    // อุณหภูมิส่งผลต่อความเร็วการแกว่ง
-    const tempFactor = 1 + (currentStarTemp / 500); 
-    needleVelocity += (Math.random() - 0.5) * 2 * tempFactor;
-    
-    // แรงจากการกดของผู้เล่น (Stabilize)
-    if (isPressing) {
-        needleVelocity += 0.85; 
-    } else {
-        needleVelocity -= 0.65;
-    }
-
-    needlePos += needleVelocity;
-    needleVelocity *= 0.93; // แรงเสียดทาน (Friction)
-
-    // ป้องกันเข็มหลุดขอบ
-    if (needlePos < 0) { needlePos = 0; needleVelocity = 0; }
-    if (needlePos > 100) { needlePos = 100; needleVelocity = 0; }
-
-    // --- 2. ตรวจสอบโซนการขุด (Sweet Spot) ---
-    const targetRange = 12; // ความกว้างของโซนปลอดภัย
-    const isInZone = Math.abs(needlePos - targetPos) < targetRange;
-
-    if (isInZone) {
-        miningProgress += 0.08; // ความเร็วการขุด (ปรับเพิ่ม/ลดได้)
-        drillHeat = Math.max(0, drillHeat - 0.3); // ระบายความร้อนเมื่อคุมได้ดี
-    } else {
-        drillHeat += 0.4; // ร้อนขึ้นเมื่อคุมไม่อยู่
-        drillHP -= 0.06;  // ดาเมจพื้นฐานจากการสั่น
-    }
-
-    // --- 3. ผลกระทบจากสภาพแวดล้อมดาว ---
-    // กรด (Acid): กัดกร่อน HP ต่อเนื่อง
-    if (currentStarAcid > 0) {
-        drillHP -= (currentStarAcid / 2500); 
+    // 1. ความร้อนและกรดเพิ่มขึ้นตามเวลา
+    if (!isShieldActive) {
+        if (currentStarTemp > 0) drillHeat += (currentStarTemp / 1500);
+        if (currentStarAcid > 0) drillHP -= (currentStarAcid / 3000);
     }
     
-    // ความร้อนเกินพิกัด (Overheat): ถ้า Heat > 80% เลือดจะลดไวขึ้นมาก
-    if (drillHeat > 80) {
-        drillHP -= 0.25;
+    // ความร้อนธรรมชาติ (เครื่องรัน)
+    drillHeat += 0.05;
+    if (drillHeat > 80) drillHP -= 0.1;
+
+    // 2. ฟื้นฟูพลังงานอัตโนมัติ (ช้าๆ)
+    drillEnergy = Math.min(100, drillEnergy + 0.05);
+
+    // 3. ระบบสุ่มแร่โผล่มา (นับถอยหลัง)
+    miningProgress += 0.02; // ความคืบหน้าการขุดภาพรวม
+    nextMineralScanTime -= 0.016; // อิงตาม 60fps
+    if (nextMineralScanTime <= 0) {
+        showMineralChoices(); // เด้งหน้าสุ่มแร่
+        nextMineralScanTime = 10 + Math.random() * 5; // สุ่มรอบถัดไป 10-15 วินาที
     }
 
-    // --- 4. การวาดภาพบน Canvas ---
-    const mCanvas = document.getElementById('active-mining-canvas');
-    if (mCanvas) {
-        const mctx = mCanvas.getContext('2d');
-        if (mCanvas.width !== window.innerWidth) {
-            mCanvas.width = window.innerWidth;
-            mCanvas.height = window.innerHeight;
-        }
-        mctx.clearRect(0, 0, mCanvas.width, mCanvas.height);
-        drawDrillScene(mctx, mCanvas, isInZone);
-    }
-
-    document.getElementById('active-stability-needle').style.left = `${needlePos}%`;
-    document.getElementById('active-stability-target').style.left = `${targetPos - targetRange}%`;
-    document.getElementById('active-stability-target').style.width = `${targetRange * 2}%`;
+    // 4. วาดภาพและอัปเดต UI
+    updateMiningUI();
     
-    document.getElementById('active-mining-progress-fill').style.width = `${miningProgress}%`;
-    document.getElementById('active-drill-hp').innerText = Math.ceil(Math.max(0, drillHP));
-    document.getElementById('active-drill-heat').innerText = Math.ceil(drillHeat);
-
-    // เช็คแพ้ชนะ
-    if (miningProgress >= 100) finishMining(true);
-    else if (drillHP <= 0) finishMining(false);
+    if (drillHP <= 0) finishMining(false);
+    else if (miningProgress >= 100) finishMining(true);
     else requestAnimationFrame(updateMining2);
+}
+
+function useCoolant() {
+    if (drillEnergy >= 30) {
+        drillEnergy -= 30;
+        drillHeat = Math.max(0, drillHeat - 30);
+        showToast("COOLANT DEPLOYED", "#ffaa00");
+    } else {
+        showToast("NOT ENOUGH ENERGY", "#ff0000");
+    }
+}
+
+function useShield() {
+    if (drillEnergy >= 50) {
+        drillEnergy -= 50;
+        isShieldActive = true;
+        showToast("SHIELD ACTIVE", "#38ef7d");
+        setTimeout(() => { isShieldActive = false; }, 5000); // กันดาเมจ 5 วิ
+    } else {
+        showToast("NOT ENOUGH ENERGY", "#ff0000");
+    }
+}
+
+// --- ระบบสุ่มเลือกแร่ ---
+function showMineralChoices() {
+    const container = document.getElementById('mineral-choices-container');
+    container.innerHTML = '';
+    
+    // รายชื่อแร่จำลอง (จริงๆ ควรดึงจากที่สุ่มในดาว)
+    const minerals = [
+        { name: 'METAL', img: 'orem1', chance: 80 },
+        { name: 'ENERGY', img: 'oree1', chance: 60 },
+        { name: 'CRYSTAL', img: 'oret1', chance: 30 }
+    ];
+
+    // สุ่มมา 3 อัน
+    for (let i = 0; i < 3; i++) {
+        const m = minerals[Math.floor(Math.random() * minerals.length)];
+        // คำนวณโอกาสสำเร็จจาก "ความร้อน" (ถ้าร้อนโอกาสลด)
+        const successRate = Math.max(5, m.chance - (drillHeat / 2));
+        
+        const card = document.createElement('div');
+        card.className = 'mineral-card';
+        card.innerHTML = `
+            <img src="images/ore/${m.img}.png" style="width:40px;">
+            <div style="font-size:0.7rem; font-weight:bold;">${m.name}</div>
+            <div style="font-size:0.5rem; color:#38ef7d;">RATE: ${Math.floor(successRate)}%</div>
+        `;
+        card.onclick = () => attemptCollect(m, successRate);
+        container.appendChild(card);
+    }
+    document.getElementById('mineral-choice-overlay').style.display = 'flex';
+}
+
+function attemptCollect(mineral, rate) {
+    document.getElementById('mineral-choice-overlay').style.display = 'none';
+    const roll = Math.random() * 100;
+    
+    if (roll <= rate) {
+        showToast(`SUCCESS: RECEIVED ${mineral.name}`, "#38ef7d");
+        // โค้ดเพิ่มของเข้ากระเป๋า
+    } else {
+        showToast(`FAILED: RESOURCE UNSTABLE`, "#ff4b2b");
+        drillHP -= 10; // ขุดพลาดเครื่องพังเพิ่ม
+    }
 }
 
 // ฟังก์ชันสำหรับ "กด" ปุ่ม
@@ -2302,6 +2366,12 @@ function updateMiningUI() {
             statusText.style.color = "#00d2ff"; // neon-blue
         }
     }
+	
+	document.getElementById('active-drill-hp').innerText = Math.ceil(drillHP);
+    document.getElementById('active-drill-heat').innerText = Math.ceil(drillHeat);
+    document.getElementById('active-drill-energy-fill').style.width = `${drillEnergy}%`;
+    document.getElementById('active-drill-energy-val').innerText = `${Math.ceil(drillEnergy)}/100`;
+    document.getElementById('active-mining-progress-fill').style.width = `${miningProgress}%`;
 }
 
 // F. เมื่อตั้งเครื่องเสร็จ
