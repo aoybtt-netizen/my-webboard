@@ -590,15 +590,15 @@ button:hover { opacity: 0.8; }
         </div>
 
         <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-size: 0.85rem; line-height: 1.6;">
-            <div style="color: var(--neon-blue);">พิกัด: <span id="detail-coord" style="color: white; float: right;">0, 0</span></div>
-            <div style="color: var(--neon-blue);">สถานะ: <span id="detail-status" style="color: white; float: right;">SCANNING...</span></div>
+            <div style="color: var(--neon-blue);">position: <span id="detail-coord" style="color: white; float: right;">0, 0</span></div>
+            <div style="color: var(--neon-blue);">status: <span id="detail-status" style="color: white; float: right;">SCANNING...</span></div>
             <hr style="border: 0; border-top: 1px solid rgba(0,210,255,0.2); margin: 10px 0;">
             <div id="detail-extra" style="color: rgba(255,255,255,0.7); font-size: 0.75rem; text-align: center;">
                 (รอข้อมูลเพิ่มเติมจากเซนเซอร์...)
             </div>
         </div>
 
-        <button class="auth-btn" style="margin-top: 20px; width: 100%;" onclick="closeStarDetail()">ปิดหน้าต่าง</button>
+        <button class="auth-btn" style="margin-top: 20px; width: 100%;" onclick="closeStarDetail()">close</button>
     </div>
 </div>
 
@@ -715,9 +715,7 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
-<button onclick="testMiningSystem()" style="position: fixed; top: 10px; left: 10px; z-index: 9999; background: #ff4b2b; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-family: 'Orbitron', monospace; box-shadow: 0 0 10px rgba(255,75,43,0.5);">
-    DEBUG: TEST MINING (FULLSCREEN)
-</button>
+
 	
 	
 	
@@ -1416,11 +1414,11 @@ function openStarDetail() {
     } else if (starData && isVisitedByMe) {
         name = starData.name;
         imgSrc = starData.image;
-        status = starData.type === 'star' ? "ดาวเคราะห์" : "กลุ่มอุกกาบาต";
+        status = starData.type === 'star' ? "planet" : "meteorite cluster";
     } else {
         name = "UNEXPLORED SECTOR";
         imgSrc = "images/conceal.png";
-        status = "ยังไม่มีข้อมูลพิกัดนี้ในฐานข้อมูลของคุณ";
+        status = "This location is not yet in your database";
     }
 
     // --- 2. การสร้าง HTML สำหรับสภาพแวดล้อม (กรด/อุณหภูมิ) และแร่ ---
@@ -1465,7 +1463,7 @@ function openStarDetail() {
     } else if (!isStatic && !isVisitedByMe) {
         mineralHTML = `<div style="margin-top:15px; padding:15px; background:rgba(255,255,255,0.05); border-radius:10px; text-align:center; border:1px dashed rgba(255,255,255,0.2);">
                         <i class="fas fa-lock" style="color:rgba(255,255,255,0.2); margin-bottom:5px;"></i>
-                        <div style="font-size:0.6rem; color:rgba(255,255,255,0.4);">DATA ENCRYPTED<br>เดินทางไปที่พิกัดเพื่อปลดล็อกข้อมูล</div>
+                        <div style="font-size:0.6rem; color:rgba(255,255,255,0.4);">DATA ENCRYPTED<br>Travel to the coordinates to unlock the information</div>
                       </div>`;
     }
 
@@ -1476,13 +1474,13 @@ function openStarDetail() {
         if (q === 0 && r === 0) {
             actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;"><i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก</p>`;
         } else {
-            actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" onclick="startMiningProcess()"><i class="fas fa-hammer"></i> เริ่มต้นการขุดแร่</button>`;
-            actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="travelTo(0, 0, true)"><i class="fas fa-rocket"></i> วาร์ปกลับดาวหลัก (1 Unit)</button>`;
+            actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" onclick="startMiningProcess()"><i class="fas fa-hammer"></i> Prepare for mining.</button>`;
+            actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="travelTo(0, 0, true)"><i class="fas fa-rocket"></i> Warp to main planet(1 Unit)</button>`;
         }
     } else if (dist === 1) {
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="startTravel(${q},${r})"><i class="fas fa-shuttle-van"></i> เริ่มต้นการเดินทาง</button>`;
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="startTravel(${q},${r})"><i class="fas fa-shuttle-van"></i> travel</button>`;
     } else {
-        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">⚠️ พิกัดไกลเกินระยะเดินทาง</p>`;
+        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">⚠️ the coordinates are too far to travel</p>`;
     }
 
     // --- 4. อัปเดต UI ทั้งหมด ---
@@ -1495,14 +1493,14 @@ function openStarDetail() {
     if (starData && starData.discoveredBy && (isStatic || isVisitedByMe)) {
         discovererHTML = `
             <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:5px;">
-                <span>ผู้ค้นพบคนแรก:</span>
+                <span>The first discoverer:</span>
                 <span style="color:var(--neon-green); font-weight:bold;">${starData.discoveredBy}</span>
             </div>`;
     }
 
     document.getElementById('detail-extra').innerHTML = `
         <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:rgba(255,255,255,0.7);">
-            <span>ระยะห่างจากยาน:</span>
+            <span>distance:</span>
             <span style="color:var(--neon-blue); font-weight:bold;">${dist} Units</span>
         </div>
         ${discovererHTML}
