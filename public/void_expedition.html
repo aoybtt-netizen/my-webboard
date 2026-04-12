@@ -296,68 +296,96 @@ button:hover { opacity: 0.8; }
 
 
 
-#view-mining {
-    background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%);
+
+/* เต็มจอ 100% */
+#view-active-mining {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: #000;
+    z-index: 2000;
+    overflow: hidden;
     color: white;
-    display: none; /* ซ่อนไว้ก่อน */
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
+    font-family: 'Orbitron', sans-serif;
 }
 
-.mining-container {
-    width: 100%;
-    max-width: 500px;
+#active-mining-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+}
+
+.active-mining-ui-wrapper {
+    position: relative;
+    z-index: 10;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none; /* ให้คลิกทะลุไปหาปุ่มได้ */
+}
+
+/* ส่วนหัว HUD */
+.mining-hud-header {
+    pointer-events: auto;
+    background: linear-gradient(to bottom, rgba(0,210,255,0.3), transparent);
+    padding: 30px 20px;
+    border-bottom: 1px solid var(--neon-blue);
     text-align: center;
 }
 
-/* แถบความเสถียร */
-.stability-gauge {
+.hud-progress-wrap {
+    width: 80%; max-width: 400px;
+    height: 10px; background: rgba(255,255,255,0.1);
+    margin: 15px auto; border-radius: 5px; position: relative;
+}
+
+.hud-progress-fill {
+    width: 0%; height: 100%;
+    background: var(--neon-blue);
+    box-shadow: 0 0 15px var(--neon-blue);
+    transition: 0.1s;
+}
+
+/* ส่วนล่าง Controls */
+.mining-hud-controls {
+    pointer-events: auto;
+    background: rgba(0,0,0,0.8);
+    padding: 30px 20px;
+    border-top: 2px solid var(--neon-blue);
+    backdrop-filter: blur(10px);
+}
+
+.stability-track {
     position: relative;
-    width: 100%;
-    height: 30px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid var(--neon-blue);
-    border-radius: 15px;
-    margin: 15px 0;
-    overflow: hidden;
+    width: 100%; height: 40px;
+    background: #111; border: 1px solid #333;
+    margin: 15px 0; border-radius: 20px; overflow: hidden;
 }
 
-.target-zone {
-    position: absolute;
-    height: 100%;
-    background: rgba(56, 239, 125, 0.4); /* สีเขียวโปร่งแสง */
-    border-left: 2px solid #38ef7d;
-    border-right: 2px solid #38ef7d;
-    transition: 0.3s;
+.target-zone-new {
+    position: absolute; height: 100%;
+    background: rgba(56, 239, 125, 0.3);
+    border-left: 2px solid var(--neon-green);
+    border-right: 2px solid var(--neon-green);
 }
 
-.needle {
-    position: absolute;
-    width: 4px;
-    height: 100%;
-    background: #ff4b2b;
-    box-shadow: 0 0 10px #ff4b2b;
-    left: 50%;
+.needle-new {
+    position: absolute; width: 4px; height: 100%;
+    background: #ff4b2b; box-shadow: 0 0 10px #ff4b2b;
 }
 
-.mining-btn {
-    width: 100%;
-    padding: 20px;
-    font-size: 1.2rem;
-    background: transparent;
+.stabilize-action-btn {
+    width: 100%; padding: 25px;
+    background: rgba(0,210,255,0.1);
     border: 2px solid var(--neon-blue);
     color: var(--neon-blue);
-    border-radius: 10px;
-    cursor: pointer;
-    box-shadow: inset 0 0 10px rgba(0, 210, 255, 0.2);
-    transition: 0.2s;
+    font-weight: bold; font-size: 1.2rem;
+    border-radius: 10px; cursor: pointer;
 }
 
-.mining-btn:active {
-    background: var(--neon-blue);
-    color: black;
-}
+
 
 
 
@@ -589,36 +617,38 @@ button:hover { opacity: 0.8; }
 
 
 
-<div id="view-mining" class="view">
-    <div class="mining-container">
-        <div class="mining-header">
-            <h2 id="mining-star-name">MINING OPERATION</h2>
-            <div class="mining-stats">
-                <div class="stat-box">DRILL HP: <span id="drill-hp">100</span>%</div>
-                <div class="stat-box">HEAT: <span id="drill-heat">0</span>%</div>
+<div id="view-active-mining" class="view" style="display: none;">
+    <canvas id="active-mining-canvas"></canvas>
+    
+    <div class="active-mining-ui-wrapper">
+        <div class="mining-hud-header">
+            <h2 id="active-mining-name">DEEP-CORE EXTRACTION</h2>
+            <div class="mining-hud-stats">
+                <div class="hud-box">DRILL INTEGRITY: <span id="active-drill-hp">100</span>%</div>
+                <div class="hud-box">THERMAL: <span id="active-drill-heat">0</span>%</div>
+            </div>
+            <div class="hud-progress-wrap">
+                <div id="active-mining-progress-fill" class="hud-progress-fill"></div>
+                <div class="hud-progress-text">EXTRACTING RESOURCES...</div>
             </div>
         </div>
 
-        <div class="progress-container">
-            <div id="mining-progress-bar" class="progress-fill"></div>
-            <span class="progress-text">EXTRACTION PROGRESS</span>
-        </div>
-
-        <canvas id="mining-canvas"></canvas>
-
-        <div class="stability-wrapper">
-            <div class="stability-label">CORE STABILITY</div>
-            <div class="stability-gauge">
-                <div id="stability-target" class="target-zone"></div>
-                <div id="stability-needle" class="needle"></div>
+        <div class="mining-hud-controls">
+            <div class="stability-meter-container">
+                <div class="stability-label">STABILIZATION SYSTEM</div>
+                <div class="stability-track">
+                    <div id="active-stability-target" class="target-zone-new"></div>
+                    <div id="active-stability-needle" class="needle-new"></div>
+                </div>
             </div>
-            <div class="stability-hint">KEEP NEEDLE IN GREEN ZONE</div>
-        </div>
-
-        <div class="mining-controls">
-            <button id="btn-stabilize" class="mining-btn" onmousedown="startStabilizing()" onmouseup="stopStabilizing()" ontouchstart="startStabilizing()" ontouchend="stopStabilizing()">
-                STABILIZE CORE
+            
+            <button id="btn-active-stabilize" class="stabilize-action-btn" 
+                    onmousedown="startStabilizing()" onmouseup="stopStabilizing()" 
+                    ontouchstart="startStabilizing()" ontouchend="stopStabilizing()">
+                HOLD TO STABILIZE
             </button>
+            
+            <div style="font-size: 0.6rem; margin-top: 10px; opacity: 0.5;">[ EMERGENCY ABORT NOT AVAILABLE DURING EXTRACTION ]</div>
         </div>
     </div>
 </div>
@@ -1852,36 +1882,29 @@ function updateMining2() {
     }
 
     // --- 4. การวาดภาพบน Canvas ---
-    const mCanvas = document.getElementById('mining-canvas');
+    const mCanvas = document.getElementById('active-mining-canvas');
     if (mCanvas) {
         const mctx = mCanvas.getContext('2d');
-        // รีเซ็ตขนาด Canvas ให้ตรงกับหน้าจอ
-        if (mCanvas.width !== mCanvas.clientWidth) {
-            mCanvas.width = mCanvas.clientWidth;
-            mCanvas.height = mCanvas.clientHeight;
+        if (mCanvas.width !== window.innerWidth) {
+            mCanvas.width = window.innerWidth;
+            mCanvas.height = window.innerHeight;
         }
         mctx.clearRect(0, 0, mCanvas.width, mCanvas.height);
         drawDrillScene(mctx, mCanvas, isInZone);
     }
 
-    // --- 5. อัปเดต UI (DOM) ---
-    document.getElementById('stability-needle').style.left = `${needlePos}%`;
-    document.getElementById('stability-target').style.left = `${targetPos - targetRange}%`;
-    document.getElementById('stability-target').style.width = `${targetRange * 2}%`;
+    document.getElementById('active-stability-needle').style.left = `${needlePos}%`;
+    document.getElementById('active-stability-target').style.left = `${targetPos - targetRange}%`;
+    document.getElementById('active-stability-target').style.width = `${targetRange * 2}%`;
     
-    document.getElementById('mining-progress-bar').style.width = `${miningProgress}%`;
-    document.getElementById('drill-hp').innerText = Math.ceil(Math.max(0, drillHP));
-    document.getElementById('drill-heat').innerText = Math.ceil(drillHeat);
+    document.getElementById('active-mining-progress-fill').style.width = `${miningProgress}%`;
+    document.getElementById('active-drill-hp').innerText = Math.ceil(Math.max(0, drillHP));
+    document.getElementById('active-drill-heat').innerText = Math.ceil(drillHeat);
 
-    // --- 6. เช็คสถานะการขุด ---
-    if (miningProgress >= 100) {
-        finishMining(true);
-    } else if (drillHP <= 0) {
-        finishMining(false);
-    } else {
-        // 🚩 สำคัญ: เรียกตัวเองด้วยชื่อใหม่
-        requestAnimationFrame(updateMining2);
-    }
+    // เช็คแพ้ชนะ
+    if (miningProgress >= 100) finishMining(true);
+    else if (drillHP <= 0) finishMining(false);
+    else requestAnimationFrame(updateMining2);
 }
 
 
