@@ -2474,10 +2474,17 @@ function updateMiningUI() {
 
 // F. เมื่อตั้งเครื่องเสร็จ
 function completeSetup() {
-    miningGameActive = false;
-    alert("SET-UP COMPLETE: เริ่มการเก็บเกี่ยวทรัพยากร!");
-    // ตรงนี้คุณสามารถเพิ่ม Logic การแจกแร่ได้ในอนาคต
-    exitMining();
+    // 1. หยุดลูปการทำงานของสเตปตั้งเครื่อง
+    miningGameActive = false; 
+
+    // 2. แจ้งเตือนผู้เล่น (เปลี่ยนจาก alert เป็นการเตรียมเข้าสู่โหมดขุดจริง)
+    showMiningToast("SET-UP COMPLETE: STARTING EXTRACTION", "#38ef7d");
+
+    // 3. เรียกฟังก์ชันเริ่มการขุดสเตป 2 ทันที
+    // เราใส่ setTimeout เล็กน้อย (500ms) เพื่อให้ผู้เล่นมีจังหวะเตรียมตัวก่อนเปลี่ยนหน้าจอ
+    setTimeout(() => {
+        startMiningProcess2();
+    }, 500);
 }
 
 function exitMining() {
