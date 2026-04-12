@@ -1914,6 +1914,16 @@ function updateMining2() {
     else requestAnimationFrame(updateMining2);
 }
 
+// ฟังก์ชันสำหรับ "กด" ปุ่ม
+function startStabilizing() {
+    isPressing = true;
+}
+
+// ฟังก์ชันสำหรับ "ปล่อย" ปุ่ม (ตัวที่หายไป)
+function stopStabilizing() {
+    isPressing = false;
+}
+
 
 // ฟังก์ชันวาดภาพจำลองการขุด (Canvas Drawing)
 function drawDrillScene(ctx, canvas, isInZone) {
