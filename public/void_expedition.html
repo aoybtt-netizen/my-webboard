@@ -869,7 +869,9 @@ button:hover { opacity: 0.8; }
 			'drill': 'images/mining/drill.png',
 			'terret1': 'images/turret/turret1.png',
 			'terret2': 'images/turret/turret2.png',
-			'alian1': 'images/alian/alian1.png'
+			'alian1': 'images/alian/alian1.png',
+			'drill1': 'images/drill/drill0.png',
+			'EGdrill1': 'images/drill/EGdrill0.png'
 		};
 
 		let imagesLoaded = false;
@@ -926,6 +928,16 @@ button:hover { opacity: 0.8; }
 		let drillEnergy = 100;
 		let isShieldActive = false;
 		let nextMineralScanTime = 10; // วินาทีที่จะสุ่มแร่
+		
+		const drillAssets = {
+			head: new Image(),
+			body: new Image()
+		};
+		drillAssets.head.src = 'images/drill/drill0.png';
+		drillAssets.body.src = 'images/drill/EGdrill0.png';
+
+		// ตัวแปรสำหรับระบบเศษแร่กระเด็น
+		let particles = [];
 
 
 
@@ -2095,58 +2107,72 @@ function showMiningToast(message, color) {
 
 
 // ฟังก์ชันวาดภาพจำลองการขุด (Canvas Drawing)
-function drawDrillScene(ctx, canvas, isInZone) {
+function drawDrillScene(ctx, canvas, isSafe) {
     const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
+    const cy = canvas.height * 0.6;
     
-    // 1. วาดพื้นดิน (สั่นตามความแรง)
-    const groundShake = isInZone ? (Math.random() * 1) : (Math.random() * 4);
-    ctx.fillStyle = "#2d1b0f"; // สีดินเข้มๆ
-    ctx.fillRect(0, cy + 30 + groundShake, canvas.width, canvas.height);
+    // 1. วาดพื้นดิน
+    ctx.fillStyle = "#2a180b"; 
+    ctx.fillRect(0, cy + 40, canvas.width, canvas.height);
 
-    // 2. วาดตัวเครื่องเจาะ (Drill Machine)
-    // ถ้าไม่อยู่ในโซนเขียว เครื่องจะสั่นแรง (Shake)
-    const drillShakeX = isInZone ? (Math.random() * 2 - 1) : (Math.random() * 10 - 5);
-    const drillShakeY = isInZone ? (Math.random() * 2 - 1) : (Math.random() * 6 - 3);
+    // 2. คำนวณการสั่น (Shake)
+    const shakeX = isSafe ? (Math.random() * 2 - 1) : (Math.random() * 10 - 5);
+    const shakeY = isSafe ? (Math.random() * 2 - 1) : (Math.random() * 6 - 3);
 
     ctx.save();
-    ctx.translate(cx + drillShakeX, cy - 20 + drillShakeY);
-    
-    // ส่วนหัวสว่าน (สามเหลี่ยมหมุนๆ)
-    ctx.fillStyle = "#a1a1a1";
-    ctx.beginPath();
-    ctx.moveTo(-20, 0);
-    ctx.lineTo(20, 0);
-    ctx.lineTo(0, 50 + (Math.random() * 5)); // ทำให้หัวสว่านดูเหมือนขยับขึ้นลงเร็วๆ
-    ctx.fill();
-    
-    // ส่วนตัวเครื่อง (Body)
-    ctx.fillStyle = "#444";
-    ctx.fillRect(-30, -60, 60, 60);
-    
-    // ขีดลายเครื่องจักร
-    ctx.strokeStyle = "var(--neon-blue)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-30, -60, 60, 60);
+    ctx.translate(cx + shakeX, cy + shakeY);
 
-    // 3. เอฟเฟกต์ไฟ/ควัน/เศษหิน
-    if (!isInZone) {
-        // ถ้าหลุดโซนเขียว (เครื่องร้อน/สั่นแรง) ให้มีประกายไฟสีส้ม
-        ctx.fillStyle = "orange";
-        for(let i=0; i<5; i++) {
-            ctx.beginPath();
-            ctx.arc((Math.random()-0.5)*40, 40 + Math.random()*10, 2+Math.random()*4, 0, Math.PI*2);
-            ctx.fill();
+    // --- วาดตัวบอดี้ (EGdrill0.png) ---
+    // ปรับขนาดตามความเหมาะสม (ในที่นี้สมมติเป็น 120x120)
+    ctx.drawImage(drillAssets.body, -60, -100, 120, 100);
+
+    // --- วาดหัวเจาะ (drill0.png) ---
+    // เพิ่มลูกเล่นให้หัวเจาะสั่นขึ้นลงเร็วๆ เหมือนกำลังเจาะจริง
+    const drillSpinY = Math.sin(Date.now() * 0.5) * 5; 
+    ctx.drawImage(drillAssets.head, -40, -10 + drillSpinY, 80, 80);
+
+    ctx.restore();
+
+    // 3. ระบบ Particles (เศษแร่กระเด็น)
+    updateAndDrawParticles(ctx, cx, cy + 40, isSafe);
+}
+
+// ฟังก์ชันสร้างและวาดเศษแร่
+function updateAndDrawParticles(ctx, x, y, isSafe) {
+    // สร้าง Particle ใหม่ทุกเฟรม (ถ้าไม่ปลอดภัยจะสร้างเยอะขึ้น)
+    const count = isSafe ? 2 : 8;
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 15, // พุ่งออกซ้ายขวาเร็วๆ
+            vy: -Math.random() * 10,       // พุ่งขึ้นบน
+            life: 1.0,                     // พลังชีวิต (1.0 คือเต็ม)
+            size: Math.random() * 5 + 2,
+            color: isSafe ? "#ffcc00" : "#ff4b2b" // สีเหลืองปกติ / สีแดงถ้าเครื่องร้อน
+        });
+    }
+
+    // วาดและอัปเดตตำแหน่ง
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.5;   // แรงโน้มถ่วงให้ตกลงพื้น
+        p.life -= 0.05; // หายไปอย่างรวดเร็ว (ยิ่งลบเยอะยิ่งหายเร็ว)
+
+        if (p.life <= 0) {
+            particles.splice(i, 1); // ลบทิ้งเมื่อหมดอายุ
+            continue;
         }
-    } else {
-        // ถ้าอยู่ในโซนเขียว ให้มีควันสีฟ้า/ขาวบางๆ
-        ctx.fillStyle = "rgba(0, 210, 255, 0.3)";
+
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life; // ค่อยๆ จางหาย
         ctx.beginPath();
-        ctx.arc((Math.random()-0.5)*20, 45, 3, 0, Math.PI*2);
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
     }
-    
-    ctx.restore();
+    ctx.globalAlpha = 1.0; // รีเซ็ตค่าความโปร่งใส
 }
 
 // --- ฟังก์ชันเมื่อขุดสำเร็จ: ระบบสุ่มดรอปแร่ ---
