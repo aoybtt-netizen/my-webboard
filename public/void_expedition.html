@@ -1884,6 +1884,62 @@ function updateMining2() {
     }
 }
 
+
+// ฟังก์ชันวาดภาพจำลองการขุด (Canvas Drawing)
+function drawDrillScene(ctx, canvas, isInZone) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    
+    // 1. วาดพื้นดิน (สั่นตามความแรง)
+    const groundShake = isInZone ? (Math.random() * 1) : (Math.random() * 4);
+    ctx.fillStyle = "#2d1b0f"; // สีดินเข้มๆ
+    ctx.fillRect(0, cy + 30 + groundShake, canvas.width, canvas.height);
+
+    // 2. วาดตัวเครื่องเจาะ (Drill Machine)
+    // ถ้าไม่อยู่ในโซนเขียว เครื่องจะสั่นแรง (Shake)
+    const drillShakeX = isInZone ? (Math.random() * 2 - 1) : (Math.random() * 10 - 5);
+    const drillShakeY = isInZone ? (Math.random() * 2 - 1) : (Math.random() * 6 - 3);
+
+    ctx.save();
+    ctx.translate(cx + drillShakeX, cy - 20 + drillShakeY);
+    
+    // ส่วนหัวสว่าน (สามเหลี่ยมหมุนๆ)
+    ctx.fillStyle = "#a1a1a1";
+    ctx.beginPath();
+    ctx.moveTo(-20, 0);
+    ctx.lineTo(20, 0);
+    ctx.lineTo(0, 50 + (Math.random() * 5)); // ทำให้หัวสว่านดูเหมือนขยับขึ้นลงเร็วๆ
+    ctx.fill();
+    
+    // ส่วนตัวเครื่อง (Body)
+    ctx.fillStyle = "#444";
+    ctx.fillRect(-30, -60, 60, 60);
+    
+    // ขีดลายเครื่องจักร
+    ctx.strokeStyle = "var(--neon-blue)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-30, -60, 60, 60);
+
+    // 3. เอฟเฟกต์ไฟ/ควัน/เศษหิน
+    if (!isInZone) {
+        // ถ้าหลุดโซนเขียว (เครื่องร้อน/สั่นแรง) ให้มีประกายไฟสีส้ม
+        ctx.fillStyle = "orange";
+        for(let i=0; i<5; i++) {
+            ctx.beginPath();
+            ctx.arc((Math.random()-0.5)*40, 40 + Math.random()*10, 2+Math.random()*4, 0, Math.PI*2);
+            ctx.fill();
+        }
+    } else {
+        // ถ้าอยู่ในโซนเขียว ให้มีควันสีฟ้า/ขาวบางๆ
+        ctx.fillStyle = "rgba(0, 210, 255, 0.3)";
+        ctx.beginPath();
+        ctx.arc((Math.random()-0.5)*20, 45, 3, 0, Math.PI*2);
+        ctx.fill();
+    }
+    
+    ctx.restore();
+}
+
 // --- ฟังก์ชันเมื่อขุดสำเร็จ: ระบบสุ่มดรอปแร่ ---
 async function handleMiningSuccess(starData) {
     const starKey = `${playerQ},${playerR}`;
