@@ -653,8 +653,8 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
-<button onclick="testMiningSystem()" style="position: fixed; top: 10px; left: 10px; z-index: 9999; background: #ff4b2b; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-family: monospace;">
-    DEBUG: TEST MINING
+<button onclick="testMiningSystem()" style="position: fixed; top: 10px; left: 10px; z-index: 9999; background: #ff4b2b; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-family: 'Orbitron', monospace; box-shadow: 0 0 10px rgba(255,75,43,0.5);">
+    DEBUG: TEST MINING (FULLSCREEN)
 </button>
 	
 	
@@ -2016,27 +2016,26 @@ async function saveStarMineralsToServer(key, minerals) {
 
 
 function testMiningSystem() {
-    console.log("🛠️ Debug: Starting Mining Test...");
+    console.log("🛠️ Debug: Starting Fullscreen Mining Test...");
     
-    // 1. สร้างข้อมูลจำลอง (Mock Data) สำหรับการทดสอบ
+    // 1. สร้างข้อมูลจำลอง (Mock Data)
     const testStar = {
-        name: "TEST-SECTOR-99",
-        corrosionAcid: Math.random() < 0.5 ? Math.floor(Math.random() * 80) + 10 : 0, // สุ่มกรด 10-90% หรือไม่มีเลย
-        temperature: Math.random() < 0.5 ? Math.floor(Math.random() * 400) + 100 : 0, // สุ่มอุณหภูมิ 100-500C หรือไม่มีเลย
+        name: "CORE-X TEST SECTOR",
+        corrosionAcid: Math.random() < 0.5 ? Math.floor(Math.random() * 80) + 10 : 0,
+        temperature: Math.random() < 0.5 ? Math.floor(Math.random() * 400) + 100 : 0,
         mineralSlots: 3,
         minerals: []
     };
 
-    // 2. ยัดข้อมูลใส่ตัวแปรที่เราใช้ในเครื่อง (เพื่อให้ฟังก์ชันขุดหาเจอ)
-    // ใช้คีย์ 'TEST' เป็นคีย์ชั่วคราว
+    // 2. จำลองพิกัดเป็น 'TEST'
     serverMapData['TEST'] = testStar;
-    playerQ = 'TEST'; // หลอกพิกัดชั่วคราว
+    playerQ = 'TEST'; 
     playerR = '';
 
-    // 3. เรียกฟังก์ชันเริ่มขุด (เวอร์ชัน 2)
+    // 3. สั่งเริ่มระบบขุด (ตัวใหม่)
     startMiningProcess2();
     
-    console.log(`Test Environment: Acid ${testStar.corrosionAcid}% | Temp ${testStar.temperature}°C`);
+    console.log(`Environment -> Acid: ${testStar.corrosionAcid}% | Temp: ${testStar.temperature}°C`);
 }
 
 
