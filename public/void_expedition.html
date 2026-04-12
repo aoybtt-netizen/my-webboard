@@ -398,16 +398,38 @@ button:hover { opacity: 0.8; }
 .mining-skill-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
 
 .mineral-card {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(0,210,255,0.3);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(0, 210, 255, 0.3);
     padding: 15px;
     border-radius: 15px;
     width: 100px;
     text-align: center;
-    cursor: pointer;
+    cursor: pointer !important; /* ให้เมาส์เป็นรูปมือเสมอ */
     transition: 0.3s;
+    pointer-events: auto !important; /* ปลดล็อกการคลิกรายตัว */
 }
-.mineral-card:hover { border-color: #00d2ff; background: rgba(0,210,255,0.1); }
+.mineral-card:hover { 
+    border-color: #00d2ff; 
+    background: rgba(0, 210, 255, 0.1); 
+    transform: translateY(-5px); /* เพิ่มลูกเล่นให้รู้ว่าชี้โดน */
+}
+
+#mineral-choice-overlay {
+    display: none; /* ปิดไว้ก่อน จะเปิดด้วย JS */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* พื้นหลังดำโปร่งแสง */
+    z-index: 5000; /* ต้องสูงกว่าทุกอย่างเพื่อให้ลอยอยู่บนสุด */
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    
+    /* 🚩 จุดสำคัญ: ปลดล็อกให้คลิกได้ แม้ตัวแม่จะสั่งห้ามคลิก */
+    pointer-events: auto !important; 
+}
 
 @keyframes toastFade {
     0% { opacity: 0; transform: translate(-50%, 0); }
@@ -684,7 +706,7 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
-<div id="mineral-choice-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:3000; align-items:center; justify-content:center; flex-direction:column;">
+<div id="mineral-choice-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:3000; align-items:center; justify-content:center; flex-direction:column; pointer-events: auto;">
     <h3 style="color:#00d2ff; letter-spacing:2px;">SCANNED RESOURCES DETECTED</h3>
     <p style="font-size:0.7rem; color:rgba(255,255,255,0.6); margin-bottom:20px;">CHOOSE ONE TO EXTRACT</p>
     <div id="mineral-choices-container" style="display:flex; gap:15px;">
@@ -1991,32 +2013,44 @@ function useShield() {
 // --- ระบบสุ่มเลือกแร่ ---
 function showMineralChoices() {
     const container = document.getElementById('mineral-choices-container');
+    const overlay = document.getElementById('mineral-choice-overlay'); // ดึงตัว overlay มา
+    
+    if (!container || !overlay) return;
+    
     container.innerHTML = '';
     
-    // รายชื่อแร่จำลอง (จริงๆ ควรดึงจากที่สุ่มในดาว)
     const minerals = [
         { name: 'METAL', img: 'orem1', chance: 80 },
         { name: 'ENERGY', img: 'oree1', chance: 60 },
         { name: 'CRYSTAL', img: 'oret1', chance: 30 }
     ];
 
-    // สุ่มมา 3 อัน
     for (let i = 0; i < 3; i++) {
         const m = minerals[Math.floor(Math.random() * minerals.length)];
-        // คำนวณโอกาสสำเร็จจาก "ความร้อน" (ถ้าร้อนโอกาสลด)
         const successRate = Math.max(5, m.chance - (drillHeat / 2));
         
         const card = document.createElement('div');
         card.className = 'mineral-card';
+        // 🚩 เพิ่มสไตล์ตรงนี้ให้มั่นใจว่า pointer-events เป็น auto
+        card.style.pointerEvents = 'auto'; 
+        card.style.cursor = 'pointer';
+
         card.innerHTML = `
-            <img src="images/ore/${m.img}.png" style="width:40px;">
-            <div style="font-size:0.7rem; font-weight:bold;">${m.name}</div>
-            <div style="font-size:0.5rem; color:#38ef7d;">RATE: ${Math.floor(successRate)}%</div>
+            <img src="images/ore/${m.img}.png" style="width:40px; pointer-events: none;">
+            <div style="font-size:0.7rem; font-weight:bold; pointer-events: none;">${m.name}</div>
+            <div style="font-size:0.5rem; color:#38ef7d; pointer-events: none;">RATE: ${Math.floor(successRate)}%</div>
         `;
-        card.onclick = () => attemptCollect(m, successRate);
+        
+        card.onclick = (e) => {
+            e.stopPropagation(); // กันเหตุการณ์คลิกซ้อน
+            attemptCollect(m, successRate);
+        };
+        
         container.appendChild(card);
     }
-    document.getElementById('mineral-choice-overlay').style.display = 'flex';
+
+    overlay.style.display = 'flex';
+    overlay.style.pointerEvents = 'auto'; // 🚩 ปลดล็อกให้คลิกที่ Overlay ได้
 }
 
 function attemptCollect(mineral, rate) {
@@ -2032,8 +2066,12 @@ function attemptCollect(mineral, rate) {
     }
 }
 
-function showToast(message, color) {
-    showMiningToast(message, color); // เรียกตัวยาวที่คุณมีอยู่แล้ว
+function showToast(msg, color) {
+    if (typeof showMiningToast === 'function') {
+        showMiningToast(msg, color);
+    } else {
+        console.log("Toast:", msg); // สำรองไว้กัน Error
+    }
 }
 
 function showMiningToast(message, color) {
