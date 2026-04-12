@@ -1904,17 +1904,38 @@ function updateMining2() {
     drillEnergy = Math.min(100, drillEnergy + 0.05);
 
     // 3. ระบบสุ่มแร่โผล่มา (นับถอยหลัง)
-    miningProgress += 0.02; // ความคืบหน้าการขุดภาพรวม
-    nextMineralScanTime -= 0.016; // อิงตาม 60fps
+    miningProgress += 0.02; 
+    nextMineralScanTime -= 0.016; 
     if (nextMineralScanTime <= 0) {
-        showMineralChoices(); // เด้งหน้าสุ่มแร่
-        nextMineralScanTime = 10 + Math.random() * 5; // สุ่มรอบถัดไป 10-15 วินาที
+        showMineralChoices(); 
+        nextMineralScanTime = 10 + Math.random() * 5; 
     }
 
-    // 4. วาดภาพและอัปเดต UI
+    // --- 🚩 4. ส่วนที่เพิ่มกลับมา: วาดภาพเครื่องขุดลงบน Canvas ---
+    const mCanvas = document.getElementById('active-mining-canvas');
+    if (mCanvas) {
+        const mctx = mCanvas.getContext('2d');
+        // ปรับขนาด Canvas ให้เต็มจอเสมอ
+        if (mCanvas.width !== window.innerWidth) {
+            mCanvas.width = window.innerWidth;
+            mCanvas.height = window.innerHeight;
+        }
+        mctx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+        
+        // ส่งค่า isInZone เป็น true ถ้าความร้อนยังไม่เกิน 80 (ถ้าเกินสว่านจะสั่นแรงและมีไฟลุก)
+        const isSafe = drillHeat < 80;
+        drawDrillScene(mctx, mCanvas, isSafe);
+    }
+
+    // 5. อัปเดต UI อื่นๆ
     updateActiveMiningUI(); 
     
-    if (drillHP <= 100 && miningProgress < 100) {
+    // เช็คแพ้ชนะ และรัน Loop ต่อ
+    if (drillHP <= 0) {
+        finishMining(false);
+    } else if (miningProgress >= 100) {
+        finishMining(true);
+    } else {
         requestAnimationFrame(updateMining2);
     }
 }
@@ -2009,6 +2030,10 @@ function attemptCollect(mineral, rate) {
         showToast(`FAILED: RESOURCE UNSTABLE`, "#ff4b2b");
         drillHP -= 10; // ขุดพลาดเครื่องพังเพิ่ม
     }
+}
+
+function showToast(message, color) {
+    showMiningToast(message, color); // เรียกตัวยาวที่คุณมีอยู่แล้ว
 }
 
 function showMiningToast(message, color) {
