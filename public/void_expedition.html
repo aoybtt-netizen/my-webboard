@@ -2122,18 +2122,18 @@ function drawDrillScene(ctx, canvas, isSafe) {
     ctx.save();
     ctx.translate(cx + shakeX, cy + shakeY);
 
-    // --- วาดตัวบอดี้ (EGdrill0.png) ---
-    // ปรับขนาดตามความเหมาะสม (ในที่นี้สมมติเป็น 120x120)
-    ctx.drawImage(drillAssets.body, -60, -100, 120, 100);
+    // --- 🚩 วาดส่วนที่อยู่ด้านหลังก่อน (Layer 1: drill0) ---
+    // เพิ่มการสั่นขึ้นลงให้หัวเจาะดูมีพลัง
+    const drillJumpY = Math.sin(Date.now() * 0.8) * 4; 
+    ctx.drawImage(drillAssets.head, -40, -20 + drillJumpY, 80, 80);
 
-    // --- วาดหัวเจาะ (drill0.png) ---
-    // เพิ่มลูกเล่นให้หัวเจาะสั่นขึ้นลงเร็วๆ เหมือนกำลังเจาะจริง
-    const drillSpinY = Math.sin(Date.now() * 0.5) * 5; 
-    ctx.drawImage(drillAssets.head, -40, -10 + drillSpinY, 80, 80);
+    // --- 🚩 วาดส่วนที่อยู่ด้านหน้าทับ (Layer 2: EGdrill0) ---
+    // วาดทับหัวเจาะเพื่อให้เห็นว่าหัวเจาะโผล่ออกมาจากใต้เครื่อง
+    ctx.drawImage(drillAssets.body, -60, -100, 120, 100);
 
     ctx.restore();
 
-    // 3. ระบบ Particles (เศษแร่กระเด็น)
+    // 3. ระบบ Particles (เศษแร่กระเด็นเร็วๆ และหายไว)
     updateAndDrawParticles(ctx, cx, cy + 40, isSafe);
 }
 
