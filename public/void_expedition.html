@@ -1768,6 +1768,8 @@ function updateMining(currentTime) {
 }
 
 
+
+
 // --- ฟังก์ชันเข้าสู่มินิเกมขุดแร่ (เวอร์ชัน 2) ---
 function startMiningProcess2() {
     // ดึงข้อมูลดาว (รองรับทั้ง key พิกัดปกติ และ key 'TEST')
@@ -1801,7 +1803,85 @@ function startMiningProcess2() {
     document.getElementById('mining-star-name').innerText = starData.name;
 
     // เริ่ม Loop เกม
-    requestAnimationFrame(updateMining);
+    requestAnimationFrame(updateMining2);
+}
+
+function updateMining2() {
+    if (!miningActive) return;
+
+    // --- 1. การคำนวณฟิสิกส์ของเข็ม (Stability Physics) ---
+    // อุณหภูมิส่งผลต่อความเร็วการแกว่ง
+    const tempFactor = 1 + (currentStarTemp / 500); 
+    needleVelocity += (Math.random() - 0.5) * 2 * tempFactor;
+    
+    // แรงจากการกดของผู้เล่น (Stabilize)
+    if (isPressing) {
+        needleVelocity += 0.85; 
+    } else {
+        needleVelocity -= 0.65;
+    }
+
+    needlePos += needleVelocity;
+    needleVelocity *= 0.93; // แรงเสียดทาน (Friction)
+
+    // ป้องกันเข็มหลุดขอบ
+    if (needlePos < 0) { needlePos = 0; needleVelocity = 0; }
+    if (needlePos > 100) { needlePos = 100; needleVelocity = 0; }
+
+    // --- 2. ตรวจสอบโซนการขุด (Sweet Spot) ---
+    const targetRange = 12; // ความกว้างของโซนปลอดภัย
+    const isInZone = Math.abs(needlePos - targetPos) < targetRange;
+
+    if (isInZone) {
+        miningProgress += 0.08; // ความเร็วการขุด (ปรับเพิ่ม/ลดได้)
+        drillHeat = Math.max(0, drillHeat - 0.3); // ระบายความร้อนเมื่อคุมได้ดี
+    } else {
+        drillHeat += 0.4; // ร้อนขึ้นเมื่อคุมไม่อยู่
+        drillHP -= 0.06;  // ดาเมจพื้นฐานจากการสั่น
+    }
+
+    // --- 3. ผลกระทบจากสภาพแวดล้อมดาว ---
+    // กรด (Acid): กัดกร่อน HP ต่อเนื่อง
+    if (currentStarAcid > 0) {
+        drillHP -= (currentStarAcid / 2500); 
+    }
+    
+    // ความร้อนเกินพิกัด (Overheat): ถ้า Heat > 80% เลือดจะลดไวขึ้นมาก
+    if (drillHeat > 80) {
+        drillHP -= 0.25;
+    }
+
+    // --- 4. การวาดภาพบน Canvas ---
+    const mCanvas = document.getElementById('mining-canvas');
+    if (mCanvas) {
+        const mctx = mCanvas.getContext('2d');
+        // รีเซ็ตขนาด Canvas ให้ตรงกับหน้าจอ
+        if (mCanvas.width !== mCanvas.clientWidth) {
+            mCanvas.width = mCanvas.clientWidth;
+            mCanvas.height = mCanvas.clientHeight;
+        }
+        mctx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+        drawDrillScene(mctx, mCanvas, isInZone);
+    }
+
+    // --- 5. อัปเดต UI (DOM) ---
+    document.getElementById('stability-needle').style.left = `${needlePos}%`;
+    document.getElementById('stability-target').style.left = `${targetPos - targetRange}%`;
+    document.getElementById('stability-target').style.width = `${targetRange * 2}%`;
+    
+    document.getElementById('mining-progress-bar').style.width = `${miningProgress}%`;
+    document.getElementById('drill-hp').innerText = Math.ceil(Math.max(0, drillHP));
+    document.getElementById('drill-heat').innerText = Math.ceil(drillHeat);
+
+    // --- 6. เช็คสถานะการขุด ---
+    if (miningProgress >= 100) {
+        finishMining(true);
+    } else if (drillHP <= 0) {
+        finishMining(false);
+    } else {
+        // 🚩 สำคัญ: เรียกตัวเองด้วยชื่อใหม่
+        requestAnimationFrame(updateMining2);
+    }
 }
 
 // --- ฟังก์ชันเมื่อขุดสำเร็จ: ระบบสุ่มดรอปแร่ ---
