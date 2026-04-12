@@ -1430,7 +1430,7 @@ function openStarDetail() {
         if (starData.corrosionAcid && starData.corrosionAcid > 0) {
             envHTML += `
                 <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#ff4b2b; margin-top:5px; padding: 2px 0;">
-                    <span><i class="fas fa-biohazard"></i> กรดกัดกร่อนโลหะ:</span>
+                    <span><i class="fas fa-biohazard"></i> Metal corrosive acid:</span>
                     <span style="color: white; font-weight:bold;">${starData.corrosionAcid}%</span>
                 </div>`;
         }
@@ -1438,7 +1438,7 @@ function openStarDetail() {
         if (starData.temperature && starData.temperature > 0) {
             envHTML += `
                 <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#ffaa00; margin-top:5px; padding: 2px 0;">
-                    <span><i class="fas fa-thermometer-half"></i> อุณหภูมิพื้นผิว:</span>
+                    <span><i class="fas fa-thermometer-half"></i> Surface temperature:</span>
                     <span style="color: white; font-weight:bold;">${starData.temperature}°C</span>
                 </div>`;
         }
