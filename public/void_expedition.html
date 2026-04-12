@@ -409,6 +409,12 @@ button:hover { opacity: 0.8; }
 }
 .mineral-card:hover { border-color: #00d2ff; background: rgba(0,210,255,0.1); }
 
+@keyframes toastFade {
+    0% { opacity: 0; transform: translate(-50%, 0); }
+    20% { opacity: 1; transform: translate(-50%, -50%); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
 
 
 
@@ -1906,11 +1912,38 @@ function updateMining2() {
     }
 
     // 4. วาดภาพและอัปเดต UI
-    updateMiningUI();
+    updateActiveMiningUI(); 
     
-    if (drillHP <= 0) finishMining(false);
-    else if (miningProgress >= 100) finishMining(true);
-    else requestAnimationFrame(updateMining2);
+    if (drillHP <= 100 && miningProgress < 100) {
+        requestAnimationFrame(updateMining2);
+    }
+}
+
+function updateActiveMiningUI() {
+    // 1. อัปเดตตัวเลข HP และ Heat
+    const hpElem = document.getElementById('active-drill-hp');
+    const heatElem = document.getElementById('active-drill-heat');
+    
+    if (hpElem) hpElem.innerText = Math.ceil(Math.max(0, drillHP));
+    if (heatElem) heatElem.innerText = Math.ceil(drillHeat);
+
+    // 2. อัปเดตเกจพลังงาน (Energy Bar)
+    const energyFill = document.getElementById('active-drill-energy-fill');
+    const energyVal = document.getElementById('active-drill-energy-val');
+    
+    if (energyFill) energyFill.style.width = `${drillEnergy}%`;
+    if (energyVal) energyVal.innerText = `${Math.ceil(drillEnergy)}/100`;
+
+    // 3. อัปเดตเกจความคืบหน้าหลัก (Progress Bar)
+    const progressFill = document.getElementById('active-mining-progress-fill');
+    if (progressFill) progressFill.style.width = `${miningProgress}%`;
+
+    // 4. เอฟเฟกต์สี (ถ้า Heat สูง ให้เกจกระพริบสีแดง)
+    if (drillHeat > 80) {
+        if (heatElem) heatElem.style.color = "#ff4b2b";
+    } else {
+        if (heatElem) heatElem.style.color = "white";
+    }
 }
 
 function useCoolant() {
@@ -1978,15 +2011,23 @@ function attemptCollect(mineral, rate) {
     }
 }
 
-// ฟังก์ชันสำหรับ "กด" ปุ่ม
-function startStabilizing() {
-    isPressing = true;
+function showMiningToast(message, color) {
+    // สร้าง div แจ้งเตือนแบบลอย
+    const toast = document.createElement('div');
+    toast.innerText = message;
+    toast.style.cssText = `
+        position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.8); color: ${color}; border: 1px solid ${color};
+        padding: 10px 20px; border-radius: 10px; z-index: 4000;
+        font-family: 'Orbitron', sans-serif; pointer-events: none;
+        animation: toastFade 1.5s forwards;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1500);
 }
 
-// ฟังก์ชันสำหรับ "ปล่อย" ปุ่ม (ตัวที่หายไป)
-function stopStabilizing() {
-    isPressing = false;
-}
+
+
 
 
 // ฟังก์ชันวาดภาพจำลองการขุด (Canvas Drawing)
@@ -2366,12 +2407,6 @@ function updateMiningUI() {
             statusText.style.color = "#00d2ff"; // neon-blue
         }
     }
-	
-	document.getElementById('active-drill-hp').innerText = Math.ceil(drillHP);
-    document.getElementById('active-drill-heat').innerText = Math.ceil(drillHeat);
-    document.getElementById('active-drill-energy-fill').style.width = `${drillEnergy}%`;
-    document.getElementById('active-drill-energy-val').innerText = `${Math.ceil(drillEnergy)}/100`;
-    document.getElementById('active-mining-progress-fill').style.width = `${miningProgress}%`;
 }
 
 // F. เมื่อตั้งเครื่องเสร็จ
