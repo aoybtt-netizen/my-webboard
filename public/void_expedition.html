@@ -789,17 +789,21 @@ button:hover { opacity: 0.8; }
                 <button class="close-btn" onclick="document.getElementById('ship-menu').style.display='none'">×</button>
             </div>
             <div class="category-grid">
+				<div class="cat-card" onclick="openCategory('engine')">
+                    <div class="img-placeholder">std</div>
+                    <span>Engine system</span>
+                </div>
                 <div class="cat-card" onclick="openCategory('drill')">
                     <div class="img-placeholder">std</div>
-                    <span>DRILL SYSTEM</span>
-                </div>
-                <div class="cat-card" onclick="openCategory('engine')">
-                    <div class="img-placeholder">std</div>
-                    <span>PROPULSION</span>
+                    <span>Drill system</span>
                 </div>
                 <div class="cat-card" onclick="openCategory('storage')">
                     <div class="img-placeholder">std</div>
-                    <span>STORAGE</span>
+                    <span>Storage</span>
+                </div>
+				<div class="cat-card" onclick="openCategory('barrier')">
+                    <div class="img-placeholder">std</div>
+                    <span>Barrier shield</span>
                 </div>
             </div>
         </div>
