@@ -441,6 +441,34 @@ button:hover { opacity: 0.8; }
 
 
 
+
+/* ตั้งชื่อ class ใหม่กันสับสนกับของเดิม */
+.close-btn-fixed {
+    position: absolute;
+    top: 15px;      /* ระยะห่างจากด้านบน */
+    right: 15px;    /* ระยะห่างจากด้านขวา */
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 20px;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 5px;
+    z-index: 1000; /* ให้อยู่เหนือทุกอย่าง */
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn-fixed:hover {
+    background: #ff4b2b; /* เปลี่ยนเป็นสีแดงตอนชี้ */
+    border-color: #ff4b2b;
+    color: white;
+}
 .hangar-panel { width: 95%; max-width: 500px; height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
 
 /* Category Grid */
@@ -782,11 +810,10 @@ button:hover { opacity: 0.8; }
 
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
     <div class="glass-panel hangar-panel" onclick="event.stopPropagation()">
-        
+        <button class="close-btn-fixed" onclick="document.getElementById('ship-menu').style.display='none'">×</button>
         <div id="ship-main-view">
             <div class="menu-header">
                 <h3><i class="fas fa-ship"></i> SHIP MODULAR SYSTEM</h3>
-                <button class="close-btn" onclick="document.getElementById('ship-menu').style.display='none'">×</button>
             </div>
             <div class="category-grid">
 				<div class="cat-card" onclick="openCategory('engine')">
@@ -3024,7 +3051,6 @@ function renderCategoryContent() {
     if (!eqBox) return;
 
     if (equipped) {
-        // 🚩 เปลี่ยนจาก itemImages เป็น imageSources
         const imgKey = equipped.imgKey || 'default';
         const imgSrc = imageSources[imgKey] || imageSources['default'] || 'images/default.png';
 
