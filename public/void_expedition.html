@@ -540,19 +540,18 @@ button:hover { opacity: 0.8; }
 
 /* รายการไอเทมด้านล่าง */
 .inventory-scroll {
+    display: flex;
+    flex-direction: column !important; /* บังคับเรียงไอเทมลงข้างล่าง */
+    width: 100%;
+    max-height: 300px;
     overflow-y: auto;
-    max-height: 250px;
 }
 
 /* หน้าจัดการไอเทม (Category View) */
 #ship-category-view {
-    display: none; /* เปิดด้วย JS */
-    flex-direction: column; /* 🚩 หัวใจสำคัญ: บังคับให้เรียงจากบนลงล่าง */
-    width: 100%;
-    height: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-    overflow-y: auto; /* ให้สกรูลขึ้นลงได้ถ้าไอเทมเยอะ */
+    display: none;
+    flex-direction: column !important; /* บังคับจากบนลงล่าง */
+    gap: 10px;
 }
 
 /* กรอบไอเทมที่ติดตั้ง (ส่วนบน) */
@@ -575,13 +574,11 @@ button:hover { opacity: 0.8; }
 
 /* การ์ดไอเทมในคลัง */
 .inv-item-card {
-    display: flex; /* ในตัวการ์ดเองให้รูปกับตัวหนังสืออยู่ข้างกัน */
+    display: flex;
+    flex-direction: row; /* 🚩 ภายในไอเทมให้รูปกับข้อความอยู่ข้างกัน */
     width: 100%;
+    margin-bottom: 8px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 10px;
-    box-sizing: border-box;
-    align-items: center;
 }
 
 .inv-img-small { width: 50px; height: 50px; border: 1px solid #444; background: #222; font-size: 0.5rem; display: flex; align-items: center; justify-content: center; }
@@ -1081,7 +1078,18 @@ button:hover { opacity: 0.8; }
 			'terret2': 'images/turret/turret2.png',
 			'alian1': 'images/alian/alian1.png',
 			'drill1': 'images/drill/drill0.png',
-			'EGdrill1': 'images/drill/EGdrill0.png'
+			'EGdrill1': 'images/drill/EGdrill0.png',
+			//Storage
+			'Storage': 'images/Storage.png',
+			//engine
+			'engineShip1': 'images/engine/engineShip1.png',
+			'engineShip2': 'images/engine/engineShip2.png',
+			'engineShip3': 'images/engine/engineShip3.png',
+			'engineShip4': 'images/engine/engineShip4.png',
+			'engineDrill1': 'images/engine/engineDrill1.png',
+			'engineDrill2': 'images/engine/engineDrill2.png',
+			'engineDrill3': 'images/engine/engineDrill3.png',
+			'engineDrill4': 'images/engine/engineDrill4.png'
 		};
 
 		let imagesLoaded = false;
@@ -1168,17 +1176,16 @@ button:hover { opacity: 0.8; }
 		
 		// 1. ข้อมูลจำลอง อุปกรณ์ที่ติดตั้งอยู่
 		let playerEquipped = {
-			drill: { id: 'd1', name: 'TITANIUM AUGER', level: 1, type: 'drill' },
-			engine: { id: 'e1', name: 'ION THRUSTER', level: 2, type: 'engine' },
-			storage: null // สล็อตว่าง
+			drill: { id: 'd1', name: 'TITANIUM AUGER', level: 1, type: 'drill', imgKey: 'drill0' },
+			engine: { id: 'e1', name: 'ION THRUSTER', level: 2, type: 'engine', imgKey: 'engineShip1' },
+			storage: { id: 's1', name: 'BASIC CARGO', level: 1, type: 'storage', imgKey: 'Storage' }
 		};
 
 		// 2. คลังไอเทมจำลอง
 		let playerInventory = [
-			{ id: 'd2', name: 'DIAMOND BIT', level: 1, type: 'drill' },
-			{ id: 'd3', name: 'PLASMA DRILL', level: 3, type: 'drill' },
-			{ id: 's1', name: 'EXPANDED CARGO', level: 1, type: 'storage' },
-			{ id: 'e2', name: 'WARP DRIVE', level: 1, type: 'engine' }
+			{ id: 'e2', name: 'DRILL ENGINE V2', level: 1, type: 'engine', imgKey: 'engineDrill1' },
+			{ id: 'e3', name: 'STARSHIP DRIVE', level: 3, type: 'engine', imgKey: 'engineShip3' },
+			{ id: 's2', name: 'MEGA STORAGE', level: 1, type: 'storage', imgKey: 'Storage' }
 		];
 
 
@@ -3009,29 +3016,49 @@ function backToMain() {
 function renderCategoryContent() {
     const equipped = playerEquipped[currentCat];
     
-    // อัปเดตส่วน Equipped (บน)
+    // 1. อัปเดตส่วนบน (Equipped)
+    const eqBox = document.getElementById('equipped-box');
     if (equipped) {
-        document.getElementById('eq-name').innerText = equipped.name;
-        document.getElementById('eq-status').innerHTML = `LVL: ${equipped.level}<br>POWER: ${equipped.level * 10}`;
-    } else {
-        document.getElementById('eq-name').innerText = "EMPTY SLOT";
-        document.getElementById('eq-status').innerText = "ไม่มีอุปกรณ์ติดตั้ง";
+        const imgSrc = itemImages[equipped.imgKey] || 'images/default.png';
+        eqBox.innerHTML = `
+            <div class="item-name-tag">${equipped.name}</div>
+            <div class="item-main-content">
+                <div class="img-square">
+                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+                </div>
+                <div class="status-box">
+                    LEVEL: ${equipped.level}<br>
+                    POWER: ${equipped.level * 10}
+                </div>
+            </div>
+            <div class="button-row">
+                <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">ถอนการติดตั้ง</button>
+                <button class="btn-wire btn-green" onclick="upgradeItem()">อัปเกรด</button>
+            </div>
+        `;
     }
 
-    // อัปเดตส่วน Inventory List (ล่าง)
+    // 2. อัปเดตส่วนล่าง (Inventory List) - บังคับเรียงลงล่าง
     const invArea = document.getElementById('inventory-list-area');
+    invArea.style.display = 'flex';
+    invArea.style.flexDirection = 'column'; // 🚩 บังคับเรียงลงล่าง
     invArea.innerHTML = '';
+
     const items = playerInventory.filter(i => i.type === currentCat);
 
     items.forEach(item => {
+        const imgSrc = itemImages[item.imgKey] || 'images/default.png';
         const row = document.createElement('div');
         row.className = 'inv-item-card';
-        row.onclick = () => openItemPopup(item); // คลิกแล้วเปิด Popup
+        row.style.width = '100%'; // 🚩 บังคับเต็มความกว้าง
+        row.onclick = () => openItemPopup(item); 
         row.innerHTML = `
-            <div class="inv-img-small">รูปไอเทม</div>
+            <div class="inv-img-small">
+                <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+            </div>
             <div class="status-box">
                 <strong>${item.name}</strong><br>
-                status เบื้องต้น (LVL ${item.level})
+                <span style="font-size:0.7rem; color:#ffcc00;">LVL: ${item.level} (Status เบื้องต้น)</span>
             </div>
         `;
         invArea.appendChild(row);
@@ -3041,20 +3068,27 @@ function renderCategoryContent() {
 // ฟังก์ชันเปิด Popup รายละเอียด (รูปที่ 2)
 function openItemPopup(item) {
     const popup = document.getElementById('item-detail-popup');
-    document.getElementById('pop-name').innerText = item.name;
-    document.getElementById('pop-status').innerHTML = `
-        ค่าพลังงาน: ${item.level * 10}<br>
-        ความทนทาน: 100%<br>
-        ความสามารถ: ขุดเจาะหินแข็งได้ดี
-    `;
+    const imgSrc = itemImages[item.imgKey] || 'images/default.png';
     
-    // ตั้งค่าปุ่มติดตั้งใน Popup
-    const installBtn = document.getElementById('pop-install-btn');
-    installBtn.onclick = () => {
-        equipModule(item.id);
-        closePopup();
-    };
-
+    popup.innerHTML = `
+        <div class="wireframe-box popup-content">
+            <div class="item-name-tag">${item.name}</div>
+            <div class="item-main-content">
+                <div class="img-square">
+                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+                </div>
+                <div class="status-box">
+                    POWER: ${item.level * 10}<br>
+                    WEIGHT: ${item.level * 5}kg<br>
+                    STATUS: พร้อมติดตั้ง
+                </div>
+            </div>
+            <div class="button-row">
+                <button class="btn-wire btn-gray" onclick="closePopup()">ยกเลิก</button>
+                <button class="btn-wire btn-blue" onclick="confirmEquip('${item.id}')">ติดตั้งอุปกรณ์</button>
+            </div>
+        </div>
+    `;
     popup.style.display = 'flex';
 }
 
