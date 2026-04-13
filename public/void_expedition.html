@@ -544,13 +544,44 @@ button:hover { opacity: 0.8; }
     max-height: 250px;
 }
 
-.inv-item-card {
+/* หน้าจัดการไอเทม (Category View) */
+#ship-category-view {
+    display: none; /* เปิดด้วย JS */
+    flex-direction: column; /* 🚩 หัวใจสำคัญ: บังคับให้เรียงจากบนลงล่าง */
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto; /* ให้สกรูลขึ้นลงได้ถ้าไอเทมเยอะ */
+}
+
+/* กรอบไอเทมที่ติดตั้ง (ส่วนบน) */
+#equipped-box {
+    width: 100%; /* ให้เต็มความกว้าง */
+    border: 2px solid rgba(0, 210, 255, 0.3);
+    padding: 15px;
+    margin-bottom: 20px; /* เว้นระยะห่างจากรายการด้านล่าง */
+    background: rgba(0, 210, 255, 0.05);
+    box-sizing: border-box;
+}
+
+/* ส่วนรายการคลัง (ส่วนล่าง) */
+#inventory-list-area {
+    width: 100%; /* ให้เต็มความกว้าง */
     display: flex;
-    gap: 10px;
+    flex-direction: column; /* 🚩 ให้ไอเทมในลิสต์เรียงลงมาข้างล่าง */
+    gap: 10px; /* ระยะห่างระหว่างไอเทมแต่ละชิ้น */
+}
+
+/* การ์ดไอเทมในคลัง */
+.inv-item-card {
+    display: flex; /* ในตัวการ์ดเองให้รูปกับตัวหนังสืออยู่ข้างกัน */
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 5px;
-    margin-bottom: 5px;
-    cursor: pointer;
+    padding: 10px;
+    box-sizing: border-box;
+    align-items: center;
 }
 
 .inv-img-small { width: 50px; height: 50px; border: 1px solid #444; background: #222; font-size: 0.5rem; display: flex; align-items: center; justify-content: center; }
