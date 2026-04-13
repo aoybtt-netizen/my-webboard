@@ -440,75 +440,80 @@ button:hover { opacity: 0.8; }
 
 
 
-#module-grid {
+.hangar-panel {
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.loadout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.slot-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 210, 255, 0.2);
+    padding: 12px;
+    border-radius: 12px;
+    position: relative;
+}
+
+.slot-card.active-slot { border-color: var(--neon-blue); background: rgba(0, 210, 255, 0.05); }
+
+.item-info { font-size: 0.8rem; margin-bottom: 10px; }
+.item-name { color: var(--neon-blue); font-weight: bold; display: block; }
+.item-lvl { font-size: 0.7rem; color: #ffcc00; }
+
+.slot-actions { display: flex; gap: 5px; }
+.slot-actions button {
+    flex: 1; padding: 6px; font-size: 0.6rem; border-radius: 4px;
+    cursor: pointer; font-family: 'Orbitron', sans-serif;
+}
+
+.btn-upg { border: 1px solid #38ef7d; color: #38ef7d; background: transparent; }
+.btn-uninst { border: 1px solid #ff4b2b; color: #ff4b2b; background: transparent; }
+
+/* คลังอุปกรณ์ด้านล่าง */
+.inv-scroll-area {
+    flex-grow: 1;
+    overflow-y: auto;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-top: 15px;
+    padding-right: 5px;
 }
 
-.module-item {
+.inv-card {
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: 0.3s;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 8px;
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    gap: 5px;
 }
 
-.module-item:hover {
-    background: rgba(0, 210, 255, 0.1);
-    border-color: var(--neon-blue);
-    transform: translateY(-2px);
-}
-
-.module-item i {
-    font-size: 1.5rem;
-    margin-bottom: 5px;
-    color: var(--neon-blue);
-}
-
-/* จุดบอกเลเวล */
-.lvl-dots {
-    display: flex;
-    gap: 3px;
-    margin-top: 5px;
-}
-
-.dot {
-    width: 6px;
-    height: 6px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 50%;
-}
-
-.dot.active {
-    background: var(--neon-green);
-    box-shadow: 0 0 5px var(--neon-green);
-}
-
-.upgrade-confirm-btn {
-    width: 100%;
-    margin-top: 15px;
-    padding: 12px;
-    background: transparent;
-    border: 1px solid var(--neon-green);
-    color: var(--neon-green);
-    border-radius: 5px;
-    cursor: pointer;
-    font-family: 'Orbitron', sans-serif;
-    transition: 0.3s;
-}
-
-.upgrade-confirm-btn:hover {
-    background: var(--neon-green);
+.btn-equip {
+    background: var(--neon-blue);
     color: black;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    cursor: pointer;
 }
+
+.filter-tabs { display: flex; gap: 5px; }
+.tab-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.2);
+    color: white; font-size: 0.6rem; padding: 4px 10px; border-radius: 15px; cursor: pointer;
+}
+.tab-btn.active { border-color: var(--neon-blue); color: var(--neon-blue); }
 
 
 
@@ -698,53 +703,32 @@ button:hover { opacity: 0.8; }
 
 
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
-    <div class="glass-panel" onclick="event.stopPropagation()">
+    <div class="glass-panel hangar-panel" onclick="event.stopPropagation()">
         <div class="menu-header">
-            <h3><i class="fas fa-microchip"></i> MODULAR SYSTEM</h3>
+            <h3><i class="fas fa-tools"></i> SHIP CUSTOMIZATION</h3>
             <button class="close-btn" onclick="document.getElementById('ship-menu').style.display='none'">×</button>
         </div>
 
-        <div id="module-grid">
-            <div class="module-item" onclick="selectModule('storage')">
-                <i class="fas fa-box"></i>
-                <span>STORAGE</span>
-                <div class="lvl-dots" id="lvl-storage"></div>
-            </div>
-            <div class="module-item" onclick="selectModule('engine')">
-                <i class="fas fa-bolt"></i>
-                <span>ENGINE</span>
-                <div class="lvl-dots" id="lvl-engine"></div>
-            </div>
-            <div class="module-item" onclick="selectModule('drill')">
-                <i class="fas fa-hammer"></i>
-                <span>DRILL</span>
-                <div class="lvl-dots" id="lvl-drill"></div>
-            </div>
-            <div class="module-item" onclick="selectModule('power')">
-                <i class="fas fa-battery-full"></i>
-                <span>POWER</span>
-                <div class="lvl-dots" id="lvl-power"></div>
-            </div>
+        <div class="equipped-section">
+            <h4 class="section-title">CURRENT INSTALLATIONS</h4>
+            <div id="equipped-grid" class="loadout-grid">
+                </div>
         </div>
 
-        <hr style="border: 0.5px solid rgba(0,210,255,0.2); margin: 15px 0;">
+        <div class="divider"></div>
 
-        <div id="module-detail" style="display: none;">
-            <h4 id="mod-name" style="color: var(--neon-blue);">MODULE NAME</h4>
-            <p id="mod-desc" style="font-size: 0.8rem; opacity: 0.7;">Description of the module effect.</p>
-            
-            <div class="upgrade-info">
-                <div class="stat-change">
-                    <span id="stat-now">100</span> <i class="fas fa-arrow-right"></i> <span id="stat-next" style="color: var(--neon-green);">150</span>
-                </div>
-                <div class="cost-box">
-                    COST: <span id="mod-cost" style="color: #ffcc00;">500 METAL</span>
+        <div class="inventory-section">
+            <div class="inventory-header">
+                <h4 class="section-title">AVAILABLE MODULES</h4>
+                <div class="filter-tabs">
+                    <button class="tab-btn active" onclick="filterInv('drill')">DRILL</button>
+                    <button class="tab-btn" onclick="filterInv('engine')">ENGINE</button>
+                    <button class="tab-btn" onclick="filterInv('storage')">CARGO</button>
                 </div>
             </div>
-
-            <button class="upgrade-confirm-btn" onclick="processUpgrade()">
-                UPGRADE SYSTEM
-            </button>
+            
+            <div id="inventory-list" class="inv-scroll-area">
+                </div>
         </div>
     </div>
 </div>
@@ -1068,6 +1052,21 @@ button:hover { opacity: 0.8; }
 		};
 
 		let selectedModKey = null;
+		
+		// 1. ข้อมูลจำลอง อุปกรณ์ที่ติดตั้งอยู่
+		let playerEquipped = {
+			drill: { id: 'd1', name: 'TITANIUM AUGER', level: 1, type: 'drill' },
+			engine: { id: 'e1', name: 'ION THRUSTER', level: 2, type: 'engine' },
+			storage: null // สล็อตว่าง
+		};
+
+		// 2. คลังไอเทมจำลอง
+		let playerInventory = [
+			{ id: 'd2', name: 'DIAMOND BIT', level: 1, type: 'drill' },
+			{ id: 'd3', name: 'PLASMA DRILL', level: 3, type: 'drill' },
+			{ id: 's1', name: 'EXPANDED CARGO', level: 1, type: 'storage' },
+			{ id: 'e2', name: 'WARP DRIVE', level: 1, type: 'engine' }
+		];
 
 
 
@@ -2771,6 +2770,127 @@ function processUpgrade() {
         showMiningToast("NOT ENOUGH METAL", "#ff4b2b");
     }
 }
+
+
+// 1. ข้อมูลจำลอง อุปกรณ์ที่ติดตั้งอยู่
+let playerEquipped = {
+    drill: { id: 'd1', name: 'TITANIUM AUGER', level: 1, type: 'drill' },
+    engine: { id: 'e1', name: 'ION THRUSTER', level: 2, type: 'engine' },
+    storage: null // สล็อตว่าง
+};
+
+// 2. คลังไอเทมจำลอง
+let playerInventory = [
+    { id: 'd2', name: 'DIAMOND BIT', level: 1, type: 'drill' },
+    { id: 'd3', name: 'PLASMA DRILL', level: 3, type: 'drill' },
+    { id: 's1', name: 'EXPANDED CARGO', level: 1, type: 'storage' },
+    { id: 'e2', name: 'WARP DRIVE', level: 1, type: 'engine' }
+];
+
+// ฟังก์ชันวาดหน้าจอทั้งหมด
+function renderHangar() {
+    renderEquipped();
+    filterInv('drill'); // เริ่มต้นที่หมวดขุด
+}
+
+// วาดสล็อตด้านบน
+function renderEquipped() {
+    const grid = document.getElementById('equipped-grid');
+    grid.innerHTML = '';
+
+    ['drill', 'engine', 'storage'].forEach(slot => {
+        const item = playerEquipped[slot];
+        const card = document.createElement('div');
+        card.className = `slot-card ${item ? 'active-slot' : ''}`;
+        
+        if (item) {
+            card.innerHTML = `
+                <div class="item-info">
+                    <span style="font-size:0.6rem; opacity:0.5;">${slot.toUpperCase()}</span>
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-lvl">LVL ${item.level}</span>
+                </div>
+                <div class="slot-actions">
+                    <button class="btn-upg" onclick="upgradeEquipped('${slot}')">UPGRADE</button>
+                    <button class="btn-uninst" onclick="uninstallModule('${slot}')">REMOVE</button>
+                </div>
+            `;
+        } else {
+            card.innerHTML = `<div style="text-align:center; padding:20px; opacity:0.3; font-size:0.8rem;">[ EMPTY ${slot.toUpperCase()} ]</div>`;
+        }
+        grid.appendChild(card);
+    });
+}
+
+// วาดรายการคลังแสง (Filter ตามประเภท)
+function filterInv(type) {
+    // อัปเดตปุ่ม Tab
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.innerText.toLowerCase() === type || (btn.innerText === 'CARGO' && type === 'storage'));
+    });
+
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = '';
+
+    const filtered = playerInventory.filter(item => item.type === type);
+    
+    if (filtered.length === 0) {
+        list.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; opacity:0.5; font-size:0.8rem; padding:20px;">NO MODULES AVAILABLE</div>`;
+        return;
+    }
+
+    filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'inv-card';
+        card.innerHTML = `
+            <div class="item-info">
+                <span class="item-name" style="font-size:0.7rem;">${item.name}</span>
+                <span class="item-lvl">LVL ${item.level}</span>
+            </div>
+            <button class="btn-equip" onclick="equipModule('${item.id}')">INSTALL</button>
+        `;
+        list.appendChild(card);
+    });
+}
+
+// --- LOGIC FUNCTIONS ---
+
+function upgradeEquipped(slot) {
+    const item = playerEquipped[slot];
+    if (item) {
+        item.level++;
+        showMiningToast(`${item.name} UPGRADED TO LVL ${item.level}`, "#38ef7d");
+        renderEquipped();
+    }
+}
+
+function uninstallModule(slot) {
+    const item = playerEquipped[slot];
+    if (item) {
+        playerInventory.push(item); // ส่งกลับเข้าคลัง
+        playerEquipped[slot] = null; // ว่างสล็อต
+        showMiningToast(`UNINSTALLED ${item.name}`, "#ff4b2b");
+        renderHangar();
+    }
+}
+
+function equipModule(itemId) {
+    const itemIdx = playerInventory.findIndex(i => i.id === itemId);
+    const item = playerInventory[itemIdx];
+    
+    // ถ้ามีของเก่าอยู่ ให้ถอดออกก่อน
+    if (playerEquipped[item.type]) {
+        playerInventory.push(playerEquipped[item.type]);
+    }
+
+    playerEquipped[item.type] = item; // ติดตั้ง
+    playerInventory.splice(itemIdx, 1); // ลบออกจากคลัง
+    
+    showMiningToast(`INSTALLED ${item.name}`, "#00d2ff");
+    renderHangar();
+}
+
+
 
 
 
