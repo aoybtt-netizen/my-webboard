@@ -810,7 +810,7 @@ button:hover { opacity: 0.8; }
 
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
     <div class="glass-panel hangar-panel" onclick="event.stopPropagation()">
-        <button class="close-btn-fixed" onclick="document.getElementById('ship-menu').style.display='none'">×</button>
+        <button id="multi-action-btn" class="close-btn-fixed" onclick="handleMenuAction()">×</button>
         <div id="ship-main-view">
             <div class="menu-header">
                 <h3><i class="fas fa-ship"></i> SHIP MODULAR SYSTEM</h3>
@@ -837,7 +837,6 @@ button:hover { opacity: 0.8; }
 
         <div id="ship-category-view" style="display: none;">
             <div class="menu-header">
-                <button class="back-btn" onclick="backToMain()"><i class="fas fa-arrow-left"></i></button>
                 <h3 id="view-title">CATEGORY</h3>
             </div>
 
@@ -3027,19 +3026,25 @@ function equipModule(itemId) {
 }
 
 // --- การทำงานของหน้าต่าง ---
+
+function updateMenuIcon(isCategoryView) {
+    const btn = document.getElementById('multi-action-btn');
+    if (isCategoryView) {
+        btn.innerHTML = '<i class="fas fa-arrow-left"></i>'; // เปลี่ยนเป็นลูกศรย้อนกลับ
+        btn.style.borderColor = "var(--neon-blue)"; // เปลี่ยนสีขอบให้เด่นขึ้น
+    } else {
+        btn.innerHTML = '×'; // กลับเป็นเครื่องหมายกากบาท
+        btn.style.borderColor = "rgba(255, 255, 255, 0.3)";
+    }
+}
+
 function openCategory(type) {
     currentCat = type;
     document.getElementById('ship-main-view').style.display = 'none';
     document.getElementById('ship-category-view').style.display = 'flex';
-    document.getElementById('view-title').innerText = type.toUpperCase() + " SYSTEM";
     
+    updateMenuIcon(true);
     renderCategoryContent();
-}
-
-function backToMain() {
-    document.getElementById('ship-main-view').style.display = 'block';
-    document.getElementById('ship-category-view').style.display = 'none';
-    document.getElementById('item-stat-overlay').style.display = 'none';
 }
 
 // --- การวาดเนื้อหาภายใน ---
