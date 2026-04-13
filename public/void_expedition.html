@@ -440,6 +440,76 @@ button:hover { opacity: 0.8; }
 
 
 
+#module-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.module-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.module-item:hover {
+    background: rgba(0, 210, 255, 0.1);
+    border-color: var(--neon-blue);
+    transform: translateY(-2px);
+}
+
+.module-item i {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+    color: var(--neon-blue);
+}
+
+/* จุดบอกเลเวล */
+.lvl-dots {
+    display: flex;
+    gap: 3px;
+    margin-top: 5px;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+}
+
+.dot.active {
+    background: var(--neon-green);
+    box-shadow: 0 0 5px var(--neon-green);
+}
+
+.upgrade-confirm-btn {
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--neon-green);
+    color: var(--neon-green);
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    transition: 0.3s;
+}
+
+.upgrade-confirm-btn:hover {
+    background: var(--neon-green);
+    color: black;
+}
+
 
 
     </style>
@@ -624,17 +694,60 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
+
+
+
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
-        <div class="glass-panel">
-            <h3>MODULAR SYSTEM</h3>
-            <div id="module-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px;">
-                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">STORAGE</div>
-                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">ENGINE</div>
-                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">DRILL</div>
-                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">POWER</div>
+    <div class="glass-panel" onclick="event.stopPropagation()">
+        <div class="menu-header">
+            <h3><i class="fas fa-microchip"></i> MODULAR SYSTEM</h3>
+            <button class="close-btn" onclick="document.getElementById('ship-menu').style.display='none'">×</button>
+        </div>
+
+        <div id="module-grid">
+            <div class="module-item" onclick="selectModule('storage')">
+                <i class="fas fa-box"></i>
+                <span>STORAGE</span>
+                <div class="lvl-dots" id="lvl-storage"></div>
+            </div>
+            <div class="module-item" onclick="selectModule('engine')">
+                <i class="fas fa-bolt"></i>
+                <span>ENGINE</span>
+                <div class="lvl-dots" id="lvl-engine"></div>
+            </div>
+            <div class="module-item" onclick="selectModule('drill')">
+                <i class="fas fa-hammer"></i>
+                <span>DRILL</span>
+                <div class="lvl-dots" id="lvl-drill"></div>
+            </div>
+            <div class="module-item" onclick="selectModule('power')">
+                <i class="fas fa-battery-full"></i>
+                <span>POWER</span>
+                <div class="lvl-dots" id="lvl-power"></div>
             </div>
         </div>
+
+        <hr style="border: 0.5px solid rgba(0,210,255,0.2); margin: 15px 0;">
+
+        <div id="module-detail" style="display: none;">
+            <h4 id="mod-name" style="color: var(--neon-blue);">MODULE NAME</h4>
+            <p id="mod-desc" style="font-size: 0.8rem; opacity: 0.7;">Description of the module effect.</p>
+            
+            <div class="upgrade-info">
+                <div class="stat-change">
+                    <span id="stat-now">100</span> <i class="fas fa-arrow-right"></i> <span id="stat-next" style="color: var(--neon-green);">150</span>
+                </div>
+                <div class="cost-box">
+                    COST: <span id="mod-cost" style="color: #ffcc00;">500 METAL</span>
+                </div>
+            </div>
+
+            <button class="upgrade-confirm-btn" onclick="processUpgrade()">
+                UPGRADE SYSTEM
+            </button>
+        </div>
     </div>
+</div>
 	
 	
 	
@@ -938,6 +1051,24 @@ button:hover { opacity: 0.8; }
 
 		// ตัวแปรสำหรับระบบเศษแร่กระเด็น
 		let particles = [];
+		
+		
+		let shipStats = {
+			storage: 1,
+			engine: 1,
+			drill: 1,
+			power: 1
+		};
+		// ฐานข้อมูลการอัปเกรด
+		const moduleConfig = {
+			storage: { name: "CARGO CAPACITY", desc: "เพิ่มพื้นที่เก็บแร่ดิบและวัสดุ", baseStat: 100, step: 50, costBase: 200 },
+			engine: { name: "THRUSTER OUTPUT", desc: "ลดเวลาในการเดินทางระหว่างดวงดาว", baseStat: 10, step: 2, costBase: 300 },
+			drill: { name: "EXCAVATION POWER", desc: "เพิ่มความเร็วการขุดและลดการสูญเสียพลังงาน", baseStat: 5, step: 5, costBase: 250 },
+			power: { name: "ENERGY CORE", desc: "เพิ่มขีดจำกัดพลังงานสูงสุดของยาน", baseStat: 100, step: 100, costBase: 400 }
+		};
+
+		let selectedModKey = null;
+
 
 
 
@@ -2580,6 +2711,65 @@ function spawnAlien() {
 
     // เพิ่มเข้าไปในตัวแปร array 'aliens' ที่เราประกาศไว้ด้านบนสุด
     aliens.push(newAlien);
+}
+
+
+
+//เมนูยาน
+function selectModule(key) {
+    selectedModKey = key;
+    const config = moduleConfig[key];
+    const lvl = shipStats[key];
+    
+    document.getElementById('module-detail').style.display = 'block';
+    document.getElementById('mod-name').innerText = config.name;
+    document.getElementById('mod-desc').innerText = config.desc;
+    
+    // คำนวณค่าพลัง
+    const currentVal = config.baseStat + (lvl - 1) * config.step;
+    const nextVal = config.baseStat + lvl * config.step;
+    const cost = lvl * config.costBase; // ยิ่งเลเวลสูงยิ่งแพง
+    
+    document.getElementById('stat-now').innerText = currentVal;
+    document.getElementById('stat-next').innerText = nextVal;
+    document.getElementById('mod-cost').innerText = `${cost} METAL`;
+
+    // อัปเดตจุดเลเวล (เพื่อให้เห็นภาพ)
+    renderLvlDots();
+}
+
+function renderLvlDots() {
+    ['storage', 'engine', 'drill', 'power'].forEach(key => {
+        const container = document.getElementById(`lvl-${key}`);
+        container.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const dot = document.createElement('div');
+            dot.className = `dot ${i < shipStats[key] ? 'active' : ''}`;
+            container.appendChild(dot);
+        }
+    });
+}
+
+function processUpgrade() {
+    if (!selectedModKey) return;
+    
+    const lvl = shipStats[selectedModKey];
+    const cost = lvl * moduleConfig[selectedModKey].costBase;
+    
+    // สมมติว่ามีตัวแปรเก็บแร่ชื่อ userInventory.metal
+    if (userInventory.metal >= cost) {
+        if (shipStats[selectedModKey] < 5) { // Max level 5
+            userInventory.metal -= cost;
+            shipStats[selectedModKey]++;
+            showMiningToast(`${moduleConfig[selectedModKey].name} UPGRADED!`, "#38ef7d");
+            selectModule(selectedModKey); // รีเฟรชหน้าจอ
+            updateResourceUI(); // ฟังก์ชันอัปเดตตัวเลขแร่หน้าจอหลัก
+        } else {
+            showMiningToast("MAX LEVEL REACHED", "#ff4b2b");
+        }
+    } else {
+        showMiningToast("NOT ENOUGH METAL", "#ff4b2b");
+    }
 }
 
 
