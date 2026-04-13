@@ -3015,11 +3015,15 @@ function backToMain() {
 // ฟังก์ชันวาดรายการในหน้า Category (รูปที่ 1)
 function renderCategoryContent() {
     const equipped = playerEquipped[currentCat];
-    
-    // 1. อัปเดตส่วนบน (Equipped)
     const eqBox = document.getElementById('equipped-box');
+
+    if (!eqBox) return;
+
     if (equipped) {
-        const imgSrc = itemImages[equipped.imgKey] || 'images/default.png';
+        // 🚩 เปลี่ยนจาก itemImages เป็น imageSources
+        const imgKey = equipped.imgKey || 'default';
+        const imgSrc = imageSources[imgKey] || imageSources['default'] || 'images/default.png';
+
         eqBox.innerHTML = `
             <div class="item-name-tag">${equipped.name}</div>
             <div class="item-main-content">
@@ -3032,25 +3036,33 @@ function renderCategoryContent() {
                 </div>
             </div>
             <div class="button-row">
-                <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">ถอนการติดตั้ง</button>
-                <button class="btn-wire btn-green" onclick="upgradeItem()">อัปเกรด</button>
+                <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">ปุ่มถอน</button>
+                <button class="btn-wire btn-green" onclick="upgradeItem()">ปุ่มอัพเกรด</button>
+            </div>
+        `;
+    } else {
+        eqBox.innerHTML = `
+            <div class="item-name-tag">EMPTY SLOT</div>
+            <div class="item-main-content">
+                <div class="img-square" style="opacity:0.3;">NO ITEM</div>
+                <div class="status-box" style="opacity:0.5;">กรุณาติดตั้งอุปกรณ์</div>
             </div>
         `;
     }
 
-    // 2. อัปเดตส่วนล่าง (Inventory List) - บังคับเรียงลงล่าง
+    // --- ส่วน Inventory List ด้านล่าง ---
     const invArea = document.getElementById('inventory-list-area');
-    invArea.style.display = 'flex';
-    invArea.style.flexDirection = 'column'; // 🚩 บังคับเรียงลงล่าง
     invArea.innerHTML = '';
-
     const items = playerInventory.filter(i => i.type === currentCat);
 
     items.forEach(item => {
-        const imgSrc = itemImages[item.imgKey] || 'images/default.png';
+        // 🚩 เปลี่ยนเป็น imageSources เช่นกัน
+        const imgKey = item.imgKey || 'default';
+        const imgSrc = imageSources[imgKey] || imageSources['default'] || 'images/default.png';
+
         const row = document.createElement('div');
         row.className = 'inv-item-card';
-        row.style.width = '100%'; // 🚩 บังคับเต็มความกว้าง
+        row.style.width = '100%';
         row.onclick = () => openItemPopup(item); 
         row.innerHTML = `
             <div class="inv-img-small">
@@ -3058,7 +3070,7 @@ function renderCategoryContent() {
             </div>
             <div class="status-box">
                 <strong>${item.name}</strong><br>
-                <span style="font-size:0.7rem; color:#ffcc00;">LVL: ${item.level} (Status เบื้องต้น)</span>
+                <span style="font-size:0.7rem; color:#ffcc00;">LVL: ${item.level}</span>
             </div>
         `;
         invArea.appendChild(row);
@@ -3068,7 +3080,7 @@ function renderCategoryContent() {
 // ฟังก์ชันเปิด Popup รายละเอียด (รูปที่ 2)
 function openItemPopup(item) {
     const popup = document.getElementById('item-detail-popup');
-    const imgSrc = itemImages[item.imgKey] || 'images/default.png';
+    const imgSrc = imageSources[item.imgKey] || imageSources['default'] || 'images/default.png';
     
     popup.innerHTML = `
         <div class="wireframe-box popup-content">
