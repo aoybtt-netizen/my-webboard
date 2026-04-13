@@ -2772,21 +2772,6 @@ function processUpgrade() {
 }
 
 
-// 1. ข้อมูลจำลอง อุปกรณ์ที่ติดตั้งอยู่
-let playerEquipped = {
-    drill: { id: 'd1', name: 'TITANIUM AUGER', level: 1, type: 'drill' },
-    engine: { id: 'e1', name: 'ION THRUSTER', level: 2, type: 'engine' },
-    storage: null // สล็อตว่าง
-};
-
-// 2. คลังไอเทมจำลอง
-let playerInventory = [
-    { id: 'd2', name: 'DIAMOND BIT', level: 1, type: 'drill' },
-    { id: 'd3', name: 'PLASMA DRILL', level: 3, type: 'drill' },
-    { id: 's1', name: 'EXPANDED CARGO', level: 1, type: 'storage' },
-    { id: 'e2', name: 'WARP DRIVE', level: 1, type: 'engine' }
-];
-
 // ฟังก์ชันวาดหน้าจอทั้งหมด
 function renderHangar() {
     renderEquipped();
