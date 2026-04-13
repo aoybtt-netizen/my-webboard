@@ -3026,6 +3026,16 @@ function equipModule(itemId) {
 }
 
 // --- การทำงานของหน้าต่าง ---
+function handleMenuAction() {
+    const mainView = document.getElementById('ship-main-view');
+    const menu = document.getElementById('ship-menu');
+    if (mainView.style.display === 'none') {
+        backToMain();
+    } else {
+        menu.style.display = 'none';
+    }
+}
+
 function updateMenuIcon(isCategoryView) {
     const btn = document.getElementById('multi-action-btn');
     if (isCategoryView) {
