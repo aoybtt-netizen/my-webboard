@@ -3056,6 +3056,14 @@ function openCategory(type) {
     renderCategoryContent();
 }
 
+function backToMain() {
+    document.getElementById('ship-main-view').style.display = 'block';
+    document.getElementById('ship-category-view').style.display = 'none';
+    
+    updateMenuIcon(false); // 🚩 เปลี่ยนไอคอนกลับเป็น Close (×)
+    closePopup();
+}
+
 // --- การวาดเนื้อหาภายใน ---
 // ฟังก์ชันวาดรายการในหน้า Category (รูปที่ 1)
 function renderCategoryContent() {
