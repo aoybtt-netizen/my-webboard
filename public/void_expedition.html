@@ -469,15 +469,21 @@ button:hover { opacity: 0.8; }
     border-color: #ff4b2b;
     color: white;
 }
-.hangar-panel { width: 95%; max-width: 500px; height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
+.hangar-panel {
+    border-radius: 20px; /* โค้งมนแบบพรีเมียม */
+    overflow: hidden;    /* กันเนื้อหาภายในล้นขอบที่โค้ง */
+}
 
 /* Category Grid */
 .category-grid { display: grid; grid-template-columns: 1fr; gap: 15px; padding: 10px; }
-.cat-card { 
-    background: rgba(255,255,255,0.05); border: 1px solid var(--neon-blue); 
-    border-radius: 10px; display: flex; align-items: center; padding: 15px; cursor: pointer;
+.cat-card {
+    border-radius: 12px;
+    margin-bottom: 10px;
 }
-.img-placeholder { width: 60px; height: 60px; background: #333; border: 1px solid #555; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; }
+.img-placeholder, .img-square {
+    border-radius: 10px; /* โค้งรับกับรูปภาพด้านใน */
+    overflow: hidden;
+}
 
 /* Equipped Focus Area */
 .equipped-focus { background: rgba(0,210,255,0.05); border-radius: 15px; padding: 15px; margin-bottom: 10px; }
@@ -505,10 +511,8 @@ button:hover { opacity: 0.8; }
 
 /* กรอบไอเทมสไตล์ที่วาดมา */
 .wireframe-box {
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    padding: 10px;
-    margin-bottom: 15px;
-    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.2); /* ให้เส้นดูซอฟต์ลงนิดนึง */
 }
 
 .item-name-tag {
@@ -539,11 +543,7 @@ button:hover { opacity: 0.8; }
 }
 
 .status-box {
-    flex-grow: 1;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 10px;
-    font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
 }
 
 .button-row {
@@ -552,12 +552,8 @@ button:hover { opacity: 0.8; }
 }
 
 .btn-wire {
-    flex: 1;
-    padding: 8px;
-    border: none;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.7rem;
-    cursor: pointer;
+    border-radius: 6px; /* โค้งนิดๆ ให้กดง่ายขึ้น */
+    transition: 0.2s;
 }
 
 /* สีปุ่มตามแบบ */
