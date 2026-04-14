@@ -1380,7 +1380,12 @@ window.onload = async () => {
 
             // อัปเดตข้อมูลในหน้า Profile Modal
             document.getElementById('profile-full-name').innerText = nick;
-			document.getElementById('display-gc').innerText = data.coins || 0;
+			if(document.getElementById('display-gc')) {
+                document.getElementById('display-gc').innerText = (data.coinsgc || 0).toLocaleString();
+            }
+			if(document.getElementById('display-usdt')) {
+                document.getElementById('display-usdt').innerText = (data.gameUSDT || 0).toLocaleString();
+            }
 			document.getElementById('display-energy-small').innerText = (data.energy || 0) + "%";
             document.getElementById('prof-metal').innerText = data.metal.toLocaleString();
             document.getElementById('prof-energy').innerText = data.energy + "%";

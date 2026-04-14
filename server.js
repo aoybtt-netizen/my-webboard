@@ -1312,10 +1312,12 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
         const newUser = {
             username: guestUsername,
             gameNickname: uniqueNickname,
-            metal: 500,
+            metal: 0,
+            coinsgc: 0,     // 🚩 เปลี่ยนชื่อจาก coins เป็น coinsgc
+            gameUSDT: 0,    // 🚩 เพิ่มสกุลเงินใหม่
             energy: 100,
-			currentQ: 0, 
-			currentR: 0,
+            currentQ: 0, 
+            currentR: 0,
             isGuest: true,
             createdAt: Date.now()
         };
@@ -1365,10 +1367,12 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
 
         res.json({
             gameNickname: user.gameNickname,
-            metal: user.metal ?? 500,
+            metal: user.metal ?? 0,
             energy: user.energy ?? 100,
-			currentQ: user.currentQ ?? 0,
-			currentR: user.currentR ?? 0,
+            coinsgc: user.coinsgc ?? 0,    // 🚩 ส่งค่า coinsgc ออกไป
+            gameUSDT: user.gameUSDT ?? 0,  // 🚩 ส่งค่า gameUSDT ออกไป
+            currentQ: user.currentQ ?? 0,
+            currentR: user.currentR ?? 0,
             drillLevel: user.drillLevel ?? 1
         });
     } catch (e) {
