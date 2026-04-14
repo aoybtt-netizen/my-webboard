@@ -1206,19 +1206,31 @@ button:hover { opacity: 0.8; }
 
 		let selectedModKey = null;
 		
-		// 1. ข้อมูลจำลอง อุปกรณ์ที่ติดตั้งอยู่
-		let playerEquipped = {
-			drill: { id: 'd1', name: 'TITANIUM AUGER', level: 1, type: 'drill', imgKey: 'engineDrill1' },
-			engine: { id: 'e1', name: 'ION THRUSTER', level: 2, type: 'engine', imgKey: 'engineShip1' },
-			storage: { id: 's1', name: 'BASIC CARGO', level: 1, type: 'storage', imgKey: 'Storage' }
+		let playerEquipped = {};
+
+		// 2. ข้อมูล Cargo (สเตตัสติดกับยาน ไม่ใช่ไอเทมสวมใส่)
+		let shipCargoStats = {
+			capacity: 10, // 10T
+			level: 1,
+			maxUpgrades: 10
 		};
 
-		// 2. คลังไอเทมจำลอง
-		let playerInventory = [
-			{ id: 'e2', name: 'DRILL ENGINE V2', level: 1, type: 'engine', imgKey: 'engineDrill1' },
-			{ id: 'e3', name: 'STARSHIP DRIVE', level: 3, type: 'engine', imgKey: 'engineShip3' },
-			{ id: 's2', name: 'MEGA STORAGE', level: 1, type: 'storage', imgKey: 'Storage' }
-		];
+		// 3. คลังไอเทมเริ่มต้น (ชิปพลังงาน 10 อัน)
+		let playerInventory = [];
+
+		// ฟังก์ชันสำหรับแจกไอเทมเริ่มต้น (Energy Chips 10 ชิ้น)
+		function initStartingInventory() {
+			for(let i = 0; i < 10; i++) {
+				playerInventory.push({
+					id: 'chip_' + Date.now() + i,
+					name: 'STD ENERGY CHIP',
+					type: 'energy chip',
+					energyValue: 100,
+					isLocked: true, // 🚩 ขายไม่ได้
+					imgKey: 'engineDrill3' // สมมติรูปชิป
+				});
+			}
+		}
 
 
 
@@ -1362,45 +1374,66 @@ window.onload = async () => {
     async function checkGameProfile() {
     try {
         const res = await fetch(`${API_BASE}/game/stats/${currentUser}`);
-		if (res.status === 404) {
-            console.warn("User not found in this server, clearing local data...");
+        if (res.status === 404) {
+            console.warn("User not found, clearing local data...");
             localStorage.removeItem('username');
             localStorage.removeItem('gameNickname');
             location.reload();
             return;
         }
+        
         const data = await res.json();
         
         if (!data.gameNickname) {
             document.getElementById('nickname-modal').style.display = 'flex';
         } else {
-            // อัปเดตข้อมูลบน HUD
+            // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD (ของเดิมของคุณ) ---
             const nick = data.gameNickname.toUpperCase();
             document.getElementById('display-nickname').innerText = nick;
-
-            // อัปเดตข้อมูลในหน้า Profile Modal
             document.getElementById('profile-full-name').innerText = nick;
-			if(document.getElementById('display-gc')) {
+            
+            if(document.getElementById('display-gc')) {
                 document.getElementById('display-gc').innerText = (data.coinsgc || 0).toLocaleString();
             }
-			if(document.getElementById('display-usdt')) {
+            if(document.getElementById('display-usdt')) {
                 document.getElementById('display-usdt').innerText = (data.gameUSDT || 0).toLocaleString();
             }
-			document.getElementById('display-energy-small').innerText = (data.energy || 0) + "%";
-            document.getElementById('prof-metal').innerText = data.metal.toLocaleString();
-            document.getElementById('prof-energy').innerText = data.energy + "%";
+            
+            document.getElementById('display-energy-small').innerText = (data.energy || 0) + "%";
+            document.getElementById('prof-metal').innerText = (data.metal || 0).toLocaleString();
+            document.getElementById('prof-energy').innerText = (data.energy || 0) + "%";
 
-            // เช็คประเภทบัญชี
+            // --- [2] โหลดระบบไอเทม & Cargo (ส่วนที่เพิ่มใหม่) ---
+            // โหลดไอเทมที่ใส่อยู่
+            if (data.equipped) {
+                playerEquipped = data.equipped;
+            }
+            
+            // โหลดไอเทมในคลัง (รวม Energy Chip 10 อันที่เซิร์ฟเวอร์แจก)
+            if (data.inventory) {
+                playerInventory = data.inventory;
+            }
+
+            // โหลดสถานะ Cargo (ส่วนที่ตกหล่น)
+            if (data.cargoStats) {
+                // สมมติชื่อตัวแปรฝั่ง Client คือ shipCargoStats
+                shipCargoStats = data.cargoStats;
+            }
+
+            // --- [3] จัดการตำแหน่ง & ประเภทบัญชี (ของเดิมของคุณ) ---
             const isGuest = currentUser.startsWith('GUEST_');
             const tag = document.getElementById('account-type-tag');
-            tag.innerText = isGuest ? "GUEST ACCOUNT" : "VERIFIED PILOT (GOOGLE)";
-            tag.style.color = isGuest ? "#ffc107" : "var(--neon-green)";
-			
-			playerQ = data.currentQ || 0;
-			playerR = data.currentR || 0;
-			if (typeof renderGrid === 'function') renderGrid();
+            if (tag) {
+                tag.innerText = isGuest ? "GUEST ACCOUNT" : "VERIFIED PILOT (GOOGLE)";
+                tag.style.color = isGuest ? "#ffc107" : "var(--neon-green)";
+            }
+            
+            playerQ = data.currentQ || 0;
+            playerR = data.currentR || 0;
+            
+            if (typeof renderGrid === 'function') renderGrid();
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error("Profile Load Error:", e); }
 }
 
         async function saveGameNickname() {
@@ -3188,11 +3221,11 @@ function showItemStats(item) {
 // ฟังก์ชันอัปเกรด (จำลอง)
 function upgradeItem() {
     const item = playerEquipped[currentCat];
-    if(item) {
-        item.level++;
-        showMiningToast("UPGRADE SUCCESSFUL", "#38ef7d");
-        renderCategoryContent();
+    if (item.level >= item.maxUpgrades) {
+        showMiningToast("MAX LEVEL REACHED", "#ff4b2b");
+        return;
     }
+    // ตรวจสอบแร่ (Metal/Energy/Tech) ว่าพอไหม...
 }
 
 

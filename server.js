@@ -1296,37 +1296,57 @@ app.post('/api/:mode/game/set-nickname', async (req, res) => {
 // 2. API สร้าง Guest - เพิ่ม :mode
 app.post('/api/:mode/auth/guest-init', async (req, res) => {
     const { mode } = req.params;
-    const db = getDB(mode); // 🚩 ใช้ DB ตามโหมด
+    const db = getDB(mode);
 
     try {
-        let uniqueNickname = "";
-        let isUnique = false;
+        // 1. สร้างชุดไอเทมสวมใส่เริ่มต้น (Equipped)
+        const initialEquipped = {
+            engine: { 
+                id: 'start_eng_01', name: 'STANDARD SHIP ENGINE', type: 'ship engine', imgKey: 'engineShip1',
+                level: 1, maxUpgrades: 2, durability: 100, power: 100, consumption: 100,
+                repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
+            },
+            drill: { 
+                id: 'start_drill_01', name: 'STANDARD DRILL ENGINE', type: 'drill engine', imgKey: 'engineDrill1',
+                level: 1, maxUpgrades: 2, durability: 100, heatResist: 0, acidResist: 0, scanRate: 0, 
+                energyMax: 100, consumption: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
+            },
+            barrier: { 
+                id: 'start_bar_01', name: 'STD BARRIER SHIELD CARD', type: 'card barrier', imgKey: 'engineDrill2',
+                level: 1, maxUpgrades: 2, shield: 100, recharge: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
+            }
+        };
 
-        while (!isUnique) {
-            uniqueNickname = generateRandomCallsign();
-            const exists = await db.findOne({ gameNickname: uniqueNickname });
-            if (!exists) isUnique = true;
+        // 2. สร้างชุดไอเทมในคลัง (Inventory) เช่น Energy Chip 10 อัน
+        let initialInventory = [];
+        for(let i = 0; i < 10; i++) {
+            initialInventory.push({
+                id: `chip_${Date.now()}_${i}`, name: 'STD ENERGY CHIP', type: 'energy chip', 
+                energyValue: 100, isLocked: true, imgKey: 'engineDrill3' 
+            });
         }
 
         const guestUsername = `GUEST_${Date.now()}`;
         const newUser = {
             username: guestUsername,
-            gameNickname: uniqueNickname,
+            gameNickname: "GENERATING...", // จะไปเปลี่ยนตอนตั้งชื่อ
             metal: 0,
-            coinsgc: 0,     // 🚩 เปลี่ยนชื่อจาก coins เป็น coinsgc
-            gameUSDT: 0,    // 🚩 เพิ่มสกุลเงินใหม่
+            coinsgc: 0,
+            gameUSDT: 0,
             energy: 100,
-            currentQ: 0, 
+            currentQ: 0,
             currentR: 0,
+            // 🚩 ยัดข้อมูลไอเทมลง Database ตรงนี้
+            equipped: initialEquipped,
+            inventory: initialInventory,
+            cargoStats: { capacity: 10, level: 1, maxUpgrades: 10 },
             isGuest: true,
             createdAt: Date.now()
         };
 
         await db.insertOne(newUser);
-        res.json({ success: true, username: guestUsername, nickname: uniqueNickname });
-    } catch (e) {
-        res.status(500).json({ success: false });
-    }
+        res.json({ success: true, username: guestUsername });
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 function generateRandomCallsign() {
@@ -1366,15 +1386,18 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
         if (!user) return res.status(404).json({ message: "User not found" });
 
         res.json({
-            gameNickname: user.gameNickname,
-            metal: user.metal ?? 0,
-            energy: user.energy ?? 100,
-            coinsgc: user.coinsgc ?? 0,    // 🚩 ส่งค่า coinsgc ออกไป
-            gameUSDT: user.gameUSDT ?? 0,  // 🚩 ส่งค่า gameUSDT ออกไป
-            currentQ: user.currentQ ?? 0,
-            currentR: user.currentR ?? 0,
-            drillLevel: user.drillLevel ?? 1
-        });
+			gameNickname: user.gameNickname,
+			metal: user.metal ?? 0,
+			energy: user.energy ?? 100,
+			coinsgc: user.coinsgc ?? 0,
+			gameUSDT: user.gameUSDT ?? 0,
+			currentQ: user.currentQ ?? 0,
+			currentR: user.currentR ?? 0,
+			// 🚩 ส่งข้อมูลพวกนี้กลับไปด้วย
+			equipped: user.equipped || {},
+			inventory: user.inventory || [],
+			cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 }
+		});
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
