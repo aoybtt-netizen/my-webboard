@@ -1146,7 +1146,11 @@ button:hover { opacity: 0.8; }
 			visitedTiles.push("0,0");
 			localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
 		}
-		
+		let shipStats = {
+			durability: 100,
+			maxDurability: 100,
+			repairCost: { metal: 1, energy: 1, tech: 1 }
+		};
 		
 		let miningCanvas;
 		let mctx;
@@ -1404,7 +1408,10 @@ window.onload = async () => {
             document.getElementById('prof-metal').innerText = (data.metal || 0).toLocaleString();
             document.getElementById('prof-energy').innerText = (data.energy || 0) + "%";
 
-            // --- [2] โหลดระบบไอเทม & Cargo (ส่วนที่เพิ่มใหม่) ---
+            //[2] โหลดระบบไอเทม & Cargo
+			if (data.shipStats) {
+				shipStats = data.shipStats;
+			}
             // โหลดไอเทมที่ใส่อยู่
             if (data.equipped) {
                 playerEquipped = data.equipped;
@@ -2102,29 +2109,22 @@ function drawWarpEffect() {
 }
 
 function triggerDamage(amount) {
-    // 1. ลดค่าความทนทานของอุปกรณ์ (เช่น Barrier หรือ Ship Engine)
-    // ตัวอย่าง: ลดความทนทานของเกราะตามความแรงที่ชน
-    if (playerEquipped.barrier) {
-        playerEquipped.barrier.shield -= amount;
-        
-        // ถ้าเกราะหมด ให้ไปลดที่ตัวเครื่องยนต์ต่อ
-        if (playerEquipped.barrier.shield < 0) {
-            playerEquipped.engine.durability += playerEquipped.barrier.shield; // เอาส่วนต่างที่ติดลบไปหักออก
-            playerEquipped.barrier.shield = 0;
-        }
-    } else {
-        // ถ้าไม่มีเกราะ ลดความทนทานเครื่องยนต์ตรงๆ
-        playerEquipped.engine.durability -= amount;
+    if (!shipStats) return;
+
+    // 1. ลดความทนทานที่ "ตัวยาน" (Ship Stats)
+    shipStats.durability -= amount;
+
+    // 2. ถ้าเลือดตัวยานเหลือน้อยกว่า 0 (ยานพัง)
+    if (shipStats.durability <= 0) {
+        shipStats.durability = 0;
+        handleShipDestroyed(); // ฟังก์ชันเมื่อยานพัง (เช่น ส่งกลับสถานี)
     }
 
-    // 2. เอฟเฟกต์หน้าจอสั่น (Shake Effect)
-    // ยิ่งโดนหนัก หน้าจอยิ่งสั่นแรง
+    // --- ส่วนเอฟเฟกต์หน้าจอสั่นและตัวเลขดาเมจ (เหมือนเดิม) ---
+    createFloatingText(shipX, travelCanvas.height - 150, `-${amount}`);
     const shakeIntensity = amount * 5; 
     document.body.style.transform = `translate(${Math.random() * shakeIntensity}px, ${Math.random() * shakeIntensity}px)`;
     setTimeout(() => document.body.style.transform = 'none', 100);
-
-    // 3. แจ้งเตือนผู้เล่น (ถ้าต้องการ)
-    console.log(`COLLISION! Damage: ${amount}`);
 }
 
 function getWeightedAsteroidType() {

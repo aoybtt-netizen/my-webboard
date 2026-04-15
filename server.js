@@ -1294,6 +1294,7 @@ app.post('/api/:mode/game/set-nickname', async (req, res) => {
 });
 
 // 2. API สร้าง Guest - เพิ่ม :mode
+// ======== API สร้าง GUEST ใหม่ พร้อมไอเทมเริ่มต้น ========
 app.post('/api/:mode/auth/guest-init', async (req, res) => {
     const { mode } = req.params;
     const db = getDB(mode);
@@ -1302,44 +1303,84 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
         // 1. สร้างชุดไอเทมสวมใส่เริ่มต้น (Equipped)
         const initialEquipped = {
             engine: { 
-                id: 'start_eng_01', name: 'STANDARD SHIP ENGINE', type: 'ship engine', imgKey: 'engineShip1',
-                level: 1, maxUpgrades: 2, durability: 100, power: 100, consumption: 100,
-                repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
+                id: 'start_eng_01', 
+                name: 'STANDARD SHIP ENGINE', 
+                type: 'ship engine', 
+                imgKey: 'engineShip1',
+                level: 1, 
+                maxUpgrades: 2, 
+                durability: 100, // ความทนทานเริ่มต้น 100
+                power: 100, 
+                consumption: 100,
+                repairCost: { metal: 1, energy: 1, tech: 1 }, 
+                isLocked: true 
             },
             drill: { 
-                id: 'start_drill_01', name: 'STANDARD DRILL ENGINE', type: 'drill engine', imgKey: 'engineDrill1',
-                level: 1, maxUpgrades: 2, durability: 100, heatResist: 0, acidResist: 0, scanRate: 0, 
-                energyMax: 100, consumption: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
+                id: 'start_drill_01', 
+                name: 'STANDARD DRILL ENGINE', 
+                type: 'drill engine', 
+                imgKey: 'engineDrill1',
+                level: 1, 
+                maxUpgrades: 2, 
+                durability: 100, // ความทนทานเริ่มต้น 100
+                heatResist: 0, 
+                acidResist: 0, 
+                scanRate: 0, 
+                energyMax: 100, 
+                consumption: 100, 
+                repairCost: { metal: 1, energy: 1, tech: 1 }, 
+                isLocked: true 
             },
             barrier: { 
-                id: 'start_bar_01', name: 'STD BARRIER SHIELD CARD', type: 'card barrier', imgKey: 'shield0',
-                level: 1, maxUpgrades: 2, shield: 100, recharge: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
+                id: 'start_bar_01', 
+                name: 'STD BARRIER SHIELD CARD', 
+                type: 'card barrier', 
+                imgKey: 'engineDrill2', // เปลี่ยนให้ตรงกับคีย์รูปภาพของคุณ
+                level: 1, 
+                maxUpgrades: 2, 
+                shield: 10,    // ปรับจาก 10 เป็น 100 ตามเกณฑ์ความทนทาน
+                recharge: 1,  // ปรับจาก 1 เป็น 100 (100%)
+                repairCost: { metal: 1, energy: 1, tech: 1 }, 
+                isLocked: true 
             }
         };
 
-        // 2. สร้างชุดไอเทมในคลัง (Inventory) เช่น Energy Chip 10 อัน
+        // 2. สร้างชุดไอเทมในคลัง (Inventory) แจกชิปพลังงาน 10 อัน
         let initialInventory = [];
+        const now = Date.now();
         for(let i = 0; i < 10; i++) {
             initialInventory.push({
-                id: `chip_${Date.now()}_${i}`, name: 'STD ENERGY CHIP', type: 'energy chip', 
-                energyValue: 100, isLocked: true, imgKey: 'engineDrill3' 
+                id: `chip_${now}_${i}`, 
+                name: 'STD ENERGY CHIP', 
+                type: 'energy chip', 
+                energyValue: 100, 
+                isLocked: true, // กำหนดให้ขายไม่ได้ตามโจทย์
+                imgKey: 'engineDrill3' 
             });
         }
 
         const guestUsername = `GUEST_${Date.now()}`;
         const newUser = {
             username: guestUsername,
-            gameNickname: "GENERATING...", // จะไปเปลี่ยนตอนตั้งชื่อ
+            gameNickname: "GENERATING...",
             metal: 0,
             coinsgc: 0,
             gameUSDT: 0,
             energy: 100,
-            currentQ: 0,
-            currentR: 0,
-            // 🚩 ยัดข้อมูลไอเทมลง Database ตรงนี้
+            
+            // 🚩 [เพิ่มส่วนนี้] สเตตัสหลักของยาน (แยกจากเครื่องยนต์)
+            shipStats: {
+                durability: 100,    // พลังชีวิตปัจจุบัน
+                maxDurability: 100, // พลังชีวิตสูงสุด
+                repairCost: { metal: 1, energy: 1, tech: 1 } // ค่าซ่อมตัวยาน
+            },
+
             equipped: initialEquipped,
             inventory: initialInventory,
             cargoStats: { capacity: 10, level: 1, maxUpgrades: 10 },
+            
+            currentQ: 0,
+            currentR: 0,
             isGuest: true,
             createdAt: Date.now()
         };
@@ -1396,7 +1437,8 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
 			// 🚩 ส่งข้อมูลพวกนี้กลับไปด้วย
 			equipped: user.equipped || {},
 			inventory: user.inventory || [],
-			cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 }
+			cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 },
+			shipStats: user.shipStats || { durability: 100, maxDurability: 100, repairCost: { metal: 1, energy: 1, tech: 1 } }
 		});
     } catch (e) {
         res.status(500).json({ error: e.message });
