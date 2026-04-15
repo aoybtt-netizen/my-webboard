@@ -2007,34 +2007,46 @@ let travelCanvas, tctx;
 function startTravel(targetQ, targetR) {
     const dist = getHexDistance(playerQ, playerR, targetQ, targetR);
     if (dist === 0) return;
-	const mainHud = document.querySelector('.hud-top');
-    if (mainHud) mainHud.style.display = 'none';
-	const distFromStation = getHexDistance(0, 0, targetQ, targetR); 
-    travelDangerLevel = Math.min(distFromStation, 10); 
-    if (travelDangerLevel < 1) travelDangerLevel = 1; // ขั้นต่ำคือ 1
-    
-    console.log(`Target Distance from Station: ${distFromStation}, Danger Level: ${travelDangerLevel}`);
 
-    // เซ็ตค่าเริ่มต้น
+    // ซ่อน HUD
+    const mainHud = document.querySelector('.hud-top');
+    if (mainHud) mainHud.style.display = 'none';
+
+    // คำนวณความยาก
+    const distFromStation = getHexDistance(0, 0, targetQ, targetR); 
+    travelDangerLevel = Math.min(distFromStation, 10); 
+    if (travelDangerLevel < 1) travelDangerLevel = 1;
+
+    // เซ็ตค่าเริ่มต้นการเดินทาง
     travelDistance = dist;
     totalTravelDistance = dist;
     travelGameActive = true;
     asteroids = [];
-    
+    travelParticles = []; // ล้างเอฟเฟกต์เก่า
+    floatingTexts = [];   // ล้างตัวเลขเก่า
+
+    // 🚩 [จุดสำคัญ] เซ็ตตำแหน่งเริ่มต้นของยานให้อยู่กลางจอ
+    // เพื่อไม่ให้ยาน "วาร์ป" มาจากตำแหน่งเดิมของเกมรอบที่แล้ว
+    shipX = window.innerWidth / 2;
+    targetX = window.innerWidth / 2;
+
     // เปลี่ยนหน้าจอ
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-travel').classList.add('active');
     closeStarDetail();
-	updateTravelHUD();
+    updateTravelHUD();
+
     // เริ่ม Loop เกม
     travelCanvas = document.getElementById('travel-canvas');
     tctx = travelCanvas.getContext('2d');
     travelCanvas.width = window.innerWidth;
     travelCanvas.height = window.innerHeight;
 
-    // การควบคุม (เลื่อนซ้ายขวา)
-    window.ontouchmove = (e) => { if(travelGameActive) shipX = e.touches[0].clientX; };
-    window.onmousemove = (e) => { if(travelGameActive) shipX = e.clientX; };
+    // 🚩 [แก้ไขตรงนี้] เปลี่ยนจาก shipX เป็น targetX เพื่อให้ระบบ Smooth Follow ทำงาน
+    window.ontouchmove = (e) => { if(travelGameActive) targetX = e.touches[0].clientX; };
+    window.onmousemove = (e) => { if(travelGameActive) targetX = e.clientX; };
+    // เพิ่มตอนจิ้มด้วย เพื่อความลื่นไหล
+    window.onmousedown = (e) => { if(travelGameActive) targetX = e.clientX; };
 
     requestAnimationFrame(updateTravel);
 }
