@@ -627,6 +627,88 @@ button:hover { opacity: 0.8; }
 
 
 
+/* --- Travel UI HUD --- */
+#travel-ui-overlay {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10; /* ให้อยู่เหนือ Canvas */
+    pointer-events: none; /* ยอมให้คลิกทะลุไปหา Canvas ได้ถ้าจำเป็น */
+    font-family: 'Orbitron', sans-serif; /* ใช้ฟอนต์ล้ำๆ */
+}
+
+.ship-status-hud {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 210, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);
+}
+
+.stat-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stat-bar-container i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+/* สีไอคอน */
+.icon-armor { color: #00d2ff; text-shadow: 0 0 5px #00d2ff; }
+.icon-hp { color: #ff4b2b; text-shadow: 0 0 5px #ff4b2b; }
+
+.stat-bar-bg {
+    width: 180px; /* ความกว้างหลอด */
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.3s ease-out; /* เวลาลดให้ดูสมูท */
+}
+
+/* สีหลอด */
+.armor-color {
+    background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+    box-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+}
+
+.hp-color {
+    background: linear-gradient(90deg, #ff4b2b, #ff0000);
+    box-shadow: 0 0 10px rgba(255, 75, 43, 0.5);
+}
+
+.bar-text {
+    font-size: 0.75rem;
+    color: white;
+    min-width: 65px;
+    text-align: right;
+    text-shadow: 0 0 2px rgba(255,255,255,0.5);
+}
+
+
+@keyframes pulse-red {
+   0% { box-shadow: 0 0 5px #ff4b2b; }
+   50% { box-shadow: 0 0 20px #ff0000; }
+   100% { box-shadow: 0 0 5px #ff4b2b; }
+ }
+
+
+
+
+
     </style>
 </head>
 <body>
@@ -881,7 +963,27 @@ button:hover { opacity: 0.8; }
 	
 	
 	<div id="view-travel" class="view">
-    <canvas id="travel-canvas"></canvas>
+	<div id="travel-ui-overlay">
+    <div class="ship-status-hud">
+        <div class="stat-bar-container armor-section">
+            <i class="fas fa-shield-alt icon-armor"></i>
+            <div class="stat-bar-bg">
+                <div id="ship-armor-bar" class="stat-bar-fill armor-color" style="width: 100%;"></div>
+            </div>
+            <span id="ship-armor-text" class="bar-text">100/100</span>
+        </div>
+        
+        <div class="stat-bar-container hp-section">
+            <i class="fas fa-heart icon-hp"></i>
+            <div class="stat-bar-bg">
+                <div id="ship-hp-bar" class="stat-bar-fill hp-color" style="width: 100%;"></div>
+            </div>
+            <span id="ship-hp-text" class="bar-text">100/100</span>
+        </div>
+    </div>
+</div>
+
+<canvas id="travel-canvas"></canvas>
     
     <div style="position: fixed; top: 30px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; pointer-events: none;">
         <div style="font-size: 0.8rem; color: var(--neon-blue); letter-spacing: 2px; margin-bottom: 5px;">HYPERSPACE TUNNEL</div>
@@ -2102,20 +2204,105 @@ function drawWarpEffect() {
     }
 }
 
-function triggerDamage(amount) {
+function updateTravelHUD() {
     if (!shipStats) return;
 
-    // 1. ลดความทนทานที่ "ตัวยาน" (Ship Stats)
-    shipStats.durability -= amount;
-
-    // 2. ถ้าเลือดตัวยานเหลือน้อยกว่า 0 (ยานพัง)
-    if (shipStats.durability <= 0) {
-        shipStats.durability = 0;
-        handleShipDestroyed(); // ฟังก์ชันเมื่อยานพัง (เช่น ส่งกลับสถานี)
+    // --- 1. อัปเดตหลอดเลือด (HP/Durability) ---
+    const hpBar = document.getElementById('ship-hp-bar');
+    const hpText = document.getElementById('ship-hp-text');
+    if (hpBar && hpText) {
+        const hpCurrent = shipStats.durability;
+        const hpMax = shipStats.durabilityMax || 100; // สมมติค่า Max เป็น 100 ถ้าไม่มี
+        const hpPercent = (hpCurrent / hpMax) * 100;
+        
+        hpBar.style.width = `${hpPercent}%`;
+        hpText.innerText = `${Math.round(hpCurrent)}/${hpMax}`;
+        
+        // แถม: ถ้าเลือดต่ำกว่า 30% ให้หลอดกะพริบสีแดง
+        if (hpPercent < 30) {
+            hpBar.style.animation = "pulse-red 1s infinite";
+        } else {
+            hpBar.style.animation = "none";
+        }
     }
 
-    // --- ส่วนเอฟเฟกต์หน้าจอสั่นและตัวเลขดาเมจ (เหมือนเดิม) ---
-    createFloatingText(shipX, travelCanvas.height - 150, `-${amount}`);
+    // --- 2. อัปเดตหลอดเกราะ (Armor/Shield) ---
+    const armorBar = document.getElementById('ship-armor-bar');
+    const armorText = document.getElementById('ship-armor-text');
+    const armorSection = document.querySelector('.armor-section');
+
+    // เช็คว่ามีติดตั้ง Barrier ไหม
+    if (playerEquipped && playerEquipped.barrier) {
+        if (armorSection) armorSection.style.display = 'flex'; // โชว์หลอด
+        
+        const armorCurrent = playerEquipped.barrier.shield;
+        const armorMax = 100; // ตามสเตตัสเริ่มต้นที่เราตั้งใน API
+        const armorPercent = (armorCurrent / armorMax) * 100;
+
+        if (armorBar && armorText) {
+            armorBar.style.width = `${armorPercent}%`;
+            armorText.innerText = `${Math.round(armorCurrent)}/${armorMax}`;
+        }
+    } else {
+        // ถ้าไม่มีเกราะ ให้ซ่อนแถบเกราะไปเลย
+        if (armorSection) armorSection.style.display = 'none';
+    }
+}
+
+function triggerDamage(amount) {
+    // Safety checks (ของเดิม)
+    if (!shipStats) return;
+
+    let remainingDamage = amount; // ดาเมจที่เหลือที่จะไปหักเลือด
+
+    console.log(`Incoming Damage: ${amount}`);
+
+    // --- 🚩 โลจิกใหม่: หักลบที่เกราะ (Barrier Shield) ก่อน ---
+    if (playerEquipped && playerEquipped.barrier && playerEquipped.barrier.shield > 0) {
+        const currentShield = playerEquipped.barrier.shield;
+        
+        if (currentShield >= remainingDamage) {
+            // เกราะพอรับดาเมจทั้งหมด
+            playerEquipped.barrier.shield -= remainingDamage;
+            console.log(`Shield absorbed ${remainingDamage} damage. Remaining Shield: ${playerEquipped.barrier.shield}`);
+            remainingDamage = 0; // ไม่เหลือดาเมจไปถึงเลือด
+        } else {
+            // เกราะรับได้แค่บางส่วน และเกราะแตก
+            remainingDamage -= currentShield;
+            playerEquipped.barrier.shield = 0;
+            console.log(`Shield BROKEN! ${remainingDamage} damage leaked through to hull.`);
+            
+            // เอฟเฟกต์เกราะแตก (ถ้ามี)
+            if (typeof createExplosion === 'function') {
+                createExplosion(shipX, travelCanvas.height - 120, 50, "#00d2ff"); // ระเบิดสีฟ้า
+            }
+        }
+    }
+
+    // --- 🚩 2. หักลบที่ตัวยาน (Ship Hull) ถ้าเหลือดาเมจ ---
+    if (remainingDamage > 0) {
+        shipStats.durability -= remainingDamage;
+        console.log(`Hull hit! HP remaining: ${shipStats.durability}`);
+
+        if (shipStats.durability <= 0) {
+            shipStats.durability = 0;
+            if (typeof handleShipDestroyed === 'function') handleShipDestroyed();
+        }
+    }
+
+    // --- 🚩 3. อัปเดตการแสดงผลบน HUD ทันที ---
+    updateTravelHUD();
+
+    // --- เอฟเฟกต์อื่นๆ (ของเดิม: เลขดาเมจ, หน้าจอสั่น) ---
+    if (typeof createFloatingText === 'function') {
+        createFloatingText(shipX, travelCanvas.height - 150, `-${amount}`);
+    }
+    
+    if (typeof createExplosion === 'function' && remainingDamage > 0) {
+        // ถ้าระเบิดโดนเนื้อยาน ให้เป็นสีเทา/ส้ม
+        createExplosion(shipX, travelCanvas.height - 120, amount * 10, "#888");
+    }
+
     const shakeIntensity = amount * 5; 
     document.body.style.transform = `translate(${Math.random() * shakeIntensity}px, ${Math.random() * shakeIntensity}px)`;
     setTimeout(() => document.body.style.transform = 'none', 100);
