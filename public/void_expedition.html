@@ -2009,7 +2009,7 @@ function startTravel(targetQ, targetR) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-travel').classList.add('active');
     closeStarDetail();
-
+	updateTravelHUD();
     // เริ่ม Loop เกม
     travelCanvas = document.getElementById('travel-canvas');
     tctx = travelCanvas.getContext('2d');
