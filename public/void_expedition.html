@@ -1993,6 +1993,8 @@ let travelCanvas, tctx;
 function startTravel(targetQ, targetR) {
     const dist = getHexDistance(playerQ, playerR, targetQ, targetR);
     if (dist === 0) return;
+	const mainHud = document.querySelector('.hud-top');
+    if (mainHud) mainHud.style.display = 'none';
 	const distFromStation = getHexDistance(0, 0, targetQ, targetR); 
     travelDangerLevel = Math.min(distFromStation, 10); 
     if (travelDangerLevel < 1) travelDangerLevel = 1; // ขั้นต่ำคือ 1
@@ -2344,6 +2346,10 @@ function getWeightedAsteroidType() {
 
 async function endTravel() {
     travelGameActive = false;
+	
+	const mainHud = document.querySelector('.hud-top');
+    if (mainHud) mainHud.style.display = 'flex';
+	
     playerQ = selectedHex.q;
     playerR = selectedHex.r;
     const key = `${playerQ},${playerR}`;
