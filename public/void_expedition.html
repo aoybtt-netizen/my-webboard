@@ -1250,6 +1250,8 @@ button:hover { opacity: 0.8; }
 		let travelDangerLevel = 1;
 		let travelParticles = [];
 		let floatingTexts = [];
+		let targetX = window.innerWidth / 2; // ตำแหน่งเป้าหมาย (เริ่มที่กลางจอ)
+		let shipMoveSpeed = 15; // ความเร็วในการขยับยาน (ยิ่งมากยิ่งตามเมาส์ไว)
 		let playerQ = 0;
 		let playerR = 0;
 		let visitedTiles = JSON.parse(localStorage.getItem(`visited_${currentUser}`) || '[]');
@@ -1328,19 +1330,22 @@ button:hover { opacity: 0.8; }
 		// 3. คลังไอเทมเริ่มต้น (ชิปพลังงาน 10 อัน)
 		let playerInventory = [];
 
-		// ฟังก์ชันสำหรับแจกไอเทมเริ่มต้น (Energy Chips 10 ชิ้น)
-		function initStartingInventory() {
-			for(let i = 0; i < 10; i++) {
-				playerInventory.push({
-					id: 'chip_' + Date.now() + i,
-					name: 'STD ENERGY CHIP',
-					type: 'energy chip',
-					energyValue: 100,
-					isLocked: true, // 🚩 ขายไม่ได้
-					imgKey: 'engineDrill3' // สมมติรูปชิป
-				});
-			}
-		}
+		// --- อัปเดตตำแหน่งเป้าหมายตามเมาส์หรือการลากนิ้ว ---
+window.onmousemove = (e) => { 
+    if(travelGameActive) targetX = e.clientX; 
+};
+
+window.ontouchmove = (e) => { 
+    if(travelGameActive) targetX = e.touches[0].clientX; 
+};
+
+// กรณีจิ้มลงไปเฉยๆ ก็ให้ยานวิ่งไปหาจุดนั้นด้วย
+window.onmousedown = (e) => { 
+    if(travelGameActive) targetX = e.clientX; 
+};
+window.ontouchstart = (e) => { 
+    if(travelGameActive) targetX = e.touches[0].clientX; 
+};
 
 
 
@@ -2039,9 +2044,21 @@ function updateTravel() {
 
     tctx.clearRect(0, 0, travelCanvas.width, travelCanvas.height);
     drawWarpEffect();
+	
+	// --- เคลื่อนที่ตามเป้าหมาย (Smooth Follow) ---
+    const dx = targetX - shipX; 
+    if (Math.abs(dx) > shipMoveSpeed) {
+        shipX += Math.sign(dx) * shipMoveSpeed; // ขยับเข้าหาเป้าหมายตามความเร็วที่กำหนด
+    } else {
+        shipX = targetX; // ถ้าใกล้มากแล้วให้ทับจุดเป้าหมายเลยกันยานสั่น
+    }
 
-    // --- 🚩 ปรับปรุงการสุ่มอุกกาบาตตาม Danger Level ---
-    // สูตร: โอกาสพื้นฐาน 0.01 + (ระดับความยาก * 0.015)
+    // ---  ป้องกันยานไหลออกนอกจอ ---
+    const halfShipWidth = 20; 
+    if (shipX < halfShipWidth) shipX = halfShipWidth;
+    if (shipX > travelCanvas.width - halfShipWidth) shipX = travelCanvas.width - halfShipWidth;
+
+    // ---  ปรับปรุงการสุ่มอุกกาบาตตาม Danger Level ---
     const spawnChance = 0.01 + (travelDangerLevel * 0.015);
 
     if (Math.random() < spawnChance) { 
@@ -2187,12 +2204,7 @@ function updateTravel() {
 
     // อัปเดตระยะทาง
     travelDistance -= 0.0005;
-    const progress = ((totalTravelDistance - travelDistance) / totalTravelDistance) * 100;
-    const progressBar = document.getElementById('travel-progress-bar');
-    if (progressBar) progressBar.style.width = `${progress}%`;
-    
-    const distText = document.getElementById('travel-distance-text');
-    if (distText) distText.innerText = `DISTANCE: ${Math.max(0, travelDistance).toFixed(2)}u`;
+    updateTravelHUD(); // 🚀 เรียกใช้ฟังก์ชันเดียวเพื่ออัปเดตทุกอย่าง (เกราะ/เลือด/ระยะทาง)
 
     if (travelDistance <= 0) {
         endTravel();
@@ -2338,7 +2350,7 @@ function triggerDamage(amount) {
         createExplosion(shipX, travelCanvas.height - 120, amount * 10, "#888");
     }
 
-    const shakeIntensity = amount * 10; 
+    const shakeIntensity = amount * 8; 
     document.body.style.transform = `translate(${Math.random() * shakeIntensity}px, ${Math.random() * shakeIntensity}px)`;
     setTimeout(() => document.body.style.transform = 'none', 100);
 }
