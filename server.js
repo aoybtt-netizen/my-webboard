@@ -1312,7 +1312,7 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
                 energyMax: 100, consumption: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
             },
             barrier: { 
-                id: 'start_bar_01', name: 'STD BARRIER SHIELD CARD', type: 'card barrier', imgKey: 'engineDrill2',
+                id: 'start_bar_01', name: 'STD BARRIER SHIELD CARD', type: 'card barrier', imgKey: 'shield0',
                 level: 1, maxUpgrades: 2, shield: 100, recharge: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
             }
         };
