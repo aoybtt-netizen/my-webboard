@@ -1137,12 +1137,11 @@ button:hover { opacity: 0.8; }
         let isMining = false;
 		let selectedHex = null;
 		let travelDangerLevel = 1;
+		let travelParticles = [];
+		let floatingTexts = [];
 		let playerQ = 0;
 		let playerR = 0;
-		// เก็บพิกัดที่ "เรา" เคยไปถึงแล้ว (ดึงจาก LocalStorage เพื่อให้รีเฟรชแล้วไม่หาย)
 		let visitedTiles = JSON.parse(localStorage.getItem(`visited_${currentUser}`) || '[]');
-
-		// เพิ่มพิกัดเริ่มต้น (0,0) เข้าไปในรายการเสมอ
 		if (!visitedTiles.includes("0,0")) {
 			visitedTiles.push("0,0");
 			localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
@@ -1991,13 +1990,48 @@ function updateTravel() {
 
 		// --- 🚩 ส่วนเช็คการชนใน updateTravel ---
 		if (distance < (shipHitboxRadius + asteroidHitboxRadius)) {
-			let dmg = 1 + ((ast.size - 20) / 20) * 3;
-			dmg = Math.round(dmg); 
-			triggerDamage(dmg); 
-			asteroids.splice(index, 1); 
+			// 1. คำนวณดาเมจ (1-4)
+			let dmg = Math.round(1 + ((ast.size - 20) / 20) * 3);
+			triggerDamage(dmg);
+			// เอฟเฟกต์ระเบิดตรงจุดที่ชน
+			createExplosion(ast.x, ast.y, ast.size);
+			// สร้างตัวเลขดาเมจ
+			createFloatingText(shipX, travelCanvas.height - 150, `-${dmg}`);
+			asteroids.splice(index, 1);
 		}
         if (ast.y > travelCanvas.height + 50) asteroids.splice(index, 1);
     });
+	
+		travelParticles.forEach((p, index) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.04; // หายไปในเวลาประมาณ 25 เฟรม
+        if (p.life <= 0) {
+            travelParticles.splice(index, 1);
+        } else {
+            tctx.globalAlpha = p.life;
+            tctx.fillStyle = p.color;
+            tctx.beginPath();
+            tctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            tctx.fill();
+        }
+    });
+
+    // --- 🚩 ส่วนที่เพิ่มใหม่: วาดและอัปเดตตัวเลขดาเมจ ---
+    floatingTexts.forEach((ft, index) => {
+        ft.y += ft.vy;   // ลอยขึ้น
+        ft.life -= 0.02; // จางหายช้ากว่าระเบิดนิดนึง
+        if (ft.life <= 0) {
+            floatingTexts.splice(index, 1);
+        } else {
+            tctx.globalAlpha = ft.life;
+            tctx.fillStyle = "#ff4b2b"; // สีแดงเนออน
+            tctx.font = `bold ${20 + (1 - ft.life) * 10}px Orbitron`; // ขนาดจะขยายขึ้นนิดนึงตอนจาง
+            tctx.textAlign = "center";
+            tctx.fillText(ft.text, ft.x, ft.y);
+        }
+    });
+    tctx.globalAlpha = 1.0; // รีเซ็ตค่าความโปร่งใส
 
     // วาดรูปยาน
     const shipImg = images['ship1'];
@@ -2029,6 +2063,33 @@ function updateTravel() {
     }
 }
 
+// ฟังก์ชันสร้างระเบิด (เศษซากกระจาย)
+function createExplosion(x, y, size) {
+    const particleCount = size / 2; // ยิ่งก้อนใหญ่ เศษยิ่งเยอะ
+    for (let i = 0; i < particleCount; i++) {
+        travelParticles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 10, // กระจายซ้ายขวา
+            vy: (Math.random() - 0.5) * 10, // กระจายบนล่าง
+            life: 1.0,
+            color: "#888", // สีเทาเหมือนอุกกาบาต
+            size: Math.random() * 5 + 2
+        });
+    }
+}
+
+// ฟังก์ชันสร้างตัวเลขดาเมจ
+function createFloatingText(x, y, text) {
+    floatingTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        life: 1.0, // พลังชีวิต 1.0 -> 0.0
+        vy: -2    // ลอยขึ้นข้างบน
+    });
+}
+
 function drawWarpEffect() {
     tctx.strokeStyle = "rgba(0, 210, 255, 0.2)";
     for(let i=0; i<10; i++) {
@@ -2040,12 +2101,30 @@ function drawWarpEffect() {
     }
 }
 
-function triggerDamage() {
-    const flash = document.getElementById('damage-flash');
-    flash.style.display = 'block';
-    setTimeout(() => flash.style.display = 'none', 100);
-    console.log("ยานได้รับความเสียหาย!");
-    // ในอนาคตพี่สามารถใส่โค้ดลดเลือด (HP) ตรงนี้ได้ครับ
+function triggerDamage(amount) {
+    // 1. ลดค่าความทนทานของอุปกรณ์ (เช่น Barrier หรือ Ship Engine)
+    // ตัวอย่าง: ลดความทนทานของเกราะตามความแรงที่ชน
+    if (playerEquipped.barrier) {
+        playerEquipped.barrier.shield -= amount;
+        
+        // ถ้าเกราะหมด ให้ไปลดที่ตัวเครื่องยนต์ต่อ
+        if (playerEquipped.barrier.shield < 0) {
+            playerEquipped.engine.durability += playerEquipped.barrier.shield; // เอาส่วนต่างที่ติดลบไปหักออก
+            playerEquipped.barrier.shield = 0;
+        }
+    } else {
+        // ถ้าไม่มีเกราะ ลดความทนทานเครื่องยนต์ตรงๆ
+        playerEquipped.engine.durability -= amount;
+    }
+
+    // 2. เอฟเฟกต์หน้าจอสั่น (Shake Effect)
+    // ยิ่งโดนหนัก หน้าจอยิ่งสั่นแรง
+    const shakeIntensity = amount * 5; 
+    document.body.style.transform = `translate(${Math.random() * shakeIntensity}px, ${Math.random() * shakeIntensity}px)`;
+    setTimeout(() => document.body.style.transform = 'none', 100);
+
+    // 3. แจ้งเตือนผู้เล่น (ถ้าต้องการ)
+    console.log(`COLLISION! Damage: ${amount}`);
 }
 
 function getWeightedAsteroidType() {
