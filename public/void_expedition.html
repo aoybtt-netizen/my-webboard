@@ -1251,7 +1251,7 @@ button:hover { opacity: 0.8; }
 		let travelParticles = [];
 		let floatingTexts = [];
 		let targetX = window.innerWidth / 2; // ตำแหน่งเป้าหมาย (เริ่มที่กลางจอ)
-		let shipMoveSpeed = 2; // ความเร็วในการขยับยาน (ยิ่งมากยิ่งตามเมาส์ไว)
+		let shipMoveSpeed = 1.25; // ความเร็วในการขยับยาน (ยิ่งมากยิ่งตามเมาส์ไว)
 		let playerQ = 0;
 		let playerR = 0;
 		let visitedTiles = JSON.parse(localStorage.getItem(`visited_${currentUser}`) || '[]');
