@@ -1136,7 +1136,7 @@ button:hover { opacity: 0.8; }
         let mapActive = false;
         let isMining = false;
 		let selectedHex = null;
-		
+		let travelDangerLevel = 1;
 		let playerQ = 0;
 		let playerR = 0;
 		// เก็บพิกัดที่ "เรา" เคยไปถึงแล้ว (ดึงจาก LocalStorage เพื่อให้รีเฟรชแล้วไม่หาย)
@@ -1891,6 +1891,11 @@ let travelCanvas, tctx;
 function startTravel(targetQ, targetR) {
     const dist = getHexDistance(playerQ, playerR, targetQ, targetR);
     if (dist === 0) return;
+	const distFromStation = getHexDistance(0, 0, targetQ, targetR); 
+    travelDangerLevel = Math.min(distFromStation, 10); 
+    if (travelDangerLevel < 1) travelDangerLevel = 1; // ขั้นต่ำคือ 1
+    
+    console.log(`Target Distance from Station: ${distFromStation}, Danger Level: ${travelDangerLevel}`);
 
     // เซ็ตค่าเริ่มต้น
     travelDistance = dist;
@@ -1922,17 +1927,23 @@ function updateTravel() {
     tctx.clearRect(0, 0, travelCanvas.width, travelCanvas.height);
     drawWarpEffect();
 
-    // --- ส่วนการสร้างอุตกาบาตใหม่ ---
-    if (Math.random() < 0.025) { 
-        const type = getWeightedAsteroidType(); // เรียกใช้ฟังก์ชันสุ่มตามโอกาส
+    // --- 🚩 ปรับปรุงการสุ่มอุกกาบาตตาม Danger Level ---
+    // สูตร: โอกาสพื้นฐาน 0.01 + (ระดับความยาก * 0.015)
+    // เลเวล 1 = 0.025 (เท่าเดิม)
+    // เลเวล 10 = 0.16 (เกิดถี่มาก แทบจะหลบไม่ได้ถ้าไม่เทพจริง!)
+    const spawnChance = 0.01 + (travelDangerLevel * 0.015);
+
+    if (Math.random() < spawnChance) { 
+        const type = getWeightedAsteroidType();
         asteroids.push({
             x: Math.random() * travelCanvas.width,
             y: -50,
             size: 40 + Math.random() * 40,
-            speed: 1.5 + Math.random() * 2,
-            type: type, // เก็บประเภทที่สุ่มได้ไว้
-			rotation: Math.random() * Math.PI * 2, // มุมเริ่มต้นสุ่ม
-			rotationSpeed: (Math.random() - 0.5) * 0.03 // ความเร็วการหมุน (สุ่มซ้าย/ขวา ช้าๆ)
+            // แถม: ถ้ายากขึ้น อุกกาบาตจะบินเร็วขึ้นนิดหน่อยด้วย
+            speed: (1.5 + Math.random() * 2) + (travelDangerLevel * 0.2), 
+            type: type,
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.03
         });
     }
 
