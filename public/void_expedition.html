@@ -1253,7 +1253,7 @@ button:hover { opacity: 0.8; }
 			maxDurability: 100,
 			repairCost: { metal: 1, energy: 1, tech: 1 }
 		};
-		
+		let lastHitTime = 0;
 		let miningCanvas;
 		let mctx;
 		let miningGameActive = false;
@@ -2149,6 +2149,28 @@ function updateTravel() {
         );
     }
 	
+	if (playerEquipped.barrier) {
+        const bar = playerEquipped.barrier;
+        const now = Date.now();
+        
+        // 1. เช็คว่าเวลาผ่านไปเกินค่า Delay หรือยัง (เปลี่ยนวินาทีเป็นมิลลิวินาที)
+        const isCooldownOver = (now - lastHitTime) > (bar.rechargeDelay * 1000);
+        
+        // 2. เช็คว่าเกราะยังไม่เต็ม
+        const isShieldNotFull = bar.shield < bar.maxShield;
+
+        if (isCooldownOver && isShieldNotFull) {
+            // ฟื้นฟูเกราะตามค่า recharge (หาร 60 เพราะรันประมาณ 60 fps)
+            bar.shield += (bar.recharge / 60);
+            
+            // ป้องกันไม่ให้เกราะเกินค่าสูงสุด
+            if (bar.shield > bar.maxShield) bar.shield = bar.maxShield;
+            
+            // อัปเดตหน้าจอ HUD ให้หลอดเกราะขยับขึ้น
+            updateTravelHUD();
+        }
+    }
+	
 
     // อัปเดตระยะทาง
     travelDistance -= 0.0005;
@@ -2252,7 +2274,7 @@ function updateTravelHUD() {
 function triggerDamage(amount) {
     // Safety checks (ของเดิม)
     if (!shipStats) return;
-
+	lastHitTime = Date.now();
     let remainingDamage = amount; // ดาเมจที่เหลือที่จะไปหักเลือด
 
     console.log(`Incoming Damage: ${amount}`);
