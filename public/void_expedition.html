@@ -2104,13 +2104,15 @@ function updateTravel() {
 
 		// --- 🚩 ส่วนเช็คการชนใน updateTravel ---
 		if (distance < (shipHitboxRadius + asteroidHitboxRadius)) {
-			// 1. คำนวณดาเมจ (1-4)
-			let dmg = Math.round(1 + ((ast.size - 20) / 20) * 3);
-			triggerDamage(dmg);
-			// เอฟเฟกต์ระเบิดตรงจุดที่ชน
+			// 1. คำนวณดาเมจ
+			let dmg = Math.round(1 + ((ast.size - 20) / 20) * 9);
+			triggerDamage(dmg); 
+
+			// เอฟเฟกต์อื่นๆ
 			createExplosion(ast.x, ast.y, ast.size);
-			// สร้างตัวเลขดาเมจ
 			createFloatingText(shipX, travelCanvas.height - 150, `-${dmg}`);
+
+			// ลบอุกกาบาต
 			asteroids.splice(index, 1);
 		}
         if (ast.y > travelCanvas.height + 50) asteroids.splice(index, 1);
@@ -2336,7 +2338,7 @@ function triggerDamage(amount) {
         createExplosion(shipX, travelCanvas.height - 120, amount * 10, "#888");
     }
 
-    const shakeIntensity = amount * 5; 
+    const shakeIntensity = amount * 10; 
     document.body.style.transform = `translate(${Math.random() * shakeIntensity}px, ${Math.random() * shakeIntensity}px)`;
     setTimeout(() => document.body.style.transform = 'none', 100);
 }
