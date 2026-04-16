@@ -3201,38 +3201,69 @@ function exitMining() {
 }
 
 function fireBullet(target, damage) {
+    const turret = playerEquipped.turret; // ดึงพิกัดป้อมปัจจุบัน
+    
+    // 1. คำนวณระยะห่างระหว่างป้อมกับเอเลี่ยน
+    const dx = target.x - turret.x;
+    const dy = target.y - turret.y;
+    const distance = Math.hypot(dx, dy);
+
+    // 2. คำนวณความเร็วแยกแกน (vx, vy) โดยใช้หลักการ Vector
+    const bulletSpeed = 10; // 🚀 ปรับความเร็วทวีคูณตรงนี้ได้ครับ
+    const vx = (dx / distance) * bulletSpeed;
+    const vy = (dy / distance) * bulletSpeed;
+
+    // 3. ผลักข้อมูลเข้าอาร์เรย์พร้อมค่าแรงส่ง
     bullets.push({
-        x: playerEquipped.turret.x,
-        y: playerEquipped.turret.y,
-        target: target,
-        damage: damage, // 🚩 บันทึกพลังโจมตีลงในลูกกระสุน
-        speed: 5
+        x: turret.x,
+        y: turret.y,
+        vx: vx, // 🚩 เพิ่มค่านี้เพื่อให้ updateBullets เอาไปบวกพิกัด
+        vy: vy, // 🚩 เพิ่มค่านี้เพื่อให้ updateBullets เอาไปบวกพิกัด
+        damage: damage,
+        size: 3
     });
 }
 
 function updateBullets(ctx) {
-    bullets.forEach((b, bIndex) => {
+    // วนลูปจากหลังมาหน้า (Reverse Loop) เพื่อให้การ splice ข้อมูลไม่รวน
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+
+        // 1. อัปเดตตำแหน่ง
         b.x += b.vx;
         b.y += b.vy;
-        
-        // วาดกระสุน
+
+        // 2. วาดกระสุน (เพิ่มความสว่างแบบ Neon นิดๆ)
         ctx.fillStyle = "yellow";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "yellow";
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0; // รีเซ็ตค่าเงา
 
-        // เช็คการชนกับเอเลี่ยน
-        aliens.forEach((a, aIndex) => {
+        // 3. เช็คการชนกับเอเลี่ยน
+        let hit = false;
+        for (let j = aliens.length - 1; j >= 0; j--) {
+            const a = aliens[j];
             const dist = Math.hypot(b.x - a.x, b.y - a.y);
-            if (dist < a.size) {
-                bullets.splice(bIndex, 1);
-                aliens.splice(aIndex, 1); // เอเลี่ยนตาย
+            
+            if (dist < (a.size || 20)) { // ใช้รัศมีของเอเลี่ยน
+                aliens.splice(j, 1); // เอเลี่ยนตาย
+                hit = true;
+                break; // ลูกกระสุน 1 นัด โดนตัวเดียวแล้วหายไป
             }
-        });
+        }
 
-        // ลบกระสุนที่ออกนอกจอ
-        if (b.y < 0 || b.x < 0 || b.x > miningCanvas.width) bullets.splice(bIndex, 1);
-    });
+        // 4. เงื่อนไขการลบกระสุนออกจากหน่วยความจำ
+        if (hit || 
+            b.y < -50 || 
+            b.y > miningCanvas.height + 50 || 
+            b.x < -50 || 
+            b.x > miningCanvas.width + 50) {
+            bullets.splice(i, 1);
+        }
+    }
 }
 
 
