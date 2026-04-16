@@ -2474,9 +2474,13 @@ function startMiningProcess() {
     if (miningCanvas) {
         mctx = miningCanvas.getContext('2d');
         
-        // 🚩 กำหนดตำแหน่งป้อม (ดึงจาก playerEquipped.turret แน่นอนแล้ว)
-        playerEquipped.turret.x = miningCanvas.width / 2;
-        playerEquipped.turret.y = miningCanvas.height - 80;
+        // ให้ใช้ค่าตามที่กัปตันตั้งไว้ใน CSS/HTML (400x600)
+        miningCanvas.width = 400;
+        miningCanvas.height = 600;
+        
+        // ตำแหน่งป้อมก็ต้องอิงตามขนาด 400x600
+        playerEquipped.turret.x = 200; // กึ่งกลางของ 400
+        playerEquipped.turret.y = 520; // อยู่เหนือขอบล่างของ 600
         
         miningGameActive = true;
         drillHealth = 100;
