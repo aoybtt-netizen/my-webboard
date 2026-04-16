@@ -3126,8 +3126,8 @@ function takeDamage(amount) {
 }
 
 // 🩸 ฟังก์ชันสร้างคราบเลือด/สะเก็ด
-function createBloodSplatter(x, y, color = "#38ef7d") {
-    for (let i = 0; i < 10; i++) {
+function createBloodSplatter(x, y, color = "#800404") {
+    for (let i = 0; i < 3; i++) {
         miningParticles.push({
             x: x,
             y: y,
@@ -3138,6 +3138,18 @@ function createBloodSplatter(x, y, color = "#38ef7d") {
             life: 1.0 // ค่าความโปร่งใส 100%
         });
     }
+}
+
+let bloodPools = []; // เก็บข้อมูลกองเลือดที่พื้น
+
+function createBloodPool(x, y, size) {
+    bloodPools.push({
+        x: x,
+        y: y,
+        size: size * 1.2, // ให้กองเลือดใหญ่กว่าตัวมอนนิดนึง
+        life: 1.0,        // ค่าความชัด (Opacity)
+        fadeRate: 0.005   // ความเร็วในการจาง (ปรับให้จางช้าๆ)
+    });
 }
 
 // 🔢 ฟังก์ชันสร้างตัวเลขดาเมจ
@@ -3220,21 +3232,34 @@ function updateMining(currentTime) {
 
 		// 2. วาดและอัปเดตตัวเลขดาเมจ
 		damageTexts.forEach((dt, index) => {
-			dt.y += dt.vy;  // ลอยขึ้น
-			dt.life -= 0.02; // จางหายช้ากว่าเลือดนิดนึง
-
-			if (dt.life <= 0) {
-				damageTexts.splice(index, 1);
-			} else {
-				mctx.globalAlpha = dt.life;
-				mctx.fillStyle = "white";
-				mctx.font = "bold 16px Orbitron";
-				mctx.textAlign = "center";
-				mctx.fillText(dt.text, dt.x, dt.y);
-			}
-		});
-
-		mctx.globalAlpha = 1.0; // รีเซ็ตค่าความโปร่งใสคืนค่าปกติ
+            dt.y += dt.vy;
+            dt.life -= 0.02;
+            if (dt.life <= 0) {
+                damageTexts.splice(index, 1);
+            } else {
+                mctx.globalAlpha = dt.life;
+                mctx.fillStyle = "#ff4b2b"; // 🚩 สีแดงเนออน
+                mctx.font = "bold 24px Orbitron"; // 🚩 ปรับขนาดใหญ่ขึ้น (จาก 16px เป็น 24px)
+                mctx.textAlign = "center";
+                mctx.fillText(dt.text, dt.x, dt.y);
+            }
+        });
+        mctx.globalAlpha = 1.0;
+		
+		bloodPools.forEach((pool, index) => {
+            pool.life -= pool.fadeRate;
+            if (pool.life <= 0) {
+                bloodPools.splice(index, 1);
+            } else {
+                mctx.globalAlpha = pool.life;
+                mctx.fillStyle = "rgba(163, 38, 255, 0.6)"; // สีม่วงเอเลี่ยน หรือ #38ef7d (เขียว)
+                mctx.beginPath();
+                // วาดกองเลือดแบบวงกลมบิดเบี้ยวนิดๆ (ใช้ arc ปกติไปก่อน)
+                mctx.arc(pool.x, pool.y, pool.size, 0, Math.PI * 2);
+                mctx.fill();
+            }
+        });
+        mctx.globalAlpha = 1.0;
 
         // --- 5. อัปเดต UI ---
         setupProgress += 0.05; 
@@ -3355,14 +3380,14 @@ function updateBullets(ctx, damage) {
                 createDamageText(b.x, b.y, `-${b.damage}`);
                 
                 // 🚩 2. สร้างสะเก็ดเลือดเล็กๆ ตอนโดนยิง
-                createBloodSplatter(b.x, b.y, "#38ef7d"); 
+                createBloodSplatter(b.x, b.y, "#800408"); 
 
                 a.hp -= b.damage; 
                 hitSomething = true;
 
                 if (a.hp <= 0) {
                     // 🚩 3. ถ้าตาย ให้ระเบิดเลือดกองใหญ่!
-                    createBloodSplatter(a.x, a.y, "#38ef7d");
+                    createBloodPool(a.x, a.y, a.size);
                     aliens.splice(j, 1);
                 }
                 break; 
