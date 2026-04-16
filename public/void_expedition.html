@@ -3030,31 +3030,33 @@ function drawMiningEnvironment(ctx) {
 }
 
 function drawTurretWithBase(ctx, turret) {
-    // 🚩 เช็คความปลอดภัย: ถ้าไม่มีข้อมูลป้อมไม่ต้องวาด
     if (!turret) return;
 
-    // 1. วาดฐานป้อม (คีย์ 'terret1') - ฐานจะอยู่กับที่ ไม่หมุนตามปืน
+    // --- ส่วนที่ 1: วาดฐาน (เหมือนเดิม) ---
     safeDrawImage(ctx, 'terret1', turret.x - 40, turret.y - 40, 80, 80, (c) => {
-        // Fallback: ถ้าโหลดรูปไม่ขึ้น ให้วาดวงกลมสีเทาแทน
         c.fillStyle = "#444";
-        c.beginPath(); 
-        c.arc(turret.x, turret.y, 35, 0, Math.PI * 2); 
-        c.fill();
+        c.beginPath(); c.arc(turret.x, turret.y, 35, 0, Math.PI*2); c.fill();
     });
 
-    // 2. วาดหัวปืน (คีย์ 'terret2') - ส่วนนี้จะหมุนตามเป้าหมาย
+    // --- ส่วนที่ 2: วาดหัวปืน (แบบรักษาสัดส่วน) ---
     ctx.save();
-    // ย้ายจุดหมุนไปที่จุดศูนย์กลางของป้อม
     ctx.translate(turret.x, turret.y);
-    // หมุนตามค่า rotation ที่คำนวณได้จาก updateTurretLogic
     ctx.rotate(turret.rotation);
-    
-    // วาดรูปหัวปืน (ตำแหน่ง x, y เป็น -40 เพื่อให้จุดศูนย์กลางภาพทับกับจุดหมุนพอดี)
-    safeDrawImage(ctx, 'terret2', -40, -40, 80, 80, (c) => {
-        // Fallback: วาดลำกล้องสี่เหลี่ยมสีเขียวเนออน
-        c.fillStyle = "#38ef7d"; 
-        c.fillRect(-5, -40, 10, 40);
-    });
+
+    const img = images['terret2']; // ดึงรูปหัวปืนมาเช็คขนาด
+    if (img && img.complete) {
+        // 🚩 คำนวณหาอัตราส่วน (Aspect Ratio)
+        const scale = 80 / Math.max(img.width, img.height); 
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+
+        // วาดให้จุดศูนย์กลางภาพตรงกับจุดหมุน
+        ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+    } else {
+        // Fallback ถ้าไม่มีรูป
+        ctx.fillStyle = "#38ef7d";
+        ctx.fillRect(-5, -40, 10, 40);
+    }
     
     ctx.restore();
 }
