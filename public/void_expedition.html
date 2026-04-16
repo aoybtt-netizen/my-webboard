@@ -3056,10 +3056,61 @@ function drawTurretWithBase(ctx, turret) {
 
 // B. สร้างเอเลี่ยนตัวใหม่
 function drawAlien(ctx, alien) {
-    safeDrawImage(ctx, 'alian1', alien.x - alien.size/2, alien.y - alien.size/2, alien.size, alien.size, (c, x, y, w, h) => {
-        c.fillStyle = "#ff4b2b"; // สีแดง
-        c.beginPath(); c.arc(alien.x, alien.y, alien.size/2, 0, Math.PI*2); c.fill();
-    });
+    if (!alien) return;
+
+    // --- 🚩 ส่วนที่ 1: วาดตัวเอเลี่ยน (เน้นเห็นตัวชัวร์ๆ) ---
+    // ลองเปลี่ยนเป็นวาดวงกลมสีขาวก่อน เพื่อดูว่ามันวิ่งลงมาไหม
+    // ถ้ารูปโหลดไม่เสร็จ มันต้องใช้วงกลมนี้แทน
+    const img = (typeof images !== 'undefined') ? images['alien1'] : null;
+
+    if (img && img.complete) {
+        // วาดรูปภาพถ้ามี
+        ctx.drawImage(img, alien.x - alien.size / 2, alien.y - alien.size / 2, alien.size, alien.size);
+    } else {
+        // 🚩 [ปรับปรุง] Fallback: วาดวงกลมสีขาวจั๊วะแทน เพื่อให้เห็นชัดที่สุด
+        ctx.save();
+        ctx.fillStyle = "#FFFFFF"; // สีขาวสะอาด
+        
+        // เพิ่มแสงเรืองแสง (Glow) สีแดงรอบๆ เพื่อให้ดูอันตราย
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#ff4b2b"; 
+        
+        ctx.beginPath();
+        // วาดให้ใหญ่ขึ้นนิดหน่อยเพื่อการทดสอบ (size/1.8 แทน size/2)
+        ctx.arc(alien.x, alien.y, alien.size / 1.8, 0, Math.PI * 2); 
+        ctx.fill();
+        ctx.restore(); // รีเซ็ตค่า Glow
+    }
+
+    // --- ส่วนที่ 2: วาดหลอดเลือด (เหมือนเดิม แต่ตรวจสอบค่า) ---
+    // ป้องกันกรณี alien.maxHp เป็น 0 หรือ undefined
+    if (!alien.maxHp || alien.maxHp <= 0) alien.maxHp = alien.hp;
+
+    const barWidth = alien.size; 
+    const barHeight = 6; // เพิ่มความหนาหลอดเลือด
+    const barSpacing = 12; 
+    
+    const barX = alien.x - barWidth / 2;
+    const barY = alien.y - alien.size / 2 - barSpacing;
+
+    // วาดพื้นหลังหลอดเลือด (สีดำ)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; // เข้มขึ้น
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // คำนวณเปอร์เซ็นต์เลือด
+    const hpPercent = Math.max(0, alien.hp / alien.maxHp);
+    
+    // เลือกสีหลอดเลือดตามปริมาณที่เหลือ
+    if (hpPercent > 0.6) {
+        ctx.fillStyle = "#38ef7d"; // เขียวสด
+    } else if (hpPercent > 0.3) {
+        ctx.fillStyle = "#ffca28"; // เหลืองทอง
+    } else {
+        ctx.fillStyle = "#ff4b2b"; // แดงเนออน
+    }
+
+    // วาดเลือดปัจจุบัน
+    ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
 }
 
 
@@ -3076,72 +3127,67 @@ function takeDamage(amount) {
 
 // E. อัปเดต UI (Progress Bar)
 function updateMining(currentTime) {
-    // 1. ตรวจสอบสถานะเกมและความพร้อมของพู่กัน (mctx)
     if (!miningGameActive) return;
 
     if (!mctx) {
         miningCanvas = document.getElementById('mining-canvas');
         if (miningCanvas) mctx = miningCanvas.getContext('2d');
-        if (!mctx) return; // ถ้าหาไม่ได้จริงๆ ให้หยุดรอเฟรมถัดไป
+        if (!mctx) return;
     }
 
     try {
-        // 2. ล้างหน้าจอและลงสีพื้นหลัง (ใช้สีน้ำเงินเข้มตามสไตล์ Sci-Fi)
         mctx.fillStyle = "#0a1a2f";
         mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
 
-        // --- 3. จัดการเอเลี่ยน ---
+        // --- 3.1 สั่งเกิดเอเลี่ยน (Logic เดิมของคุณ) ---
         const spawnChance = 0.01 + (currentMiningDist * 0.005);
+        if (Math.random() < spawnChance) {
+            if (typeof spawnAlien === 'function') spawnAlien();
+        }
 
-			if (Math.random() < spawnChance) {
-			console.log("Spawn Attempt!"); // ถ้าเห็นคำนี้ใน Console แสดงว่า Logic การสุ่มผ่าน
-			if (typeof spawnAlien === 'function') {
-				spawnAlien();
-			} else {
-				console.error("Function spawnAlien is NOT defined!");
-			}
-		}
-        // --- 4. จัดการป้อม (ใช้ระบบสเตตัสที่ติดตั้ง) ---
-        // 🚩 ดึงข้อมูลจาก playerEquipped.turret ที่ได้จาก Server
+        // --- 🚩 3.2 สั่งขยับและวาดเอเลี่ยน (ส่วนที่หายไป!) ---
+        aliens.forEach((alien, index) => {
+            // 1. ให้เอเลี่ยนเดินลงมา
+            alien.y += alien.speed;
+            
+            // 2. สั่งวาดตัวเอเลี่ยนและหลอดเลือด
+            if (typeof drawAlien === 'function') {
+                drawAlien(mctx, alien);
+            }
+            
+            // 3. เช็คว่าเอเลี่ยนหลุดไปกัดเครื่องขุดหรือยัง
+            if (alien.y > miningCanvas.height - 110) {
+                if (typeof takeDamage === 'function') takeDamage(5); 
+                aliens.splice(index, 1); // กัดแล้วหายไป
+            }
+        });
+
+        // --- 4. จัดการป้อม (เหมือนเดิม) ---
         const currentTurret = playerEquipped.turret;
-
         if (currentTurret) {
-            // อัปเดตการหันและจังหวะการยิง (ส่งค่า currentTime และข้อมูลป้อมไป)
             if (typeof updateTurretLogic === 'function') {
                 updateTurretLogic(currentTime, currentTurret);
             }
-            
-            // วาดตัวป้อมตามมุมที่คำนวณได้
             if (typeof drawTurretWithBase === 'function') {
                 drawTurretWithBase(mctx, currentTurret);
             }
-            
-            // อัปเดตตำแหน่งกระสุนและพลังโจมตี
             if (typeof updateBullets === 'function') {
                 updateBullets(mctx, currentTurret.damage);
             }
         }
 
-        // --- 5. อัปเดตความคืบหน้าการขุด (UI) ---
+        // --- 5. อัปเดต UI ---
         setupProgress += 0.05; 
         if (typeof updateMiningUI === 'function') updateMiningUI();
 
     } catch (err) {
-        // ถ้าค้างตรงไหน ให้พ่น Error ออกมาดูแต่ไม่ต้องหยุดทำงาน (กันหน้าจอขาว)
         console.error("ข้ามเฟรมนี้ไปเนื่องจาก Error:", err);
     }
 
-    // --- 6. เงื่อนไขการวนลูป (Loop Logic) ---
-    // เล่นต่อถ้า: ขุดยังไม่เสร็จ (progress < 100) AND เกมยังเปิดอยู่ AND เลือดเครื่องขุดยังไม่หมด
     if (setupProgress < 100 && miningGameActive && drillHealth > 0) {
         requestAnimationFrame(updateMining);
     } else if (setupProgress >= 100) {
-        // ขุดสำเร็จ!
         if (typeof completeSetup === 'function') completeSetup();
-    } else if (drillHealth <= 0) {
-        // เครื่องขุดพัง (Game Over ของโหมดขุด)
-        console.log("เครื่องขุดพัง! ภารกิจล้มเหลว");
-        // กัปตันสามารถเพิ่ม handleMiningFail() ตรงนี้ได้ครับ
     }
 }
 
