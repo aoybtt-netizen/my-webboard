@@ -3093,9 +3093,14 @@ function updateMining(currentTime) {
         // --- 3. จัดการเอเลี่ยน ---
         const spawnChance = 0.01 + (currentMiningDist * 0.005);
 
-			if (Math.random() < spawnChance && typeof spawnAlien === 'function') {
+			if (Math.random() < spawnChance) {
+			console.log("Spawn Attempt!"); // ถ้าเห็นคำนี้ใน Console แสดงว่า Logic การสุ่มผ่าน
+			if (typeof spawnAlien === 'function') {
 				spawnAlien();
+			} else {
+				console.error("Function spawnAlien is NOT defined!");
 			}
+		}
         // --- 4. จัดการป้อม (ใช้ระบบสเตตัสที่ติดตั้ง) ---
         // 🚩 ดึงข้อมูลจาก playerEquipped.turret ที่ได้จาก Server
         const currentTurret = playerEquipped.turret;
@@ -3265,26 +3270,23 @@ function updateBullets(ctx, damage) {
 
 function spawnAlien() {
     if (!miningCanvas) return;
-    const fixedSize = 40; 
-    // 3. คำนวณเลือด (HP) ตามระยะห่างจากสถานี (คูณ 5)
-    // หมายเหตุ: currentMiningDist ต้องถูกคำนวณไว้ก่อนใน startMiningProcess
-    const scalingHP = (typeof currentMiningDist !== 'undefined' ? currentMiningDist : 1) * 5;
 
-    // 4. สร้าง Object เอเลี่ยนตัวใหม่
+    const fixedSize = 40; 
+    // ตรวจสอบว่ามองเห็น currentMiningDist ไหม ถ้าไม่เห็นให้ใช้ 1
+    const dist = (typeof currentMiningDist !== 'undefined') ? currentMiningDist : 1;
+    const scalingHP = dist * 5;
+
     const newAlien = {
-        // x: สุ่มตำแหน่งแนวนอน
         x: Math.random() * (miningCanvas.width - fixedSize) + (fixedSize / 2),
-        // y: เริ่มจากด้านบนนอกจอ
-        y: -fixedSize, 
-        // speed: ความเร็วสุ่ม
+        y: -10, // 🚩 ลองปรับให้ใกล้ขอบบนมากขึ้น (-10 แทนที่จะเป็น -40) เพื่อให้เห็นตัวเร็วขึ้น
         speed: 1 + Math.random() * 1.5, 
-        // hp: ใช้ค่าที่คำนวณตามระยะห่าง
         hp: scalingHP,
-        maxHp: scalingHP, // เก็บไว้เผื่อวาดหลอดเลือด
-        // size: ขนาดคงที่
+        maxHp: scalingHP,
         size: fixedSize
     };
+
     aliens.push(newAlien);
+    console.log("Alien Created at X:", newAlien.x, "HP:", newAlien.hp); // Debug log
 }
 
 
