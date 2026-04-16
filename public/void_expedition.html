@@ -149,14 +149,6 @@
 			text-shadow: 0 0 10px #000, 0 0 5px #000; /* กันกลืนกับพื้นหลัง */
 		}
 		/* UI ส่วนล่าง (ปุ่ม) */
-		.mining-hud-bottom {
-			position: absolute;
-			bottom: 20px;
-			left: 0;
-			width: 100%;
-			text-align: center;
-			z-index: 10;
-		}
 		.btn-abort {
 			background: rgba(255, 75, 43, 0.15);
 			border: 1px solid var(--neon-red);
@@ -894,10 +886,6 @@ button:hover { opacity: 0.8; }
 
         <canvas id="mining-canvas" width="400" height="600"></canvas>
 
-        <div class="mining-hud-bottom">
-            <button onclick="exitMining()" class="btn-abort">ABORT MISSION</button>
-        </div>
-
     </div>
 </div>
 
@@ -1272,7 +1260,7 @@ button:hover { opacity: 0.8; }
 		let setupProgress = 0; // 0 - 100%
 		let aliens = [];
 		let bullets = [];
-		
+		let currentMiningDist = 1;
 		
 		let miningActive = false;
 		let miningProgress = 0;
@@ -2440,7 +2428,8 @@ function showArrivalUI(starData, q, r) {
 
 
 function startMiningProcess() {
-    // 🚩 [ปรับปรุงใหม่] เช็คและดึงค่าป้อมมาตรฐานถ้าไม่มีของติดตั้ง
+    currentMiningDist = getHexDistance(0, 0, playerQ, playerR);
+    if (currentMiningDist < 1) currentMiningDist = 1;
     if (!playerEquipped) playerEquipped = {}; // กันเหนียวถ้าตัวแปรว่าง
 
     if (!playerEquipped.turret) {
@@ -3098,21 +3087,11 @@ function updateMining(currentTime) {
         mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
 
         // --- 3. จัดการเอเลี่ยน ---
-        // โอกาสเกิด 2% ต่อเฟรม
-        if (Math.random() < 0.02 && typeof spawnAlien === 'function') spawnAlien();
-        
-        aliens.forEach((alien, index) => {
-            alien.y += alien.speed;
-            
-            if (typeof drawAlien === 'function') drawAlien(mctx, alien);
-            
-            // เช็คว่าเอเลี่ยนหลุดไปถึงระยะโจมตีเครื่องขุดหรือยัง (ระยะประมาณ 100-120 จากขอบล่าง)
-            if (alien.y > miningCanvas.height - 110) {
-                if (typeof takeDamage === 'function') takeDamage(5); // โดนกัด!
-                aliens.splice(index, 1);
-            }
-        });
+        const spawnChance = 0.01 + (currentMiningDist * 0.005);
 
+			if (Math.random() < spawnChance && typeof spawnAlien === 'function') {
+				spawnAlien();
+			}
         // --- 4. จัดการป้อม (ใช้ระบบสเตตัสที่ติดตั้ง) ---
         // 🚩 ดึงข้อมูลจาก playerEquipped.turret ที่ได้จาก Server
         const currentTurret = playerEquipped.turret;
@@ -3240,43 +3219,40 @@ function fireBullet(target, damage) {
     }
 }
 
-function updateBullets(ctx) {
-    // วนลูปจากหลังมาหน้า (Reverse Loop) เพื่อให้การ splice ข้อมูลไม่รวน
+function updateBullets(ctx, damage) {
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
-
-        // 1. อัปเดตตำแหน่ง
         b.x += b.vx;
         b.y += b.vy;
 
-        // 2. วาดกระสุน (เพิ่มความสว่างแบบ Neon นิดๆ)
+        // วาดกระสุน (เหมือนเดิม)
         ctx.fillStyle = "yellow";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "yellow";
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0; // รีเซ็ตค่าเงา
+        ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill();
 
-        // 3. เช็คการชนกับเอเลี่ยน
-        let hit = false;
+        let hitSomething = false;
+
         for (let j = aliens.length - 1; j >= 0; j--) {
             const a = aliens[j];
             const dist = Math.hypot(b.x - a.x, b.y - a.y);
-            
-            if (dist < (a.size || 20)) { // ใช้รัศมีของเอเลี่ยน
-                aliens.splice(j, 1); // เอเลี่ยนตาย
-                hit = true;
-                break; // ลูกกระสุน 1 นัด โดนตัวเดียวแล้วหายไป
+
+            if (dist < a.size / 2) {
+                // 🚩 1. ลด HP เอเลี่ยนตามดาเมจของป้อม
+                a.hp -= b.damage; 
+                hitSomething = true;
+
+                // 🚩 2. ถ้าเอเลี่ยน HP หมดถึงจะตาย
+                if (a.hp <= 0) {
+                    if (typeof createExplosion === 'function') createExplosion(a.x, a.y, 30, "#ff4b2b");
+                    aliens.splice(j, 1);
+                } else {
+                    // ถ้ายังไม่ตาย ให้มีเอฟเฟกต์กระเด็นหรือไฟแลบนิดๆ
+                    if (typeof createExplosion === 'function') createExplosion(b.x, b.y, 10, "yellow");
+                }
+                break; 
             }
         }
 
-        // 4. เงื่อนไขการลบกระสุนออกจากหน่วยความจำ
-        if (hit || 
-            b.y < -50 || 
-            b.y > miningCanvas.height + 50 || 
-            b.x < -50 || 
-            b.x > miningCanvas.width + 50) {
+        if (hitSomething || b.y < 0 || b.y > miningCanvas.height || b.x < 0 || b.x > miningCanvas.width) {
             bullets.splice(i, 1);
         }
     }
@@ -3285,25 +3261,25 @@ function updateBullets(ctx) {
 
 function spawnAlien() {
     if (!miningCanvas) return;
+    const fixedSize = 40; 
+    // 3. คำนวณเลือด (HP) ตามระยะห่างจากสถานี (คูณ 5)
+    // หมายเหตุ: currentMiningDist ต้องถูกคำนวณไว้ก่อนใน startMiningProcess
+    const scalingHP = (typeof currentMiningDist !== 'undefined' ? currentMiningDist : 1) * 5;
 
-    // สุ่มขนาดเอเลี่ยนนิดหน่อยให้ดูหลากหลาย
-    const size = 30 + Math.random() * 20; 
-
-    // สร้าง Object เอเลี่ยนตัวใหม่
+    // 4. สร้าง Object เอเลี่ยนตัวใหม่
     const newAlien = {
-        // x: สุ่มตำแหน่งแนวนอน (ไม่ให้ล้นขอบจอ)
-        x: Math.random() * (miningCanvas.width - size) + (size / 2),
-        // y: ให้เริ่มจากด้านบนสุด (นอกจอเล็กน้อย)
-        y: -size, 
-        // speed: สุ่มความเร็วในการเดินลงมา
+        // x: สุ่มตำแหน่งแนวนอน
+        x: Math.random() * (miningCanvas.width - fixedSize) + (fixedSize / 2),
+        // y: เริ่มจากด้านบนนอกจอ
+        y: -fixedSize, 
+        // speed: ความเร็วสุ่ม
         speed: 1 + Math.random() * 1.5, 
-        // hp: เลือดของเอเลี่ยน
-        hp: 2,
-        // size: ขนาดตัว
-        size: size
+        // hp: ใช้ค่าที่คำนวณตามระยะห่าง
+        hp: scalingHP,
+        maxHp: scalingHP, // เก็บไว้เผื่อวาดหลอดเลือด
+        // size: ขนาดคงที่
+        size: fixedSize
     };
-
-    // เพิ่มเข้าไปในตัวแปร array 'aliens' ที่เราประกาศไว้ด้านบนสุด
     aliens.push(newAlien);
 }
 
