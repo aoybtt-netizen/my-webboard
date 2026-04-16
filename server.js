@@ -1343,6 +1343,20 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
 				rechargeDelay: 3, // 🚩 เพิ่ม: ต้องไม่โดนดาเมจ 3 วินาที ถึงจะเริ่มรีชาร์จ
 				repairCost: { metal: 1, energy: 1, tech: 1 }, 
 				isLocked: true 
+			},
+			turret: {
+				id: `start_turret_${now}`, 
+				name: 'STANDARD LASER TURRET', 
+				type: 'turret', 
+				imgKey: 'turret1', // อย่าลืมเตรียมคีย์รูปภาพไว้ใน imageSources
+				level: 1, 
+				maxUpgrades: 5, 
+				durability: 100, 
+				damage: 5,         // พลังโจมตีเริ่มต้น
+				fireRate: 1.0,     // ความเร็วในการยิง (วินาทีต่อครั้ง)
+				range: 150,
+				repairCost: { metal: 1, energy: 1, tech: 1 }, 
+				isLocked: true 
 			}
         };
 

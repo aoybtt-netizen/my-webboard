@@ -1272,14 +1272,6 @@ button:hover { opacity: 0.8; }
 		let setupProgress = 0; // 0 - 100%
 		let aliens = [];
 		let bullets = [];
-		let turret = { 
-			x: 0, 
-			y: 0, 
-			rotation: 0, 
-			lastShot: 0, 
-			fireRate: 500,
-			range: 400 
-		};
 		
 		
 		let miningActive = false;
@@ -1318,7 +1310,12 @@ button:hover { opacity: 0.8; }
 
 		let selectedModKey = null;
 		
-		let playerEquipped = {};
+		let playerEquipped = {
+			engine: null,
+			drill: null,
+			barrier: null,
+			turret: null 
+		};
 
 		// 2. ข้อมูล Cargo (สเตตัสติดกับยาน ไม่ใช่ไอเทมสวมใส่)
 		let shipCargoStats = {
@@ -2443,6 +2440,12 @@ function showArrivalUI(starData, q, r) {
 
 
 function startMiningProcess() {
+    // 🚩 เช็คก่อนว่าติดตั้งป้อมปืนมาไหม (กัน Error)
+    if (!playerEquipped || !playerEquipped.turret) {
+        showMiningToast("MISSING EQUIPMENT: Laser Turret required!", "#ff4b2b");
+        return;
+    }
+
     // จัดการ UI
     document.getElementById('arrival-modal').classList.remove('active');
     const detailModal = document.getElementById('star-detail-modal');
@@ -2452,8 +2455,6 @@ function startMiningProcess() {
     
     const viewMining = document.getElementById('view-mining');
     viewMining.classList.add('active');
-    
-    // สำคัญ: บังคับให้เป็น flex เพื่อให้จัดเรียงตรงกลาง
     viewMining.style.display = 'flex'; 
 
     // เริ่มต้นระบบ Canvas
@@ -2461,8 +2462,9 @@ function startMiningProcess() {
     if (miningCanvas) {
         mctx = miningCanvas.getContext('2d');
         
-        turret.x = miningCanvas.width / 2;
-        turret.y = miningCanvas.height - 80;
+        // 🚩 ใช้ตำแหน่งจากป้อมที่ติดตั้งอยู่
+        playerEquipped.turret.x = miningCanvas.width / 2;
+        playerEquipped.turret.y = miningCanvas.height - 80;
         
         miningGameActive = true;
         drillHealth = 100;
@@ -2470,7 +2472,7 @@ function startMiningProcess() {
         aliens = [];
         bullets = [];
 
-        console.log("ระบบป้องกันเริ่มทำงาน!");
+        console.log(`ระบบป้องกันเริ่มทำงาน! [${playerEquipped.turret.name} Active]`);
         requestAnimationFrame(updateMining); 
     }
 }
@@ -2479,7 +2481,6 @@ function startMiningProcess() {
 function updateMining(currentTime) {
     if (!miningGameActive) return;
 
-    // ตรวจสอบพู่กัน (mctx)
     if (!mctx) {
         miningCanvas = document.getElementById('mining-canvas');
         if (miningCanvas) mctx = miningCanvas.getContext('2d');
@@ -2487,14 +2488,8 @@ function updateMining(currentTime) {
     }
 
     try {
-        // --- 1. ถมพื้นหลังด้วยสีน้ำเงินเข้ม (ถ้าเห็นสีนี้ แสดงว่า Canvas ทำงาน) ---
         mctx.fillStyle = "#0a1a2f";
         mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
-
-        // --- 2. วาดพื้นหลัง/เครื่องขุด ---
-        //if (typeof drawMiningEnvironment === 'function') {
-        //    drawMiningEnvironment(mctx);
-        //}
 
         // --- 3. จัดการเอเลี่ยน ---
         if (Math.random() < 0.02 && typeof spawnAlien === 'function') spawnAlien();
@@ -2503,26 +2498,35 @@ function updateMining(currentTime) {
             alien.y += alien.speed;
             if (typeof drawAlien === 'function') drawAlien(mctx, alien);
             if (alien.y > miningCanvas.height - 100) {
+                // เอเลี่ยนหลุดไปกัดเครื่องขุด
                 if (typeof takeDamage === 'function') takeDamage(5);
                 aliens.splice(index, 1);
             }
         });
 
-        // --- 4. จัดการป้อม ---
-        if (typeof updateTurretLogic === 'function') updateTurretLogic(currentTime);
-        if (typeof drawTurretWithBase === 'function') drawTurretWithBase(mctx);
-        if (typeof updateBullets === 'function') updateBullets(mctx);
+        // --- 🚩 4. จัดการป้อม (ส่งข้อมูลป้อมที่ติดตั้งไปให้ Logic) ---
+        // ส่ง playerEquipped.turret เข้าไปเพื่อให้มันรู้ค่า Damage และ Fire Rate
+        if (typeof updateTurretLogic === 'function') {
+            updateTurretLogic(currentTime, playerEquipped.turret); 
+        }
+        
+        if (typeof drawTurretWithBase === 'function') {
+            drawTurretWithBase(mctx, playerEquipped.turret);
+        }
+        
+        if (typeof updateBullets === 'function') {
+            // ตอนอัปเดตกระสุน มันจะเอาค่า damage จากป้อมไปคำนวณตอนชนเอเลี่ยน
+            updateBullets(mctx, playerEquipped.turret.damage);
+        }
 
         // --- 5. อัปเดต UI ---
         setupProgress += 0.05;
         if (typeof updateMiningUI === 'function') updateMiningUI();
 
     } catch (err) {
-        // ถ้าค้างตรงไหน ให้พ่น Error ออกมาดูแต่ไม่ต้องหยุดทำงาน
         console.error("เกิดข้อผิดพลาดในการวาดเฟรม:", err);
     }
 
-    // วน Loop ต่อ
     if (setupProgress < 100 && miningGameActive) {
         requestAnimationFrame(updateMining);
     } else if (setupProgress >= 100) {
