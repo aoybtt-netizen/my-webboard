@@ -3146,7 +3146,7 @@ function createBloodPool(x, y, size) {
     bloodPools.push({
         x: x,
         y: y,
-        size: size * 0.7, // ให้กองเลือดใหญ่กว่าตัวมอนนิดนึง
+        size: size * 0.3, // ให้กองเลือดใหญ่กว่าตัวมอนนิดนึง
         life: 1.0,        // ค่าความชัด (Opacity)
         fadeRate: 0.005   // ความเร็วในการจาง (ปรับให้จางช้าๆ)
     });
@@ -3176,6 +3176,22 @@ function updateMining(currentTime) {
     try {
         mctx.fillStyle = "#0a1a2f";
         mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
+		
+		bloodPools.forEach((pool, index) => {
+            pool.life -= pool.fadeRate;
+            if (pool.life <= 0) {
+                bloodPools.splice(index, 1);
+            } else {
+                mctx.save();
+                mctx.globalAlpha = pool.life;
+                mctx.fillStyle = "#520203"; // สีเลือดที่กัปตันตั้งไว้
+                mctx.beginPath();
+                mctx.arc(pool.x, pool.y, pool.size, 0, Math.PI * 2);
+                mctx.fill();
+                mctx.restore();
+            }
+        });
+        mctx.globalAlpha = 1.0;
 
         // --- 3.1 สั่งเกิดเอเลี่ยน (Logic เดิมของคุณ) ---
         const spawnChance = 0.01 + (currentMiningDist * 0.005);
@@ -3185,18 +3201,13 @@ function updateMining(currentTime) {
 
         // --- 🚩 3.2 สั่งขยับและวาดเอเลี่ยน (ส่วนที่หายไป!) ---
         aliens.forEach((alien, index) => {
-            // 1. ให้เอเลี่ยนเดินลงมา
             alien.y += alien.speed;
+            if (typeof drawAlien === 'function') drawAlien(mctx, alien);
             
-            // 2. สั่งวาดตัวเอเลี่ยนและหลอดเลือด
-            if (typeof drawAlien === 'function') {
-                drawAlien(mctx, alien);
-            }
-            
-            // 3. เช็คว่าเอเลี่ยนหลุดไปกัดเครื่องขุดหรือยัง
+            // เช็คโจมตี
             if (alien.y > miningCanvas.height - 110) {
-                if (typeof takeDamage === 'function') takeDamage(5); 
-                aliens.splice(index, 1); // กัดแล้วหายไป
+                if (typeof takeDamage === 'function') takeDamage(5);
+                aliens.splice(index, 1);
             }
         });
 
@@ -3246,20 +3257,6 @@ function updateMining(currentTime) {
         });
         mctx.globalAlpha = 1.0;
 		
-		bloodPools.forEach((pool, index) => {
-            pool.life -= pool.fadeRate;
-            if (pool.life <= 0) {
-                bloodPools.splice(index, 1);
-            } else {
-                mctx.globalAlpha = pool.life;
-                mctx.fillStyle = "#520204"; // สีม่วงเอเลี่ยน หรือ #38ef7d (เขียว)
-                mctx.beginPath();
-                // วาดกองเลือดแบบวงกลมบิดเบี้ยวนิดๆ (ใช้ arc ปกติไปก่อน)
-                mctx.arc(pool.x, pool.y, pool.size, 0, Math.PI * 2);
-                mctx.fill();
-            }
-        });
-        mctx.globalAlpha = 1.0;
 
         // --- 5. อัปเดต UI ---
         setupProgress += 0.05; 
