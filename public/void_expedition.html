@@ -3201,27 +3201,41 @@ function exitMining() {
 }
 
 function fireBullet(target, damage) {
-    const turret = playerEquipped.turret; // ดึงพิกัดป้อมปัจจุบัน
+    const turret = playerEquipped.turret;
     
-    // 1. คำนวณระยะห่างระหว่างป้อมกับเอเลี่ยน
+    // 1. คำนวณทิศทางจากป้อมไปหาเป้าหมาย
     const dx = target.x - turret.x;
     const dy = target.y - turret.y;
     const distance = Math.hypot(dx, dy);
 
-    // 2. คำนวณความเร็วแยกแกน (vx, vy) โดยใช้หลักการ Vector
-    const bulletSpeed = 10; // 🚀 ปรับความเร็วทวีคูณตรงนี้ได้ครับ
+    // 2. กำหนดความยาวของลำกล้องปืน (Barrel Length)
+    // จากโค้ด draw ของกัปตันที่วาดลำกล้องยาว 40... ลองใช้ค่าประมาณ 35-40 ครับ
+    const barrelLength = 40; 
+
+    // 3. คำนวณจุดปลายกระบอกปืน (Muzzle Position)
+    // ใช้ Vector Unit (dx/dist) คูณความยาวลำกล้อง เพื่อหาตำแหน่งปลายกระบอก
+    const muzzleX = turret.x + (dx / distance) * barrelLength;
+    const muzzleY = turret.y + (dy / distance) * barrelLength;
+
+    // 4. คำนวณความเร็วลูกกระสุน (เหมือนเดิม)
+    const bulletSpeed = 12; // เพิ่มความเร็วขึ้นนิดหน่อยให้ดูสมจริง
     const vx = (dx / distance) * bulletSpeed;
     const vy = (dy / distance) * bulletSpeed;
 
-    // 3. ผลักข้อมูลเข้าอาร์เรย์พร้อมค่าแรงส่ง
+    // 5. สร้างกระสุนโดยเริ่มจากปลายกระบอก (muzzleX, muzzleY)
     bullets.push({
-        x: turret.x,
-        y: turret.y,
-        vx: vx, // 🚩 เพิ่มค่านี้เพื่อให้ updateBullets เอาไปบวกพิกัด
-        vy: vy, // 🚩 เพิ่มค่านี้เพื่อให้ updateBullets เอาไปบวกพิกัด
+        x: muzzleX, // 🚩 จุดเริ่มต้นใหม่ที่ปลายกระบอก
+        y: muzzleY, // 🚩 จุดเริ่มต้นใหม่ที่ปลายกระบอก
+        vx: vx,
+        vy: vy,
         damage: damage,
         size: 3
     });
+    
+    // (Optional) แถมเอฟเฟกต์แสงวาบปลายกระบอก (Muzzle Flash)
+    if (typeof createExplosion === 'function') {
+        createExplosion(muzzleX, muzzleY, 8, "rgba(255, 255, 0, 0.5)"); 
+    }
 }
 
 function updateBullets(ctx) {
