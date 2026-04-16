@@ -1261,6 +1261,8 @@ button:hover { opacity: 0.8; }
 		let aliens = [];
 		let bullets = [];
 		let currentMiningDist = 1;
+		let miningParticles = []; // เก็บคราบเลือด/สะเก็ด
+		let damageTexts = [];    // เก็บตัวเลขดาเมจ
 		
 		let miningActive = false;
 		let miningProgress = 0;
@@ -3123,6 +3125,32 @@ function takeDamage(amount) {
     }
 }
 
+// 🩸 ฟังก์ชันสร้างคราบเลือด/สะเก็ด
+function createBloodSplatter(x, y, color = "#38ef7d") {
+    for (let i = 0; i < 10; i++) {
+        miningParticles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 6, // กระจายซ้ายขวา
+            vy: (Math.random() - 0.5) * 6, // กระจายบนล่าง
+            size: Math.random() * 4 + 2,
+            color: color,
+            life: 1.0 // ค่าความโปร่งใส 100%
+        });
+    }
+}
+
+// 🔢 ฟังก์ชันสร้างตัวเลขดาเมจ
+function createDamageText(x, y, text) {
+    damageTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        vy: -2,    // ลอยขึ้นข้างบน
+        life: 1.0  // ค่าความโปร่งใส
+    });
+}
+
 // E. อัปเดต UI (Progress Bar)
 function updateMining(currentTime) {
     if (!miningGameActive) return;
@@ -3173,6 +3201,40 @@ function updateMining(currentTime) {
                 updateBullets(mctx, currentTurret.damage);
             }
         }
+		
+		miningParticles.forEach((p, index) => {
+			p.x += p.vx;
+			p.y += p.vy;
+			p.life -= 0.03; // ค่อยๆ จางหาย
+
+			if (p.life <= 0) {
+				miningParticles.splice(index, 1);
+			} else {
+				mctx.globalAlpha = p.life;
+				mctx.fillStyle = p.color;
+				mctx.beginPath();
+				mctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+				mctx.fill();
+			}
+		});
+
+		// 2. วาดและอัปเดตตัวเลขดาเมจ
+		damageTexts.forEach((dt, index) => {
+			dt.y += dt.vy;  // ลอยขึ้น
+			dt.life -= 0.02; // จางหายช้ากว่าเลือดนิดนึง
+
+			if (dt.life <= 0) {
+				damageTexts.splice(index, 1);
+			} else {
+				mctx.globalAlpha = dt.life;
+				mctx.fillStyle = "white";
+				mctx.font = "bold 16px Orbitron";
+				mctx.textAlign = "center";
+				mctx.fillText(dt.text, dt.x, dt.y);
+			}
+		});
+
+		mctx.globalAlpha = 1.0; // รีเซ็ตค่าความโปร่งใสคืนค่าปกติ
 
         // --- 5. อัปเดต UI ---
         setupProgress += 0.05; 
@@ -3278,7 +3340,7 @@ function updateBullets(ctx, damage) {
         b.x += b.vx;
         b.y += b.vy;
 
-        // วาดกระสุน (เหมือนเดิม)
+        // วาดกระสุน
         ctx.fillStyle = "yellow";
         ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill();
 
@@ -3289,23 +3351,25 @@ function updateBullets(ctx, damage) {
             const dist = Math.hypot(b.x - a.x, b.y - a.y);
 
             if (dist < a.size / 2) {
-                // 🚩 1. ลด HP เอเลี่ยนตามดาเมจของป้อม
+                // 🚩 1. สร้างตัวเลขดาเมจตอนชน
+                createDamageText(b.x, b.y, `-${b.damage}`);
+                
+                // 🚩 2. สร้างสะเก็ดเลือดเล็กๆ ตอนโดนยิง
+                createBloodSplatter(b.x, b.y, "#38ef7d"); 
+
                 a.hp -= b.damage; 
                 hitSomething = true;
 
-                // 🚩 2. ถ้าเอเลี่ยน HP หมดถึงจะตาย
                 if (a.hp <= 0) {
-                    if (typeof createExplosion === 'function') createExplosion(a.x, a.y, 30, "#ff4b2b");
+                    // 🚩 3. ถ้าตาย ให้ระเบิดเลือดกองใหญ่!
+                    createBloodSplatter(a.x, a.y, "#38ef7d");
                     aliens.splice(j, 1);
-                } else {
-                    // ถ้ายังไม่ตาย ให้มีเอฟเฟกต์กระเด็นหรือไฟแลบนิดๆ
-                    if (typeof createExplosion === 'function') createExplosion(b.x, b.y, 10, "yellow");
                 }
                 break; 
             }
         }
 
-        if (hitSomething || b.y < 0 || b.y > miningCanvas.height || b.x < 0 || b.x > miningCanvas.width) {
+        if (hitSomething || b.y < 0 || b.y > 600 || b.x < 0 || b.x > 400) {
             bullets.splice(i, 1);
         }
     }
