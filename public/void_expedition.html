@@ -2440,13 +2440,36 @@ function showArrivalUI(starData, q, r) {
 
 
 function startMiningProcess() {
-    // 🚩 เช็คก่อนว่าติดตั้งป้อมปืนมาไหม (กัน Error)
-    if (!playerEquipped || !playerEquipped.turret) {
-        showMiningToast("MISSING EQUIPMENT: Laser Turret required!", "#ff4b2b");
-        return;
+    // 🚩 [ปรับปรุงใหม่] เช็คและดึงค่าป้อมมาตรฐานถ้าไม่มีของติดตั้ง
+    if (!playerEquipped) playerEquipped = {}; // กันเหนียวถ้าตัวแปรว่าง
+
+    if (!playerEquipped.turret) {
+        console.warn("Missing Turret! Deploying Standard Laser Turret...");
+        
+        // สร้างค่ามาตรฐาน (Standard Stats)
+        playerEquipped.turret = { 
+            id: 'emergency_turret', 
+            name: 'STANDARD LASER TURRET', 
+            type: 'ship turret', 
+            imgKey: 'turret1', // คีย์รูปภาพพื้นฐาน
+            level: 1, 
+            maxUpgrades: 5, 
+            durability: 100, 
+            damage: 5,         
+            fireRate: 1.0,     
+            repairCost: { metal: 1, energy: 1, tech: 1 }, 
+            isLocked: true,
+            rotation: 0,       // ค่าเริ่มต้นมุม
+            lastShot: 0        // ค่าเริ่มต้นเวลาที่ยิง
+        };
+
+        // แจ้งเตือนผู้เล่นแบบ Soft Warning (สีส้ม)
+        if (typeof showMiningToast === 'function') {
+            showMiningToast("EMERGENCY: Standard Turret Deployed!", "#ffca28");
+        }
     }
 
-    // จัดการ UI
+    // --- จัดการ UI (เหมือนเดิม) ---
     document.getElementById('arrival-modal').classList.remove('active');
     const detailModal = document.getElementById('star-detail-modal');
     if (detailModal) detailModal.style.display = 'none';
@@ -2457,12 +2480,12 @@ function startMiningProcess() {
     viewMining.classList.add('active');
     viewMining.style.display = 'flex'; 
 
-    // เริ่มต้นระบบ Canvas
+    // --- เริ่มต้นระบบ Canvas ---
     miningCanvas = document.getElementById('mining-canvas'); 
     if (miningCanvas) {
         mctx = miningCanvas.getContext('2d');
         
-        // 🚩 ใช้ตำแหน่งจากป้อมที่ติดตั้งอยู่
+        // 🚩 กำหนดตำแหน่งป้อม (ดึงจาก playerEquipped.turret แน่นอนแล้ว)
         playerEquipped.turret.x = miningCanvas.width / 2;
         playerEquipped.turret.y = miningCanvas.height - 80;
         
