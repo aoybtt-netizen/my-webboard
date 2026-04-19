@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Starship Hangar - Ship Builder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Bai+Jamjuree:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00d2ff;
+            --neon-red: #ff4b2b;
+            --neon-yellow: #f1c40f;
+            --bg-dark: #050a12;
+            --panel-bg: rgba(10, 26, 47, 0.9);
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Bai Jamjuree', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar สำหรับเลือกบล็อก */
+        #sidebar {
+            width: 300px;
+            background: var(--panel-bg);
+            border-right: 2px solid var(--neon-blue);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        h2 { font-family: 'Orbitron', sans-serif; color: var(--neon-blue); margin-top: 0; }
+
+        .block-option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .block-option:hover { border-color: var(--neon-blue); background: rgba(0, 210, 255, 0.1); }
+        .block-option.active { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 210, 255, 0.3); }
+
+        .preview-box { width: 30px; height: 30px; border-radius: 4px; }
+
+        /* พื้นที่สร้างยาน */
+        #builder-container {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: 
+                radial-gradient(circle at 2px 2px, rgba(0, 210, 255, 0.1) 1px, transparent 0);
+            background-size: 40px 40px; /* ขนาดตาราง */
+        }
+
+        #ship-canvas {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            cursor: crosshair;
+        }
+
+        /* ส่วนแสดงสถิติ */
+        #stats-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            padding: 20px;
+            border: 1px solid var(--neon-blue);
+            border-radius: 10px;
+            min-width: 200px;
+        }
+
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .stat-value { color: var(--neon-blue); font-weight: bold; }
+
+        .controls {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+        }
+
+        .btn-save { background: var(--neon-blue); color: #000; }
+        .btn-reset { background: transparent; color: var(--neon-red); border: 1px solid var(--neon-red); }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>HANGAR</h2>
+    <p>คลิกเลือกบล็อกและวางลงในตาราง (คลิกขวาเพื่อลบ)</p>
+    
+    <div id="palette">
+        <div class="block-option active" data-type="HULL">
+            <div class="preview-box" style="background: #555; border: 2px solid #888;"></div>
+            <span>Hull (โครงสร้าง)</span>
+        </div>
+        <div class="block-option" data-type="ENGINE">
+            <div class="preview-box" style="background: #2980b9; border: 2px solid var(--neon-blue);"></div>
+            <span>Engine (เครื่องยนต์)</span>
+        </div>
+        <div class="block-option" data-type="TURRET">
+            <div class="preview-box" style="background: #c0392b; border: 2px solid var(--neon-red);"></div>
+            <span>Turret (ป้อมปืน)</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-save" onclick="saveShip()">LAUNCH SHIP</button>
+        <button class="btn-reset" onclick="resetGrid()">RESET DESIGN</button>
+    </div>
+</div>
+
+<div id="builder-container">
+    <canvas id="ship-canvas"></canvas>
+
+    <div id="stats-panel">
+        <h3 style="margin-top:0">SHIP STATS</h3>
+        <div class="stat-row">
+            <span>HP:</span> <span id="stat-hp" class="stat-value">100</span>
+        </div>
+        <div class="stat-row">
+            <span>Speed:</span> <span id="stat-speed" class="stat-value">10</span>
+        </div>
+        <div class="stat-row">
+            <span>Damage:</span> <span id="stat-damage" class="stat-value">0</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('ship-canvas');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 40;
+    const cols = 15;
+    const rows = 15;
+
+    canvas.width = cols * gridSize;
+    canvas.height = rows * gridSize;
+
+    // ข้อมูลบล็อกแต่ละประเภท
+    const BLOCK_DATA = {
+        HULL: { color: '#555', border: '#888', hp: 50, speed: -1, damage: 0 },
+        ENGINE: { color: '#2980b9', border: '#3498db', hp: 20, speed: 10, damage: 0 },
+        TURRET: { color: '#c0392b', border: '#e74c3c', hp: 30, speed: -2, damage: 15 },
+        CORE: { color: '#f1c40f', border: '#f39c12', hp: 200, speed: 0, damage: 0 }
+    };
+
+    // ตารางเก็บข้อมูลยาน (2D Array)
+    let grid = Array(cols).fill(null).map(() => Array(rows).fill(null));
+    let selectedType = 'HULL';
+
+    // เริ่มต้น: วาง Core ไว้ตรงกลาง
+    grid[Math.floor(cols/2)][Math.floor(rows/2)] = 'CORE';
+
+    // --- ระบบวาดภาพ ---
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // วาดตารางพื้นหลัง
+        ctx.strokeStyle = "rgba(0, 210, 255, 0.1)";
+        for(let i=0; i<=cols; i++) {
+            ctx.beginPath(); ctx.moveTo(i*gridSize, 0); ctx.lineTo(i*gridSize, canvas.height); ctx.stroke();
+        }
+        for(let j=0; j<=rows; j++) {
+            ctx.beginPath(); ctx.moveTo(0, j*gridSize); ctx.lineTo(canvas.width, j*gridSize); ctx.stroke();
+        }
+
+        // วาดบล็อกที่วางไว้
+        for(let x=0; x<cols; x++) {
+            for(let y=0; y<rows; y++) {
+                if(grid[x][y]) {
+                    const data = BLOCK_DATA[grid[x][y]];
+                    drawBlock(x, y, data);
+                }
+            }
+        }
+        
+        updateStats();
+        requestAnimationFrame(draw);
+    }
+
+    function drawBlock(x, y, data) {
+        ctx.fillStyle = data.color;
+        ctx.strokeStyle = data.border;
+        ctx.lineWidth = 2;
+        ctx.fillRect(x*gridSize + 2, y*gridSize + 2, gridSize - 4, gridSize - 4);
+        ctx.strokeRect(x*gridSize + 2, y*gridSize + 2, gridSize - 4, gridSize - 4);
+        
+        // เพิ่มดีเทลเล็กน้อยให้ดูเป็น Sci-Fi
+        ctx.fillStyle = "rgba(255,255,255,0.1)";
+        ctx.fillRect(x*gridSize + 5, y*gridSize + 5, 10, 10);
+    }
+
+    // --- ระบบจัดการ Input ---
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - rect.left) / gridSize);
+        const y = Math.floor((e.clientY - rect.top) / gridSize);
+
+        if (e.button === 0) { // คลิกซ้าย: วาง
+            if (grid[x][y] !== 'CORE') {
+                grid[x][y] = selectedType;
+            }
+        } else if (e.button === 2) { // คลิกขวา: ลบ
+            if (grid[x][y] !== 'CORE') {
+                grid[x][y] = null;
+            }
+        }
+    });
+
+    // กันเมนูคลิกขวาขึ้น
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    // เลือกบล็อกใน Palette
+    document.querySelectorAll('.block-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            document.querySelectorAll('.block-option').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            selectedType = opt.dataset.type;
+        });
+    });
+
+    // --- ระบบคำนวณสถิติ ---
+    function updateStats() {
+        let hp = 0;
+        let speed = 5; // ความเร็วพื้นฐาน
+        let damage = 0;
+
+        for(let x=0; x<cols; x++) {
+            for(let y=0; y<rows; y++) {
+                if(grid[x][y]) {
+                    const d = BLOCK_DATA[grid[x][y]];
+                    hp += d.hp;
+                    speed += d.speed;
+                    damage += d.damage;
+                }
+            }
+        }
+
+        document.getElementById('stat-hp').innerText = hp;
+        document.getElementById('stat-speed').innerText = Math.max(1, speed);
+        document.getElementById('stat-damage').innerText = damage;
+    }
+
+    function resetGrid() {
+        grid = Array(cols).fill(null).map(() => Array(rows).fill(null));
+        grid[Math.floor(cols/2)][Math.floor(rows/2)] = 'CORE';
+    }
+
+    function saveShip() {
+        alert("ยานของคุณพร้อมออกปฏิบัติการ!\nHP: " + document.getElementById('stat-hp').innerText);
+        // ตรงนี้กัปตันสามารถเขียน Code ส่งข้อมูล grid ไปเซฟในฐานข้อมูลได้
+    }
+
+    draw();
+</script>
+
+</body>
+</html>
