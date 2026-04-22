@@ -3621,11 +3621,10 @@ function backToMain() {
 }
 
 // --- การวาดเนื้อหาภายใน ---
-// ฟังก์ชันวาดรายการในหน้า Category (รูปที่ 1)
+// ฟังก์ชันวาดรายการในหน้า Category 
 function renderCategoryContent() {
     const equipped = playerEquipped[currentCat];
     const eqBox = document.getElementById('equipped-box');
-
     if (!eqBox) return;
 
     if (equipped) {
@@ -3639,38 +3638,41 @@ function renderCategoryContent() {
                     <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
                 </div>
                 <div class="status-box">
-                    LEVEL: ${equipped.level}<br>
-                    POWER: ${equipped.level * 10}
-                </div>
+                    ${getItemStatusHTML(equipped)} </div>
             </div>
             <div class="button-row">
-                <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">ปุ่มถอน</button>
-                <button class="btn-wire btn-green" onclick="upgradeItem()">ปุ่มอัพเกรด</button>
+                <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">REMOVE</button>
+                <button class="btn-wire btn-green" onclick="upgradeItem()">UPGRADE</button>
             </div>
         `;
     } else {
         eqBox.innerHTML = `
             <div class="item-name-tag">EMPTY SLOT</div>
             <div class="item-main-content">
-                <div class="img-square" style="opacity:0.3;">NO ITEM</div>
-                <div class="status-box" style="opacity:0.5;">กรุณาติดตั้งอุปกรณ์</div>
+                <div class="img-square" style="opacity:0.3;">NO MODULE</div>
+                <div class="status-box" style="opacity:0.5;">Please install equipment</div>
             </div>
         `;
     }
 
-    // --- ส่วน Inventory List ด้านล่าง ---
+    // --- ส่วน Inventory List (ทำเหมือนเดิมแต่เรียกใช้ getItemStatusHTML) ---
     const invArea = document.getElementById('inventory-list-area');
     invArea.innerHTML = '';
-    const items = playerInventory.filter(i => i.type === currentCat);
+    const items = playerInventory.filter(i => {
+        // กองไอเทมตามหมวดหมู่ (เช็คคีย์ให้ตรงกับ API)
+        if (currentCat === 'engine') return i.type === 'ship engine';
+        if (currentCat === 'drill') return i.type === 'drill engine';
+        if (currentCat === 'barrier') return i.type === 'card barrier';
+        if (currentCat === 'turret') return i.type === 'turret';
+        return false;
+    });
 
     items.forEach(item => {
-        // 🚩 เปลี่ยนเป็น imageSources เช่นกัน
         const imgKey = item.imgKey || 'default';
-        const imgSrc = imageSources[imgKey] || imageSources['default'] || 'images/default.png';
+        const imgSrc = imageSources[imgKey] || 'images/default.png';
 
         const row = document.createElement('div');
         row.className = 'inv-item-card';
-        row.style.width = '100%';
         row.onclick = () => openItemPopup(item); 
         row.innerHTML = `
             <div class="inv-img-small">
@@ -3678,37 +3680,61 @@ function renderCategoryContent() {
             </div>
             <div class="status-box">
                 <strong>${item.name}</strong><br>
-                <span style="font-size:0.7rem; color:#ffcc00;">LVL: ${item.level}</span>
-            </div>
+                ${getItemStatusHTML(item)} </div>
         `;
         invArea.appendChild(row);
     });
 }
 
+// ฟังก์ชันสำหรับแปลงค่าสเตตัสตามประเภทไอเทม
+function getItemStatusHTML(item) {
+    if (!item) return "No Data";
+    
+    let stats = `<span style="color: #00d2ff;">LVL: ${item.level} / ${item.maxUpgrades}</span><br>`;
+    
+    // เช็คตามประเภทของไอเทม
+    switch (item.type) {
+        case 'ship engine':
+            stats += `POWER: ${item.power}<br>`;
+            stats += `CONS: ${item.consumption}`;
+            break;
+        case 'drill engine':
+            stats += `ENERGY: ${item.energyMax}<br>`;
+            stats += `CONS: ${item.consumption}`;
+            break;
+        case 'card barrier':
+            stats += `SHIELD: ${item.shield}/${item.maxShield}<br>`;
+            stats += `REGEN: ${item.recharge}/s`;
+            break;
+        case 'turret':
+            stats += `DMG: ${item.damage}<br>`;
+            stats += `RATE: ${item.fireRate}s`;
+            break;
+        default:
+            stats += `DURABILITY: ${item.durability}%`;
+    }
+    return stats;
+}
+
 // ฟังก์ชันเปิด Popup รายละเอียด (รูปที่ 2)
 function openItemPopup(item) {
     const popup = document.getElementById('item-detail-popup');
-    const imgSrc = imageSources[item.imgKey] || imageSources['default'] || 'images/default.png';
+    document.getElementById('pop-name').innerText = item.name;
+    document.getElementById('pop-status').innerHTML = getItemStatusHTML(item); // 🚩 ใช้ฟังก์ชันเดิม
     
-    popup.innerHTML = `
-        <div class="wireframe-box popup-content">
-            <div class="item-name-tag">${item.name}</div>
-            <div class="item-main-content">
-                <div class="img-square">
-                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
-                </div>
-                <div class="status-box">
-                    POWER: ${item.level * 10}<br>
-                    WEIGHT: ${item.level * 5}kg<br>
-                    STATUS: พร้อมติดตั้ง
-                </div>
-            </div>
-            <div class="button-row">
-                <button class="btn-wire btn-gray" onclick="closePopup()">ยกเลิก</button>
-                <button class="btn-wire btn-blue" onclick="confirmEquip('${item.id}')">ติดตั้งอุปกรณ์</button>
-            </div>
-        </div>
-    `;
+    // อัปเดตรูปภาพ
+    const imgKey = item.imgKey || 'default';
+    const imgSrc = imageSources[imgKey] || 'images/default.png';
+    const imgContainer = popup.querySelector('.img-square');
+    imgContainer.innerHTML = `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">`;
+
+    // ตั้งค่าปุ่มติดตั้ง
+    const installBtn = document.getElementById('pop-install-btn');
+    installBtn.onclick = () => {
+        installModule(currentCat, item.id);
+        closePopup();
+    };
+
     popup.style.display = 'flex';
 }
 
