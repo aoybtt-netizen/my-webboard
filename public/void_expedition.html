@@ -553,6 +553,35 @@ button:hover { opacity: 0.8; }
 }
 
 
+/* แถวแสดงทรัพยากร */
+.item-resource-row {
+    font-size: 10px; /* ขนาดเล็กกะทัดรัด */
+    color: #fff;
+    text-align: center;
+    margin-top: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+    white-space: nowrap; /* กันมันขึ้นบรรทัดใหม่ */
+}
+
+/* ปรับ Layout ให้รูปและแถวทรัพยากรอยู่ด้วยกัน */
+.img-section, .inv-img-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+}
+
+/* สีตัวย่อแต่ละประเภท */
+.resource-m { color: #b0b0b0; } /* Metal - สีเทาเงิน */
+.resource-e { color: #00d2ff; } /* Energy - สีฟ้า */
+.resource-t { color: #a326ff; } /* Tech - สีม่วง */
+
+
+
 .button-row {
     display: flex;
     gap: 10px;
