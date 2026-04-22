@@ -555,16 +555,16 @@ button:hover { opacity: 0.8; }
 
 /* แถวแสดงทรัพยากร */
 .item-resource-row {
-    font-size: 10px; /* ขนาดเล็กกะทัดรัด */
+    font-size: 9px; /* ลดขนาดตัวอักษรลงเล็กน้อยเพื่อให้พอดี 2 บรรทัด */
     color: #fff;
     text-align: center;
     margin-top: 4px;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 3px;
-    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.6); /* เข้มขึ้นนิดนึงให้อ่านง่าย */
+    border: 1px solid rgba(0, 210, 255, 0.2);
+    border-radius: 4px;
+    padding: 3px 5px;
     font-family: 'Orbitron', sans-serif;
-    letter-spacing: 1px;
-    white-space: nowrap; /* กันมันขึ้นบรรทัดใหม่ */
+    min-width: 85px; /* ล็อคความกว้างให้เท่ากับรูป */
 }
 
 /* ปรับ Layout ให้รูปและแถวทรัพยากรอยู่ด้วยกัน */
@@ -3680,7 +3680,7 @@ function renderCategoryContent() {
                     <div class="img-square">
                         <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
                     </div>
-                    ${getResourceRowHTML(equipped.repairCost)}
+                    ${getResourceRowHTML(equipped)} 
                 </div>
                 <div class="status-box">
                     ${getItemStatusHTML(equipped)}
@@ -3691,9 +3691,18 @@ function renderCategoryContent() {
                 <button class="btn-wire btn-green" onclick="upgradeItem()">UPGRADE</button>
             </div>
         `;
+    } else {
+        // กรณีไม่มีไอเทมติดตั้ง
+        eqBox.innerHTML = `
+            <div class="item-name-tag">EMPTY SLOT</div>
+            <div class="item-main-content">
+                <div class="img-square" style="opacity:0.3;">NO MODULE</div>
+                <div class="status-box" style="opacity:0.5;">Please install equipment</div>
+            </div>
+        `;
     }
 
-    // --- ส่วน Inventory List ---
+    // --- Inventory List ---
     const invArea = document.getElementById('inventory-list-area');
     invArea.innerHTML = '';
     const items = playerInventory.filter(i => {
@@ -3716,7 +3725,7 @@ function renderCategoryContent() {
                 <div class="inv-img-small">
                     <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
                 </div>
-                ${getResourceRowHTML(item.repairCost)}
+                ${getResourceRowHTML(item)}
             </div>
             <div class="status-box">
                 <strong>${item.name}</strong><br>
@@ -3744,7 +3753,6 @@ function getItemStatusHTML(item) {
         case 'ship engine':
             html += `<div>• POWER: <span style="color:#fff">${item.power}</span></div>`;
             html += `<div>• CONS: <span style="color:#fff">${item.consumption}</span></div>`;
-            html += `<div>• DUR: <span style="color:#fff">${item.durability}%</span></div>`;
             break;
 
         case 'drill engine':
@@ -3765,7 +3773,6 @@ function getItemStatusHTML(item) {
             html += `<div>• DMG: <span style="color:#fff">${item.damage}</span></div>`;
             html += `<div>• FIRE RATE: <span style="color:#fff">${item.fireRate}s</span></div>`;
             html += `<div>• RANGE: <span style="color:#fff">${item.range}</span></div>`;
-            html += `<div>• DUR: <span style="color:#fff">${item.durability}%</span></div>`;
             break;
 
         case 'energy chip':
@@ -3777,20 +3784,34 @@ function getItemStatusHTML(item) {
     return html;
 }
 
-function getResourceRowHTML(cost) {
-    if (!cost) return "";
+function getResourceRowHTML(item) {
+    if (!item) return "";
     
-    let parts = [];
-    // เช็คทีละตัว ถ้า > 0 ให้เก็บเข้าอาเรย์
-    if (cost.metal > 0) parts.push(`<span style="color:#b0b0b0;">M</span>=${cost.metal}`);
-    if (cost.energy > 0) parts.push(`<span style="color:#00d2ff;">E</span>=${cost.energy}`);
-    if (cost.tech > 0) parts.push(`<span style="color:#a326ff;">T</span>=${cost.tech}`);
-    
-    // ถ้ารวมแล้วไม่มีตัวไหน > 0 เลย ให้คืนค่าว่าง
-    if (parts.length === 0) return "";
+    let html = "";
 
-    // นำมารวมกันเป็นแถวเดียว เว้นวรรคระหว่างประเภท
-    return `<div class="item-resource-row">${parts.join(" ")}</div>`;
+    // 🚩 1. ส่วนของ Durability (อยู่ด้านบน)
+    if (item.durability !== undefined) {
+        // เปลี่ยนสีตามสถานะ: ถ้าเหลือน้อยกว่า 30% ให้เป็นสีแดง
+        let durColor = item.durability < 30 ? "#ff4b2b" : "#38ef7d";
+        html += `<div style="color:${durColor}; font-weight:bold; margin-bottom:2px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom:2px;">
+                    DUR: ${item.durability}%
+                 </div>`;
+    }
+
+    // 🚩 2. ส่วนของทรัพยากร M E T (อยู่ด้านล่าง)
+    const cost = item.repairCost;
+    let parts = [];
+    if (cost) {
+        if (cost.metal > 0) parts.push(`<span style="color:#b0b0b0;">M</span>=${cost.metal}`);
+        if (cost.energy > 0) parts.push(`<span style="color:#00d2ff;">E</span>=${cost.energy}`);
+        if (cost.tech > 0) parts.push(`<span style="color:#a326ff;">T</span>=${cost.tech}`);
+    }
+
+    if (parts.length > 0) {
+        html += `<div style="margin-top:2px;">${parts.join(" ")}</div>`;
+    }
+
+    return html ? `<div class="item-resource-row">${html}</div>` : "";
 }
 
 
