@@ -531,14 +531,27 @@ button:hover { opacity: 0.8; }
     text-align: center;
 }
 
+
 .status-box {
     flex-grow: 1;
-	border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 10px;
-    font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 210, 255, 0.2);
+    padding: 8px;
+    border-radius: 4px;
+    min-height: 100px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace; 
 }
+
+.status-box::-webkit-scrollbar {
+    width: 4px;
+}
+.status-box::-webkit-scrollbar-thumb {
+    background: var(--neon-blue);
+    border-radius: 2px;
+}
+
 
 .button-row {
     display: flex;
@@ -3690,30 +3703,50 @@ function renderCategoryContent() {
 function getItemStatusHTML(item) {
     if (!item) return "No Data";
     
-    let stats = `<span style="color: #00d2ff;">LVL: ${item.level} / ${item.maxUpgrades}</span><br>`;
+    // สเตตัสพื้นฐานที่ทุกชิ้นมี
+    let html = `
+        <div class="stat-main" style="color: #00d2ff; font-weight: bold; margin-bottom: 5px;">
+            LVL: ${item.level} / ${item.maxUpgrades}
+        </div>
+        <div class="stat-list" style="font-size: 0.8rem; line-height: 1.4;">
+    `;
     
-    // เช็คตามประเภทของไอเทม
+    // เช็คตามประเภทและดึงค่าเฉพาะออกมา
     switch (item.type) {
         case 'ship engine':
-            stats += `POWER: ${item.power}<br>`;
-            stats += `CONS: ${item.consumption}`;
+            html += `<div>• POWER: <span style="color:#fff">${item.power}</span></div>`;
+            html += `<div>• CONS: <span style="color:#fff">${item.consumption}</span></div>`;
+            html += `<div>• DUR: <span style="color:#fff">${item.durability}%</span></div>`;
             break;
+
         case 'drill engine':
-            stats += `ENERGY: ${item.energyMax}<br>`;
-            stats += `CONS: ${item.consumption}`;
+            html += `<div>• ENERGY: <span style="color:#fff">${item.energyMax}</span></div>`;
+            html += `<div>• SCAN: <span style="color:#fff">${item.scanRate}</span></div>`;
+            html += `<div>• HEAT RES: <span style="color:#fff">${item.heatResist}</span></div>`;
+            html += `<div>• ACID RES: <span style="color:#fff">${item.acidResist}</span></div>`;
+            html += `<div>• CONS: <span style="color:#fff">${item.consumption}</span></div>`;
             break;
+
         case 'card barrier':
-            stats += `SHIELD: ${item.shield}/${item.maxShield}<br>`;
-            stats += `REGEN: ${item.recharge}/s`;
+            html += `<div>• SHIELD: <span style="color:#fff">${item.shield}/${item.maxShield}</span></div>`;
+            html += `<div>• REGEN: <span style="color:#fff">${item.recharge}/s</span></div>`;
+            html += `<div>• DELAY: <span style="color:#fff">${item.rechargeDelay}s</span></div>`;
             break;
+
         case 'turret':
-            stats += `DMG: ${item.damage}<br>`;
-            stats += `RATE: ${item.fireRate}s`;
+            html += `<div>• DMG: <span style="color:#fff">${item.damage}</span></div>`;
+            html += `<div>• FIRE RATE: <span style="color:#fff">${item.fireRate}s</span></div>`;
+            html += `<div>• RANGE: <span style="color:#fff">${item.range}</span></div>`;
+            html += `<div>• DUR: <span style="color:#fff">${item.durability}%</span></div>`;
             break;
-        default:
-            stats += `DURABILITY: ${item.durability}%`;
+
+        case 'energy chip':
+            html += `<div>• CHARGE: <span style="color:#fff">+${item.energyValue}</span></div>`;
+            break;
     }
-    return stats;
+
+    html += `</div>`; // ปิด stat-list
+    return html;
 }
 
 // ฟังก์ชันเปิด Popup รายละเอียด (รูปที่ 2)
