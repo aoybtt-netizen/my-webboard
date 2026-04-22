@@ -3642,37 +3642,32 @@ function renderCategoryContent() {
 
     if (equipped) {
         const imgKey = equipped.imgKey || 'default';
-        const imgSrc = imageSources[imgKey] || imageSources['default'] || 'images/default.png';
+        const imgSrc = imageSources[imgKey] || 'images/default.png';
 
         eqBox.innerHTML = `
             <div class="item-name-tag">${equipped.name}</div>
             <div class="item-main-content">
-                <div class="img-square">
-                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+                <div class="img-section">
+                    <div class="img-square">
+                        <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+                    </div>
+                    ${getResourceRowHTML(equipped.repairCost)}
                 </div>
                 <div class="status-box">
-                    ${getItemStatusHTML(equipped)} </div>
+                    ${getItemStatusHTML(equipped)}
+                </div>
             </div>
             <div class="button-row">
                 <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">REMOVE</button>
                 <button class="btn-wire btn-green" onclick="upgradeItem()">UPGRADE</button>
             </div>
         `;
-    } else {
-        eqBox.innerHTML = `
-            <div class="item-name-tag">EMPTY SLOT</div>
-            <div class="item-main-content">
-                <div class="img-square" style="opacity:0.3;">NO MODULE</div>
-                <div class="status-box" style="opacity:0.5;">Please install equipment</div>
-            </div>
-        `;
     }
 
-    // --- ส่วน Inventory List (ทำเหมือนเดิมแต่เรียกใช้ getItemStatusHTML) ---
+    // --- ส่วน Inventory List ---
     const invArea = document.getElementById('inventory-list-area');
     invArea.innerHTML = '';
     const items = playerInventory.filter(i => {
-        // กองไอเทมตามหมวดหมู่ (เช็คคีย์ให้ตรงกับ API)
         if (currentCat === 'engine') return i.type === 'ship engine';
         if (currentCat === 'drill') return i.type === 'drill engine';
         if (currentCat === 'barrier') return i.type === 'card barrier';
@@ -3688,12 +3683,16 @@ function renderCategoryContent() {
         row.className = 'inv-item-card';
         row.onclick = () => openItemPopup(item); 
         row.innerHTML = `
-            <div class="inv-img-small">
-                <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+            <div class="inv-img-section">
+                <div class="inv-img-small">
+                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+                </div>
+                ${getResourceRowHTML(item.repairCost)}
             </div>
             <div class="status-box">
                 <strong>${item.name}</strong><br>
-                ${getItemStatusHTML(item)} </div>
+                ${getItemStatusHTML(item)}
+            </div>
         `;
         invArea.appendChild(row);
     });
@@ -3748,6 +3747,23 @@ function getItemStatusHTML(item) {
     html += `</div>`; // ปิด stat-list
     return html;
 }
+
+function getResourceRowHTML(cost) {
+    if (!cost) return "";
+    
+    let parts = [];
+    // เช็คทีละตัว ถ้า > 0 ให้เก็บเข้าอาเรย์
+    if (cost.metal > 0) parts.push(`<span style="color:#b0b0b0;">M</span>=${cost.metal}`);
+    if (cost.energy > 0) parts.push(`<span style="color:#00d2ff;">E</span>=${cost.energy}`);
+    if (cost.tech > 0) parts.push(`<span style="color:#a326ff;">T</span>=${cost.tech}`);
+    
+    // ถ้ารวมแล้วไม่มีตัวไหน > 0 เลย ให้คืนค่าว่าง
+    if (parts.length === 0) return "";
+
+    // นำมารวมกันเป็นแถวเดียว เว้นวรรคระหว่างประเภท
+    return `<div class="item-resource-row">${parts.join(" ")}</div>`;
+}
+
 
 // ฟังก์ชันเปิด Popup รายละเอียด (รูปที่ 2)
 function openItemPopup(item) {
