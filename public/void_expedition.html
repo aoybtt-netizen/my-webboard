@@ -1971,12 +1971,10 @@ function openStarDetail() {
                     </button>`;
     }
 } else if (dist === 1) {
-    // 🚀 อยู่ห่าง 1 ช่อง: โชว์ปุ่มเดินทางปกติ
     actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="startTravel(${q},${r})">
                     <i class="fas fa-shuttle-van"></i> travel
                 </button>`;
 } else {
-    // ⚠️ ไกลเกินไป
     actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">⚠️ the coordinates are too far to travel</p>`;
 }
 
