@@ -1950,17 +1950,35 @@ function openStarDetail() {
     const dist = getHexDistance(playerQ, playerR, q, r);
     let actionBtn = "";
     if (dist === 0) {
-        if (q === 0 && r === 0) {
-            actionBtn = `<p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;"><i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก</p>`;
-        } else {
-            actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" onclick="startMiningProcess()"><i class="fas fa-hammer"></i> Prepare for mining.</button>`;
-            actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="travelTo(0, 0, true)"><i class="fas fa-rocket"></i> Warp to main planet(1 Unit)</button>`;
-        }
-    } else if (dist === 1) {
-        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="startTravel(${q},${r})"><i class="fas fa-shuttle-van"></i> travel</button>`;
+    // 🚩 กรณีเราอยู่ที่พิกัดนี้แล้ว
+    if (q === 0 && r === 0) {
+        // ✅ อยู่ที่สถานีหลัก (0,0): โชว์ข้อความ และ "ปุ่มเข้าร้านค้า"
+        actionBtn = `
+            <p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
+                <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
+            </p>
+            <button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="openShop()">
+                <i class="fas fa-shopping-cart"></i> ENTER MARKET STATION
+            </button>
+        `;
     } else {
-        actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">⚠️ the coordinates are too far to travel</p>`;
+        // ⚒️ อยู่ที่ดาวดวงอื่นที่ไม่ใช่ (0,0): โชว์ปุ่มขุดแร่ และปุ่มวาร์ปกลับบ้าน
+        actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" onclick="startMiningProcess()">
+                        <i class="fas fa-hammer"></i> Prepare for mining.
+                    </button>`;
+        actionBtn += `<button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="travelTo(0, 0, true)">
+                        <i class="fas fa-rocket"></i> Warp to main planet(1 Unit)
+                    </button>`;
     }
+} else if (dist === 1) {
+    // 🚀 อยู่ห่าง 1 ช่อง: โชว์ปุ่มเดินทางปกติ
+    actionBtn = `<button class="auth-btn" style="margin-top:15px; background:var(--neon-green); color:#000;" onclick="startTravel(${q},${r})">
+                    <i class="fas fa-shuttle-van"></i> travel
+                </button>`;
+} else {
+    // ⚠️ ไกลเกินไป
+    actionBtn = `<p style="font-size:0.7rem; color:var(--neon-red); margin-top:15px; text-align:center;">⚠️ the coordinates are too far to travel</p>`;
+}
 
     // --- 4. อัปเดต UI ทั้งหมด ---
     document.getElementById('detail-name').innerText = name.toUpperCase();
@@ -1989,6 +2007,12 @@ function openStarDetail() {
     `;
     
     document.getElementById('star-detail-modal').style.display = 'flex';
+}
+
+function openShop() {
+    // โค้ดสำหรับเปิดหน้าเมนูร้านค้าของกัปตัน
+    console.log("Welcome to Market Station!");
+    // document.getElementById('shop-modal').style.display = 'flex';
 }
 
 
