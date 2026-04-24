@@ -839,12 +839,26 @@ button:hover { opacity: 0.8; }
 
 .inventory-grid-container {
     display: grid;
-    grid-template-columns: repeat(6, 1fr); /* 6 คอลัมน์ตามรูป */
+    grid-template-columns: repeat(6, 1fr); /* ยังคง 6 คอลัมน์เพื่อให้สวยตามรูป */
     grid-gap: 8px;
     padding: 15px;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 10px;
     margin-top: 10px;
+    
+    /* 🚩 จุดสำคัญ: กำหนดความสูงสูงสุด และให้เลื่อนขึ้นลงได้ */
+    max-height: 400px; 
+    overflow-y: auto; 
+    border: 1px solid rgba(0, 210, 255, 0.1);
+}
+
+/* ปรับแต่ง Scrollbar ให้ดูไฮเทค */
+.inventory-grid-container::-webkit-scrollbar {
+    width: 5px;
+}
+.inventory-grid-container::-webkit-scrollbar-thumb {
+    background: var(--neon-blue);
+    border-radius: 10px;
 }
 
 /* ช่องแต่ละช่อง (เหมือนในรูป Bitmap) */
@@ -2419,29 +2433,34 @@ function renderInventoryGrid() {
     const gridContainer = document.getElementById('inventory-grid');
     gridContainer.innerHTML = '';
 
-    const totalSlots = 24; // 6x4 ตามรูป Bitmap
-    
-    for (let i = 0; i < totalSlots; i++) {
-        const slot = document.createElement('div');
-        const item = playerInventory[i]; // ดึงไอเทมตามลำดับ Index
+    // 🚩 เช็คก่อนว่าในคลังมีของไหม
+    if (!playerInventory || playerInventory.length === 0) {
+        gridContainer.innerHTML = `
+            <div style="grid-column: span 6; text-align: center; padding: 40px; color: rgba(255,255,255,0.3);">
+                <i class="fas fa-ghost" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
+                คลังว่างเปล่า... กัปตันยังไม่มีไอเทม
+            </div>
+        `;
+        return;
+    }
 
-        if (item) {
-            // --- กรณีมีไอเทม ---
-            slot.className = 'inv-slot';
-            const imgKey = item.imgKey || 'default';
-            const imgSrc = imageSources[imgKey] || 'images/default.png';
-            
-            slot.innerHTML = `<img src="${imgSrc}" title="${item.name}">`;
-            
-            // คลิกเพื่อเปิดดูรายละเอียด (ใช้ป๊อปอัพเดิมของกัปตัน)
-            slot.onclick = () => openItemPopup(item); 
-        } else {
-            // --- กรณีช่องว่าง (Empty Slot) ---
-            slot.className = 'inv-slot empty';
-        }
+    playerInventory.forEach((item, index) => {
+        const slot = document.createElement('div');
+        slot.className = 'inv-slot';
+        
+        // ดึงรูปภาพ
+        const imgKey = item.imgKey || 'default';
+        const imgSrc = imageSources[imgKey] || 'images/default.png';
+        
+        slot.innerHTML = `
+            <img src="${imgSrc}" alt="${item.name}">
+            `;
+        
+        // เมื่อคลิกที่ช่อง
+        slot.onclick = () => openItemPopup(item);
         
         gridContainer.appendChild(slot);
-    }
+    });
 }
 
 
