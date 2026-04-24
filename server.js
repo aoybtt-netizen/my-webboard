@@ -1368,8 +1368,9 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
                 name: 'STD ENERGY CHIP', 
                 type: 'energy chip', 
                 energyValue: 100, 
-                isLocked: true, 
-                imgKey: 'engineDrill3' 
+                isLocked: true,
+				stackable: true,
+                imgKey: 'EnergyChip0' 
             });
         }
 
