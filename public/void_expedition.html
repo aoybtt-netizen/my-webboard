@@ -4439,29 +4439,6 @@ function getResourceRowHTML(item) {
 }
 
 
-// ฟังก์ชันเปิด Popup รายละเอียด (รูปที่ 2)
-function openItemPopup(item) {
-    const popup = document.getElementById('item-detail-popup');
-    document.getElementById('pop-name').innerText = item.name;
-    document.getElementById('pop-status').innerHTML = getItemStatusHTML(item); // 🚩 ใช้ฟังก์ชันเดิม
-    
-    // อัปเดตรูปภาพ
-    const imgKey = item.imgKey || 'default';
-    const imgSrc = imageSources[imgKey] || 'images/default.png';
-    const imgContainer = popup.querySelector('.img-square');
-    imgContainer.innerHTML = `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">`;
-
-    // ตั้งค่าปุ่มติดตั้ง
-    const installBtn = document.getElementById('pop-install-btn');
-    installBtn.onclick = () => {
-        installModule(currentCat, item.id);
-        closePopup();
-    };
-
-    popup.style.display = 'flex';
-}
-
-
 // ฟังก์ชันโชว์ค่าสถานะไอเทมในคลัง
 function showItemStats(item) {
     const statOverlay = document.getElementById('item-stat-overlay');
