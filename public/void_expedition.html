@@ -4181,6 +4181,72 @@ function equipModule(itemId) {
     renderCategoryContent(); // วาดใหม่ทันที
 }
 
+// 🚩 ฟังก์ชันเปิด Popup เพื่อดูรายละเอียดก่อนติดตั้ง
+function openItemPopup(item) {
+    const popup = document.getElementById('item-detail-popup');
+    if (!popup) return;
+
+    // ใส่ข้อมูลลงใน Popup
+    document.getElementById('pop-name').innerText = item.name.toUpperCase();
+    
+    const imgKey = item.imgKey || 'default';
+    const imgSrc = imageSources[imgKey] || 'images/default.png';
+    const imgContainer = popup.querySelector('.img-square');
+    imgContainer.innerHTML = `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">`;
+
+    // แสดงสถานะ (Reuse ฟังก์ชันเดิมที่กัปตันมี)
+    document.getElementById('pop-status').innerHTML = getItemStatusHTML(item);
+
+    // 🚩 จัดการปุ่มติดตั้ง
+    const installBtn = document.getElementById('pop-install-btn');
+    
+    // ถ้าเป็น Blueprint หรือทรัพยากร ให้ซ่อนปุ่มติดตั้ง (เพราะติดไม่ได้ ต้องไปคราฟต์ก่อน)
+    if (item.type === 'blueprint' || item.stackable) {
+        installBtn.style.display = 'none';
+    } else {
+        installBtn.style.display = 'block';
+        // ผูกฟังก์ชันเข้ากับปุ่ม
+        installBtn.onclick = () => confirmInstall(item.id);
+    }
+
+    popup.style.display = 'flex';
+}
+
+// 🚩 ฟังก์ชันยืนยันการติดตั้ง
+async function confirmInstall(itemId) {
+    if (!confirm("กัปตันต้องการติดตั้งโมดูลนี้ใช่หรือไม่? (โมดูลเดิมจะถูกถอดออก)")) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/game/install-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                itemId: itemId
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showMiningToast(result.message, "#38ef7d");
+            closePopup();
+            
+            // 🔄 โหลดข้อมูลใหม่เพื่ออัปเดต UI ทั้งหมด
+            await checkGameProfile(); // Sync ข้อมูลล่าสุดจาก DB
+            if (typeof renderCategoryContent === 'function') renderCategoryContent();
+            if (typeof renderInventoryGrid === 'function') renderInventoryGrid();
+        } else {
+            alert(result.message);
+        }
+    } catch (err) {
+        console.error("Install Error:", err);
+    }
+}
+
+function closePopup() {
+    document.getElementById('item-detail-popup').style.display = 'none';
+}
+
 // --- การทำงานของหน้าต่าง ---
 function handleMenuAction() {
     const mainView = document.getElementById('ship-main-view');
@@ -4395,9 +4461,6 @@ function openItemPopup(item) {
     popup.style.display = 'flex';
 }
 
-function closePopup() {
-    document.getElementById('item-detail-popup').style.display = 'none';
-}
 
 // ฟังก์ชันโชว์ค่าสถานะไอเทมในคลัง
 function showItemStats(item) {

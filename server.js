@@ -1705,6 +1705,54 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
     }
 });
 
+// 10. API สำหรับติดตั้งไอเทม (Swap Item)
+app.post('/api/:mode/game/install-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, itemId } = req.body;
+    const db = getDB(mode);
+
+    try {
+        const user = await db.findOne({ username });
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        // 1. หาไอเทมในคลัง (Inventory)
+        const itemToInstall = user.inventory.find(i => i.id === itemId);
+        if (!itemToInstall) return res.json({ success: false, message: "ไม่พบไอเทมนี้ในคลัง" });
+
+        // 2. ตรวจสอบประเภทเพื่อระบุช่องสวมใส่ (Slot Mapping)
+        const typeToSlot = {
+            'ship engine': 'engine',
+            'drill engine': 'drill',
+            'card barrier': 'barrier',
+            'turret': 'turret'
+        };
+
+        const slotName = typeToSlot[itemToInstall.type];
+        if (!slotName) return res.json({ success: false, message: "ไอเทมประเภทนี้ติดตั้งไม่ได้" });
+
+        // 3. จัดการสลับไอเทม
+        const oldItem = user.equipped[slotName]; // เก็บไอเทมเก่าไว้
+        
+        // เตรียมคำสั่ง Update
+        let updateOps = {
+            $set: { [`equipped.${slotName}`]: itemToInstall }, // ใส่ไอเทมใหม่ลงไปในช่อง
+            $pull: { inventory: { id: itemId } } // ดึงไอเทมใหม่ออกจากคลัง
+        };
+
+        // ถ้ามีไอเทมเก่า (และไม่ใช่ของเริ่มต้นที่ล็อคไว้) ให้เตะกลับเข้าคลัง
+        if (oldItem && !oldItem.isLocked) {
+            await db.updateOne({ username }, { $push: { inventory: oldItem } });
+        }
+
+        await db.updateOne({ username }, updateOps);
+
+        res.json({ success: true, message: `ติดตั้ง ${itemToInstall.name} สำเร็จ` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+
 
 
 
