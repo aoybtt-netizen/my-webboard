@@ -1668,67 +1668,60 @@ window.onload = async () => {
         const data = await res.json();
         
         if (!data.gameNickname) {
-            document.getElementById('nickname-modal').style.display = 'flex';
+            const nickModal = document.getElementById('nickname-modal');
+            if(nickModal) nickModal.style.display = 'flex';
         } else {
             // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD ---
             const nick = data.gameNickname.toUpperCase();
-            document.getElementById('display-nickname').innerText = nick;
-            document.getElementById('profile-full-name').innerText = nick;
             
-            // อัปเดตเงิน GC
+            // ใช้ตัวช่วยอัปเดตแบบปลอดภัย
+            const safeSetText = (id, value) => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = value;
+            };
+
+            safeSetText('display-nickname', nick);
+            safeSetText('profile-full-name', nick);
+            
+            // อัปเดตเงิน GC และ USDT
             if(document.getElementById('display-gc')) {
                 document.getElementById('display-gc').innerText = (data.coinsgc || 0).toLocaleString();
             }
-            if(document.getElementById('prof-gc')) { // เพิ่มเติมสำหรับหน้า Profile
-                document.getElementById('prof-gc').innerText = (data.coinsgc || 0).toLocaleString();
-            }
-
-            // 🚩 [NEW] อัปเดต USDT (แสดงในหน้า Profile)
-            if(document.getElementById('prof-usdt')) {
-                document.getElementById('prof-usdt').innerText = (data.gameUSDT || 0).toFixed(2);
-            }
+            safeSetText('prof-gc', (data.coinsgc || 0).toLocaleString());
+            safeSetText('prof-usdt', (data.gameUSDT || 0).toFixed(2));
             
-            document.getElementById('display-energy-small').innerText = (data.energy || 0) + "%";
-            document.getElementById('prof-energy').innerText = (data.energy || 0) + "%";
+            // อัปเดต Energy
+            safeSetText('display-energy-small', (data.energy || 0) + "%");
+            
+            // 🚩 จุดเสี่ยง: prof-energy ถ้ากัปตันลบไปแล้ว โค้ดจะไม่ Error เพราะเราใช้ safeSetText
+            safeSetText('prof-energy', (data.energy || 0) + "%");
 
             // --- [2] โหลดระบบไอเทม & Cargo ---
-            if (data.shipStats) {
-                shipStats = data.shipStats;
-            }
+            if (data.shipStats) shipStats = data.shipStats;
+            if (data.equipped) playerEquipped = data.equipped;
             
-            // โหลดไอเทมที่ใส่อยู่
-            if (data.equipped) {
-                playerEquipped = data.equipped;
-            }
-            
-            // โหลดไอเทมในคลัง
             if (data.inventory) {
                 playerInventory = data.inventory;
-                // 🚩 [NEW] อัปเดตจำนวนไอเทมในหน้า Profile
-                if(document.getElementById('prof-inv-count')) {
-                    document.getElementById('prof-inv-count').innerText = playerInventory.length + " ชิ้น";
-                }
+                // อัปเดตจำนวนไอเทมในหน้า Profile (ID ใหม่ที่เราเพิ่งเพิ่ม)
+                safeSetText('prof-inv-count', playerInventory.length + " ชิ้น");
             }
 
-            // โหลดสถานะ Cargo (แร่)
             if (data.cargoStats) {
                 shipCargoStats = data.cargoStats;
-                
-                // 🚩 [NEW] อัปเดตแถบความจุแร่ในหน้า Profile
                 const currentMetal = data.metal || 0;
                 const maxCap = data.cargoStats.capacity || 10;
                 const percent = Math.min(100, (currentMetal / maxCap) * 100);
                 
-                if(document.getElementById('prof-cargo-text')) {
-                    document.getElementById('prof-cargo-text').innerText = `${currentMetal} / ${maxCap}`;
-                }
-                if(document.getElementById('prof-cargo-bar')) {
-                    document.getElementById('prof-cargo-bar').style.width = percent + "%";
-                    document.getElementById('prof-cargo-bar').style.background = percent > 90 ? "var(--neon-red)" : "var(--neon-blue)";
+                safeSetText('prof-cargo-text', `${currentMetal} / ${maxCap}`);
+                
+                const cargoBar = document.getElementById('prof-cargo-bar');
+                if(cargoBar) {
+                    cargoBar.style.width = percent + "%";
+                    cargoBar.style.background = percent > 90 ? "var(--neon-red)" : "var(--neon-blue)";
                 }
             }
 
-            // --- [3] จัดการตำแหน่ง & ประเภทบัญชี ---
+            // --- [3] จัดการประเภทบัญชี ---
             const isGuest = currentUser.startsWith('GUEST_');
             const tag = document.getElementById('account-type-tag');
             if (tag) {
