@@ -2277,7 +2277,7 @@ if (window.location.search.includes('dev') || gameMode === 'test') {
     }
 	
 async function addTestCoins() {
-    if (gameMode !== 'test') return;
+    //if (gameMode !== 'test') return;
 
     try {
         const response = await fetch(`/api/test/test/add-coins`, {
