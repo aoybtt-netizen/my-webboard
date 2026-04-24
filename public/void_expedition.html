@@ -1355,7 +1355,11 @@ button:hover { opacity: 0.8; }
 			'engineDrill1': 'images/engine/engineDrill1.png',
 			'engineDrill2': 'images/engine/engineDrill2.png',
 			'engineDrill3': 'images/engine/engineDrill3.png',
-			'engineDrill4': 'images/engine/engineDrill4.png'
+			'engineDrill4': 'images/engine/engineDrill4.png',
+			//blueprint
+			'BPengineS1': 'images/engine/BPengineS1.png',
+			'BPengineDrill1': 'images/engine/BPengineDrill1.png',
+			'BPshield0': 'images/engine/BPshield0.png',
 		};
 
 		let imagesLoaded = false;
@@ -1452,11 +1456,39 @@ button:hover { opacity: 0.8; }
 		
 		
 		const SHOP_ITEMS = [
-			{ id: 'f001', name: 'ENERGY CELL (100)', type: 'fuel', price: 50, icon: 'fas fa-bolt', isIcon: true },
-			{ id: 'e001', name: 'ADVANCED SHIP ENGINE', type: 'engine', price: 500, imgKey: 'engineShip1' },
-			{ id: 'd001', name: 'HEAVY DRILL MODULE', type: 'drill', price: 450, imgKey: 'engineDrill1' },
-			{ id: 'b001', name: 'TITANIUM BARRIER', type: 'barrier', price: 300, imgKey: 'shield0' }
-		];
+    { 
+        id: 'f001', 
+        name: 'ENERGY CELL (100)', 
+        type: 'fuel', 
+        price: 50, 
+        icon: 'fas fa-bolt', 
+        isIcon: true 
+    },
+    { 
+        id: 'bp_e001', 
+        name: 'BLUEPRINT: ADV. ENGINE', 
+        type: 'blueprint', 
+        price: 500, 
+        imgKey: 'BPengineS1', 
+        recipe: { metal: 20, energy: 10, tech: 5 } 
+    },
+    { 
+        id: 'bp_d001', 
+        name: 'BLUEPRINT: HEAVY DRILL', 
+        type: 'blueprint', 
+        price: 450, 
+        imgKey: 'BPengineDrill1', 
+        recipe: { metal: 15, energy: 15, tech: 5 } 
+    },
+    { 
+        id: 'bp_b001', 
+        name: 'BLUEPRINT: TITAN SHIELD', 
+        type: 'blueprint', 
+        price: 300, 
+        imgKey: 'BPshield0', 
+        recipe: { metal: 10, energy: 20, tech: 2 } 
+    }
+];
 
 		// --- อัปเดตตำแหน่งเป้าหมายตามเมาส์หรือการลากนิ้ว ---
 window.onmousemove = (e) => { 
@@ -2142,25 +2174,45 @@ function renderBuyItems() {
 
     SHOP_ITEMS.forEach(item => {
         let displayImg = "";
-        
+        let recipeHTML = "";
+
+        // จัดการรูปภาพ (Icon หรือ Image)
         if (item.isIcon) {
-            // ถ้าเป็นเชื้อเพลิง ให้ใช้ Icon
             displayImg = `<i class="${item.icon}" style="color:var(--neon-blue);"></i>`;
         } else {
-            // ถ้าเป็นอุปกรณ์ ให้ดึงจาก imageSources
             const src = imageSources[item.imgKey] || 'images/default.png';
-            displayImg = `<img src="${src}" style="width:100%; height:100%; object-fit:contain;">`;
+            displayImg = `<img src="${src}" style="width:100%; height:100%; object-fit:contain; filter: hue-rotate(180deg) brightness(1.2);">`;
+            // ใส่ฟิลเตอร์สีฟ้าๆ ให้ดูเหมือนแผ่นแปลน (Blueprint)
+        }
+
+        // 🚩 ถ้าเป็นแบบแปลน ให้โชว์ Recipe (วัตถุดิบที่ต้องใช้)
+        if (item.type === 'blueprint' && item.recipe) {
+            recipeHTML = `
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.5); margin-top: 5px;">
+                    REQUIRES: 
+                    <span style="color:#b0b0b0;">M:${item.recipe.metal}</span> 
+                    <span style="color:#00d2ff;">E:${item.recipe.energy}</span> 
+                    <span style="color:#a326ff;">T:${item.recipe.tech}</span>
+                </div>
+            `;
         }
 
         const card = document.createElement('div');
         card.className = 'shop-item-card';
+        card.style.borderLeft = item.type === 'blueprint' ? "4px solid var(--neon-blue)" : "1px solid rgba(255,255,255,0.1)";
+        
         card.innerHTML = `
-            <div class="shop-item-img">
+            <div class="shop-item-img" style="${item.type === 'blueprint' ? 'background: rgba(0, 210, 255, 0.05);' : ''}">
                 ${displayImg}
             </div>
             <div class="shop-item-info">
-                <div class="shop-item-name">${item.name}</div>
-                <div class="shop-item-price"><i class="fas fa-coins"></i> ${item.price} Credits</div>
+                <div class="shop-item-name" style="${item.type === 'blueprint' ? 'color: var(--neon-blue);' : ''}">
+                    ${item.name}
+                </div>
+                <div class="shop-item-price">
+                    <i class="fas fa-coins"></i> ${item.price} Credits
+                </div>
+                ${recipeHTML}
             </div>
             <button class="btn-buy" onclick="buyItem('${item.id}')">BUY</button>
         `;
