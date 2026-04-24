@@ -1767,57 +1767,61 @@ window.onload = async () => {
             const nickModal = document.getElementById('nickname-modal');
             if(nickModal) nickModal.style.display = 'flex';
         } else {
-            // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD ---
             const nick = data.gameNickname.toUpperCase();
             
-            // ใช้ตัวช่วยอัปเดตแบบปลอดภัย
             const safeSetText = (id, value) => {
                 const el = document.getElementById(id);
                 if(el) el.innerText = value;
             };
 
+            // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD ---
             safeSetText('display-nickname', nick);
             safeSetText('profile-full-name', nick);
             
-            // อัปเดตเงิน GC และ USDT
             if(document.getElementById('display-gc')) {
                 document.getElementById('display-gc').innerText = (data.coinsgc || 0).toLocaleString();
             }
             safeSetText('prof-gc', (data.coinsgc || 0).toLocaleString());
             safeSetText('prof-usdt', (data.gameUSDT || 0).toFixed(2));
             
-            // อัปเดต Energy
             safeSetText('display-energy-small', (data.energy || 0) + "%");
-            
-            // 🚩 จุดเสี่ยง: prof-energy ถ้ากัปตันลบไปแล้ว โค้ดจะไม่ Error เพราะเราใช้ safeSetText
             safeSetText('prof-energy', (data.energy || 0) + "%");
 
             // --- [2] โหลดระบบไอเทม & Cargo ---
             if (data.shipStats) shipStats = data.shipStats;
             if (data.equipped) playerEquipped = data.equipped;
             
+            // 🚩 [POINT 1] โหลด Inventory และคำนวณน้ำหนักรวม
             if (data.inventory) {
                 playerInventory = data.inventory;
-                // อัปเดตจำนวนไอเทมในหน้า Profile (ID ใหม่ที่เราเพิ่งเพิ่ม)
                 safeSetText('prof-inv-count', playerInventory.length + " ชิ้น");
-            }
 
-            if (data.cargoStats) {
-                shipCargoStats = data.cargoStats;
-                const currentMetal = data.metal || 0;
-                const maxCap = data.cargoStats.capacity || 10;
-                const percent = Math.min(100, (currentMetal / maxCap) * 100);
-                
-                safeSetText('prof-cargo-text', `${currentMetal} / ${maxCap}`);
-                
-                const cargoBar = document.getElementById('prof-cargo-bar');
-                if(cargoBar) {
-                    cargoBar.style.width = percent + "%";
-                    cargoBar.style.background = percent > 90 ? "var(--neon-red)" : "var(--neon-blue)";
+                // คำนวณน้ำหนักรวม (1ea = 1kg)
+                // วนลูปเช็คไอเทมทุกชิ้น: ถ้ามี quantity ให้บวกตามจำนวน ถ้าไม่มี (เครื่องยนต์) ให้นับเป็น 1
+                const totalWeight = playerInventory.reduce((sum, item) => {
+                    const qty = item.quantity || 1;
+                    const weight = item.weightPerUnit || 1; // 1ea = 1kg
+                    return sum + (qty * weight);
+                }, 0);
+
+                // 🚩 [POINT 2] อัปเดต UI ส่วน Cargo ด้วยน้ำหนัก (kg)
+                if (data.cargoStats) {
+                    shipCargoStats = data.cargoStats;
+                    const maxCap = data.cargoStats.capacity || 100; // สมมติความจุพื้นฐาน 100kg
+                    const percent = Math.min(100, (totalWeight / maxCap) * 100);
+                    
+                    safeSetText('prof-cargo-text', `${totalWeight.toLocaleString()} / ${maxCap.toLocaleString()} kg`);
+                    
+                    const cargoBar = document.getElementById('prof-cargo-bar');
+                    if(cargoBar) {
+                        cargoBar.style.width = percent + "%";
+                        // ถ้าหนักเกิน 90% ของความจุ ให้แถบเป็นสีแดง
+                        cargoBar.style.background = percent > 90 ? "var(--neon-red)" : "var(--neon-blue)";
+                    }
                 }
             }
 
-            // --- [3] จัดการประเภทบัญชี ---
+            // --- [3] จัดการประเภทบัญชี & ตำแหน่ง ---
             const isGuest = currentUser.startsWith('GUEST_');
             const tag = document.getElementById('account-type-tag');
             if (tag) {
@@ -3309,39 +3313,79 @@ function updateAndDrawParticles(ctx, x, y, isSafe) {
 async function handleMiningSuccess(starData) {
     const starKey = `${playerQ},${playerR}`;
     
-    // 1. ตรวจสอบว่าดาวดวงนี้เคยมีการสุ่มชนิดแร่ไปหรือยัง
-    // ถ้ายัง (minerals ว่าง) ให้ทำการสุ่มตามจำนวน mineralSlots
+    // 1. ตรวจสอบและสุ่มชนิดแร่ (ถ้ายังไม่เคยสุ่ม)
     if (!starData.minerals || starData.minerals.length === 0) {
         console.log("First time mining here! Rolling minerals...");
+        
+        // 🚩 เพิ่ม stackable: true ไว้ที่นี่เลย
         const possibleMinerals = [
-            { name: 'O-METAL', type: 'metal', img: 'orem1' },
-            { name: 'O-ENERGY', type: 'energy', img: 'oree1' },
-            { name: 'O-TECH', type: 'technology', img: 'oret1' }
-        ];
+			{ name: 'O-METAL', type: 'metal', img: 'orem1', stackable: true, weightPerUnit: 1 },
+			{ name: 'O-ENERGY', type: 'energy', img: 'oree1', stackable: true, weightPerUnit: 1 },
+			{ name: 'O-TECH', type: 'technology', img: 'oret1', stackable: true, weightPerUnit: 1 }
+		];
 
         const rolledMinerals = [];
         const slots = starData.mineralSlots || 1;
 
-        for (let i = 0; i < slots; i++) {
+        while (rolledMinerals.length < slots && rolledMinerals.length < possibleMinerals.length) {
             const randomMin = possibleMinerals[Math.floor(Math.random() * possibleMinerals.length)];
-            // เช็คไม่ให้สุ่มได้แร่ซ้ำในดาวดวงเดียว
             if (!rolledMinerals.find(m => m.name === randomMin.name)) {
-                rolledMinerals.push(randomMin);
+                rolledMinerals.push({ ...randomMin }); // ใช้ Spread เพื่อสร้าง Object ใหม่
             }
         }
         
-        // บันทึกแร่ที่สุ่มได้กลับไปที่ Server เพื่อให้คนอื่นเห็นเหมือนกัน
         starData.minerals = rolledMinerals;
         await saveStarMineralsToServer(starKey, rolledMinerals);
     }
 
-    // 2. คำนวณรางวัลที่ผู้เล่นได้รับ (ตัวอย่าง: เพิ่มแร่เข้าคลังผู้เล่น)
+    // 2. 🚩 ส่งรางวัลเข้าคลังผู้เล่น (ส่งไปที่ API เพิ่มไอเทม)
+    // เราจะวนลูปแร่ที่ดาวนี้มี แล้วส่งไปเพิ่มใน Inventory ของผู้เล่น
+    for (const mineral of starData.minerals) {
+        await addMineralToInventory(mineral);
+    }
+
     let rewardText = starData.minerals.map(m => m.name).join(", ");
-    
     alert(`การขุดสำเร็จ! ตรวจพบสายแร่: ${rewardText}\nทรัพยากรถูกส่งไปยังคลังเสบียงแล้ว`);
     
-    // กลับหน้าแผนที่
-    location.reload(); // รีโหลดเพื่อให้ข้อมูลแร่ที่เพิ่งสุ่มใหม่แสดงผลใน UI
+    location.reload(); 
+}
+
+// 🚩 ฟังก์ชันตัวอย่างสำหรับการเพิ่มแร่เข้าคลัง (ยิง API)
+async function addMineralToInventory(mineral) {
+    const quantityToMine = 50; // สมมติขุดได้ครั้งละ 50 ea
+    const totalWeightToAdd = quantityToMine * (mineral.weightPerUnit || 1);
+
+    // 🚩 เช็กน้ำหนักปัจจุบันเทียบกับความจุสูงสุด (Cargo Capacity)
+    // คำนวณน้ำหนักรวมของที่มีอยู่ในคลังตอนนี้
+    const currentTotalWeight = playerInventory.reduce((sum, item) => {
+        return sum + ((item.quantity || 1) * (item.weightPerUnit || 0));
+    }, 0);
+
+    const maxCapacity = shipCargoStats.capacity || 100; // สมมติความจุเริ่มที่ 100kg
+
+    if (currentTotalWeight + totalWeightToAdd > maxCapacity) {
+        showMiningToast("⚠️ คลังเต็ม! น้ำหนักเกินความจุของยาน", "#ff4b2b");
+        return false; // ขุดไม่เข้าเพราะไม่มีที่เก็บ
+    }
+
+    try {
+        await fetch(`${API_BASE}/game/add-inventory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                item: {
+                    ...mineral,
+                    quantity: quantityToMine,
+                    weightPerUnit: 1 // 1ea = 1kg
+                }
+            })
+        });
+        return true;
+    } catch (e) { 
+        console.error("Add mineral error:", e); 
+        return false;
+    }
 }
 
 async function saveStarMineralsToServer(key, minerals) {

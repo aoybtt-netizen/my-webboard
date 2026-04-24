@@ -1624,14 +1624,14 @@ app.post('/api/:mode/map/explore', async (req, res) => {
 // 8. API สำหรับบันทึกแร่ที่สุ่มได้ครั้งแรกของดาวนั้นๆ
 app.post('/api/:mode/map/update-minerals', async (req, res) => {
     const { mode } = req.params;
-    const { q, r, minerals } = req.body;
+    const { q, r, minerals } = req.body; // minerals ในนี้จะมี { name, type, img, stackable: true }
     const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
     const mapCollection = db.collection("map_tiles");
 
     try {
         await mapCollection.updateOne(
             { q, r },
-            { $set: { minerals: minerals } }
+            { $set: { minerals: minerals } } // บันทึกข้อมูลแร่ที่มี Flag stackable ลงไปในแผนที่ถาวร
         );
         res.json({ success: true });
     } catch (e) {
