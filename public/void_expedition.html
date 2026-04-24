@@ -905,26 +905,34 @@ button:hover { opacity: 0.8; }
             <span id="account-type-tag" style="font-size: 0.7rem; background: #444; padding: 2px 10px; border-radius: 10px; opacity: 0.8;">GUEST ACCOUNT</span>
         </div>
 
-        <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px;">
-            <div class="detail-row">
-                <span class="detail-label">สถานะพลังงาน</span>
-                <span class="detail-value" id="prof-energy">0%</span>
+        <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px; display: flex; flex-direction: column; gap: 12px;">
+            <div class="detail-row" onclick="openMenu('ship-menu')" style="cursor:pointer; border: 1px solid rgba(0,210,255,0.1); padding: 8px; border-radius: 8px;">
+                <span class="detail-label"><i class="fas fa-boxes"></i> คลังไอเทมในยาน</span>
+                <span class="detail-value" id="prof-inv-count" style="color: var(--neon-blue);">0 ชิ้น</span>
             </div>
-            <div class="detail-row">
-                <span class="detail-label">แร่โลหะสะสม (Metal)</span>
-                <span class="detail-value" id="prof-metal">0</span>
+
+            <div class="detail-row" style="align-items: flex-start;">
+                <span class="detail-label">งบประมาณส่วนตัว</span>
+                <div style="text-align: right;">
+                    <div class="detail-value"><span id="prof-gc">0</span> GC</div>
+                    <div class="detail-value" style="color: var(--neon-green); font-size: 0.8rem;">
+                        <i class="fas fa-wallet"></i> <span id="prof-usdt">0.00</span> USDT
+                    </div>
+                </div>
             </div>
+
             <div class="detail-row">
-                <span class="detail-label">เครดิต (Coins)</span>
-                <span class="detail-value">0 GC</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">เลเวลเครื่องเจาะ</span>
-                <span class="detail-value">LV. 1</span>
+                <span class="detail-label">ความจุคลังแร่ (Cargo)</span>
+                <div style="text-align: right;">
+                    <span class="detail-value" id="prof-cargo-text">0 / 0</span>
+                    <div style="width: 100px; height: 4px; background: #222; border-radius: 2px; margin-top: 4px;">
+                        <div id="prof-cargo-bar" style="width: 0%; height: 100%; background: var(--neon-blue); border-radius: 2px; transition: 0.3s;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <button onclick="handleLogout()" style="width: 100%; margin-top: 20px; background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red); padding: 10px; border-radius: 10px; cursor: pointer;">
+        <button class="btn-wire btn-red" onclick="handleLogout()" style="width: 100%; margin-top: 20px;">
             <i class="fas fa-power-off"></i> ตัดการเชื่อมต่อ (Logout)
         </button>
     </div>
@@ -1662,43 +1670,65 @@ window.onload = async () => {
         if (!data.gameNickname) {
             document.getElementById('nickname-modal').style.display = 'flex';
         } else {
-            // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD (ของเดิมของคุณ) ---
+            // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD ---
             const nick = data.gameNickname.toUpperCase();
             document.getElementById('display-nickname').innerText = nick;
             document.getElementById('profile-full-name').innerText = nick;
             
+            // อัปเดตเงิน GC
             if(document.getElementById('display-gc')) {
                 document.getElementById('display-gc').innerText = (data.coinsgc || 0).toLocaleString();
             }
-            if(document.getElementById('display-usdt')) {
-                document.getElementById('display-usdt').innerText = (data.gameUSDT || 0).toLocaleString();
+            if(document.getElementById('prof-gc')) { // เพิ่มเติมสำหรับหน้า Profile
+                document.getElementById('prof-gc').innerText = (data.coinsgc || 0).toLocaleString();
+            }
+
+            // 🚩 [NEW] อัปเดต USDT (แสดงในหน้า Profile)
+            if(document.getElementById('prof-usdt')) {
+                document.getElementById('prof-usdt').innerText = (data.gameUSDT || 0).toFixed(2);
             }
             
             document.getElementById('display-energy-small').innerText = (data.energy || 0) + "%";
-            document.getElementById('prof-metal').innerText = (data.metal || 0).toLocaleString();
             document.getElementById('prof-energy').innerText = (data.energy || 0) + "%";
 
-            //[2] โหลดระบบไอเทม & Cargo
-			if (data.shipStats) {
-				shipStats = data.shipStats;
-			}
+            // --- [2] โหลดระบบไอเทม & Cargo ---
+            if (data.shipStats) {
+                shipStats = data.shipStats;
+            }
+            
             // โหลดไอเทมที่ใส่อยู่
             if (data.equipped) {
                 playerEquipped = data.equipped;
             }
             
-            // โหลดไอเทมในคลัง (รวม Energy Chip 10 อันที่เซิร์ฟเวอร์แจก)
+            // โหลดไอเทมในคลัง
             if (data.inventory) {
                 playerInventory = data.inventory;
+                // 🚩 [NEW] อัปเดตจำนวนไอเทมในหน้า Profile
+                if(document.getElementById('prof-inv-count')) {
+                    document.getElementById('prof-inv-count').innerText = playerInventory.length + " ชิ้น";
+                }
             }
 
-            // โหลดสถานะ Cargo (ส่วนที่ตกหล่น)
+            // โหลดสถานะ Cargo (แร่)
             if (data.cargoStats) {
-                // สมมติชื่อตัวแปรฝั่ง Client คือ shipCargoStats
                 shipCargoStats = data.cargoStats;
+                
+                // 🚩 [NEW] อัปเดตแถบความจุแร่ในหน้า Profile
+                const currentMetal = data.metal || 0;
+                const maxCap = data.cargoStats.capacity || 10;
+                const percent = Math.min(100, (currentMetal / maxCap) * 100);
+                
+                if(document.getElementById('prof-cargo-text')) {
+                    document.getElementById('prof-cargo-text').innerText = `${currentMetal} / ${maxCap}`;
+                }
+                if(document.getElementById('prof-cargo-bar')) {
+                    document.getElementById('prof-cargo-bar').style.width = percent + "%";
+                    document.getElementById('prof-cargo-bar').style.background = percent > 90 ? "var(--neon-red)" : "var(--neon-blue)";
+                }
             }
 
-            // --- [3] จัดการตำแหน่ง & ประเภทบัญชี (ของเดิมของคุณ) ---
+            // --- [3] จัดการตำแหน่ง & ประเภทบัญชี ---
             const isGuest = currentUser.startsWith('GUEST_');
             const tag = document.getElementById('account-type-tag');
             if (tag) {
