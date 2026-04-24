@@ -2225,11 +2225,11 @@ async function buyItem(itemId) {
     const item = SHOP_ITEMS.find(i => i.id === itemId);
     if (!item) return;
 
-    // แสดง Loading หรือยืนยันการซื้อ
     if (!confirm(`ยืนยันการซื้อ ${item.name} ราคา ${item.price} Credits?`)) return;
 
     try {
-        const response = await fetch(`/api/${gameMode}/game/buy-item`, {
+        // 🚩 เปลี่ยน URL มาใช้ API_BASE
+        const response = await fetch(`${API_BASE}/game/buy-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2244,23 +2244,18 @@ async function buyItem(itemId) {
         });
 
         const result = await response.json();
-
         if (result.success) {
-            showMiningToast(result.message, "#38ef7d"); // แจ้งเตือนสีเขียว
-            
-            // อัปเดตข้อมูลในเครื่องผู้เล่นทันที
+            showMiningToast(result.message, "#38ef7d");
             playerInventory.push(result.newItem);
             playerCoinsGC -= item.price;
             
-            // อัปเดต UI
-            updateTopStats(); 
-            renderBuyItems(); // รีเฟรชหน้าร้านค้า (ถ้าอยากให้โชว์ว่าซื้อแล้ว)
+            if (typeof updateTopStats === 'function') updateTopStats();
+            renderBuyItems();
         } else {
-            showMiningToast(result.message, "#ff4b2b"); // แจ้งเตือนสีแดง (เงินไม่พอ)
+            showMiningToast(result.message, "#ff4b2b");
         }
     } catch (err) {
         console.error("Purchase Error:", err);
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อสถานีการค้า");
     }
 }
 
@@ -2277,21 +2272,24 @@ if (window.location.search.includes('dev') || gameMode === 'test') {
     }
 	
 async function addTestCoins() {
-    if (gameMode !== 'test') return;
+    if (!isDevMode) return; 
 
     try {
-        const response = await fetch(`/api/test/test/add-coins`, {
+        const response = await fetch(`${API_BASE}/test/add-coins`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: playerUsername, amount: 5000 })
         });
+        
         const result = await response.json();
         if (result.success) {
             playerCoinsGC = result.newBalance;
-            updateTopStats();
+            if (typeof updateTopStats === 'function') updateTopStats();
             showMiningToast("CHEAT: +5000 CoinsGC Added!", "#ffcc00");
         }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error("Test Mode Error:", err); 
+    }
 }
 
 function closeShop(e) {
