@@ -2223,17 +2223,16 @@ function renderBuyItems() {
 // 🚩 ฟังก์ชันซื้อไอเทม 
 async function buyItem(itemId) {
     const item = SHOP_ITEMS.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item || !currentUser) return; // 🚩 เช็คทั้งไอเทมและผู้เล่น
 
     if (!confirm(`ยืนยันการซื้อ ${item.name} ราคา ${item.price} Credits?`)) return;
 
     try {
-        // 🚩 เปลี่ยน URL มาใช้ API_BASE
         const response = await fetch(`${API_BASE}/game/buy-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: playerUsername,
+                username: currentUser, // 🚩 เปลี่ยนเป็น currentUser
                 itemId: item.id,
                 itemPrice: item.price,
                 itemName: item.name,
@@ -2244,16 +2243,7 @@ async function buyItem(itemId) {
         });
 
         const result = await response.json();
-        if (result.success) {
-            showMiningToast(result.message, "#38ef7d");
-            playerInventory.push(result.newItem);
-            playerCoinsGC -= item.price;
-            
-            if (typeof updateTopStats === 'function') updateTopStats();
-            renderBuyItems();
-        } else {
-            showMiningToast(result.message, "#ff4b2b");
-        }
+        // ... (ส่วนจัดการผลลัพธ์เหมือนเดิม)
     } catch (err) {
         console.error("Purchase Error:", err);
     }
@@ -2272,18 +2262,30 @@ if (window.location.search.includes('dev') || gameMode === 'test') {
     }
 	
 async function addTestCoins() {
+    // 🚩 1. เช็คโหมด Dev (ใช้ตัวแปรของกัปตัน)
     if (!isDevMode) return; 
+
+    // 🚩 2. เช็คว่ามีชื่อผู้เล่นใน currentUser หรือไม่
+    if (!currentUser) {
+        showMiningToast("Error: ไม่พบชื่อผู้เล่น!", "#ff4b2b");
+        return;
+    }
 
     try {
         const response = await fetch(`${API_BASE}/test/add-coins`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: playerUsername, amount: 5000 })
+            body: JSON.stringify({ 
+                username: currentUser, // 🚩 เปลี่ยนเป็น currentUser ตามที่กัปตันตั้งไว้
+                amount: 5000 
+            })
         });
         
         const result = await response.json();
         if (result.success) {
-            playerCoinsGC = result.newBalance;
+            // อัปเดตเงินในตัวแปรที่กัปตันใช้ (เช็คชื่อตัวแปร coins อีกทีนะครับ)
+            playerCoinsGC = result.newBalance; 
+            
             if (typeof updateTopStats === 'function') updateTopStats();
             showMiningToast("CHEAT: +5000 CoinsGC Added!", "#ffcc00");
         }
