@@ -1662,19 +1662,18 @@ app.post('/api/:mode/test/add-coins', async (req, res) => {
 // 9. API สำหรับการซื้อไอเทม (Blueprint/Item)
 app.post('/api/:mode/game/buy-item', async (req, res) => {
     const { mode } = req.params;
-    const { username, itemId, itemPrice, itemName, itemType, itemImgKey, recipe } = req.body;
+    // 🚩 รับ stackable และ quantity เพิ่มจาก req.body
+    const { username, itemId, itemPrice, itemName, itemType, itemImgKey, recipe, stackable, quantity } = req.body;
     const db = getDB(mode);
 
     try {
         const user = await db.findOne({ username });
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // 1. ตรวจสอบเงิน
         if ((user.coinsgc || 0) < itemPrice) {
-            return res.json({ success: false, message: "เงิน CoinsGC ไม่เพียงพอ!" });
+            return res.json({ success: false, message: "CoinsGC ไม่เพียงพอ!" });
         }
 
-        // 2. เตรียมข้อมูลไอเทมใหม่
         const newItem = {
             id: `item_${Date.now()}_${Math.floor(Math.random()*1000)}`,
             name: itemName,
@@ -1682,13 +1681,16 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
             imgKey: itemImgKey,
             level: 1,
             isBlueprint: itemType === 'blueprint',
-            recipe: recipe || null, // ถ้าเป็นแปลนจะมี Recipe
+            recipe: recipe || null,
+            // 🚩 บันทึกค่าเหล่านี้ลง Database ด้วย
+            stackable: stackable || false, 
+            quantity: quantity || 1,
+            weightPerUnit: 0, // ตามที่กัปตันต้องการให้ Blueprint น้ำหนักเป็น 0
             durability: 100,
             repairCost: { metal: 1, energy: 1, tech: 1 },
             createdAt: Date.now()
         };
 
-        // 3. หักเงินและเพิ่มของเข้าคลัง (Inventory)
         await db.updateOne(
             { username: username },
             { 

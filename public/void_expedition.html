@@ -2370,7 +2370,7 @@ function renderBuyItems() {
 // 🚩 ฟังก์ชันซื้อไอเทม 
 async function buyItem(itemId) {
     const item = SHOP_ITEMS.find(i => i.id === itemId);
-    if (!item || !currentUser) return; // 🚩 เช็คทั้งไอเทมและผู้เล่น
+    if (!item || !currentUser) return;
 
     if (!confirm(`ยืนยันการซื้อ ${item.name} ราคา ${item.price} Credits?`)) return;
 
@@ -2379,18 +2379,26 @@ async function buyItem(itemId) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: currentUser, // 🚩 เปลี่ยนเป็น currentUser
+                username: currentUser,
                 itemId: item.id,
                 itemPrice: item.price,
                 itemName: item.name,
                 itemType: item.type,
                 itemImgKey: item.imgKey || item.icon,
-                recipe: item.recipe || null
+                recipe: item.recipe || null,
+                // 🚩 เพิ่ม 2 บรรทัดนี้
+                stackable: item.stackable || false, 
+                quantity: 1 
             })
         });
 
         const result = await response.json();
-        // ... (ส่วนจัดการผลลัพธ์เหมือนเดิม)
+        if (result.success) {
+            showMiningToast(result.message, "#38ef7d");
+            // อัปเดตข้อมูลในเครื่อง และโหลด Profile ใหม่เพื่อ Sync ข้อมูลล่าสุด
+            await checkGameProfile(); 
+            renderBuyItems();
+        }
     } catch (err) {
         console.error("Purchase Error:", err);
     }
