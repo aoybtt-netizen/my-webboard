@@ -1640,6 +1640,69 @@ app.post('/api/:mode/map/update-minerals', async (req, res) => {
 });
 
 
+// 0. API สำหรับ Test Mode: เพิ่มเงิน CoinsGC
+app.post('/api/:mode/test/add-coins', async (req, res) => {
+    const { mode } = req.params;
+    const { username, amount } = req.body;
+    const db = getDB(mode);
+
+    try {
+        await db.updateOne(
+            { username: username },
+            { $inc: { coinsgc: amount || 1000 } }
+        );
+        const updated = await db.findOne({ username });
+        res.json({ success: true, newBalance: updated.coinsgc });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 9. API สำหรับการซื้อไอเทม (Blueprint/Item)
+app.post('/api/:mode/game/buy-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, itemId, itemPrice, itemName, itemType, itemImgKey, recipe } = req.body;
+    const db = getDB(mode);
+
+    try {
+        const user = await db.findOne({ username });
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        // 1. ตรวจสอบเงิน
+        if ((user.coinsgc || 0) < itemPrice) {
+            return res.json({ success: false, message: "เงิน CoinsGC ไม่เพียงพอ!" });
+        }
+
+        // 2. เตรียมข้อมูลไอเทมใหม่
+        const newItem = {
+            id: `item_${Date.now()}_${Math.floor(Math.random()*1000)}`,
+            name: itemName,
+            type: itemType,
+            imgKey: itemImgKey,
+            level: 1,
+            isBlueprint: itemType === 'blueprint',
+            recipe: recipe || null, // ถ้าเป็นแปลนจะมี Recipe
+            durability: 100,
+            repairCost: { metal: 1, energy: 1, tech: 1 },
+            createdAt: Date.now()
+        };
+
+        // 3. หักเงินและเพิ่มของเข้าคลัง (Inventory)
+        await db.updateOne(
+            { username: username },
+            { 
+                $inc: { coinsgc: -itemPrice },
+                $push: { inventory: newItem }
+            }
+        );
+
+        res.json({ success: true, message: `ซื้อ ${itemName} สำเร็จ!`, newItem });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+
 
 
 

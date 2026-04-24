@@ -1470,7 +1470,7 @@ button:hover { opacity: 0.8; }
         type: 'blueprint', 
         price: 500, 
         imgKey: 'BPengineS1', 
-        recipe: { metal: 20, energy: 10, tech: 5 } 
+        recipe: { metal: 1, energy: 1, tech: 1 } 
     },
     { 
         id: 'bp_d001', 
@@ -1478,7 +1478,7 @@ button:hover { opacity: 0.8; }
         type: 'blueprint', 
         price: 450, 
         imgKey: 'BPengineDrill1', 
-        recipe: { metal: 15, energy: 15, tech: 5 } 
+        recipe: { metal: 1, energy: 1, tech: 1 } 
     },
     { 
         id: 'bp_b001', 
@@ -1486,7 +1486,7 @@ button:hover { opacity: 0.8; }
         type: 'blueprint', 
         price: 300, 
         imgKey: 'BPshield0', 
-        recipe: { metal: 10, energy: 20, tech: 2 } 
+        recipe: { metal: 1, energy: 1, tech: 1 } 
     }
 ];
 
@@ -2220,12 +2220,78 @@ function renderBuyItems() {
     });
 }
 
-function buyItem(itemId) {
+// 🚩 ฟังก์ชันซื้อไอเทม 
+async function buyItem(itemId) {
     const item = SHOP_ITEMS.find(i => i.id === itemId);
-    // 🚩 กัปตันต้องเพิ่ม Logic การหักเงิน และเพิ่มของเข้าคลังตรงนี้ครับ
-    alert(`กำลังซื้อ: ${item.name}\nราคา: ${item.price} Credits`);
-    
-    // ตัวอย่าง: if(playerGold >= item.price) { ... }
+    if (!item) return;
+
+    // แสดง Loading หรือยืนยันการซื้อ
+    if (!confirm(`ยืนยันการซื้อ ${item.name} ราคา ${item.price} Credits?`)) return;
+
+    try {
+        const response = await fetch(`/api/${gameMode}/game/buy-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: playerUsername,
+                itemId: item.id,
+                itemPrice: item.price,
+                itemName: item.name,
+                itemType: item.type,
+                itemImgKey: item.imgKey || item.icon,
+                recipe: item.recipe || null
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showMiningToast(result.message, "#38ef7d"); // แจ้งเตือนสีเขียว
+            
+            // อัปเดตข้อมูลในเครื่องผู้เล่นทันที
+            playerInventory.push(result.newItem);
+            playerCoinsGC -= item.price;
+            
+            // อัปเดต UI
+            updateTopStats(); 
+            renderBuyItems(); // รีเฟรชหน้าร้านค้า (ถ้าอยากให้โชว์ว่าซื้อแล้ว)
+        } else {
+            showMiningToast(result.message, "#ff4b2b"); // แจ้งเตือนสีแดง (เงินไม่พอ)
+        }
+    } catch (err) {
+        console.error("Purchase Error:", err);
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อสถานีการค้า");
+    }
+}
+
+// 🚩 ฟังก์ชันโกงเงินสำหรับ Test Mode
+if (window.location.search.includes('dev') || gameMode === 'test') {
+        document.write(`
+            <button onclick="addTestCoins()" 
+                    style="position:fixed; bottom:20px; right:20px; z-index:9999; 
+                           background:#ffcc00; color:#000; border:none; padding:10px; 
+                           border-radius:5px; font-weight:bold; cursor:pointer;">
+                DEBUG: +5000 COINS
+            </button>
+        `);
+    }
+	
+async function addTestCoins() {
+    if (gameMode !== 'test') return;
+
+    try {
+        const response = await fetch(`/api/test/test/add-coins`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: playerUsername, amount: 5000 })
+        });
+        const result = await response.json();
+        if (result.success) {
+            playerCoinsGC = result.newBalance;
+            updateTopStats();
+            showMiningToast("CHEAT: +5000 CoinsGC Added!", "#ffcc00");
+        }
+    } catch (err) { console.error(err); }
 }
 
 function closeShop(e) {
