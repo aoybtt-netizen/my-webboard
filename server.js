@@ -1393,7 +1393,7 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
 
             equipped: initialEquipped,
             inventory: initialInventory,
-            cargoStats: { capacity: 10, level: 1, maxUpgrades: 10 },
+            cargoStats: { capacity: 1000, level: 1, maxUpgrades: 10 },
             
             currentQ: 0,
             currentR: 0,

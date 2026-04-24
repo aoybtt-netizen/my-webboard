@@ -1800,7 +1800,7 @@ window.onload = async () => {
                 // วนลูปเช็คไอเทมทุกชิ้น: ถ้ามี quantity ให้บวกตามจำนวน ถ้าไม่มี (เครื่องยนต์) ให้นับเป็น 1
                 const totalWeight = playerInventory.reduce((sum, item) => {
                     const qty = item.quantity || 1;
-                    const weight = item.weightPerUnit || 1; // 1ea = 1kg
+                    const weight = item.weightPerUnit || 0;
                     return sum + (qty * weight);
                 }, 0);
 
