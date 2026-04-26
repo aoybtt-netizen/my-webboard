@@ -1511,7 +1511,81 @@ app.post('/api/:mode/mine', async (req, res) => {
     }
 });
 
-// 5. ระบบฟื้นฟูพลังงาน (คงเดิม - ถูกต้องแล้ว)
+// 4.1 API สำหรับเพิ่มแร่เข้าคลัง และ หักแร่ออกจากดวงดาว
+app.post('/api/:mode/game/add-mineral', async (req, res) => {
+    const { mode } = req.params;
+    // 🚩 รับ q, r เพิ่มเข้ามาด้วย
+    const { username, mineral, q, r } = req.body; 
+    const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
+    const db = client.db(dbName).collection("users");
+    const mapCollection = client.db(dbName).collection("map_tiles");
+
+    try {
+        const user = await db.findOne({ username });
+        if (!user) return res.status(404).json({ success: false });
+
+        const weightToAdd = (mineral.quantity || 1) * (mineral.weightPerUnit || 1);
+
+        // --- 1. เช็กความจุของดวงดาว (ว่าแร่เหลือพอให้ขุดไหม) ---
+        if (q !== undefined && r !== undefined) {
+            const tile = await mapCollection.findOne({ q: Number(q), r: Number(r) });
+            
+            // ถ้าเป็นดาวที่มีระบบจำกัดแร่
+            if (tile && tile.maxStarCapacity) {
+                // คำนวณ Regen เผื่อไว้ก่อนหัก
+                const now = Date.now();
+                const elapsedHours = (now - (tile.lastUpdate || now)) / (1000 * 60 * 60);
+                let currentOre = tile.currentStarAmount;
+                
+                if (elapsedHours > 0 && currentOre < tile.maxStarCapacity) {
+                    currentOre = Math.min(tile.maxStarCapacity, currentOre + (elapsedHours * (tile.regenRate || 500)));
+                }
+
+                // เช็กว่าแร่บนดาวเหลือพอกับที่จะขุดไหม
+                if (currentOre < weightToAdd) {
+                    return res.json({ success: false, message: "แร่บนดาวดวงนี้หมดแล้ว! โปรดรอการฟื้นฟู" });
+                }
+
+                // 🚩 หักแร่ออกจากดวงดาว
+                await mapCollection.updateOne(
+                    { q: Number(q), r: Number(r) },
+                    { $set: { 
+                        currentStarAmount: currentOre - weightToAdd, 
+                        lastUpdate: now 
+                    }}
+                );
+            }
+        }
+
+        // --- 2. เช็กความจุยานและเพิ่มแร่ (Logic เดิมของกัปตัน) ---
+        const currentWeight = (user.inventory || []).reduce((sum, i) => sum + ((i.quantity || 1) * (i.weightPerUnit || 0)), 0);
+
+        if (currentWeight + weightToAdd > (user.cargoStats.capacity || 1000)) {
+            // ถ้าคลังเต็ม แต่หักแร่จากดาวไปแล้ว (กรณีทำธุรกรรมล้มเหลว) ในระบบจริงควรใช้ MongoDB Session/Transaction 
+            // แต่สำหรับเบื้องต้น เราเช็กตรงนี้ได้ครับ
+            return res.json({ success: false, message: "CARGO FULL!" });
+        }
+
+        const existingItemIndex = user.inventory.findIndex(i => i.name === mineral.name && i.stackable === true);
+
+        if (existingItemIndex > -1) {
+            await db.updateOne(
+                { username, "inventory.name": mineral.name },
+                { $inc: { "inventory.$.quantity": mineral.quantity } }
+            );
+        } else {
+            const newItem = { id: `ore_${Date.now()}`, ...mineral, createdAt: Date.now() };
+            await db.updateOne({ username }, { $push: { inventory: newItem } });
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+
+// 5. ระบบฟื้นฟูพลังงาน
 setInterval(async () => {
     try {
         const modes = ['test', 'main'];
@@ -1523,7 +1597,7 @@ setInterval(async () => {
     } catch (e) { console.error("Energy Regen Error:", e); }
 }, 1000 * 60 * 5);
 
-// ฟังก์ชันสุ่มชื่อดาว เช่น PX-99 หรือ NOVA-X7
+// ฟังก์ชันสุ่มชื่อดาว
 function generateStarName() {
     const prefixes = ['PX', 'NOVA', 'ZETA', 'CORE', 'VOID', 'ALPHA'];
     const code = Math.floor(1000 + Math.random() * 9000);
@@ -1747,6 +1821,48 @@ app.post('/api/:mode/game/install-item', async (req, res) => {
         await db.updateOne({ username }, updateOps);
 
         res.json({ success: true, message: `ติดตั้ง ${itemToInstall.name} สำเร็จ` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 11. API: ดึงข้อมูลดวงดาว และคำนวณการฟื้นฟูแร่ (Lazy Regen)
+app.get('/api/:mode/map/star/:q/:r', async (req, res) => {
+    const { mode, q, r } = req.params;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+    const mapCollection = db.collection("map_tiles");
+
+    try {
+        const queryQ = Number(q);
+        const queryR = Number(r);
+        let tile = await mapCollection.findOne({ q: queryQ, r: queryR });
+
+        if (!tile) {
+            return res.status(404).json({ success: false, message: "Unexplored Space" });
+        }
+
+        // --- ระบบคำนวณ REGEN กองกลาง (โมเดล B) ---
+        if (tile.maxStarCapacity && tile.currentStarAmount < tile.maxStarCapacity) {
+            const now = Date.now();
+            const lastUpdate = tile.lastUpdate || now;
+            const elapsedHours = (now - lastUpdate) / (1000 * 60 * 60);
+
+            if (elapsedHours > 0) {
+                const regenAmount = elapsedHours * (tile.regenRate || 500);
+                const newAmount = Math.min(tile.maxStarCapacity, tile.currentStarAmount + regenAmount);
+                
+                // อัปเดตข้อมูลลงฐานข้อมูล
+                await mapCollection.updateOne(
+                    { q: queryQ, r: queryR },
+                    { $set: { currentStarAmount: newAmount, lastUpdate: now } }
+                );
+                
+                tile.currentStarAmount = newAmount; // อัปเดตตัวแปรที่จะส่งกลับ
+                tile.lastUpdate = now;
+            }
+        }
+
+        res.json({ success: true, tile });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

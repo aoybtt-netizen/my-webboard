@@ -1333,6 +1333,10 @@ button:hover { opacity: 0.8; }
     
     '0,-1': { 
         name: 'GEDGOZONE1', type: 'star', img: 'star0', progress: 100,
+		maxStarCapacity: 2000,
+        currentStarAmount: 2000, 
+        regenRate: 500,
+        lastUpdate: Date.now(),
         minerals: [
             { name: 'O-METAL-1', type: 'metal', img: 'orem1', isResearched: true, 
               properties: { metal: 1, energy: 0, tech: 0, rarity: 10, value: 5 } }
@@ -1341,6 +1345,10 @@ button:hover { opacity: 0.8; }
 
     '1,-1': { 
         name: 'GEDGOZONE2', type: 'star', img: 'star1', progress: 100,
+		maxStarCapacity: 2000,
+        currentStarAmount: 2000, 
+        regenRate: 500,
+        lastUpdate: Date.now(),
         minerals: [
             { name: 'O-ENERGY-1', type: 'energy', img: 'oree1', isResearched: true, 
               properties: { metal: 0, energy: 1, tech: 0, rarity: 15, value: 7 } }
@@ -1349,6 +1357,10 @@ button:hover { opacity: 0.8; }
 
     '1,0': { 
         name: 'GEDGOZONE3', type: 'star', img: 'star2', progress: 100,
+		maxStarCapacity: 2000,
+        currentStarAmount: 2000, 
+        regenRate: 500,
+        lastUpdate: Date.now(),
         minerals: [
             { name: 'O-TECHNOLOGY-1', type: 'technology', img: 'oret1', isResearched: true, 
               properties: { metal: 0, energy: 0, tech: 1, rarity: 25, value: 9 } }
@@ -1357,6 +1369,10 @@ button:hover { opacity: 0.8; }
 
     '0,1': { 
         name: 'GEDGOZONE4', type: 'star', img: 'star3', progress: 100,
+		maxStarCapacity: 2000,
+        currentStarAmount: 2000, 
+        regenRate: 500,
+        lastUpdate: Date.now(),
         minerals: [
             { name: 'O-METAL-1', type: 'metal', img: 'orem1', isResearched: true, 
               properties: { metal: 1, energy: 0, tech: 0, rarity: 10, value: 5 } },
@@ -1367,6 +1383,10 @@ button:hover { opacity: 0.8; }
 
     '-1,0': { 
         name: 'GEDGOZONE5', type: 'star', img: 'star4', progress: 100,
+		maxStarCapacity: 2000,
+        currentStarAmount: 2000, 
+        regenRate: 500,
+        lastUpdate: Date.now(),
         minerals: [
             { name: 'O-METAL-1', type: 'metal', img: 'orem1', isResearched: true, 
               properties: { metal: 1, energy: 0, tech: 0, rarity: 10, value: 5 } },
@@ -1377,6 +1397,10 @@ button:hover { opacity: 0.8; }
 
     '-1,-1': { 
         name: 'GEDGOZONE6', type: 'star', img: 'star5', progress: 100,
+		maxStarCapacity: 2000,
+        currentStarAmount: 2000, 
+        regenRate: 500,
+        lastUpdate: Date.now(),
         minerals: [
             { name: 'O-METAL-1', type: 'metal', img: 'orem1', isResearched: true, 
               properties: { metal: 1, energy: 0, tech: 0, rarity: 10, value: 5 } },
@@ -2151,7 +2175,7 @@ function travelTo(q, r, isWarp = false) {
 
 
 	// ฟังก์ชันเปิดหน้าต่างรายละเอียด
-function openStarDetail() {
+async function openStarDetail() {
     if (!selectedHex) return;
 
     const q = selectedHex.q;
@@ -2159,14 +2183,30 @@ function openStarDetail() {
     const coordKey = `${q},${r}`;
     const isVisitedByMe = visitedTiles.includes(coordKey);
     const isStatic = !!STATIC_STARS[coordKey];
-    
+
+    let starData = null;
+
+    // 🚩 1. ดึงข้อมูลจาก Server เสมอ เพื่อเอาค่ายอดแร่ล่าสุด
+    try {
+        const res = await fetch(`${API_BASE}/map/star/${q}/${r}`);
+        const data = await res.json();
+        if (data.success) {
+            starData = data.tile; 
+            serverMapData[coordKey] = data.tile; // อัปเดต Cache ในเครื่อง
+        }
+    } catch (e) {
+        console.error("Fetch star error:", e);
+    }
+
+    // ถ้า Server ไม่มี ให้ตกกลับมาใช้ข้อมูล Static (แต่ยอดอาจจะไม่เรียลไทม์)
+    if (!starData) {
+        starData = STATIC_STARS[coordKey] || serverMapData[coordKey];
+    }
+
     let name = "UNKNOWN SECTOR";
     let imgSrc = "images/conceal.png";
     let status = "พิกัดในอวกาศ";
-    
-    const starData = STATIC_STARS[coordKey] || serverMapData[coordKey];
 
-    // --- 1. ตรวจสอบข้อมูลพื้นฐาน ---
     if (isStatic) {
         name = starData.name;
         imgSrc = imageSources[starData.img] || `images/star/${starData.img}.png`;
@@ -2175,56 +2215,51 @@ function openStarDetail() {
         name = starData.name;
         imgSrc = starData.image;
         status = starData.type === 'star' ? "planet" : "meteorite cluster";
-    } else {
-        name = "UNEXPLORED SECTOR";
-        imgSrc = "images/conceal.png";
-        status = "This location is not yet in your database";
     }
 
-    // --- 2. การสร้าง HTML สำหรับสภาพแวดล้อม (กรด/อุณหภูมิ) และแร่ ---
-    let envHTML = ""; // ส่วนที่เพิ่มใหม่สำหรับ กรด/อุณหภูมิ
+    let envHTML = ""; 
     let mineralHTML = "";
 
     if ((isStatic || isVisitedByMe) && starData) {
-        // --- เช็คค่ากรด ---
-        if (starData.corrosionAcid && starData.corrosionAcid > 0) {
-            envHTML += `
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#ff4b2b; margin-top:5px; padding: 2px 0;">
-                    <span><i class="fas fa-biohazard"></i> Metal corrosive acid:</span>
-                    <span style="color: white; font-weight:bold;">${starData.corrosionAcid}%</span>
-                </div>`;
-        }
-        // --- เช็คค่าอุณหภูมิ ---
-        if (starData.temperature && starData.temperature > 0) {
-            envHTML += `
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#ffaa00; margin-top:5px; padding: 2px 0;">
-                    <span><i class="fas fa-thermometer-half"></i> Surface temperature:</span>
-                    <span style="color: white; font-weight:bold;">${starData.temperature}°C</span>
-                </div>`;
-        }
+        if (starData.corrosionAcid && starData.corrosionAcid > 0) { /* ... โค้ดกรด ... */ }
+        if (starData.temperature && starData.temperature > 0) { /* ... โค้ดความร้อน ... */ }
 
-        // --- ส่วนรายการแร่ (เดิม) ---
+        // 🚩 โค้ดแสดงแร่ (โมเดล B - ตามสัดส่วน)
         if (starData.minerals && starData.minerals.length > 0) {
             mineralHTML = `<div style="margin-top:15px; border-top:1px solid rgba(0,210,255,0.2); padding-top:10px;">
-                            <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px; letter-spacing:1px; text-align:left;">Resources detected:</div>`;
+                            <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px;">Resources detected:</div>`;
+            
+            const totalStarOre = starData.currentStarAmount || 0;
+            const maxStarOre = starData.maxStarCapacity || 2000;
+
             starData.minerals.forEach(m => {
+                // คำนวณแร่จาก ratio
+                const ratio = m.ratio || 1; // ถ้าไม่มี ratio ให้ถือว่ามี 100%
+                const mCurrent = Math.floor(totalStarOre * ratio);
+                const mMax = Math.floor(maxStarOre * ratio);
+                const percent = maxStarOre > 0 ? (mCurrent / mMax) * 100 : 0;
+                const barColor = percent > 50 ? 'var(--neon-green)' : (percent > 20 ? '#ffcc00' : '#ff4b2b');
+                
                 const oreImg = imageSources[m.img] || 'images/ore/default.png';
+
                 mineralHTML += `
-                    <div style="display:flex; align-items:center; background:rgba(99, 142, 99, 0.38); border-radius:10px; padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
-                        <img src="${oreImg}" style="width:35px; height:35px; margin-right:12px; object-fit:contain;">
-                        <div style="flex:1; text-align:left;">
-                            <div style="font-size:0.8rem; font-weight:bold; color:white;">${m.name}</div>
-                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.5);">TYPE: ${m.type.toUpperCase()}</div>
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="display:flex; align-items:center;">
+                            <img src="${oreImg}" style="width:30px; height:30px; margin-right:10px;">
+                            <div style="flex:1;">
+                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:white;">
+                                    <span>${m.name}</span>
+                                    <span style="color:${barColor}; font-weight:bold;">${mCurrent.toLocaleString()} kg</span>
+                                </div>
+                                <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:5px;">
+                                    <div style="width:${percent}%; height:100%; background:${barColor}; transition:0.5s;"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>`;
             });
             mineralHTML += `</div>`;
         }
-    } else if (!isStatic && !isVisitedByMe) {
-        mineralHTML = `<div style="margin-top:15px; padding:15px; background:rgba(255,255,255,0.05); border-radius:10px; text-align:center; border:1px dashed rgba(255,255,255,0.2);">
-                        <i class="fas fa-lock" style="color:rgba(255,255,255,0.2); margin-bottom:5px;"></i>
-                        <div style="font-size:0.6rem; color:rgba(255,255,255,0.4);">DATA ENCRYPTED<br>Travel to the coordinates to unlock the information</div>
-                      </div>`;
     }
 
     // --- 3. คำนวณระยะทางและปุ่ม (คงเดิม) ---
@@ -3205,56 +3240,95 @@ function useShield() {
 // --- ระบบสุ่มเลือกแร่ ---
 function showMineralChoices() {
     const container = document.getElementById('mineral-choices-container');
-    const overlay = document.getElementById('mineral-choice-overlay'); // ดึงตัว overlay มา
+    const overlay = document.getElementById('mineral-choice-overlay');
     
     if (!container || !overlay) return;
     
     container.innerHTML = '';
     
-    const minerals = [
-        { name: 'METAL', img: 'orem1', chance: 80 },
-        { name: 'ENERGY', img: 'oree1', chance: 60 },
-        { name: 'CRYSTAL', img: 'oret1', chance: 30 }
-    ];
+    // 🚩 1. ดึงข้อมูลแร่จริงจากดาวดวงปัจจุบัน
+    const coordKey = `${playerQ},${playerR}`;
+    const starData = serverMapData[coordKey];
 
-    for (let i = 0; i < 3; i++) {
-        const m = minerals[Math.floor(Math.random() * minerals.length)];
-        const successRate = Math.max(5, m.chance - (drillHeat / 2));
+    // ถ้าดาวดวงนี้ไม่มีแร่ (หรือเป็นอวกาศว่างเปล่า) ให้ไม่แสดงอะไร
+    if (!starData || !starData.minerals || starData.minerals.length === 0) {
+        overlay.style.display = 'none';
+        return;
+    }
+
+    // 🚩 2. วนลูปสร้างการ์ดแร่ตามจำนวนที่ดาวดวงนี้มี (หรือสุ่มมาโชว์ 3 ช่อง)
+    // เราจะวนลูปตาม starData.minerals ที่เราสุ่มไว้ตอนแรก
+    starData.minerals.forEach(m => {
+        // คำนวณ Success Rate (ใช้ค่าพื้นฐาน 70% ถ้าไม่ได้ระบุโอกาสไว้)
+        const baseChance = m.chance || 70;
+        const successRate = Math.max(5, baseChance - (drillHeat / 2));
         
         const card = document.createElement('div');
         card.className = 'mineral-card';
-        // 🚩 เพิ่มสไตล์ตรงนี้ให้มั่นใจว่า pointer-events เป็น auto
         card.style.pointerEvents = 'auto'; 
         card.style.cursor = 'pointer';
 
+        // ดึงรูปจาก imageSources หรือ path ปกติ
+        const imgSrc = imageSources[m.img] || `images/ore/${m.img}.png`;
+
         card.innerHTML = `
-            <img src="images/ore/${m.img}.png" style="width:40px; pointer-events: none;">
-            <div style="font-size:0.7rem; font-weight:bold; pointer-events: none;">${m.name}</div>
-            <div style="font-size:0.5rem; color:#38ef7d; pointer-events: none;">RATE: ${Math.floor(successRate)}%</div>
+            <img src="${imgSrc}" style="width:40px; pointer-events: none; object-fit: contain;">
+            <div style="font-size:0.7rem; font-weight:bold; pointer-events: none; color: white;">${m.name}</div>
+            <div style="font-size:0.5rem; color:#38ef7d; pointer-events: none;">SUCCESS: ${Math.floor(successRate)}%</div>
         `;
         
         card.onclick = (e) => {
-            e.stopPropagation(); // กันเหตุการณ์คลิกซ้อน
+            e.stopPropagation();
+            // 🚩 เรียกฟังก์ชันเก็บแร่ที่เชื่อมต่อกับ Backend
             attemptCollect(m, successRate);
         };
         
         container.appendChild(card);
-    }
+    });
 
     overlay.style.display = 'flex';
-    overlay.style.pointerEvents = 'auto'; // 🚩 ปลดล็อกให้คลิกที่ Overlay ได้
+    overlay.style.pointerEvents = 'auto';
 }
 
-function attemptCollect(mineral, rate) {
-    document.getElementById('mineral-choice-overlay').style.display = 'none';
-    const roll = Math.random() * 100;
-    
-    if (roll <= rate) {
-        showToast(`SUCCESS: RECEIVED ${mineral.name}`, "#38ef7d");
-        // โค้ดเพิ่มของเข้ากระเป๋า
+async function attemptCollect(mineral, rate) {
+    const overlay = document.getElementById('mineral-choice-overlay');
+    if (overlay) overlay.style.display = 'none'; // ปิดหน้าต่างเลือกทันที
+
+    const isSuccess = (Math.random() * 100) < rate;
+
+    if (isSuccess) {
+        // 🚩 ขุดสำเร็จ! ส่งข้อมูลไปเซฟที่ Backend
+        try {
+            const response = await fetch(`${API_BASE}/game/add-mineral`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: currentUser,
+                    mineral: {
+                        name: mineral.name,
+                        imgKey: mineral.img,
+                        type: mineral.type || 'resource',
+                        stackable: true,
+                        quantity: 10,
+                        weightPerUnit: 1
+                    }
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMiningToast(`สำเร็จ! ได้รับ ${mineral.name} +10`, "#38ef7d");
+                // Sync ข้อมูลผู้เล่นใหม่เพื่อให้ตัวเลขเงิน/น้ำหนักอัปเดต
+                checkGameProfile(); 
+            } else {
+                showMiningToast(result.message, "#ff4b2b"); // กรณีคลังเต็ม (น้ำหนักเกิน)
+            }
+        } catch (e) {
+            console.error("Mining Collection Error:", e);
+        }
     } else {
-        showToast(`FAILED: RESOURCE UNSTABLE`, "#ff4b2b");
-        drillHP -= 10; // ขุดพลาดเครื่องพังเพิ่ม
+        // ❌ ขุดพลาด (อาจเพราะความร้อนสูงเกินไป)
+        showMiningToast("การเก็บกู้ล้มเหลว! แร่แตกสลาย", "#ff4b2b");
     }
 }
 
