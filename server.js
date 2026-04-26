@@ -1258,6 +1258,40 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
 // =========================================
 // --- Void Expedition: Game API Section --
 // =========================================
+// 🚩 API พิเศษสำหรับล้างข้อมูลทั้งระบบ (Admin Only)
+app.post('/api/admin/system-hard-reset', async (req, res) => {
+    try {
+        const modes = ['test', 'main'];
+        const results = {};
+
+        for (const mode of modes) {
+            const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
+            const db = client.db(dbName);
+
+            // 1. ลบข้อมูลใน collection "users" ทั้งหมด (รวมผู้เล่นจริงและ Guest)
+            const userRes = await db.collection("users").deleteMany({});
+
+            // 2. ลบข้อมูลใน collection "map_tiles" ทั้งหมด (ดาวและพื้นที่ว่างที่สุ่มไป)
+            const mapRes = await db.collection("map_tiles").deleteMany({});
+
+            results[mode] = {
+                usersDeleted: userRes.deletedCount,
+                tilesDeleted: mapRes.deletedCount
+            };
+        }
+
+        console.log("!!! SYSTEM HARD RESET COMPLETED !!!", results);
+        res.json({ 
+            success: true, 
+            message: "ล้างข้อมูลทั้งระบบเรียบร้อยแล้ว", 
+            details: results 
+        });
+
+    } catch (e) {
+        console.error("Hard Reset Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 const FORBIDDEN_NAMES = ['admin', 'gedgo', 'gedgozone', 'admingedgozone', 'admingedgo'];
 
