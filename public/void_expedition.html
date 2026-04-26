@@ -3212,16 +3212,61 @@ function startMiningProcess2() {
 }
 
 function selectChipAndStart(chipId) {
+    // หาข้อมูลชิปที่เลือก
     activeMiningChip = playerInventory.find(i => i.id === chipId);
+    
+    if (!activeMiningChip) return;
+
+    // ปิดหน้าต่างเลือกชิป
     document.getElementById('chip-selection-overlay').style.display = 'none';
     
     // ตั้งค่าสถานะเริ่มต้น
     drillEnergy = 100;
     miningActive = true;
-    lastEnergyTick = Date.now(); // บันทึกเวลาเริ่มเพื่อลดพลังงาน
+    lastEnergyTick = Date.now(); 
 
-    // เปลี่ยนหน้าจอไปที่การขุด
+    // 🚩 อัปเดตรูปไอคอนบนปุ่มเติมพลังงานก่อนเข้าหน้าขุด
+    const chipImg = document.getElementById('active-chip-icon');
+    const refillText = document.getElementById('refill-text');
+    
+    if (chipImg) {
+        chipImg.src = `images/${activeMiningChip.imgKey}.png`; 
+        chipImg.style.display = 'inline-block';
+    }
+    if (refillText) {
+        refillText.innerText = `RECHARGE (${activeMiningChip.quantity})`;
+    }
+
+    // 🚀 สั่งเปลี่ยนหน้าจอและเริ่มเกม
     enterMiningView(); 
+}
+
+function enterMiningView() {
+    console.log("🚀 Entering Deep-Core Extraction View...");
+
+    // 1. ซ่อนทุกหน้าจอ (View) และเปิดหน้าจอขุดแร่จริง
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.remove('active');
+        v.style.display = 'none';
+    });
+
+    const miningView = document.getElementById('view-active-mining');
+    if (miningView) {
+        miningView.style.display = 'block';
+        miningView.classList.add('active');
+    }
+
+    // 2. ตั้งค่าสถานะเริ่มต้นของเครื่องมือ
+    drillHP = 100;
+    drillHeat = 0;
+    miningProgress = 0;
+    // drillEnergy ตั้งมาจาก selectChipAndStart แล้ว (100)
+
+    // 3. อัปเดต UI ทันทีหนึ่งครั้งเพื่อให้ค่าโชว์ถูกต้อง
+    updateActiveMiningUI();
+
+    // 4. 🚩 เริ่มต้น Loop เกมขุดแร่ (updateMining2)
+    requestAnimationFrame(updateMining2);
 }
 
 
