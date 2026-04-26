@@ -1280,6 +1280,20 @@ button:hover { opacity: 0.8; }
             <i class="fas fa-shield-alt"></i> SHIELD (5s PROTECT)
         </button>
     </div>
+	
+	<div style="grid-column: span 2; margin-top: 5px;">
+    <button id="refill-btn" class="mining-skill-btn" onclick="useEnergyChipInGame()" 
+            style="width: 100%; border-color:#00d2ff; color:#00d2ff; display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(0, 210, 255, 0.05);">
+        
+        <img id="active-chip-icon" src="images/EnergyChip0.png" style="width:22px; height:22px; filter: drop-shadow(0 0 5px #00d2ff);">
+        
+        <div style="text-align: left;">
+            <div style="font-size: 0.5rem; opacity: 0.7; line-height: 1;">RECHARGE SYSTEM</div>
+            <div id="refill-text" style="font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">USE ENERGY CHIP (0)</div>
+        </div>
+    </button>
+</div>
+
 </div>
 
 <div id="mineral-choice-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:3000; align-items:center; justify-content:center; flex-direction:column; pointer-events: auto;">
@@ -3212,33 +3226,36 @@ function startMiningProcess2() {
 }
 
 function selectChipAndStart(chipId) {
-    // หาข้อมูลชิปที่เลือก
+    // 1. หาข้อมูลชิปที่เลือกจาก Inventory
     activeMiningChip = playerInventory.find(i => i.id === chipId);
     
     if (!activeMiningChip) return;
 
-    // ปิดหน้าต่างเลือกชิป
+    // 2. ปิดหน้าต่างเลือก
     document.getElementById('chip-selection-overlay').style.display = 'none';
     
-    // ตั้งค่าสถานะเริ่มต้น
-    drillEnergy = 100;
-    miningActive = true;
-    lastEnergyTick = Date.now(); 
-
-    // 🚩 อัปเดตรูปไอคอนบนปุ่มเติมพลังงานก่อนเข้าหน้าขุด
+    // 🚩 3. อัปเดต "ปุ่มเติมพลังงาน" ให้โชว์ชิปตัวที่เลือก
     const chipImg = document.getElementById('active-chip-icon');
     const refillText = document.getElementById('refill-text');
-    
+    const refillBtn = document.getElementById('refill-btn');
+
     if (chipImg) {
+        // ใช้ Path ที่ถูกต้อง (ลองเช็คว่ามี items/ หรือไม่)
         chipImg.src = `images/${activeMiningChip.imgKey}.png`; 
-        chipImg.style.display = 'inline-block';
     }
     if (refillText) {
-        refillText.innerText = `RECHARGE (${activeMiningChip.quantity})`;
+        refillText.innerText = `USE ${activeMiningChip.name} (${activeMiningChip.quantity})`;
     }
+    if (refillBtn) {
+        refillBtn.style.opacity = "1"; // รีเซ็ตความชัดเผื่อครั้งก่อนใช้จนหมด
+    }
+    
+    // 4. ตั้งค่าเริ่มต้นและเริ่มเข้าหน้าขุด
+    drillEnergy = 100;
+    miningActive = true;
+    lastEnergyTick = Date.now();
 
-    // 🚀 สั่งเปลี่ยนหน้าจอและเริ่มเกม
-    enterMiningView(); 
+    enterMiningView(); // เข้าสู่หน้าเจาะแกนดาว
 }
 
 function enterMiningView() {
@@ -3348,12 +3365,12 @@ function updateMining2() {
 // 🚩 ฟังก์ชันกดเติมพลังงาน (ผูกกับปุ่มใน UI)
 async function useEnergyChipInGame() {
     if (!activeMiningChip || activeMiningChip.quantity <= 0) {
-        showMiningToast("ไม่เหลือชิปพลังงานในคลัง!", "#ff4b2b");
+        showMiningToast("OUT OF CHIPS: ชิปหมดแล้ว!", "#ff4b2b");
         return;
     }
 
     try {
-        // ส่งไปตัดจำนวนที่เซิร์ฟเวอร์
+        // 🚩 ส่งไปหักของที่ Server จริงๆ
         const response = await fetch(`${API_BASE}/game/use-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3365,11 +3382,21 @@ async function useEnergyChipInGame() {
 
         const result = await response.json();
         if (result.success) {
-            // ฟื้นฟูตามค่าของชิปตัวนั้น
-            drillEnergy = Math.min(100, drillEnergy + activeMiningChip.energyValue);
-            activeMiningChip.quantity -= 1; // ลดจำนวนในเครื่องผู้เล่นด้วย
+            // 1. ฟื้นฟูพลังงาน (ไม่เกิน 100)
+            drillEnergy = Math.min(100, drillEnergy + (activeMiningChip.energyValue || 50));
             
-            showMiningToast(`RECHARGED: +${activeMiningChip.energyValue} ENERGY`, "#38ef7d");
+            // 2. ลดจำนวนในตัวแปร Local
+            activeMiningChip.quantity -= 1; 
+            
+            // 3. อัปเดต UI ที่ปุ่มทันที
+            document.getElementById('refill-text').innerText = `USE ${activeMiningChip.name} (${activeMiningChip.quantity})`;
+            
+            // 4. เอฟเฟกต์ถ้าของหมด
+            if (activeMiningChip.quantity <= 0) {
+                document.getElementById('refill-btn').style.opacity = "0.4";
+            }
+
+            showMiningToast(`ENERGY RECHARGED: +${activeMiningChip.energyValue}`, "#00d2ff");
             updateActiveMiningUI();
         }
     } catch (e) {
