@@ -1397,7 +1397,6 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
                 energyValue: 100, 
                 isLocked: true,
 				stackable: true,
-				quantity: 1,
                 imgKey: 'EnergyChip0' 
             });
         }
