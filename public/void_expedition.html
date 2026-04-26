@@ -1576,7 +1576,7 @@ button:hover { opacity: 0.8; }
 		let drillEnergy = 100;
 		let isShieldActive = false;
 		let nextMineralScanTime = 10;
-		let activeChipId = null; // เก็บ ID ชิปที่กำลังใช้งานอยู่ในการขุดครั้งนี้
+		let activeMiningChip = null; // เก็บ ID ชิปที่กำลังใช้งานอยู่ในการขุดครั้งนี้
 		let lastEnergyTick = 0; // ใช้คำนวณเวลาลดพลังงาน
 		
 		const drillAssets = {
@@ -3156,49 +3156,52 @@ function startMiningProcess() {
 
 // --- ฟังก์ชันเข้าสู่มินิเกมขุดแร่ (เวอร์ชัน 2) ---
 function startMiningProcess2() {
-    const coordKey = (playerQ !== undefined) ? `${playerQ},${playerR}` : '0,0';
-    const starData = STATIC_STARS[coordKey] || serverMapData[coordKey];
+    // 1. ดึงข้อมูลพิกัดและดาว
+    const coordKey = `${playerQ},${playerR}`;
+    const starData = STATIC_STARS[coordKey] || serverMapData[coordKey] || serverMapData['TEST'];
 
     if (!starData) return alert("ไม่พบข้อมูลดาว");
 
-    // 🚩 1. ตรวจสอบ Energy Chip ในตัวผู้เล่น
-    const chips = playerInventory.filter(item => item.type === 'energy chip' && item.quantity > 0);
+    // 2. กรองเฉพาะ Energy Chip ที่มีอยู่ในคลัง (รวมกลุ่มตามชื่อเพื่อความสวยงาม)
+    const chips = playerInventory.filter(item => item.type === 'energy chip' && (item.quantity || 1) > 0);
 
     if (chips.length === 0) {
-        return alert("⚠️ คุณไม่มี Energy Chip! กรุณาไปซื้อที่ Shop ก่อนเริ่มขุด");
+        alert("คุณไม่มี Energy Chip! กรุณาไปซื้อที่ Shop ก่อนเริ่มขุด");
+        return;
     }
 
-    // 🚩 2. แสดงหน้าต่างเลือกชิป
-    const overlay = document.getElementById('chip-selection-overlay');
-    const container = document.getElementById('chip-list-container');
+    // 3. แสดงหน้าจอเลือกชิป (Overlay)
+    const container = document.getElementById('chip-choices-container'); // อย่าลืมสร้าง ID นี้ใน HTML
     container.innerHTML = "";
-
+    
+    // แสดงรายการชิปที่มี
     chips.forEach(chip => {
         container.innerHTML += `
-            <div class="chip-card" onclick="confirmStartWithChip('${chip.id}')" style="background:rgba(0,210,255,0.1); border:1px solid var(--neon-blue); padding:15px; border-radius:12px; text-align:center; cursor:pointer; width:120px;">
-                <img src="images/items/${chip.imgKey}.png" style="width:50px; height:50px; margin-bottom:10px;">
-                <div style="font-size:0.8rem; font-weight:bold;">${chip.name}</div>
-                <div style="font-size:0.6rem; color:var(--neon-green);">Value: +${chip.energyValue}</div>
-                <div style="font-size:0.6rem; color:rgba(255,255,255,0.5);">มีอยู่: ${chip.quantity}</div>
+            <div class="mining-chip-card" onclick="selectChipAndStart('${chip.id}')">
+                <img src="images/items/${chip.imgKey}.png" style="width:40px;">
+                <div style="font-size:0.7rem; margin-top:5px;">${chip.name}</div>
+                <div style="color:var(--neon-green); font-size:0.6rem;">+${chip.energyValue} Energy</div>
+                <div style="font-size:0.5rem; opacity:0.6;">Quantity: ${chip.quantity}</div>
             </div>
         `;
     });
 
-    overlay.style.display = 'flex';
+    document.getElementById('chip-selection-overlay').style.display = 'flex';
 }
 
-// 🚩 ฟังก์ชันเลือกชิปและเริ่มขุดจริง
-function confirmStartWithChip(chipId) {
-    activeChipId = chipId;
+function selectChipAndStart(chipId) {
+    activeMiningChip = playerInventory.find(i => i.id === chipId);
     document.getElementById('chip-selection-overlay').style.display = 'none';
     
-    // ตั้งค่าพลังงานเริ่มต้น
-    drillEnergy = 100; 
-    lastEnergyTick = Date.now();
+    // ตั้งค่าสถานะเริ่มต้น
+    drillEnergy = 100;
+    miningActive = true;
+    lastEnergyTick = Date.now(); // บันทึกเวลาเริ่มเพื่อลดพลังงาน
 
-    // เข้าสู่หน้าจอขุด (Logic เดิมของกัปตัน)
-    enterActiveMiningView(); 
+    // เปลี่ยนหน้าจอไปที่การขุด
+    enterMiningView(); 
 }
+
 
 function updateMining2() {
     if (!miningActive) return;
@@ -3213,12 +3216,20 @@ function updateMining2() {
     drillHeat += 0.05;
     if (drillHeat > 80) drillHP -= 0.1;
 
-    // 2. ฟื้นฟูพลังงานอัตโนมัติ (ช้าๆ)
+    // ลดพลังงาน 1 หน่วยต่อ 1 วินาที
     const now = Date.now();
-    // 🚩 ลดพลังงาน 1 หน่วยต่อ 1 วินาที
     if (now - lastEnergyTick >= 1000) {
         drillEnergy -= 1;
         lastEnergyTick = now;
+        
+        // ถ้าพลังงานหมด (0) = จบการขุดทันที
+        if (drillEnergy <= 0) {
+            drillEnergy = 0;
+            miningActive = false;
+            alert("ENERGY DEPLETED: การเจาะล้มเหลว ระบบหยุดทำงาน!");
+            backToMap(); // กลับหน้าแผนที่
+            return;
+        }
         updateActiveMiningUI();
     }
 
@@ -3267,38 +3278,35 @@ function updateMining2() {
     }
 }
 
-async function useEnergyChip() {
-    // หาชิปที่กำลังใช้งานอยู่ใน Inventory
-    const chipIndex = playerInventory.findIndex(i => i.id === activeChipId);
-    const chip = playerInventory[chipIndex];
-
-    if (!chip || chip.quantity <= 0) {
-        return showMiningToast("ชิปหมดแล้ว!", "#ff4b2b");
+// 🚩 ฟังก์ชันกดเติมพลังงาน (ผูกกับปุ่มใน UI)
+async function useEnergyChipInGame() {
+    if (!activeMiningChip || activeMiningChip.quantity <= 0) {
+        showMiningToast("ไม่เหลือชิปพลังงานในคลัง!", "#ff4b2b");
+        return;
     }
 
-    // 🚩 ส่งไปตัดของที่ Server (สำคัญเพื่อกันโกง)
     try {
-        const res = await fetch(`${API_BASE}/game/use-item`, {
+        // ส่งไปตัดจำนวนที่เซิร์ฟเวอร์
+        const response = await fetch(`${API_BASE}/game/use-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: currentUser,
-                itemId: activeChipId
+            body: JSON.stringify({ 
+                username: currentUser, 
+                itemId: activeMiningChip.id 
             })
         });
 
-        const result = await res.json();
+        const result = await response.json();
         if (result.success) {
-            // ฟื้นฟูตามค่า energyValue ของชิปนั้นๆ
-            drillEnergy = Math.min(100, drillEnergy + (chip.energyValue || 30));
+            // ฟื้นฟูตามค่าของชิปตัวนั้น
+            drillEnergy = Math.min(100, drillEnergy + activeMiningChip.energyValue);
+            activeMiningChip.quantity -= 1; // ลดจำนวนในเครื่องผู้เล่นด้วย
             
-            // อัปเดตจำนวนในตัวแปร Local
-            chip.quantity -= 1; 
-            showMiningToast(`เติมพลังงานสำเร็จ! (+${chip.energyValue})`, "#00d2ff");
+            showMiningToast(`RECHARGED: +${activeMiningChip.energyValue} ENERGY`, "#38ef7d");
             updateActiveMiningUI();
         }
     } catch (e) {
-        console.error("Refill Error:", e);
+        console.error("Refill error:", e);
     }
 }
 
