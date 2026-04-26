@@ -8137,8 +8137,36 @@ const PORT = process.env.PORT || 3000;
 
 // 1. สั่งให้ Server เริ่มทำงาน (Listen) เพียงที่เดียวตรงนี้
 server.listen(PORT, async () => {
-    console.log(`🚀 GedGoZone Server is running on http://localhost:${PORT}`);
-    
-    // 2. เมื่อ Server รันแล้ว ค่อยสั่งเชื่อมต่อ Database
-    await connectDB();
+    console.log(`🚀 Server is running on port ${PORT}`);
+    await connectDB(); // เชื่อมต่อ DB ก่อน
+
+    console.log("🛠️ ตรวจสอบดาว GEDGOZONE...");
+    const modes = ['test', 'main'];
+
+    for (const mode of modes) {
+        const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+        const mapCollection = db.collection("map_tiles");
+
+        for (const [coordKey, starData] of Object.entries(SERVER_STATIC_STARS)) {
+            const [qStr, rStr] = coordKey.split(',');
+            const q = Number(qStr);
+            const r = Number(rStr);
+
+            // 🚩 หัวใจสำคัญอยู่ตรงนี้ครับ
+            await mapCollection.updateOne(
+                { q, r }, // 1. ค้นหาดาวที่พิกัดนี้
+                { 
+                    $setOnInsert: { 
+                        ...starData, 
+                        q, r, 
+                        discoveredBy: 'SYSTEM', 
+                        createdAt: Date.now(), 
+                        lastUpdate: Date.now() 
+                    } 
+                }, // 2. ถ้า "ไม่เจอ" ให้ใส่ข้อมูลชุดนี้เข้าไป
+                { upsert: true } // 3. ถ้า "เจอ" ไม่ต้องทำอะไร (เพราะเราไม่ได้ใส่คำสั่ง $set)
+            );
+        }
+    }
+    console.log("✅ ตรวจสอบและติดตั้งดาวพื้นฐานเรียบร้อย (ดาวที่มีอยู่แล้วจะไม่ถูกเขียนทับ)");
 });
