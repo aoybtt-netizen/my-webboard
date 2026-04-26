@@ -3168,37 +3168,45 @@ function startMiningProcess() {
 
 // --- ฟังก์ชันเข้าสู่มินิเกมขุดแร่ (เวอร์ชัน 2) ---
 function startMiningProcess2() {
-    // 1. ดึงข้อมูลพิกัดและดาว
+    console.log("🛠️ กำลังเริ่ม startMiningProcess2...");
+
+    // 1. ตรวจสอบพิกัด
+    console.log(`📍 พิกัดปัจจุบัน: Q=${playerQ}, R=${playerR}`);
     const coordKey = `${playerQ},${playerR}`;
     const starData = STATIC_STARS[coordKey] || serverMapData[coordKey] || serverMapData['TEST'];
+    
+    if (!starData) {
+        console.error("❌ ไม่พบข้อมูลดาวที่พิกัดนี้!");
+        return alert("ไม่พบข้อมูลดาว");
+    }
 
-    if (!starData) return alert("ไม่พบข้อมูลดาว");
-
-    // 2. กรองเฉพาะ Energy Chip ที่มีอยู่ในคลัง (รวมกลุ่มตามชื่อเพื่อความสวยงาม)
-    const chips = playerInventory.filter(item => item.type === 'energy chip' && (item.quantity || 1) > 0);
+    // 2. ตรวจสอบชิปในคลัง (เช็กว่ากรองออกมาได้กี่อัน)
+    console.log("🎒 ตรวจสอบ Inventory...", playerInventory);
+    const chips = playerInventory.filter(item => item.type === 'energy chip' && (item.quantity || 0) > 0);
+    console.log(`🔋 พบ Energy Chip จำนวน: ${chips.length} ชนิด`);
 
     if (chips.length === 0) {
+        console.warn("⚠️ ไม่มีชิปที่มี quantity > 0");
         alert("คุณไม่มี Energy Chip! กรุณาไปซื้อที่ Shop ก่อนเริ่มขุด");
         return;
     }
 
-    // 3. แสดงหน้าจอเลือกชิป (Overlay)
+    // 3. ตรวจสอบ Element ใน HTML
     const container = document.getElementById('chip-choices-container');
     const overlay = document.getElementById('chip-selection-overlay');
 
-    // 🚩 เช็คก่อนว่ามี Element จริงไหม ถ้าไม่มีให้เตือนกัปตันผ่าน Console
     if (!container || !overlay) {
-        console.error("❌ หา 'chip-choices-container' หรือ 'chip-selection-overlay' ไม่เจอใน HTML!");
-        alert("ระบบขัดข้อง: กรุณาแจ้งผู้พัฒนาให้ตรวจสอบโครงสร้าง HTML");
+        console.error("❌ ERROR: หา 'chip-choices-container' หรือ 'chip-selection-overlay' ไม่เจอใน HTML!");
         return;
     }
+
+    // 4. ล้างหน้าจอและใส่ข้อมูลใหม่
     container.innerHTML = "";
-    
     chips.forEach(chip => {
         container.innerHTML += `
             <div class="mining-chip-card" onclick="selectChipAndStart('${chip.id}')" 
                  style="background:rgba(0,210,255,0.1); border:1px solid #00d2ff; padding:15px; border-radius:10px; text-align:center; cursor:pointer; width:100px;">
-                <img src="images/energy/${chip.imgKey}.png" style="width:40px;">
+                <img src="images/energy/${chip.imgKey}.png" onerror="this.src='images/EnergyChip0.png'" style="width:40px;">
                 <div style="font-size:0.7rem; margin-top:5px; font-weight:bold;">${chip.name}</div>
                 <div style="color:#38ef7d; font-size:0.6rem;">+${chip.energyValue} Energy</div>
                 <div style="font-size:0.5rem; opacity:0.6;">QTY: ${chip.quantity}</div>
@@ -3206,7 +3214,9 @@ function startMiningProcess2() {
         `;
     });
 
+    // 5. สั่งเปิดหน้าจอ
     overlay.style.display = 'flex';
+    console.log("✅ แสดงหน้าจอเลือกชิปเรียบร้อย!");
 }
 
 function selectChipAndStart(chipId) {
