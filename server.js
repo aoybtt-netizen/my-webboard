@@ -1615,7 +1615,7 @@ app.get('/api/:mode/map/all', async (req, res) => {
 });
 
 
-// 7. อัปเดตการสำรวจและสร้างดวงดาว (ปรับปรุงใหม่)
+// 7. อัปเดตการสำรวจและสร้างดวงดาว
 app.post('/api/:mode/map/explore', async (req, res) => {
     const { mode } = req.params;
     const { q, r, username } = req.body;
@@ -1625,12 +1625,11 @@ app.post('/api/:mode/map/explore', async (req, res) => {
     try {
         let tile = await mapCollection.findOne({ q, r });
         
-        // ถ้าพิกัดนี้ถูกสร้างถาวรไปแล้ว (progress >= 100) ไม่ต้องทำซ้ำ
+        // ถ้าพิกัดนี้ถูกสร้างถาวรไปแล้ว ไม่ต้องทำซ้ำ
         if (tile && tile.progress >= 100) {
             return res.json({ success: true, tile });
         }
 
-        // --- เริ่ม Logic การสุ่มตามเงื่อนไขพี่ ---
         const hasStar = Math.random() < 0.5; // โอกาส 50%
         let updateData = { 
             q, r, 
@@ -1640,13 +1639,11 @@ app.post('/api/:mode/map/explore', async (req, res) => {
         };
 
         if (!hasStar) {
-            // กรณีไม่มีดวงดาว
             updateData.type = 'empty';
             updateData.image = 'images/meteorite/meteor0.png';
             updateData.img = 'ast0';
             updateData.name = 'EMPTY SPACE';
         } else {
-            // กรณีมีดวงดาว
             updateData.type = 'star';
             const starNum = Math.floor(Math.random() * 19) + 1; // 1-19
             updateData.img = `star${starNum}`;
@@ -1662,24 +1659,45 @@ app.post('/api/:mode/map/explore', async (req, res) => {
                 else updateData.temperature = Math.floor(Math.random() * 201) + 400;
             }
 
-            // คำนวณระยะทางเพื่อกำหนดช่องแร่ (Mineral Slots)
-            // สูตรคำนวณระยะทางแบบ Hex (Flat-top)
-            const getDist = (q1, r1, q2, r2) => {
-                const x1 = q1, z1 = r1 - (q1 - (Math.abs(q1) % 2)) / 2, y1 = -x1 - z1;
-                const x2 = q2, z2 = r2 - (q2 - (Math.abs(q2) % 2)) / 2, y2 = -x2 - z2;
-                return Math.max(Math.abs(x1-x2), Math.abs(y1-y2), Math.abs(z1-z2));
-            };
-            const distance = getDist(0, 0, q, r);
+				// คำนวณระยะทางเพื่อกำหนดช่องแร่
+				const getDist = (q1, r1, q2, r2) => {
+					const x1 = q1, z1 = r1 - (q1 - (Math.abs(q1) % 2)) / 2, y1 = -x1 - z1;
+					const x2 = q2, z2 = r2 - (q2 - (Math.abs(q2) % 2)) / 2, y2 = -x2 - z2;
+					return Math.max(Math.abs(x1-x2), Math.abs(y1-y2), Math.abs(z1-z2));
+				};
+				const distance = getDist(0, 0, q, r);
 
-            let slots = 1;
-            if (distance <= 2) slots = Math.floor(Math.random() * 3) + 1;
-            else if (distance === 3) slots = Math.floor(Math.random() * 2) + 2;
-            else if (distance === 4) slots = Math.floor(Math.random() * 4) + 1;
-            else if (distance === 5) slots = Math.floor(Math.random() * 3) + 2;
-            else slots = Math.floor(Math.random() * 5) + 1;
+				// 🚩 กฎการสุ่มช่องแร่แบบใหม่ตามระยะทาง
+				let slots = 1;
+				if (distance <= 10) {
+					// ระยะ 0 - 10: สุ่ม 1 ถึง 2 ชนิด
+					slots = Math.floor(Math.random() * 2) + 1; 
+				} else if (distance <= 25) {
+					// ระยะ 11 - 25: สุ่ม 1 ถึง 3 ชนิด
+					slots = Math.floor(Math.random() * 3) + 1; 
+				} else if (distance <= 50) {
+					// ระยะ 26 - 50: สุ่ม 2 ถึง 3 ชนิด (การันตีอย่างน้อย 2 ชนิด)
+					slots = Math.floor(Math.random() * 2) + 2; 
+				} else {
+					// ระยะ 51 ขึ้นไป: สุ่ม 2 ถึง 4 ชนิด (การันตีอย่างน้อย 2 ชนิด)
+					slots = Math.floor(Math.random() * 3) + 2; 
+				}
+
+				updateData.mineralSlots = slots;
+
+            // 🚩 --- ระบบสุ่ม Capacity และ Regen (แบบแรร์ออกยาก) ---
             
-            updateData.mineralSlots = slots;
-            updateData.minerals = []; // ยังไม่สุ่มแร่ จนกว่าจะมีการขุดครั้งแรก
+            // สุ่ม Capacity (1000 - 3500) โดยเทน้ำหนักไปที่ค่าน้อย
+            const randomCap = Math.pow(Math.random(), 3); 
+            updateData.maxStarCapacity = Math.floor(1000 + (randomCap * 2500));
+            updateData.currentStarAmount = updateData.maxStarCapacity; // เริ่มต้นให้แร่เต็ม
+            
+            // สุ่ม RegenRate (50 - 200) โดยเทน้ำหนักไปที่ค่าน้อย
+            const randomRegen = Math.pow(Math.random(), 3);
+            updateData.regenRate = Math.floor(50 + (randomRegen * 150));
+            
+            updateData.lastUpdate = Date.now(); // บันทึกเวลาเกิด
+            updateData.minerals = []; // รอการขุดครั้งแรกเพื่อสุ่มชนิดแร่
         }
 
         // บันทึกลง Database

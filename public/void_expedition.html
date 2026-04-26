@@ -2321,6 +2321,17 @@ async function openStarDetail() {
     `;
     
     document.getElementById('star-detail-modal').style.display = 'flex';
+	
+	// ใส่ไว้ใน openStarDetail
+console.log("--- 🛰️ STAR DEBUG DATA ---");
+console.log("Name:", starData.name);
+console.log("Coordinates:", q, r);
+console.log("Max Capacity:", starData.maxStarCapacity, "kg");
+console.log("Current Amount:", starData.currentStarAmount, "kg");
+console.log("Regen Rate:", starData.regenRate, "kg/h");
+console.log("Mineral Slots:", starData.mineralSlots);
+console.log("Minerals Array:", starData.minerals);
+console.log("--------------------------");
 }
 
 function openShop() {
