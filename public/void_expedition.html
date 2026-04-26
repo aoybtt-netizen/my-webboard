@@ -1323,10 +1323,13 @@ button:hover { opacity: 0.8; }
 
 
     <script>
+	// --- 🚩 ส่วนการตั้งค่าระบบ (Config) ---
 	const urlParams = new URLSearchParams(window.location.search);
 	const isDevMode = urlParams.has('dev');
+	const gameMode = isDevMode ? 'test' : 'main';
 	const API_BASE = isDevMode ? '/api/test' : '/api/main';
-	console.log(`📡 Connected to: ${isDevMode ? 'TEST SERVER' : 'LIVE SERVER'}`);
+
+	console.log(`📡 Connected to: ${isDevMode ? 'TEST SERVER' : 'LIVE SERVER'} (Mode: ${gameMode})`);
 	
 	const STATIC_STARS = {
     '0,0': { name: 'HOME BASE', type: 'star', img: 'starHome', progress: 100, minerals: [] },
@@ -1734,16 +1737,19 @@ window.onload = async () => {
 };
 
 async function syncStaticStars() {
-    console.log("🛰️ Syncing GEDGOZONE data from server...");
+    console.log(`🛰️ Syncing GEDGOZONE data from ${isDevMode ? 'TEST' : 'LIVE'} server...`);
     const staticCoords = ['0,-1', '1,-1', '1,0', '0,1', '-1,0', '-1,-1'];
     
     const syncPromises = staticCoords.map(async (coord) => {
         const [q, r] = coord.split(',');
         try {
-            const response = await fetch(`${API_BASE}/${gameMode}/map/star/${q}/${r}`);
+            // 🚩 ปรับตรงนี้: ใช้ API_BASE ได้เลย เพราะมันมีโหมดอยู่ในตัวแล้ว
+            const response = await fetch(`${API_BASE}/map/star/${q}/${r}`);
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
             const data = await response.json();
             
-            // 🚩 เพิ่มการเช็คเผื่อกรณี STATIC_STARS ยังไม่มีคีย์นั้น
             if (data.success && data.tile && STATIC_STARS[coord]) {
                 STATIC_STARS[coord].currentStarAmount = data.tile.currentStarAmount;
                 STATIC_STARS[coord].lastUpdate = data.tile.lastUpdate;
