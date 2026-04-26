@@ -1285,7 +1285,7 @@ button:hover { opacity: 0.8; }
     <button id="refill-btn" class="mining-skill-btn" onclick="useEnergyChipInGame()" 
             style="width: 100%; border-color:#00d2ff; color:#00d2ff; display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(0, 210, 255, 0.05);">
         
-        <img id="active-chip-icon" src="images/EnergyChip0.png" style="width:22px; height:22px; filter: drop-shadow(0 0 5px #00d2ff);">
+        <img id="active-chip-icon" src="images/energy/EnergyChip0.png" style="width:22px; height:22px; filter: drop-shadow(0 0 5px #00d2ff);">
         
         <div style="text-align: left;">
             <div style="font-size: 0.5rem; opacity: 0.7; line-height: 1;">RECHARGE SYSTEM</div>
@@ -3285,27 +3285,18 @@ function updateMining2() {
     // ลดพลังงาน 1 หน่วยต่อ 1 วินาที
     const now = Date.now();
     if (now - lastEnergyTick >= 1000) {
-        drillEnergy -= 1;
-        lastEnergyTick = now;
-        
-        // ถ้าพลังงานหมด (0) = จบการขุดทันที
-        if (drillEnergy <= 0) {
-            drillEnergy = 0;
-            miningActive = false;
-            alert("ENERGY DEPLETED: การเจาะล้มเหลว ระบบหยุดทำงาน!");
-            backToMap(); // กลับหน้าแผนที่
-            return;
-        }
-        updateActiveMiningUI();
-    }
+		drillEnergy -= 1;
+		lastEnergyTick = now;
 
-    // 🚩 ถ้าพลังงานหมด = จบทันที
-    if (drillEnergy <= 0) {
-        miningActive = false;
-        alert("⚠️ พลังงานหมด! สว่านหยุดทำงานทันที");
-        backToMap(); // หรือฟังก์ชันกลับหน้าแผนที่
-        return;
-    }
+		if (drillEnergy <= 0) {
+			drillEnergy = 0;
+			miningActive = false;
+			alert("ENERGY DEPLETED: การเจาะล้มเหลว ระบบหยุดทำงาน!");
+			backToMap(); // เรียกใช้ฟังก์ชันที่เราเพิ่งเพิ่ม
+			return;
+		}
+		updateActiveMiningUI();
+	}
 
     // 3. ระบบสุ่มแร่โผล่มา (นับถอยหลัง)
     miningProgress += 0.02; 
@@ -3341,6 +3332,23 @@ function updateMining2() {
         finishMining(true);
     } else {
         requestAnimationFrame(updateMining2);
+    }
+}
+
+function backToMap() {
+    console.log("🛰️ Returning to Map View...");
+    miningActive = false;
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.remove('active');
+        v.style.display = 'none';
+    });
+    const mapView = document.getElementById('view-map');
+    if (mapView) {
+        mapView.style.display = 'block';
+        mapView.classList.add('active');
+    }
+    if (typeof renderGrid === 'function') {
+        renderGrid();
     }
 }
 
