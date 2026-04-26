@@ -1258,7 +1258,7 @@ app.delete('/api/admin/merchant-request/:id', async (req, res) => {
 // =========================================
 // --- Void Expedition: Game API Section --
 // =========================================
-// 🚩 API พิเศษสำหรับล้างข้อมูลทั้งระบบ (Admin Only)
+// 🚩 API พิเศษสำหรับล้างข้อมูลทั้งระบบ (Hard Reset)
 app.post('/api/admin/system-hard-reset', async (req, res) => {
     try {
         const modes = ['test', 'main'];
@@ -1266,13 +1266,11 @@ app.post('/api/admin/system-hard-reset', async (req, res) => {
 
         for (const mode of modes) {
             const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
-            const db = client.db(dbName);
+            const currentDB = client.db(dbName); // ใช้ตัวแปร client ที่มีอยู่ในไฟล์ของกัปตัน
 
-            // 1. ลบข้อมูลใน collection "users" ทั้งหมด (รวมผู้เล่นจริงและ Guest)
-            const userRes = await db.collection("users").deleteMany({});
-
-            // 2. ลบข้อมูลใน collection "map_tiles" ทั้งหมด (ดาวและพื้นที่ว่างที่สุ่มไป)
-            const mapRes = await db.collection("map_tiles").deleteMany({});
+            // ลบข้อมูลผู้เล่น และ แผนที่
+            const userRes = await currentDB.collection("users").deleteMany({});
+            const mapRes = await currentDB.collection("map_tiles").deleteMany({});
 
             results[mode] = {
                 usersDeleted: userRes.deletedCount,
@@ -1280,15 +1278,10 @@ app.post('/api/admin/system-hard-reset', async (req, res) => {
             };
         }
 
-        console.log("!!! SYSTEM HARD RESET COMPLETED !!!", results);
-        res.json({ 
-            success: true, 
-            message: "ล้างข้อมูลทั้งระบบเรียบร้อยแล้ว", 
-            details: results 
-        });
-
+        console.log("⚠️ SYSTEM RESET COMPLETED:", results);
+        res.json({ success: true, details: results });
     } catch (e) {
-        console.error("Hard Reset Error:", e);
+        console.error("Reset Error:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });
