@@ -1716,17 +1716,52 @@ function decodeJwtResponse(token) {
 
         // --- เช็คโปรไฟล์หลังโหลดหน้า ---
 window.onload = async () => {
-	fetchMapData();
+    // 1. เริ่มโหลดข้อมูลที่จำเป็นทั้งหมดพร้อมกัน (Parallel Load)
+    await Promise.all([
+        fetchMapData(),      // โหลดข้อมูลแผนที่เซิร์ฟเวอร์
+        syncStaticStars()    // โหลดข้อมูลแร่ Gedgozone ล่าสุด
+    ]);
+
+    // 2. เช็คสถานะผู้เล่น
     if (!currentUser) {
-        // ถ้าไม่มีข้อมูลเลย ให้แสดงหน้า Auth
         document.getElementById('view-auth').classList.add('active');
     } else {
-        // ถ้ามีข้อมูลแล้ว (ไม่ว่าจะ Guest หรือ Google) ให้เข้าเกม
         document.getElementById('view-map').classList.add('active');
-        checkGameProfile();
+        // await ตัวนี้ด้วยถ้า checkGameProfile มีการดึงข้อมูลจาก API
+        await checkGameProfile(); 
     }
     renderGrid();
 };
+
+async function syncStaticStars() {
+    console.log("🛰️ Syncing GEDGOZONE data from server...");
+    const staticCoords = ['0,-1', '1,-1', '1,0', '0,1', '-1,0', '-1,-1'];
+    
+    const syncPromises = staticCoords.map(async (coord) => {
+        const [q, r] = coord.split(',');
+        try {
+            const response = await fetch(`${API_BASE}/${gameMode}/map/star/${q}/${r}`);
+            const data = await response.json();
+            
+            // 🚩 เพิ่มการเช็คเผื่อกรณี STATIC_STARS ยังไม่มีคีย์นั้น
+            if (data.success && data.tile && STATIC_STARS[coord]) {
+                STATIC_STARS[coord].currentStarAmount = data.tile.currentStarAmount;
+                STATIC_STARS[coord].lastUpdate = data.tile.lastUpdate;
+                
+                if (data.tile.minerals) {
+                    STATIC_STARS[coord].minerals = data.tile.minerals;
+                }
+            }
+        } catch (error) {
+            console.error(`❌ Failed to sync star at ${coord}:`, error);
+        }
+    });
+
+    await Promise.all(syncPromises);
+    console.log("✅ GEDGOZONE data synced!");
+}
+
+
 
 	function validateNickname(name) {
     const cleanName = name.toLowerCase().trim();
