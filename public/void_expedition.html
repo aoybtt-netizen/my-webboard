@@ -1575,7 +1575,9 @@ button:hover { opacity: 0.8; }
 		
 		let drillEnergy = 100;
 		let isShieldActive = false;
-		let nextMineralScanTime = 10; // วินาทีที่จะสุ่มแร่
+		let nextMineralScanTime = 10;
+		let activeChipId = null; // เก็บ ID ชิปที่กำลังใช้งานอยู่ในการขุดครั้งนี้
+		let lastEnergyTick = 0; // ใช้คำนวณเวลาลดพลังงาน
 		
 		const drillAssets = {
 			head: new Image(),
