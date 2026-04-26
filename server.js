@@ -1886,6 +1886,89 @@ app.get('/api/:mode/map/star/:q/:r', async (req, res) => {
     }
 });
 
+// --- นำข้อมูลดาวตายตัวมาไว้ฝั่ง Server ด้วย ---
+const SERVER_STATIC_STARS = {
+    '0,0': { name: 'HOME BASE', type: 'star', img: 'starHome', progress: 100, minerals: [] },
+    '0,-1': { 
+        name: 'GEDGOZONE1', type: 'star', img: 'star0', progress: 100,
+        maxStarCapacity: 2000, currentStarAmount: 2000, regenRate: 500,
+        minerals: [{ name: 'O-METAL-1', type: 'metal', img: 'orem1', ratio: 1, properties: { metal: 1, value: 5 } }]
+    },
+    '1,-1': { 
+        name: 'GEDGOZONE2', type: 'star', img: 'star1', progress: 100,
+        maxStarCapacity: 2000, currentStarAmount: 2000, regenRate: 500,
+        minerals: [{ name: 'O-ENERGY-1', type: 'energy', img: 'oree1', ratio: 1, properties: { energy: 1, value: 7 } }]
+    },
+    '1,0': { 
+        name: 'GEDGOZONE3', type: 'star', img: 'star2', progress: 100,
+        maxStarCapacity: 2000, currentStarAmount: 2000, regenRate: 500,
+        minerals: [{ name: 'O-TECHNOLOGY-1', type: 'technology', img: 'oret1', ratio: 1, properties: { tech: 1, value: 9 } }]
+    },
+    '0,1': { 
+        name: 'GEDGOZONE4', type: 'star', img: 'star3', progress: 100,
+        maxStarCapacity: 2000, currentStarAmount: 2000, regenRate: 500,
+        minerals: [
+            { name: 'O-METAL-1', type: 'metal', img: 'orem1', ratio: 0.5, properties: { metal: 1, value: 5 } },
+            { name: 'O-ENERGY-1', type: 'energy', img: 'oree1', ratio: 0.5, properties: { energy: 1, value: 7 } }
+        ]
+    },
+    '-1,0': { 
+        name: 'GEDGOZONE5', type: 'star', img: 'star4', progress: 100,
+        maxStarCapacity: 2000, currentStarAmount: 2000, regenRate: 500,
+        minerals: [
+            { name: 'O-METAL-1', type: 'metal', img: 'orem1', ratio: 0.5, properties: { metal: 1, value: 5 } },
+            { name: 'O-TECHNOLOGY-1', type: 'technology', img: 'oret1', ratio: 0.5, properties: { tech: 1, value: 9 } }
+        ]
+    },
+    '-1,-1': { 
+        name: 'GEDGOZONE6', type: 'star', img: 'star5', progress: 100,
+        maxStarCapacity: 2000, currentStarAmount: 2000, regenRate: 500,
+        minerals: [
+            { name: 'O-METAL-1', type: 'metal', img: 'orem1', ratio: 0.5, properties: { metal: 1, value: 5 } },
+            { name: 'O-METAL-2', type: 'metal', img: 'orem2', ratio: 0.5, properties: { metal: 2, value: 6 } }
+        ]
+    }
+};
+
+// 12. 🚩 API สำหรับฝังข้อมูลดาวเริ่มต้น (Run Once)
+app.post('/api/:mode/admin/seed-static-stars', async (req, res) => {
+    const { mode } = req.params;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+    const mapCollection = db.collection("map_tiles");
+
+    try {
+        let count = 0;
+        for (const [coordKey, starData] of Object.entries(SERVER_STATIC_STARS)) {
+            // แยกพิกัด q, r จากคีย์ '0,-1'
+            const [qStr, rStr] = coordKey.split(',');
+            const q = Number(qStr);
+            const r = Number(rStr);
+
+            // ประกอบร่างข้อมูลที่จะบันทึก
+            const insertData = {
+                ...starData,
+                q: q,
+                r: r,
+                discoveredBy: 'SYSTEM',
+                createdAt: Date.now(),
+                lastUpdate: Date.now()
+            };
+
+            // ใช้ $setOnInsert เพื่อป้องกันการเขียนทับยอดแร่ปัจจุบันในกรณีที่กดรัน API นี้ซ้ำ
+            await mapCollection.updateOne(
+                { q, r },
+                { $setOnInsert: insertData },
+                { upsert: true }
+            );
+            count++;
+        }
+
+        res.json({ success: true, message: `ทำการติดตั้งดาวพันธมิตรสำเร็จจำนวน ${count} ดวง!` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 
 
 
