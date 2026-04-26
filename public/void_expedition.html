@@ -3344,18 +3344,20 @@ function showMineralChoices() {
 
 async function attemptCollect(mineral, rate) {
     const overlay = document.getElementById('mineral-choice-overlay');
-    if (overlay) overlay.style.display = 'none'; // ปิดหน้าต่างเลือกทันที
+    if (overlay) overlay.style.display = 'none';
 
     const isSuccess = (Math.random() * 100) < rate;
 
     if (isSuccess) {
-        // 🚩 ขุดสำเร็จ! ส่งข้อมูลไปเซฟที่ Backend
         try {
             const response = await fetch(`${API_BASE}/game/add-mineral`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: currentUser,
+                    // 🚩 เพิ่มพิกัดตรงนี้เพื่อให้ Server รู้ว่าต้องไปหักแร่ที่ดาวดวงไหน
+                    q: playerQ, 
+                    r: playerR,
                     mineral: {
                         name: mineral.name,
                         imgKey: mineral.img,
@@ -3370,17 +3372,37 @@ async function attemptCollect(mineral, rate) {
             const result = await response.json();
             if (result.success) {
                 showMiningToast(`สำเร็จ! ได้รับ ${mineral.name} +10`, "#38ef7d");
-                // Sync ข้อมูลผู้เล่นใหม่เพื่อให้ตัวเลขเงิน/น้ำหนักอัปเดต
-                checkGameProfile(); 
+                checkGameProfile(); // อัปเดต Stats ผู้เล่น
+                
+                // 🚩 หลังจากขุดเสร็จ ให้สั่ง Sync ข้อมูลดาวนี้ใหม่ทันที 
+                // เพื่อให้ยอดแร่ในหน้า Detail หรือ Map อัปเดตตามจริง
+                syncSpecificStar(playerQ, playerR); 
             } else {
-                showMiningToast(result.message, "#ff4b2b"); // กรณีคลังเต็ม (น้ำหนักเกิน)
+                showMiningToast(result.message, "#ff4b2b");
             }
         } catch (e) {
             console.error("Mining Collection Error:", e);
         }
     } else {
-        // ❌ ขุดพลาด (อาจเพราะความร้อนสูงเกินไป)
         showMiningToast("การเก็บกู้ล้มเหลว! แร่แตกสลาย", "#ff4b2b");
+    }
+}
+
+async function syncSpecificStar(q, r) {
+    const coordKey = `${q},${r}`;
+    try {
+        const response = await fetch(`${API_BASE}/map/star/${q}/${r}`);
+        const data = await response.json();
+        if (data.success && data.tile) {
+            // อัปเดต Cache ทั้งใน STATIC_STARS และ serverMapData
+            if (STATIC_STARS[coordKey]) {
+                STATIC_STARS[coordKey].currentStarAmount = data.tile.currentStarAmount;
+            } else {
+                serverMapData[coordKey] = data.tile;
+            }
+        }
+    } catch (e) {
+        console.log("Sync star error:", e);
     }
 }
 
