@@ -1611,6 +1611,32 @@ app.post('/api/:mode/game/add-mineral', async (req, res) => {
     }
 });
 
+// 4.2 API สำหรับใช้ไอเทม (หักจำนวนออกจาก Inventory)
+app.post('/api/:mode/game/use-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, itemId } = req.body;
+    const db = getDB(mode);
+
+    try {
+        // หักจำนวนไอเทมออก 1 ชิ้น
+        const result = await db.updateOne(
+            { username: username, "inventory.id": itemId },
+            { $inc: { "inventory.$.quantity": -1 } }
+        );
+
+        // ถ้าหักแล้วเหลือ 0 อาจจะลบออกหรือทิ้งไว้ก็ได้ (ในที่นี้คือลดจำนวน)
+        // ถ้าต้องการลบออกเมื่อเหลือ 0:
+        await db.updateOne(
+            { username: username },
+            { $pull: { inventory: { id: itemId, quantity: { $lte: 0 } } } }
+        );
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 
 // 5. ระบบฟื้นฟูพลังงาน
 setInterval(async () => {
