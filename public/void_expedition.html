@@ -1549,6 +1549,8 @@ button:hover { opacity: 0.8; }
 		const MAP_RANGE = 3;
         
         let currentUser = localStorage.getItem('username');
+		//let currentUser = localStorage.getItem('void_username') || "";
+		let currentUserNickname = ""; // 🚩 เพิ่มบรรทัดนี้ไว้ด้านบนสุดของไฟล์
 		let isGuest = localStorage.getItem('isGuest') === 'true';
         let mapActive = false;
         let isMining = false;
@@ -1932,7 +1934,7 @@ async function syncStaticStars() {
             if(nickModal) nickModal.style.display = 'flex';
         } else {
             const nick = data.gameNickname.toUpperCase();
-            
+            currentUserNickname = data.gameNickname;
             const safeSetText = (id, value) => {
                 const el = document.getElementById(id);
                 if(el) el.innerText = value;
@@ -3448,18 +3450,19 @@ function updateMining2() {
 }
 
 async function finishMining(isSuccess) {
-    miningActive = false; // หยุด Loop
+    miningActive = false;
 
     if (isSuccess) {
-        console.log("💎 100% Reach! Requesting discovery results from server...");
-        
+        // 🚩 ถ้าชื่อเล่นไม่มี ให้ใช้ ID (GUEST_xxx) แทน เพื่อไม่ให้เกิด Error
+        const senderName = currentUserNickname || currentUser;
+
         try {
             const response = await fetch(`${API_BASE}/game/complete-discovery`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: currentUser,
-                    nickname: currentUserNickname,
+                    nickname: senderName, // 🚩 ใช้ senderName ที่เราเช็คแล้ว
                     q: playerQ,
                     r: playerR,
                     mode: 'test'
@@ -3467,24 +3470,17 @@ async function finishMining(isSuccess) {
             });
 
             const result = await response.json();
-
             if (result.success) {
-                // 🚩 ถ้าเป็นคนแรกที่ขุดสำเร็จ
                 if (result.isFirstDiscovery) {
-                    showMiningToast(`🌟 FIRST DISCOVERY BY ${currentUserNickname}!`, "#00d2ff");
+                    // ใช้ senderName แจ้งเตือนบนหน้าจอ
+                    showMiningToast(`🌟 FIRST DISCOVERY BY ${senderName}!`, "#00d2ff");
                     
-                    // สร้างข้อความสรุปแร่ที่สุ่มได้บน Server
                     let mineralList = result.minerals.map(m => 
-                        `- ${m.name} [Type: ${m.type.toUpperCase()} | Stat: ${m[m.type]} | Value: ${m.value}]`
+                        `- ${m.name} [Type: ${m.type.toUpperCase()} | Value: ${m.value}]`
                     ).join("\n");
 
-                    alert(`ยินดีด้วยกัปตัน! คุณเป็นคนแรกที่สำรวจถึงแกนดาวดวงนี้\n\nตรวจพบสายแร่ใหม่:\n${mineralList}\n\nบันทึกสถิติการค้นพบเรียบร้อย!`);
-                } else {
-                    showMiningToast("EXTRACTION COMPLETE!", "#38ef7d");
-                    alert("การขุดสำเร็จ! ได้รับทรัพยากรตามประวัติดาวเรียบร้อย");
+                    alert(`ยินดีด้วย! คุณคือผู้ค้นพบคนแรก\n\nสายแร่ที่พบ:\n${mineralList}`);
                 }
-
-                // อัปเดตเงิน/ของในคลัง (ดึงข้อมูลล่าสุดจาก Server)
                 await checkGameProfile(); 
                 backToMap();
             }
