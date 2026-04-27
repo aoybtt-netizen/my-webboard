@@ -3802,44 +3802,76 @@ function updateAndDrawParticles(ctx, x, y, isSafe) {
 }
 
 // --- ฟังก์ชันเมื่อขุดสำเร็จ: ระบบสุ่มดรอปแร่ ---
-async function handleMiningSuccess(starData) {
-    const starKey = `${playerQ},${playerR}`;
-    
-    // 1. ตรวจสอบและสุ่มชนิดแร่ (ถ้ายังไม่เคยสุ่ม)
-    if (!starData.minerals || starData.minerals.length === 0) {
-        console.log("First time mining here! Rolling minerals...");
-        
-        // 🚩 เพิ่ม stackable: true ไว้ที่นี่เลย
-        const possibleMinerals = [
-			{ name: 'O-METAL', type: 'metal', img: 'orem1', stackable: true, weightPerUnit: 1 },
-			{ name: 'O-ENERGY', type: 'energy', img: 'oree1', stackable: true, weightPerUnit: 1 },
-			{ name: 'O-TECH', type: 'technology', img: 'oret1', stackable: true, weightPerUnit: 1 }
-		];
+async function handleMiningSuccess() {
+    miningActive = false; // หยุดลูปขุด
 
-        const rolledMinerals = [];
-        const slots = starData.mineralSlots || 1;
+    try {
+        const response = await fetch(`${API_BASE}/game/complete-discovery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                nickname: currentUserNickname,
+                q: playerQ,
+                r: playerR,
+                mode: 'test'
+            })
+        });
 
-        while (rolledMinerals.length < slots && rolledMinerals.length < possibleMinerals.length) {
-            const randomMin = possibleMinerals[Math.floor(Math.random() * possibleMinerals.length)];
-            if (!rolledMinerals.find(m => m.name === randomMin.name)) {
-                rolledMinerals.push({ ...randomMin }); // ใช้ Spread เพื่อสร้าง Object ใหม่
+        const result = await response.json();
+        if (result.success) {
+            if (result.isFirstDiscovery) {
+                showMiningToast(`🌟 DISCOVERY! คุณค้นพบแร่ใหม่ ${result.minerals.length} ชนิด!`, "#00d2ff");
+            } else {
+                showMiningToast("EXTRACTION COMPLETE: เก็บกู้แร่สำเร็จ", "#38ef7d");
             }
+
+            // 🚩 รับแร่เข้าคลัง (วนลูปจากที่ Server ส่งกลับมา)
+            for (const mineral of result.minerals) {
+                await addMineralToInventory(mineral);
+            }
+
+            // อัปเดต Stats ผู้เล่นบน UI
+            await checkGameProfile();
+            
+            setTimeout(() => backToMap(), 2000);
         }
-        
-        starData.minerals = rolledMinerals;
-        await saveStarMineralsToServer(starKey, rolledMinerals);
+    } catch (e) {
+        console.error("Discovery Error:", e);
     }
+}
 
-    // 2. 🚩 ส่งรางวัลเข้าคลังผู้เล่น (ส่งไปที่ API เพิ่มไอเทม)
-    // เราจะวนลูปแร่ที่ดาวนี้มี แล้วส่งไปเพิ่มใน Inventory ของผู้เล่น
-    for (const mineral of starData.minerals) {
-        await addMineralToInventory(mineral);
+// ฟังก์ชันส่งข้อมูล Discovery ไปที่ Server
+async function saveDiscoveryToServer(key, minerals, nickname, discoveryCount) {
+    const [q, r] = key.split(',').map(Number);
+    try {
+        await fetch(`${API_BASE}/map/update-minerals`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                q, r, 
+                minerals, 
+                discoveredBy: nickname,
+                username: currentUser, // ส่ง username ไปเพื่อเพิ่มสถิติในตาราง users
+                newDiscoveryCount: minerals.length, // จำนวนชนิดที่ค้นพบเพิ่ม
+                mode: 'test' 
+            })
+        });
+    } catch (e) { console.error("Discovery Save Error:", e); }
+}
+
+// ฟังก์ชันสุ่มชื่อแร่ให้ไม่ซ้ำกัน
+function generateUniqueMineralName(type, existingSet) {
+    const prefixes = ['PURE', 'CRUDE', 'RARE', 'VOID', 'ZENITH', 'CORE', 'PRIME'];
+    const suffixes = ['CRYSTAL', 'ORE', 'NUGGET', 'SHARD', 'ISOTOPE', 'NODE'];
+    let name = "";
+    while (true) {
+        const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+        const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+        name = `${p}-${type.toUpperCase()}-${s}`;
+        if (!existingSet.has(name)) break;
     }
-
-    let rewardText = starData.minerals.map(m => m.name).join(", ");
-    alert(`การขุดสำเร็จ! ตรวจพบสายแร่: ${rewardText}\nทรัพยากรถูกส่งไปยังคลังเสบียงแล้ว`);
-    
-    location.reload(); 
+    return name;
 }
 
 // 🚩 ฟังก์ชันตัวอย่างสำหรับการเพิ่มแร่เข้าคลัง (ยิง API)

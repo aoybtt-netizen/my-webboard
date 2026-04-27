@@ -1771,16 +1771,113 @@ app.post('/api/:mode/map/explore', async (req, res) => {
 // 8. API สำหรับบันทึกแร่ที่สุ่มได้ครั้งแรกของดาวนั้นๆ
 app.post('/api/:mode/map/update-minerals', async (req, res) => {
     const { mode } = req.params;
-    const { q, r, minerals } = req.body; // minerals ในนี้จะมี { name, type, img, stackable: true }
-    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
-    const mapCollection = db.collection("map_tiles");
+    const { q, r, minerals, discoveredBy, username, newDiscoveryCount } = req.body;
+    const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
+    const db = client.db(dbName);
 
     try {
-        await mapCollection.updateOne(
-            { q, r },
-            { $set: { minerals: minerals } } // บันทึกข้อมูลแร่ที่มี Flag stackable ลงไปในแผนที่ถาวร
+        // 1. บันทึกข้อมูลแร่และผู้ค้นพบลงในดวงดาว
+        await db.collection("map_tiles").updateOne(
+            { q: Number(q), r: Number(r) },
+            { $set: { 
+                minerals: minerals, 
+                discoveredBy: discoveredBy,
+                discoveredAt: Date.now() 
+            }}
         );
+
+        // 2. 🚩 อัปเดตสถิติในโปรไฟล์ผู้เล่น (บวกจำนวนชนิดที่ค้นพบเพิ่ม)
+        await db.collection("users").updateOne(
+            { username: username },
+            { $inc: { "stats.totalDiscoveries": Number(newDiscoveryCount) } }
+        );
+
         res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ฟังก์ชันคำนวณระยะทางบน Server
+function getServerHexDistance(q1, r1, q2, r2) {
+    const x1 = q1, z1 = r1 - (q1 - (Math.abs(q1) % 2)) / 2, y1 = -x1 - z1;
+    const x2 = q2, z2 = r2 - (q2 - (Math.abs(q2) % 2)) / 2, y2 = -x2 - z2;
+    return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2), Math.abs(z1 - z2));
+}
+
+//8.1
+app.post('/api/:mode/game/complete-discovery', async (req, res) => {
+    const { mode } = req.params;
+    const { username, nickname, q, r } = req.body;
+    const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
+    const db = client.db(dbName);
+
+    try {
+        const queryQ = Number(q);
+        const queryR = Number(r);
+        const tile = await db.collection("map_tiles").findOne({ q: queryQ, r: queryR });
+
+        if (!tile) return res.status(404).json({ success: false, message: "ไม่พบข้อมูลดาว" });
+
+        // 🚩 กรณีขุดสำเร็จคนแรก (เปิดหน้าไพ่แร่)
+        if (!tile.minerals || tile.minerals.length === 0) {
+            const distance = getServerHexDistance(0, 0, queryQ, queryR);
+            const slots = tile.mineralSlots || 1;
+
+            // กฎการสุ่ม Status ตามระยะทาง
+            let minStat, maxStat;
+            if (distance <= 15) { minStat = 2; maxStat = 3; }
+            else if (distance <= 50) { minStat = 2; maxStat = 4; }
+            else if (distance <= 100) { minStat = 2; maxStat = 5; }
+            else if (distance <= 500) { minStat = 2; maxStat = 6; }
+            else { minStat = 1; maxStat = 7; }
+
+            const typeConfigs = [
+                { type: 'metal', valueMult: 5, img: 'orem1' },
+                { type: 'energy', valueMult: 7, img: 'oree1' },
+                { type: 'technology', valueMult: 9, img: 'oret1' }
+            ];
+
+            const generatedMinerals = [];
+            const prefixes = ['PURE', 'VOID', 'RARE', 'CORE', 'PRIME'];
+
+            for (let i = 0; i < slots; i++) {
+                const config = typeConfigs[Math.floor(Math.random() * 3)];
+                const statusVal = Math.floor(Math.random() * (maxStat - minStat + 1)) + minStat;
+                
+                generatedMinerals.push({
+                    id: `ore_${Date.now()}_${i}`,
+                    name: `${prefixes[Math.floor(Math.random()*prefixes.length)]}-${config.type.toUpperCase()}-${i+1}`,
+                    type: config.type,
+                    metal: config.type === 'metal' ? statusVal : 0,
+                    energy: config.type === 'energy' ? statusVal : 0,
+                    tech: config.type === 'technology' ? statusVal : 0,
+                    value: statusVal * config.valueMult,
+                    stackable: true,
+                    imgKey: config.img,
+                    firstMinedBy: nickname || username, // 🚩 บันทึกผู้ค้นพบคนแรก
+                    discoveredAt: Date.now()
+                });
+            }
+
+            // 1. บันทึกแร่ลงดาว
+            await db.collection("map_tiles").updateOne(
+                { q: queryQ, r: queryR },
+                { $set: { minerals: generatedMinerals, discoveredBy: nickname || username } }
+            );
+
+            // 2. เพิ่มสถิติจำนวนชนิดแร่ที่ค้นพบคนแรกให้ผู้เล่น
+            await db.collection("users").updateOne(
+                { username: username },
+                { $inc: { "stats.totalDiscoveries": generatedMinerals.length } }
+            );
+
+            return res.json({ success: true, minerals: generatedMinerals, isFirstDiscovery: true });
+        }
+
+        // กรณีไม่ใช่คนแรก (มีแร่อยู่แล้ว) ส่งแร่เดิมกลับไป
+        res.json({ success: true, minerals: tile.minerals, isFirstDiscovery: false });
+
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
