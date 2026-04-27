@@ -3234,8 +3234,8 @@ function startMiningProcess() {
             level: 1, 
             maxUpgrades: 5, 
             durability: 100, 
-            damage: 15,         
-            fireRate: 4.0,     
+            damage: 5,         
+            fireRate: 1.0,     
             repairCost: { metal: 1, energy: 1, tech: 1 }, 
             isLocked: true,
             rotation: 0,       // ค่าเริ่มต้นมุม
@@ -4511,7 +4511,8 @@ function spawnAlien() {
     const fixedSize = 40; 
     // ตรวจสอบว่ามองเห็น currentMiningDist ไหม ถ้าไม่เห็นให้ใช้ 1
     const dist = (typeof currentMiningDist !== 'undefined') ? currentMiningDist : 1;
-    const scalingHP = dist * 5;
+    //const scalingHP = dist * 5;
+	const scalingHP = dist*2;
 
     const newAlien = {
         x: Math.random() * (miningCanvas.width - fixedSize) + (fixedSize / 2),
