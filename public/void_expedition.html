@@ -1637,6 +1637,16 @@ button:hover { opacity: 0.8; }
 		
 		
 		const SHOP_ITEMS = [
+    // --- หมวดไอเทมใช้งาน ---
+    { 
+        id: 'chip_std_01', 
+        name: 'STD ENERGY CHIP', 
+        type: 'energy chip', 
+        price: 100, 
+        energyValue: 100,
+        stackable: true,
+        imgKey: 'EnergyChip0' 
+    },
     { 
         id: 'f001', 
         name: 'ENERGY CELL (100)', 
@@ -1645,12 +1655,46 @@ button:hover { opacity: 0.8; }
         icon: 'fas fa-bolt', 
         isIcon: true 
     },
+
+    // --- หมวดแร่ทรัพยากร ---
+    { 
+        id: 'res_m001', 
+        name: 'O-METAL-1', 
+        type: 'metal', 
+        price: 10, 
+        imgKey: 'orem1', 
+        ratio: 0.5, 
+        properties: { metal: 1, value: 5 },
+        stackable: true 
+    },
+    { 
+        id: 'res_e001', 
+        name: 'O-ENERGY-1', 
+        type: 'energy', 
+        price: 15, 
+        imgKey: 'oree1', 
+        ratio: 0.5, 
+        properties: { energy: 1, value: 7 },
+        stackable: true 
+    },
+    { 
+        id: 'res_t001', 
+        name: 'O-TECHNOLOGY-1', 
+        type: 'technology', 
+        price: 20, 
+        imgKey: 'oret1', 
+        ratio: 0.5, 
+        properties: { tech: 1, value: 9 },
+        stackable: true 
+    },
+
+    // --- หมวดบลูพริ้นท์ ---
     { 
         id: 'bp_e001', 
         name: 'BLUEPRINT: ADV. ENGINE', 
         type: 'blueprint', 
-		stackable: true,
-        price: 500, 
+        stackable: true,
+        price: 1000, 
         imgKey: 'BPengineS1', 
         recipe: { metal: 1, energy: 1, tech: 1 } 
     },
@@ -1658,8 +1702,8 @@ button:hover { opacity: 0.8; }
         id: 'bp_d001', 
         name: 'BLUEPRINT: HEAVY DRILL', 
         type: 'blueprint', 
-		stackable: true,
-        price: 450, 
+        stackable: true,
+        price: 850, 
         imgKey: 'BPengineDrill1', 
         recipe: { metal: 1, energy: 1, tech: 1 } 
     },
@@ -1667,8 +1711,8 @@ button:hover { opacity: 0.8; }
         id: 'bp_b001', 
         name: 'BLUEPRINT: TITAN SHIELD', 
         type: 'blueprint', 
-		stackable: true,
-        price: 300, 
+        stackable: true,
+        price: 600, 
         imgKey: 'BPshield0', 
         recipe: { metal: 1, energy: 1, tech: 1 } 
     }
@@ -3332,6 +3376,33 @@ function updateMining2() {
         finishMining(true);
     } else {
         requestAnimationFrame(updateMining2);
+    }
+}
+
+function finishMining(isSuccess) {
+    // 1. หยุดสถานะการขุด
+    miningActive = false;
+
+    if (isSuccess) {
+        // --- 🏆 กรณีขุดสำเร็จ (Progress 100%) ---
+        console.log("💎 Extraction Complete!");
+        showMiningToast("CORE REACHED: ขุดถึงแกนดาวสำเร็จ!", "#38ef7d");
+        
+        // กัปตันอาจจะสั่งให้เด้งหน้าเลือกแร่ชุดใหญ่ตรงนี้ หรือจบงานเลยก็ได้
+        setTimeout(() => {
+            alert("ยินดีด้วย! คุณเจาะถึงแกนดาวสำเร็จและเก็บกู้แร่ทั้งหมดเรียบร้อย");
+            backToMap();
+        }, 1500);
+
+    } else {
+        // --- 💥 กรณีสว่านพัง (HP 0) ---
+        console.log("❌ Drill Destroyed!");
+        showMiningToast("CRITICAL FAILURE: สว่านพังเสียหายหนัก!", "#ff4b2b");
+        
+        setTimeout(() => {
+            alert("สว่านของคุณพังเสียหาย! การขุดล้มเหลวและสูญเสียทรัพยากรบางส่วน");
+            backToMap();
+        }, 1500);
     }
 }
 
