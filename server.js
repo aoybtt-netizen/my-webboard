@@ -1815,16 +1815,22 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
     try {
         const queryQ = Number(q);
         const queryR = Number(r);
+
+        // 🚩 1. ค้นหาดาวที่กัปตันอยู่ ณ พิกัด q, r
         const tile = await db.collection("map_tiles").findOne({ q: queryQ, r: queryR });
 
-        if (!tile) return res.status(404).json({ success: false, message: "ไม่พบข้อมูลดาว" });
+        if (!tile) return res.status(404).json({ success: false, message: "ไม่พบข้อมูลดาวในพิกัดนี้" });
 
-        // 🚩 กรณีขุดสำเร็จคนแรก (เปิดหน้าไพ่แร่)
+        // 🚩 2. เช็กว่าเป็นการขุดสำเร็จคนแรกหรือไม่ (ยังไม่มี minerals)
         if (!tile.minerals || tile.minerals.length === 0) {
+            
+            // ก. คำนวณระยะทางเพื่อใช้กำหนดช่วง Status
             const distance = getServerHexDistance(0, 0, queryQ, queryR);
-            const slots = tile.mineralSlots || 1;
+            
+            // ข. ดึงจำนวนช่องแร่ (slots) ที่สุ่มไว้ตอนสร้างดาว (ใน API explore)
+            const slots = tile.mineralSlots || 1; 
 
-            // กฎการสุ่ม Status ตามระยะทาง
+            // ค. กำหนดช่วงการสุ่ม Status ตามระยะทางที่กัปตันกำหนด
             let minStat, maxStat;
             if (distance <= 15) { minStat = 2; maxStat = 3; }
             else if (distance <= 50) { minStat = 2; maxStat = 4; }
@@ -1832,50 +1838,63 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
             else if (distance <= 500) { minStat = 2; maxStat = 6; }
             else { minStat = 1; maxStat = 7; }
 
+            // ง. สุ่ม "ประเภทหลัก" ของแร่บนดาวดวงนี้ (ให้เป็นประเภทเดียวทั้งดาวตามที่กัปตันต้องการ)
             const typeConfigs = [
                 { type: 'metal', valueMult: 5, img: 'orem1' },
                 { type: 'energy', valueMult: 7, img: 'oree1' },
                 { type: 'technology', valueMult: 9, img: 'oret1' }
             ];
+            const mainConfig = typeConfigs[Math.floor(Math.random() * 3)];
 
             const generatedMinerals = [];
-            const prefixes = ['PURE', 'VOID', 'RARE', 'CORE', 'PRIME'];
+            const prefixes = ['PURE', 'VOID', 'RARE', 'CORE', 'PRIME', 'ZENITH', 'NORD'];
 
+            // จ. สุ่มค่าแร่ตามจำนวน Slots ที่ดึงมาจากฐานข้อมูลดาว
             for (let i = 0; i < slots; i++) {
-                const config = typeConfigs[Math.floor(Math.random() * 3)];
                 const statusVal = Math.floor(Math.random() * (maxStat - minStat + 1)) + minStat;
                 
                 generatedMinerals.push({
                     id: `ore_${Date.now()}_${i}`,
-                    name: `${prefixes[Math.floor(Math.random()*prefixes.length)]}-${config.type.toUpperCase()}-${i+1}`,
-                    type: config.type,
-                    metal: config.type === 'metal' ? statusVal : 0,
-                    energy: config.type === 'energy' ? statusVal : 0,
-                    tech: config.type === 'technology' ? statusVal : 0,
-                    value: statusVal * config.valueMult,
+                    name: `${prefixes[Math.floor(Math.random() * prefixes.length)]}-${mainConfig.type.toUpperCase()}-${i + 1}`,
+                    type: mainConfig.type,
+                    // ใส่ค่าเฉพาะประเภทที่สุ่มได้ ประเภทอื่นเป็น 0
+                    metal: mainConfig.type === 'metal' ? statusVal : 0,
+                    energy: mainConfig.type === 'energy' ? statusVal : 0,
+                    tech: mainConfig.type === 'technology' ? statusVal : 0,
+                    value: statusVal * mainConfig.valueMult, // คำนวณ Value (หน่วย x ราคาประเภท)
                     stackable: true,
-                    imgKey: config.img,
-                    firstMinedBy: nickname || username, // 🚩 บันทึกผู้ค้นพบคนแรก
+                    imgKey: mainConfig.img,
+                    firstMinedBy: nickname || username, 
                     discoveredAt: Date.now()
                 });
             }
 
-            // 1. บันทึกแร่ลงดาว
+            // 3. บันทึกข้อมูลแร่และผู้ค้นพบลงในดาวดวงนั้น
             await db.collection("map_tiles").updateOne(
                 { q: queryQ, r: queryR },
-                { $set: { minerals: generatedMinerals, discoveredBy: nickname || username } }
+                { $set: { 
+                    minerals: generatedMinerals, 
+                    discoveredBy: nickname || username,
+                    discoveryAt: Date.now()
+                }}
             );
 
-            // 2. เพิ่มสถิติจำนวนชนิดแร่ที่ค้นพบคนแรกให้ผู้เล่น
+            // 4. บันทึกสถิติการค้นพบลงในโปรไฟล์ผู้เล่น
             await db.collection("users").updateOne(
                 { username: username },
                 { $inc: { "stats.totalDiscoveries": generatedMinerals.length } }
             );
 
-            return res.json({ success: true, minerals: generatedMinerals, isFirstDiscovery: true });
+            return res.json({ 
+                success: true, 
+                minerals: generatedMinerals, 
+                isFirstDiscovery: true,
+                slotsUsed: slots,
+                totalValue: generatedMinerals.reduce((sum, m) => sum + m.value, 0)
+            });
         }
 
-        // กรณีไม่ใช่คนแรก (มีแร่อยู่แล้ว) ส่งแร่เดิมกลับไป
+        // กรณีดาวดวงนี้มีแร่อยู่แล้ว (ไม่ใช่คนแรก)
         res.json({ success: true, minerals: tile.minerals, isFirstDiscovery: false });
 
     } catch (e) {

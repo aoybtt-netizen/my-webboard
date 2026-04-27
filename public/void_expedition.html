@@ -3447,28 +3447,56 @@ function updateMining2() {
     }
 }
 
-function finishMining(isSuccess) {
-    // 1. หยุดสถานะการขุด
-    miningActive = false;
+async function finishMining(isSuccess) {
+    miningActive = false; // หยุด Loop
 
     if (isSuccess) {
-        // --- 🏆 กรณีขุดสำเร็จ (Progress 100%) ---
-        console.log("💎 Extraction Complete!");
-        showMiningToast("CORE REACHED: ขุดถึงแกนดาวสำเร็จ!", "#38ef7d");
+        console.log("💎 100% Reach! Requesting discovery results from server...");
         
-        // กัปตันอาจจะสั่งให้เด้งหน้าเลือกแร่ชุดใหญ่ตรงนี้ หรือจบงานเลยก็ได้
-        setTimeout(() => {
-            alert("ยินดีด้วย! คุณเจาะถึงแกนดาวสำเร็จและเก็บกู้แร่ทั้งหมดเรียบร้อย");
-            backToMap();
-        }, 1500);
+        try {
+            const response = await fetch(`${API_BASE}/game/complete-discovery`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: currentUser,
+                    nickname: currentUserNickname,
+                    q: playerQ,
+                    r: playerR,
+                    mode: 'test'
+                })
+            });
 
+            const result = await response.json();
+
+            if (result.success) {
+                // 🚩 ถ้าเป็นคนแรกที่ขุดสำเร็จ
+                if (result.isFirstDiscovery) {
+                    showMiningToast(`🌟 FIRST DISCOVERY BY ${currentUserNickname}!`, "#00d2ff");
+                    
+                    // สร้างข้อความสรุปแร่ที่สุ่มได้บน Server
+                    let mineralList = result.minerals.map(m => 
+                        `- ${m.name} [Type: ${m.type.toUpperCase()} | Stat: ${m[m.type]} | Value: ${m.value}]`
+                    ).join("\n");
+
+                    alert(`ยินดีด้วยกัปตัน! คุณเป็นคนแรกที่สำรวจถึงแกนดาวดวงนี้\n\nตรวจพบสายแร่ใหม่:\n${mineralList}\n\nบันทึกสถิติการค้นพบเรียบร้อย!`);
+                } else {
+                    showMiningToast("EXTRACTION COMPLETE!", "#38ef7d");
+                    alert("การขุดสำเร็จ! ได้รับทรัพยากรตามประวัติดาวเรียบร้อย");
+                }
+
+                // อัปเดตเงิน/ของในคลัง (ดึงข้อมูลล่าสุดจาก Server)
+                await checkGameProfile(); 
+                backToMap();
+            }
+        } catch (e) {
+            console.error("Discovery Error:", e);
+            backToMap();
+        }
     } else {
-        // --- 💥 กรณีสว่านพัง (HP 0) ---
-        console.log("❌ Drill Destroyed!");
-        showMiningToast("CRITICAL FAILURE: สว่านพังเสียหายหนัก!", "#ff4b2b");
-        
+        // กรณีสว่านพัง (HP 0)
+        showMiningToast("CRITICAL FAILURE: DRILL DESTROYED", "#ff4b2b");
         setTimeout(() => {
-            alert("สว่านของคุณพังเสียหาย! การขุดล้มเหลวและสูญเสียทรัพยากรบางส่วน");
+            alert("สว่านพังเสียหาย! ภารกิจล้มเหลว");
             backToMap();
         }, 1500);
     }
