@@ -1679,7 +1679,7 @@ app.post('/api/:mode/map/explore', async (req, res) => {
     try {
         let tile = await mapCollection.findOne({ q, r });
         
-        // ถ้าพิกัดนี้ถูกสร้างถาวรไปแล้ว ไม่ต้องทำซ้ำ
+        // ถ้าพิกัดนี้ถูกสร้างถาวรไปแล้ว ให้ส่งข้อมูลกลับทันที
         if (tile && tile.progress >= 100) {
             return res.json({ success: true, tile });
         }
@@ -1699,12 +1699,11 @@ app.post('/api/:mode/map/explore', async (req, res) => {
             updateData.name = 'EMPTY SPACE';
         } else {
             updateData.type = 'star';
-            const starNum = Math.floor(Math.random() * 19) + 1; // 1-19
+            const starNum = Math.floor(Math.random() * 19) + 1;
             updateData.img = `star${starNum}`;
             updateData.image = `images/star/star${starNum}.png`;
             updateData.name = generateStarName();
 
-            // สุ่มสถานะ (กรด / อุณหภูมิ)
             if (starNum <= 14) {
                 updateData.corrosionAcid = Math.random() < 0.65 ? Math.floor(Math.random() * 91) + 10 : 0;
             } else {
@@ -1713,63 +1712,46 @@ app.post('/api/:mode/map/explore', async (req, res) => {
                 else updateData.temperature = Math.floor(Math.random() * 201) + 400;
             }
 
-				// คำนวณระยะทางเพื่อกำหนดช่องแร่
-				const getDist = (q1, r1, q2, r2) => {
-					const x1 = q1, z1 = r1 - (q1 - (Math.abs(q1) % 2)) / 2, y1 = -x1 - z1;
-					const x2 = q2, z2 = r2 - (q2 - (Math.abs(q2) % 2)) / 2, y2 = -x2 - z2;
-					return Math.max(Math.abs(x1-x2), Math.abs(y1-y2), Math.abs(z1-z2));
-				};
-				const distance = getDist(0, 0, q, r);
+            const getDist = (q1, r1, q2, r2) => {
+                const x1 = q1, z1 = r1 - (q1 - (Math.abs(q1) % 2)) / 2, y1 = -x1 - z1;
+                const x2 = q2, z2 = r2 - (q2 - (Math.abs(q2) % 2)) / 2, y2 = -x2 - z2;
+                return Math.max(Math.abs(x1-x2), Math.abs(y1-y2), Math.abs(z1-z2));
+            };
+            const distance = getDist(0, 0, q, r);
 
-				// 🚩 กฎการสุ่มช่องแร่แบบใหม่ตามระยะทาง
-				let slots = 1;
-				if (distance <= 10) {
-					// ระยะ 0 - 10: สุ่ม 1 ถึง 2 ชนิด
-					slots = Math.floor(Math.random() * 2) + 1; 
-				} else if (distance <= 25) {
-					// ระยะ 11 - 25: สุ่ม 1 ถึง 3 ชนิด
-					slots = Math.floor(Math.random() * 3) + 1; 
-				} else if (distance <= 50) {
-					// ระยะ 26 - 50: สุ่ม 2 ถึง 3 ชนิด (การันตีอย่างน้อย 2 ชนิด)
-					slots = Math.floor(Math.random() * 2) + 2; 
-				} else {
-					// ระยะ 51 ขึ้นไป: สุ่ม 2 ถึง 4 ชนิด (การันตีอย่างน้อย 2 ชนิด)
-					slots = Math.floor(Math.random() * 3) + 2; 
-				}
+            let slots = 1;
+            if (distance <= 10) slots = Math.floor(Math.random() * 2) + 1;
+            else if (distance <= 25) slots = Math.floor(Math.random() * 3) + 1;
+            else if (distance <= 50) slots = Math.floor(Math.random() * 2) + 2;
+            else slots = Math.floor(Math.random() * 3) + 2;
 
-				updateData.mineralSlots = slots;
-
-            // 🚩 --- ระบบสุ่ม Capacity และ Regen (แบบแรร์ออกยาก) ---
-            
-            // สุ่ม Capacity (1000 - 3500) โดยเทน้ำหนักไปที่ค่าน้อย
+            updateData.mineralSlots = slots;
             const randomCap = Math.pow(Math.random(), 3); 
             updateData.maxStarCapacity = Math.floor(1000 + (randomCap * 2500));
-            updateData.currentStarAmount = updateData.maxStarCapacity; // เริ่มต้นให้แร่เต็ม
-            
-            // สุ่ม RegenRate (50 - 200) โดยเทน้ำหนักไปที่ค่าน้อย
+            updateData.currentStarAmount = updateData.maxStarCapacity;
             const randomRegen = Math.pow(Math.random(), 3);
             updateData.regenRate = Math.floor(50 + (randomRegen * 150));
-            
-            updateData.lastUpdate = Date.now(); // บันทึกเวลาเกิด
-            updateData.minerals = []; // รอการขุดครั้งแรกเพื่อสุ่มชนิดแร่
+            updateData.lastUpdate = Date.now();
+            updateData.minerals = [];
         }
 
-        // บันทึกลง Database
+        // บันทึกลงแผนที่
         await mapCollection.updateOne(
             { q, r },
             { $set: updateData },
             { upsert: true }
         );
-		await db.collection("users").updateOne(
-                { username: username },
-                { $inc: { "stats.planetsDiscovered": 1 } }
-            );
 
-            return res.json({ success: true, tile: updateData, isNewDiscovery: true });
-        }
+        // 🚩 บวกสถิติผู้ค้นพบดาวคนแรก
+        await db.collection("users").updateOne(
+            { username: username },
+            { $inc: { "stats.planetsDiscovered": 1 } }
+        );
 
-        res.json({ success: true, tile });
+        res.json({ success: true, tile: updateData, isNewDiscovery: true });
+
     } catch (e) {
+        console.error("Explore API Error:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });
