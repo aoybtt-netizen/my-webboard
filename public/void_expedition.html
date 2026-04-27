@@ -2519,7 +2519,7 @@ function renderSellItems() {
 }
 
 async function sellItem(itemId, price) {
-    if (!confirm(`คุณต้องการขายไอเทมนี้ในราคา ${price} GC ใช่หรือไม่?`)) return;
+    if (!confirm(`คุณต้องการขายไอเทมนี้ราคา ${price} GC?`)) return;
 
     try {
         const response = await fetch(`${API_BASE}/game/sell-item`, {
@@ -2534,15 +2534,9 @@ async function sellItem(itemId, price) {
 
         const result = await response.json();
         if (result.success) {
-            showMiningToast(`ขายสำเร็จ! ได้รับ ${price} GC`, "#38ef7d");
-            
-            // อัปเดตข้อมูลผู้เล่นในเครื่อง (เงินและกระเป๋า)
+            showMiningToast(`ขายสำเร็จ! +${price} GC`, "#38ef7d");
             await checkGameProfile(); 
-            
-            // วาดรายการขายใหม่
-            renderSellItems(); 
-        } else {
-            showMiningToast(result.message, "#ff4b2b");
+            renderSellItems();
         }
     } catch (e) {
         console.error("Sell Error:", e);
