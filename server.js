@@ -1851,6 +1851,45 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
     }
 });
 
+//9.1 API สำหรับการขาย
+app.post('/api/:mode/game/sell-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, itemId, sellPrice } = req.body;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+    const users = db.collection("users");
+
+    try {
+        const user = await users.findOne({ username });
+        if (!user) return res.status(404).json({ success: false });
+
+        const itemIndex = user.inventory.findIndex(i => i.id === itemId);
+        if (itemIndex === -1) return res.json({ success: false, message: "ไม่พบไอเทมในคลัง" });
+
+        const item = user.inventory[itemIndex];
+
+        // 1. หักจำนวนไอเทมออก 1 ชิ้น
+        if (item.quantity > 1) {
+            await users.updateOne(
+                { username, "inventory.id": itemId },
+                { $inc: { "inventory.$.quantity": -1, "currency.gc": sellPrice } }
+            );
+        } else {
+            // ถ้าเหลือชิ้นสุดท้าย ให้ลบ Object ออกจาก Array เลย
+            await users.updateOne(
+                { username },
+                { 
+                    $pull: { inventory: { id: itemId } },
+                    $inc: { "currency.gc": sellPrice }
+                }
+            );
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 10. API สำหรับติดตั้งไอเทม (Swap Item)
 app.post('/api/:mode/game/install-item', async (req, res) => {
     const { mode } = req.params;

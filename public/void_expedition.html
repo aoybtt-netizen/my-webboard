@@ -2469,11 +2469,83 @@ function switchShopTab(tab) {
     if (tab === 'buy') {
         renderBuyItems();
     } else {
-        document.getElementById('shop-content').innerHTML = `
-            <div style="text-align:center; margin-top:50px; color:rgba(255,255,255,0.5);">
+        renderSellItems(); // 🚩 เรียกฟังก์ชันแสดงรายการขาย
+    }
+}
+
+function renderSellItems() {
+    const container = document.getElementById('shop-content');
+    container.innerHTML = "";
+
+    // 1. กรองเฉพาะไอเทมที่ขายได้ (ในที่นี้คือกลุ่มแร่ หรือไอเทมที่มีราคากลาง)
+    // เราจะอิงจากชื่อแร่ที่กัปตันตั้งไว้: O-METAL-1, O-ENERGY-1, O-TECHNOLOGY-1
+    const sellableItems = playerInventory.filter(item => 
+        item.type === 'metal' || item.type === 'energy' || item.type === 'technology'
+    );
+
+    if (sellableItems.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; margin-top:50px; color:rgba(255,255,255,0.3);">
                 <i class="fas fa-box-open" style="font-size:3rem;"></i><br><br>
-                ส่วนการขายแร่กำลังเตรียมระบบ...
+                ไม่มีแร่ในคลังที่สามารถขายได้
             </div>`;
+        return;
+    }
+
+    sellableItems.forEach(item => {
+        // กำหนดราคาขายตามที่กัปตันระบุไว้
+        let sellPrice = 0;
+        if (item.name === 'O-METAL-1') sellPrice = 10;
+        else if (item.name === 'O-ENERGY-1') sellPrice = 15;
+        else if (item.name === 'O-TECHNOLOGY-1') sellPrice = 20;
+        else sellPrice = item.price || 5; // fallback
+
+        container.innerHTML += `
+            <div class="shop-item-card">
+                <div class="shop-item-img">
+                    <img src="images/${item.imgKey || item.img}.png" onerror="this.src='images/default-ore.png'" style="width:40px;">
+                </div>
+                <div class="shop-item-info">
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-price"><i class="fas fa-coins"></i> SELL PRICE: ${sellPrice} GC</div>
+                    <div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">QTY: ${item.quantity || 1}</div>
+                </div>
+                <button class="btn-buy" style="background:#ff4b2b;" onclick="sellItem('${item.id}', ${sellPrice})">
+                    SELL 1
+                </button>
+            </div>
+        `;
+    });
+}
+
+async function sellItem(itemId, price) {
+    if (!confirm(`คุณต้องการขายไอเทมนี้ในราคา ${price} GC ใช่หรือไม่?`)) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/game/sell-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                itemId: itemId,
+                sellPrice: price
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showMiningToast(`ขายสำเร็จ! ได้รับ ${price} GC`, "#38ef7d");
+            
+            // อัปเดตข้อมูลผู้เล่นในเครื่อง (เงินและกระเป๋า)
+            await checkGameProfile(); 
+            
+            // วาดรายการขายใหม่
+            renderSellItems(); 
+        } else {
+            showMiningToast(result.message, "#ff4b2b");
+        }
+    } catch (e) {
+        console.error("Sell Error:", e);
     }
 }
 
