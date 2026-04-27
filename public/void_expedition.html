@@ -1001,6 +1001,18 @@ button:hover { opacity: 0.8; }
             <h3 id="profile-full-name" style="margin: 0; color: var(--neon-blue);">นักบินนิรนาม</h3>
             <span id="account-type-tag" style="font-size: 0.7rem; background: #444; padding: 2px 10px; border-radius: 10px; opacity: 0.8;">GUEST ACCOUNT</span>
         </div>
+		
+		<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+    <div style="background: rgba(0,210,255,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(0,210,255,0.2);">
+        <div style="font-size: 0.6rem; color: var(--neon-blue); letter-spacing: 1px;">PLANETS FOUND</div>
+        <div id="stat-planets-count" style="font-weight: bold; font-size: 1.2rem; margin-top: 2px;">0</div>
+    </div>
+    <div style="background: rgba(56,239,125,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(56,239,125,0.2);">
+        <div style="font-size: 0.6rem; color: var(--neon-green); letter-spacing: 1px;">ORES UNVEILED</div>
+        <div id="stat-minerals-count" style="font-weight: bold; font-size: 1.2rem; margin-top: 2px;">0</div>
+    </div>
+</div>
+
 
         <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px; display: flex; flex-direction: column; gap: 12px;">
             <div class="detail-row" onclick="openShipInventory()" style="cursor:pointer; border: 1px solid rgba(0,210,255,0.1); padding: 8px; border-radius: 8px;">
@@ -1549,7 +1561,6 @@ button:hover { opacity: 0.8; }
 		const MAP_RANGE = 3;
         
         let currentUser = localStorage.getItem('username');
-		//let currentUser = localStorage.getItem('void_username') || "";
 		let currentUserNickname = ""; // 🚩 เพิ่มบรรทัดนี้ไว้ด้านบนสุดของไฟล์
 		let isGuest = localStorage.getItem('isGuest') === 'true';
         let mapActive = false;
@@ -1943,6 +1954,10 @@ async function syncStaticStars() {
             // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD ---
             safeSetText('display-nickname', nick);
             safeSetText('profile-full-name', nick);
+			const planetsFound = data.stats?.planetsDiscovered || 0;
+			const mineralsFound = data.stats?.mineralsDiscovered || 0;
+			safeSetText('stat-planets-count', planetsFound.toLocaleString());
+			safeSetText('stat-minerals-count', mineralsFound.toLocaleString());
             
             if(document.getElementById('display-gc')) {
                 document.getElementById('display-gc').innerText = (data.coinsgc || 0).toLocaleString();
@@ -3158,43 +3173,42 @@ function getWeightedAsteroidType() {
 
 async function endTravel() {
     travelGameActive = false;
-	
-	const mainHud = document.querySelector('.hud-top');
+    
+    const mainHud = document.querySelector('.hud-top');
     if (mainHud) mainHud.style.display = 'flex';
-	
+    
     playerQ = selectedHex.q;
     playerR = selectedHex.r;
     const key = `${playerQ},${playerR}`;
 
-    // บันทึก Fog of War ลง Local
-    if (!visitedTiles.includes(key)) {
-        visitedTiles.push(key);
-        localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
-    }
+    // เตรียมชื่อที่จะใช้บันทึก (กันเหนียวถ้ายังไม่มี Nickname ให้ใช้ ID)
+    const senderNickname = currentUserNickname || currentUser;
 
     try {
-        // 1. อัปเดตข้อมูลแผนที่ (ดึงข้อมูลดาว)
+        // 1. อัปเดตข้อมูลแผนที่ (ส่ง nickname ไปด้วยแล้วนะ!)
         const mapRes = await fetch(`${API_BASE}/map/explore`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ q: playerQ, r: playerR, username: currentUser })
+            body: JSON.stringify({ 
+                q: playerQ, 
+                r: playerR, 
+                username: currentUser,
+                nickname: senderNickname // 🚩 เพิ่มบรรทัดนี้ครับ
+            })
         });
+        
         const mapResult = await mapRes.json();
 
-        // 🚩 2. บันทึกตำแหน่งปัจจุบันลงโปรไฟล์ผู้เล่นบน Server (เพิ่มส่วนนี้)
+        // 2. อัปเดตตำแหน่ง (ทำเหมือนเดิม)
         await fetch(`${API_BASE}/game/update-location`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                username: currentUser, 
-                q: playerQ, 
-                r: playerR 
-            })
+            body: JSON.stringify({ username: currentUser, q: playerQ, r: playerR })
         });
 
         if (mapResult.success) {
             serverMapData[key] = mapResult.tile;
-            renderGrid(); // วาดแผนที่ใหม่โดยมีผู้เล่นเป็นศูนย์กลาง
+            renderGrid();
             showArrivalUI(mapResult.tile, playerQ, playerR);
         }
     } catch (err) {
