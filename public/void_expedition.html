@@ -3784,8 +3784,8 @@ async function attemptCollect(mineral, rate) {
 
     if (isSuccess) {
         try {
-            // 📝 ลอง Log ดูหน่อยว่าแร่ที่จะเก็บมี Path รูปติดมาไหม
-            console.log("🛸 Collecting mineral:", mineral);
+            // 📝 ตรวจสอบข้อมูลก่อนส่ง (กัปตันลองเปิด F12 ดู จะเห็นชื่อผู้ค้นพบในนี้)
+            console.log("🛸 Sending to Server:", mineral);
 
             const response = await fetch(`${API_BASE}/game/add-mineral`, {
                 method: 'POST',
@@ -3794,18 +3794,11 @@ async function attemptCollect(mineral, rate) {
                     username: currentUser,
                     q: playerQ, 
                     r: playerR,
-                    mode: 'test', // 🚩 อย่าลืมระบุโหมดเพื่อให้ Server ลงถูก DB
+                    mode: 'test',
                     mineral: {
-                        name: mineral.name,
-                        // 🚩 [จุดที่ต้องแก้] เช็คทั้ง imgKey (ของใหม่) และ img (ของเก่า)
-                        imgKey: mineral.imgKey || mineral.img || 'images/ore/default.png',
-                        type: mineral.type || 'resource',
-                        metal: mineral.metal || 0,
-                        energy: mineral.energy || 0,
-                        tech: mineral.tech || 0,
-                        value: mineral.value || 0,
+                        ...mineral, // 🚩 [ไม้ตาย] ก๊อปปี้ทุกอย่าง (รวมถึง firstMinedBy, value, imgKey)
                         stackable: true,
-                        quantity: 1, // ปรับตามความเหมาะสม (เดิมกัปตันให้ 10)
+                        quantity: 1, // ปรับตามที่กัปตันต้องการ
                         weightPerUnit: 1
                     }
                 })
@@ -3814,8 +3807,8 @@ async function attemptCollect(mineral, rate) {
             const result = await response.json();
             if (result.success) {
                 showMiningToast(`สำเร็จ! ได้รับ ${mineral.name}`, "#38ef7d");
-                checkGameProfile(); // อัปเดตข้อมูลผู้เล่น
-                syncSpecificStar(playerQ, playerR); // อัปเดตข้อมูลดาว
+                await checkGameProfile(); // โหลดโปรไฟล์ใหม่เพื่อให้คลังอัปเดต
+                syncSpecificStar(playerQ, playerR); 
             } else {
                 showMiningToast(result.message, "#ff4b2b");
             }
