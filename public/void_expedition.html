@@ -2817,35 +2817,37 @@ function openItemPopup(item) {
     const imgEl = document.getElementById('popup-item-img');
     const statsEl = document.getElementById('popup-item-stats');
 
-    // 1. ตั้งชื่อ
     nameEl.innerText = item.name.toUpperCase();
 
-    // 2. จัดการรูปภาพ (ใช้ Logic เดียวกับใน Grid)
+    // 🚩 [แก้ไขจุดนี้] ใช้ Logic เดียวกับ renderInventoryGrid เป๊ะๆ
     const rawImg = item.imgKey || item.img || 'default';
-    let imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
-    imgEl.src = imgSrc;
+    let imgSrc = "";
 
-    // 3. จัดการรายละเอียดสถิติ (Stats)
-    let statsHTML = "";
-    
-    // แสดงมูลค่า (Value)
-    if (item.value) {
-        statsHTML += `<div style="color:#ffcc00; margin-bottom:5px;"><i class="fas fa-coins"></i> MARKET VALUE: ${item.value} GC</div>`;
+    if (rawImg.includes('/')) {
+        // ✅ ถ้าเป็น Path เต็ม (แร่ใหม่)
+        imgSrc = rawImg;
+    } else {
+        // ✅ ถ้าเป็น Key สั้น (ไอเทมเริ่มต้น) ให้ดึงจาก imageSources
+        // และถ้าหาใน imageSources ไม่เจอ ให้ไปที่ meteor0 แทน default.png
+        imgSrc = imageSources[rawImg] || imageSources['meteor0'] || 'images/meteorite/meteor0.png';
     }
+    
+    imgEl.src = imgSrc;
+    // เพิ่ม onerror สำรองอีกชั้นกันพลาด
+    imgEl.onerror = function() { this.src = 'images/meteorite/meteor0.png'; };
 
-    // แสดงค่าสถานะตามประเภทแร่
+    // 🚩 [ส่วนสถิติเหมือนเดิม]
+    let statsHTML = "";
+    if (item.value) statsHTML += `<div style="color:#ffcc00; margin-bottom:5px;"><i class="fas fa-coins"></i> MARKET VALUE: ${item.value} GC</div>`;
     if (item.metal > 0) statsHTML += `<div style="color:var(--neon-blue);">METAL: +${item.metal}</div>`;
     if (item.energy > 0) statsHTML += `<div style="color:var(--neon-green);">ENERGY: +${item.energy}</div>`;
     if (item.tech > 0) statsHTML += `<div style="color:#a16eff;">TECH: +${item.tech}</div>`;
     
-    // แสดงประเภทและน้ำหนัก
     statsHTML += `<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">`;
-    statsHTML += `<div style="opacity:0.6; font-size:0.7rem;">TYPE: ${item.type.toUpperCase()}</div>`;
+    statsHTML += `<div style="opacity:0.6; font-size:0.7rem;">TYPE: ${item.type ? item.type.toUpperCase() : 'UNKNOWN'}</div>`;
     statsHTML += `<div style="opacity:0.6; font-size:0.7rem;">TOTAL QTY: ${item.quantity || 1}</div>`;
 
     statsEl.innerHTML = statsHTML;
-
-    // 4. แสดง Modal
     modal.style.display = 'flex';
 }
 
