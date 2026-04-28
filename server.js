@@ -1676,9 +1676,17 @@ setInterval(async () => {
 
 // ฟังก์ชันสุ่มชื่อดาว
 function generateStarName() {
-    const prefixes = ['PX', 'NOVA', 'ZETA', 'CORE', 'VOID', 'ALPHA'];
-    const code = Math.floor(1000 + Math.random() * 9000);
-    return `${prefixes[Math.floor(Math.random() * prefixes.length)]}-${code}`;
+    const prefixes = ['PX', 'NOVA', 'ZETA', 'CORE', 'VOID', 'ALPHA', 'ZEN', 'SOLAR'];
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    
+    // สุ่มรหัส 4 หลัก
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    return `${prefix}-${code}`;
 }
 
 // 6. ดึงข้อมูลแผนที่ทั้งหมด
@@ -1702,12 +1710,11 @@ app.post('/api/:mode/map/explore', async (req, res) => {
     try {
         let tile = await mapCollection.findOne({ q, r });
         
-        // ถ้าพิกัดนี้ถูกสร้างถาวรไปแล้ว ให้ส่งข้อมูลกลับทันที
         if (tile && tile.progress >= 100) {
             return res.json({ success: true, tile });
         }
 
-        const hasStar = Math.random() < 0.5; // โอกาส 50%
+        const hasStar = Math.random() < 0.5;
         let updateData = { 
             q, r, 
             progress: 100, 
@@ -1725,7 +1732,21 @@ app.post('/api/:mode/map/explore', async (req, res) => {
             const starNum = Math.floor(Math.random() * 19) + 1;
             updateData.img = `star${starNum}`;
             updateData.image = `images/star/star${starNum}.png`;
-            updateData.name = generateStarName();
+
+            // 🚩 --- [ระบบเช็กชื่อซ้ำระดับจักรวาล] ---
+            let uniqueName = "";
+            let isNameDuplicate = true;
+            
+            while (isNameDuplicate) {
+                uniqueName = generateStarName();
+                // เช็กในฐานข้อมูลว่ามีดาวชื่อนี้หรือยัง
+                const existingStar = await mapCollection.findOne({ name: uniqueName });
+                if (!existingStar) {
+                    isNameDuplicate = false; // ถ้าไม่ซ้ำ ให้หลุดลูป
+                }
+            }
+            updateData.name = uniqueName;
+            // 🚩 -----------------------------------
 
             if (starNum <= 14) {
                 updateData.corrosionAcid = Math.random() < 0.65 ? Math.floor(Math.random() * 91) + 10 : 0;
@@ -1758,14 +1779,12 @@ app.post('/api/:mode/map/explore', async (req, res) => {
             updateData.minerals = [];
         }
 
-        // บันทึกลงแผนที่
         await mapCollection.updateOne(
             { q, r },
             { $set: updateData },
             { upsert: true }
         );
 
-        // 🚩 บวกสถิติผู้ค้นพบดาวคนแรก
         await db.collection("users").updateOne(
             { username: username },
             { $inc: { "stats.planetsDiscovered": 1 } }
@@ -1817,7 +1836,17 @@ function getServerHexDistance(q1, r1, q2, r2) {
     return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2), Math.abs(z1 - z2));
 }
 
-//8.1
+//8.1 สุ่มสร้างแร่ครั้งแรก
+// ฟังก์ชันช่วยสุ่มรหัสแร่ (เช่น PX6J4)
+function generateMineralCode(length = 5) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 app.post('/api/:mode/game/complete-discovery', async (req, res) => {
     const { mode } = req.params;
     const { username, nickname, q, r } = req.body;
@@ -1831,11 +1860,12 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
 
         if (!tile) return res.status(404).json({ success: false, message: "ไม่พบข้อมูลดาว" });
 
-        // 🚩 เช็กว่าแร่ยังไม่เคยถูกสุ่ม (Discovery ครั้งแรก)
+        // 🚩 Discovery ครั้งแรก: เปิดหน้าไพ่แร่
         if (!tile.minerals || tile.minerals.length === 0) {
             const distance = getServerHexDistance(0, 0, queryQ, queryR);
-            const slots = tile.mineralSlots || 1;
+            const slots = tile.mineralSlots || 1; 
 
+            // กำหนดช่วง Status ตามระยะทาง
             let minStat, maxStat;
             if (distance <= 15) { minStat = 2; maxStat = 3; }
             else if (distance <= 50) { minStat = 2; maxStat = 4; }
@@ -1844,46 +1874,64 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
             else { minStat = 1; maxStat = 7; }
 
             const typeConfigs = [
-                { type: 'metal', valueMult: 5, img: 'orem1' },
-                { type: 'energy', valueMult: 7, img: 'oree1' },
-                { type: 'technology', valueMult: 9, img: 'oret1' }
+                { type: 'metal', valueMult: 5, folder: 'metal' },
+                { type: 'energy', valueMult: 7, folder: 'energy' },
+                { type: 'technology', valueMult: 9, folder: 'technology' }
             ];
-            const mainConfig = typeConfigs[Math.floor(Math.random() * 3)];
 
             const generatedMinerals = [];
-            const prefixes = ['VOID', 'RARE', 'CORE', 'ZENITH', 'NORD'];
+            const prefixes = ['VOID', 'RARE', 'CORE', 'ZENITH', 'NORD', 'PRIME', 'AXIS'];
             const minerName = nickname || username;
 
+            // 🚩 [Loop ตามจำนวน Slots]
             for (let i = 0; i < slots; i++) {
+                
+                // 1. [ย้ายมาไว้ข้างใน] สุ่มประเภทใหม่ "ทุกครั้ง" ในแต่ละรอบ
+                const currentConfig = typeConfigs[Math.floor(Math.random() * typeConfigs.length)];
+
+                // 2. เช็คชื่อซ้ำระดับจักรวาล (เหมือนเดิม)
+                let mineralName = "";
+                let isNameDuplicate = true;
+                while (isNameDuplicate) {
+                    const randomCode = generateMineralCode(5);
+                    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+                    mineralName = `${prefix}-${randomCode}`;
+                    const existingName = await db.collection("map_tiles").findOne({ "minerals.name": mineralName });
+                    if (!existingName) isNameDuplicate = false;
+                }
+
+                // 3. สุ่มค่า Status ของ Slot นี้
                 const statusVal = Math.floor(Math.random() * (maxStat - minStat + 1)) + minStat;
                 
+                // 4. เลือกรูปภาพตามเกณฑ์ของประเภทนั้นๆ
+                let imgNum;
+                if (statusVal <= 3) imgNum = 2;
+                else if (statusVal <= 6) imgNum = Math.floor(Math.random() * 3) + 2; // สุ่ม 2-4
+                else imgNum = 5;
+
                 generatedMinerals.push({
-                    id: `ore_${Date.now()}_${i}`,
-                    name: `${prefixes[Math.floor(Math.random()*prefixes.length)]}-${mainConfig.type.toUpperCase()}-${i+1}`,
-                    type: mainConfig.type,
-                    metal: mainConfig.type === 'metal' ? statusVal : 0,
-                    energy: mainConfig.type === 'energy' ? statusVal : 0,
-                    tech: mainConfig.type === 'technology' ? statusVal : 0,
-                    value: statusVal * mainConfig.valueMult,
+                    id: `ore_${Date.now()}_${i}_${Math.floor(Math.random()*100)}`,
+                    name: mineralName,
+                    type: currentConfig.type,
+                    // ใส่ค่า Status ลงในฟิลด์ที่ตรงกับประเภท (ที่เหลือเป็น 0)
+                    metal: currentConfig.type === 'metal' ? statusVal : 0,
+                    energy: currentConfig.type === 'energy' ? statusVal : 0,
+                    tech: currentConfig.type === 'technology' ? statusVal : 0,
+                    value: statusVal * currentConfig.valueMult,
                     stackable: true,
-                    imgKey: mainConfig.img,
-                    // 🚩 บันทึก "คนเจอแร่คนแรก" ไว้ในนี้
+                    imgKey: `images/${currentConfig.folder}/ore${imgNum}.png`,
                     firstMinedBy: minerName, 
                     minedAt: Date.now()
                 });
             }
 
-            // 🚩 1. อัปเดตเฉพาะ minerals และเวลาที่แร่เกิด
-            // *** ไม่ใส่ discoveredBy ในนี้ เพื่อรักษาชื่อคนเจอหน้าดินคนแรกไว้ ***
+            // บันทึกลงดาวดวงนั้น
             await db.collection("map_tiles").updateOne(
                 { q: queryQ, r: queryR },
-                { $set: { 
-                    minerals: generatedMinerals,
-                    mineralsUnveiledAt: Date.now() // บันทึกว่าแร่ถูกเปิดเผยเมื่อไหร่แทน
-                }}
+                { $set: { minerals: generatedMinerals, mineralsUnveiledAt: Date.now() }}
             );
 
-            // 🚩 2. บันทึกสถิติลงโปรไฟล์กัปตันผู้ขุด
+            // บวกสถิติสะสมให้กัปตัน
             await db.collection("users").updateOne(
                 { username: username },
                 { $inc: { "stats.totalDiscoveries": generatedMinerals.length } }
