@@ -2806,12 +2806,12 @@ function renderInventoryGrid() {
             ${countBadge}
         `;
         
-        slot.onclick = () => openItemPopup(item, imgSrc);
+        slot.onclick = () => openItemPopup2(item, imgSrc);
         gridContainer.appendChild(slot);
     });
 }
 
-function openItemPopup(item, directImgSrc) {
+function openItemPopup2(item, directImgSrc) {
     const modal = document.getElementById('item-popup-modal');
     const nameEl = document.getElementById('popup-item-name');
     const imgEl = document.getElementById('popup-item-img');
