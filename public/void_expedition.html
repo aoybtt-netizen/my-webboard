@@ -1080,24 +1080,6 @@ button:hover { opacity: 0.8; }
 </div>
 
 
-<div id="item-detail-popup" class="menu-overlay" onclick="this.style.display='none'" style="display: none; z-index: 1500;">
-    <div class="glass-panel" style="width: 320px; text-align: center; border: 1px solid var(--neon-blue);" onclick="event.stopPropagation()">
-        
-        <h3 id="pop-name" style="margin-top: 0; color: var(--neon-blue); letter-spacing: 2px;">ITEM NAME</h3>
-        
-        <div class="img-square" style="width: 100px; height: 100px; margin: 20px auto; background: rgba(255,255,255,0.05); border-radius: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,210,255,0.2);">
-            </div>
-
-        <div id="pop-status" style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
-            </div>
-
-        <div style="display: flex; gap: 10px;">
-            <button id="pop-install-btn" class="auth-btn" style="flex: 1; display: none; background: var(--neon-green); color: #000;">INSTALL</button>
-            <button class="auth-btn" style="flex: 1; background: #444;" onclick="document.getElementById('item-detail-popup').style.display='none'">CLOSE</button>
-        </div>
-    </div>
-</div>
-
 
 
 
@@ -1389,7 +1371,24 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
-	
+
+<div id="item-detail-popup" class="menu-overlay" onclick="this.style.display='none'" style="display: none; z-index: 1500;">
+    <div class="glass-panel" style="width: 320px; text-align: center; border: 1px solid var(--neon-blue);" onclick="event.stopPropagation()">
+        
+        <h3 id="pop-name" style="margin-top: 0; color: var(--neon-blue); letter-spacing: 2px;">ITEM NAME</h3>
+        
+        <div class="img-square" style="width: 100px; height: 100px; margin: 20px auto; background: rgba(255,255,255,0.05); border-radius: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,210,255,0.2);">
+            </div>
+
+        <div id="pop-status" style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
+            </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button id="pop-install-btn" class="auth-btn" style="flex: 1; display: none; background: var(--neon-green); color: #000;">INSTALL</button>
+            <button class="auth-btn" style="flex: 1; background: #444;" onclick="document.getElementById('item-detail-popup').style.display='none'">CLOSE</button>
+        </div>
+    </div>
+</div>
 	
 	
 	
