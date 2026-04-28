@@ -2098,25 +2098,24 @@ async function syncStaticStars() {
             let imgKey = 'conceal';
 
             if (STATIC_STARS[coordKey]) {
-                // ดาวแม่และสถานีเริ่มต้น ให้เห็นตลอด
                 imgKey = STATIC_STARS[coordKey].img;
             } else if (serverMapData[coordKey] && isVisitedByMe) {
-                // 🚩 เงื่อนไขใหม่: ต้องมีข้อมูลในเซิร์ฟเวอร์ "และ" เราต้องเคยไปถึงแล้วเท่านั้นถึงจะเห็นภาพดาว
-                imgKey = serverMapData[coordKey].img || 'conceal';
-            } else {
-                // ถ้ายังไม่เคยไป หรือยังไม่มีข้อมูล ให้เป็นหมอก (conceal)
-                imgKey = 'conceal';
+                // ดึงรูปที่สุ่มไว้แล้วมาใช้
+                imgKey = serverMapData[coordKey].img || 'ast0';
             }
 
-            // ระบบ Lazy Load รูป (เหมือนที่เราทำกันไปก่อนหน้า)
-            if (imgKey !== 'conceal' && !images[imgKey]) {
-                images[imgKey] = new Image();
-                images[imgKey].src = imgKey.startsWith('star') ? `images/star/${imgKey}.png` : `images/meteorite/meteor0.png`;
-                images[imgKey].onload = () => renderGrid();
-                imgKey = 'conceal'; 
+            // ระบบโหลดรูปป้องกันการกระพริบ
+            if (imgKey !== 'conceal') {
+                if (!images[imgKey]) {
+                    images[imgKey] = new Image();
+                    // ตรวจสอบชื่อไฟล์ให้ตรงกับโฟลเดอร์
+                    images[imgKey].src = imgKey.startsWith('star') ? `images/star/${imgKey}.png` : `images/meteorite/meteor0.png`;
+                    images[imgKey].onload = () => renderGrid();
+                    // 🚩 ระหว่างรอมันโหลด ให้ใช้รูป 'conceal' ไปก่อน แต่ห้ามเปลี่ยนตัวแปร imgKey ถาวร
+                }
             }
 
-            let imgToDraw = images[imgKey] || images['conceal'];
+            let imgToDraw = (images[imgKey] && images[imgKey].complete) ? images[imgKey] : images['conceal'];
 
             // --- 2. วาดขอบหกเหลี่ยม ---
             ctx.beginPath();
@@ -3197,9 +3196,10 @@ async function endTravel() {
             })
         });
         
+        const mapRes = await fetch(`${API_BASE}/map/all-in-range?q=${playerQ}&r=${playerR}&range=${MAP_RANGE}`);
         const mapResult = await mapRes.json();
 
-        // 2. อัปเดตตำแหน่ง (ทำเหมือนเดิม)
+        // บันทึกตำแหน่งปัจจุบัน
         await fetch(`${API_BASE}/game/update-location`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3207,9 +3207,20 @@ async function endTravel() {
         });
 
         if (mapResult.success) {
-            serverMapData[key] = mapResult.tile;
+            // 🚩 อัปเดตข้อมูลดาวทั้งหมดที่เซิร์ฟเวอร์ส่งมาลงใน Cache เครื่องเรา
+            mapResult.tiles.forEach(tile => {
+                serverMapData[`${tile.q},${tile.r}`] = tile;
+            });
+            
+            // เพิ่มพิกัดปัจจุบันเข้าที่เคยไป
+            if (!visitedTiles.includes(key)) {
+                visitedTiles.push(key);
+                localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
+            }
+
             renderGrid();
-            showArrivalUI(mapResult.tile, playerQ, playerR);
+            // แสดง UI ดาวปัจจุบัน (หาจาก Cache ที่เพิ่งอัปเดต)
+            showArrivalUI(serverMapData[key], playerQ, playerR);
         }
     } catch (err) {
         console.error("Update error:", err);
