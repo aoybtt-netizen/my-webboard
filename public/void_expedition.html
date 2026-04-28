@@ -2733,40 +2733,45 @@ function renderInventoryGrid() {
     const gridContainer = document.getElementById('inventory-grid');
     gridContainer.innerHTML = '';
 
-    // --- 🚩 ขั้นตอนที่ 1: จัดกลุ่มไอเทม ---
     const displayList = [];
-    const resourceStacks = {}; // ใช้เก็บตัวชั่วคราวสำหรับพวกที่ stack ได้
+    const resourceStacks = {};
 
     playerInventory.forEach(item => {
         if (item.stackable) {
-            // ถ้า stack ได้ ให้รวมกลุ่มด้วยชื่อ (หรือ ID)
             if (resourceStacks[item.name]) {
                 resourceStacks[item.name].quantity += (item.quantity || 1);
             } else {
                 resourceStacks[item.name] = { ...item, quantity: (item.quantity || 1) };
             }
         } else {
-            // ถ้า stack ไม่ได้ (เช่น เครื่องยนต์) ให้แยกช่องทันที
             displayList.push({ ...item, quantity: 1 });
         }
     });
 
-    // นำของที่รวมกลุ่มเสร็จแล้ว มาใส่ในลิสต์ที่จะวาด
     Object.values(resourceStacks).forEach(stack => displayList.push(stack));
 
-    // --- 🚩 ขั้นตอนที่ 2: วาดลงตาราง ---
     displayList.forEach((item) => {
         const slot = document.createElement('div');
         slot.className = 'inv-slot';
         
+        // 🚩 [เริ่มจุดที่แก้ไข] 🚩
         const imgKey = item.imgKey || 'default';
-        const imgSrc = imageSources[imgKey] || 'images/default.png';
+        let imgSrc = "";
+
+        // ตรวจสอบว่า imgKey เป็น Path หรือเป็น Key ใน imageSources
+        if (imgKey.includes('/') || imgKey.includes('.png')) {
+            // กรณีเป็น Path เต็ม (แร่ที่ขุดได้ใหม่)
+            imgSrc = imgKey;
+        } else {
+            // กรณีเป็น Key สั้นๆ (แร่เริ่มต้น หรือไอเทมมาตรฐาน)
+            imgSrc = imageSources[imgKey] || 'images/default.png';
+        }
+        // 🚩 [จบจุดที่แก้ไข] 🚩
         
-        // ถ้าจำนวนมากกว่า 1 ให้แสดงตัวเลขกำกับ
         const countBadge = item.quantity > 1 ? `<span class="inv-count">${item.quantity}</span>` : "";
 
         slot.innerHTML = `
-            <img src="${imgSrc}" alt="${item.name}">
+            <img src="${imgSrc}" alt="${item.name}" onerror="this.src='images/meteorite/meteor0.png'">
             ${countBadge}
         `;
         
