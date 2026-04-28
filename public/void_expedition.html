@@ -829,14 +829,19 @@ button:hover { opacity: 0.8; }
 }
 
 
-/* หน้าต่างรายละเอียดไอเทม (Popup) */
-#item-detail-popup {
-    z-index: 2000 !important; /* ให้สูงกว่าหน้าต่างอื่นสองเท่า เพื่อให้เด้งมาข้างหน้าสุด */
+/* หน้าต่างคลัง (ตัวล่าง) */
+#ship-inventory-modal {
+    z-index: 1000 !important;
 }
 
-/* ปรับ Overlay พื้นหลังให้มืดลงเมื่อ Popup เปิด */
+/* หน้าต่างรายละเอียดไอเทม (ตัวบน) */
+#item-detail-popup {
+    z-index: 2000 !important; /* บังคับให้สูงกว่าเสมอ */
+}
+
+/* ปรับพื้นหลังของหน้าต่างที่ซ้อนอยู่ข้างบนให้มืดลงอีกนิดเพื่อให้ดูแยกกันออก */
 #item-detail-popup.menu-overlay {
-    background: rgba(0, 0, 0, 0.8); /* มืดขึ้นเพื่อเน้นหน้าต่างไอเทม */
+    background: rgba(0, 0, 0, 0.7); 
 }
 
 .inventory-panel {
@@ -4796,12 +4801,12 @@ function openItemPopup(item, directImgSrc = null) {
 
         // 🚩 [เพิ่มตรงนี้] แสดงชื่อผู้ค้นพบคนแรก
         const discoverer = item.firstMinedBy || "Unknown Pioneer";
-        detailHTML += `
-            <div style="background: rgba(0,210,255,0.1); padding: 8px; border-radius: 5px; margin-top: 10px;">
-                <div style="font-size: 0.6rem; color: var(--neon-blue); opacity: 0.8; letter-spacing: 1px;">FIRST DISCOVERED BY</div>
-                <div style="font-size: 0.8rem; color: #fff; font-weight: bold;"><i class="fas fa-user-tag"></i> ${discoverer.toUpperCase()}</div>
-            </div>
-        `;
+detailHTML += `
+    <div style="background: rgba(0,210,255,0.1); padding: 8px; border-radius: 5px; margin-top: 10px; border: 1px solid rgba(0,210,255,0.2);">
+        <div style="font-size: 0.55rem; color: var(--neon-blue); opacity: 0.8; letter-spacing: 1px; text-transform: uppercase;">First Discovered By</div>
+        <div style="font-size: 0.8rem; color: #fff; font-weight: bold;"><i class="fas fa-user-tag" style="font-size: 0.7rem;"></i> ${discoverer.toUpperCase()}</div>
+    </div>
+`;
 
         detailHTML += `<div style="margin-top:10px; opacity:0.5; font-size:0.65rem;">
                         QUANTITY: ${item.quantity || 1} | TYPE: ${item.type.toUpperCase()}
