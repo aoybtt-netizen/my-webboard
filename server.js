@@ -1495,7 +1495,7 @@ app.post('/api/:mode/game/update-location', async (req, res) => {
 
 // 3.1 API ดึงข้อมูลทรัพยากร (Stats)
 app.get('/api/:mode/game/stats/:username', async (req, res) => {
-    const { mode, username } = req.params; // 🚩 ดึงจาก params ทั้งคู่
+    const { mode, username } = req.params;
     const db = getDB(mode);
 
     try {
@@ -1503,20 +1503,22 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
         if (!user) return res.status(404).json({ message: "User not found" });
 
         res.json({
-			gameNickname: user.gameNickname,
-			metal: user.metal ?? 0,
-			energy: user.energy ?? 100,
-			coinsgc: user.coinsgc ?? 0,
-			gameUSDT: user.gameUSDT ?? 0,
-			currentQ: user.currentQ ?? 0,
-			currentR: user.currentR ?? 0,
-			// 🚩 ส่งข้อมูลพวกนี้กลับไปด้วย
-			minedTiles: user.minedTiles || [],
-			equipped: user.equipped || {},
-			inventory: user.inventory || [],
-			cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 },
-			shipStats: user.shipStats || { durability: 100, maxDurability: 100, repairCost: { metal: 1, energy: 1, tech: 1 } }
-		});
+            gameNickname: user.gameNickname,
+            metal: user.metal ?? 0,
+            energy: user.energy ?? 100,
+            coinsgc: user.coinsgc ?? 0,
+            gameUSDT: user.gameUSDT ?? 0,
+            currentQ: user.currentQ ?? 0,
+            currentR: user.currentR ?? 0,
+            minedTiles: user.minedTiles || [],
+            equipped: user.equipped || {},
+            inventory: user.inventory || [],
+            cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 },
+            shipStats: user.shipStats || { durability: 100, maxDurability: 100, repairCost: { metal: 1, energy: 1, tech: 1 } },
+            
+            // 🚩 [แทรกบรรทัดนี้] ส่ง Object stats กลับไปด้วย
+            stats: user.stats || { planetsDiscovered: 0, totalDiscoveries: 0 } 
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

@@ -1955,8 +1955,8 @@ async function syncStaticStars() {
             // --- [1] อัปเดตข้อมูลพื้นฐาน & HUD ---
             safeSetText('display-nickname', nick);
             safeSetText('profile-full-name', nick);
-			const planetsFound = data.stats?.planetsDiscovered || 0;
-			const mineralsFound = data.stats?.mineralsDiscovered || 0;
+			const planetsFound = data.stats?.planetsDiscovered || 0; 
+			const mineralsFound = data.stats?.totalDiscoveries || 0;
 			safeSetText('stat-planets-count', planetsFound.toLocaleString());
 			safeSetText('stat-minerals-count', mineralsFound.toLocaleString());
             
