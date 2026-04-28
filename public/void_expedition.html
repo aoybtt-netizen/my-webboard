@@ -829,7 +829,15 @@ button:hover { opacity: 0.8; }
 }
 
 
+/* หน้าต่างรายละเอียดไอเทม (Popup) */
+#item-detail-popup {
+    z-index: 2000 !important; /* ให้สูงกว่าหน้าต่างอื่นสองเท่า เพื่อให้เด้งมาข้างหน้าสุด */
+}
 
+/* ปรับ Overlay พื้นหลังให้มืดลงเมื่อ Popup เปิด */
+#item-detail-popup.menu-overlay {
+    background: rgba(0, 0, 0, 0.8); /* มืดขึ้นเพื่อเน้นหน้าต่างไอเทม */
+}
 
 .inventory-panel {
     width: 95%;
@@ -837,6 +845,7 @@ button:hover { opacity: 0.8; }
     background: rgba(5, 10, 20, 0.95);
     border: 2px solid var(--neon-blue);
     box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
+	z-index: 1000;
 }
 
 .inventory-grid-container {
@@ -4759,10 +4768,8 @@ function openItemPopup(item, directImgSrc = null) {
     const popup = document.getElementById('item-detail-popup');
     if (!popup) return;
 
-    // 1. ตั้งชื่อ
     document.getElementById('pop-name').innerText = item.name.toUpperCase();
     
-    // 2. จัดการรูปภาพ (ใช้ Smart Logic ที่เราคุยกัน)
     let imgSrc = directImgSrc; 
     if (!imgSrc) {
         const rawImg = item.imgKey || item.img || 'default';
@@ -4772,38 +4779,46 @@ function openItemPopup(item, directImgSrc = null) {
     const imgContainer = popup.querySelector('.img-square');
     imgContainer.innerHTML = `<img src="${imgSrc}" style="width:80px; height:80px; object-fit:contain;" onerror="this.src='images/meteorite/meteor0.png'">`;
 
-    // 3. แยก Logic การแสดงผลตามประเภทไอเทม
     let detailHTML = "";
     const installBtn = document.getElementById('pop-install-btn');
-    installBtn.style.display = 'none'; // ปิดปุ่มติดตั้งไว้ก่อนเป็นค่าเริ่มต้น
+    installBtn.style.display = 'none';
 
+    // 🚩 กรณีเป็น "แร่" (Resource)
     if (item.stackable || item.type === 'metal' || item.type === 'energy' || item.type === 'technology') {
-        // 💎 กรณีเป็น "แร่" หรือ "ทรัพยากร"
-        if (item.value) detailHTML += `<div style="color:#ffcc00; font-weight:bold;"><i class="fas fa-coins"></i> VALUE: ${item.value} GC</div>`;
+        
+        // --- ส่วนแสดงราคาและสถานะ ---
+        if (item.value) detailHTML += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fas fa-coins"></i> VALUE: ${item.value} GC</div>`;
         if (item.metal > 0) detailHTML += `<div style="color:var(--neon-blue);">METAL: +${item.metal}</div>`;
         if (item.energy > 0) detailHTML += `<div style="color:var(--neon-green);">ENERGY: +${item.energy}</div>`;
         if (item.tech > 0) detailHTML += `<div style="color:#a16eff;">TECH: +${item.tech}</div>`;
         
-        detailHTML += `<div style="margin-top:10px; opacity:0.6; font-size:0.7rem;">
-                        QUANTITY: ${item.quantity || 1}<br>TYPE: ${item.type.toUpperCase()}
+        detailHTML += `<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">`;
+
+        // 🚩 [เพิ่มตรงนี้] แสดงชื่อผู้ค้นพบคนแรก
+        const discoverer = item.firstMinedBy || "Unknown Pioneer";
+        detailHTML += `
+            <div style="background: rgba(0,210,255,0.1); padding: 8px; border-radius: 5px; margin-top: 10px;">
+                <div style="font-size: 0.6rem; color: var(--neon-blue); opacity: 0.8; letter-spacing: 1px;">FIRST DISCOVERED BY</div>
+                <div style="font-size: 0.8rem; color: #fff; font-weight: bold;"><i class="fas fa-user-tag"></i> ${discoverer.toUpperCase()}</div>
+            </div>
+        `;
+
+        detailHTML += `<div style="margin-top:10px; opacity:0.5; font-size:0.65rem;">
+                        QUANTITY: ${item.quantity || 1} | TYPE: ${item.type.toUpperCase()}
                       </div>`;
     } 
-    else if (item.type === 'blueprint') {
-        // 📜 กรณีเป็น "พิมพ์เขียว"
-        detailHTML = `<div style="color:var(--neon-blue);">BLUEPRINT</div>
-                      <div style="font-size:0.75rem; opacity:0.8;">ต้องใช้ชิ้นส่วนและโรงงานเพื่อคราฟต์ไอเทมนี้</div>`;
-    }
     else {
-        // ⚙️ กรณีเป็น "อุปกรณ์" (เครื่องยนต์, สว่าน, โล่)
-        // ใช้ฟังก์ชันเดิมที่กัปตันมี (getItemStatusHTML)
+        // ⚙️ กรณีเป็น "อุปกรณ์" (Logic เดิม)
         detailHTML = typeof getItemStatusHTML === 'function' ? getItemStatusHTML(item) : "EQUIPMENT DATA";
-        
-        // เปิดปุ่มติดตั้ง
-        installBtn.style.display = 'block';
-        installBtn.onclick = () => confirmInstall(item.id);
+        if (item.type !== 'blueprint') {
+            installBtn.style.display = 'block';
+            installBtn.onclick = () => confirmInstall(item.id);
+        }
     }
 
     document.getElementById('pop-status').innerHTML = detailHTML;
+    
+    // แสดงผล
     popup.style.display = 'flex';
 }
 
