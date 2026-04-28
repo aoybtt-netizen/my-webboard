@@ -2753,19 +2753,30 @@ function renderInventoryGrid() {
     displayList.forEach((item) => {
         const slot = document.createElement('div');
         slot.className = 'inv-slot';
-        const imgKey = item.imgKey || 'default';
+        
+        // 🚩 [จุดวิเคราะห์ปัญหา]
+        // เช็คก่อนว่าไอเทมใช้ชื่อตัวแปรไหนเก็บรูป (imgKey หรือ img)
+        const rawImg = item.imgKey || item.img || 'default';
         let imgSrc = "";
 
-        if (imgKey.includes('/')) {
-            imgSrc = imgKey;
+        if (rawImg.includes('/')) {
+            // ✅ กรณีขุดได้ใหม่: เป็น Path เต็ม เช่น "images/ore/metal/ore2.png"
+            imgSrc = rawImg;
         } else {
-            imgSrc = imageSources[imgKey] || 'images/meteorite/meteor0.png';
+            // ✅ กรณีแร่เริ่มต้น: เป็น Key เช่น "orem1" หรือ "EnergyChip0"
+            imgSrc = imageSources[rawImg] || 'images/meteorite/meteor0.png';
+        }
+
+        // 📝 Debug: กัปตันเปิด F12 ดูใน Console จะเห็นเลยว่าตัวไหนหาไม่เจอ
+        if (imgSrc.includes('undefined') || !imgSrc) {
+            console.warn(`[Inventory] Missing image for: ${item.name}`, item);
         }
         
         const countBadge = item.quantity > 1 ? `<span class="inv-count">${item.quantity}</span>` : "";
 
         slot.innerHTML = `
-            <img src="${imgSrc}" alt="${item.name}" onerror="this.src='images/meteorite/meteor0.png'">
+            <img src="${imgSrc}" alt="${item.name}" 
+                 onerror="this.onerror=null; this.src='images/meteorite/meteor0.png'; console.error('Failed to load:', '${imgSrc}')">
             ${countBadge}
         `;
         
