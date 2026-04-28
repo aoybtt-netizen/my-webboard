@@ -2806,46 +2806,11 @@ function renderInventoryGrid() {
             ${countBadge}
         `;
         
-        slot.onclick = () => openItemPopup2(item, imgSrc);
+        slot.onclick = () => openItemPopup(item, imgSrc);
         gridContainer.appendChild(slot);
     });
 }
 
-function openItemPopup2(item, directImgSrc) {
-    const modal = document.getElementById('item-popup-modal');
-    const nameEl = document.getElementById('popup-item-name');
-    const imgEl = document.getElementById('popup-item-img');
-    const statsEl = document.getElementById('popup-item-stats');
-
-    if (!modal || !nameEl || !imgEl || !statsEl) {
-        console.error("❌ หาองค์ประกอบ Modal ไม่เจอ เช็ค ID ใน HTML ของกัปตันอีกทีครับ");
-        return;
-    }
-
-    nameEl.innerText = item.name.toUpperCase();
-
-    // 🚩 ใช้รูปที่ส่งต่อมาจากหน้า Grid ที่มันโชว์ติดแล้วแน่นอน
-    imgEl.src = directImgSrc || 'images/meteorite/meteor0.png';
-    
-    // เผื่อเหนียว: ถ้าโหลดภาพที่ส่งมาไม่ขึ้นจริงๆ
-    imgEl.onerror = function() { 
-        this.onerror = null; 
-        this.src = 'images/meteorite/meteor0.png'; 
-    };
-
-    let statsHTML = "";
-    if (item.value) statsHTML += `<div style="color:#ffcc00; margin-bottom:5px;"><i class="fas fa-coins"></i> MARKET VALUE: ${item.value} GC</div>`;
-    if (item.metal > 0) statsHTML += `<div style="color:var(--neon-blue);">METAL: +${item.metal}</div>`;
-    if (item.energy > 0) statsHTML += `<div style="color:var(--neon-green);">ENERGY: +${item.energy}</div>`;
-    if (item.tech > 0) statsHTML += `<div style="color:#a16eff;">TECH: +${item.tech}</div>`;
-    
-    statsHTML += `<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">`;
-    statsHTML += `<div style="opacity:0.6; font-size:0.7rem;">TYPE: ${item.type ? item.type.toUpperCase() : 'UNKNOWN'}</div>`;
-    statsHTML += `<div style="opacity:0.6; font-size:0.7rem;">TOTAL QTY: ${item.quantity || 1}</div>`;
-
-    statsEl.innerHTML = statsHTML;
-    modal.style.display = 'flex';
-}
 
 
 // ปรับฟังก์ชันปิดให้กันการคลิกโดนแผงข้างในแล้วปิดเอง
