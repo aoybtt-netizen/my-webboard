@@ -1501,6 +1501,29 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
     }
 });
 
+// 3.2 รับข้อมูลแผนที่แบบเป็นช่วง
+app.get('/api/:mode/map/all-in-range', async (req, res) => {
+    const { mode } = req.params;
+    const { q, r, range } = req.query;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+    
+    try {
+        const Q = Number(q);
+        const R = Number(r);
+        const Range = Number(range);
+
+        // ดึงดาวทั้วหมดในระยะที่ผู้เล่นมองเห็น
+        const tiles = await db.collection("map_tiles").find({
+            q: { $gte: Q - Range, $lte: Q + Range },
+            r: { $gte: R - Range, $lte: R + Range }
+        }).toArray();
+
+        res.json({ success: true, tiles });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 4. API การขุดแร่ (Mining) - เพิ่ม :mode
 app.post('/api/:mode/mine', async (req, res) => {
     const { mode } = req.params;
