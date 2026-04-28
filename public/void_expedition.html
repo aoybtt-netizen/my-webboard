@@ -2753,20 +2753,14 @@ function renderInventoryGrid() {
     displayList.forEach((item) => {
         const slot = document.createElement('div');
         slot.className = 'inv-slot';
-        
-        // 🚩 [เริ่มจุดที่แก้ไข] 🚩
         const imgKey = item.imgKey || 'default';
         let imgSrc = "";
 
-        // ตรวจสอบว่า imgKey เป็น Path หรือเป็น Key ใน imageSources
-        if (imgKey.includes('/') || imgKey.includes('.png')) {
-            // กรณีเป็น Path เต็ม (แร่ที่ขุดได้ใหม่)
+        if (imgKey.includes('/')) {
             imgSrc = imgKey;
         } else {
-            // กรณีเป็น Key สั้นๆ (แร่เริ่มต้น หรือไอเทมมาตรฐาน)
-            imgSrc = imageSources[imgKey] || 'images/default.png';
+            imgSrc = imageSources[imgKey] || 'images/meteorite/meteor0.png';
         }
-        // 🚩 [จบจุดที่แก้ไข] 🚩
         
         const countBadge = item.quantity > 1 ? `<span class="inv-count">${item.quantity}</span>` : "";
 
