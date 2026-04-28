@@ -2372,24 +2372,24 @@ async function openStarDetail() {
                 const percent = maxStarOre > 0 ? (mCurrent / mMax) * 100 : 0;
                 const barColor = percent > 50 ? 'var(--neon-green)' : (percent > 20 ? '#ffcc00' : '#ff4b2b');
                 
-                const oreImg = imageSources[m.img] || 'images/ore/default.png';
+                const oreImg = m.imgKey || (imageSources[m.img] ? imageSources[m.img] : 'images/star/star0.png');
 
                 mineralHTML += `
-                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05);">
-                        <div style="display:flex; align-items:center;">
-                            <img src="${oreImg}" style="width:30px; height:30px; margin-right:10px;">
-                            <div style="flex:1;">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:white;">
-                                    <span>${m.name}</span>
-                                    <span style="color:${barColor}; font-weight:bold;">${mCurrent.toLocaleString()} kg</span>
-                                </div>
-                                <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:5px;">
-                                    <div style="width:${percent}%; height:100%; background:${barColor}; transition:0.5s;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-            });
+        <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05);">
+            <div style="display:flex; align-items:center;">
+                <img src="${oreImg}" style="width:30px; height:30px; margin-right:10px; object-fit:contain;" onerror="this.src='images/meteorite/meteor0.png'">
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:white;">
+                        <span>${m.name}</span>
+                        <span style="color:${barColor}; font-weight:bold;">${mCurrent.toLocaleString()} kg</span>
+                    </div>
+                    <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:5px;">
+                        <div style="width:${percent}%; height:100%; background:${barColor}; transition:0.5s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+		});
             mineralHTML += `</div>`;
         }
     }
