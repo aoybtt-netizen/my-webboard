@@ -2806,37 +2806,34 @@ function renderInventoryGrid() {
             ${countBadge}
         `;
         
-        slot.onclick = () => openItemPopup(item);
+        slot.onclick = () => openItemPopup(item, imgSrc);
         gridContainer.appendChild(slot);
     });
 }
 
-function openItemPopup(item) {
+function openItemPopup(item, directImgSrc) {
     const modal = document.getElementById('item-popup-modal');
     const nameEl = document.getElementById('popup-item-name');
     const imgEl = document.getElementById('popup-item-img');
     const statsEl = document.getElementById('popup-item-stats');
 
+    if (!modal || !nameEl || !imgEl || !statsEl) {
+        console.error("❌ หาองค์ประกอบ Modal ไม่เจอ เช็ค ID ใน HTML ของกัปตันอีกทีครับ");
+        return;
+    }
+
     nameEl.innerText = item.name.toUpperCase();
 
-    // 🚩 [แก้ไขจุดนี้] ใช้ Logic เดียวกับ renderInventoryGrid เป๊ะๆ
-    const rawImg = item.imgKey || item.img || 'default';
-    let imgSrc = "";
-
-    if (rawImg.includes('/')) {
-        // ✅ ถ้าเป็น Path เต็ม (แร่ใหม่)
-        imgSrc = rawImg;
-    } else {
-        // ✅ ถ้าเป็น Key สั้น (ไอเทมเริ่มต้น) ให้ดึงจาก imageSources
-        // และถ้าหาใน imageSources ไม่เจอ ให้ไปที่ meteor0 แทน default.png
-        imgSrc = imageSources[rawImg] || imageSources['meteor0'] || 'images/meteorite/meteor0.png';
-    }
+    // 🚩 ใช้รูปที่ส่งต่อมาจากหน้า Grid ที่มันโชว์ติดแล้วแน่นอน
+    imgEl.src = directImgSrc || 'images/meteorite/meteor0.png';
     
-    imgEl.src = imgSrc;
-    // เพิ่ม onerror สำรองอีกชั้นกันพลาด
-    imgEl.onerror = function() { this.src = 'images/meteorite/meteor0.png'; };
+    // เผื่อเหนียว: ถ้าโหลดภาพที่ส่งมาไม่ขึ้นจริงๆ
+    imgEl.onerror = function() { 
+        this.onerror = null; 
+        this.src = 'images/meteorite/meteor0.png'; 
+    };
 
-    // 🚩 [ส่วนสถิติเหมือนเดิม]
+    // --- ส่วนสถิติ (เหมือนเดิม) ---
     let statsHTML = "";
     if (item.value) statsHTML += `<div style="color:#ffcc00; margin-bottom:5px;"><i class="fas fa-coins"></i> MARKET VALUE: ${item.value} GC</div>`;
     if (item.metal > 0) statsHTML += `<div style="color:var(--neon-blue);">METAL: +${item.metal}</div>`;
