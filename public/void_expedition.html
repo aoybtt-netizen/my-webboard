@@ -1066,6 +1066,25 @@ button:hover { opacity: 0.8; }
 </div>
 
 
+<div id="item-detail-popup" class="menu-overlay" onclick="this.style.display='none'" style="display: none; z-index: 1500;">
+    <div class="glass-panel" style="width: 320px; text-align: center; border: 1px solid var(--neon-blue);" onclick="event.stopPropagation()">
+        
+        <h3 id="pop-name" style="margin-top: 0; color: var(--neon-blue); letter-spacing: 2px;">ITEM NAME</h3>
+        
+        <div class="img-square" style="width: 100px; height: 100px; margin: 20px auto; background: rgba(255,255,255,0.05); border-radius: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,210,255,0.2);">
+            </div>
+
+        <div id="pop-status" style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
+            </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button id="pop-install-btn" class="auth-btn" style="flex: 1; display: none; background: var(--neon-green); color: #000;">INSTALL</button>
+            <button class="auth-btn" style="flex: 1; background: #444;" onclick="document.getElementById('item-detail-popup').style.display='none'">CLOSE</button>
+        </div>
+    </div>
+</div>
+
+
 
 
 
@@ -4735,34 +4754,56 @@ function equipModule(itemId) {
     renderCategoryContent(); // วาดใหม่ทันที
 }
 
-// 🚩 ฟังก์ชันเปิด Popup เพื่อดูรายละเอียดก่อนติดตั้ง
-function openItemPopup(item) {
+
+function openItemPopup(item, directImgSrc = null) {
     const popup = document.getElementById('item-detail-popup');
     if (!popup) return;
 
-    // ใส่ข้อมูลลงใน Popup
+    // 1. ตั้งชื่อ
     document.getElementById('pop-name').innerText = item.name.toUpperCase();
     
-    const imgKey = item.imgKey || 'default';
-    const imgSrc = imageSources[imgKey] || 'images/default.png';
+    // 2. จัดการรูปภาพ (ใช้ Smart Logic ที่เราคุยกัน)
+    let imgSrc = directImgSrc; 
+    if (!imgSrc) {
+        const rawImg = item.imgKey || item.img || 'default';
+        imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+    }
+
     const imgContainer = popup.querySelector('.img-square');
-    imgContainer.innerHTML = `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">`;
+    imgContainer.innerHTML = `<img src="${imgSrc}" style="width:80px; height:80px; object-fit:contain;" onerror="this.src='images/meteorite/meteor0.png'">`;
 
-    // แสดงสถานะ (Reuse ฟังก์ชันเดิมที่กัปตันมี)
-    document.getElementById('pop-status').innerHTML = getItemStatusHTML(item);
-
-    // 🚩 จัดการปุ่มติดตั้ง
+    // 3. แยก Logic การแสดงผลตามประเภทไอเทม
+    let detailHTML = "";
     const installBtn = document.getElementById('pop-install-btn');
-    
-    // ถ้าเป็น Blueprint หรือทรัพยากร ให้ซ่อนปุ่มติดตั้ง (เพราะติดไม่ได้ ต้องไปคราฟต์ก่อน)
-    if (item.type === 'blueprint' || item.stackable) {
-        installBtn.style.display = 'none';
-    } else {
+    installBtn.style.display = 'none'; // ปิดปุ่มติดตั้งไว้ก่อนเป็นค่าเริ่มต้น
+
+    if (item.stackable || item.type === 'metal' || item.type === 'energy' || item.type === 'technology') {
+        // 💎 กรณีเป็น "แร่" หรือ "ทรัพยากร"
+        if (item.value) detailHTML += `<div style="color:#ffcc00; font-weight:bold;"><i class="fas fa-coins"></i> VALUE: ${item.value} GC</div>`;
+        if (item.metal > 0) detailHTML += `<div style="color:var(--neon-blue);">METAL: +${item.metal}</div>`;
+        if (item.energy > 0) detailHTML += `<div style="color:var(--neon-green);">ENERGY: +${item.energy}</div>`;
+        if (item.tech > 0) detailHTML += `<div style="color:#a16eff;">TECH: +${item.tech}</div>`;
+        
+        detailHTML += `<div style="margin-top:10px; opacity:0.6; font-size:0.7rem;">
+                        QUANTITY: ${item.quantity || 1}<br>TYPE: ${item.type.toUpperCase()}
+                      </div>`;
+    } 
+    else if (item.type === 'blueprint') {
+        // 📜 กรณีเป็น "พิมพ์เขียว"
+        detailHTML = `<div style="color:var(--neon-blue);">BLUEPRINT</div>
+                      <div style="font-size:0.75rem; opacity:0.8;">ต้องใช้ชิ้นส่วนและโรงงานเพื่อคราฟต์ไอเทมนี้</div>`;
+    }
+    else {
+        // ⚙️ กรณีเป็น "อุปกรณ์" (เครื่องยนต์, สว่าน, โล่)
+        // ใช้ฟังก์ชันเดิมที่กัปตันมี (getItemStatusHTML)
+        detailHTML = typeof getItemStatusHTML === 'function' ? getItemStatusHTML(item) : "EQUIPMENT DATA";
+        
+        // เปิดปุ่มติดตั้ง
         installBtn.style.display = 'block';
-        // ผูกฟังก์ชันเข้ากับปุ่ม
         installBtn.onclick = () => confirmInstall(item.id);
     }
 
+    document.getElementById('pop-status').innerHTML = detailHTML;
     popup.style.display = 'flex';
 }
 
