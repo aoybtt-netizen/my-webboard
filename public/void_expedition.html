@@ -2365,19 +2365,32 @@ async function openStarDetail() {
             const maxStarOre = starData.maxStarCapacity || 2000;
 
             starData.minerals.forEach(m => {
-                // คำนวณแร่จาก ratio
-                const ratio = m.ratio || 1; // ถ้าไม่มี ratio ให้ถือว่ามี 100%
-                const mCurrent = Math.floor(totalStarOre * ratio);
-                const mMax = Math.floor(maxStarOre * ratio);
-                const percent = maxStarOre > 0 ? (mCurrent / mMax) * 100 : 0;
-                const barColor = percent > 50 ? 'var(--neon-green)' : (percent > 20 ? '#ffcc00' : '#ff4b2b');
-                
-                const oreImg = m.imgKey || (imageSources[m.img] ? imageSources[m.img] : 'images/star/star0.png');
+    // 1. คำนวณปริมาณแร่ (เหมือนเดิมของกัปตัน)
+    const ratio = m.ratio || 1;
+    const mCurrent = Math.floor((starData.currentStarAmount || 0) * ratio);
+    const mMax = Math.floor((starData.maxStarCapacity || 2000) * ratio);
+    const percent = mMax > 0 ? (mCurrent / mMax) * 100 : 0;
+    const barColor = percent > 50 ? 'var(--neon-green)' : (percent > 20 ? '#ffcc00' : '#ff4b2b');
 
-                mineralHTML += `
+    // 🚩 2. เลือกรูปภาพ (Logic ลำดับความสำคัญ)
+    let oreImg = "";
+    if (m.imgKey) {
+        // ถ้ามี Path เต็มมาจากระบบสุ่มใหม่ (Discovery)
+        oreImg = m.imgKey;
+    } else if (m.img && imageSources[m.img]) {
+        // ถ้าเป็น Key (เช่น orem1) จากระบบ Static (Gedgozone 1-6)
+        oreImg = imageSources[m.img];
+    } else {
+        // ตัวสำรองสุดท้าย ถ้าหาอะไรไม่เจอเลย ให้ใช้รูปอุกกาบาต
+        oreImg = imageSources['ast0']; 
+    }
+
+    mineralHTML += `
         <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05);">
             <div style="display:flex; align-items:center;">
-                <img src="${oreImg}" style="width:30px; height:30px; margin-right:10px; object-fit:contain;" onerror="this.src='images/meteorite/meteor0.png'">
+                <img src="${oreImg}" 
+                     style="width:30px; height:30px; margin-right:10px; object-fit:contain;"
+                     onerror="this.src='images/meteorite/asteroids0.png'">
                 <div style="flex:1;">
                     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:white;">
                         <span>${m.name}</span>
@@ -2389,7 +2402,7 @@ async function openStarDetail() {
                 </div>
             </div>
         </div>`;
-		});
+});
             mineralHTML += `</div>`;
         }
     }

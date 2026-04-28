@@ -1908,7 +1908,7 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
                 if (statusVal <= 3) imgNum = 2;
                 else if (statusVal <= 6) imgNum = Math.floor(Math.random() * 3) + 2; // สุ่ม 2-4
                 else imgNum = 5;
-
+				const finalImgPath = `images/ore/${mainConfig.folder}/ore${imgNum}.png`;
                 generatedMinerals.push({
                     id: `ore_${Date.now()}_${i}_${Math.floor(Math.random()*100)}`,
                     name: mineralName,
@@ -1919,7 +1919,7 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
                     tech: currentConfig.type === 'technology' ? statusVal : 0,
                     value: statusVal * currentConfig.valueMult,
                     stackable: true,
-                    imgKey: `images/${currentConfig.folder}/ore${imgNum}.png`,
+                    imgKey: finalImgPath,
                     firstMinedBy: minerName, 
                     minedAt: Date.now()
                 });
