@@ -3676,20 +3676,15 @@ function showMineralChoices() {
     
     container.innerHTML = '';
     
-    // 🚩 1. ดึงข้อมูลแร่จริงจากดาวดวงปัจจุบัน
     const coordKey = `${playerQ},${playerR}`;
     const starData = serverMapData[coordKey];
 
-    // ถ้าดาวดวงนี้ไม่มีแร่ (หรือเป็นอวกาศว่างเปล่า) ให้ไม่แสดงอะไร
     if (!starData || !starData.minerals || starData.minerals.length === 0) {
         overlay.style.display = 'none';
         return;
     }
 
-    // 🚩 2. วนลูปสร้างการ์ดแร่ตามจำนวนที่ดาวดวงนี้มี (หรือสุ่มมาโชว์ 3 ช่อง)
-    // เราจะวนลูปตาม starData.minerals ที่เราสุ่มไว้ตอนแรก
     starData.minerals.forEach(m => {
-        // คำนวณ Success Rate (ใช้ค่าพื้นฐาน 70% ถ้าไม่ได้ระบุโอกาสไว้)
         const baseChance = m.chance || 70;
         const successRate = Math.max(5, baseChance - (drillHeat / 2));
         
@@ -3698,18 +3693,31 @@ function showMineralChoices() {
         card.style.pointerEvents = 'auto'; 
         card.style.cursor = 'pointer';
 
-        // ดึงรูปจาก imageSources หรือ path ปกติ
-        const imgSrc = imageSources[m.img] || `images/ore/${m.img}.png`;
+        // 🚩 [จุดที่ต้องแก้ไข] 🚩
+        // 1. ดึงค่าจาก imgKey (ระบบใหม่) หรือ img (ระบบเก่า)
+        const rawPath = m.imgKey || m.img || "";
+        let imgSrc = "";
+
+        if (rawPath.includes('/')) {
+            // กรณีเป็น Path เต็ม (เช่น images/ore/metal/ore2.png)
+            imgSrc = rawPath;
+        } else if (imageSources[rawPath]) {
+            // กรณีเป็น Key สั้น (เช่น orem1)
+            imgSrc = imageSources[rawPath];
+        } else {
+            // กรณีไม่มีข้อมูลเลย ให้ดึงรูปตามประเภทแร่มาโชว์
+            const type = m.type || "metal";
+            imgSrc = `images/ore/${type}/ore2.png`;
+        }
 
         card.innerHTML = `
-            <img src="${imgSrc}" style="width:40px; pointer-events: none; object-fit: contain;">
+            <img src="${imgSrc}" style="width:40px; pointer-events: none; object-fit: contain;" onerror="this.src='images/meteorite/meteor0.png'">
             <div style="font-size:0.7rem; font-weight:bold; pointer-events: none; color: white;">${m.name}</div>
             <div style="font-size:0.5rem; color:#38ef7d; pointer-events: none;">SUCCESS: ${Math.floor(successRate)}%</div>
         `;
         
         card.onclick = (e) => {
             e.stopPropagation();
-            // 🚩 เรียกฟังก์ชันเก็บแร่ที่เชื่อมต่อกับ Backend
             attemptCollect(m, successRate);
         };
         
@@ -3728,20 +3736,28 @@ async function attemptCollect(mineral, rate) {
 
     if (isSuccess) {
         try {
+            // 📝 ลอง Log ดูหน่อยว่าแร่ที่จะเก็บมี Path รูปติดมาไหม
+            console.log("🛸 Collecting mineral:", mineral);
+
             const response = await fetch(`${API_BASE}/game/add-mineral`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: currentUser,
-                    // 🚩 เพิ่มพิกัดตรงนี้เพื่อให้ Server รู้ว่าต้องไปหักแร่ที่ดาวดวงไหน
                     q: playerQ, 
                     r: playerR,
+                    mode: 'test', // 🚩 อย่าลืมระบุโหมดเพื่อให้ Server ลงถูก DB
                     mineral: {
                         name: mineral.name,
-                        imgKey: mineral.img,
+                        // 🚩 [จุดที่ต้องแก้] เช็คทั้ง imgKey (ของใหม่) และ img (ของเก่า)
+                        imgKey: mineral.imgKey || mineral.img || 'images/ore/default.png',
                         type: mineral.type || 'resource',
+                        metal: mineral.metal || 0,
+                        energy: mineral.energy || 0,
+                        tech: mineral.tech || 0,
+                        value: mineral.value || 0,
                         stackable: true,
-                        quantity: 10,
+                        quantity: 1, // ปรับตามความเหมาะสม (เดิมกัปตันให้ 10)
                         weightPerUnit: 1
                     }
                 })
@@ -3749,12 +3765,9 @@ async function attemptCollect(mineral, rate) {
 
             const result = await response.json();
             if (result.success) {
-                showMiningToast(`สำเร็จ! ได้รับ ${mineral.name} +10`, "#38ef7d");
-                checkGameProfile(); // อัปเดต Stats ผู้เล่น
-                
-                // 🚩 หลังจากขุดเสร็จ ให้สั่ง Sync ข้อมูลดาวนี้ใหม่ทันที 
-                // เพื่อให้ยอดแร่ในหน้า Detail หรือ Map อัปเดตตามจริง
-                syncSpecificStar(playerQ, playerR); 
+                showMiningToast(`สำเร็จ! ได้รับ ${mineral.name}`, "#38ef7d");
+                checkGameProfile(); // อัปเดตข้อมูลผู้เล่น
+                syncSpecificStar(playerQ, playerR); // อัปเดตข้อมูลดาว
             } else {
                 showMiningToast(result.message, "#ff4b2b");
             }
