@@ -1860,12 +1860,10 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
 
         if (!tile) return res.status(404).json({ success: false, message: "ไม่พบข้อมูลดาว" });
 
-        // 🚩 Discovery ครั้งแรก: เปิดหน้าไพ่แร่
         if (!tile.minerals || tile.minerals.length === 0) {
             const distance = getServerHexDistance(0, 0, queryQ, queryR);
             const slots = tile.mineralSlots || 1; 
 
-            // กำหนดช่วง Status ตามระยะทาง
             let minStat, maxStat;
             if (distance <= 15) { minStat = 2; maxStat = 3; }
             else if (distance <= 50) { minStat = 2; maxStat = 4; }
@@ -1883,13 +1881,9 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
             const prefixes = ['VOID', 'RARE', 'CORE', 'ZENITH', 'NORD', 'PRIME', 'AXIS'];
             const minerName = nickname || username;
 
-            // 🚩 [Loop ตามจำนวน Slots]
             for (let i = 0; i < slots; i++) {
-                
-                // 1. [ย้ายมาไว้ข้างใน] สุ่มประเภทใหม่ "ทุกครั้ง" ในแต่ละรอบ
                 const currentConfig = typeConfigs[Math.floor(Math.random() * typeConfigs.length)];
 
-                // 2. เช็คชื่อซ้ำระดับจักรวาล (เหมือนเดิม)
                 let mineralName = "";
                 let isNameDuplicate = true;
                 while (isNameDuplicate) {
@@ -1900,20 +1894,20 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
                     if (!existingName) isNameDuplicate = false;
                 }
 
-                // 3. สุ่มค่า Status ของ Slot นี้
                 const statusVal = Math.floor(Math.random() * (maxStat - minStat + 1)) + minStat;
                 
-                // 4. เลือกรูปภาพตามเกณฑ์ของประเภทนั้นๆ
                 let imgNum;
                 if (statusVal <= 3) imgNum = 2;
-                else if (statusVal <= 6) imgNum = Math.floor(Math.random() * 3) + 2; // สุ่ม 2-4
+                else if (statusVal <= 6) imgNum = Math.floor(Math.random() * 3) + 2;
                 else imgNum = 5;
-				const finalImgPath = `images/ore/${mainConfig.folder}/ore${imgNum}.png`;
+
+                // 🚩 แก้ไขบรรทัดนี้: เปลี่ยนจาก mainConfig เป็น currentConfig
+                const finalImgPath = `images/ore/${currentConfig.folder}/ore${imgNum}.png`;
+
                 generatedMinerals.push({
                     id: `ore_${Date.now()}_${i}_${Math.floor(Math.random()*100)}`,
                     name: mineralName,
                     type: currentConfig.type,
-                    // ใส่ค่า Status ลงในฟิลด์ที่ตรงกับประเภท (ที่เหลือเป็น 0)
                     metal: currentConfig.type === 'metal' ? statusVal : 0,
                     energy: currentConfig.type === 'energy' ? statusVal : 0,
                     tech: currentConfig.type === 'technology' ? statusVal : 0,
@@ -1925,13 +1919,11 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
                 });
             }
 
-            // บันทึกลงดาวดวงนั้น
             await db.collection("map_tiles").updateOne(
                 { q: queryQ, r: queryR },
                 { $set: { minerals: generatedMinerals, mineralsUnveiledAt: Date.now() }}
             );
 
-            // บวกสถิติสะสมให้กัปตัน
             await db.collection("users").updateOne(
                 { username: username },
                 { $inc: { "stats.totalDiscoveries": generatedMinerals.length } }
@@ -1943,6 +1935,7 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
         res.json({ success: true, minerals: tile.minerals, isFirstDiscovery: false });
 
     } catch (e) {
+        console.error("Discovery Error Detail:", e); // พ่น Error ออกมาดูที่ Console ของ Server
         res.status(500).json({ success: false, error: e.message });
     }
 });
