@@ -1491,6 +1491,7 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
 			currentQ: user.currentQ ?? 0,
 			currentR: user.currentR ?? 0,
 			// 🚩 ส่งข้อมูลพวกนี้กลับไปด้วย
+			minedTiles: user.minedTiles || [],
 			equipped: user.equipped || {},
 			inventory: user.inventory || [],
 			cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 },
@@ -1856,10 +1857,19 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
     try {
         const queryQ = Number(q);
         const queryR = Number(r);
-        const tile = await db.collection("map_tiles").findOne({ q: queryQ, r: queryR });
+        const coordKey = `${queryQ},${queryR}`; // 🚩 ประกาศตัวแปรพิกัดไว้ด้านบน
 
+        const tile = await db.collection("map_tiles").findOne({ q: queryQ, r: queryR });
         if (!tile) return res.status(404).json({ success: false, message: "ไม่พบข้อมูลดาว" });
 
+        // 🚩 [ย้ายมาไว้ตรงนี้] บันทึกพิกัดดาวลงในอาเรย์ minedTiles ของผู้เล่นคนนี้
+        // ไม่ว่าจะเป็นคนแรกที่ค้นพบ หรือคนหลังๆ ที่มาขุด จะได้ปลดล็อกการมองเห็นแร่ทุกคน
+        await db.collection("users").updateOne(
+            { username: username },
+            { $addToSet: { minedTiles: coordKey } }
+        );
+
+        // --- กรณี Discovery ครั้งแรก (สุ่มสร้างแร่ใหม่) ---
         if (!tile.minerals || tile.minerals.length === 0) {
             const distance = getServerHexDistance(0, 0, queryQ, queryR);
             const slots = tile.mineralSlots || 1; 
@@ -1895,13 +1905,7 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
                 }
 
                 const statusVal = Math.floor(Math.random() * (maxStat - minStat + 1)) + minStat;
-                
-                let imgNum;
-                if (statusVal <= 3) imgNum = 2;
-                else if (statusVal <= 6) imgNum = Math.floor(Math.random() * 3) + 2;
-                else imgNum = 5;
-
-                // 🚩 แก้ไขบรรทัดนี้: เปลี่ยนจาก mainConfig เป็น currentConfig
+                let imgNum = (statusVal <= 3) ? 2 : (statusVal <= 6) ? (Math.floor(Math.random() * 3) + 2) : 5;
                 const finalImgPath = `images/ore/${currentConfig.folder}/ore${imgNum}.png`;
 
                 generatedMinerals.push({
@@ -1919,11 +1923,13 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
                 });
             }
 
+            // บันทึกแร่ลงฐานข้อมูลแผนที่
             await db.collection("map_tiles").updateOne(
                 { q: queryQ, r: queryR },
                 { $set: { minerals: generatedMinerals, mineralsUnveiledAt: Date.now() }}
             );
 
+            // บวกสถิติจำนวนชนิดที่ค้นพบให้ผู้ขุดคนแรก
             await db.collection("users").updateOne(
                 { username: username },
                 { $inc: { "stats.totalDiscoveries": generatedMinerals.length } }
@@ -1932,10 +1938,11 @@ app.post('/api/:mode/game/complete-discovery', async (req, res) => {
             return res.json({ success: true, minerals: generatedMinerals, isFirstDiscovery: true });
         }
 
+        // --- กรณีที่ดาวมีแร่อยู่แล้ว (ไม่ใช่คนแรก) ---
         res.json({ success: true, minerals: tile.minerals, isFirstDiscovery: false });
 
     } catch (e) {
-        console.error("Discovery Error Detail:", e); // พ่น Error ออกมาดูที่ Console ของ Server
+        console.error("Discovery Error Detail:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });

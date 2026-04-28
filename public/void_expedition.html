@@ -1559,7 +1559,7 @@ button:hover { opacity: 0.8; }
 		let loadedCount = 0;
 		const totalImages = Object.keys(imageSources).length;
 		const MAP_RANGE = 3;
-        
+        let playerMinedTiles = [];
         let currentUser = localStorage.getItem('username');
 		let currentUserNickname = ""; // 🚩 เพิ่มบรรทัดนี้ไว้ด้านบนสุดของไฟล์
 		let isGuest = localStorage.getItem('isGuest') === 'true';
@@ -1946,6 +1946,7 @@ async function syncStaticStars() {
         } else {
             const nick = data.gameNickname.toUpperCase();
             currentUserNickname = data.gameNickname;
+			playerMinedTiles = data.minedTiles || [];
             const safeSetText = (id, value) => {
                 const el = document.getElementById(id);
                 if(el) el.innerText = value;
@@ -2356,54 +2357,59 @@ async function openStarDetail() {
         if (starData.corrosionAcid && starData.corrosionAcid > 0) { /* ... โค้ดกรด ... */ }
         if (starData.temperature && starData.temperature > 0) { /* ... โค้ดความร้อน ... */ }
 
-        // 🚩 โค้ดแสดงแร่ (โมเดล B - ตามสัดส่วน)
         if (starData.minerals && starData.minerals.length > 0) {
-            mineralHTML = `<div style="margin-top:15px; border-top:1px solid rgba(0,210,255,0.2); padding-top:10px;">
-                            <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px;">Resources detected:</div>`;
             
-            const totalStarOre = starData.currentStarAmount || 0;
-            const maxStarOre = starData.maxStarCapacity || 2000;
+            // เช็คว่า: เป็นดาวบ้าน (Static) หรือ เราเคยขุดดาวนี้สำเร็จแล้วหรือยัง
+            const canSeeMinerals = isStatic || playerMinedTiles.includes(coordKey);
 
-            starData.minerals.forEach(m => {
-    // 1. คำนวณปริมาณแร่ (เหมือนเดิมของกัปตัน)
-    const ratio = m.ratio || 1;
-    const mCurrent = Math.floor((starData.currentStarAmount || 0) * ratio);
-    const mMax = Math.floor((starData.maxStarCapacity || 2000) * ratio);
-    const percent = mMax > 0 ? (mCurrent / mMax) * 100 : 0;
-    const barColor = percent > 50 ? 'var(--neon-green)' : (percent > 20 ? '#ffcc00' : '#ff4b2b');
+            if (canSeeMinerals) {
+                // ✅ [กรณีปลดล็อคแล้ว] แสดงรายการแร่ตามปกติ
+                mineralHTML = `<div style="margin-top:15px; border-top:1px solid rgba(0,210,255,0.2); padding-top:10px;">
+                                <div style="font-size:0.7rem; color:var(--neon-blue); margin-bottom:8px;">RESOURCES DETECTED:</div>`;
+                
+                const totalStarOre = starData.currentStarAmount || 0;
+                const maxStarOre = starData.maxStarCapacity || 2000;
 
-    // 🚩 2. เลือกรูปภาพ (Logic ลำดับความสำคัญ)
-    let oreImg = "";
-    if (m.imgKey) {
-        // ถ้ามี Path เต็มมาจากระบบสุ่มใหม่ (Discovery)
-        oreImg = m.imgKey;
-    } else if (m.img && imageSources[m.img]) {
-        // ถ้าเป็น Key (เช่น orem1) จากระบบ Static (Gedgozone 1-6)
-        oreImg = imageSources[m.img];
-    } else {
-        // ตัวสำรองสุดท้าย ถ้าหาอะไรไม่เจอเลย ให้ใช้รูปอุกกาบาต
-        oreImg = imageSources['ast0']; 
-    }
+                starData.minerals.forEach(m => {
+                    const ratio = m.ratio || 1;
+                    const mCurrent = Math.floor(totalStarOre * ratio);
+                    const mMax = Math.floor(maxStarOre * ratio);
+                    const percent = mMax > 0 ? (mCurrent / mMax) * 100 : 0;
+                    const barColor = percent > 50 ? 'var(--neon-green)' : (percent > 20 ? '#ffcc00' : '#ff4b2b');
 
-    mineralHTML += `
-        <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05);">
-            <div style="display:flex; align-items:center;">
-                <img src="${oreImg}" 
-                     style="width:30px; height:30px; margin-right:10px; object-fit:contain;"
-                     onerror="this.src='images/meteorite/asteroids0.png'">
-                <div style="flex:1;">
-                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:white;">
-                        <span>${m.name}</span>
-                        <span style="color:${barColor}; font-weight:bold;">${mCurrent.toLocaleString()} kg</span>
-                    </div>
-                    <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:5px;">
-                        <div style="width:${percent}%; height:100%; background:${barColor}; transition:0.5s;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-});
-            mineralHTML += `</div>`;
+                    let oreImg = m.imgKey || (imageSources[m.img] ? imageSources[m.img] : 'images/ore/default.png');
+
+                    mineralHTML += `
+                        <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05);">
+                            <div style="display:flex; align-items:center;">
+                                <img src="${oreImg}" style="width:30px; height:30px; margin-right:10px; object-fit:contain;">
+                                <div style="flex:1;">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:white;">
+                                        <span>${m.name}</span>
+                                        <span style="color:${barColor}; font-weight:bold;">${mCurrent.toLocaleString()} kg</span>
+                                    </div>
+                                    <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:5px;">
+                                        <div style="width:${percent}%; height:100%; background:${barColor}; transition:0.5s;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                mineralHTML += `</div>`;
+
+            } else {
+                // 🔒 [กรณีที่ยังไม่เคยขุด] แสดง UI ล็อคข้อมูล
+                mineralHTML = `
+                    <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+                        <div style="background:rgba(255,75,43,0.1); border:1px dashed #ff4b2b; padding:15px; border-radius:12px; text-align:center;">
+                            <i class="fas fa-lock" style="color:#ff4b2b; font-size:1.2rem; margin-bottom:8px;"></i>
+                            <div style="font-size:0.7rem; color:white; line-height:1.4;">
+                                <b style="color:#ff4b2b;">DATA ENCRYPTED</b><br>
+                                คุณต้องขุดสำรวจดาวดวงนี้ให้สำเร็จ 100%<br>เพื่อปลดล็อคข้อมูลทรัพยากร
+                            </div>
+                        </div>
+                    </div>`;
+            }
         }
     }
 
