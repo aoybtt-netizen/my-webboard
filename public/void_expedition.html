@@ -2769,10 +2769,14 @@ function closeShop(e) {
 
 //ITEM
 function openShipInventory() {
-    // 1. เปิด Modal
-    document.getElementById('ship-inventory-modal').style.display = 'flex';
-    
-    // 2. ดึงข้อมูลและวาดตาราง
+    const profileModal = document.getElementById('profile-modal');
+    if (profileModal) {
+        profileModal.style.display = 'none';
+    }
+    const inventoryModal = document.getElementById('ship-inventory-modal');
+    if (inventoryModal) {
+        inventoryModal.style.display = 'flex';
+    }
     renderInventoryGrid();
 }
 
