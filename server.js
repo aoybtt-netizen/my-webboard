@@ -1265,20 +1265,40 @@ app.post('/api/admin/system-hard-reset', async (req, res) => {
         const results = {};
 
         for (const mode of modes) {
-            const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
-            const currentDB = client.db(dbName); // ใช้ตัวแปร client ที่มีอยู่ในไฟล์ของกัปตัน
+            const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+            
+            // 1. ลบข้อมูลทั้งหมด
+            await db.collection("users").deleteMany({});
+            await db.collection("map_tiles").deleteMany({});
 
-            // ลบข้อมูลผู้เล่น และ แผนที่
-            const userRes = await currentDB.collection("users").deleteMany({});
-            const mapRes = await currentDB.collection("map_tiles").deleteMany({});
+            // 🚩 2. ติดตั้งดาวเริ่มต้นกลับเข้าไปทันที (Seeding)
+            let seedCount = 0;
+            for (const [coordKey, starData] of Object.entries(SERVER_STATIC_STARS)) {
+                const [qStr, rStr] = coordKey.split(',');
+                const q = Number(qStr);
+                const r = Number(rStr);
 
-            results[mode] = {
-                usersDeleted: userRes.deletedCount,
-                tilesDeleted: mapRes.deletedCount
-            };
+                const insertData = {
+                    ...starData,
+                    q, r,
+                    discoveredBy: 'SYSTEM',
+                    createdAt: Date.now(),
+                    lastUpdate: Date.now()
+                };
+
+                // ใช้ updateOne แบบ upsert เพื่อสร้างใหม่
+                await db.collection("map_tiles").updateOne(
+                    { q, r },
+                    { $set: insertData }, // ใช้ $set ไปเลยเพราะเราเพิ่งลบมา สะอาดแน่นอน
+                    { upsert: true }
+                );
+                seedCount++;
+            }
+
+            results[mode] = { status: "Cleaned & Seeded", starsRestored: seedCount };
         }
 
-        console.log("⚠️ SYSTEM RESET COMPLETED:", results);
+        console.log("⚠️ SYSTEM RESET & AUTO-SEED COMPLETED:", results);
         res.json({ success: true, details: results });
     } catch (e) {
         console.error("Reset Error:", e);
