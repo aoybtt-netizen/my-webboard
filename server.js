@@ -1822,37 +1822,9 @@ app.post('/api/:mode/map/explore', async (req, res) => {
 });
 
 
-// 8. API สำหรับบันทึกแร่ที่สุ่มได้ครั้งแรกของดาวนั้นๆ
-app.post('/api/:mode/map/update-minerals', async (req, res) => {
-    const { mode } = req.params;
-    const { q, r, minerals, discoveredBy, username, newDiscoveryCount } = req.body;
-    const dbName = mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main';
-    const db = client.db(dbName);
 
-    try {
-        // 1. บันทึกข้อมูลแร่และผู้ค้นพบลงในดวงดาว
-        await db.collection("map_tiles").updateOne(
-            { q: Number(q), r: Number(r) },
-            { $set: { 
-                minerals: minerals, 
-                discoveredBy: discoveredBy,
-                discoveredAt: Date.now() 
-            }}
-        );
 
-        // 2. 🚩 อัปเดตสถิติในโปรไฟล์ผู้เล่น (บวกจำนวนชนิดที่ค้นพบเพิ่ม)
-        await db.collection("users").updateOne(
-            { username: username },
-            { $inc: { "stats.totalDiscoveries": Number(newDiscoveryCount) } }
-        );
-
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-// ฟังก์ชันคำนวณระยะทางบน Server
+// 8.ฟังก์ชันคำนวณระยะทางบน Server
 function getServerHexDistance(q1, r1, q2, r2) {
     const x1 = q1, z1 = r1 - (q1 - (Math.abs(q1) % 2)) / 2, y1 = -x1 - z1;
     const x2 = q2, z2 = r2 - (q2 - (Math.abs(q2) % 2)) / 2, y2 = -x2 - z2;

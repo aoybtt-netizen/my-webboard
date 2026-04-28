@@ -1066,6 +1066,23 @@ button:hover { opacity: 0.8; }
 </div>
 
 
+<div id="item-popup-modal" class="menu-overlay" onclick="this.style.display='none'" style="display: none; z-index: 1100;">
+    <div class="glass-panel" style="width: 300px; text-align: center; border: 1px solid var(--neon-blue); padding: 30px;" onclick="event.stopPropagation()">
+        
+        <h3 id="popup-item-name" style="margin-top: 0; color: var(--neon-blue); letter-spacing: 2px;">ITEM NAME</h3>
+        
+        <div style="width: 100px; height: 100px; margin: 20px auto; background: rgba(255,255,255,0.05); border-radius: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,210,255,0.2);">
+            <img id="popup-item-img" src="" style="width: 80px; height: 80px; object-fit: contain;">
+        </div>
+
+        <div id="popup-item-stats" style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 20px;">
+            </div>
+
+        <button class="auth-btn" style="width: 100%;" onclick="document.getElementById('item-popup-modal').style.display='none'">CLOSE</button>
+    </div>
+</div>
+
+
 
 
 
@@ -2765,8 +2782,6 @@ function renderInventoryGrid() {
     displayList.forEach((item) => {
         const slot = document.createElement('div');
         slot.className = 'inv-slot';
-        
-        // 🚩 [จุดวิเคราะห์ปัญหา]
         // เช็คก่อนว่าไอเทมใช้ชื่อตัวแปรไหนเก็บรูป (imgKey หรือ img)
         const rawImg = item.imgKey || item.img || 'default';
         let imgSrc = "";
@@ -2779,7 +2794,6 @@ function renderInventoryGrid() {
             imgSrc = imageSources[rawImg] || 'images/meteorite/meteor0.png';
         }
 
-        // 📝 Debug: กัปตันเปิด F12 ดูใน Console จะเห็นเลยว่าตัวไหนหาไม่เจอ
         if (imgSrc.includes('undefined') || !imgSrc) {
             console.warn(`[Inventory] Missing image for: ${item.name}`, item);
         }
@@ -2795,6 +2809,44 @@ function renderInventoryGrid() {
         slot.onclick = () => openItemPopup(item);
         gridContainer.appendChild(slot);
     });
+}
+
+function openItemPopup(item) {
+    const modal = document.getElementById('item-popup-modal');
+    const nameEl = document.getElementById('popup-item-name');
+    const imgEl = document.getElementById('popup-item-img');
+    const statsEl = document.getElementById('popup-item-stats');
+
+    // 1. ตั้งชื่อ
+    nameEl.innerText = item.name.toUpperCase();
+
+    // 2. จัดการรูปภาพ (ใช้ Logic เดียวกับใน Grid)
+    const rawImg = item.imgKey || item.img || 'default';
+    let imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+    imgEl.src = imgSrc;
+
+    // 3. จัดการรายละเอียดสถิติ (Stats)
+    let statsHTML = "";
+    
+    // แสดงมูลค่า (Value)
+    if (item.value) {
+        statsHTML += `<div style="color:#ffcc00; margin-bottom:5px;"><i class="fas fa-coins"></i> MARKET VALUE: ${item.value} GC</div>`;
+    }
+
+    // แสดงค่าสถานะตามประเภทแร่
+    if (item.metal > 0) statsHTML += `<div style="color:var(--neon-blue);">METAL: +${item.metal}</div>`;
+    if (item.energy > 0) statsHTML += `<div style="color:var(--neon-green);">ENERGY: +${item.energy}</div>`;
+    if (item.tech > 0) statsHTML += `<div style="color:#a16eff;">TECH: +${item.tech}</div>`;
+    
+    // แสดงประเภทและน้ำหนัก
+    statsHTML += `<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">`;
+    statsHTML += `<div style="opacity:0.6; font-size:0.7rem;">TYPE: ${item.type.toUpperCase()}</div>`;
+    statsHTML += `<div style="opacity:0.6; font-size:0.7rem;">TOTAL QTY: ${item.quantity || 1}</div>`;
+
+    statsEl.innerHTML = statsHTML;
+
+    // 4. แสดง Modal
+    modal.style.display = 'flex';
 }
 
 
@@ -3945,24 +3997,6 @@ async function handleMiningSuccess() {
     }
 }
 
-// ฟังก์ชันส่งข้อมูล Discovery ไปที่ Server
-async function saveDiscoveryToServer(key, minerals, nickname, discoveryCount) {
-    const [q, r] = key.split(',').map(Number);
-    try {
-        await fetch(`${API_BASE}/map/update-minerals`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                q, r, 
-                minerals, 
-                discoveredBy: nickname,
-                username: currentUser, // ส่ง username ไปเพื่อเพิ่มสถิติในตาราง users
-                newDiscoveryCount: minerals.length, // จำนวนชนิดที่ค้นพบเพิ่ม
-                mode: 'test' 
-            })
-        });
-    } catch (e) { console.error("Discovery Save Error:", e); }
-}
 
 // ฟังก์ชันสุ่มชื่อแร่ให้ไม่ซ้ำกัน
 function generateUniqueMineralName(type, existingSet) {
@@ -4014,18 +4048,6 @@ async function addMineralToInventory(mineral) {
         console.error("Add mineral error:", e); 
         return false;
     }
-}
-
-async function saveStarMineralsToServer(key, minerals) {
-    // ส่งข้อมูลแร่ไปบันทึกในฐานข้อมูล map_tiles
-    const [q, r] = key.split(',').map(Number);
-    try {
-        await fetch(`${API_BASE}/map/update-minerals`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ q, r, minerals, mode: 'test' }) // หรือ 'main'
-        });
-    } catch (e) { console.error("Save minerals error:", e); }
 }
 
 
