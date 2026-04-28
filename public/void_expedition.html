@@ -3180,26 +3180,26 @@ async function endTravel() {
     playerR = selectedHex.r;
     const key = `${playerQ},${playerR}`;
 
-    // เตรียมชื่อที่จะใช้บันทึก (กันเหนียวถ้ายังไม่มี Nickname ให้ใช้ ID)
     const senderNickname = currentUserNickname || currentUser;
 
     try {
-        // 1. อัปเดตข้อมูลแผนที่ (ส่ง nickname ไปด้วยแล้วนะ!)
-        const mapRes = await fetch(`${API_BASE}/map/explore`, {
+        // 1. ส่งข้อมูลสำรวจช่องปัจจุบัน (Explore)
+        const exploreRes = await fetch(`${API_BASE}/map/explore`, { // เปลี่ยนชื่อเป็น exploreRes
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 q: playerQ, 
                 r: playerR, 
                 username: currentUser,
-                nickname: senderNickname // 🚩 เพิ่มบรรทัดนี้ครับ
+                nickname: senderNickname 
             })
         });
         
-        const mapRes = await fetch(`${API_BASE}/map/all-in-range?q=${playerQ}&r=${playerR}&range=${MAP_RANGE}`);
-        const mapResult = await mapRes.json();
+        // 2. ดึงข้อมูลแผนที่รอบตัว (Sync Range)
+        const rangeRes = await fetch(`${API_BASE}/map/all-in-range?q=${playerQ}&r=${playerR}&range=${MAP_RANGE}`); // เปลี่ยนชื่อเป็น rangeRes
+        const mapResult = await rangeRes.json(); // ใช้ค่าจาก rangeRes มาทำ json()
 
-        // บันทึกตำแหน่งปัจจุบัน
+        // 3. อัปเดตตำแหน่ง
         await fetch(`${API_BASE}/game/update-location`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3207,19 +3207,20 @@ async function endTravel() {
         });
 
         if (mapResult.success) {
-            // 🚩 อัปเดตข้อมูลดาวทั้งหมดที่เซิร์ฟเวอร์ส่งมาลงใน Cache เครื่องเรา
-            mapResult.tiles.forEach(tile => {
-                serverMapData[`${tile.q},${tile.r}`] = tile;
-            });
+            // อัปเดตข้อมูลดาวทั้งหมดลงใน Cache
+            if (mapResult.tiles) {
+                mapResult.tiles.forEach(tile => {
+                    serverMapData[`${tile.q},${tile.r}`] = tile;
+                });
+            }
             
-            // เพิ่มพิกัดปัจจุบันเข้าที่เคยไป
+            // บันทึกหมอก (Visited)
             if (!visitedTiles.includes(key)) {
                 visitedTiles.push(key);
                 localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
             }
 
             renderGrid();
-            // แสดง UI ดาวปัจจุบัน (หาจาก Cache ที่เพิ่งอัปเดต)
             showArrivalUI(serverMapData[key], playerQ, playerR);
         }
     } catch (err) {
