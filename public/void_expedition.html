@@ -738,6 +738,7 @@ button:hover { opacity: 0.8; }
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: 0.2s;
 }
 
 .inv-slot-item img {
@@ -753,21 +754,31 @@ button:hover { opacity: 0.8; }
 }
 
 #inventory-list-area {
-    display: block; /* ยกเลิก Flex Column ของเดิม */
-    width: 100%;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, 65px) !important; /* 🚩 ล็อกขนาดช่องชัดเจน */
+    justify-content: center;
+    gap: 10px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 250px;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 
-/* กรอบไอเทมที่ติดตั้ง (ส่วนบน) */
 #equipped-box {
     width: 100% !important;
     display: flex !important;
-    flex-direction: row; /* ภายในกล่องแบ่ง ซ้าย(รูป) ขวา(ข้อมูล) */
+    flex-direction: row !important; 
     background: rgba(0, 210, 255, 0.05);
     border: 2px solid var(--neon-blue);
     border-radius: 15px;
     padding: 15px;
     box-sizing: border-box;
+    align-items: center;
 }
 
 .inv-img-small { width: 50px; height: 50px; border: 1px solid #444; background: #222; font-size: 0.5rem; display: flex; align-items: center; justify-content: center; }
@@ -1305,67 +1316,55 @@ button:hover { opacity: 0.8; }
 
     <div id="ship-menu" class="menu-overlay" onclick="closeMenus(event)">
     <div class="glass-panel hangar-panel" onclick="event.stopPropagation()">
-        <button id="multi-action-btn" class="close-btn-fixed" onclick="handleMenuAction()">×</button>
+        <button class="close-btn-fixed" onclick="document.getElementById('ship-menu').style.display='none'">×</button>
+        
         <div id="ship-main-view">
-    <div class="menu-header">
-        <h3><i class="fas fa-rocket"></i> SPACE SHIP SYSTEM</h3>
-    </div>
+            <div class="menu-header">
+                <h3><i class="fas fa-rocket"></i> SPACE SHIP SYSTEM</h3>
+            </div>
+            <div class="ship-main-layout">
+                <div class="sidebar-categories">
+                    <div class="cat-card" onclick="openCategory('engine')">
+                        <i class="fas fa-fan"></i> <span>Engine System</span>
+                    </div>
+                    <div class="cat-card" onclick="openCategory('drill')">
+                        <i class="fas fa-hammer"></i> <span>Drill System</span>
+                    </div>
+                    <div class="cat-card" onclick="openCategory('turret')">
+                        <i class="fas fa-crosshairs"></i> <span>Turret System</span>
+                    </div>
+                    <div class="cat-card" onclick="openCategory('barrier')">
+                        <i class="fas fa-shield-alt"></i> <span>Barrier Shield</span>
+                    </div>
+                    <div class="cat-card" onclick="openCategory('storage')">
+                        <i class="fas fa-warehouse"></i> <span>Cargo Storage</span>
+                    </div>
+                </div>
 
-    <div class="ship-main-layout">
-        <div class="sidebar-categories">
-            <div class="cat-card" onclick="openCategory('engine')">
-                <i class="fas fa-fan"></i> <span>Engine System</span>
-            </div>
-            <div class="cat-card" onclick="openCategory('drill')">
-                <i class="fas fa-hammer"></i> <span>Drill System</span>
-            </div>
-            <div class="cat-card" onclick="openCategory('turret')">
-                <i class="fas fa-crosshairs"></i> <span>Turret System</span>
-            </div>
-            <div class="cat-card" onclick="openCategory('barrier')">
-                <i class="fas fa-shield-alt"></i> <span>Barrier Shield</span>
-            </div>
-            <div class="cat-card" onclick="openCategory('storage')">
-                <i class="fas fa-warehouse"></i> <span>Cargo Storage</span>
+                <div class="ship-display-area">
+                    <div class="ship-image-frame">
+                        <img id="main-ship-img" src="images/shipmenu/ship0.png" alt="Ship View">
+                    </div>
+                    <div class="ship-global-stats" id="ship-overall-stats">
+                        <div style="color:var(--neon-blue); border-bottom:1px solid #333; margin-bottom:5px;">SHIP CONFIGURATION</div>
+                        <div>CORE INTEGRITY: <span style="color:var(--neon-green)">100%</span></div>
+                        <div id="stat-list-dynamic"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="ship-display-area">
-            <div class="ship-image-frame">
-                <img id="main-ship-img" src="images/shipmenu/ship0.png" alt="Ship View">
-            </div>
+        <div id="ship-category-view" style="display: none;">
+            <div id="equipped-box" class="equipped-detail-area"></div>
             
-            <div class="ship-global-stats" id="ship-overall-stats">
-                <div style="color:var(--neon-blue); border-bottom:1px solid #333; margin-bottom:5px;">SHIP CONFIGURATION</div>
-                <div>CORE INTEGRITY: <span style="color:var(--neon-green)">100%</span></div>
-                <div id="stat-list-dynamic"></div>
-            </div>
-        </div>
-    </div>
-</div>
+            <div id="inventory-list-area" class="inventory-grid-area"></div>
+            
+            <button class="btn-wire btn-gray" onclick="openShipMenu()" style="margin-top:15px; padding:10px; width:100%; border-radius:5px;">
+                <i class="fas fa-arrow-left"></i> BACK TO SHIP
+            </button>
         </div>
 
-    <div id="ship-category-view" style="display: none;">
-    <div id="equipped-box" class="equipped-detail-area"></div>
-    
-    <div id="inventory-list-area" class="inventory-grid-area"></div>
-</div>
-
-        <div id="item-detail-popup" class="popup-overlay" style="display: none;">
-            <div class="wireframe-box popup-content">
-                <div class="item-name-tag" id="pop-name">ชื่อไอเทม</div>
-                <div class="item-main-content">
-                    <div class="img-square">รูปไอเทม</div>
-                    <div class="status-box" id="pop-status">status item</div>
-                </div>
-                <div class="button-row">
-                    <button class="btn-wire btn-gray" onclick="closePopup()">ปุ่มยกเลิก</button>
-                    <button class="btn-wire btn-blue" id="pop-install-btn">ปุ่มติดตั้ง</button>
-                </div>
-            </div>
-        </div>
-
-    </div>
+    </div> </div>
 </div>
 	
 	
