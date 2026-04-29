@@ -2221,7 +2221,43 @@ app.post('/api/:mode/admin/seed-static-stars', async (req, res) => {
     }
 });
 
+// 13.======== 🚩 API ระบบติดตั้งไอเท็ม (Equip Item) ========
+app.post('/api/:mode/game/equip-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, itemId, category } = req.body;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
 
+    try {
+        const user = await db.collection("users").findOne({ username });
+        
+        // ค้นหาไอเท็มในกระเป๋า
+        const itemIndex = user.inventory.findIndex(i => i.id === itemId);
+        const newItem = user.inventory[itemIndex];
+        const oldItem = user.equipped[category]; // ไอเท็มเดิมที่ใส่อยู่ในหมวดนี้
+
+        let newInventory = [...user.inventory];
+        newInventory.splice(itemIndex, 1); // เอาของใหม่ออกจากกระเป๋า
+
+        if (oldItem && oldItem.id) {
+            newInventory.push(oldItem); // เอาของเดิมกลับเข้ากระเป๋า
+        }
+
+        // บันทึกกลับลง Database
+        await db.collection("users").updateOne(
+            { username },
+            { 
+                $set: { 
+                    [`equipped.${category}`]: newItem,
+                    inventory: newInventory 
+                } 
+            }
+        );
+
+        res.json({ success: true, inventory: newInventory, equipped: { ...user.equipped, [category]: newItem } });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
 
 
 

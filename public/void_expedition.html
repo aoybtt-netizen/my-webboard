@@ -1514,36 +1514,6 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
-
-<div id="upgrade-modal" class="menu-overlay" style="display: none; z-index: 6000;">
-    <div class="glass-panel" style="width: 90%; max-width: 380px; padding: 25px;">
-        <h3 id="upg-title" style="color: var(--neon-blue); margin-top: 0;">MODULE UPGRADE</h3>
-        
-        <div id="upg-stats-preview" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; font-size: 0.8rem;">
-            </div>
-
-        <div style="text-align: left; margin-bottom: 15px;">
-            <div style="font-size: 0.7rem; opacity: 0.6; margin-bottom: 10px;">REQUIRED MATERIALS (CLICK TO SELECT)</div>
-            <div id="upg-cost-list" style="display: flex; flex-direction: column; gap: 8px;">
-                </div>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-wire btn-green" id="btn-confirm-upgrade" style="flex: 2;">CONFIRM UPGRADE</button>
-            <button class="btn-wire btn-gray" onclick="closeUpgradeModal()" style="flex: 1;">CANCEL</button>
-        </div>
-    </div>
-</div>
-
-<div id="material-selector-overlay" class="menu-overlay" style="display: none; z-index: 7000;">
-    <div class="glass-panel" style="width: 85%; max-width: 350px;">
-        <h4 id="selector-title">SELECT MATERIAL</h4>
-        <div id="selector-grid" class="inventory-grid-area" style="max-height: 300px;">
-            </div>
-        <button class="btn-wire btn-gray" onclick="closeMaterialSelector()" style="width: 100%; margin-top: 15px;">BACK</button>
-    </div>
-</div>
-
 	
 	
 	
@@ -1922,28 +1892,6 @@ button:hover { opacity: 0.8; }
         recipe: { metal: 1, energy: 1, tech: 1 } 
     }
 ];
-
-	const UPGRADE_CONFIG = {
-    'ship engine': {
-        statPerLevel: { power: 10, consumption: -2 },
-        costPerLevel: (lv) => ({ metal: lv * 5, energy: lv * 3, tech: 0 })
-    },
-    'drill engine': {
-        statPerLevel: { scanRate: 1, energyMax: 20 },
-        costPerLevel: (lv) => ({ metal: lv * 4, energy: 0, tech: lv * 4 })
-    },
-    'card barrier': {
-        statPerLevel: { maxShield: 50, recharge: 2 },
-        costPerLevel: (lv) => ({ metal: 0, energy: lv * 6, tech: lv * 2 })
-    }
-};
-
-	// ตัวแปรเก็บแร่ที่กัปตันเลือกไว้จ่าย
-	let selectedUpgradeMaterials = { metal: null, energy: null, tech: null };
-	
-	let currentUpgradingModule = null;
-	
-	
 
 		// --- อัปเดตตำแหน่งเป้าหมายตามเมาส์หรือการลากนิ้ว ---
 window.onmousemove = (e) => { 
@@ -4926,20 +4874,75 @@ function uninstallModule(slot) {
     }
 }
 
-// ฟังก์ชันติดตั้ง
-function equipModule(itemId) {
-    const itemIdx = playerInventory.findIndex(i => i.id === itemId);
-    const item = playerInventory[itemIdx];
-    
-    if (playerEquipped[item.type]) {
-        playerInventory.push(playerEquipped[item.type]);
-    }
+// ฟังก์ชันติดตั้ง (ปรับปรุงใหม่)
+async function equipModule(itemId) {
+    try {
+        // 1. หาข้อมูลไอเท็มที่จะติดตั้งก่อนเพื่อเอา 'type'
+        const item = playerInventory.find(i => i.id === itemId);
+        if (!item) return;
 
-    playerEquipped[item.type] = item;
-    playerInventory.splice(itemIdx, 1);
-    
-    showMiningToast("ติดตั้งอุปกรณ์เรียบร้อย", "#00d2ff");
-    renderCategoryContent(); // วาดใหม่ทันที
+        // 2. ส่งคำสั่งไปที่ Server (เพื่อให้ Database บันทึกการเปลี่ยนแปลง)
+        const response = await fetch(`/api/${currentMode}/game/equip-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: userData.username, // ตรวจสอบว่ามีตัวแปรเก็บชื่อผู้ใช้ไว้
+                itemId: itemId,
+                category: item.type // เช่น 'engine', 'drill', 'barrier'
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // 3. ถ้า Server บันทึกสำเร็จ ให้เอาข้อมูลที่ Server ส่งกลับมาอัปเดตในเกม
+            // (Server จะส่ง inventory และ equipped ชุดใหม่ที่สลับกันแล้วมาให้)
+            playerInventory = result.inventory;
+            playerEquipped = result.equipped;
+            
+            // อัปเดต userData ด้วย (ถ้าคุณใช้ userData คุมทั้งหมด)
+            if (window.userData) {
+                userData.inventory = result.inventory;
+                userData.equipped = result.equipped;
+            }
+
+            showMiningToast("ติดตั้งอุปกรณ์เรียบร้อย", "#00d2ff");
+            
+            // 4. วาด UI ใหม่
+            renderCategoryContent(); 
+            if (typeof renderShipStats === 'function') renderShipStats(); // อัปเดตพลังของยานในหน้าหลัก
+            
+        } else {
+            showMiningToast("ติดตั้งล้มเหลว: " + result.error, "#ff4b2b");
+        }
+    } catch (error) {
+        console.error("Equip Error:", error);
+        showMiningToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "#ff4b2b");
+    }
+}
+
+function renderInventoryList(category) {
+    const listContainer = document.getElementById('inventory-list-container'); // สมมติชื่อ ID ของ Container
+    listContainer.innerHTML = '';
+
+    // กรองเฉพาะไอเท็มที่ตรงกับหมวดหมู่ที่เปิดดูอยู่
+    const items = userData.inventory.filter(item => item.type.includes(category));
+
+    items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'inv-item-row';
+        row.innerHTML = `
+            <div style="display: flex; align-items: center;">
+                <div class="img-placeholder" style="margin-right: 15px;">${item.imgKey || 'IMG'}</div>
+                <div>
+                    <strong>${item.name}</strong><br>
+                    <small style="color: var(--neon-blue);">LV: ${item.level}</small>
+                </div>
+            </div>
+            <button class="btn-inst" onclick="installItem('${item.id}', '${category}')">INSTALL</button>
+        `;
+        listContainer.appendChild(row);
+    });
 }
 
 
@@ -5306,80 +5309,6 @@ function renderShipMain() {
     // ตรวจสอบให้แน่ใจว่าแสดงหน้า Main View และซ่อน Category View
     document.getElementById('ship-main-view').style.display = 'block';
     document.getElementById('ship-category-view').style.display = 'none';
-}
-
-
-
-function openUpgradeModal(slot) {
-    currentUpgradingModule = slot; // 'engine', 'drill', etc.
-    const item = playerEquipped[slot];
-    if (!item) return;
-
-    document.getElementById('upg-title').innerText = `UPGRADE: ${item.name.toUpperCase()}`;
-    
-    // รีเซ็ตแร่ที่เคยเลือกไว้
-    selectedUpgradeMaterials = { metal: null, energy: null, tech: null };
-    
-    renderUpgradeUI();
-    document.getElementById('upgrade-modal').style.display = 'flex';
-}
-
-function renderUpgradeUI() {
-    const item = playerEquipped[currentUpgradingModule];
-    const config = UPGRADE_CONFIG[item.type];
-    const cost = config.costPerLevel(item.level || 1);
-    
-    const costList = document.getElementById('upg-cost-list');
-    costList.innerHTML = '';
-
-    ['metal', 'energy', 'tech'].forEach(type => {
-        if (cost[type] > 0) {
-            const selected = selectedUpgradeMaterials[type];
-            const div = document.createElement('div');
-            div.className = 'detail-row';
-            div.style.cursor = 'pointer';
-            div.style.border = selected ? '1px solid var(--neon-green)' : '1px solid rgba(255,255,255,0.1)';
-            div.onclick = () => openMaterialSelector(type);
-            
-            div.innerHTML = `
-                <span class="detail-label">${type.toUpperCase()} x${cost[type]}</span>
-                <span class="detail-value" style="color: ${selected ? 'var(--neon-green)' : '#999'}">
-                    ${selected ? selected.name : '[ SELECT MATERIAL ]'}
-                </span>
-            `;
-            costList.appendChild(div);
-        }
-    });
-}
-
-function openMaterialSelector(resourceType) {
-    const grid = document.getElementById('selector-grid');
-    grid.innerHTML = '';
-    
-    // กรองแร่ที่มีค่า resource นั้นๆ มากกว่า 0
-    const ores = playerInventory.filter(i => (i.type === 'resource' || i.stackable) && i[resourceType] > 0);
-    
-    ores.forEach(ore => {
-        const slot = document.createElement('div');
-        slot.className = 'inv-slot-item';
-        slot.onclick = () => {
-            selectedUpgradeMaterials[resourceType] = ore;
-            document.getElementById('material-selector-overlay').style.display = 'none';
-            renderUpgradeUI();
-        };
-        
-        const rawImg = ore.imgKey || ore.img || 'default';
-        const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/ore/default.png');
-        
-        slot.innerHTML = `
-            <img src="${imgSrc}">
-            <div class="inv-count">${ore[resourceType]}</div>
-        `;
-        grid.appendChild(slot);
-    });
-    
-    document.getElementById('selector-title').innerText = `SELECT ${resourceType.toUpperCase()} SOURCE`;
-    document.getElementById('material-selector-overlay').style.display = 'flex';
 }
 
 
