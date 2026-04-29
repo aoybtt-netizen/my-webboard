@@ -464,34 +464,35 @@ button:hover { opacity: 0.8; }
 
 .hangar-panel {
     width: 95%;
-    max-width: 700px; /* เพิ่มความกว้าง */
-    height: 85vh;
+    max-width: 650px; /* คุมความกว้างให้พอดี */
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding: 20px !important;
 }
 
 .ship-main-layout {
     display: flex;
-    gap: 20px;
-    height: calc(100% - 60px);
-    margin-top: 10px;
+    gap: 15px;
+    height: 100%;
+    width: 100%;
 }
 
 .sidebar-categories {
-    flex: 0 0 180px; /* ล็อกความกว้างฝั่งซ้าย */
+    flex: 0 0 160px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    overflow-y: auto;
+    gap: 8px;
 }
 
 .ship-display-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0,0,0,0.3);
     border-radius: 15px;
-    padding: 15px;
-    border: 1px solid rgba(0, 210, 255, 0.1);
+    padding: 10px;
+    border: 1px solid rgba(0,210,255,0.1);
 }
 
 .ship-image-frame {
@@ -673,23 +674,20 @@ button:hover { opacity: 0.8; }
 
 /* หน้าจัดการไอเทม (Category View) */
 #ship-category-view {
-    display: none; 
-    flex-direction: column !important; /* 🚩 บังคับให้เรียงจากบนลงล่างเท่านั้น */
-    gap: 15px;
     width: 100%;
     height: 100%;
-    box-sizing: border-box;
-    padding: 10px;
+    flex-direction: column !important; 
+    gap: 15px;
 }
 
 .equipped-detail-area {
-    display: flex; /* แบ่งซ้าย-ขวา */
-    gap: 15px;
-    background: rgba(0, 210, 255, 0.08);
-    padding: 15px;
-    border-radius: 15px;
+    width: 100% !important;
+    display: flex !important;
+    background: rgba(0, 210, 255, 0.05);
     border: 2px solid var(--neon-blue);
-    box-shadow: 0 0 15px rgba(0, 210, 255, 0.2);
+    border-radius: 12px;
+    padding: 12px;
+    box-sizing: border-box;
 }
 
 .detail-left {
@@ -720,18 +718,19 @@ button:hover { opacity: 0.8; }
 .inventory-grid-area {
     width: 100% !important;
     display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important; /* 🚩 แถวละ 5 ช่องสี่เหลี่ยม */
+    grid-template-columns: repeat(5, 65px) !important;
+    justify-content: center;
     gap: 10px;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    max-height: 280px;
+    padding: 15px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 10px;
     overflow-y: auto;
+    max-height: 250px;
 }
 
 .inv-slot-item {
-    aspect-ratio: 1/1;
+    width: 65px;
+    height: 65px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -742,8 +741,8 @@ button:hover { opacity: 0.8; }
 }
 
 .inv-slot-item img {
-    width: 70%;
-    height: 70%;
+    width: 45px;
+    height: 45px;
     object-fit: contain;
 }
 
@@ -5011,16 +5010,15 @@ function updateMenuIcon(isCategoryView) {
 function openCategory(type) {
     currentCat = type;
     
-    // 1. สลับหน้าจอ
+    // 1. สลับหน้าจอ: ซ่อนหน้าหลัก เปิดหน้าหมวดหมู่
     document.getElementById('ship-main-view').style.display = 'none';
     const catView = document.getElementById('ship-category-view');
-    catView.style.display = 'flex'; // แสดงหน้าจัดการไอเทม
+    catView.style.display = 'flex'; // 🚩 บังคับให้เป็น flex เพื่อให้ CSS Column ทำงาน
     
-    // 2. ล้าง Class เก่าที่อาจจะไปขัดกับ Grid
+    // 2. ล้าง Class เดิมเพื่อความชัวร์
     const invArea = document.getElementById('inventory-list-area');
-    invArea.className = "inventory-grid-area"; 
-
-    updateMenuIcon(true);
+    invArea.innerHTML = '';
+    
     renderCategoryContent();
 }
 
@@ -5206,7 +5204,12 @@ function upgradeItem() {
 
 function openShipMenu() {
     openMenu('ship-menu');
-    renderShipMain();
+    document.getElementById('ship-main-view').style.display = 'block';
+    document.getElementById('ship-category-view').style.display = 'none';
+    const shipImgEl = document.getElementById('main-ship-img');
+    if (shipImgEl) {
+        shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
+    }
 }
 
 function renderShipMain() {
