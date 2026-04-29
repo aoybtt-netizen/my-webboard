@@ -614,8 +614,63 @@ button:hover { opacity: 0.8; }
 /* หน้าจัดการไอเทม (Category View) */
 #ship-category-view {
     display: none;
-    flex-direction: column !important; /* บังคับจากบนลงล่าง */
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+}
+
+.equipped-detail-area {
+    display: flex; /* แบ่งซ้าย-ขวา */
+    gap: 15px;
+    background: rgba(0, 210, 255, 0.05);
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid rgba(0, 210, 255, 0.2);
+}
+
+.detail-img-side {
+    flex: 0 0 100px; /* ล็อกความกว้างรูป 100px */
+}
+
+.detail-info-side {
+    flex: 1; /* ส่วนที่เหลือเป็นข้อมูลเท็กซ์ */
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.inventory-grid-area {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr); /* แถวละ 5 ช่อง */
     gap: 10px;
+    overflow-y: auto;
+    padding: 5px;
+    max-height: 250px; /* ล็อกความสูงให้ Scroll ได้ */
+}
+
+.inv-slot-item:hover {
+    background: rgba(0, 210, 255, 0.2);
+    border-color: var(--neon-blue);
+}
+
+.inv-slot-item img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+}
+
+.inv-slot-item {
+    aspect-ratio: 1/1; /* ให้เป็นสี่เหลี่ยมจัตุรัส */
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+    padding: 5px;
 }
 
 /* กรอบไอเทมที่ติดตั้ง (ส่วนบน) */
@@ -1208,22 +1263,12 @@ button:hover { opacity: 0.8; }
         </div>
 
         <div id="ship-category-view" style="display: none;">
-
-            <div id="equipped-box" class="wireframe-box">
-                <div class="item-name-tag" id="eq-name">ชื่อไอเทม</div>
-                <div class="item-main-content">
-                    <div class="img-square">รูปไอเทมที่ติดตั้ง</div>
-                    <div class="status-box" id="eq-status">status item</div>
-                </div>
-                <div class="button-row">
-                    <button class="btn-wire btn-red" onclick="uninstallModule(currentCat)">ปุ่มถอน</button>
-                    <button class="btn-wire btn-green" onclick="upgradeItem()">ปุ่มอัพเกรด</button>
-                </div>
-            </div>
-
-            <div id="inventory-list-area" class="inventory-scroll">
-                </div>
+    <div id="equipped-box" class="equipped-detail-area">
         </div>
+
+    <div id="inventory-list-area" class="inventory-grid-area">
+        </div>
+</div>
 
         <div id="item-detail-popup" class="popup-overlay" style="display: none;">
             <div class="wireframe-box popup-content">
@@ -4902,43 +4947,42 @@ function backToMain() {
 function renderCategoryContent() {
     const equipped = playerEquipped[currentCat];
     const eqBox = document.getElementById('equipped-box');
-    if (!eqBox) return;
+    const invArea = document.getElementById('inventory-list-area');
+    if (!eqBox || !invArea) return;
 
+    // --- เรนเดอร์ส่วนบน (Detail) ---
     if (equipped) {
-        const imgKey = equipped.imgKey || 'default';
-        const imgSrc = imageSources[imgKey] || 'images/default.png';
+        const rawImg = equipped.imgKey || equipped.img || 'default';
+        let imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
         eqBox.innerHTML = `
-            <div class="item-name-tag">${equipped.name}</div>
-            <div class="item-main-content">
-                <div class="img-section">
-                    <div class="img-square">
-                        <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
-                    </div>
-                    ${getResourceRowHTML(equipped)} 
-                </div>
-                <div class="status-box">
-                    ${getItemStatusHTML(equipped)}
+            <div class="detail-img-side">
+                <div class="img-square" style="width:100px; height:100px;">
+                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
                 </div>
             </div>
-            <div class="button-row">
-                <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">REMOVE</button>
-                <button class="btn-wire btn-green" onclick="upgradeItem()">UPGRADE</button>
+            <div class="detail-info-side">
+                <div style="color:var(--neon-blue); font-weight:bold; margin-bottom:5px;">${equipped.name}</div>
+                <div style="font-size:0.75rem;">${getItemStatusHTML(equipped)}</div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="btn-wire btn-red" style="padding:2px 10px; font-size:0.6rem;" onclick="uninstallModule('${currentCat}')">REMOVE</button>
+                    <button class="btn-wire btn-green" style="padding:2px 10px; font-size:0.6rem;" onclick="upgradeItem()">UPGRADE</button>
+                </div>
             </div>
         `;
     } else {
-        // กรณีไม่มีไอเทมติดตั้ง
         eqBox.innerHTML = `
-            <div class="item-name-tag">EMPTY SLOT</div>
-            <div class="item-main-content">
-                <div class="img-square" style="opacity:0.3;">NO MODULE</div>
-                <div class="status-box" style="opacity:0.5;">Please install equipment</div>
+            <div class="detail-img-side">
+                <div class="img-square" style="width:100px; height:100px; opacity:0.2; border:1px dashed #fff;"></div>
+            </div>
+            <div class="detail-info-side" style="opacity:0.5;">
+                <strong>EMPTY SLOT</strong><br>
+                <small>Select equipment from below to install</small>
             </div>
         `;
     }
 
-    // --- Inventory List ---
-    const invArea = document.getElementById('inventory-list-area');
+    // --- เรนเดอร์ส่วนล่าง (Inventory Grid) ---
     invArea.innerHTML = '';
     const items = playerInventory.filter(i => {
         if (currentCat === 'engine') return i.type === 'ship engine';
@@ -4949,25 +4993,16 @@ function renderCategoryContent() {
     });
 
     items.forEach(item => {
-        const imgKey = item.imgKey || 'default';
-        const imgSrc = imageSources[imgKey] || 'images/default.png';
+        const rawImg = item.imgKey || item.img || 'default';
+        let imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
-        const row = document.createElement('div');
-        row.className = 'inv-item-card';
-        row.onclick = () => openItemPopup(item); 
-        row.innerHTML = `
-            <div class="inv-img-section">
-                <div class="inv-img-small">
-                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
-                </div>
-                ${getResourceRowHTML(item)}
-            </div>
-            <div class="status-box">
-                <strong>${item.name}</strong><br>
-                ${getItemStatusHTML(item)}
-            </div>
-        `;
-        invArea.appendChild(row);
+        const slot = document.createElement('div');
+        slot.className = 'inv-slot-item';
+        slot.title = item.name; // โชว์ชื่อเวลาเอาเมาส์วาง
+        slot.onclick = () => openItemPopup(item, imgSrc);
+        
+        slot.innerHTML = `<img src="${imgSrc}" onerror="this.src='images/meteorite/meteor0.png'">`;
+        invArea.appendChild(slot);
     });
 }
 
