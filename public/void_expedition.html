@@ -656,18 +656,19 @@ button:hover { opacity: 0.8; }
 }
 
 .inventory-grid-area {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr); /* แถวละ 5 ช่องสี่เหลี่ยม */
+    display: grid !important; /* บังคับให้เป็น Grid */
+    grid-template-columns: repeat(5, 1fr) !important; /* แถวละ 5 ช่อง */
     gap: 10px;
+    padding: 15px;
     overflow-y: auto;
-    padding: 5px;
-    max-height: 300px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 15px;
+    max-height: 250px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    border-top: 1px solid rgba(0, 210, 255, 0.2);
 }
 
 .inv-slot-item {
-    aspect-ratio: 1/1; /* บังคับให้เป็นสี่เหลี่ยมจัตุรัส */
+    aspect-ratio: 1/1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -675,7 +676,15 @@ button:hover { opacity: 0.8; }
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: 0.2s;
+    overflow: hidden; /* กันรูปล้น */
+    max-width: 70px; /* คุมขนาดสูงสุดของช่อง */
+    margin: 0 auto;  /* จัดให้อยู่กลางช่อง Grid */
+}
+
+.inv-slot-item img {
+    width: 80%;      /* รูปจะเหลือแค่ 80% ของช่อง */
+    height: 80%;
+    object-fit: contain;
 }
 
 .inv-slot-item:hover {
@@ -684,10 +693,9 @@ button:hover { opacity: 0.8; }
     transform: scale(1.05);
 }
 
-.inv-slot-item img {
-    width: 75%;
-    height: 75%;
-    object-fit: contain;
+#inventory-list-area {
+    display: block; /* ยกเลิก Flex Column ของเดิม */
+    width: 100%;
 }
 
 
@@ -699,25 +707,6 @@ button:hover { opacity: 0.8; }
     margin-bottom: 20px; /* เว้นระยะห่างจากรายการด้านล่าง */
     background: rgba(0, 210, 255, 0.05);
     box-sizing: border-box;
-}
-
-/* ส่วนรายการคลัง (ส่วนล่าง) */
-#inventory-list-area {
-    width: 100%; /* ให้เต็มความกว้าง */
-	border-radius: 10px;
-    display: flex;
-    flex-direction: column; /* 🚩 ให้ไอเทมในลิสต์เรียงลงมาข้างล่าง */
-    gap: 10px; /* ระยะห่างระหว่างไอเทมแต่ละชิ้น */
-}
-
-/* การ์ดไอเทมในคลัง */
-.inv-item-card {
-    display: flex;
-    flex-direction: row; /* 🚩 ภายในไอเทมให้รูปกับข้อความอยู่ข้างกัน */
-    width: 100%;
-	border-radius: 10px;
-    margin-bottom: 8px;
-    background: rgba(255, 255, 255, 0.05);
 }
 
 .inv-img-small { width: 50px; height: 50px; border: 1px solid #444; background: #222; font-size: 0.5rem; display: flex; align-items: center; justify-content: center; }
@@ -4968,14 +4957,17 @@ function renderCategoryContent() {
     const invArea = document.getElementById('inventory-list-area');
     if (!eqBox || !invArea) return;
 
-    // --- 1. วาดส่วนบน (Equipped Detail) ---
+    // 🚩 เคลียร์ Class เก่าที่อาจค้างอยู่และใส่ Class Grid
+    invArea.className = "inventory-grid-area"; 
+
+    // --- 1. วาดส่วนบน (Equipped Detail) เหมือนเดิมที่กัปตันแก้ไว้ ---
     if (equipped) {
         const rawImg = equipped.imgKey || equipped.img || 'default';
         const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
         eqBox.innerHTML = `
             <div class="detail-left">
-                <div class="img-square" style="width:90px; height:90px; margin:0;">
+                <div class="img-square" style="width:90px; height:90px; margin:0; border:1px solid var(--neon-blue);">
                     <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
                 </div>
                 <div class="item-resource-row" style="min-width:90px;">
@@ -4984,7 +4976,7 @@ function renderCategoryContent() {
             </div>
             <div class="detail-right">
                 <div style="color:var(--neon-blue); font-weight:bold; margin-bottom:5px; font-size:1rem;">${equipped.name.toUpperCase()}</div>
-                <div class="status-box" style="min-height:80px; font-size:0.75rem;">
+                <div class="status-box" style="min-height:80px; font-size:0.75rem; background:rgba(0,0,0,0.5);">
                     ${getItemStatusHTML(equipped)}
                 </div>
                 <div class="button-row" style="margin-top:10px;">
@@ -4994,42 +4986,28 @@ function renderCategoryContent() {
             </div>
         `;
     } else {
-        eqBox.innerHTML = `
-            <div style="width:100%; text-align:center; opacity:0.5; padding:20px;">
-                <i class="fas fa-plus-circle" style="font-size:2rem; margin-bottom:10px;"></i><br>
-                EMPTY SLOT: SELECT MODULE BELOW
-            </div>
-        `;
+        eqBox.innerHTML = `<div style="width:100%; text-align:center; opacity:0.5; padding:20px;">EMPTY SLOT: SELECT MODULE BELOW</div>`;
     }
 
     // --- 2. วาดส่วนล่าง (Inventory Grid) ---
     invArea.innerHTML = '';
-    
-    // กรองไอเทมตามหมวดหมู่
     const items = playerInventory.filter(i => {
         if (currentCat === 'engine') return i.type === 'ship engine';
         if (currentCat === 'drill') return i.type === 'drill engine';
         if (currentCat === 'barrier') return i.type === 'card barrier';
-        if (currentCat === 'storage') return i.type === 'storage'; // เพิ่มหมวด Storage
+        if (currentCat === 'storage') return i.type === 'storage';
         if (currentCat === 'turret') return i.type === 'turret';
         return false;
     });
-
-    if (items.length === 0) {
-        invArea.innerHTML = '<div style="grid-column: span 5; opacity:0.3; padding:20px;">No available modules in cargo</div>';
-    }
 
     items.forEach(item => {
         const rawImg = item.imgKey || item.img || 'default';
         const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
         const slot = document.createElement('div');
-        slot.className = 'inv-slot-item'; // 🚩 ใช้ Class ใหม่ที่เป็นสี่เหลี่ยม
-        slot.onclick = () => openItemPopup(item, imgSrc); // ส่ง imgSrc ไปให้ Popup เลยเพื่อความชัวร์
-        
-        slot.innerHTML = `
-            <img src="${imgSrc}" onerror="this.src='images/meteorite/meteor0.png'">
-        `;
+        slot.className = 'inv-slot-item';
+        slot.onclick = () => openItemPopup(item, imgSrc);
+        slot.innerHTML = `<img src="${imgSrc}" onerror="this.src='images/meteorite/meteor0.png'">`;
         invArea.appendChild(slot);
     });
 }
