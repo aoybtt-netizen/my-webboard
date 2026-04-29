@@ -461,7 +461,67 @@ button:hover { opacity: 0.8; }
     border-color: #ff4b2b;
     color: white;
 }
-.hangar-panel { width: 95%; max-width: 500px; height: 80vh; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; }
+
+.hangar-panel {
+    width: 95%;
+    max-width: 700px; /* เพิ่มความกว้าง */
+    height: 85vh;
+}
+
+.ship-main-layout {
+    display: flex;
+    gap: 20px;
+    height: calc(100% - 60px);
+    margin-top: 10px;
+}
+
+.sidebar-categories {
+    flex: 0 0 180px; /* ล็อกความกว้างฝั่งซ้าย */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.ship-display-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    padding: 15px;
+    border: 1px solid rgba(0, 210, 255, 0.1);
+}
+
+.ship-image-frame {
+    width: 100%;
+    height: 200px;
+    background: radial-gradient(circle, rgba(0, 210, 255, 0.1) 0%, transparent 70%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 210, 255, 0.2);
+}
+
+.ship-image-frame img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 15px rgba(0, 210, 255, 0.5));
+}
+
+.ship-global-stats {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    text-align: left;
+    font-family: 'Consolas', monospace;
+    font-size: 0.85rem;
+    overflow-y: auto;
+}
 
 /* Category Grid */
 .category-grid { display: grid; grid-template-columns: 1fr; gap: 15px; padding: 10px; }
@@ -1246,27 +1306,42 @@ button:hover { opacity: 0.8; }
     <div class="glass-panel hangar-panel" onclick="event.stopPropagation()">
         <button id="multi-action-btn" class="close-btn-fixed" onclick="handleMenuAction()">×</button>
         <div id="ship-main-view">
-            <div class="menu-header">
-                <h3></i> SPACE SHIP SYSTEM</h3>
+    <div class="menu-header">
+        <h3><i class="fas fa-rocket"></i> SPACE SHIP SYSTEM</h3>
+    </div>
+
+    <div class="ship-main-layout">
+        <div class="sidebar-categories">
+            <div class="cat-card" onclick="openCategory('engine')">
+                <i class="fas fa-fan"></i> <span>Engine System</span>
             </div>
-            <div class="category-grid">
-				<div class="cat-card" onclick="openCategory('engine')">
-                    <div class="img-placeholder">std</div>
-                    <span>Engine system</span>
-                </div>
-                <div class="cat-card" onclick="openCategory('drill')">
-                    <div class="img-placeholder">std</div>
-                    <span>Drill system</span>
-                </div>
-                <div class="cat-card" onclick="openCategory('storage')">
-                    <div class="img-placeholder">std</div>
-                    <span>Storage</span>
-                </div>
-				<div class="cat-card" onclick="openCategory('barrier')">
-                    <div class="img-placeholder">std</div>
-                    <span>Barrier shield</span>
-                </div>
+            <div class="cat-card" onclick="openCategory('drill')">
+                <i class="fas fa-hammer"></i> <span>Drill System</span>
             </div>
+            <div class="cat-card" onclick="openCategory('turret')">
+                <i class="fas fa-crosshairs"></i> <span>Turret System</span>
+            </div>
+            <div class="cat-card" onclick="openCategory('barrier')">
+                <i class="fas fa-shield-alt"></i> <span>Barrier Shield</span>
+            </div>
+            <div class="cat-card" onclick="openCategory('storage')">
+                <i class="fas fa-warehouse"></i> <span>Cargo Storage</span>
+            </div>
+        </div>
+
+        <div class="ship-display-area">
+            <div class="ship-image-frame">
+                <img id="main-ship-img" src="images/shipmenu/ship0.png" alt="Ship View">
+            </div>
+            
+            <div class="ship-global-stats" id="ship-overall-stats">
+                <div style="color:var(--neon-blue); border-bottom:1px solid #333; margin-bottom:5px;">SHIP CONFIGURATION</div>
+                <div>CORE INTEGRITY: <span style="color:var(--neon-green)">100%</span></div>
+                <div id="stat-list-dynamic"></div>
+            </div>
+        </div>
+    </div>
+</div>
         </div>
 
         <div id="ship-category-view" style="display: none;">
@@ -1552,6 +1627,7 @@ button:hover { opacity: 0.8; }
 			// รูปฐานหลักและรูปปกปิด (Fog of War)
 			'starHome': 'images/star/starHome.png',
 			'conceal': 'images/conceal.png',
+			'shipM0': 'images/shipmenu/ship0.png',
 			'ship': 'images/ship.png',
 			'ship1': 'images/ship/ship1.png',
 			'meteor0': 'images/meteorite/meteor0.png',
@@ -5120,6 +5196,56 @@ function upgradeItem() {
 }
 
 
+
+function openShipMenu() {
+    openMenu('ship-menu');
+    renderShipMain();
+}
+
+function renderShipMain() {
+    // 1. จัดการรูปยาน (เริ่มต้นที่ shipM0)
+    const shipImgEl = document.getElementById('main-ship-img');
+    // ในอนาคตถ้ากัปตันมีค่า shipLevel ในฐานข้อมูล ก็เปลี่ยนจาก 'shipM0' เป็นตัวแปรได้ครับ
+    shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
+
+    // 2. คำนวณและแสดงผลสถานะยาน
+    const statsContainer = document.getElementById('stat-list-dynamic');
+    
+    // ดึงค่าสเตตัสจากการติดตั้งอุปกรณ์แต่ละชิ้น
+    const engine = playerEquipped.engine;
+    const drill = playerEquipped.drill;
+    const barrier = playerEquipped.barrier;
+
+    let statsHTML = `
+        <div style="margin-top:10px;">
+            <div style="opacity:0.6; font-size:0.7rem;">INSTALLED MODULES:</div>
+            <div style="display:flex; justify-content:space-between;">
+                <span>ENGINE:</span> 
+                <span>${engine ? engine.name : 'NONE'}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <span>DRILL:</span> 
+                <span>${drill ? drill.name : 'NONE'}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <span>SHIELD:</span> 
+                <span>${barrier ? barrier.name : 'NONE'}</span>
+            </div>
+        </div>
+        
+        <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+            <div>TRAVEL RANGE: <span style="color:var(--neon-blue)">${engine ? engine.power * 10 : 0} light years</span></div>
+            <div>DRILL POWER: <span style="color:var(--neon-blue)">${drill ? drill.scanRate : 0} scan/s</span></div>
+            <div>SHIELD CAPACITY: <span style="color:var(--neon-blue)">${barrier ? barrier.maxShield : 0} pts</span></div>
+        </div>
+    `;
+
+    statsContainer.innerHTML = statsHTML;
+
+    // ตรวจสอบให้แน่ใจว่าแสดงหน้า Main View และซ่อน Category View
+    document.getElementById('ship-main-view').style.display = 'block';
+    document.getElementById('ship-category-view').style.display = 'none';
+}
 
 
 
