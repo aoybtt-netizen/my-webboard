@@ -1722,6 +1722,7 @@ button:hover { opacity: 0.8; }
         let playerMinedTiles = [];
         let currentUser = localStorage.getItem('username');
 		let currentUserNickname = ""; // 🚩 เพิ่มบรรทัดนี้ไว้ด้านบนสุดของไฟล์
+		let playerEquipped = {};
 		let isGuest = localStorage.getItem('isGuest') === 'true';
         let mapActive = false;
         let isMining = false;
@@ -1809,6 +1810,11 @@ button:hover { opacity: 0.8; }
 
 		// 3. คลังไอเทมเริ่มต้น (ชิปพลังงาน 10 อัน)
 		let playerInventory = [];
+		let userData = {
+			username: localStorage.getItem('username'),
+			inventory: [],
+			equipped: { drill: null, engine: null, storage: null }
+		};
 		
 		
 		const SHOP_ITEMS = [
@@ -4865,16 +4871,17 @@ function upgradeEquipped(slot) {
 }
 
 async function uninstallModule(slot) {
+    // ตรวจสอบว่ามีไอเท็มใน slot นั้นจริงไหม
     const item = playerEquipped[slot];
     if (!item) return;
 
     try {
-        // ใช้ API_BASE ที่กำหนดไว้ด้านบนแทนการระบุ Path เอง
+        // ใช้ API_BASE และเปลี่ยนจาก userData.username เป็น currentUser
         const response = await fetch(`${API_BASE}/game/uninstall-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: userData.username,
+                username: currentUser, // ✅ แก้เป็น currentUser ตามที่คุณประกาศไว้ข้างต้น
                 category: slot 
             })
         });
@@ -4882,13 +4889,14 @@ async function uninstallModule(slot) {
         const result = await response.json();
 
         if (result.success) {
-            // อัปเดตข้อมูลใน Local State
+            // อัปเดตข้อมูลใน Local State (ตัวแปร global)
             playerInventory = result.inventory;
             playerEquipped = result.equipped;
             
+            // อัปเดตใน window.userData ถ้าคุณมีการประกาศไว้ใช้ที่อื่น
             if (window.userData) {
-                userData.inventory = result.inventory;
-                userData.equipped = result.equipped;
+                window.userData.inventory = result.inventory;
+                window.userData.equipped = result.equipped;
             }
 
             showMiningToast(`UNINSTALLED ${item.name}`, "#ff4b2b");
