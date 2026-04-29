@@ -1591,6 +1591,19 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
+
+<div id="upgrade-selection-overlay" class="menu-overlay" style="display: none; z-index: 7000;">
+    <div class="glass-panel" style="width: 90%; max-width: 400px; padding: 20px;">
+        <h4 id="selection-title" style="color: var(--neon-blue); margin-top: 0;">SELECT RESOURCE</h4>
+        <p style="font-size: 0.7rem; opacity: 0.7;">เลือกแร่ในคลังเพื่อใช้เป็นวัตถุดิบ</p>
+        
+        <div id="selection-grid" class="inventory-grid-area" style="max-height: 300px; margin-bottom: 20px;">
+            </div>
+
+        <button class="btn-wire btn-gray" onclick="closeUpgradeSelection()" style="width: 100%;">CANCEL</button>
+    </div>
+</div>
+
 	
 	
 	
@@ -2007,6 +2020,13 @@ button:hover { opacity: 0.8; }
         }
     }
 };
+
+		let selectedUpgradeMaterials = {
+			metal: null,
+			energy: null,
+			tech: null
+		};
+		let pickingResourceType = null; // เก็บว่ากำลังเลือกแร่ให้ประเภทไหนอยู่
 
 		// --- อัปเดตตำแหน่งเป้าหมายตามเมาส์หรือการลากนิ้ว ---
 window.onmousemove = (e) => { 
@@ -5582,6 +5602,84 @@ function updateResourceDisplay(resources) {
         const el = document.getElementById('hud-tech');
         if (el) el.innerText = resources.tech;
     }
+}
+
+
+function openResourceSelector(resourceType) {
+    pickingResourceType = resourceType; // 'metal', 'energy', or 'tech'
+    const overlay = document.getElementById('upgrade-selection-overlay');
+    const grid = document.getElementById('selection-grid');
+    const title = document.getElementById('selection-title');
+    
+    title.innerText = `SELECT ${resourceType.toUpperCase()} SOURCE`;
+    grid.innerHTML = '';
+    
+    // 🚩 กรองเฉพาะ "แร่" ที่มีค่า resource ประเภทนั้นๆ > 0
+    const validMinerals = playerInventory.filter(item => {
+        const isOre = item.type === 'resource' || item.stackable;
+        return isOre && (item[resourceType] > 0);
+    });
+
+    if (validMinerals.length === 0) {
+        grid.innerHTML = `<div style="grid-column: span 5; padding: 20px; opacity: 0.5;">ไม่มีแร่ที่มีค่า ${resourceType}</div>`;
+    }
+
+    validMinerals.forEach(mineral => {
+        const slot = document.createElement('div');
+        slot.className = 'inv-slot-item';
+        slot.onclick = () => selectMaterial(mineral);
+        
+        const rawImg = mineral.imgKey || mineral.img || 'default';
+        const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/ore/default.png');
+        
+        slot.innerHTML = `
+            <img src="${imgSrc}">
+            <div class="inv-count" style="font-size: 8px;">${mineral[resourceType]}</div>
+        `;
+        grid.appendChild(slot);
+    });
+
+    overlay.style.display = 'flex';
+}
+
+function selectMaterial(mineral) {
+    // เก็บแร่ที่เลือกลงในตัวแปร
+    selectedUpgradeMaterials[pickingResourceType] = mineral;
+    closeUpgradeSelection();
+    
+    // อัปเดต UI ในหน้าอัปเกรดให้โชว์ว่าเลือกแร่อันนี้แล้ว
+    renderUpgradeCosts(); 
+}
+
+function renderUpgradeCosts(currentLevel, config) {
+    const cost = config.costPerLevel(currentLevel);
+    const container = document.getElementById('upg-cost-container');
+    container.innerHTML = '';
+
+    ['metal', 'energy', 'tech'].forEach(res => {
+        if (cost[res] > 0) {
+            const isSelected = selectedUpgradeMaterials[res];
+            const costRow = document.createElement('div');
+            costRow.className = 'detail-row';
+            // 🚩 ทำให้กดได้เพื่อเปิดหน้าเลือกแร่
+            costRow.style.cursor = 'pointer';
+            costRow.onclick = () => openResourceSelector(res);
+            
+            costRow.innerHTML = `
+                <span class="detail-label">
+                    <i class="fas fa-microchip"></i> ${res.toUpperCase()} REQUIRED: ${cost[res]}
+                </span>
+                <span class="detail-value" style="color: ${isSelected ? 'var(--neon-green)' : '#ff4b2b'}">
+                    ${isSelected ? isSelected.name : '[ CLICK TO SELECT ]'}
+                </span>
+            `;
+            container.appendChild(costRow);
+        }
+    });
+}
+
+function closeUpgradeSelection() {
+    document.getElementById('upgrade-selection-overlay').style.display = 'none';
 }
 
 
