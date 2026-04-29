@@ -4968,58 +4968,68 @@ function renderCategoryContent() {
     const invArea = document.getElementById('inventory-list-area');
     if (!eqBox || !invArea) return;
 
-    // --- เรนเดอร์ส่วนบน (Detail) ---
+    // --- 1. วาดส่วนบน (Equipped Detail) ---
     if (equipped) {
         const rawImg = equipped.imgKey || equipped.img || 'default';
-        let imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+        const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
         eqBox.innerHTML = `
-            <div class="detail-img-side">
-                <div class="img-square" style="width:100px; height:100px;">
+            <div class="detail-left">
+                <div class="img-square" style="width:90px; height:90px; margin:0;">
                     <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
                 </div>
+                <div class="item-resource-row" style="min-width:90px;">
+                    ${getResourceRowHTML(equipped)}
+                </div>
             </div>
-            <div class="detail-info-side">
-                <div style="color:var(--neon-blue); font-weight:bold; margin-bottom:5px;">${equipped.name}</div>
-                <div style="font-size:0.75rem;">${getItemStatusHTML(equipped)}</div>
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button class="btn-wire btn-red" style="padding:2px 10px; font-size:0.6rem;" onclick="uninstallModule('${currentCat}')">REMOVE</button>
-                    <button class="btn-wire btn-green" style="padding:2px 10px; font-size:0.6rem;" onclick="upgradeItem()">UPGRADE</button>
+            <div class="detail-right">
+                <div style="color:var(--neon-blue); font-weight:bold; margin-bottom:5px; font-size:1rem;">${equipped.name.toUpperCase()}</div>
+                <div class="status-box" style="min-height:80px; font-size:0.75rem;">
+                    ${getItemStatusHTML(equipped)}
+                </div>
+                <div class="button-row" style="margin-top:10px;">
+                    <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">REMOVE</button>
+                    <button class="btn-wire btn-green" onclick="upgradeItem()">UPGRADE</button>
                 </div>
             </div>
         `;
     } else {
         eqBox.innerHTML = `
-            <div class="detail-img-side">
-                <div class="img-square" style="width:100px; height:100px; opacity:0.2; border:1px dashed #fff;"></div>
-            </div>
-            <div class="detail-info-side" style="opacity:0.5;">
-                <strong>EMPTY SLOT</strong><br>
-                <small>Select equipment from below to install</small>
+            <div style="width:100%; text-align:center; opacity:0.5; padding:20px;">
+                <i class="fas fa-plus-circle" style="font-size:2rem; margin-bottom:10px;"></i><br>
+                EMPTY SLOT: SELECT MODULE BELOW
             </div>
         `;
     }
 
-    // --- เรนเดอร์ส่วนล่าง (Inventory Grid) ---
+    // --- 2. วาดส่วนล่าง (Inventory Grid) ---
     invArea.innerHTML = '';
+    
+    // กรองไอเทมตามหมวดหมู่
     const items = playerInventory.filter(i => {
         if (currentCat === 'engine') return i.type === 'ship engine';
         if (currentCat === 'drill') return i.type === 'drill engine';
         if (currentCat === 'barrier') return i.type === 'card barrier';
+        if (currentCat === 'storage') return i.type === 'storage'; // เพิ่มหมวด Storage
         if (currentCat === 'turret') return i.type === 'turret';
         return false;
     });
 
+    if (items.length === 0) {
+        invArea.innerHTML = '<div style="grid-column: span 5; opacity:0.3; padding:20px;">No available modules in cargo</div>';
+    }
+
     items.forEach(item => {
         const rawImg = item.imgKey || item.img || 'default';
-        let imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+        const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
         const slot = document.createElement('div');
-        slot.className = 'inv-slot-item';
-        slot.title = item.name; // โชว์ชื่อเวลาเอาเมาส์วาง
-        slot.onclick = () => openItemPopup(item, imgSrc);
+        slot.className = 'inv-slot-item'; // 🚩 ใช้ Class ใหม่ที่เป็นสี่เหลี่ยม
+        slot.onclick = () => openItemPopup(item, imgSrc); // ส่ง imgSrc ไปให้ Popup เลยเพื่อความชัวร์
         
-        slot.innerHTML = `<img src="${imgSrc}" onerror="this.src='images/meteorite/meteor0.png'">`;
+        slot.innerHTML = `
+            <img src="${imgSrc}" onerror="this.src='images/meteorite/meteor0.png'">
+        `;
         invArea.appendChild(slot);
     });
 }
