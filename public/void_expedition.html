@@ -4864,13 +4864,44 @@ function upgradeEquipped(slot) {
     }
 }
 
-function uninstallModule(slot) {
+async function uninstallModule(slot) {
     const item = playerEquipped[slot];
-    if (item) {
-        playerInventory.push(item); // ส่งกลับเข้าคลัง
-        playerEquipped[slot] = null; // ว่างสล็อต
-        showMiningToast(`UNINSTALLED ${item.name}`, "#ff4b2b");
-        renderHangar();
+    if (!item) return;
+
+    try {
+        // ส่งคำสั่งไปที่ Server เพื่อถอดไอเท็ม
+        const response = await fetch(`/api/${currentMode}/game/uninstall-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: userData.username,
+                category: slot // ส่ง slot หรือ category ที่ต้องการถอดออก
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // อัปเดตข้อมูลในฝั่ง Client ด้วยข้อมูลจาก Server
+            playerInventory = result.inventory;
+            playerEquipped = result.equipped;
+            
+            // อัปเดตใน userData (ถ้าใช้อยู่)
+            if (window.userData) {
+                userData.inventory = result.inventory;
+                userData.equipped = result.equipped;
+            }
+
+            showMiningToast(`UNINSTALLED ${item.name}`, "#ff4b2b");
+            
+            // วาด UI ใหม่
+            renderHangar(); 
+        } else {
+            showMiningToast("ถอดไอเท็มล้มเหลว: " + result.error, "#ff4b2b");
+        }
+    } catch (error) {
+        console.error("Uninstall Error:", error);
+        showMiningToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "#ff4b2b");
     }
 }
 

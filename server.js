@@ -2259,6 +2259,48 @@ app.post('/api/:mode/game/equip-item', async (req, res) => {
     }
 });
 
+// 13.1======== API สำหรับถอดไอเท็ม (Uninstall Item) ========
+app.post('/api/:mode/game/uninstall-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, category } = req.body;
+    const db = getDB(mode);
+
+    try {
+        const user = await db.findOne({ username });
+        if (!user) return res.json({ success: false, error: "User not found" });
+
+        const itemToUninstall = user.equipped[category];
+
+        // ถ้าไม่มีไอเท็มในช่องนั้นอยู่แล้ว ให้ส่งกลับปกติ
+        if (!itemToUninstall || !itemToUninstall.id) {
+            return res.json({ success: true, inventory: user.inventory, equipped: user.equipped });
+        }
+
+        // 1. เพิ่มไอเท็มกลับเข้าคลัง (Inventory)
+        const newInventory = [...user.inventory, itemToUninstall];
+
+        // 2. ล้างข้อมูลในช่องที่สวมใส่ (Equipped)
+        await db.updateOne(
+            { username },
+            { 
+                $set: { 
+                    [`equipped.${category}`]: null, // หรือ {} ตามโครงสร้างของคุณ
+                    inventory: newInventory
+                } 
+            }
+        );
+
+        // ดึงข้อมูลล่าสุดส่งกลับไปให้ Client
+        res.json({ 
+            success: true, 
+            inventory: newInventory, 
+            equipped: { ...user.equipped, [category]: null } 
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 
 
 
