@@ -4869,24 +4869,23 @@ async function uninstallModule(slot) {
     if (!item) return;
 
     try {
-        // ส่งคำสั่งไปที่ Server เพื่อถอดไอเท็ม
-        const response = await fetch(`/api/${currentMode}/game/uninstall-item`, {
+        // ใช้ API_BASE ที่กำหนดไว้ด้านบนแทนการระบุ Path เอง
+        const response = await fetch(`${API_BASE}/game/uninstall-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: userData.username,
-                category: slot // ส่ง slot หรือ category ที่ต้องการถอดออก
+                category: slot 
             })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            // อัปเดตข้อมูลในฝั่ง Client ด้วยข้อมูลจาก Server
+            // อัปเดตข้อมูลใน Local State
             playerInventory = result.inventory;
             playerEquipped = result.equipped;
             
-            // อัปเดตใน userData (ถ้าใช้อยู่)
             if (window.userData) {
                 userData.inventory = result.inventory;
                 userData.equipped = result.equipped;
@@ -4894,7 +4893,7 @@ async function uninstallModule(slot) {
 
             showMiningToast(`UNINSTALLED ${item.name}`, "#ff4b2b");
             
-            // วาด UI ใหม่
+            // รีเฟรช UI
             renderHangar(); 
         } else {
             showMiningToast("ถอดไอเท็มล้มเหลว: " + result.error, "#ff4b2b");
@@ -4913,7 +4912,7 @@ async function equipModule(itemId) {
         if (!item) return;
 
         // 2. ส่งคำสั่งไปที่ Server (เพื่อให้ Database บันทึกการเปลี่ยนแปลง)
-        const response = await fetch(`/api/${currentMode}/game/equip-item`, {
+        const response = await fetch(`/api/${API_BASE}/game/equip-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
