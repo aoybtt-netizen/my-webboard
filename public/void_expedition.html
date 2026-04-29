@@ -1514,6 +1514,83 @@ button:hover { opacity: 0.8; }
     </div>
 </div>
 
+
+
+
+<div id="upgrade-modal" class="menu-overlay" onclick="closeUpgradeModal(event)">
+    <div class="glass-panel" onclick="event.stopPropagation()"
+         style="width:90%; max-width:380px; padding:25px; position:relative;">
+
+        <!-- Close Button -->
+        <button class="close-btn-fixed" onclick="closeUpgradeModal()">×</button>
+
+        <!-- Header -->
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="font-size:0.65rem; color:rgba(0,210,255,0.6); letter-spacing:3px; margin-bottom:5px;">
+                MODULE UPGRADE SYSTEM
+            </div>
+            <h3 id="upg-item-name"
+                style="margin:0; color:var(--neon-blue); font-size:1rem; letter-spacing:2px;">
+                ---
+            </h3>
+        </div>
+
+        <!-- Level Display -->
+        <div style="display:flex; align-items:center; justify-content:center; gap:15px; margin-bottom:20px;
+                    background:rgba(0,0,0,0.4); padding:12px; border-radius:10px; border:1px solid rgba(0,210,255,0.15);">
+            <div style="text-align:center;">
+                <div style="font-size:0.6rem; opacity:0.5; margin-bottom:3px;">CURRENT</div>
+                <div id="upg-lv-now"
+                     style="font-size:1.8rem; font-weight:bold; color:white;">1</div>
+            </div>
+            <div style="color:var(--neon-blue); font-size:1.5rem;">→</div>
+            <div style="text-align:center;">
+                <div style="font-size:0.6rem; opacity:0.5; margin-bottom:3px;">AFTER</div>
+                <div id="upg-lv-next"
+                     style="font-size:1.8rem; font-weight:bold; color:var(--neon-green);">2</div>
+            </div>
+        </div>
+
+        <!-- Stat Changes -->
+        <div style="margin-bottom:15px;">
+            <div style="font-size:0.6rem; color:rgba(0,210,255,0.7); letter-spacing:2px; margin-bottom:8px;">
+                STAT CHANGES
+            </div>
+            <div id="upg-stat-list"
+                 style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05);
+                        border-radius:8px; padding:10px; font-size:0.78rem; line-height:2;">
+                <!-- JS render -->
+            </div>
+        </div>
+
+        <!-- Cost Section -->
+        <div style="margin-bottom:20px;">
+            <div style="font-size:0.6rem; color:rgba(0,210,255,0.7); letter-spacing:2px; margin-bottom:8px;">
+                UPGRADE COST
+            </div>
+            <div id="upg-cost-list"
+                 style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05);
+                        border-radius:8px; padding:12px;">
+                <!-- JS render -->
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex; gap:10px;">
+            <button class="btn-wire btn-gray" style="flex:1; padding:12px; border-radius:8px; font-size:0.75rem;"
+                    onclick="closeUpgradeModal()">
+                CANCEL
+            </button>
+            <button id="upg-confirm-btn" class="btn-wire btn-green"
+                    style="flex:2; padding:12px; border-radius:8px; font-size:0.75rem; font-weight:bold;"
+                    onclick="confirmUpgrade()">
+                ⬆ CONFIRM UPGRADE
+            </button>
+        </div>
+
+    </div>
+</div>
+
 	
 	
 	
@@ -1892,6 +1969,44 @@ button:hover { opacity: 0.8; }
         recipe: { metal: 1, energy: 1, tech: 1 } 
     }
 ];
+
+	const UPGRADE_CONFIG = {
+    'ship engine': {
+        statPerLevel: { power: +20, consumption: -5 },
+        costPerLevel: (lv) => ({ metal: lv * 3, energy: lv * 2, tech: 0 }),
+        statLabels: {
+            power:       { label: 'POWER',       unit: '',  goodDir: +1 },
+            consumption: { label: 'CONSUMPTION', unit: '',  goodDir: -1 }
+        }
+    },
+    'drill engine': {
+        statPerLevel: { energyMax: +20, scanRate: +1, heatResist: +5, acidResist: +5, consumption: -5 },
+        costPerLevel: (lv) => ({ metal: lv * 2, energy: 0, tech: lv * 3 }),
+        statLabels: {
+            energyMax:   { label: 'ENERGY MAX',  unit: '',    goodDir: +1 },
+            scanRate:    { label: 'SCAN RATE',   unit: '/s',  goodDir: +1 },
+            heatResist:  { label: 'HEAT RESIST', unit: '%',   goodDir: +1 },
+            acidResist:  { label: 'ACID RESIST', unit: '%',   goodDir: +1 },
+            consumption: { label: 'CONSUMPTION', unit: '',    goodDir: -1 }
+        }
+    },
+    'card barrier': {
+        statPerLevel: { maxShield: +5, shield: +5, recharge: +0.3 },
+        costPerLevel: (lv) => ({ metal: 0, energy: lv * 3, tech: lv * 2 }),
+        statLabels: {
+            maxShield: { label: 'MAX SHIELD',  unit: ' pts', goodDir: +1 },
+            recharge:  { label: 'REGEN/s',     unit: '',     goodDir: +1 }
+        }
+    },
+    'turret': {
+        statPerLevel: { damage: +5, fireRate: -0.05 },
+        costPerLevel: (lv) => ({ metal: lv * 2, energy: lv * 2, tech: lv * 1 }),
+        statLabels: {
+            damage:   { label: 'DAMAGE',    unit: '',  goodDir: +1 },
+            fireRate: { label: 'FIRE RATE', unit: 's', goodDir: -1 }
+        }
+    }
+};
 
 		// --- อัปเดตตำแหน่งเป้าหมายตามเมาส์หรือการลากนิ้ว ---
 window.onmousemove = (e) => { 
@@ -5254,6 +5369,219 @@ function renderShipMain() {
     // ตรวจสอบให้แน่ใจว่าแสดงหน้า Main View และซ่อน Category View
     document.getElementById('ship-main-view').style.display = 'block';
     document.getElementById('ship-category-view').style.display = 'none';
+}
+
+
+
+//อัพเกรด
+function upgradeItem() {
+    const item = playerEquipped[currentCat];
+    if (!item) {
+        showMiningToast('NO MODULE INSTALLED', '#ff4b2b');
+        return;
+    }
+
+    // เช็ก Max Level
+    if (item.level >= item.maxUpgrades) {
+        showMiningToast('MAX LEVEL REACHED', '#ff4b2b');
+        return;
+    }
+
+    const config = UPGRADE_CONFIG[item.type];
+    if (!config) {
+        showMiningToast('UPGRADE NOT SUPPORTED', '#ff4b2b');
+        return;
+    }
+
+    const cost = config.costPerLevel(item.level);
+    const nextLv = item.level + 1;
+
+    // --- อัปเดต Modal Header ---
+    document.getElementById('upg-item-name').innerText = item.name;
+    document.getElementById('upg-lv-now').innerText = item.level;
+    document.getElementById('upg-lv-next').innerText = nextLv;
+
+    // --- สร้าง Stat Comparison ---
+    const statList = document.getElementById('upg-stat-list');
+    const labels = config.statLabels || {};
+    let statHTML = '';
+
+    for (const [stat, delta] of Object.entries(config.statPerLevel)) {
+        if (stat === 'shield') continue; // ซ่อน shield (ซ้ำกับ maxShield)
+
+        const oldVal = item[stat] !== undefined ? item[stat] : '?';
+        const newVal = item[stat] !== undefined
+            ? Math.round((item[stat] + delta) * 100) / 100
+            : '?';
+
+        const labelInfo = labels[stat] || { label: stat.toUpperCase(), unit: '', goodDir: +1 };
+        const isGood = (delta > 0 && labelInfo.goodDir > 0) || (delta < 0 && labelInfo.goodDir < 0);
+        const changeColor = isGood ? 'var(--neon-green)' : '#ff4b2b';
+        const sign = delta > 0 ? '+' : '';
+
+        statHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                        padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <span style="color:rgba(255,255,255,0.6); font-size:0.7rem;">
+                    ${labelInfo.label}
+                </span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="color:white;">${oldVal}${labelInfo.unit}</span>
+                    <span style="color:rgba(255,255,255,0.3);">→</span>
+                    <span style="color:var(--neon-green); font-weight:bold;">${newVal}${labelInfo.unit}</span>
+                    <span style="color:${changeColor}; font-size:0.65rem; min-width:40px; text-align:right;">
+                        (${sign}${delta}${labelInfo.unit})
+                    </span>
+                </div>
+            </div>`;
+    }
+    statList.innerHTML = statHTML;
+
+    // --- สร้าง Cost Section ---
+    // ดึงทรัพยากรปัจจุบัน (ใช้จาก HUD หรือตัวแปร global)
+    const myMetal  = parseInt(document.getElementById('hud-metal')?.innerText)  || 0;
+    const myEnergy = parseInt(document.getElementById('hud-energy')?.innerText) || 0;
+    const myTech   = parseInt(document.getElementById('hud-tech')?.innerText)   || 0;
+
+    const resources = [
+        { key: 'metal',  label: 'METAL',  icon: 'M', color: '#b0b0b0', need: cost.metal,  have: myMetal  },
+        { key: 'energy', label: 'ENERGY', icon: 'E', color: '#00d2ff', need: cost.energy, have: myEnergy },
+        { key: 'tech',   label: 'TECH',   icon: 'T', color: '#a326ff', need: cost.tech,   have: myTech   }
+    ];
+
+    let canAfford = true;
+    let costHTML = '';
+
+    resources.forEach(r => {
+        if (r.need <= 0) return; // ข้ามถ้าไม่ต้องใช้
+        const enough = r.have >= r.need;
+        if (!enough) canAfford = false;
+
+        costHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                        margin-bottom:6px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="color:${r.color}; font-weight:bold; font-size:0.8rem;">${r.icon}</span>
+                    <span style="color:rgba(255,255,255,0.7); font-size:0.75rem;">${r.label}</span>
+                </div>
+                <div style="text-align:right; font-size:0.75rem;">
+                    <span style="color:${enough ? 'var(--neon-green)' : '#ff4b2b'}; font-weight:bold;">
+                        ${r.need}
+                    </span>
+                    <span style="color:rgba(255,255,255,0.3); font-size:0.65rem;">
+                        / ${r.have}
+                    </span>
+                </div>
+            </div>`;
+    });
+
+    if (costHTML === '') {
+        costHTML = `<div style="color:var(--neon-green); text-align:center; font-size:0.75rem;">
+                        FREE UPGRADE
+                    </div>`;
+    }
+
+    document.getElementById('upg-cost-list').innerHTML = costHTML;
+
+    // --- ปุ่ม Confirm (disable ถ้าไม่มีพอ) ---
+    const confirmBtn = document.getElementById('upg-confirm-btn');
+    confirmBtn.disabled = !canAfford;
+    confirmBtn.style.opacity = canAfford ? '1' : '0.4';
+    confirmBtn.style.cursor  = canAfford ? 'pointer' : 'not-allowed';
+
+    // --- เปิด Modal ---
+    document.getElementById('upgrade-modal').style.display = 'flex';
+}
+
+
+// ปิด Modal
+function closeUpgradeModal(e) {
+    if (e && e.target !== document.getElementById('upgrade-modal') && e) {
+        if (e.target.id !== 'upgrade-modal') {
+            if (!e || e.target === document.getElementById('upgrade-modal')) {
+                document.getElementById('upgrade-modal').style.display = 'none';
+            }
+        } else {
+            document.getElementById('upgrade-modal').style.display = 'none';
+        }
+    } else {
+        document.getElementById('upgrade-modal').style.display = 'none';
+    }
+}
+
+
+// ยืนยันอัปเกรด → เรียก API
+async function confirmUpgrade() {
+    const item = playerEquipped[currentCat];
+    if (!item) return;
+
+    const confirmBtn = document.getElementById('upg-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = 'UPGRADING...';
+
+    try {
+        const res = await fetch(`${API_BASE}/game/upgrade-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                slot: currentCat   // 'engine' | 'drill' | 'barrier' | 'turret'
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            // อัปเดตข้อมูลในเครื่องทันที
+            playerEquipped[currentCat] = data.newItem;
+
+            // อัปเดตทรัพยากรที่หายไป
+            if (data.newResources) {
+                updateResourceDisplay(data.newResources);
+            }
+
+            // ปิด Modal และแจ้งเตือน
+            document.getElementById('upgrade-modal').style.display = 'none';
+            showMiningToast(`✅ UPGRADED TO LVL ${data.newItem.level}!`, 'var(--neon-green)');
+
+            // รีเฟรช UI หน้า Category
+            setTimeout(() => renderCategoryView(), 300);
+
+        } else {
+            showMiningToast(data.message || 'UPGRADE FAILED', '#ff4b2b');
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = '⬆ CONFIRM UPGRADE';
+        }
+
+    } catch (e) {
+        console.error('Upgrade Error:', e);
+        showMiningToast('CONNECTION ERROR', '#ff4b2b');
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = '⬆ CONFIRM UPGRADE';
+    }
+}
+
+
+// ============================================================
+// ฟังก์ชันช่วยอัปเดต HUD ทรัพยากรหลังอัปเกรด
+// ============================================================
+function updateResourceDisplay(resources) {
+    // อัปเดตทั้งตัวแปรในหน่วยความจำและ HUD
+    if (resources.metal  !== undefined) {
+        if (typeof playerResources !== 'undefined') playerResources.metal  = resources.metal;
+        const el = document.getElementById('hud-metal');
+        if (el) el.innerText = resources.metal;
+    }
+    if (resources.energy !== undefined) {
+        if (typeof playerResources !== 'undefined') playerResources.energy = resources.energy;
+        const el = document.getElementById('hud-energy');
+        if (el) el.innerText = resources.energy;
+    }
+    if (resources.tech   !== undefined) {
+        if (typeof playerResources !== 'undefined') playerResources.tech   = resources.tech;
+        const el = document.getElementById('hud-tech');
+        if (el) el.innerText = resources.tech;
+    }
 }
 
 
