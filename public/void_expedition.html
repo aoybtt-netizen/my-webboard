@@ -5286,10 +5286,9 @@ function renderShipMain() {
 
 
 //ระบบอัพเกรด
+// ฟังก์ชันเช็คเปอร์เซ็นต์ตีบวก
 function getUpgradeSuccessRate(currentLevel) {
-    const rates = {
-        1: 100, 2: 70, 3: 50, 4: 40, 5: 30, 6: 25, 7: 20, 8: 15, 9: 10
-    };
+    const rates = { 1: 100, 2: 70, 3: 50, 4: 40, 5: 30, 6: 25, 7: 20, 8: 15, 9: 10 };
     return currentLevel >= 10 ? 20 : (rates[currentLevel] || 20);
 }
 
@@ -5300,9 +5299,16 @@ function openUpgradeModal(slot) {
     const rawImg = item.imgKey || item.img || 'default';
     const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
-    const rc = item.repairCost;
+    const rc = item.repairCost || { metal: 1, energy: 1, tech: 1 };
     const nextLevel = item.level + 1;
     const successRate = getUpgradeSuccessRate(item.level);
+
+    // 💰 คำนวณค่าธรรมเนียม CoinsGC
+    const coinCost = 500 + ((item.level - 1) * 1000);
+    // อ่านเงินปัจจุบันจากโปรไฟล์ (ลบลูกน้ำออกก่อนแปลงเป็นเลข)
+    const currentCoinsText = document.getElementById('prof-gc').innerText;
+    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
+    const coinValid = currentCoins >= coinCost;
 
     // 🚩 กรองเช็คจำนวนแร่ในคลังที่ "ค่าพลังถึงเกณฑ์"
     const checkOre = (type, minVal) => {
@@ -5334,7 +5340,12 @@ function openUpgradeModal(slot) {
         </div>
         
         <div style="background:rgba(0,0,0,0.5); padding:12px; border-radius:10px; font-size:0.75rem; text-align:left;">
-            <div style="color:var(--neon-blue); margin-bottom:8px; border-bottom:1px solid #333;">REQUIRED MATERIALS (10 EA EACH)</div>
+            <div style="color:#ffcc00; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:5px;">
+                <i class="fas fa-coins"></i> UPGRADE COST: 
+                <span style="color:${coinValid ? '#38ef7d' : '#ff4b2b'}; float:right; font-weight:bold;">${coinCost.toLocaleString()} GC</span>
+            </div>
+
+            <div style="color:var(--neon-blue); margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:5px;">REQUIRED MATERIALS (10 EA EACH)</div>
             ${rc.metal > 0 ? `<div style="display:flex; justify-content:space-between; color:${metalStatus.valid ? '#fff' : '#ff4b2b'}">
                 <span>METAL (Min ${rc.metal}):</span> <span>${metalStatus.count}/10</span>
             </div>` : ''}
@@ -5344,22 +5355,26 @@ function openUpgradeModal(slot) {
             ${rc.tech > 0 ? `<div style="display:flex; justify-content:space-between; color:${techStatus.valid ? '#fff' : '#ff4b2b'}">
                 <span>TECH (Min ${rc.tech}):</span> <span>${techStatus.count}/10</span>
             </div>` : ''}
+            
+            <div style="margin-top:12px; font-size:0.65rem; color:#ff4b2b; text-align:center; opacity:0.8;">
+                ⚠️ คำเตือน: หากล้มเหลวเลเวลและสเตตัสอุปกรณ์จะลดลง 1 ระดับ!
+            </div>
         </div>
     `;
 
     document.getElementById('pop-status').innerHTML = statusHTML;
 
+    // เช็คให้เงินพอด้วย ถึงจะกดปุ่มได้
     const actionBtn = document.getElementById('pop-install-btn');
-    actionBtn.style.display = (metalStatus.valid && energyStatus.valid && techStatus.valid) ? 'block' : 'none';
-    actionBtn.innerText = `Install`;
-    actionBtn.onclick = () => processUpgrade(slot, successRate);
+    actionBtn.style.display = (metalStatus.valid && energyStatus.valid && techStatus.valid && coinValid) ? 'block' : 'none';
+    actionBtn.innerText = `CONFIRM UPGRADE`;
+    actionBtn.onclick = () => processUpgrade(slot);
 
     popup.style.display = 'flex';
 }
 
 async function processUpgrade(slot) {
     try {
-        // ส่งแค่ชื่อช่อง (Slot) ไปให้หลังบ้านคิด
         const response = await fetch(`${API_BASE}/game/upgrade-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -5373,17 +5388,23 @@ async function processUpgrade(slot) {
 
         if (result.success) {
             playerEquipped = result.equipped;
-            playerInventory = result.inventory; // อัปเดตคลังที่โดนหักแร่ไปแล้ว
+            playerInventory = result.inventory;
             
-            showMiningToast(`อัปเกรดสำเร็จ! ตอนนี้คือ LV.${result.newLevel}`, "#38ef7d");
-            document.getElementById('item-detail-popup').style.display = 'none';
-            renderCategoryContent(); // วาด UI ใหม่
+            showMiningToast(`อัปเกรดสำเร็จ! อุปกรณ์เลื่อนเป็น LV.${result.newLevel}`, "#38ef7d");
         } else {
-            showMiningToast(`การอัปเกรดล้มเหลว: ${result.error}`, "#ff4b2b");
-            // ถ้าล้มเหลวแต่มีการหักแร่ ก็ต้องอัปเดตคลังใหม่ด้วย
+            // กรณีล้มเหลว (อัปเดตข้อมูลที่ลดลงกลับมาที่ Client)
+            if (result.equipped) playerEquipped = result.equipped;
             if (result.inventory) playerInventory = result.inventory;
-            renderCategoryContent();
+            
+            showMiningToast(result.error, "#ff4b2b");
         }
+
+        // รีเฟรชโปรไฟล์เพื่ออัปเดตยอดเงิน CoinsGC ที่ถูกหักไปบน HUD
+        await checkGameProfile();
+
+        document.getElementById('item-detail-popup').style.display = 'none';
+        renderCategoryContent(); // วาด UI สถานะของไอเท็มใหม่ (สเตตัสที่เพิ่มหรือลด)
+
     } catch (error) {
         console.error("Upgrade Error:", error);
     }

@@ -2302,7 +2302,7 @@ app.post('/api/:mode/game/uninstall-item', async (req, res) => {
     }
 });
 
-// 14. ระบบอัพเกรด
+// 14. ระบบอัพเกรด (พร้อมระบบตีบวกแตกสเตตัสลด + ใช้เงิน)
 app.post('/api/:mode/game/upgrade-item', async (req, res) => {
     const { mode } = req.params;
     const { username, category } = req.body;
@@ -2313,14 +2313,19 @@ app.post('/api/:mode/game/upgrade-item', async (req, res) => {
         const item = user.equipped[category];
         if (!item) throw new Error("ไม่พบไอเท็มที่ติดตั้งอยู่");
 
-        const rc = item.repairCost;
+        // 💰 1. คำนวณค่าธรรมเนียมการอัปเกรด (Level แรก 500, ต่อไปเพิ่มทีละ 1000)
+        const coinCost = 500 + ((item.level - 1) * 1000);
+        if ((user.coinsgc || 0) < coinCost) {
+            throw new Error(`อัปเกรดล้มเหลว: ต้องการ ${coinCost.toLocaleString()} GC`);
+        }
+
+        const rc = item.repairCost || { metal: 1, energy: 1, tech: 1 };
         const currentInv = [...user.inventory];
 
-        // 🛡️ 1. ตรวจสอบแร่ในคลัง (ต้องมีประเภทละ 10 ก้อนที่ค่าพลัง >= repairCost)
+        // 🛡️ 2. ตรวจสอบแร่ในคลัง (ต้องมีประเภทละ 10 ก้อนที่ค่าพลัง >= repairCost)
         const checkAndCollectOres = (type, threshold) => {
             if (threshold <= 0) return []; // ไม่ต้องใช้
-            let collected = [];
-            // กรองหาแร่ที่ตรงเงื่อนไข
+            let collected =[];
             for (let i = 0; i < currentInv.length; i++) {
                 const ore = currentInv[i];
                 const oreVal = ore[type] || ore['technology'] || 0;
@@ -2342,25 +2347,25 @@ app.post('/api/:mode/game/upgrade-item', async (req, res) => {
         const energyToUse = checkAndCollectOres('energy', rc.energy);
         const techToUse = checkAndCollectOres('tech', rc.tech);
 
-        // 🛡️ 2. หักแร่ออกจากคลัง[cite: 2]
+        // 🛡️ 3. หักเงิน GC และ หักแร่ออกจากคลัง
+        let newCoinsGC = (user.coinsgc || 0) - coinCost;
+        
         const allToUse = [...metalToUse, ...energyToUse, ...techToUse];
-        // หักจำนวนแร่ (วนจากหลังไปหน้าเพื่อไม่ให้ Index เพี้ยน)
         allToUse.sort((a, b) => b.index - a.index).forEach(usage => {
             currentInv[usage.index].quantity -= usage.qty;
             if (currentInv[usage.index].quantity <= 0) currentInv.splice(usage.index, 1);
         });
 
-        // 🛡️ 3. คำนวณโอกาสสำเร็จ[cite: 1]
+        // 🛡️ 4. คำนวณโอกาสสำเร็จ
         const rates = { 1:100, 2:70, 3:50, 4:40, 5:30, 6:25, 7:20, 8:15, 9:10 };
         const successRate = item.level >= 10 ? 20 : (rates[item.level] || 20);
         const isSuccess = (Math.random() * 100) <= successRate;
 
-        if (isSuccess) {
-            const randVal = () => Math.floor(Math.random() * 6) + 5; // สุ่ม 5-10[cite: 1]
+        const randVal = () => Math.floor(Math.random() * 6) + 5; // สุ่มค่าตัวเลข 5-10
 
-            // 🛡️ 4. ใช้สูตรคำนวณตามประเภทไอเท็ม
+        if (isSuccess) {
+            // ✅ กรณีสำเร็จ: บวกสเตตัสตามประเภทไอเท็ม
             if (item.type === "ship engine") {
-                // Formula: $$C_{new} = C_{old} - (rand + RC_{energy})$$
                 item.consumption -= (randVal() + rc.energy);
                 item.durability += (randVal() + rc.metal);
                 item.power += (randVal() * rc.tech);
@@ -2372,20 +2377,65 @@ app.post('/api/:mode/game/upgrade-item', async (req, res) => {
                 item.heatResist += (randVal() * rc.tech);
                 item.acidResist += (randVal() * rc.tech);
             }
+            else if (item.type === "turret") {
+                item.damage += (randVal() + rc.tech);
+                item.fireRate = Math.max(0.1, item.fireRate - 0.05); // ยิงเร็วขึ้น
+                item.range += (randVal() + rc.energy);
+            }
+            else if (item.type === "card barrier") {
+                item.maxShield += (randVal() * 2 + rc.tech);
+                item.shield = item.maxShield;
+                item.recharge += 0.5;
+            }
             
-            // ป้องกันค่าติดลบ
-            item.consumption = Math.max(10, item.consumption);
+            item.consumption = Math.max(10, item.consumption || 10);
             item.level += 1;
 
             await db.collection("users").updateOne(
                 { username },
-                { $set: { [`equipped.${category}`]: item, inventory: currentInv } }
+                { $set: { [`equipped.${category}`]: item, inventory: currentInv, coinsgc: newCoinsGC } }
             );
             res.json({ success: true, newLevel: item.level, equipped: { ...user.equipped, [category]: item }, inventory: currentInv });
+        
         } else {
-            // กรณีล้มเหลว (หักแร่ทิ้ง)[cite: 2]
-            await db.collection("users").updateOne({ username }, { $set: { inventory: currentInv } });
-            res.json({ success: false, error: "อัปเกรดล้มเหลว! พลังงานไม่เสถียร", inventory: currentInv });
+            // ❌ กรณีล้มเหลว (ตีบวกแตก)
+            let penaltyMsg = "อัปเกรดล้มเหลว! พลังงานไม่เสถียร (เสียแร่และเงิน)";
+            
+            if (item.level > 1) { // เลเวล 1 ป้องกันไม่ให้ลดไปเลเวล 0
+                item.level -= 1;
+                penaltyMsg = `อัปเกรดล้มเหลว! อุปกรณ์เสียหาย ระดับลดลงเหลือ LV.${item.level}`;
+
+                // ลบสเตตัสแบบสุ่มและกันไม่ให้ค่าติดลบ
+                if (item.type === "ship engine") {
+                    item.consumption += (randVal() + rc.energy); // กินไฟมากขึ้น
+                    item.durability = Math.max(10, item.durability - (randVal() + rc.metal));
+                    item.power = Math.max(10, item.power - (randVal() * rc.tech));
+                }
+                else if (item.type === "drill engine") {
+                    item.consumption += (randVal() + rc.energy);
+                    item.durability = Math.max(10, item.durability - (randVal() + rc.metal));
+                    item.energyMax = Math.max(10, item.energyMax - (randVal() * rc.tech));
+                    item.heatResist = Math.max(0, item.heatResist - (randVal() * rc.tech));
+                    item.acidResist = Math.max(0, item.acidResist - (randVal() * rc.tech));
+                }
+                else if (item.type === "turret") {
+                    item.damage = Math.max(1, item.damage - (randVal() + rc.tech));
+                    item.fireRate += 0.05; // ยิงช้าลง
+                    item.range = Math.max(50, item.range - (randVal() + rc.energy));
+                }
+                else if (item.type === "card barrier") {
+                    item.maxShield = Math.max(5, item.maxShield - (randVal() * 2 + rc.tech));
+                    item.shield = Math.min(item.shield, item.maxShield);
+                    item.recharge = Math.max(0.1, item.recharge - 0.5);
+                }
+            }
+
+            // บันทึกการลงโทษกลับไปยัง DB
+            await db.collection("users").updateOne(
+                { username }, 
+                { $set: { [`equipped.${category}`]: item, inventory: currentInv, coinsgc: newCoinsGC } }
+            );
+            res.json({ success: false, error: penaltyMsg, inventory: currentInv, equipped: { ...user.equipped, [category]: item }, newLevel: item.level });
         }
 
     } catch (e) {
