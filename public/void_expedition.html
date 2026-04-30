@@ -2739,7 +2739,6 @@ function renderSellItems() {
                 <div class="shop-item-info" style="flex:1;">
                     <div class="shop-item-name" style="color:var(--neon-blue); font-weight:bold; font-size:0.9rem;">${item.name}</div>
                     <div class="shop-item-price" style="color:#ffcc00; font-size:0.8rem;"><i class="fas fa-coins"></i> PRICE: ${sellPrice} GC / unit</div>
-                    <div class="shop-item-price" style="color:#ffcc00; font-size:0.8rem;"><i class="fas fa-coins"></i> PRICE: ${sellPrice} GC</div>
                     <div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">QTY: ${item.quantity} | TYPE: ${item.type.toUpperCase()}</div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
@@ -2750,8 +2749,6 @@ function renderSellItems() {
                         SELL
                     </button>
                 </div>
-                    SELL
-                </button>
             </div>
         `;
     });

@@ -2010,7 +2010,8 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
 //9.1 API สำหรับการขาย
 app.post('/api/:mode/game/sell-item', async (req, res) => {
     const { mode } = req.params;
-    const { username, itemId, sellPrice } = req.body;
+    const { username, itemId, sellPrice, quantity } = req.body;
+    const sellQty = parseInt(quantity) || 1;
     const db = getDB(mode); // ใช้ getDB(mode) เหมือนกับตอนซื้อ
 
     try {
@@ -2018,18 +2019,20 @@ app.post('/api/:mode/game/sell-item', async (req, res) => {
         if (!user) return res.status(404).json({ success: false });
 
         const item = user.inventory.find(i => i.id === itemId);
-        if (!item || (item.quantity || 1) <= 0) {
+        if (!item || (item.quantity || 1) < sellQty) {
             return res.json({ success: false, message: "ไม่มีไอเทมเหลือให้ขาย" });
         }
 
-        // 🚩 เปลี่ยนจาก currency.gc เป็น coinsgc ให้ตรงกับตอนซื้อ
-        const updateQuery = (item.quantity > 1) 
+        const totalIncome = Number(sellPrice) * sellQty;
+        const itemQty = item.quantity || 1;
+
+        const updateQuery = (itemQty > sellQty) 
             ? { 
-                $inc: { "inventory.$.quantity": -1, coinsgc: Number(sellPrice) } 
+                $inc: { "inventory.$.quantity": -sellQty, coinsgc: totalIncome } 
               }
             : { 
                 $pull: { inventory: { id: itemId } }, 
-                $inc: { coinsgc: Number(sellPrice) } 
+                $inc: { coinsgc: totalIncome } 
               };
 
         const filter = (item.quantity > 1) 
