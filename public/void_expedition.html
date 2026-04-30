@@ -4772,27 +4772,6 @@ function renderLvlDots() {
     });
 }
 
-function processUpgrade() {
-    if (!selectedModKey) return;
-    
-    const lvl = shipStats[selectedModKey];
-    const cost = lvl * moduleConfig[selectedModKey].costBase;
-    
-    // สมมติว่ามีตัวแปรเก็บแร่ชื่อ userInventory.metal
-    if (userInventory.metal >= cost) {
-        if (shipStats[selectedModKey] < 5) { // Max level 5
-            userInventory.metal -= cost;
-            shipStats[selectedModKey]++;
-            showMiningToast(`${moduleConfig[selectedModKey].name} UPGRADED!`, "#38ef7d");
-            selectModule(selectedModKey); // รีเฟรชหน้าจอ
-            updateResourceUI(); // ฟังก์ชันอัปเดตตัวเลขแร่หน้าจอหลัก
-        } else {
-            showMiningToast("MAX LEVEL REACHED", "#ff4b2b");
-        }
-    } else {
-        showMiningToast("NOT ENOUGH METAL", "#ff4b2b");
-    }
-}
 
 
 // ฟังก์ชันวาดหน้าจอทั้งหมด
