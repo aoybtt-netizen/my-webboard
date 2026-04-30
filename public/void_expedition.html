@@ -4881,17 +4881,15 @@ function upgradeEquipped(slot) {
 }
 
 async function uninstallModule(slot) {
-    // ตรวจสอบว่ามีไอเท็มใน slot นั้นจริงไหม
     const item = playerEquipped[slot];
     if (!item) return;
 
     try {
-        // ใช้ API_BASE และเปลี่ยนจาก userData.username เป็น currentUser
         const response = await fetch(`${API_BASE}/game/uninstall-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: currentUser, // ✅ แก้เป็น currentUser ตามที่คุณประกาศไว้ข้างต้น
+                username: currentUser,
                 category: slot 
             })
         });
@@ -4899,11 +4897,9 @@ async function uninstallModule(slot) {
         const result = await response.json();
 
         if (result.success) {
-            // อัปเดตข้อมูลใน Local State (ตัวแปร global)
             playerInventory = result.inventory;
             playerEquipped = result.equipped;
             
-            // อัปเดตใน window.userData ถ้าคุณมีการประกาศไว้ใช้ที่อื่น
             if (window.userData) {
                 window.userData.inventory = result.inventory;
                 window.userData.equipped = result.equipped;
@@ -4911,14 +4907,11 @@ async function uninstallModule(slot) {
 
             showMiningToast(`UNINSTALLED ${item.name}`, "#ff4b2b");
             
-            // รีเฟรช UI
-            renderCategoryContent();
-        } else {
-            showMiningToast("ถอดไอเท็มล้มเหลว: " + result.error, "#ff4b2b");
+            // 🚩 จุดสำคัญ: ห้ามเรียก renderHangar() ให้เรียกตัวนี้แทน
+            renderCategoryContent(); 
         }
     } catch (error) {
         console.error("Uninstall Error:", error);
-        showMiningToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "#ff4b2b");
     }
 }
 
@@ -5129,12 +5122,49 @@ function backToMain() {
 // --- การวาดเนื้อหาภายใน ---
 // ฟังก์ชันวาดรายการในหน้า Category 
 function renderCategoryContent() {
-    // 🚩 1. เรียกวาดส่วนบน (Equipped) โดยส่งหมวดหมู่ปัจจุบันเข้าไป
-    // เพื่อให้มันวาดแค่ "ช่องเดียว" ไม่วาดซ้อนกันทุกหมวด
-    renderEquipped(currentCat); 
+    // ใช้ตัวแปร currentCat ที่คุณมีอยู่แล้ว
+    const equipped = playerEquipped[currentCat];
+    const eqBox = document.getElementById('equipped-box');
+    const invArea = document.getElementById('inventory-list-area');
+    if (!eqBox || !invArea) return;
 
-    // 🚩 2. เรียกวาดส่วนล่าง (Inventory) เพื่อกรองไอเทมในคลัง
-    filterInv(currentCat);
+    eqBox.innerHTML = ''; // ล้างค่าเก่าทิ้งก่อนเสมอ
+
+    if (equipped) {
+        // --- ส่วนที่ 1: วาดตอนมีไอเท็มติดตั้ง (โค้ดเดิมของคุณ) ---
+        const rawImg = equipped.imgKey || equipped.img || 'default';
+        const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+
+        eqBox.innerHTML = `
+            <div class="detail-left">
+                <div class="img-square" style="width:90px; height:90px; border:1px solid var(--neon-blue);">
+                    <img src="${imgSrc}" style="width:100%; height:100%; object-fit:contain;">
+                </div>
+            </div>
+            <div class="detail-right">
+                <div style="color:var(--neon-blue); font-weight:bold; margin-bottom:5px;">${equipped.name.toUpperCase()}</div>
+                <div class="status-box" style="min-height:80px; font-size:0.75rem; background:rgba(0,0,0,0.5);">
+                    ${getItemStatusHTML(equipped)}
+                </div>
+                <div class="button-row" style="margin-top:10px;">
+                    <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">REMOVE</button>
+                    <button class="btn-wire btn-green">UPGRADE</button>
+                </div>
+            </div>
+        `;
+    } else {
+        // --- 🚩 ส่วนที่ 2: วาดตอนช่องว่าง (Empty) ให้เป็น Card สี่เหลี่ยมสวยๆ อันเดียว ---
+        eqBox.innerHTML = `
+            <div style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; border:1px dashed rgba(0,210,255,0.3); border-radius:15px; color:rgba(0,210,255,0.5);">
+                <i class="fas fa-plus-circle" style="font-size:2rem; margin-bottom:10px;"></i>
+                <div style="letter-spacing:2px; font-size:0.8rem;">[ EMPTY ${currentCat.toUpperCase()} SLOT ]</div>
+                <div style="font-size:0.6rem; margin-top:5px;">เลือกอุปกรณ์จากคลังด้านล่างเพื่อติดตั้ง</div>
+            </div>
+        `;
+    }
+
+    // --- ส่วนที่ 3: วาด Inventory Grid (โค้ดเดิมของคุณ) ---
+    renderInventoryGrid(); // แยกฟังก์ชันวาดคลังออกมาเพื่อความสะอาด
 }
 
 // ฟังก์ชันสำหรับแปลงค่าสเตตัสตามประเภทไอเทม
