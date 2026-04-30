@@ -4895,28 +4895,33 @@ async function equipModule(itemId) {
         const item = playerInventory.find(i => i.id === itemId);
         if (!item) return;
 
-        // 🚩 ตรวจสอบบรรทัดนี้: ต้องใช้ ${API_BASE} โดยตรง ไม่ต้องมี /api/ ซ้ำซ้อน
         const response = await fetch(`${API_BASE}/game/equip-item`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: currentUser, // ใช้ currentUser ตามที่ประกาศไว้
+                username: currentUser,
                 itemId: itemId,
-                category: currentCat // ใช้ currentCat หมวดหมู่ที่กำลังเปิดอยู่
+                category: currentCat 
             })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            // อัปเดตข้อมูลในเกม[cite: 1, 2]
             playerInventory = result.inventory;
             playerEquipped = result.equipped;
             
+            if (window.userData) {
+                userData.inventory = result.inventory;
+                userData.equipped = result.equipped;
+            }
             showMiningToast("ติดตั้งอุปกรณ์เรียบร้อย", "#00d2ff");
-            
-            // 🔄 วาด UI หน้าหมวดหมู่ใหม่ทันที จะเห็นไอเท็มเด้งขึ้นไปอยู่ข้างบน[cite: 1, 2]
             renderCategoryContent(); 
+            if (typeof renderInventoryGrid === 'function') {
+                renderInventoryGrid(); 
+            }
+            if (typeof renderShipStats === 'function') renderShipStats();
+            
         } else {
             showMiningToast("ติดตั้งล้มเหลว: " + result.error, "#ff4b2b");
         }
