@@ -2035,9 +2035,7 @@ app.post('/api/:mode/game/sell-item', async (req, res) => {
                 $inc: { coinsgc: totalIncome } 
               };
 
-        const filter = (item.quantity > 1) 
-            ? { username, "inventory.id": itemId } 
-            : { username };
+        const filter = (itemQty > sellQty) ? { username, "inventory.id": itemId } : { username };
 
         const result = await db.updateOne(filter, updateQuery);
 
