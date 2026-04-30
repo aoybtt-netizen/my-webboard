@@ -5343,7 +5343,7 @@ function openUpgradeModal(slot) {
 
     const actionBtn = document.getElementById('pop-install-btn');
     actionBtn.style.display = (metalStatus.valid && energyStatus.valid && techStatus.valid) ? 'block' : 'none';
-    actionBtn.innerText = `START UPGRADE`;
+    actionBtn.innerText = `Install`;
     actionBtn.onclick = () => processUpgrade(slot, successRate);
 
     popup.style.display = 'flex';
