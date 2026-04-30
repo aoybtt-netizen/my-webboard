@@ -4798,7 +4798,7 @@ function processUpgrade() {
 // ฟังก์ชันวาดหน้าจอทั้งหมด
 function renderHangar() {
     renderEquipped();
-    filterInv('drill'); // เริ่มต้นที่หมวดขุด
+    filterInv('drill');
 }
 
 // วาดสล็อตด้านบน
@@ -4808,8 +4808,6 @@ function renderEquipped(targetCategory) {
 
     grid.innerHTML = '';
 
-    // แทนที่จะวนลูปทุกสล็อต ให้กรองเฉพาะ targetCategory ที่ส่งมา
-    // ถ้าไม่ได้ส่งมา (เป็น null/undefined) ค่อยวาดทั้งหมด (สำหรับหน้าอื่น)
     const slotsToRender = targetCategory ? [targetCategory] : ['drill', 'engine', 'storage', 'turret', 'barrier'];
 
     slotsToRender.forEach(slot => {
@@ -5309,89 +5307,95 @@ function renderShipMain() {
 
 
 //ระบบอัพเกรด
+function getUpgradeSuccessRate(currentLevel) {
+    const rates = {
+        1: 100, 2: 70, 3: 50, 4: 40, 5: 30, 6: 25, 7: 20, 8: 15, 9: 10
+    };
+    return currentLevel >= 10 ? 20 : (rates[currentLevel] || 20);
+}
+
 function openUpgradeModal(slot) {
     const item = playerEquipped[slot];
     if (!item) return;
 
-    // 🚩 [DEBUG] แสดงค่าใน Console เพื่อตรวจสอบ Object ทั้งหมด
-    console.log(`[DEBUG] Upgrading Slot: ${slot}`, item);
+    const rc = item.repairCost;
+    const nextLevel = item.level + 1;
+    const successRate = getUpgradeSuccessRate(item.level);
 
-    const upgradeCost = item.level * 500;
-    const reqMetal = item.level * 10;
-    const reqEnergy = item.level * 5;
+    // 🚩 กรองเช็คจำนวนแร่ในคลังที่ "ค่าพลังถึงเกณฑ์"
+    const checkOre = (type, minVal) => {
+        if (minVal <= 0) return { count: 10, valid: true }; // ไม่ต้องใช้
+        const validOres = playerInventory.filter(i => 
+            (i.type === type || (type === 'tech' && i.type === 'technology')) && 
+            (i[type] || i['technology'] || 0) >= minVal
+        );
+        const totalCount = validOres.reduce((sum, i) => sum + (i.quantity || 1), 0);
+        return { count: totalCount, valid: totalCount >= 10 };
+    };
+
+    const metalStatus = checkOre('metal', rc.metal);
+    const energyStatus = checkOre('energy', rc.energy);
+    const techStatus = checkOre('tech', rc.tech);
 
     const popup = document.getElementById('item-detail-popup');
-    const imgContainer = popup.querySelector('.img-square');
-    const rawImg = item.imgKey || item.img || 'default';
-    const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+    document.getElementById('pop-name').innerHTML = `<i class="fas fa-microchip"></i> UPGRADE: ${item.name}`;
 
-    document.getElementById('pop-name').innerHTML = `<i class="fas fa-arrow-up"></i> UPGRADE: ${item.name}`;
-    imgContainer.innerHTML = `<img src="${imgSrc}" style="width:80px; height:80px; object-fit:contain;">`;
-
-    // ส่วนของ UI เดิมที่กัปตันมี
     let statusHTML = `
-        <div style="text-align:center; margin-bottom:10px; color:var(--neon-green); font-weight:bold;">
-            LEVEL ${item.level} <i class="fas fa-chevron-right"></i> LEVEL ${item.level + 1}
+        <div style="text-align:center; margin-bottom:15px;">
+            <div style="font-size:1.2rem; font-weight:bold; color:var(--neon-green);">LV.${item.level} <i class="fas fa-angle-double-right"></i> LV.${nextLevel}</div>
+            <div style="font-size:0.8rem; color:${successRate > 50 ? 'var(--neon-green)' : 'var(--neon-red)'};">SUCCESS RATE: ${successRate}%</div>
         </div>
-        <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:5px;">
-            <div style="display:flex; justify-content:space-between;">
-                <span>UPGRADE COST:</span>
-                <span style="color:#ffca28;">${upgradeCost} GC</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.7rem; opacity:0.8;">
-                <span>REQUIRED METAL:</span>
-                <span>${reqMetal} UNITS</span>
-            </div>
-        </div>
-    `;
-
-    // 🚩 [DEBUG UI] แสดงข้อมูลดิบ (Raw Data) ท้ายรายการ เพื่อเช็คค่าตัวแปร
-    statusHTML += `
-        <div style="margin-top:15px; padding:8px; background:rgba(255,0,0,0.1); border:1px solid rgba(255,0,0,0.2); border-radius:5px; font-family:monospace; font-size:0.6rem; text-align:left; max-height:80px; overflow-y:auto;">
-            <div style="color:#ff4b2b; margin-bottom:3px; font-weight:bold;">[ DEBUG ITEM DATA ]</div>
-            ${JSON.stringify(item, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}
+        
+        <div style="background:rgba(0,0,0,0.5); padding:12px; border-radius:10px; font-size:0.75rem; text-align:left;">
+            <div style="color:var(--neon-blue); margin-bottom:8px; border-bottom:1px solid #333;">REQUIRED MATERIALS (10 EA EACH)</div>
+            ${rc.metal > 0 ? `<div style="display:flex; justify-content:space-between; color:${metalStatus.valid ? '#fff' : '#ff4b2b'}">
+                <span>METAL (Min ${rc.metal}):</span> <span>${metalStatus.count}/10</span>
+            </div>` : ''}
+            ${rc.energy > 0 ? `<div style="display:flex; justify-content:space-between; color:${energyStatus.valid ? '#fff' : '#ff4b2b'}">
+                <span>ENERGY (Min ${rc.energy}):</span> <span>${energyStatus.count}/10</span>
+            </div>` : ''}
+            ${rc.tech > 0 ? `<div style="display:flex; justify-content:space-between; color:${techStatus.valid ? '#fff' : '#ff4b2b'}">
+                <span>TECH (Min ${rc.tech}):</span> <span>${techStatus.count}/10</span>
+            </div>` : ''}
         </div>
     `;
 
     document.getElementById('pop-status').innerHTML = statusHTML;
 
     const actionBtn = document.getElementById('pop-install-btn');
-    actionBtn.style.display = 'block';
-    actionBtn.style.background = 'var(--neon-green)';
-    actionBtn.innerText = `CONFIRM UPGRADE`;
-    actionBtn.onclick = () => processUpgrade(slot, upgradeCost, reqMetal, reqEnergy);
+    actionBtn.style.display = (metalStatus.valid && energyStatus.valid && techStatus.valid) ? 'block' : 'none';
+    actionBtn.innerText = `START UPGRADE`;
+    actionBtn.onclick = () => processUpgrade(slot, successRate);
 
     popup.style.display = 'flex';
 }
 
-async function processUpgrade(slot, cost, metal, energy) {
+async function processUpgrade(slot) {
     try {
+        // ส่งแค่ชื่อช่อง (Slot) ไปให้หลังบ้านคิด
         const response = await fetch(`${API_BASE}/game/upgrade-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: currentUser,
-                category: slot,
-                cost: cost,
-                reqMetal: metal,
-                reqEnergy: energy
+                category: slot 
             })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            playerEquipped = result.equipped; // อัปเดตข้อมูลไอเท็มที่ใส่อยู่
+            playerEquipped = result.equipped;
+            playerInventory = result.inventory; // อัปเดตคลังที่โดนหักแร่ไปแล้ว
             
-            // อัปเดตเงินและทรัพยากรในหน้าจอ (ถ้าคุณมีฟังก์ชันอัปเดต HUD)
-            // updateHUD(result.newBalance); 
-
-            showMiningToast(`SYSTEM UPGRADED TO LVL ${result.equipped[slot].level}`, "#38ef7d");
+            showMiningToast(`อัปเกรดสำเร็จ! ตอนนี้คือ LV.${result.newLevel}`, "#38ef7d");
             document.getElementById('item-detail-popup').style.display = 'none';
-            
-            renderCategoryContent(); // วาดหน้าจอใหม่ทันที[cite: 2]
+            renderCategoryContent(); // วาด UI ใหม่
         } else {
-            alert("Upgrade Failed: " + result.error);
+            showMiningToast(`การอัปเกรดล้มเหลว: ${result.error}`, "#ff4b2b");
+            // ถ้าล้มเหลวแต่มีการหักแร่ ก็ต้องอัปเดตคลังใหม่ด้วย
+            if (result.inventory) playerInventory = result.inventory;
+            renderCategoryContent();
         }
     } catch (error) {
         console.error("Upgrade Error:", error);

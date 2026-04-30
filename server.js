@@ -2304,30 +2304,89 @@ app.post('/api/:mode/game/uninstall-item', async (req, res) => {
 // 14. ระบบอัพเกรด
 app.post('/api/:mode/game/upgrade-item', async (req, res) => {
     const { mode } = req.params;
-    const { username, category, cost, reqMetal, reqEnergy } = req.body;
+    const { username, category } = req.body;
     const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
 
     try {
         const user = await db.collection("users").findOne({ username });
-        
-        // 1. ตรวจสอบเงื่อนไข (เงินและทรัพยากร)
-        if (user.gc < cost) throw new Error("เงิน GC ไม่เพียงพอ");
-        // เพิ่มการตรวจสอบแร่ Metal/Energy ตรงนี้ถ้าคุณมีระบบเก็บแร่แยกตัวแปร
+        const item = user.equipped[category];
+        if (!item) throw new Error("ไม่พบไอเท็มที่ติดตั้งอยู่");
 
-        // 2. ทำการอัปเลเวล
-        const currentItem = user.equipped[category];
-        currentItem.level += 1;
-        
-        // 3. หักเงินและบันทึกค่าใหม่
-        await db.collection("users").updateOne(
-            { username },
-            { 
-                $set: { [`equipped.${category}`]: currentItem },
-                $inc: { gc: -cost } // หักเงิน GC
+        const rc = item.repairCost;
+        const currentInv = [...user.inventory];
+
+        // 🛡️ 1. ตรวจสอบแร่ในคลัง (ต้องมีประเภทละ 10 ก้อนที่ค่าพลัง >= repairCost)
+        const checkAndCollectOres = (type, threshold) => {
+            if (threshold <= 0) return []; // ไม่ต้องใช้
+            let collected = [];
+            // กรองหาแร่ที่ตรงเงื่อนไข
+            for (let i = 0; i < currentInv.length; i++) {
+                const ore = currentInv[i];
+                const oreVal = ore[type] || ore['technology'] || 0;
+                const isCorrectType = (type === 'tech') ? (ore.type === 'tech' || ore.type === 'technology') : (ore.type === type);
+                
+                if (isCorrectType && oreVal >= threshold) {
+                    const take = Math.min(ore.quantity || 1, 10 - collected.reduce((a, b) => a + b.qty, 0));
+                    if (take > 0) {
+                        collected.push({ index: i, qty: take });
+                    }
+                }
+                if (collected.reduce((a, b) => a + b.qty, 0) >= 10) break;
             }
-        );
+            if (collected.reduce((a, b) => a + b.qty, 0) < 10) throw new Error(`แร่ประเภท ${type} เกรด ${threshold} ไม่เพียงพอ (ต้องการ 10 ก้อน)`);
+            return collected;
+        };
 
-        res.json({ success: true, equipped: { ...user.equipped, [category]: currentItem } });
+        const metalToUse = checkAndCollectOres('metal', rc.metal);
+        const energyToUse = checkAndCollectOres('energy', rc.energy);
+        const techToUse = checkAndCollectOres('tech', rc.tech);
+
+        // 🛡️ 2. หักแร่ออกจากคลัง[cite: 2]
+        const allToUse = [...metalToUse, ...energyToUse, ...techToUse];
+        // หักจำนวนแร่ (วนจากหลังไปหน้าเพื่อไม่ให้ Index เพี้ยน)
+        allToUse.sort((a, b) => b.index - a.index).forEach(usage => {
+            currentInv[usage.index].quantity -= usage.qty;
+            if (currentInv[usage.index].quantity <= 0) currentInv.splice(usage.index, 1);
+        });
+
+        // 🛡️ 3. คำนวณโอกาสสำเร็จ[cite: 1]
+        const rates = { 1:100, 2:70, 3:50, 4:40, 5:30, 6:25, 7:20, 8:15, 9:10 };
+        const successRate = item.level >= 10 ? 20 : (rates[item.level] || 20);
+        const isSuccess = (Math.random() * 100) <= successRate;
+
+        if (isSuccess) {
+            const randVal = () => Math.floor(Math.random() * 6) + 5; // สุ่ม 5-10[cite: 1]
+
+            // 🛡️ 4. ใช้สูตรคำนวณตามประเภทไอเท็ม
+            if (item.type === "ship engine") {
+                // Formula: $$C_{new} = C_{old} - (rand + RC_{energy})$$
+                item.consumption -= (randVal() + rc.energy);
+                item.durability += (randVal() + rc.metal);
+                item.power += (randVal() * rc.tech);
+            } 
+            else if (item.type === "drill engine") {
+                item.consumption -= (randVal() + rc.energy);
+                item.durability += (randVal() + rc.metal);
+                item.energyMax += (randVal() * rc.tech);
+                item.heatResist += (randVal() * rc.tech);
+                item.acidResist += (randVal() * rc.tech);
+            }
+            
+            // ป้องกันค่าติดลบ
+            item.consumption = Math.max(10, item.consumption);
+            item.level += 1;
+
+            await db.collection("users").updateOne(
+                { username },
+                { $set: { [`equipped.${category}`]: item, inventory: currentInv } }
+            );
+            res.json({ success: true, newLevel: item.level, equipped: { ...user.equipped, [category]: item }, inventory: currentInv });
+        } else {
+            // กรณีล้มเหลว (หักแร่ทิ้ง)[cite: 2]
+            await db.collection("users").updateOne({ username }, { $set: { inventory: currentInv } });
+            res.json({ success: false, error: "อัปเกรดล้มเหลว! พลังงานไม่เสถียร", inventory: currentInv });
+        }
+
     } catch (e) {
         res.json({ success: false, error: e.message });
     }
