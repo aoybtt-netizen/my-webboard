@@ -1783,7 +1783,7 @@ button:hover { opacity: 0.8; }
 		// ตัวแปรสำหรับระบบเศษแร่กระเด็น
 		let particles = [];
 		
-		let currentCat = '';
+		let currentCat = 'drill';
 		// ฐานข้อมูลการอัปเกรด
 		const moduleConfig = {
 			storage: { name: "CARGO CAPACITY", desc: "เพิ่มพื้นที่เก็บแร่ดิบและวัสดุ", baseStat: 100, step: 50, costBase: 200 },
@@ -4842,32 +4842,6 @@ function renderEquipped(targetCategory) {
     });
 }
 
-// วาดรายการคลังแสง (Filter ตามประเภท)
-function filterInv(category) {
-    // 🚩 ตรวจสอบว่าใช้ ID 'inventory-list-area' ให้ตรงกับ HTML
-    const container = document.getElementById('inventory-list-area');
-    if (!container) return;
-
-    container.innerHTML = '';
-    
-    // กรองไอเท็มตามหมวดหมู่
-    const items = playerInventory.filter(i => i.type === category);
-    
-    if (items.length === 0) {
-        container.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">ไม่มีไอเท็มในหมวดนี้</div>';
-        return;
-    }
-
-    items.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'inv-item-card'; // หรือ class ที่คุณใช้
-        div.innerHTML = `
-            <span>${item.name} (LV.${item.level})</span>
-            <button onclick="equipModule('${item.id}')">INSTALL</button>
-        `;
-        container.appendChild(div);
-    });
-}
 
 // --- LOGIC FUNCTIONS ---
 
@@ -4918,47 +4892,36 @@ async function uninstallModule(slot) {
 // ฟังก์ชันติดตั้ง (ปรับปรุงใหม่)
 async function equipModule(itemId) {
     try {
-        // 1. หาข้อมูลไอเท็มที่จะติดตั้งก่อนเพื่อเอา 'type'
         const item = playerInventory.find(i => i.id === itemId);
         if (!item) return;
 
-        // 2. ส่งคำสั่งไปที่ Server (เพื่อให้ Database บันทึกการเปลี่ยนแปลง)
-        const response = await fetch(`/api/${API_BASE}/game/equip-item`, {
+        // 🚩 ตรวจสอบบรรทัดนี้: ต้องใช้ ${API_BASE} โดยตรง ไม่ต้องมี /api/ ซ้ำซ้อน
+        const response = await fetch(`${API_BASE}/game/equip-item`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: userData.username, // ตรวจสอบว่ามีตัวแปรเก็บชื่อผู้ใช้ไว้
+                username: currentUser, // ใช้ currentUser ตามที่ประกาศไว้
                 itemId: itemId,
-                category: item.type // เช่น 'engine', 'drill', 'barrier'
+                category: currentCat // ใช้ currentCat หมวดหมู่ที่กำลังเปิดอยู่
             })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            // 3. ถ้า Server บันทึกสำเร็จ ให้เอาข้อมูลที่ Server ส่งกลับมาอัปเดตในเกม
-            // (Server จะส่ง inventory และ equipped ชุดใหม่ที่สลับกันแล้วมาให้)
+            // อัปเดตข้อมูลในเกม[cite: 1, 2]
             playerInventory = result.inventory;
             playerEquipped = result.equipped;
             
-            // อัปเดต userData ด้วย (ถ้าคุณใช้ userData คุมทั้งหมด)
-            if (window.userData) {
-                userData.inventory = result.inventory;
-                userData.equipped = result.equipped;
-            }
-
             showMiningToast("ติดตั้งอุปกรณ์เรียบร้อย", "#00d2ff");
             
-            // 4. วาด UI ใหม่
+            // 🔄 วาด UI หน้าหมวดหมู่ใหม่ทันที จะเห็นไอเท็มเด้งขึ้นไปอยู่ข้างบน[cite: 1, 2]
             renderCategoryContent(); 
-            if (typeof renderShipStats === 'function') renderShipStats(); // อัปเดตพลังของยานในหน้าหลัก
-            
         } else {
             showMiningToast("ติดตั้งล้มเหลว: " + result.error, "#ff4b2b");
         }
     } catch (error) {
         console.error("Equip Error:", error);
-        showMiningToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "#ff4b2b");
     }
 }
 
@@ -5047,33 +5010,16 @@ detailHTML += `
 
 // 🚩 ฟังก์ชันยืนยันการติดตั้ง
 async function confirmInstall(itemId) {
+    // 1. ถามย้ำเพื่อความแน่ใจ
     if (!confirm("กัปตันต้องการติดตั้งโมดูลนี้ใช่หรือไม่? (โมดูลเดิมจะถูกถอดออก)")) return;
 
-    try {
-        const response = await fetch(`${API_BASE}/game/install-item`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: currentUser,
-                itemId: itemId
-            })
-        });
+    // 2. เรียกใช้ฟังก์ชันหลักที่เราทำไว้ ซึ่งจัดการทั้งการส่งข้อมูลไป Server 
+    // และการสั่ง renderCategoryContent() เพื่ออัปเดตหน้าจอทันที
+    await equipModule(itemId);
 
-        const result = await response.json();
-        if (result.success) {
-            showMiningToast(result.message, "#38ef7d");
-            closePopup();
-            
-            // 🔄 โหลดข้อมูลใหม่เพื่ออัปเดต UI ทั้งหมด
-            await checkGameProfile(); // Sync ข้อมูลล่าสุดจาก DB
-            if (typeof renderCategoryContent === 'function') renderCategoryContent();
-            if (typeof renderInventoryGrid === 'function') renderInventoryGrid();
-        } else {
-            alert(result.message);
-        }
-    } catch (err) {
-        console.error("Install Error:", err);
-    }
+    // 3. ปิด Popup รายละเอียดไอเท็ม
+    const popup = document.getElementById('item-detail-popup');
+    if (popup) popup.style.display = 'none';
 }
 
 function closePopup() {
@@ -5103,12 +5049,11 @@ function updateMenuIcon(isCategoryView) {
 }
 
 function openCategory(category) {
-    currentOpenCategory = category; // 🚩 จำไว้ว่าตอนนี้เปิดหมวดไหน
+    currentCat = category; // บันทึกหมวดหมู่ที่เลือกลงในตัวแปร
     document.getElementById('ship-main-view').style.display = 'none';
-    document.getElementById('ship-category-view').style.display = 'block';
+    document.getElementById('ship-category-view').style.display = 'flex'; // หรือ 'block'
     
-    // เรียกวาดข้อมูลใหม่
-    renderCategoryContent();
+    renderCategoryContent(); // วาดข้อมูลหมวดหมู่ทันที
 }
 
 function backToMain() {
@@ -5120,18 +5065,14 @@ function backToMain() {
 }
 
 // --- การวาดเนื้อหาภายใน ---
-// ฟังก์ชันวาดรายการในหน้า Category 
 function renderCategoryContent() {
-    // ใช้ตัวแปร currentCat ที่คุณมีอยู่แล้ว
     const equipped = playerEquipped[currentCat];
     const eqBox = document.getElementById('equipped-box');
-    const invArea = document.getElementById('inventory-list-area');
-    if (!eqBox || !invArea) return;
-
-    eqBox.innerHTML = ''; // ล้างค่าเก่าทิ้งก่อนเสมอ
+    
+    if (!eqBox) return;
+    eqBox.innerHTML = ''; // ล้างค่าเก่า
 
     if (equipped) {
-        // --- ส่วนที่ 1: วาดตอนมีไอเท็มติดตั้ง (โค้ดเดิมของคุณ) ---
         const rawImg = equipped.imgKey || equipped.img || 'default';
         const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
 
@@ -5153,18 +5094,48 @@ function renderCategoryContent() {
             </div>
         `;
     } else {
-        // --- 🚩 ส่วนที่ 2: วาดตอนช่องว่าง (Empty) ให้เป็น Card สี่เหลี่ยมสวยๆ อันเดียว ---
         eqBox.innerHTML = `
-            <div style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; border:1px dashed rgba(0,210,255,0.3); border-radius:15px; color:rgba(0,210,255,0.5);">
+            <div style="width:100%; text-align:center; padding:30px; border:1px dashed rgba(0,210,255,0.3); border-radius:15px; color:rgba(0,210,255,0.5);">
                 <i class="fas fa-plus-circle" style="font-size:2rem; margin-bottom:10px;"></i>
                 <div style="letter-spacing:2px; font-size:0.8rem;">[ EMPTY ${currentCat.toUpperCase()} SLOT ]</div>
-                <div style="font-size:0.6rem; margin-top:5px;">เลือกอุปกรณ์จากคลังด้านล่างเพื่อติดตั้ง</div>
-            </div>
-        `;
+                <div style="font-size:0.6rem; margin-top:5px;">เลือกไอเท็มจากคลังด้านล่างเพื่อติดตั้ง</div>
+            </div>`;
     }
 
-    // --- ส่วนที่ 3: วาด Inventory Grid (โค้ดเดิมของคุณ) ---
-    renderInventoryGrid(); // แยกฟังก์ชันวาดคลังออกมาเพื่อความสะอาด
+    // 🚩 เรียกฟังก์ชันวาดคลังไอเท็มเฉพาะหมวดหมู่
+    filterInv(currentCat);
+}
+
+function filterInv(category) {
+    const container = document.getElementById('inventory-list-area');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // กรองไอเท็มในตัวแปร playerInventory ให้ตรงกับหมวดที่เปิดอยู่
+    const items = playerInventory.filter(i => {
+        if (category === 'engine') return i.type === 'ship engine';
+        if (category === 'drill') return i.type === 'drill engine';
+        if (category === 'barrier') return i.type === 'card barrier';
+        if (category === 'storage') return i.type === 'storage';
+        if (category === 'turret') return i.type === 'turret';
+        return false;
+    });
+
+    if (items.length === 0) {
+        container.innerHTML = '<div style="grid-column: span 5; text-align:center; opacity:0.5; padding:20px; font-size:0.7rem;">ไม่พบอุปกรณ์ที่ใช้งานได้ในหมวดนี้</div>';
+        return;
+    }
+
+    items.forEach(item => {
+        const rawImg = item.imgKey || item.img || 'default';
+        const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+
+        const slot = document.createElement('div');
+        slot.className = 'inv-slot-item';
+        slot.onclick = () => openItemPopup(item, imgSrc); // ให้กดเปิดดูรายละเอียดเพื่อกด INSTALL อีกที
+        slot.innerHTML = `<img src="${imgSrc}" onerror="this.src='images/meteorite/meteor0.png'">`;
+        container.appendChild(slot);
+    });
 }
 
 // ฟังก์ชันสำหรับแปลงค่าสเตตัสตามประเภทไอเทม
