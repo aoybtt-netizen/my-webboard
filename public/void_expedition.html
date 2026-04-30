@@ -5297,6 +5297,9 @@ function openUpgradeModal(slot) {
     const item = playerEquipped[slot];
     if (!item) return;
 
+    const rawImg = item.imgKey || item.img || 'default';
+    const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+
     const rc = item.repairCost;
     const nextLevel = item.level + 1;
     const successRate = getUpgradeSuccessRate(item.level);
@@ -5317,6 +5320,11 @@ function openUpgradeModal(slot) {
     const techStatus = checkOre('tech', rc.tech);
 
     const popup = document.getElementById('item-detail-popup');
+    const imgContainer = popup.querySelector('.img-square');
+    if (imgContainer) {
+        imgContainer.innerHTML = `<img src="${imgSrc}" style="width:80px; height:80px; object-fit:contain;" onerror="this.src='images/meteorite/meteor0.png'">`;
+    }
+
     document.getElementById('pop-name').innerHTML = `<i class="fas fa-microchip"></i> UPGRADE: ${item.name}`;
 
     let statusHTML = `
