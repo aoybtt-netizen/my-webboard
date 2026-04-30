@@ -2000,6 +2000,27 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
                 $push: { inventory: newItem }
             }
         );
+        // 🚩 ตรวจสอบว่ามีไอเทมเดิมที่รวมกองได้หรือไม่
+        const existingItem = user.inventory ? user.inventory.find(i => i.name === itemName && i.stackable === true) : null;
+
+        if (existingItem) {
+            // ถ้ามีแล้ว ให้บวกจำนวนเพิ่มในแถวเดิม
+            await db.updateOne(
+                { username: username, "inventory.id": existingItem.id },
+                { 
+                    $inc: { coinsgc: -itemPrice, "inventory.$.quantity": quantity || 1 } 
+                }
+            );
+        } else {
+            // ถ้ายังไม่มี ให้สร้างใหม่
+            await db.updateOne(
+                { username: username },
+                { 
+                    $inc: { coinsgc: -itemPrice },
+                    $push: { inventory: newItem }
+                }
+            );
+        }
 
         res.json({ success: true, message: `ซื้อ ${itemName} สำเร็จ!`, newItem });
     } catch (e) {

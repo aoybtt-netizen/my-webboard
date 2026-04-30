@@ -2778,6 +2778,8 @@ async function sellItem(itemId, price, name) {
             showMiningToast(`ขายสำเร็จ! +${totalPrice} GC`, "#38ef7d");
             await checkGameProfile(); 
             renderSellItems();
+        } else {
+            showMiningToast(result.message || "การขายล้มเหลว", "#ff4b2b");
         }
     } catch (e) {
         console.error("Sell Error:", e);
