@@ -5094,7 +5094,7 @@ function renderCategoryContent() {
                 </div>
                 <div class="button-row" style="margin-top:10px;">
                     <button class="btn-wire btn-red" onclick="uninstallModule('${currentCat}')">REMOVE</button>
-                    <button class="btn-wire btn-green">UPGRADE</button>
+                    <button class="btn-wire btn-green" onclick="openUpgradeModal('${currentCat}')">UPGRADE</button>
                 </div>
             </div>
         `;
@@ -5306,6 +5306,90 @@ function renderShipMain() {
     document.getElementById('ship-main-view').style.display = 'block';
     document.getElementById('ship-category-view').style.display = 'none';
 }
+
+
+//ระบบอัพเกรด
+function openUpgradeModal(slot) {
+    const item = playerEquipped[slot];
+    if (!item) return;
+
+    // ตรรกะคำนวณราคา (ปรับแต่งตัวเลขได้ตามความเหมาะสม)
+    const upgradeCost = item.level * 500; // ราคา GC
+    const reqMetal = item.level * 10;    // แร่ Metal ที่ต้องใช้
+    const reqEnergy = item.level * 5;    // แร่ Energy ที่ต้องใช้
+
+    const popup = document.getElementById('item-detail-popup'); // ใช้ Popup เดิมที่มีอยู่
+    const imgContainer = popup.querySelector('.img-square');
+    const rawImg = item.imgKey || item.img || 'default';
+    const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
+
+    document.getElementById('pop-name').innerHTML = `<i class="fas fa-arrow-up"></i> UPGRADE: ${item.name}`;
+    imgContainer.innerHTML = `<img src="${imgSrc}" style="width:80px; height:80px; object-fit:contain;">`;
+
+    // แสดงรายละเอียดการอัปเกรด
+    document.getElementById('pop-status').innerHTML = `
+        <div style="text-align:center; margin-bottom:10px; color:var(--neon-green); font-weight:bold;">
+            LEVEL ${item.level} <i class="fas fa-chevron-right"></i> LEVEL ${item.level + 1}
+        </div>
+        <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:5px;">
+            <div style="display:flex; justify-content:space-between;">
+                <span>UPGRADE COST:</span>
+                <span style="color:#ffca28;">${upgradeCost} GC</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.7rem; opacity:0.8;">
+                <span>REQUIRED METAL:</span>
+                <span>${reqMetal} UNITS</span>
+            </div>
+        </div>
+        <p style="font-size:0.7rem; margin-top:10px; opacity:0.6;">
+            * การอัปเกรดจะเพิ่มประสิทธิภาพของระบบ ${slot.toUpperCase()} อย่างถาวร
+        </p>
+    `;
+
+    // เปลี่ยนปุ่ม INSTALL เป็นปุ่ม CONFIRM UPGRADE
+    const actionBtn = document.getElementById('pop-install-btn');
+    actionBtn.style.display = 'block';
+    actionBtn.style.background = 'var(--neon-green)';
+    actionBtn.innerText = `CONFIRM UPGRADE`;
+    actionBtn.onclick = () => processUpgrade(slot, upgradeCost, reqMetal, reqEnergy);
+
+    popup.style.display = 'flex';
+}
+
+async function processUpgrade(slot, cost, metal, energy) {
+    try {
+        const response = await fetch(`${API_BASE}/game/upgrade-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                category: slot,
+                cost: cost,
+                reqMetal: metal,
+                reqEnergy: energy
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            playerEquipped = result.equipped; // อัปเดตข้อมูลไอเท็มที่ใส่อยู่
+            
+            // อัปเดตเงินและทรัพยากรในหน้าจอ (ถ้าคุณมีฟังก์ชันอัปเดต HUD)
+            // updateHUD(result.newBalance); 
+
+            showMiningToast(`SYSTEM UPGRADED TO LVL ${result.equipped[slot].level}`, "#38ef7d");
+            document.getElementById('item-detail-popup').style.display = 'none';
+            
+            renderCategoryContent(); // วาดหน้าจอใหม่ทันที[cite: 2]
+        } else {
+            alert("Upgrade Failed: " + result.error);
+        }
+    } catch (error) {
+        console.error("Upgrade Error:", error);
+    }
+}
+
 
 
 

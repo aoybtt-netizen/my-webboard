@@ -2301,6 +2301,38 @@ app.post('/api/:mode/game/uninstall-item', async (req, res) => {
     }
 });
 
+// 14. ระบบอัพเกรด
+app.post('/api/:mode/game/upgrade-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, category, cost, reqMetal, reqEnergy } = req.body;
+    const db = client.db(mode === 'test' ? 'GedGoExpedition_Test' : 'GedGoExpedition_Main');
+
+    try {
+        const user = await db.collection("users").findOne({ username });
+        
+        // 1. ตรวจสอบเงื่อนไข (เงินและทรัพยากร)
+        if (user.gc < cost) throw new Error("เงิน GC ไม่เพียงพอ");
+        // เพิ่มการตรวจสอบแร่ Metal/Energy ตรงนี้ถ้าคุณมีระบบเก็บแร่แยกตัวแปร
+
+        // 2. ทำการอัปเลเวล
+        const currentItem = user.equipped[category];
+        currentItem.level += 1;
+        
+        // 3. หักเงินและบันทึกค่าใหม่
+        await db.collection("users").updateOne(
+            { username },
+            { 
+                $set: { [`equipped.${category}`]: currentItem },
+                $inc: { gc: -cost } // หักเงิน GC
+            }
+        );
+
+        res.json({ success: true, equipped: { ...user.equipped, [category]: currentItem } });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
 
 
 
