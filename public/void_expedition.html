@@ -5313,12 +5313,14 @@ function openUpgradeModal(slot) {
     const item = playerEquipped[slot];
     if (!item) return;
 
-    // ตรรกะคำนวณราคา (ปรับแต่งตัวเลขได้ตามความเหมาะสม)
-    const upgradeCost = item.level * 500; // ราคา GC
-    const reqMetal = item.level * 10;    // แร่ Metal ที่ต้องใช้
-    const reqEnergy = item.level * 5;    // แร่ Energy ที่ต้องใช้
+    // 🚩 [DEBUG] แสดงค่าใน Console เพื่อตรวจสอบ Object ทั้งหมด
+    console.log(`[DEBUG] Upgrading Slot: ${slot}`, item);
 
-    const popup = document.getElementById('item-detail-popup'); // ใช้ Popup เดิมที่มีอยู่
+    const upgradeCost = item.level * 500;
+    const reqMetal = item.level * 10;
+    const reqEnergy = item.level * 5;
+
+    const popup = document.getElementById('item-detail-popup');
     const imgContainer = popup.querySelector('.img-square');
     const rawImg = item.imgKey || item.img || 'default';
     const imgSrc = rawImg.includes('/') ? rawImg : (imageSources[rawImg] || 'images/meteorite/meteor0.png');
@@ -5326,8 +5328,8 @@ function openUpgradeModal(slot) {
     document.getElementById('pop-name').innerHTML = `<i class="fas fa-arrow-up"></i> UPGRADE: ${item.name}`;
     imgContainer.innerHTML = `<img src="${imgSrc}" style="width:80px; height:80px; object-fit:contain;">`;
 
-    // แสดงรายละเอียดการอัปเกรด
-    document.getElementById('pop-status').innerHTML = `
+    // ส่วนของ UI เดิมที่กัปตันมี
+    let statusHTML = `
         <div style="text-align:center; margin-bottom:10px; color:var(--neon-green); font-weight:bold;">
             LEVEL ${item.level} <i class="fas fa-chevron-right"></i> LEVEL ${item.level + 1}
         </div>
@@ -5341,12 +5343,18 @@ function openUpgradeModal(slot) {
                 <span>${reqMetal} UNITS</span>
             </div>
         </div>
-        <p style="font-size:0.7rem; margin-top:10px; opacity:0.6;">
-            * การอัปเกรดจะเพิ่มประสิทธิภาพของระบบ ${slot.toUpperCase()} อย่างถาวร
-        </p>
     `;
 
-    // เปลี่ยนปุ่ม INSTALL เป็นปุ่ม CONFIRM UPGRADE
+    // 🚩 [DEBUG UI] แสดงข้อมูลดิบ (Raw Data) ท้ายรายการ เพื่อเช็คค่าตัวแปร
+    statusHTML += `
+        <div style="margin-top:15px; padding:8px; background:rgba(255,0,0,0.1); border:1px solid rgba(255,0,0,0.2); border-radius:5px; font-family:monospace; font-size:0.6rem; text-align:left; max-height:80px; overflow-y:auto;">
+            <div style="color:#ff4b2b; margin-bottom:3px; font-weight:bold;">[ DEBUG ITEM DATA ]</div>
+            ${JSON.stringify(item, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}
+        </div>
+    `;
+
+    document.getElementById('pop-status').innerHTML = statusHTML;
+
     const actionBtn = document.getElementById('pop-install-btn');
     actionBtn.style.display = 'block';
     actionBtn.style.background = 'var(--neon-green)';
