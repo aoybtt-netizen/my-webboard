@@ -2694,7 +2694,24 @@ function renderSellItems() {
         return;
     }
 
+    // 🚩 รวมกลุ่มไอเทมที่ชื่อเหมือนกัน (Stackable Logic)
+    const groupedItems = {};
     sellableItems.forEach(item => {
+        if (!groupedItems[item.name]) {
+            // สร้าง entry ใหม่สำหรับการแสดงผล
+            groupedItems[item.name] = { 
+                ...item, 
+                quantity: item.quantity || 1,
+                ids: [item.id] // เก็บ ID ไว้เพื่อใช้สั่งขาย (ขายทีละชุดตามที่มีใน DB)
+            };
+        } else {
+            // บวกจำนวนเพิ่มในกลุ่มเดิม
+            groupedItems[item.name].quantity += (item.quantity || 1);
+            groupedItems[item.name].ids.push(item.id);
+        }
+    });
+
+    Object.values(groupedItems).forEach(item => {
         // 🚩 1. ดึงราคาจาก item.value ที่เราสุ่มไว้ตอน Discovery
         // ถ้าไม่มีค่า value ให้ใช้ 5 เป็นค่าพื้นฐาน
         const sellPrice = item.value || 5;
@@ -2721,20 +2738,28 @@ function renderSellItems() {
                 </div>
                 <div class="shop-item-info" style="flex:1;">
                     <div class="shop-item-name" style="color:var(--neon-blue); font-weight:bold; font-size:0.9rem;">${item.name}</div>
-                    <div class="shop-item-price" style="color:#ffcc00; font-size:0.8rem;"><i class="fas fa-coins"></i> PRICE: ${sellPrice} GC</div>
-                    <div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">QTY: ${item.quantity || 1} | TYPE: ${item.type.toUpperCase()}</div>
+                    <div class="shop-item-price" style="color:#ffcc00; font-size:0.8rem;"><i class="fas fa-coins"></i> PRICE: ${sellPrice} GC / unit</div>
+                    <div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">QTY: ${item.quantity} | TYPE: ${item.type.toUpperCase()}</div>
                 </div>
-                <button class="btn-buy" style="background:#ff4b2b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;" 
-                        onclick="sellItem('${item.id}', ${sellPrice})">
-                    SELL
-                </button>
+                <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
+                    <input type="number" id="sell-qty-${item.ids[0]}" value="${item.quantity}" min="1" max="${item.quantity}" 
+                           style="width:65px; padding:5px; background:rgba(0,0,0,0.5); border:1px solid #444; color:white; border-radius:5px; text-align:center; font-family:'Orbitron', sans-serif; font-size:0.7rem;">
+                    <button class="btn-buy" style="background:#ff4b2b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;" 
+                            onclick="sellItem('${item.ids[0]}', ${sellPrice}, '${item.name.replace(/'/g, "\\'")}')">
+                        SELL
+                    </button>
+                </div>
             </div>
         `;
     });
 }
 
-async function sellItem(itemId, price) {
-    if (!confirm(`คุณต้องการขายไอเทมนี้ราคา ${price} GC?`)) return;
+async function sellItem(itemId, price, name) {
+    const qtyInput = document.getElementById(`sell-qty-${itemId}`);
+    const quantity = parseInt(qtyInput.value) || 1;
+    const totalPrice = price * quantity;
+
+    if (!confirm(`คุณต้องการขาย ${name} จำนวน ${quantity} ชิ้น ราคา ${totalPrice} GC?`)) return;
 
     try {
         const response = await fetch(`${API_BASE}/game/sell-item`, {
@@ -2743,13 +2768,14 @@ async function sellItem(itemId, price) {
             body: JSON.stringify({
                 username: currentUser,
                 itemId: itemId,
-                sellPrice: price
+                sellPrice: price, // Unit price
+                quantity: quantity // จำนวนที่ต้องการขาย
             })
         });
 
         const result = await response.json();
         if (result.success) {
-            showMiningToast(`ขายสำเร็จ! +${price} GC`, "#38ef7d");
+            showMiningToast(`ขายสำเร็จ! +${totalPrice} GC`, "#38ef7d");
             await checkGameProfile(); 
             renderSellItems();
         }
