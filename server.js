@@ -2310,136 +2310,116 @@ app.post('/api/:mode/game/upgrade-item', async (req, res) => {
 
     try {
         const user = await db.collection("users").findOne({ username });
+        if (!user) return res.json({ success: false, error: "ไม่พบข้อมูลผู้เล่น" });
+
         const item = user.equipped[category];
-        if (!item) throw new Error("ไม่พบไอเท็มที่ติดตั้งอยู่");
+        if (!item) return res.json({ success: false, error: "ไม่พบไอเท็มที่สวมใส่อยู่" });
 
-        // 💰 1. คำนวณค่าธรรมเนียมการอัปเกรด (Level แรก 500, ต่อไปเพิ่มทีละ 1000)
-        const coinCost = 500 + ((item.level - 1) * 1000);
-        if ((user.coinsgc || 0) < coinCost) {
-            throw new Error(`อัปเกรดล้มเหลว: ต้องการ ${coinCost.toLocaleString()} GC`);
-        }
-
-        const rc = item.repairCost || { metal: 1, energy: 1, tech: 1 };
+        const rc = item.repairCost || { metal: 0, energy: 0, tech: 0 };
         const currentInv = [...user.inventory];
 
-        // 🛡️ 2. ตรวจสอบแร่ในคลัง (ต้องมีประเภทละ 10 ก้อนที่ค่าพลัง >= repairCost)
-        const checkAndCollectOres = (type, threshold) => {
-            if (threshold <= 0) return []; // ไม่ต้องใช้
-            let collected =[];
+        // --- 1. ตรวจสอบและหักแร่ (Logic เดิมที่กัปตันมี) ---
+        const findAndConsumeOres = (type, threshold) => {
+            if (!threshold || threshold <= 0) return [];
+            let found = [];
+            let totalFound = 0;
             for (let i = 0; i < currentInv.length; i++) {
-                const ore = currentInv[i];
-                const oreVal = ore[type] || ore['technology'] || 0;
-                const isCorrectType = (type === 'tech') ? (ore.type === 'tech' || ore.type === 'technology') : (ore.type === type);
-                
-                if (isCorrectType && oreVal >= threshold) {
-                    const take = Math.min(ore.quantity || 1, 10 - collected.reduce((a, b) => a + b.qty, 0));
-                    if (take > 0) {
-                        collected.push({ index: i, qty: take });
+                const invItem = currentInv[i];
+                const val = invItem[type] || invItem['tech'] || invItem['technology'] || 0;
+                const isMatch = (invItem.type === type || (type === 'tech' && invItem.type === 'technology'));
+                if (isMatch && val >= threshold) {
+                    const canTake = Math.min(invItem.quantity || 1, 10 - totalFound);
+                    if (canTake > 0) {
+                        found.push({ index: i, qty: canTake });
+                        totalFound += canTake;
                     }
                 }
-                if (collected.reduce((a, b) => a + b.qty, 0) >= 10) break;
+                if (totalFound >= 10) break;
             }
-            if (collected.reduce((a, b) => a + b.qty, 0) < 10) throw new Error(`แร่ประเภท ${type} เกรด ${threshold} ไม่เพียงพอ (ต้องการ 10 ก้อน)`);
-            return collected;
+            if (totalFound < 10) throw new Error(`แร่ประเภท ${type.toUpperCase()} เกรด ${threshold} ไม่เพียงพอ`);
+            return found;
         };
 
-        const metalToUse = checkAndCollectOres('metal', rc.metal);
-        const energyToUse = checkAndCollectOres('energy', rc.energy);
-        const techToUse = checkAndCollectOres('tech', rc.tech);
+        let consumedIndices = [];
+        try {
+            consumedIndices = [
+                ...findAndConsumeOres('metal', rc.metal),
+                ...findAndConsumeOres('energy', rc.energy),
+                ...findAndConsumeOres('tech', rc.tech)
+            ];
+        } catch (oreErr) {
+            return res.json({ success: false, error: oreErr.message });
+        }
 
-        // 🛡️ 3. หักเงิน GC และ หักแร่ออกจากคลัง
-        let newCoinsGC = (user.coinsgc || 0) - coinCost;
-        
-        const allToUse = [...metalToUse, ...energyToUse, ...techToUse];
-        allToUse.sort((a, b) => b.index - a.index).forEach(usage => {
+        // หักแร่ออก
+        consumedIndices.sort((a, b) => b.index - a.index).forEach(usage => {
             currentInv[usage.index].quantity -= usage.qty;
             if (currentInv[usage.index].quantity <= 0) currentInv.splice(usage.index, 1);
         });
 
-        // 🛡️ 4. คำนวณโอกาสสำเร็จ
-        const rates = { 1:100, 2:70, 3:50, 4:40, 5:30, 6:25, 7:20, 8:15, 9:10 };
-        const successRate = item.level >= 10 ? 20 : (rates[item.level] || 20);
-        const isSuccess = (Math.random() * 100) <= successRate;
+        // --- 2. คำนวณโอกาสสำเร็จ ---
+        const getRate = (lvl) => {
+            const rates = { 1: 100, 2: 70, 3: 50, 4: 40, 5: 30, 6: 25, 7: 20, 8: 15, 9: 10 };
+            return lvl >= 10 ? 20 : (rates[lvl] || 20);
+        };
 
-        const randVal = () => Math.floor(Math.random() * 6) + 5; // สุ่มค่าตัวเลข 5-10
+        const successRate = getRate(item.level);
+        const roll = Math.random() * 100;
+        const isSuccess = roll <= successRate;
+        const rand = () => Math.floor(Math.random() * 6) + 5; // สุ่ม 5-10
 
         if (isSuccess) {
-            // ✅ กรณีสำเร็จ: บวกสเตตัสตามประเภทไอเท็ม
+            // ✅ [SUCCESS] เพิ่มสเตตัส
             if (item.type === "ship engine") {
-                item.consumption -= (randVal() + rc.energy);
-                item.durability += (randVal() + rc.metal);
-                item.power += (randVal() * rc.tech);
-            } 
-            else if (item.type === "drill engine") {
-                item.consumption -= (randVal() + rc.energy);
-                item.durability += (randVal() + rc.metal);
-                item.energyMax += (randVal() * rc.tech);
-                item.heatResist += (randVal() * rc.tech);
-                item.acidResist += (randVal() * rc.tech);
+                item.consumption -= (rand() + (rc.energy || 0));
+                item.durability += (rand() + (rc.metal || 0));
+                item.power += (rand() * (rc.tech || 0));
+            } else if (item.type === "drill engine") {
+                item.consumption -= (rand() + (rc.energy || 0));
+                item.durability += (rand() + (rc.metal || 0));
+                item.energyMax += (rand() * (rc.tech || 0));
+                item.heatResist += (rand() * (rc.tech || 0));
+                item.acidResist += (rand() * (rc.tech || 0));
             }
-            else if (item.type === "turret") {
-                item.damage += (randVal() + rc.tech);
-                item.fireRate = Math.max(0.1, item.fireRate - 0.05); // ยิงเร็วขึ้น
-                item.range += (randVal() + rc.energy);
-            }
-            else if (item.type === "card barrier") {
-                item.maxShield += (randVal() * 2 + rc.tech);
-                item.shield = item.maxShield;
-                item.recharge += 0.5;
-            }
-            
-            item.consumption = Math.max(10, item.consumption || 10);
             item.level += 1;
-
-            await db.collection("users").updateOne(
-                { username },
-                { $set: { [`equipped.${category}`]: item, inventory: currentInv, coinsgc: newCoinsGC } }
-            );
-            res.json({ success: true, newLevel: item.level, equipped: { ...user.equipped, [category]: item }, inventory: currentInv });
-        
+            item.consumption = Math.max(10, item.consumption);
         } else {
-            // ❌ กรณีล้มเหลว (ตีบวกแตก)
-            let penaltyMsg = "อัปเกรดล้มเหลว! พลังงานไม่เสถียร (เสียแร่และเงิน)";
-            
-            if (item.level > 1) { // เลเวล 1 ป้องกันไม่ให้ลดไปเลเวล 0
-                item.level -= 1;
-                penaltyMsg = `อัปเกรดล้มเหลว! อุปกรณ์เสียหาย ระดับลดลงเหลือ LV.${item.level}`;
-
-                // ลบสเตตัสแบบสุ่มและกันไม่ให้ค่าติดลบ
+            // ❌ [FAILURE] ลดเลเวลและลดสเตตัส (ยกเว้นเวล 1)
+            if (item.level > 1) {
                 if (item.type === "ship engine") {
-                    item.consumption += (randVal() + rc.energy); // กินไฟมากขึ้น
-                    item.durability = Math.max(10, item.durability - (randVal() + rc.metal));
-                    item.power = Math.max(10, item.power - (randVal() * rc.tech));
+                    // การลดสเตตัสคือการทำตรงข้ามกับตอนเพิ่ม
+                    item.consumption += (rand() + (rc.energy || 0)); // กินพลังงานมากขึ้น
+                    item.durability -= (rand() + (rc.metal || 0));  // เปราะลง
+                    item.power -= (rand() * (rc.tech || 0));        // พลังลดลง
+                } else if (item.type === "drill engine") {
+                    item.consumption += (rand() + (rc.energy || 0));
+                    item.durability -= (rand() + (rc.metal || 0));
+                    item.energyMax -= (rand() * (rc.tech || 0));
+                    item.heatResist -= (rand() * (rc.tech || 0));
+                    item.acidResist -= (rand() * (rc.tech || 0));
                 }
-                else if (item.type === "drill engine") {
-                    item.consumption += (randVal() + rc.energy);
-                    item.durability = Math.max(10, item.durability - (randVal() + rc.metal));
-                    item.energyMax = Math.max(10, item.energyMax - (randVal() * rc.tech));
-                    item.heatResist = Math.max(0, item.heatResist - (randVal() * rc.tech));
-                    item.acidResist = Math.max(0, item.acidResist - (randVal() * rc.tech));
-                }
-                else if (item.type === "turret") {
-                    item.damage = Math.max(1, item.damage - (randVal() + rc.tech));
-                    item.fireRate += 0.05; // ยิงช้าลง
-                    item.range = Math.max(50, item.range - (randVal() + rc.energy));
-                }
-                else if (item.type === "card barrier") {
-                    item.maxShield = Math.max(5, item.maxShield - (randVal() * 2 + rc.tech));
-                    item.shield = Math.min(item.shield, item.maxShield);
-                    item.recharge = Math.max(0.1, item.recharge - 0.5);
-                }
+                item.level -= 1;
+                // ป้องกันค่าเพี้ยน
+                item.durability = Math.max(10, item.durability);
+                item.power = Math.max(10, item.power || 0);
             }
-
-            // บันทึกการลงโทษกลับไปยัง DB
-            await db.collection("users").updateOne(
-                { username }, 
-                { $set: { [`equipped.${category}`]: item, inventory: currentInv, coinsgc: newCoinsGC } }
-            );
-            res.json({ success: false, error: penaltyMsg, inventory: currentInv, equipped: { ...user.equipped, [category]: item }, newLevel: item.level });
         }
 
+        await db.collection("users").updateOne(
+            { username },
+            { $set: { [`equipped.${category}`]: item, inventory: currentInv } }
+        );
+
+        res.json({ 
+            success: isSuccess, 
+            newLevel: item.level, 
+            equipped: { ...user.equipped, [category]: item }, 
+            inventory: currentInv,
+            error: isSuccess ? null : "การอัปเกรดล้มเหลว! อุปกรณ์เสียหายและระดับลดลง"
+        });
+
     } catch (e) {
-        res.json({ success: false, error: e.message });
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 

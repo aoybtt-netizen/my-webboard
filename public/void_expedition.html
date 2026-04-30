@@ -5386,27 +5386,29 @@ async function processUpgrade(slot) {
 
         const result = await response.json();
 
-        if (result.success) {
-            playerEquipped = result.equipped;
-            playerInventory = result.inventory;
-            
-            showMiningToast(`อัปเกรดสำเร็จ! อุปกรณ์เลื่อนเป็น LV.${result.newLevel}`, "#38ef7d");
-        } else {
-            // กรณีล้มเหลว (อัปเดตข้อมูลที่ลดลงกลับมาที่ Client)
-            if (result.equipped) playerEquipped = result.equipped;
-            if (result.inventory) playerInventory = result.inventory;
-            
-            showMiningToast(result.error, "#ff4b2b");
+        // อัปเดตข้อมูลในเครื่องเสมอไม่ว่าจะสำเร็จหรือไม่ (เพราะแร่หายหรือเวลลด)
+        if (result.equipped) playerEquipped = result.equipped;
+        if (result.inventory) playerInventory = result.inventory;
+        if (window.userData) {
+            userData.equipped = playerEquipped;
+            userData.inventory = playerInventory;
         }
 
-        // รีเฟรชโปรไฟล์เพื่ออัปเดตยอดเงิน CoinsGC ที่ถูกหักไปบน HUD
-        await checkGameProfile();
+        if (result.success) {
+            showMiningToast(`อัปเกรดสำเร็จ! เลื่อนเป็น LV.${result.newLevel}`, "#38ef7d");
+        } else {
+            // แจ้งเตือนกรณีล้มเหลวและโดนลดเลเวล
+            showMiningToast(`${result.error} (LV.${result.newLevel})`, "#ff4b2b");
+        }
 
+        // รีเฟรช HUD และ UI
+        await checkGameProfile();
         document.getElementById('item-detail-popup').style.display = 'none';
-        renderCategoryContent(); // วาด UI สถานะของไอเท็มใหม่ (สเตตัสที่เพิ่มหรือลด)
+        renderCategoryContent(); 
 
     } catch (error) {
         console.error("Upgrade Error:", error);
+        showMiningToast("เกิดข้อผิดพลาดในการสื่อสารกับสถานี", "#ff4b2b");
     }
 }
 
