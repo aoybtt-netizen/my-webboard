@@ -1963,8 +1963,8 @@ app.post('/api/:mode/test/add-coins', async (req, res) => {
 // 9. API สำหรับการซื้อไอเทม (Blueprint/Item)
 app.post('/api/:mode/game/buy-item', async (req, res) => {
     const { mode } = req.params;
-    // 🚩 รับ stackable และ quantity เพิ่มจาก req.body
-    const { username, itemId, itemPrice, itemName, itemType, itemImgKey, recipe, stackable, quantity } = req.body;
+    // 🚩 รับ itemProps เพิ่มเข้ามา
+    const { username, itemId, itemPrice, itemName, itemType, itemImgKey, recipe, stackable, quantity, itemProps } = req.body;
     const db = getDB(mode);
 
     try {
@@ -1983,10 +1983,11 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
             level: 1,
             isBlueprint: itemType === 'blueprint',
             recipe: recipe || null,
-            // 🚩 บันทึกค่าเหล่านี้ลง Database ด้วย
             stackable: stackable || false, 
             quantity: quantity || 1,
-            weightPerUnit: 0, // ตามที่กัปตันต้องการให้ Blueprint น้ำหนักเป็น 0
+            // 🚩 นำค่าพลังจาก itemProps (เช่น metal: 1) มาใส่ไว้ในระดับบนสุด
+            ...itemProps, 
+            weightPerUnit: 0,
             durability: 100,
             repairCost: { metal: 1, energy: 1, tech: 1 },
             createdAt: Date.now()

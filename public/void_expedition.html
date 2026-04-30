@@ -2830,16 +2830,16 @@ async function buyItem(itemId) {
                 itemType: item.type,
                 itemImgKey: item.imgKey || item.icon,
                 recipe: item.recipe || null,
-                // 🚩 เพิ่ม 2 บรรทัดนี้
                 stackable: item.stackable || false, 
-                quantity: 1 
+                quantity: 1,
+                // 🚩 ส่ง properties (เช่น { metal: 1 }) ไปด้วย
+                itemProps: item.properties || {} 
             })
         });
 
         const result = await response.json();
         if (result.success) {
             showMiningToast(result.message, "#38ef7d");
-            // อัปเดตข้อมูลในเครื่อง และโหลด Profile ใหม่เพื่อ Sync ข้อมูลล่าสุด
             await checkGameProfile(); 
             renderBuyItems();
         }
