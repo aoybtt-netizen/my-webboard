@@ -5249,77 +5249,78 @@ function filterInv(category) {
 // ฟังก์ชันสำหรับแปลงค่าสเตตัสตามประเภทไอเทม
 function getItemStatusHTML(item) {
     if (!item) return "";
-    let html = `<div style="display: flex; flex-direction: column; gap: 4px; padding: 5px;">`;
-
-    // ฟังก์ชันช่วยสร้างแถวข้อมูล (Helper)
-    const addRow = (label, value, icon, color = 'var(--neon-blue)') => {
-        if (value === undefined || value === null) return "";
-        return `
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px;">
-                <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">
-                    <i class="fas ${icon}" style="width: 15px;"></i> ${label}
-                </span>
-                <span style="color: ${color}; font-weight: bold; font-size: 0.75rem;">${value}</span>
-            </div>
-        `;
-    };
-
-    // 1. แสดงชื่อผู้สร้าง (Maker)
-    if (item.createdBy) {
-        html += `
-            <div style="color:var(--neon-purple); font-size:0.65rem; margin-bottom:5px; border:1px solid var(--neon-purple); padding:2px; text-align:center; border-radius:4px;">
-                <i class="fas fa-hammer"></i> MAKER: ${item.createdBy.toUpperCase()}
-            </div>
-        `;
-    }
-
-    // 2. ข้อมูลเฉพาะตามประเภทไอเท็ม
+    
+    // เตรียมข้อมูลสเตตัสหลัก
     const type = item.type;
     const upgText = `${item.level || 1} / ${item.maxUpgrades || 1}`;
+    const stats = [];
 
+    // ดึงค่าตามประเภทไอเท็ม
     if (type === 'ship engine') {
-        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
-        html += addRow('DURABILITY', item.durability, 'fa-shield-alt', 'var(--neon-green)');
-        html += addRow('CONSUMPTION', item.consumption, 'fa-gas-pump', 'var(--neon-red)');
-        html += addRow('POWER', item.power, 'fa-bolt');
+        stats.push({ label: 'DURABILITY', val: item.durability, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'CONSUMPTION', val: item.consumption, icon: 'fa-gas-pump', color: 'var(--neon-red)' });
+        stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
+        stats.push({ label: 'POWER', val: item.power, icon: 'fa-bolt', color: 'var(--neon-blue)' });
     } 
     else if (type === 'drill engine') {
-        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
-        html += addRow('DURABILITY', item.durability, 'fa-shield-alt');
-        html += addRow('CONSUMPTION', item.consumption, 'fa-gas-pump', 'var(--neon-red)');
-        html += addRow('ENERGY MAX', item.energyMax, 'fa-battery-full');
-        html += addRow('HEAT RESIST', item.heatResist, 'fa-fire', '#ff8800');
-        html += addRow('ACID RESIST', item.acidResist, 'fa-flask', '#a1ff00');
-        html += addRow('SCAN RANGE', item.scan, 'fa-satellite-dish', '#00ffcc');
+        stats.push({ label: 'DURABILITY', val: item.durability, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'CONSUMPTION', val: item.consumption, icon: 'fa-gas-pump', color: 'var(--neon-red)' });
+        stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
+        stats.push({ label: 'ENERGY MAX', val: item.energyMax, icon: 'fa-battery-full', color: '#00ffcc' });
+        stats.push({ label: 'HEAT RESIST', val: item.heatResist, icon: 'fa-fire', color: '#ff8800' });
+        stats.push({ label: 'ACID RESIST', val: item.acidResist, icon: 'fa-flask', color: '#a1ff00' });
+        stats.push({ label: 'SCAN RANGE', val: item.scan, icon: 'fa-satellite-dish', color: '#00d2ff' });
     }
     else if (type === 'card barrier') {
-        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
-        html += addRow('MAX SHIELD', item.maxShield, 'fa-shield-alt', '#00d2ff');
-        html += addRow('RECHARGE', item.recharge, 'fa-sync-alt');
-        html += addRow('RECHARGE DELAY', `${item.rechargeDelay}s`, 'fa-clock');
+        stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
+        stats.push({ label: 'MAX SHIELD', val: item.maxShield, icon: 'fa-shield-alt', color: '#00d2ff' });
+        stats.push({ label: 'RECHARGE', val: item.recharge, icon: 'fa-sync-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'DELAY', val: `${item.rechargeDelay}s`, icon: 'fa-clock', color: 'var(--neon-red)' });
     }
     else if (type === 'turret') {
-        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
-        html += addRow('DAMAGE', item.damage, 'fa-skull', 'var(--neon-red)');
-        html += addRow('FIRE RATE', item.fireRate, 'fa-tachometer-alt');
-        html += addRow('RANGE', item.range, 'fa-arrows-alt');
-        html += addRow('DURABILITY', item.durability, 'fa-shield-alt');
-        html += addRow('ENERGY MAX', item.energyMax, 'fa-battery-full');
+        stats.push({ label: 'DAMAGE', val: item.damage, icon: 'fa-skull', color: 'var(--neon-red)' });
+        stats.push({ label: 'FIRE RATE', val: item.fireRate, icon: 'fa-tachometer-alt', color: '#ff8800' });
+        stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
+        stats.push({ label: 'POWER', val: item.power, icon: 'fa-bolt', color: 'var(--neon-blue)' });
+        stats.push({ label: 'DURABILITY', val: item.durability, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
     }
 
-    // 3. แสดงค่าซ่อม (Repair Cost) เฉพาะที่มีค่ามากกว่า 0
-    if (item.repairCost && (item.repairCost.metal > 0 || item.repairCost.energy > 0 || item.repairCost.tech > 0)) {
+    // เริ่มสร้างโครงสร้าง HTML แบบ Grid (2 Columns)
+    let html = `<div style="display: flex; flex-direction: column; height: 100%; justify-content: space-between; padding: 5px;">`;
+
+    // ส่วนบน: สเตตัส Grid
+    html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px;">`;
+    stats.forEach(s => {
         html += `
-            <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 0.6rem; color: #888; margin-bottom: 3px; text-align:center;">REPAIR REQUIREMENTS</div>
-                <div style="display: flex; justify-content: space-around; font-size: 0.65rem;">
-                    <span style="color: #b0b0b0;">M:${item.repairCost.metal || 0}</span>
-                    <span style="color: var(--neon-blue);">E:${item.repairCost.energy || 0}</span>
-                    <span style="color: #a326ff;">T:${item.repairCost.tech || 0}</span>
-                </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px;">
+                <span style="color: rgba(255,255,255,0.4); font-size: 0.65rem; white-space: nowrap;">
+                    <i class="fas ${s.icon}" style="width: 12px; margin-right: 4px;"></i>${s.label}
+                </span>
+                <span style="color: ${s.color}; font-weight: bold; font-size: 0.75rem; margin-left: 5px;">${s.val}</span>
             </div>
         `;
-    }
+    });
+    html += `</div>`;
+
+    // ส่วนล่าง: Maker และ Repair Info (แบบซ้าย-ขวา)
+    html += `
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); pt: 5px;">
+            <div style="font-size: 0.6rem; color: #aaa;">
+                ${item.createdBy ? `<i class="fas fa-hammer" style="font-size:0.55rem; color:var(--neon-purple);"></i> MAKER: <span style="color:#fff;">${item.createdBy.toUpperCase()}</span>` : ''}
+            </div>
+            
+            <div style="text-align: right;">
+                ${(item.repairCost && (item.repairCost.metal > 0 || item.repairCost.energy > 0 || item.repairCost.tech > 0)) ? `
+                    <div style="font-size: 0.55rem; color: rgba(255,255,255,0.3); margin-bottom: 2px;">REPAIR REQUIREMENTS</div>
+                    <div style="font-size: 0.65rem; display: flex; gap: 6px;">
+                        <span style="color:#b0b0b0;">M:${item.repairCost.metal || 0}</span>
+                        <span style="color:#00d2ff;">E:${item.repairCost.energy || 0}</span>
+                        <span style="color:#a326ff;">T:${item.repairCost.tech || 0}</span>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
 
     html += `</div>`;
     return html;
