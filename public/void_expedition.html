@@ -5014,42 +5014,79 @@ function openItemPopup(item, directImgSrc = null) {
     const installBtn = document.getElementById('pop-install-btn');
     installBtn.style.display = 'none';
 
-    // 🚩 กรณีเป็น "แร่" (Resource)
-    if (item.stackable || item.type === 'metal' || item.type === 'energy' || item.type === 'technology') {
-        
-        // --- ส่วนแสดงราคาและสถานะ ---
-        if (item.value) detailHTML += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fas fa-coins"></i> VALUE: ${item.value} GC</div>`;
-        if (item.metal > 0) detailHTML += `<div style="color:var(--neon-blue);">METAL: +${item.metal}</div>`;
-        if (item.energy > 0) detailHTML += `<div style="color:var(--neon-green);">ENERGY: +${item.energy}</div>`;
-        if (item.tech > 0) detailHTML += `<div style="color:#a16eff;">TECH: +${item.tech}</div>`;
-        
-        detailHTML += `<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">`;
+    // 🚩 ส่วนที่ 1: ตรวจสอบและแสดงชื่อผู้ค้นพบ หรือ ผู้สร้าง
+    if (item.createdBy) {
+        // สำหรับไอเท็มจากการคราฟต์
+        detailHTML += `
+            <div style="background: rgba(163, 71, 255, 0.15); padding: 8px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--neon-purple); text-align: center;">
+                <div style="font-size: 0.55rem; color: var(--neon-purple); opacity: 0.8; letter-spacing: 1px; text-transform: uppercase;">Manufacturer Signature</div>
+                <div style="font-size: 0.85rem; color: #fff; font-weight: bold;"><i class="fas fa-hammer"></i> ${item.createdBy.toUpperCase()}</div>
+            </div>
+        `;
+    } else if (item.firstMinedBy) {
+        // สำหรับแร่ที่ค้นพบ
+        detailHTML += `
+            <div style="background: rgba(0, 210, 255, 0.1); padding: 8px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(0,210,255,0.2); text-align: center;">
+                <div style="font-size: 0.55rem; color: var(--neon-blue); opacity: 0.8; letter-spacing: 1px; text-transform: uppercase;">First Discovered By</div>
+                <div style="font-size: 0.8rem; color: #fff; font-weight: bold;"><i class="fas fa-user-tag"></i> ${item.firstMinedBy.toUpperCase()}</div>
+            </div>
+        `;
+    }
 
-        // 🚩 [เพิ่มตรงนี้] แสดงชื่อผู้ค้นพบคนแรก
-        const discoverer = item.firstMinedBy || "Unknown Pioneer";
-detailHTML += `
-    <div style="background: rgba(0,210,255,0.1); padding: 8px; border-radius: 5px; margin-top: 10px; border: 1px solid rgba(0,210,255,0.2);">
-        <div style="font-size: 0.55rem; color: var(--neon-blue); opacity: 0.8; letter-spacing: 1px; text-transform: uppercase;">First Discovered By</div>
-        <div style="font-size: 0.8rem; color: #fff; font-weight: bold;"><i class="fas fa-user-tag" style="font-size: 0.7rem;"></i> ${discoverer.toUpperCase()}</div>
-    </div>
-`;
+    // 🚩 ส่วนที่ 2: แสดงสเตตัสไอเท็ม (Dynamic Stats)
+    detailHTML += `<div style="display: flex; flex-direction: column; gap: 4px;">`;
+    
+    // รายการตัวแปรที่ต้องการตรวจสอบ
+    const statLabels = [
+        { key: 'type', label: 'TYPE', icon: 'fa-tag', color: 'rgba(255,255,255,0.5)' },
+        { key: 'power', label: 'POWER', icon: 'fa-bolt', color: 'var(--neon-blue)' },
+        { key: 'durability', label: 'DURABILITY', icon: 'fa-shield-alt', color: 'var(--neon-green)' },
+        { key: 'consumption', label: 'CONSUMPTION', icon: 'fa-gas-pump', color: 'var(--neon-red)' },
+        { key: 'maxUpgrades', label: 'MAX UPGRADES', icon: 'fa-arrow-up', color: '#ffcc00' },
+        { key: 'energyMax', label: 'ENERGY CAPACITY', icon: 'fa-battery-full', color: '#00ffcc' },
+        { key: 'heatResist', label: 'HEAT RESIST', icon: 'fa-fire', color: '#ff8800' },
+        { key: 'acidResist', label: 'ACID RESIST', icon: 'fa-flask', color: '#a1ff00' }
+    ];
 
-        detailHTML += `<div style="margin-top:10px; opacity:0.5; font-size:0.65rem;">
-                        QUANTITY: ${item.quantity || 1} | TYPE: ${item.type.toUpperCase()}
-                      </div>`;
-    } 
-    else {
-        // ⚙️ กรณีเป็น "อุปกรณ์" (Logic เดิม)
-        detailHTML = typeof getItemStatusHTML === 'function' ? getItemStatusHTML(item) : "EQUIPMENT DATA";
-        if (item.type !== 'blueprint') {
-            installBtn.style.display = 'block';
-            installBtn.onclick = () => confirmInstall(item.id);
+    statLabels.forEach(stat => {
+        if (item[stat.key] !== undefined && item[stat.key] !== null && item[stat.key] !== 0) {
+            const val = stat.key === 'type' ? item[stat.key].toUpperCase() : item[stat.key];
+            detailHTML += `
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span style="color: rgba(255,255,255,0.6);"><i class="fas ${stat.icon}" style="width: 15px;"></i> ${stat.label}</span>
+                    <span style="color: ${stat.color}; font-weight: bold;">${val}</span>
+                </div>
+            `;
         }
+    });
+    detailHTML += `</div>`;
+
+    // 🚩 ส่วนที่ 3: แสดง Repair Cost (ถ้ามี)
+    if (item.repairCost) {
+        const rc = item.repairCost;
+        detailHTML += `
+            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-bottom: 5px;">REPAIR REQUIREMENTS</div>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <span style="color: #b0b0b0; font-size: 0.7rem;"><i class="fas fa-cube"></i> M:${rc.metal || 0}</span>
+                    <span style="color: #00d2ff; font-size: 0.7rem;"><i class="fas fa-bolt"></i> E:${rc.energy || 0}</span>
+                    <span style="color: #a326ff; font-size: 0.7rem;"><i class="fas fa-microchip"></i> T:${rc.tech || 0}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // 🚩 ส่วนที่ 4: การแสดงปุ่ม Install
+    const nonInstallable = ['blueprint', 'metal', 'energy', 'technology', 'fuel'];
+    if (!nonInstallable.includes(item.type)) {
+        installBtn.style.display = 'block';
+        installBtn.onclick = () => {
+            confirmInstall(item.id);
+            popup.style.display = 'none';
+        };
     }
 
     document.getElementById('pop-status').innerHTML = detailHTML;
-    
-    // แสดงผล
     popup.style.display = 'flex';
 }
 
