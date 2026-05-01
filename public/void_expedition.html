@@ -2745,7 +2745,7 @@ function renderSellItems() {
                     <input type="number" id="sell-qty-${item.ids[0]}" value="${item.quantity}" min="1" max="${item.quantity}" 
                            style="width:65px; padding:5px; background:rgba(0,0,0,0.5); border:1px solid #444; color:white; border-radius:5px; text-align:center; font-family:'Orbitron', sans-serif; font-size:0.7rem;">
                     <button class="btn-buy" style="background:#ff4b2b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;" 
-                            onclick="sellItem('${item.ids[0]}', ${sellPrice}, '${item.name.replace(/'/g, "\\'")}')">
+                            onclick="sellItem('${item.name.replace(/'/g, "\\'")}', ${sellPrice}, '${item.name.replace(/'/g, "\\'")}')"
                         SELL
                     </button>
                 </div>
@@ -2754,12 +2754,12 @@ function renderSellItems() {
     });
 }
 
-async function sellItem(itemId, price, name) {
-    const qtyInput = document.getElementById(`sell-qty-${itemId}`);
+async function sellItem(itemName, price, displayLabel) {
+    const qtyInput = document.getElementById(`sell-qty-${itemName}`);
     const quantity = parseInt(qtyInput.value) || 1;
     const totalPrice = price * quantity;
 
-    if (!confirm(`คุณต้องการขาย ${name} จำนวน ${quantity} ชิ้น ราคา ${totalPrice} GC?`)) return;
+    if (!confirm(`คุณต้องการขาย ${displayLabel} จำนวน ${quantity} ชิ้น ราคา ${totalPrice} GC?`)) return;
 
     try {
         const response = await fetch(`${API_BASE}/game/sell-item`, {
@@ -2767,9 +2767,9 @@ async function sellItem(itemId, price, name) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: currentUser,
-                itemId: itemId,
-                sellPrice: price, // Unit price
-                quantity: quantity // จำนวนที่ต้องการขาย
+                itemName: itemName, // 🚩 ส่ง itemName ไปแทน itemId ตามที่ Backend รอรับ
+                sellPrice: price,
+                quantity: quantity
             })
         });
 
