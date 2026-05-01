@@ -2037,28 +2037,50 @@ app.post('/api/:mode/game/sell-item', async (req, res) => {
 
     try {
         const user = await db.findOne({ username });
-        if (!user) return res.status(404).json({ success: false });
+        if (!user || !user.inventory) return res.status(404).json({ success: false });
 
-        const item = user.inventory.find(i => i.id === itemId);
-        if (!item || (item.quantity || 1) < sellQty) {
-            return res.json({ success: false, message: "ไม่มีไอเทมเหลือให้ขาย" });
+        // ค้นหาไอเทมต้นทางจาก ID เพื่อหาชื่อ (เนื่องจากหน้าบ้านมีการรวมกลุ่มไอเทมชื่อเดียวกันมา)
+        const targetItem = user.inventory.find(i => i.id === itemId);
+        if (!targetItem) {
+            return res.json({ success: false, message: "ไม่พบไอเทมที่ต้องการขายในคลัง" });
+        }
+
+        const itemName = targetItem.name;
+        const sameItems = user.inventory.filter(i => i.name === itemName);
+        const totalAvailable = sameItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+
+        if (totalAvailable < sellQty) {
+            return res.json({ success: false, message: "จำนวนไอเทมไม่เพียงพอสำหรับการขาย" });
+        }
+
+        // ดำเนินการหักจำนวนไอเทมออกจากคลัง (รองรับการหักจากหลายกอง)
+        let remainingToSell = sellQty;
+        const updatedInventory = [];
+
+        for (const invItem of user.inventory) {
+            if (invItem.name === itemName && remainingToSell > 0) {
+                const currentQty = invItem.quantity || 1;
+                if (currentQty <= remainingToSell) {
+                    remainingToSell -= currentQty;
+                    // กองนี้ถูกขายหมด ไม่ต้องใส่กลับในคลัง
+                } else {
+                    invItem.quantity = currentQty - remainingToSell;
+                    remainingToSell = 0;
+                    updatedInventory.push(invItem);
+                }
+            } else {
+                updatedInventory.push(invItem);
+            }
         }
 
         const totalIncome = Number(sellPrice) * sellQty;
-        const itemQty = item.quantity || 1;
-
-        const updateQuery = (itemQty > sellQty) 
-            ? { 
-                $inc: { "inventory.$.quantity": -sellQty, coinsgc: totalIncome } 
-              }
-            : { 
-                $pull: { inventory: { id: itemId } }, 
-                $inc: { coinsgc: totalIncome } 
-              };
-
-        const filter = (itemQty > sellQty) ? { username, "inventory.id": itemId } : { username };
-
-        const result = await db.updateOne(filter, updateQuery);
+        const result = await db.updateOne(
+            { username },
+            { 
+                $set: { inventory: updatedInventory },
+                $inc: { coinsgc: totalIncome }
+            }
+        );
 
         if (result.modifiedCount > 0) {
             const updatedUser = await db.findOne({ username });
