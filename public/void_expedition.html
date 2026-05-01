@@ -5517,25 +5517,22 @@ async function renderBlueprintWorkshop() {
         // ดึงสูตรการผลิต (รองรับกรณีไม่มีค่าให้เป็น 0)
         const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0, maxrecipe: 0 };
 
-        const curCoins = (window.userData && window.userData.coinsgc) || (userData && userData.coinsgc) || 0; 
-        const craftCost = r.craftprice || 0;
+        // จุดเช็คเงื่อนไขใน renderBlueprintWorkshop
+const curMetal = countItemInInv('metal');
+const curEnergy = countItemInInv('energy');
+const curTech = countItemInInv('technology');
 
-        const hasCoins = curCoins >= craftCost; // เช็คเงิน
-    
-        // DEBUG: กัปตันลองเปิด Console ดูว่าตัวเลขขึ้นไหม
-        console.log(`Checking Coins: Owned(${curCoins}) vs Required(${craftCost})`);
-        
-        // 4. เช็คจำนวนทรัพยากรที่มีจริงในคลัง
-        const curMetal = countItemInInv('metal');
-        const curEnergy = countItemInInv('energy');
-        const curTech = countItemInInv('technology'); // 🚩 เช็คให้ตรงกับ Type ใน DB
+// 🚩 ดึงเงินให้ชัวร์ที่สุด
+const curCoins = Number(window.userData?.coinsgc || userData?.coinsgc || 0); 
+const craftCost = Number(r.craftprice || 0);
 
-        const hasMetal = curMetal >= r.metal;
-        const hasEnergy = curEnergy >= r.energy;
-        const hasTech = curTech >= r.tech;
-        
-        // เงื่อนไขการคราฟต์: ของต้องครบทุกอย่าง
-        const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
+const hasMetal = curMetal >= (r.metal || 0);
+const hasEnergy = curEnergy >= (r.energy || 0);
+const hasTech = curTech >= (r.tech || 0);
+const hasCoins = curCoins >= craftCost; // เงินต้องพอ
+
+// 🚩 canCraft จะเป็นจริงเมื่อ "ทุกอย่าง" เป็นเขียว
+const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
 
         const card = document.createElement('div');
         card.className = "blueprint-craft-card"; 
