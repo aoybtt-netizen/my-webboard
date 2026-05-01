@@ -753,19 +753,23 @@ button:hover { opacity: 0.8; }
     transform: scale(1.05);
 }
 
-#inventory-list-area {
-    width: 100% !important;
-    display: grid !important;
-    grid-template-columns: repeat(5, 65px) !important; /* 🚩 ล็อกขนาดช่องชัดเจน */
+.inventory-grid-area {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 65px); /* ไม่ต้องใช้ !important */
     justify-content: center;
     gap: 10px;
     padding: 15px;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0,0,0,0.4);
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    max-height: 250px;
     overflow-y: auto;
-    box-sizing: border-box;
+    max-height: 400px;
+}
+
+/* 🚩 เพิ่มคลาสใหม่สำหรับ Workshop (ช่องใหญ่) */
+.workshop-mode {
+    grid-template-columns: 1fr !important; /* บังคับแถวละ 1 ใบใหญ่ๆ */
+    max-height: 450px;
 }
 
 
@@ -5068,11 +5072,13 @@ function updateMenuIcon(isCategoryView) {
 }
 
 function openCategory(category) {
-    currentCat = category; // บันทึกหมวดหมู่ที่เลือกลงในตัวแปร
-    document.getElementById('ship-main-view').style.display = 'none';
-    document.getElementById('ship-category-view').style.display = 'flex'; // หรือ 'block'
+    const listArea = document.getElementById('inventory-list-area');
+    listArea.classList.remove('workshop-mode');
     
-    renderCategoryContent(); // วาดข้อมูลหมวดหมู่ทันที
+    currentCat = category;
+    document.getElementById('ship-main-view').style.display = 'none';
+    document.getElementById('ship-category-view').style.display = 'flex';
+    renderCategoryContent();
 }
 
 function backToMain() {
@@ -5462,16 +5468,14 @@ async function renderBlueprintWorkshop() {
     const equippedBox = document.getElementById('equipped-box');
     const listArea = document.getElementById('inventory-list-area');
 
-    // ล้างค่าเก่าและตั้งค่า Grid ใหม่ให้เหมาะสมกับ Workshop
-    listArea.style.display = "grid";
-    listArea.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))"; // 🚩 ปรับให้การ์ดกว้างขึ้น
-    listArea.style.gap = "15px";
-    listArea.style.padding = "10px";
+    // 🚩 เปลี่ยนโหมดการแสดงผลเป็น Workshop
+    listArea.classList.add('workshop-mode'); 
+    listArea.innerHTML = ""; // ล้างค่าก่อน
 
     if (equippedBox) {
         equippedBox.innerHTML = `
-            <div style="text-align:center; padding:15px; background:linear-gradient(90deg, rgba(163,71,255,0.1), rgba(0,210,255,0.1)); border:1px solid var(--neon-purple); border-radius:10px; margin-bottom:15px;">
-                <h3 style="color:var(--neon-purple); margin:0; letter-spacing:2px;"><i class="fas fa-microchip"></i> BLUEPRINT WORKSHOP</h3>
+            <div style="text-align:center; padding:10px; background:rgba(163, 71, 255, 0.1); border:1px solid var(--neon-purple); border-radius:10px; width:100%;">
+                <h4 style="color:var(--neon-purple); margin:0;"><i class="fas fa-tools"></i> BLUEPRINT WORKSHOP</h4>
             </div>
         `;
     }
@@ -5479,15 +5483,12 @@ async function renderBlueprintWorkshop() {
     const blueprints = playerInventory.filter(i => i.type === 'blueprint');
 
     if (blueprints.length === 0) {
-        listArea.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:50px; opacity:0.5; color:#fff;">ไม่มีแบบแปลนในระบบ</div>`;
+        listArea.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5; color:#fff; width:100%;">ไม่พบแบบแปลนในคลัง</div>`;
         return;
     }
 
-    listArea.innerHTML = "";
     blueprints.forEach(bp => {
         const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0 };
-        
-        // เช็คจำนวนทรัพยากรที่มีจริง
         const curMetal = countItemInInv('metal');
         const curEnergy = countItemInInv('energy');
         const curTech = countItemInInv('technology');
@@ -5500,56 +5501,39 @@ async function renderBlueprintWorkshop() {
         const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
 
         const card = document.createElement('div');
-        // ใช้สไตล์เฉพาะสำหรับ Blueprint Card
+        // 🚩 ปรับ Style การ์ดให้เป็นแนวนอน สวยงามเหมือนใบสั่งงาน
         card.style.cssText = `
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(255, 255, 255, 0.05);
             border: 1px solid ${canCraft ? 'var(--neon-purple)' : '#444'};
             border-radius: 12px;
             padding: 15px;
+            margin-bottom: 10px;
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: ${canCraft ? '0 0 15px rgba(163, 71, 255, 0.2)' : 'none'};
-            transition: 0.3s;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            box-sizing: border-box;
         `;
 
         card.innerHTML = `
-            <div style="color:var(--neon-blue); font-weight:bold; font-size:1rem; border-bottom:1px solid #333; padding-bottom:8px;">
-                ${bp.name}
-            </div>
+            <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
+                 style="width:60px; height:60px; border-radius:8px; border:1px solid rgba(163,71,255,0.3); background:#000;">
             
-            <div style="display:flex; gap:15px; align-items:center;">
-                <div style="position:relative;">
-                    <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
-                         style="width:70px; height:70px; background:rgba(255,255,255,0.05); border-radius:10px; padding:5px; border:1px solid rgba(163,71,255,0.3);">
-                    <div style="position:absolute; bottom:-5px; right:-5px; background:var(--neon-purple); color:white; font-size:0.6rem; padding:2px 6px; border-radius:10px;">BP</div>
-                </div>
-
-                <div style="flex:1; display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:0.75rem;">
-                    <div style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}">
-                        <i class="fas fa-cube"></i> Metal: ${curMetal}/${r.metal}
-                    </div>
-                    <div style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}">
-                        <i class="fas fa-bolt"></i> Energy: ${curEnergy}/${r.energy}
-                    </div>
-                    <div style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}">
-                        <i class="fas fa-microchip"></i> Tech: ${curTech}/${r.tech}
-                    </div>
-                    <div style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}">
-                        <i class="fas fa-coins"></i> GC: ${r.craftprice}
-                    </div>
+            <div style="flex:1;">
+                <div style="color:var(--neon-blue); font-weight:bold; font-size:0.9rem; margin-bottom:5px;">${bp.name}</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:0.7rem;">
+                    <span style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}">Metal: ${curMetal}/${r.metal}</span>
+                    <span style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}">Energy: ${curEnergy}/${r.energy}</span>
+                    <span style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}">Tech: ${curTech}/${r.tech}</span>
+                    <span style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}">Cost: ${r.craftprice}</span>
                 </div>
             </div>
 
             <button class="btn-buy" 
-                style="width:100%; padding:10px; border-radius:8px; font-weight:bold; letter-spacing:1px;
-                       background:${canCraft ? 'linear-gradient(45deg, #a347ff, #00d2ff)' : '#222'}; 
-                       color:${canCraft ? '#fff' : '#666'};
-                       border:none; cursor:${canCraft ? 'pointer' : 'not-allowed'};
-                       box-shadow: ${canCraft ? '0 4px 15px rgba(0,0,0,0.3)' : 'none'};"
+                style="padding:10px; background:${canCraft ? 'var(--neon-purple)' : '#333'}; color:white; border-radius:5px; border:none; cursor:${canCraft ? 'pointer' : 'not-allowed'};"
                 onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
                 ${!canCraft ? 'disabled' : ''}>
-                ${canCraft ? '<i class="fas fa-hammer"></i> BEGIN MANUFACTURE' : '<i class="fas fa-exclamation-triangle"></i> RESOURCES LACKING'}
+                ${canCraft ? 'CRAFT' : '<i class="fas fa-lock"></i>'}
             </button>
         `;
         listArea.appendChild(card);
