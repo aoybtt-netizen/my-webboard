@@ -1963,66 +1963,55 @@ app.post('/api/:mode/test/add-coins', async (req, res) => {
 // 9. API สำหรับการซื้อไอเทม (Blueprint/Item)
 app.post('/api/:mode/game/buy-item', async (req, res) => {
     const { mode } = req.params;
-    // 🚩 รับ itemProps เพิ่มเข้ามา
     const { username, itemId, itemPrice, itemName, itemType, itemImgKey, recipe, stackable, quantity, itemProps } = req.body;
     const db = getDB(mode);
 
     try {
         const user = await db.findOne({ username });
-        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+        if (!user) return res.status(404).json({ success: false });
 
         if ((user.coinsgc || 0) < itemPrice) {
             return res.json({ success: false, message: "CoinsGC ไม่เพียงพอ!" });
         }
 
-        const newItem = {
-            id: `item_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-            name: itemName,
-            type: itemType,
-            imgKey: itemImgKey,
-            level: 1,
-            isBlueprint: itemType === 'blueprint',
-            recipe: recipe || null,
-            stackable: stackable || false, 
-            quantity: quantity || 1,
-            // 🚩 นำค่าพลังจาก itemProps (เช่น metal: 1) มาใส่ไว้ในระดับบนสุด
-            ...itemProps, 
-            weightPerUnit: 0,
-            durability: 100,
-            repairCost: { metal: 1, energy: 1, tech: 1 },
-            createdAt: Date.now()
-        };
+        let inventory = user.inventory || [];
+        let isMerged = false;
 
-        await db.updateOne(
-            { username: username },
-            { 
-                $inc: { coinsgc: -itemPrice },
-                $push: { inventory: newItem }
+        // 🛡️ 1. ถ้าไอเท็ม stack ได้ ให้หาว่ามีชื่อและประเภทเดียวกันในคลังไหม
+        if (stackable) {
+            const existingIdx = inventory.findIndex(i => i.name === itemName && i.type === itemType);
+            if (existingIdx > -1) {
+                inventory[existingIdx].quantity = (inventory[existingIdx].quantity || 0) + (quantity || 1);
+                isMerged = true;
             }
-        );
-        // 🚩 ตรวจสอบว่ามีไอเทมเดิมที่รวมกองได้หรือไม่
-        const existingItem = user.inventory ? user.inventory.find(i => i.name === itemName && i.stackable === true) : null;
-
-        if (existingItem) {
-            // ถ้ามีแล้ว ให้บวกจำนวนเพิ่มในแถวเดิม
-            await db.updateOne(
-                { username: username, "inventory.id": existingItem.id },
-                { 
-                    $inc: { coinsgc: -itemPrice, "inventory.$.quantity": quantity || 1 } 
-                }
-            );
-        } else {
-            // ถ้ายังไม่มี ให้สร้างใหม่
-            await db.updateOne(
-                { username: username },
-                { 
-                    $inc: { coinsgc: -itemPrice },
-                    $push: { inventory: newItem }
-                }
-            );
         }
 
-        res.json({ success: true, message: `ซื้อ ${itemName} สำเร็จ!`, newItem });
+        // 🛡️ 2. ถ้าไม่รวมกลุ่ม หรือหาไม่เจอ ให้สร้างไอเท็มใหม่
+        if (!isMerged) {
+            const newItem = {
+                id: `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                name: itemName,
+                type: itemType,
+                imgKey: itemImgKey,
+                level: 1,
+                stackable: stackable || false,
+                quantity: quantity || 1,
+                ...itemProps,
+                repairCost: { metal: 1, energy: 1, tech: 1 },
+                createdAt: Date.now()
+            };
+            inventory.push(newItem);
+        }
+
+        await db.updateOne(
+            { username },
+            { 
+                $inc: { coinsgc: -itemPrice },
+                $set: { inventory: inventory } 
+            }
+        );
+
+        res.json({ success: true, message: `ซื้อ ${itemName} สำเร็จ!`, inventory });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -2031,39 +2020,52 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
 //9.1 API สำหรับการขาย
 app.post('/api/:mode/game/sell-item', async (req, res) => {
     const { mode } = req.params;
-    const { username, itemId, sellPrice, quantity } = req.body;
+    const { username, itemName, sellPrice, quantity } = req.body; // เปลี่ยนจาก itemId เป็น itemName
     const sellQty = parseInt(quantity) || 1;
-    const db = getDB(mode); // ใช้ getDB(mode) เหมือนกับตอนซื้อ
+    const db = getDB(mode);
 
     try {
         const user = await db.findOne({ username });
         if (!user) return res.status(404).json({ success: false });
 
-        const item = user.inventory.find(i => i.id === itemId);
-        if (!item || (item.quantity || 1) < sellQty) {
-            return res.json({ success: false, message: "ไม่มีไอเทมเหลือให้ขาย" });
+        let inventory = user.inventory || [];
+        // 🛡️ 1. คำนวณจำนวนที่มีทั้งหมดของแร่ชื่อนี้
+        const totalOwned = inventory
+            .filter(i => i.name === itemName)
+            .reduce((sum, i) => sum + (i.quantity || 1), 0);
+
+        if (totalOwned < sellQty) {
+            return res.json({ success: false, message: "จำนวนแร่ที่มีไม่พอขาย" });
         }
 
         const totalIncome = Number(sellPrice) * sellQty;
-        const itemQty = item.quantity || 1;
+        let remainingToDeduct = sellQty;
 
-        const updateQuery = (itemQty > sellQty) 
-            ? { 
-                $inc: { "inventory.$.quantity": -sellQty, coinsgc: totalIncome } 
-              }
-            : { 
-                $pull: { inventory: { id: itemId } }, 
-                $inc: { coinsgc: totalIncome } 
-              };
+        // 🛡️ 2. วนลูปหักจำนวนจากคลัง (รองรับกรณีมีหลายกอง)
+        for (let i = inventory.length - 1; i >= 0; i--) {
+            if (inventory[i].name === itemName) {
+                const currentQty = inventory[i].quantity || 1;
+                if (currentQty <= remainingToDeduct) {
+                    remainingToDeduct -= currentQty;
+                    inventory.splice(i, 1); // ลบทั้งกอง
+                } else {
+                    inventory[i].quantity -= remainingToDeduct;
+                    remainingToDeduct = 0;
+                }
+            }
+            if (remainingToDeduct <= 0) break;
+        }
 
-        const filter = (itemQty > sellQty) ? { username, "inventory.id": itemId } : { username };
-
-        const result = await db.updateOne(filter, updateQuery);
+        const result = await db.updateOne(
+            { username },
+            { 
+                $set: { inventory: inventory },
+                $inc: { coinsgc: totalIncome }
+            }
+        );
 
         if (result.modifiedCount > 0) {
-            const updatedUser = await db.findOne({ username });
-            // ส่งค่า coinsgc ล่าสุดกลับไป
-            res.json({ success: true, newBalance: updatedUser.coinsgc });
+            res.json({ success: true, newBalance: user.coinsgc + totalIncome, inventory });
         } else {
             res.json({ success: false, message: "การขายล้มเหลว" });
         }
