@@ -2464,33 +2464,27 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         const blueprint = inventory.find(i => i.id === blueprintId);
         if (!blueprint) return res.json({ success: false, message: "ไม่พบแบบแปลน" });
         
-        const r = blueprint.recipe; // { metal, energy, tech, maxrecipe, craftprice }
-        const craftCost = r.craftprice || r.coins || 0; // รองรับทั้งชื่อตัวแปรเก่าและใหม่
+        const r = blueprint.recipe; 
+        const craftCost = r.craftprice || r.coins || 0; 
 
-        // 1. ตรวจสอบจำนวนแร่ขั้นต่ำ
+        // 1. ตรวจสอบทรัพยากรพื้นฐาน
         const totalMetalQty = inventory.filter(i => i.type === 'metal').reduce((s, i) => s + (i.quantity || 1), 0);
         const totalEnergyQty = inventory.filter(i => i.type === 'energy').reduce((s, i) => s + (i.quantity || 1), 0);
         const totalTechQty = inventory.filter(i => i.type === 'technology').reduce((s, i) => s + (i.quantity || 1), 0);
 
         if (totalMetalQty < r.metal || totalEnergyQty < r.energy || totalTechQty < r.tech || user.coinsgc < craftCost) {
-            return res.json({ success: false, message: "ทรัพยากรไม่เพียงพอสำหรับสูตรนี้" });
+            return res.json({ success: false, message: "ทรัพยากรหรือเงินไม่เพียงพอ" });
         }
 
-        // 2. 🚩 ฟังก์ชันใหม่: หักทรัพยากรพร้อมเก็บค่า Status (Total Value - TV)
+        // 2. หักทรัพยากรและคำนวณ Status
         const processResources = (inv, type, targetAmount) => {
             let remain = targetAmount;
             let totalStatValue = 0;
             let totalQtyUsed = 0;
-
             for (let i = inv.length - 1; i >= 0; i--) {
-                if (inv[i].type === type || (type === 'technology' && inv[i].type === 'technology')) {
-                    // กรองชื่อ type ให้ตรงกับโครงสร้างคลัง
-                    if (inv[i].type !== type && !(type === 'technology' && inv[i].type === 'technology')) continue;
-
+                if (inv[i].type === type) {
                     let q = inv[i].quantity || 1;
                     let take = Math.min(q, remain);
-                    
-                    // ดึงค่า Status จากแร่ (metal, energy, tech ตามลำดับ)
                     let orePower = 0;
                     if (type === 'metal') orePower = inv[i].metal || 0;
                     else if (type === 'energy') orePower = inv[i].energy || 0;
@@ -2499,7 +2493,6 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
                     totalStatValue += (take * orePower);
                     totalQtyUsed += take;
                     remain -= take;
-
                     if (q <= take) inv.splice(i, 1);
                     else inv[i].quantity -= take;
                 }
@@ -2508,7 +2501,6 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             return { totalStatValue, totalQtyUsed };
         };
 
-        // เริ่มดึงพลังงานจากแร่
         const resMetal = processResources(inventory, 'metal', r.metal);
         const resEnergy = processResources(inventory, 'energy', r.energy);
         const resTech = processResources(inventory, 'technology', r.tech);
@@ -2518,9 +2510,8 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         const TV_tech = resTech.totalStatValue;
         const totalStatusSum = TV_metal + TV_energy + TV_tech;
 
-        // 🚩 ตรวจสอบ Max Recipe
         if (totalStatusSum > r.maxrecipe) {
-            return res.json({ success: false, message: `คุณภาพแร่รวม (${totalStatusSum}) เกินขีดจำกัดที่ Blueprint รองรับได้ (${r.maxrecipe})` });
+            return res.json({ success: false, message: `คุณภาพแร่รวม (${totalStatusSum}) เกินขีดจำกัดสูงสุด (${r.maxrecipe})` });
         }
 
         // 3. หัก Blueprint
@@ -2528,11 +2519,12 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         if (inventory[bpIdx].quantity > 1) inventory[bpIdx].quantity -= 1;
         else inventory.splice(bpIdx, 1);
 
-        // 4. 🚩 เพิ่มไอเท็มที่คราฟได้พร้อมคำนวณสเตตัสตามประเภท
+        // 4. คำนวณ Status
         let dynamicStats = {};
         const isShipEngine = blueprint.name.includes("ADV. ENGINE");
-        const isDrillEngine = blueprint.name.includes("HEAVY DRILL");
-
+        
+        // สูตรการคำนวณ Status โดยใช้ LaTeX
+        // $$Stat = Base + (TV \times Multiplier)$$
         if (isShipEngine) {
             dynamicStats = {
                 maxUpgrades: 2 + Math.floor(TV_metal / 300),
@@ -2540,7 +2532,7 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
                 consumption: Math.max(10, 110 - (TV_energy * 0.1)),
                 power: 100 + (TV_tech * 0.5)
             };
-        } else if (isDrillEngine) {
+        } else {
             dynamicStats = {
                 maxUpgrades: 2 + Math.floor(TV_metal / 300),
                 durability: 100 + (TV_metal * 0.4),
@@ -2551,24 +2543,34 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             };
         }
 
-        const resultItem = {
+            // 🚩 ประทับชื่อผู้สร้าง (ดึงจาก DB field: gameNickname หรือ username)
+            // 1. ดึงชื่อผู้สร้าง (Signature)
+            const makerName = user.gameNickname || user.username || "Unknown Captain";
+            const baseItemName = isShipEngine ? 'ADVANCED SHIP ENGINE' : 'HEAVY DRILL ENGINE';
+
+            // 2. สร้างไอเท็มผลลัพธ์
+            const resultItem = {
             id: `crafted_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-            name: isShipEngine ? 'ADVANCED SHIP ENGINE' : 'HEAVY DRILL ENGINE',
-            type: isShipEngine ? 'ship engine' : 'drill engine',
-            imgKey: isShipEngine ? 'engineShip2' : 'engineDrill2',
-            level: 1,
-            ...dynamicStats,
-            repairCost: {
-                metal: Math.ceil(resMetal.totalQtyUsed / 100),
-                energy: Math.ceil(resEnergy.totalQtyUsed / 100),
-                tech: Math.ceil(resTech.totalQtyUsed / 100)
-            },
-            createdAt: Date.now()
-        };
+             name: `${baseItemName} (${makerName})`, // ชื่อที่แสดงผล[cite: 4]
+    
+            // 🚩 เพิ่มตัวแปรเก็บชื่อผู้สร้างไว้โดยเฉพาะ
+                createdBy: makerName, 
+    
+                type: isShipEngine ? 'ship engine' : 'drill engine',[cite: 4]
+                imgKey: isShipEngine ? 'engineShip2' : 'engineDrill2',[cite: 4]
+                level: 1,[cite: 4]
+                ...dynamicStats, // สเตตัสที่คำนวณมา[cite: 4]
+                repairCost: {
+                    metal: Math.ceil(resMetal.totalQtyUsed / 100),[cite: 4]
+                    energy: Math.ceil(resEnergy.totalQtyUsed / 100),[cite: 4]
+                    tech: Math.ceil(resTech.totalQtyUsed / 100)[cite: 4]
+                },
+                createdAt: Date.now()[cite: 4]
+            };
 
-        inventory.push(resultItem);
+            inventory.push(resultItem);[cite: 4]
 
-        // 5. บันทึกลงฐานข้อมูล
+        // 5. บันทึกและหักเงิน (Cost)
         await db.updateOne(
             { username },
             { 
@@ -2577,7 +2579,7 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             }
         );
 
-        res.json({ success: true, message: "การผลิตเสร็จสมบูรณ์!", inventory });
+        res.json({ success: true, message: `ผลิตสำเร็จ! คุณได้รับ ${resultItem.name}`, inventory });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

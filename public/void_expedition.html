@@ -5480,14 +5480,13 @@ async function renderBlueprintWorkshop() {
     const equippedBox = document.getElementById('equipped-box');
     const listArea = document.getElementById('inventory-list-area');
 
-    // 🚩 เปลี่ยนโหมดการแสดงผลเป็น Workshop
     listArea.classList.add('workshop-mode'); 
-    listArea.innerHTML = ""; // ล้างค่าก่อน
+    listArea.innerHTML = ""; 
 
     if (equippedBox) {
         equippedBox.innerHTML = `
             <div style="text-align:center; padding:10px; background:rgba(163, 71, 255, 0.1); border:1px solid var(--neon-purple); border-radius:10px; width:100%;">
-                <h4 style="color:var(--neon-purple); margin:0;"><i class="fas fa-tools"></i> BLUEPRINT WORKSHOP</h4>
+                <h4 style="color:var(--neon-purple); margin:0; letter-spacing:1px;"><i class="fas fa-tools"></i> BLUEPRINT WORKSHOP</h4>
             </div>
         `;
     }
@@ -5500,7 +5499,7 @@ async function renderBlueprintWorkshop() {
     }
 
     blueprints.forEach(bp => {
-        const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0 };
+        const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0, maxrecipe: 0 };
         const curMetal = countItemInInv('metal');
         const curEnergy = countItemInInv('energy');
         const curTech = countItemInInv('technology');
@@ -5513,7 +5512,7 @@ async function renderBlueprintWorkshop() {
         const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
 
         const card = document.createElement('div');
-        // 🚩 ปรับ Style การ์ดให้เป็นแนวนอน สวยงามเหมือนใบสั่งงาน
+        card.className = "blueprint-craft-card"; // สามารถตั้ง class ใน CSS ได้
         card.style.cssText = `
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid ${canCraft ? 'var(--neon-purple)' : '#444'};
@@ -5528,24 +5527,28 @@ async function renderBlueprintWorkshop() {
         `;
 
         card.innerHTML = `
-            <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
-                 style="width:60px; height:60px; border-radius:8px; border:1px solid rgba(163,71,255,0.3); background:#000;">
+            <div style="position:relative;">
+                <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
+                     style="width:60px; height:60px; border-radius:8px; border:1px solid rgba(163,71,255,0.3); background:#000;">
+                <div style="position:absolute; top:-5px; left:-5px; background:var(--neon-blue); color:#000; font-size:10px; padding:2px 5px; border-radius:3px; font-weight:bold;">BP</div>
+            </div>
             
             <div style="flex:1;">
                 <div style="color:var(--neon-blue); font-weight:bold; font-size:0.9rem; margin-bottom:5px;">${bp.name}</div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:0.7rem;">
-                    <span style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}">Metal: ${curMetal}/${r.metal}</span>
-                    <span style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}">Energy: ${curEnergy}/${r.energy}</span>
-                    <span style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}">Tech: ${curTech}/${r.tech}</span>
-                    <span style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}">Cost: ${r.craftprice}</span>
+                    <span style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-cube"></i> Metal: ${curMetal}/${r.metal}</span>
+                    <span style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-bolt"></i> Energy: ${curEnergy}/${r.energy}</span>
+                    <span style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-microchip"></i> Tech: ${curTech}/${r.tech}</span>
+                    <span style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}"><i class="fas fa-coins"></i> Cost: ${r.craftprice} GC</span>
                 </div>
+                <div style="font-size:0.6rem; color:rgba(255,255,255,0.4); margin-top:5px;">LIMIT: ${r.maxrecipe} Total Stats</div>
             </div>
 
             <button class="btn-buy" 
-                style="padding:10px; background:${canCraft ? 'var(--neon-purple)' : '#333'}; color:white; border-radius:5px; border:none; cursor:${canCraft ? 'pointer' : 'not-allowed'};"
+                style="padding:10px 20px; background:${canCraft ? 'linear-gradient(135deg, #a347ff, #6a11cb)' : '#333'}; color:white; border-radius:5px; border:none; cursor:${canCraft ? 'pointer' : 'not-allowed'}; font-weight:bold;"
                 onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
                 ${!canCraft ? 'disabled' : ''}>
-                ${canCraft ? 'CRAFT' : '<i class="fas fa-lock"></i>'}
+                ${canCraft ? 'CRAFT' : 'LOCKED'}
             </button>
         `;
         listArea.appendChild(card);
