@@ -5484,15 +5484,12 @@ async function processUpgrade(slot) {
 async function renderBlueprintWorkshop() {
     const mainView = document.getElementById('ship-main-view');
     const categoryView = document.getElementById('ship-category-view');
-    
-    // 1. สลับหน้าจอ
     if(mainView) mainView.style.display = 'none';
     if(categoryView) categoryView.style.display = 'block';
 
     const equippedBox = document.getElementById('equipped-box');
     const listArea = document.getElementById('inventory-list-area');
 
-    // 2. ตั้งค่า Container ให้เป็นโหมด Workshop (แถวเดียวใบใหญ่)
     listArea.classList.add('workshop-mode'); 
     listArea.innerHTML = ""; 
 
@@ -5504,7 +5501,6 @@ async function renderBlueprintWorkshop() {
         `;
     }
 
-    // 3. กรองเฉพาะ Blueprint
     const blueprints = playerInventory.filter(i => i.type === 'blueprint');
 
     if (blueprints.length === 0) {
@@ -5512,26 +5508,27 @@ async function renderBlueprintWorkshop() {
         return;
     }
 
+    // 🚩 1. ดึงเงินปัจจุบันจาก UI (เหมือนฟังก์ชัน Upgrade)
+    const currentCoinsText = document.getElementById('prof-gc').innerText;
+    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
+
     blueprints.forEach(bp => {
-        // ดึงสูตรการผลิต (รองรับกรณีไม่มีค่าให้เป็น 0)
         const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0, maxrecipe: 0 };
 
-        // จุดเช็คเงื่อนไขใน renderBlueprintWorkshop
-const curMetal = countItemInInv('metal');
-const curEnergy = countItemInInv('energy');
-const curTech = countItemInInv('technology');
+        // 2. เช็คจำนวนแร่
+        const curMetal = countItemInInv('metal');
+        const curEnergy = countItemInInv('energy');
+        const curTech = countItemInInv('technology');
 
-// 🚩 ดึงเงินให้ชัวร์ที่สุด
-const curCoins = Number(window.userData?.coinsgc || userData?.coinsgc || 0); 
-const craftCost = Number(r.craftprice || 0);
+        // 3. เช็คเงื่อนไข
+        const craftCost = Number(r.craftprice || 0);
+        const hasMetal = curMetal >= (r.metal || 0);
+        const hasEnergy = curEnergy >= (r.energy || 0);
+        const hasTech = curTech >= (r.tech || 0);
+        const hasCoins = currentCoins >= craftCost; // 🚩 ใช้ค่าที่ดึงจาก UI
 
-const hasMetal = curMetal >= (r.metal || 0);
-const hasEnergy = curEnergy >= (r.energy || 0);
-const hasTech = curTech >= (r.tech || 0);
-const hasCoins = curCoins >= craftCost; // เงินต้องพอ
-
-// 🚩 canCraft จะเป็นจริงเมื่อ "ทุกอย่าง" เป็นเขียว
-const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
+        // 🚩 ปุ่มจะปลดล็อกเมื่อ "ทุกอย่าง" เป็นจริง
+        const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
 
         const card = document.createElement('div');
         card.className = "blueprint-craft-card"; 
@@ -5561,15 +5558,14 @@ const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
                     <span style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-cube"></i> Metal: ${curMetal}/${r.metal}</span>
                     <span style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-bolt"></i> Energy: ${curEnergy}/${r.energy}</span>
                     <span style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-microchip"></i> Tech: ${curTech}/${r.tech}</span>
-                    <span style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}"><i class="fas fa-coins"></i> Cost: ${r.craftprice} GC</span>
+                    <span style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}"><i class="fas fa-coins"></i> Cost: ${craftCost.toLocaleString()} GC</span>
                 </div>
-                <div style="font-size:0.6rem; color:rgba(255,255,255,0.4); margin-top:5px;">LIMIT: ${r.maxrecipe} Total Stats</div>
             </div>
 
             <button class="btn-buy" 
                 style="padding:10px 15px; min-width:90px; background:${canCraft ? 'linear-gradient(135deg, #a347ff, #6a11cb)' : '#333'}; 
                        color:${canCraft ? 'white' : '#777'}; border-radius:5px; border:none; 
-                       cursor:${canCraft ? 'pointer' : 'not-allowed'}; font-weight:bold; font-family: 'Orbitron', sans-serif;"
+                       cursor:${canCraft ? 'pointer' : 'not-allowed'}; font-weight:bold;"
                 onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
                 ${!canCraft ? 'disabled' : ''}>
                 ${canCraft ? 'CRAFT' : 'LOCKED'}
