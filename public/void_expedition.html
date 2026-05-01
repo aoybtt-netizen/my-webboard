@@ -5481,15 +5481,19 @@ async function processUpgrade(slot) {
 
 
 //Blueprint Crafting
+// Blueprint Crafting Workshop
 async function renderBlueprintWorkshop() {
     const mainView = document.getElementById('ship-main-view');
     const categoryView = document.getElementById('ship-category-view');
+    
+    // 1. สลับหน้าจอ
     if(mainView) mainView.style.display = 'none';
     if(categoryView) categoryView.style.display = 'block';
 
     const equippedBox = document.getElementById('equipped-box');
     const listArea = document.getElementById('inventory-list-area');
 
+    // 2. ตั้งค่า Container ให้เป็นโหมด Workshop (แถวเดียวใบใหญ่)
     listArea.classList.add('workshop-mode'); 
     listArea.innerHTML = ""; 
 
@@ -5501,28 +5505,34 @@ async function renderBlueprintWorkshop() {
         `;
     }
 
+    // 3. กรองเฉพาะ Blueprint
     const blueprints = playerInventory.filter(i => i.type === 'blueprint');
 
     if (blueprints.length === 0) {
-        listArea.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5; color:#fff; width:100%;">ไม่พบแบบแปลนในคลัง</div>`;
+        listArea.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5; color:#fff; width:100%;">ไม่พบแบบแปลนในคลังของคุณ</div>`;
         return;
     }
 
     blueprints.forEach(bp => {
+        // ดึงสูตรการผลิต (รองรับกรณีไม่มีค่าให้เป็น 0)
         const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0, maxrecipe: 0 };
+        
+        // 4. เช็คจำนวนทรัพยากรที่มีจริงในคลัง
         const curMetal = countItemInInv('metal');
         const curEnergy = countItemInInv('energy');
-        const curTech = countItemInInv('technology');
+        const curTech = countItemInInv('technology'); // 🚩 เช็คให้ตรงกับ Type ใน DB
         const curCoins = (userData.coinsgc || 0);
 
-        const hasMetal = curMetal >= (r.metal || 0);
-        const hasEnergy = curEnergy >= (r.energy || 0);
-        const hasTech = curTech >= (r.tech || 0);
-        const hasCoins = curCoins >= (r.craftprice || 0);
+        const hasMetal = curMetal >= r.metal;
+        const hasEnergy = curEnergy >= r.energy;
+        const hasTech = curTech >= r.tech;
+        const hasCoins = curCoins >= r.craftprice;
+        
+        // เงื่อนไขการคราฟต์: ของต้องครบทุกอย่าง
         const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
 
         const card = document.createElement('div');
-        card.className = "blueprint-craft-card"; // สามารถตั้ง class ใน CSS ได้
+        card.className = "blueprint-craft-card"; 
         card.style.cssText = `
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid ${canCraft ? 'var(--neon-purple)' : '#444'};
@@ -5537,9 +5547,9 @@ async function renderBlueprintWorkshop() {
         `;
 
         card.innerHTML = `
-            <div style="position:relative;">
+            <div style="position:relative; flex-shrink: 0;">
                 <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
-                     style="width:60px; height:60px; border-radius:8px; border:1px solid rgba(163,71,255,0.3); background:#000;">
+                     style="width:60px; height:60px; border-radius:8px; border:1px solid rgba(163,71,255,0.3); background:#000; object-fit: contain;">
                 <div style="position:absolute; top:-5px; left:-5px; background:var(--neon-blue); color:#000; font-size:10px; padding:2px 5px; border-radius:3px; font-weight:bold;">BP</div>
             </div>
             
@@ -5555,7 +5565,9 @@ async function renderBlueprintWorkshop() {
             </div>
 
             <button class="btn-buy" 
-                style="padding:10px 20px; background:${canCraft ? 'linear-gradient(135deg, #a347ff, #6a11cb)' : '#333'}; color:white; border-radius:5px; border:none; cursor:${canCraft ? 'pointer' : 'not-allowed'}; font-weight:bold;"
+                style="padding:10px 15px; min-width:90px; background:${canCraft ? 'linear-gradient(135deg, #a347ff, #6a11cb)' : '#333'}; 
+                       color:${canCraft ? 'white' : '#777'}; border-radius:5px; border:none; 
+                       cursor:${canCraft ? 'pointer' : 'not-allowed'}; font-weight:bold; font-family: 'Orbitron', sans-serif;"
                 onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
                 ${!canCraft ? 'disabled' : ''}>
                 ${canCraft ? 'CRAFT' : 'LOCKED'}
