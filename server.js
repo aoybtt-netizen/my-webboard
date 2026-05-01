@@ -2009,6 +2009,10 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
                 { username: username, "inventory.id": existingItem.id },
                 { 
                     $inc: { coinsgc: -itemPrice, "inventory.$.quantity": quantity || 1 } 
+                    $inc: { 
+                        coinsgc: -itemPrice, 
+                        "inventory.$.quantity": parseInt(quantity) || 1 
+                    } 
                 }
             );
         } else {
