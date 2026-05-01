@@ -2523,26 +2523,44 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         else inventory.splice(bpIdx, 1);
 
         // 4. คำนวณ Status
-        let dynamicStats = {};
-        const isShipEngine = blueprint.name.includes("ADV. ENGINE");
-        
-        if (isShipEngine) {
-            dynamicStats = {
-                maxUpgrades: 2 + Math.floor(TV_metal / 300),
-                durability: 100 + (TV_metal * 0.4),
-                consumption: Math.max(10, 110 - (TV_energy * 0.1)),
-                power: 100 + (TV_tech * 0.5)
-            };
-        } else {
-            dynamicStats = {
-                maxUpgrades: 2 + Math.floor(TV_metal / 300),
-                durability: 100 + (TV_metal * 0.4),
-                consumption: Math.max(10, 110 - (TV_energy * 0.1)),
-                energyMax: 100 + (TV_tech * 0.3),
-                heatResist: TV_tech * 0.05,
-                acidResist: TV_tech * 0.04
-            };
-        }
+        // ฟังก์ชันช่วยสุ่มค่า +- 1
+const v = () => Math.floor(Math.random() * 3) - 1;
+
+// 4. คำนวณ Status ตามสูตรใหม่
+let dynamicStats = {};
+const isShipEngine = blueprint.name.includes("ADV. ENGINE");
+
+// สูตรคำนวณพื้นฐาน
+// Max Upgrades: round(จำนวนแร่ metal / 50) +- 1
+const calcMaxUpg = Math.round(resMetal.totalQtyUsed / 50) + v();
+// Durability: 100 + (round(TV_metal / 100) * 5) +- 1
+const calcDur = 100 + (Math.round(TV_metal / 100) * 5) + v();
+// Consumption: 100 - (round(TV_energy / 100) * 2) +- 1
+const calcCons = 100 - (Math.round(TV_energy / 100) * 2) + v();
+
+if (isShipEngine) {
+    dynamicStats = {
+        maxUpgrades: Math.max(1, calcMaxUpg),
+        durability: Math.max(10, calcDur),
+        consumption: Math.max(5, calcCons),
+        // Power: 100 + (round(TV_tech / 100) * 2) +- 1
+        power: 100 + (Math.round(TV_tech / 100) * 2) + v()
+    };
+} else {
+    // สำหรับ Drill Engine
+    const techFactor = Math.round(TV_tech / 100);
+    dynamicStats = {
+        maxUpgrades: Math.max(1, calcMaxUpg),
+        durability: Math.max(10, calcDur),
+        consumption: Math.max(5, calcCons),
+        // EnergyMax: 100 + (round(TV_tech / 100) * 5) +- 1
+        energyMax: 100 + (techFactor * 5) + v(),
+        // Heat, Acid, Scan: (round(TV_tech / 100) * 3) +- 1
+        heatResist: Math.max(0, (techFactor * 3) + v()),
+        acidResist: Math.max(0, (techFactor * 3) + v()),
+        scan: Math.max(0, (techFactor * 3) + v())
+    };
+}
 
         // ประทับชื่อผู้สร้าง
         const makerName = user.gameNickname || user.username || "Unknown Captain";
