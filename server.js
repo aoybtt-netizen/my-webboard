@@ -1393,7 +1393,7 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
 			},
 			turret: {
 				id: `start_turret_${now}`, 
-				name: 'STANDARD LASER TURRET', 
+				name: 'STANDARD TURRET', 
 				type: 'turret', 
 				imgKey: 'turret1', // อย่าลืมเตรียมคีย์รูปภาพไว้ใน imageSources
 				level: 1, 

@@ -1730,6 +1730,7 @@ button:hover { opacity: 0.8; }
 			'BPengineS1': 'images/engine/BPengineS1.png',
 			'BPengineDrill1': 'images/engine/BPengineDrill1.png',
 			'BPshield0': 'images/engine/BPshield0.png',
+            'BPturret0': 'images/engine/BPturret0.png',
 			//ENERGY
 			'EnergyChip0': 'images/energy/EnergyChip0.png',
 		};
@@ -1908,11 +1909,20 @@ button:hover { opacity: 0.8; }
         recipe: { metal: 100, energy: 100, tech: 100, maxrecipe:700, craftprice:2500 }
     },
     { 
+        id: 'bp_t001', 
+        name: 'BLUEPRINT: TURRET', 
+        type: 'blueprint', 
+        stackable: true,
+        price: 850, 
+        imgKey: 'BPturret0', 
+        recipe: { metal: 100, energy: 100, tech: 100, maxrecipe:700, craftprice:2500 }
+    },
+    { 
         id: 'bp_b001', 
         name: 'BLUEPRINT: TITAN SHIELD', 
         type: 'blueprint', 
         stackable: true,
-        price: 600, 
+        price: 850, 
         imgKey: 'BPshield0', 
         recipe: { metal: 100, energy: 100, tech: 100, maxrecipe:700, craftprice:2500 }
     }
