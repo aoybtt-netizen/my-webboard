@@ -753,17 +753,27 @@ button:hover { opacity: 0.8; }
     transform: scale(1.05);
 }
 
-.inventory-grid-area {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 65px); /* ไม่ต้องใช้ !important */
-    justify-content: center;
-    gap: 10px;
-    padding: 15px;
-    background: rgba(0,0,0,0.4);
-    border-radius: 10px;
-    overflow-y: auto;
-    max-height: 400px;
+
+.inventory-grid-area.workshop-mode {
+    display: flex !important;
+    flex-direction: column;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    max-height: 400px; 
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.blueprint-craft-card button {
+    min-width: 100px;
+    white-space: nowrap;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    transition: 0.2s;
+}
+
+.blueprint-craft-card button:not(:disabled):hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
 }
 
 /* 🚩 เพิ่มคลาสใหม่สำหรับ Workshop (ช่องใหญ่) */
