@@ -1963,39 +1963,41 @@ app.post('/api/:mode/test/add-coins', async (req, res) => {
 // 9. API สำหรับการซื้อไอเทม (Blueprint/Item)
 app.post('/api/:mode/game/buy-item', async (req, res) => {
     const { mode } = req.params;
-    const { username, itemId, itemPrice, itemName, itemType, itemImgKey, recipe, stackable, quantity, itemProps } = req.body;
+    const { username, itemId, itemPrice, totalPrice, itemName, itemType, itemImgKey, recipe, stackable, quantity, itemProps } = req.body;
     const db = getDB(mode);
+
+    // ใช้ totalPrice ที่ส่งมา หรือคำนวณใหม่เพื่อความปลอดภัย
+    const finalPrice = totalPrice || (itemPrice * (quantity || 1));
+    const buyQty = parseInt(quantity) || 1;
 
     try {
         const user = await db.findOne({ username });
         if (!user) return res.status(404).json({ success: false });
 
-        if ((user.coinsgc || 0) < itemPrice) {
-            return res.json({ success: false, message: "CoinsGC ไม่เพียงพอ!" });
+        if ((user.coinsgc || 0) < finalPrice) {
+            return res.json({ success: false, message: "CoinsGC ไม่เพียงพอสำหรับจำนวนนี้!" });
         }
 
         let inventory = user.inventory || [];
         let isMerged = false;
 
-        // 🛡️ 1. ถ้าไอเท็ม stack ได้ ให้หาว่ามีชื่อและประเภทเดียวกันในคลังไหม
         if (stackable) {
             const existingIdx = inventory.findIndex(i => i.name === itemName && i.type === itemType);
             if (existingIdx > -1) {
-                inventory[existingIdx].quantity = (inventory[existingIdx].quantity || 0) + (quantity || 1);
+                inventory[existingIdx].quantity = (inventory[existingIdx].quantity || 0) + buyQty;
                 isMerged = true;
             }
         }
 
-        // 🛡️ 2. ถ้าไม่รวมกลุ่ม หรือหาไม่เจอ ให้สร้างไอเท็มใหม่
         if (!isMerged) {
             const newItem = {
-            id: `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                id: `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
                 name: itemName,
                 type: itemType,
                 imgKey: itemImgKey,
                 level: 1,
                 stackable: stackable || false,
-                quantity: quantity || 1,
+                quantity: buyQty,
                 recipe: recipe,
                 ...itemProps,
                 repairCost: { metal: 1, energy: 1, tech: 1 },
@@ -2007,12 +2009,12 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
         await db.updateOne(
             { username },
             { 
-                $inc: { coinsgc: -itemPrice },
+                $inc: { coinsgc: -finalPrice }, // 🚩 หักตามราคารวม
                 $set: { inventory: inventory } 
             }
         );
 
-        res.json({ success: true, message: `ซื้อ ${itemName} สำเร็จ!`, inventory });
+        res.json({ success: true, message: `ซื้อ ${itemName} x${buyQty} สำเร็จ!`, inventory });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -2460,52 +2462,110 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
 
         let inventory = user.inventory || [];
         const blueprint = inventory.find(i => i.id === blueprintId);
-
         if (!blueprint) return res.json({ success: false, message: "ไม่พบแบบแปลน" });
         
-        const r = blueprint.recipe; // metal, energy, tech, coins
-        
-        // 1. ตรวจสอบแร่และเงินอีกครั้งเพื่อความปลอดภัย
-        const totalMetal = inventory.filter(i => i.type === 'metal').reduce((s, i) => s + (i.quantity || 1), 0);
-        const totalEnergy = inventory.filter(i => i.type === 'energy').reduce((s, i) => s + (i.quantity || 1), 0);
-        const totalTech = inventory.filter(i => i.type === 'technology').reduce((s, i) => s + (i.quantity || 1), 0);
+        const r = blueprint.recipe; // { metal, energy, tech, maxrecipe, craftprice }
+        const craftCost = r.craftprice || r.coins || 0; // รองรับทั้งชื่อตัวแปรเก่าและใหม่
 
-        if (totalMetal < r.metal || totalEnergy < r.energy || totalTech < r.tech || user.coinsgc < r.coins) {
-            return res.json({ success: false, message: "ทรัพยากรไม่เพียงพอ" });
+        // 1. ตรวจสอบจำนวนแร่ขั้นต่ำ
+        const totalMetalQty = inventory.filter(i => i.type === 'metal').reduce((s, i) => s + (i.quantity || 1), 0);
+        const totalEnergyQty = inventory.filter(i => i.type === 'energy').reduce((s, i) => s + (i.quantity || 1), 0);
+        const totalTechQty = inventory.filter(i => i.type === 'technology').reduce((s, i) => s + (i.quantity || 1), 0);
+
+        if (totalMetalQty < r.metal || totalEnergyQty < r.energy || totalTechQty < r.tech || user.coinsgc < craftCost) {
+            return res.json({ success: false, message: "ทรัพยากรไม่เพียงพอสำหรับสูตรนี้" });
         }
 
-        // 2. เริ่มกระบวนการหักทรัพยากร (ใช้ Logic หักทีละกองเหมือนระบบขาย)
-        const deductItems = (inv, type, amount) => {
-            let remain = amount;
+        // 2. 🚩 ฟังก์ชันใหม่: หักทรัพยากรพร้อมเก็บค่า Status (Total Value - TV)
+        const processResources = (inv, type, targetAmount) => {
+            let remain = targetAmount;
+            let totalStatValue = 0;
+            let totalQtyUsed = 0;
+
             for (let i = inv.length - 1; i >= 0; i--) {
-                if (inv[i].type === type) {
+                if (inv[i].type === type || (type === 'technology' && inv[i].type === 'technology')) {
+                    // กรองชื่อ type ให้ตรงกับโครงสร้างคลัง
+                    if (inv[i].type !== type && !(type === 'technology' && inv[i].type === 'technology')) continue;
+
                     let q = inv[i].quantity || 1;
-                    if (q <= remain) { remain -= q; inv.splice(i, 1); }
-                    else { inv[i].quantity -= remain; remain = 0; }
+                    let take = Math.min(q, remain);
+                    
+                    // ดึงค่า Status จากแร่ (metal, energy, tech ตามลำดับ)
+                    let orePower = 0;
+                    if (type === 'metal') orePower = inv[i].metal || 0;
+                    else if (type === 'energy') orePower = inv[i].energy || 0;
+                    else if (type === 'technology') orePower = inv[i].tech || 0;
+
+                    totalStatValue += (take * orePower);
+                    totalQtyUsed += take;
+                    remain -= take;
+
+                    if (q <= take) inv.splice(i, 1);
+                    else inv[i].quantity -= take;
                 }
                 if (remain <= 0) break;
             }
-            return inv;
+            return { totalStatValue, totalQtyUsed };
         };
 
-        inventory = deductItems(inventory, 'metal', r.metal);
-        inventory = deductItems(inventory, 'energy', r.energy);
-        inventory = deductItems(inventory, 'technology', r.tech);
+        // เริ่มดึงพลังงานจากแร่
+        const resMetal = processResources(inventory, 'metal', r.metal);
+        const resEnergy = processResources(inventory, 'energy', r.energy);
+        const resTech = processResources(inventory, 'technology', r.tech);
 
-        // 3. หัก Blueprint (ถ้าเป็นแบบใช้แล้วหมดไป)
-        const bpIdx = inventory.findIndex(i => i.id === blueprintId);
-        if (inventory[bpIdx].quantity > 1) {
-            inventory[bpIdx].quantity -= 1;
-        } else {
-            inventory.splice(bpIdx, 1);
+        const TV_metal = resMetal.totalStatValue;
+        const TV_energy = resEnergy.totalStatValue;
+        const TV_tech = resTech.totalStatValue;
+        const totalStatusSum = TV_metal + TV_energy + TV_tech;
+
+        // 🚩 ตรวจสอบ Max Recipe
+        if (totalStatusSum > r.maxrecipe) {
+            return res.json({ success: false, message: `คุณภาพแร่รวม (${totalStatusSum}) เกินขีดจำกัดที่ Blueprint รองรับได้ (${r.maxrecipe})` });
         }
 
-        // 4. เพิ่มไอเท็มที่คราฟได้ (ข้อมูลอยู่ใน blueprint.result)
+        // 3. หัก Blueprint
+        const bpIdx = inventory.findIndex(i => i.id === blueprintId);
+        if (inventory[bpIdx].quantity > 1) inventory[bpIdx].quantity -= 1;
+        else inventory.splice(bpIdx, 1);
+
+        // 4. 🚩 เพิ่มไอเท็มที่คราฟได้พร้อมคำนวณสเตตัสตามประเภท
+        let dynamicStats = {};
+        const isShipEngine = blueprint.name.includes("ADV. ENGINE");
+        const isDrillEngine = blueprint.name.includes("HEAVY DRILL");
+
+        if (isShipEngine) {
+            dynamicStats = {
+                maxUpgrades: 2 + Math.floor(TV_metal / 300),
+                durability: 100 + (TV_metal * 0.4),
+                consumption: Math.max(10, 110 - (TV_energy * 0.1)),
+                power: 100 + (TV_tech * 0.5)
+            };
+        } else if (isDrillEngine) {
+            dynamicStats = {
+                maxUpgrades: 2 + Math.floor(TV_metal / 300),
+                durability: 100 + (TV_metal * 0.4),
+                consumption: Math.max(10, 110 - (TV_energy * 0.1)),
+                energyMax: 100 + (TV_tech * 0.3),
+                heatResist: TV_tech * 0.05,
+                acidResist: TV_tech * 0.04
+            };
+        }
+
         const resultItem = {
-            ...blueprint.result,
-            id: `crafted_${Date.now()}`,
+            id: `crafted_${Date.now()}_${Math.floor(Math.random()*1000)}`,
+            name: isShipEngine ? 'ADVANCED SHIP ENGINE' : 'HEAVY DRILL ENGINE',
+            type: isShipEngine ? 'ship engine' : 'drill engine',
+            imgKey: isShipEngine ? 'engineShip2' : 'engineDrill2',
+            level: 1,
+            ...dynamicStats,
+            repairCost: {
+                metal: Math.ceil(resMetal.totalQtyUsed / 100),
+                energy: Math.ceil(resEnergy.totalQtyUsed / 100),
+                tech: Math.ceil(resTech.totalQtyUsed / 100)
+            },
             createdAt: Date.now()
         };
+
         inventory.push(resultItem);
 
         // 5. บันทึกลงฐานข้อมูล
@@ -2513,11 +2573,11 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             { username },
             { 
                 $set: { inventory: inventory },
-                $inc: { coinsgc: -r.coins }
+                $inc: { coinsgc: -craftCost }
             }
         );
 
-        res.json({ success: true, inventory });
+        res.json({ success: true, message: "การผลิตเสร็จสมบูรณ์!", inventory });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
