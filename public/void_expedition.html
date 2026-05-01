@@ -2694,40 +2694,34 @@ function renderSellItems() {
         return;
     }
 
-    // 🚩 รวมกลุ่มไอเทมที่ชื่อเหมือนกัน (Stackable Logic)
+    // 🚩 รวมกลุ่มไอเทมที่ชื่อเหมือนกัน
     const groupedItems = {};
     sellableItems.forEach(item => {
         if (!groupedItems[item.name]) {
-            // สร้าง entry ใหม่สำหรับการแสดงผล
             groupedItems[item.name] = { 
                 ...item, 
                 quantity: item.quantity || 1,
-                ids: [item.id] // เก็บ ID ไว้เพื่อใช้สั่งขาย (ขายทีละชุดตามที่มีใน DB)
+                ids: [item.id] 
             };
         } else {
-            // บวกจำนวนเพิ่มในกลุ่มเดิม
             groupedItems[item.name].quantity += (item.quantity || 1);
             groupedItems[item.name].ids.push(item.id);
         }
     });
 
     Object.values(groupedItems).forEach(item => {
-        // 🚩 1. ดึงราคาจาก item.value ที่เราสุ่มไว้ตอน Discovery
-        // ถ้าไม่มีค่า value ให้ใช้ 5 เป็นค่าพื้นฐาน
         const sellPrice = item.value || 5;
+        
+        // 🚩 สร้าง ID ที่ไม่มีช่องว่างเพื่อให้ JavaScript หาเจอแน่นอน
+        const safeName = item.name.replace(/\s+/g, '_'); 
 
-        // 🚩 2. Logic การดึงรูปภาพ (เช็คว่าเป็น Path หรือ Key)
         let imgSrc = "";
         const rawPath = item.imgKey || item.img || "";
-
         if (rawPath.includes('/')) {
-            // กรณีเป็น Path เต็ม (แร่ขุดใหม่) เช่น images/ore/metal/ore2.png
             imgSrc = rawPath;
         } else if (imageSources[rawPath]) {
-            // กรณีเป็น Key (แร่เริ่มต้น) เช่น orem1
             imgSrc = imageSources[rawPath];
         } else {
-            // ตัวสำรองกรณีหาไม่เจอ
             imgSrc = 'images/meteorite/meteor0.png';
         }
 
@@ -2742,10 +2736,13 @@ function renderSellItems() {
                     <div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">QTY: ${item.quantity} | TYPE: ${item.type.toUpperCase()}</div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
-                    <input type="number" id="sell-qty-${item.ids[0]}" value="${item.quantity}" min="1" max="${item.quantity}" 
+                    <!-- 🚩 จุดที่ 1: เปลี่ยน ID มาใช้ safeName -->
+                    <input type="number" id="sell-qty-${safeName}" value="${item.quantity}" min="1" max="${item.quantity}" 
                            style="width:65px; padding:5px; background:rgba(0,0,0,0.5); border:1px solid #444; color:white; border-radius:5px; text-align:center; font-family:'Orbitron', sans-serif; font-size:0.7rem;">
+                    
+                    <!-- 🚩 จุดที่ 2: ส่ง safeName เข้าไปเพื่อให้ sellItem หา input เจอ -->
                     <button class="btn-buy" style="background:#ff4b2b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;" 
-                            onclick="sellItem('${item.name.replace(/'/g, "\\'")}', ${sellPrice}, '${item.name.replace(/'/g, "\\'")}')"
+                            onclick="sellItem('${safeName}', ${sellPrice}, '${item.name.replace(/'/g, "\\'")}')">
                         SELL
                     </button>
                 </div>
@@ -2754,12 +2751,19 @@ function renderSellItems() {
     });
 }
 
-async function sellItem(itemName, price, displayLabel) {
-    const qtyInput = document.getElementById(`sell-qty-${itemName}`);
+async function sellItem(safeName, price, fullName) {
+    // 🚩 ค้นหาด้วย safeName ที่ส่งมาจากปุ่ม
+    const qtyInput = document.getElementById(`sell-qty-${safeName}`);
+    
+    if (!qtyInput) {
+        console.error("หา Input ไม่เจอ:", `sell-qty-${safeName}`);
+        return;
+    }
+
     const quantity = parseInt(qtyInput.value) || 1;
     const totalPrice = price * quantity;
 
-    if (!confirm(`คุณต้องการขาย ${displayLabel} จำนวน ${quantity} ชิ้น ราคา ${totalPrice} GC?`)) return;
+    if (!confirm(`คุณต้องการขาย ${fullName} จำนวน ${quantity} ชิ้น ราคา ${totalPrice} GC?`)) return;
 
     try {
         const response = await fetch(`${API_BASE}/game/sell-item`, {
@@ -2767,7 +2771,7 @@ async function sellItem(itemName, price, displayLabel) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: currentUser,
-                itemName: itemName, // 🚩 ส่ง itemName ไปแทน itemId ตามที่ Backend รอรับ
+                itemName: fullName, // ส่งชื่อแร่เต็มๆ ไปให้ Backend
                 sellPrice: price,
                 quantity: quantity
             })
@@ -2776,6 +2780,7 @@ async function sellItem(itemName, price, displayLabel) {
         const result = await response.json();
         if (result.success) {
             showMiningToast(`ขายสำเร็จ! +${totalPrice} GC`, "#38ef7d");
+            if(result.inventory) playerInventory = result.inventory;
             await checkGameProfile(); 
             renderSellItems();
         } else {
