@@ -2486,6 +2486,8 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
                     let q = inv[i].quantity || 1;
                     let take = Math.min(q, remain);
                     let orePower = 0;
+                    
+                    // ดึงค่าตามชื่อ Property ในแร่
                     if (type === 'metal') orePower = inv[i].metal || 0;
                     else if (type === 'energy') orePower = inv[i].energy || 0;
                     else if (type === 'technology') orePower = inv[i].tech || 0;
@@ -2493,6 +2495,7 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
                     totalStatValue += (take * orePower);
                     totalQtyUsed += take;
                     remain -= take;
+                    
                     if (q <= take) inv.splice(i, 1);
                     else inv[i].quantity -= take;
                 }
@@ -2523,8 +2526,6 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         let dynamicStats = {};
         const isShipEngine = blueprint.name.includes("ADV. ENGINE");
         
-        // สูตรการคำนวณ Status โดยใช้ LaTeX
-        // $$Stat = Base + (TV \times Multiplier)$$
         if (isShipEngine) {
             dynamicStats = {
                 maxUpgrades: 2 + Math.floor(TV_metal / 300),
@@ -2543,32 +2544,27 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             };
         }
 
-            // 🚩 ประทับชื่อผู้สร้าง (ดึงจาก DB field: gameNickname หรือ username)
-            // 1. ดึงชื่อผู้สร้าง (Signature)
-            const makerName = user.gameNickname || user.username || "Unknown Captain";
-            const baseItemName = isShipEngine ? 'ADVANCED SHIP ENGINE' : 'HEAVY DRILL ENGINE';
+        // ประทับชื่อผู้สร้าง
+        const makerName = user.gameNickname || user.username || "Unknown Captain";
+        const baseItemName = isShipEngine ? 'ADVANCED SHIP ENGINE' : 'HEAVY DRILL ENGINE';
 
-            // 2. สร้างไอเท็มผลลัพธ์
-            const resultItem = {
+        const resultItem = {
             id: `crafted_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-             name: `${baseItemName} (${makerName})`, // ชื่อที่แสดงผล[cite: 4]
-    
-            // 🚩 เพิ่มตัวแปรเก็บชื่อผู้สร้างไว้โดยเฉพาะ
-                createdBy: makerName, 
-    
-                type: isShipEngine ? 'ship engine' : 'drill engine',[cite: 4]
-                imgKey: isShipEngine ? 'engineShip2' : 'engineDrill2',[cite: 4]
-                level: 1,[cite: 4]
-                ...dynamicStats, // สเตตัสที่คำนวณมา[cite: 4]
-                repairCost: {
-                    metal: Math.ceil(resMetal.totalQtyUsed / 100),[cite: 4]
-                    energy: Math.ceil(resEnergy.totalQtyUsed / 100),[cite: 4]
-                    tech: Math.ceil(resTech.totalQtyUsed / 100)[cite: 4]
-                },
-                createdAt: Date.now()[cite: 4]
-            };
+            name: `${baseItemName} (${makerName})`,
+            createdBy: makerName, 
+            type: isShipEngine ? 'ship engine' : 'drill engine',
+            imgKey: isShipEngine ? 'engineShip2' : 'engineDrill2',
+            level: 1,
+            ...dynamicStats,
+            repairCost: {
+                metal: Math.ceil(resMetal.totalQtyUsed / 100),
+                energy: Math.ceil(resEnergy.totalQtyUsed / 100),
+                tech: Math.ceil(resTech.totalQtyUsed / 100)
+            },
+            createdAt: Date.now()
+        };
 
-            inventory.push(resultItem);[cite: 4]
+        inventory.push(resultItem);
 
         // 5. บันทึกและหักเงิน (Cost)
         await db.updateOne(
@@ -2584,8 +2580,6 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         res.status(500).json({ success: false, error: e.message });
     }
 });
-
-
 
 
 
