@@ -5454,7 +5454,6 @@ async function processUpgrade(slot) {
 
 //Blueprint Crafting
 async function renderBlueprintWorkshop() {
-    // 1. สลับหน้า View
     const mainView = document.getElementById('ship-main-view');
     const categoryView = document.getElementById('ship-category-view');
     if(mainView) mainView.style.display = 'none';
@@ -5463,53 +5462,94 @@ async function renderBlueprintWorkshop() {
     const equippedBox = document.getElementById('equipped-box');
     const listArea = document.getElementById('inventory-list-area');
 
+    // ล้างค่าเก่าและตั้งค่า Grid ใหม่ให้เหมาะสมกับ Workshop
+    listArea.style.display = "grid";
+    listArea.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))"; // 🚩 ปรับให้การ์ดกว้างขึ้น
+    listArea.style.gap = "15px";
+    listArea.style.padding = "10px";
+
     if (equippedBox) {
         equippedBox.innerHTML = `
-            <div style="text-align:center; padding:10px; background:rgba(163, 71, 255, 0.1); border:1px solid var(--neon-purple); border-radius:10px;">
-                <h4 style="color:var(--neon-purple); margin:0;"><i class="fas fa-tools"></i> BLUEPRINT WORKSHOP</h4>
+            <div style="text-align:center; padding:15px; background:linear-gradient(90deg, rgba(163,71,255,0.1), rgba(0,210,255,0.1)); border:1px solid var(--neon-purple); border-radius:10px; margin-bottom:15px;">
+                <h3 style="color:var(--neon-purple); margin:0; letter-spacing:2px;"><i class="fas fa-microchip"></i> BLUEPRINT WORKSHOP</h3>
             </div>
         `;
     }
 
-    // 🚩 กรอง Blueprint (เช็คทั้ง type และโครงสร้าง recipe)
     const blueprints = playerInventory.filter(i => i.type === 'blueprint');
 
     if (blueprints.length === 0) {
-        listArea.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; opacity:0.5;">ไม่พบแบบแปลนในคลังของคุณ</div>`;
+        listArea.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:50px; opacity:0.5; color:#fff;">ไม่มีแบบแปลนในระบบ</div>`;
         return;
     }
 
     listArea.innerHTML = "";
     blueprints.forEach(bp => {
-        // 🚩 ดึงสูตรการผลิต ถ้าไม่มีให้ใส่ค่า 0 กัน Error
         const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0 };
         
-        // เช็คทรัพยากร
-        const hasMetal = countItemInInv('metal') >= (r.metal || 0);
-        const hasEnergy = countItemInInv('energy') >= (r.energy || 0);
-        const hasTech = countItemInInv('technology') >= (r.tech || 0);
-        const hasCoins = (userData.coinsgc || 0) >= (r.craftprice || 0);
+        // เช็คจำนวนทรัพยากรที่มีจริง
+        const curMetal = countItemInInv('metal');
+        const curEnergy = countItemInInv('energy');
+        const curTech = countItemInInv('technology');
+        const curCoins = (userData.coinsgc || 0);
+
+        const hasMetal = curMetal >= (r.metal || 0);
+        const hasEnergy = curEnergy >= (r.energy || 0);
+        const hasTech = curTech >= (r.tech || 0);
+        const hasCoins = curCoins >= (r.craftprice || 0);
         const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
 
         const card = document.createElement('div');
-        card.className = 'inventory-card';
-        card.style.border = "1px solid rgba(163, 71, 255, 0.3)";
+        // ใช้สไตล์เฉพาะสำหรับ Blueprint Card
+        card.style.cssText = `
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid ${canCraft ? 'var(--neon-purple)' : '#444'};
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: ${canCraft ? '0 0 15px rgba(163, 71, 255, 0.2)' : 'none'};
+            transition: 0.3s;
+        `;
+
         card.innerHTML = `
-            <div style="font-size:0.8rem; color:var(--neon-purple); font-weight:bold; margin-bottom:5px;">${bp.name}</div>
-            <div style="display:flex; gap:10px; margin-bottom:10px;">
-                <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" style="width:50px; height:50px; background:rgba(0,0,0,0.3); border-radius:5px;">
-                <div style="font-size:0.65rem; line-height:1.4;">
-                    <div style="color:${hasMetal ? '#fff' : '#ff4b2b'}">Metal: ${r.metal}</div>
-                    <div style="color:${hasEnergy ? '#fff' : '#ff4b2b'}">Energy: ${r.energy}</div>
-                    <div style="color:${hasTech ? '#fff' : '#ff4b2b'}">Tech: ${r.tech}</div>
-                    <div style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}">Cost: ${r.craftprice} GC</div>
+            <div style="color:var(--neon-blue); font-weight:bold; font-size:1rem; border-bottom:1px solid #333; padding-bottom:8px;">
+                ${bp.name}
+            </div>
+            
+            <div style="display:flex; gap:15px; align-items:center;">
+                <div style="position:relative;">
+                    <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
+                         style="width:70px; height:70px; background:rgba(255,255,255,0.05); border-radius:10px; padding:5px; border:1px solid rgba(163,71,255,0.3);">
+                    <div style="position:absolute; bottom:-5px; right:-5px; background:var(--neon-purple); color:white; font-size:0.6rem; padding:2px 6px; border-radius:10px;">BP</div>
+                </div>
+
+                <div style="flex:1; display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:0.75rem;">
+                    <div style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}">
+                        <i class="fas fa-cube"></i> Metal: ${curMetal}/${r.metal}
+                    </div>
+                    <div style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}">
+                        <i class="fas fa-bolt"></i> Energy: ${curEnergy}/${r.energy}
+                    </div>
+                    <div style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}">
+                        <i class="fas fa-microchip"></i> Tech: ${curTech}/${r.tech}
+                    </div>
+                    <div style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}">
+                        <i class="fas fa-coins"></i> GC: ${r.craftprice}
+                    </div>
                 </div>
             </div>
+
             <button class="btn-buy" 
-                style="width:100%; padding:5px; background:${canCraft ? 'var(--neon-purple)' : '#444'};"
-                onclick="executeCraft('${bp.id}')"
+                style="width:100%; padding:10px; border-radius:8px; font-weight:bold; letter-spacing:1px;
+                       background:${canCraft ? 'linear-gradient(45deg, #a347ff, #00d2ff)' : '#222'}; 
+                       color:${canCraft ? '#fff' : '#666'};
+                       border:none; cursor:${canCraft ? 'pointer' : 'not-allowed'};
+                       box-shadow: ${canCraft ? '0 4px 15px rgba(0,0,0,0.3)' : 'none'};"
+                onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
                 ${!canCraft ? 'disabled' : ''}>
-                ${canCraft ? 'CRAFT' : 'RESOURCES NEEDED'}
+                ${canCraft ? '<i class="fas fa-hammer"></i> BEGIN MANUFACTURE' : '<i class="fas fa-exclamation-triangle"></i> RESOURCES LACKING'}
             </button>
         `;
         listArea.appendChild(card);
