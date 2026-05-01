@@ -1382,7 +1382,8 @@ button:hover { opacity: 0.8; }
             </button>
         </div>
 
-    </div> </div>
+    </div> 
+</div>
 </div>
 	
 	
@@ -5247,49 +5248,80 @@ function filterInv(category) {
 
 // ฟังก์ชันสำหรับแปลงค่าสเตตัสตามประเภทไอเทม
 function getItemStatusHTML(item) {
-    if (!item) return "No Data";
-    
-    // สเตตัสพื้นฐานที่ทุกชิ้นมี
-    let html = `
-        <div class="stat-main" style="color: #00d2ff; font-weight: bold; margin-bottom: 5px;">
-            LVL: ${item.level} / ${item.maxUpgrades}
-        </div>
-        <div class="stat-list" style="font-size: 0.8rem; line-height: 1.4;">
-    `;
-    
-    // เช็คตามประเภทและดึงค่าเฉพาะออกมา
-    switch (item.type) {
-        case 'ship engine':
-            html += `<div>• POWER: <span style="color:#fff">${item.power}</span></div>`;
-            html += `<div>• CONS: <span style="color:#fff">${item.consumption}</span></div>`;
-            break;
+    if (!item) return "";
+    let html = `<div style="display: flex; flex-direction: column; gap: 4px; padding: 5px;">`;
 
-        case 'drill engine':
-            html += `<div>• ENERGY: <span style="color:#fff">${item.energyMax}</span></div>`;
-            html += `<div>• SCAN: <span style="color:#fff">${item.scanRate}</span></div>`;
-            html += `<div>• HEAT RES: <span style="color:#fff">${item.heatResist}</span></div>`;
-            html += `<div>• ACID RES: <span style="color:#fff">${item.acidResist}</span></div>`;
-            html += `<div>• CONS: <span style="color:#fff">${item.consumption}</span></div>`;
-            break;
+    // ฟังก์ชันช่วยสร้างแถวข้อมูล (Helper)
+    const addRow = (label, value, icon, color = 'var(--neon-blue)') => {
+        if (value === undefined || value === null) return "";
+        return `
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px;">
+                <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">
+                    <i class="fas ${icon}" style="width: 15px;"></i> ${label}
+                </span>
+                <span style="color: ${color}; font-weight: bold; font-size: 0.75rem;">${value}</span>
+            </div>
+        `;
+    };
 
-        case 'card barrier':
-            html += `<div>• SHIELD: <span style="color:#fff">${item.shield}/${item.maxShield}</span></div>`;
-            html += `<div>• REGEN: <span style="color:#fff">${item.recharge}/s</span></div>`;
-            html += `<div>• DELAY: <span style="color:#fff">${item.rechargeDelay}s</span></div>`;
-            break;
-
-        case 'turret':
-            html += `<div>• DMG: <span style="color:#fff">${item.damage}</span></div>`;
-            html += `<div>• FIRE RATE: <span style="color:#fff">${item.fireRate}s</span></div>`;
-            html += `<div>• RANGE: <span style="color:#fff">${item.range}</span></div>`;
-            break;
-
-        case 'energy chip':
-            html += `<div>• CHARGE: <span style="color:#fff">+${item.energyValue}</span></div>`;
-            break;
+    // 1. แสดงชื่อผู้สร้าง (Maker)
+    if (item.createdBy) {
+        html += `
+            <div style="color:var(--neon-purple); font-size:0.65rem; margin-bottom:5px; border:1px solid var(--neon-purple); padding:2px; text-align:center; border-radius:4px;">
+                <i class="fas fa-hammer"></i> MAKER: ${item.createdBy.toUpperCase()}
+            </div>
+        `;
     }
 
-    html += `</div>`; // ปิด stat-list
+    // 2. ข้อมูลเฉพาะตามประเภทไอเท็ม
+    const type = item.type;
+    const upgText = `${item.level || 1} / ${item.maxUpgrades || 1}`;
+
+    if (type === 'ship engine') {
+        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
+        html += addRow('DURABILITY', item.durability, 'fa-shield-alt', 'var(--neon-green)');
+        html += addRow('CONSUMPTION', item.consumption, 'fa-gas-pump', 'var(--neon-red)');
+        html += addRow('POWER', item.power, 'fa-bolt');
+    } 
+    else if (type === 'drill engine') {
+        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
+        html += addRow('DURABILITY', item.durability, 'fa-shield-alt');
+        html += addRow('CONSUMPTION', item.consumption, 'fa-gas-pump', 'var(--neon-red)');
+        html += addRow('ENERGY MAX', item.energyMax, 'fa-battery-full');
+        html += addRow('HEAT RESIST', item.heatResist, 'fa-fire', '#ff8800');
+        html += addRow('ACID RESIST', item.acidResist, 'fa-flask', '#a1ff00');
+        html += addRow('SCAN RANGE', item.scan, 'fa-satellite-dish', '#00ffcc');
+    }
+    else if (type === 'card barrier') {
+        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
+        html += addRow('MAX SHIELD', item.maxShield, 'fa-shield-alt', '#00d2ff');
+        html += addRow('RECHARGE', item.recharge, 'fa-sync-alt');
+        html += addRow('RECHARGE DELAY', `${item.rechargeDelay}s`, 'fa-clock');
+    }
+    else if (type === 'turret') {
+        html += addRow('UPGRADES', upgText, 'fa-level-up-alt', '#ffcc00');
+        html += addRow('DAMAGE', item.damage, 'fa-skull', 'var(--neon-red)');
+        html += addRow('FIRE RATE', item.fireRate, 'fa-tachometer-alt');
+        html += addRow('RANGE', item.range, 'fa-arrows-alt');
+        html += addRow('DURABILITY', item.durability, 'fa-shield-alt');
+        html += addRow('ENERGY MAX', item.energyMax, 'fa-battery-full');
+    }
+
+    // 3. แสดงค่าซ่อม (Repair Cost) เฉพาะที่มีค่ามากกว่า 0
+    if (item.repairCost && (item.repairCost.metal > 0 || item.repairCost.energy > 0 || item.repairCost.tech > 0)) {
+        html += `
+            <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 0.6rem; color: #888; margin-bottom: 3px; text-align:center;">REPAIR REQUIREMENTS</div>
+                <div style="display: flex; justify-content: space-around; font-size: 0.65rem;">
+                    <span style="color: #b0b0b0;">M:${item.repairCost.metal || 0}</span>
+                    <span style="color: var(--neon-blue);">E:${item.repairCost.energy || 0}</span>
+                    <span style="color: #a326ff;">T:${item.repairCost.tech || 0}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    html += `</div>`;
     return html;
 }
 
