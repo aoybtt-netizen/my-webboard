@@ -1989,13 +1989,14 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
         // 🛡️ 2. ถ้าไม่รวมกลุ่ม หรือหาไม่เจอ ให้สร้างไอเท็มใหม่
         if (!isMerged) {
             const newItem = {
-                id: `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            id: `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
                 name: itemName,
                 type: itemType,
                 imgKey: itemImgKey,
                 level: 1,
                 stackable: stackable || false,
                 quantity: quantity || 1,
+                recipe: recipe,
                 ...itemProps,
                 repairCost: { metal: 1, energy: 1, tech: 1 },
                 createdAt: Date.now()
