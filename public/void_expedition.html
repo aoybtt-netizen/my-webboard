@@ -1339,6 +1339,10 @@ button:hover { opacity: 0.8; }
                     <div class="cat-card" onclick="openCategory('storage')">
                         <i class="fas fa-warehouse"></i> <span>Cargo Storage</span>
                     </div>
+                    <div class="cat-card" onclick="renderBlueprintWorkshop()" style="border-color: var(--neon-purple);">
+                        <i class="fas fa-microchip" style="color: var(--neon-purple);"></i> 
+                         <span style="color: var(--neon-purple);">Blueprint Workshop</span>
+                    </div>
                 </div>
 
                 <div class="ship-display-area">
@@ -5443,6 +5447,102 @@ async function processUpgrade(slot) {
         console.error("Upgrade Error:", error);
         showMiningToast("เกิดข้อผิดพลาดในการสื่อสารกับสถานี", "#ff4b2b");
     }
+}
+
+
+
+
+//Blueprint Crafting
+async function renderBlueprintWorkshop() {
+    // สลับหน้า View
+    document.getElementById('ship-main-view').style.display = 'none';
+    const categoryView = document.getElementById('ship-category-view');
+    categoryView.style.display = 'block';
+
+    const equippedBox = document.getElementById('equipped-box');
+    const listArea = document.getElementById('inventory-list-area');
+
+    equippedBox.innerHTML = `
+        <div style="text-align:center; padding:10px; background:rgba(163, 71, 255, 0.1); border:1px solid var(--neon-purple); border-radius:10px;">
+            <h4 style="color:var(--neon-purple); margin:0;"><i class="fas fa-tools"></i> BLUEPRINT WORKSHOP</h4>
+            <p style="font-size:0.7rem; opacity:0.7; margin:5px 0 0 0;">สร้างอุปกรณ์ระดับสูงจากแบบแปลนและทรัพยากร</p>
+        </div>
+    `;
+
+    // 1. หา Blueprint ทั้งหมดในคลัง
+    const blueprints = playerInventory.filter(i => i.type === 'blueprint' || i.isBlueprint);
+
+    if (blueprints.length === 0) {
+        listArea.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; opacity:0.5;">ไม่พบแบบแปลนในคลังของคุณ</div>`;
+        return;
+    }
+
+    listArea.innerHTML = "";
+    blueprints.forEach(bp => {
+        // ดึงสูตรการผลิต (สมมติว่าเก็บไว้ใน bp.recipe)
+        const r = bp.recipe || { metal: 0, energy: 0, tech: 0, coins: 0 };
+        
+        // เช็คว่าทรัพยากรพอไหม (เช็คเบื้องต้นหน้าบ้าน)
+        const hasMetal = countItemInInv('metal') >= r.metal;
+        const hasEnergy = countItemInInv('energy') >= r.energy;
+        const hasTech = countItemInInv('technology') >= r.tech;
+        const hasCoins = (userData.coinsgc || 0) >= r.coins;
+        const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
+
+        const card = document.createElement('div');
+        card.className = 'inventory-card';
+        card.style.border = "1px solid rgba(163, 71, 255, 0.3)";
+        card.innerHTML = `
+            <div style="font-size:0.8rem; color:var(--neon-purple); font-weight:bold; margin-bottom:5px;">${bp.name}</div>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <img src="${bp.imgKey || 'images/items/blueprint.png'}" style="width:50px; height:50px; background:rgba(0,0,0,0.3); border-radius:5px;">
+                <div style="font-size:0.65rem; line-height:1.4;">
+                    <div style="color:${hasMetal ? '#fff' : '#ff4b2b'}">Metal: ${r.metal}</div>
+                    <div style="color:${hasEnergy ? '#fff' : '#ff4b2b'}">Energy: ${r.energy}</div>
+                    <div style="color:${hasTech ? '#fff' : '#ff4b2b'}">Tech: ${r.tech}</div>
+                    <div style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}">Coins: ${r.coins} GC</div>
+                </div>
+            </div>
+            <button class="btn-buy" 
+                style="width:100%; padding:5px; background:${canCraft ? 'var(--neon-purple)' : '#444'}; cursor:${canCraft ? 'pointer' : 'not-allowed'}"
+                onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
+                ${!canCraft ? 'disabled' : ''}>
+                ${canCraft ? 'CRAFT ITEM' : 'INSUFFICIENT RESOURCES'}
+            </button>
+        `;
+        listArea.appendChild(card);
+    });
+}
+
+// ฟังก์ชันช่วยนับจำนวนแร่ในคลัง
+function countItemInInv(type) {
+    return playerInventory
+        .filter(i => i.type === type)
+        .reduce((sum, i) => sum + (i.quantity || 1), 0);
+}
+
+// ส่งคำสั่งสร้างไอเท็มไปหลังบ้าน
+async function executeCraft(blueprintId) {
+    if(!confirm("ยืนยันการใช้ Blueprint และทรัพยากรเพื่อสร้างไอเท็ม?")) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/game/craft-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                blueprintId: blueprintId
+            })
+        });
+        const result = await response.json();
+        if(result.success) {
+            showMiningToast("สร้างไอเท็มสำเร็จ! ตรวจสอบที่คลังอุปกรณ์", "#a347ff");
+            playerInventory = result.inventory; // อัปเดตคลัง
+            renderBlueprintWorkshop(); // วาดหน้าจอใหม่
+        } else {
+            alert(result.message);
+        }
+    } catch(e) { console.error(e); }
 }
 
 

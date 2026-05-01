@@ -2447,6 +2447,81 @@ app.post('/api/:mode/game/upgrade-item', async (req, res) => {
     }
 });
 
+//15. Blueprint Crafting
+app.post('/api/:mode/game/craft-item', async (req, res) => {
+    const { mode } = req.params;
+    const { username, blueprintId } = req.body;
+    const db = getDB(mode);
+
+    try {
+        const user = await db.findOne({ username });
+        if (!user) return res.status(404).json({ success: false });
+
+        let inventory = user.inventory || [];
+        const blueprint = inventory.find(i => i.id === blueprintId);
+
+        if (!blueprint) return res.json({ success: false, message: "ไม่พบแบบแปลน" });
+        
+        const r = blueprint.recipe; // metal, energy, tech, coins
+        
+        // 1. ตรวจสอบแร่และเงินอีกครั้งเพื่อความปลอดภัย
+        const totalMetal = inventory.filter(i => i.type === 'metal').reduce((s, i) => s + (i.quantity || 1), 0);
+        const totalEnergy = inventory.filter(i => i.type === 'energy').reduce((s, i) => s + (i.quantity || 1), 0);
+        const totalTech = inventory.filter(i => i.type === 'technology').reduce((s, i) => s + (i.quantity || 1), 0);
+
+        if (totalMetal < r.metal || totalEnergy < r.energy || totalTech < r.tech || user.coinsgc < r.coins) {
+            return res.json({ success: false, message: "ทรัพยากรไม่เพียงพอ" });
+        }
+
+        // 2. เริ่มกระบวนการหักทรัพยากร (ใช้ Logic หักทีละกองเหมือนระบบขาย)
+        const deductItems = (inv, type, amount) => {
+            let remain = amount;
+            for (let i = inv.length - 1; i >= 0; i--) {
+                if (inv[i].type === type) {
+                    let q = inv[i].quantity || 1;
+                    if (q <= remain) { remain -= q; inv.splice(i, 1); }
+                    else { inv[i].quantity -= remain; remain = 0; }
+                }
+                if (remain <= 0) break;
+            }
+            return inv;
+        };
+
+        inventory = deductItems(inventory, 'metal', r.metal);
+        inventory = deductItems(inventory, 'energy', r.energy);
+        inventory = deductItems(inventory, 'technology', r.tech);
+
+        // 3. หัก Blueprint (ถ้าเป็นแบบใช้แล้วหมดไป)
+        const bpIdx = inventory.findIndex(i => i.id === blueprintId);
+        if (inventory[bpIdx].quantity > 1) {
+            inventory[bpIdx].quantity -= 1;
+        } else {
+            inventory.splice(bpIdx, 1);
+        }
+
+        // 4. เพิ่มไอเท็มที่คราฟได้ (ข้อมูลอยู่ใน blueprint.result)
+        const resultItem = {
+            ...blueprint.result,
+            id: `crafted_${Date.now()}`,
+            createdAt: Date.now()
+        };
+        inventory.push(resultItem);
+
+        // 5. บันทึกลงฐานข้อมูล
+        await db.updateOne(
+            { username },
+            { 
+                $set: { inventory: inventory },
+                $inc: { coinsgc: -r.coins }
+            }
+        );
+
+        res.json({ success: true, inventory });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 
 
 
