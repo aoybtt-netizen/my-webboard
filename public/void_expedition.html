@@ -2180,27 +2180,22 @@ async function syncStaticStars() {
             }
             safeSetText('prof-gc', (data.coinsgc || 0).toLocaleString());
             safeSetText('prof-usdt', (data.gameUSDT || 0).toFixed(2));
-            
-            safeSetText('display-energy-small', (data.energy || 0) + "%");
-            safeSetText('prof-energy', (data.energy || 0) + "%");
 
             // --- [2] โหลดระบบไอเทม & Cargo ---
             if (data.shipStats) {
-                // โหลดเข้าตัวแปร global
-                shipStats = data.shipStats; 
-    
-                // อัปเดต HUD ทันที (สมมติว่ากัปตันมีฟังก์ชัน updateTravelHUD หรือคล้ายกัน)
-                const hpCurrent = shipStats.currentDurability || 0;
-                const hpMax = shipStats.maxDurability || 100;
-                const energyCurrent = shipStats.currentEnergy || 0;
-                const energyMax = shipStats.maxEnergy || 100;
+                const curEng = data.shipStats.currentEnergy || 0;
+                const maxEng = data.shipStats.maxEnergy || 100;
+                const energyPercent = Math.floor((curEng / maxEng) * 100);
 
-                // อัปเดตตัวเลขในหน้า Profile หรือ HUD
-                const hpEl = document.getElementById('ship-hp-text');
-                if(hpEl) hpEl.innerText = `${Math.round(hpCurrent)}/${hpMax}`;
+                // แสดงผลใน HUD และ Profile
+                safeSetText('display-energy-small', energyPercent + "%");
+                safeSetText('prof-energy', energyPercent + "%");
     
-                const energyEl = document.getElementById('ship-energy-text');
-                if(energyEl) energyEl.innerText = `${Math.round(energyCurrent)}/${energyMax}`;
+                // อัปเดตค่าเข้าตัวแปร Global ไว้ใช้งานในส่วนอื่นด้วย
+                shipStats = data.shipStats;
+            } else {
+                // กรณีไม่มีข้อมูล shipStats (Fallback)
+                safeSetText('display-energy-small', (data.energy || 0) + "%");
             }
             if (data.equipped) playerEquipped = data.equipped;
             
