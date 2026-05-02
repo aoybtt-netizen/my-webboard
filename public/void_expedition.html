@@ -1882,7 +1882,7 @@ button:hover { opacity: 0.8; }
 		};
 		
 		
-		const SHOP_ITEMS = [
+	const SHOP_ITEMS = [
     // --- หมวดไอเทมใช้งาน ---
     { 
         id: 'chip_std_01', 
@@ -2883,10 +2883,19 @@ function renderBuyItems() {
     SHOP_ITEMS.forEach(item => {
         let displayImg = "";
         let recipeHTML = "";
-        
-        // ตรวจสอบว่าเป็นแร่หรือไอเท็มที่ Stack ได้หรือไม่
-        const isStackable = item.stackable || ['metal', 'energy', 'technology', 'fuel'].includes(item.type);
+        let priceDisplay = `${item.price} Credits`;
+        let actionControls = "";
 
+        // คำนวณส่วนต่าง Energy สำหรับ ENERGY CELL (f001)
+        const isEnergyCell = item.id === 'f001';
+        let neededEnergy = 0;
+
+        if (isEnergyCell) {
+            neededEnergy = Math.max(0, shipStats.maxEnergy - shipStats.currentEnergy);
+            priceDisplay = `${Math.ceil(neededEnergy)} Credits`; // ราคา 1:1
+        }
+
+        // --- ส่วนจัดการรูปภาพ (เหมือนเดิม) ---
         if (item.isIcon) {
             displayImg = `<i class="${item.icon}" style="color:var(--neon-blue);"></i>`;
         } else {
@@ -2894,40 +2903,40 @@ function renderBuyItems() {
             displayImg = `<img src="${src}" style="width:100%; height:100%; object-fit:contain;">`;
         }
 
-        if (item.type === 'blueprint' && item.recipe) {
-            recipeHTML = `
-                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.5); margin-top: 5px;">
-                    REQUIRES: 
-                    <span style="color:#b0b0b0;">M:${item.recipe.metal}</span> 
-                    <span style="color:#00d2ff;">E:${item.recipe.energy}</span> 
-                    <span style="color:#a326ff;">T:${item.recipe.tech}</span>
-                </div>
+        // --- ส่วนจัดการปุ่มและ Input ---
+        if (isEnergyCell) {
+            // ถ้าเป็นเติมพลังงาน ไม่ต้องมีช่องใส่จำนวน ให้กดปุ่ม REFILL ได้เลย
+            const isFull = neededEnergy <= 0;
+            actionControls = `
+                <div style="font-size:0.7rem; color:var(--neon-green); margin-bottom:2px;">REFILL: +${Math.ceil(neededEnergy)}</div>
+                <button class="btn-buy" ${isFull ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} 
+                        onclick="buyRefillEnergy()">
+                    ${isFull ? 'FULL' : 'REFILL'}
+                </button>
             `;
-        }
-
-        const card = document.createElement('div');
-        card.className = 'shop-item-card';
-        card.style.borderLeft = item.type === 'blueprint' ? "4px solid var(--neon-blue)" : "1px solid rgba(255,255,255,0.1)";
-        
-        card.innerHTML = `
-            <div class="shop-item-img" style="${item.type === 'blueprint' ? 'background: rgba(0, 210, 255, 0.05);' : ''}">
-                ${displayImg}
-            </div>
-            <div class="shop-item-info">
-                <div class="shop-item-name" style="${item.type === 'blueprint' ? 'color: var(--neon-blue);' : ''}">
-                    ${item.name}
-                </div>
-                <div class="shop-item-price">
-                    <i class="fas fa-coins"></i> ${item.price} Credits
-                </div>
-                ${recipeHTML}
-            </div>
-            <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
+        } else {
+            // ไอเทมปกติที่มีช่องใส่จำนวน
+            const isStackable = item.stackable || ['metal', 'energy', 'technology', 'blueprint'].includes(item.type);
+            actionControls = `
                 ${isStackable ? `
                     <input type="number" id="buy-qty-${item.id}" value="1" min="1" max="999" 
                            style="width:50px; background:rgba(0,0,0,0.5); border:1px solid #444; color:white; text-align:center; border-radius:4px; font-size:0.8rem;">
                 ` : ''}
                 <button class="btn-buy" onclick="buyItem('${item.id}')">BUY</button>
+            `;
+        }
+
+        // --- สร้าง Card (เหมือนเดิมแต่เปลี่ยนตัวแปรราคา) ---
+        const card = document.createElement('div');
+        card.className = 'shop-item-card';
+        card.innerHTML = `
+            <div class="shop-item-img">${displayImg}</div>
+            <div class="shop-item-info">
+                <div class="shop-item-name">${item.name}</div>
+                <div class="shop-item-price"><i class="fas fa-coins"></i> ${priceDisplay}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
+                ${actionControls}
             </div>
         `;
         container.appendChild(card);
