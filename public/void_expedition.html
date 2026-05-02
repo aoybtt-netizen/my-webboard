@@ -1262,7 +1262,9 @@ button:hover { opacity: 0.8; }
         <canvas id="hex-canvas"></canvas>
         
         <div class="bottom-nav">
-            <div class="nav-btn" onclick="openMenu('ship-menu')"><i class="fas fa-rocket"></i><span>ship</span></div>
+            <div class="nav-btn" onclick="openShipMenu()">
+                <i class="fas fa-rocket"></i><span>ship</span>
+            </div>
             <div class="nav-btn" id="btn-map" onclick="toggleMapMode()"><i class="fas fa-map-marked-alt"></i><span>map</span></div>
             <div class="nav-btn" onclick="handleLogout()" style="border-color:var(--neon-red); color:var(--neon-red);"><i class="fas fa-power-off"></i><span>logout</span></div>
         </div>
@@ -5508,20 +5510,16 @@ function renderShipMain() {
         shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
     }
 
-    // 2. แสดงผลสถานะหลักในส่วน SHIP CONFIGURATION
+    // 2. ดึงค่าจาก shipStats มาแสดงผล
     const overallStatsContainer = document.getElementById('ship-overall-stats');
-    
-    // เตรียมข้อมูลสเตตัสพื้นฐาน (ดึงจาก shipStats)
     const { currentDurability, maxDurability, currentEnergy, maxEnergy, shipMove, repairCost } = shipStats;
-    
-    // จัดรูปแบบ Repair Cost ให้เป็นบรรทัดเดียว
     const repairString = `M:${repairCost.metal} | E:${repairCost.energy} | T:${repairCost.tech}`;
 
-    // เขียน HTML ใหม่ในส่วนบน (ทับค่า Integrity เดิม)
+    // วาดส่วน Configuration ใหม่ทั้งหมด (รวมทั้ง Integrity, Energy, Move และ Repair)
     overallStatsContainer.innerHTML = `
         <div style="color:var(--neon-blue); border-bottom:1px solid #333; margin-bottom:5px;">SHIP CONFIGURATION</div>
         <div style="font-size: 0.85rem; line-height: 1.5;">
-            <div>INTEGRITY: <span style="color:var(--neon-green)">${currentDurability} / ${maxDurability}</span></div>
+            <div>INTEGRITY: <span style="color:${(currentDurability/maxDurability) > 0.3 ? 'var(--neon-green)' : 'var(--neon-red)'}">${currentDurability} / ${maxDurability}</span></div>
             <div>ENERGY: <span style="color:#ffcc00">${Math.round(currentEnergy)} / ${maxEnergy}</span></div>
             <div>MOVEMENT: <span style="color:var(--neon-blue)">${shipMove} UNIT</span></div>
             <div style="font-size: 0.7rem; color: #888; margin-top: 3px;">
@@ -5531,21 +5529,29 @@ function renderShipMain() {
         <div id="stat-list-dynamic"></div>
     `;
 
-    // 3. แสดงรายการอุปกรณ์ที่ติดตั้ง (ส่วนด้านล่าง)
+    // 3. แสดงรายการอุปกรณ์ที่ติดตั้ง (เพิ่ม Turret)
     const statsContainer = document.getElementById('stat-list-dynamic');
-    const { engine, drill, barrier } = playerEquipped;
+    const { engine, drill, barrier, turret } = playerEquipped; // 🚩 เพิ่ม turret ตรงนี้
 
     let modulesHTML = `
         <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
             <div style="opacity:0.6; font-size:0.7rem; margin-bottom:5px;">ACTIVE MODULES:</div>
-            <div style="display:flex; justify-content:space-between; font-size: 0.75rem;">
+            
+            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom:2px;">
                 <span>ENGINE:</span> 
                 <span style="color:${engine ? 'var(--neon-blue)' : '#555'}">${engine ? engine.name.split(' (')[0] : 'NONE'}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size: 0.75rem;">
+            
+            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom:2px;">
                 <span>DRILL:</span> 
                 <span style="color:${drill ? 'var(--neon-blue)' : '#555'}">${drill ? drill.name.split(' (')[0] : 'NONE'}</span>
             </div>
+
+            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom:2px;">
+                <span>TURRET:</span> 
+                <span style="color:${turret ? 'var(--neon-blue)' : '#555'}">${turret ? turret.name.split(' (')[0] : 'NONE'}</span>
+            </div>
+            
             <div style="display:flex; justify-content:space-between; font-size: 0.75rem;">
                 <span>SHIELD:</span> 
                 <span style="color:${barrier ? 'var(--neon-blue)' : '#555'}">${barrier ? barrier.name.split(' (')[0] : 'NONE'}</span>
@@ -5555,7 +5561,7 @@ function renderShipMain() {
 
     statsContainer.innerHTML = modulesHTML;
 
-    // ตรวจสอบ View
+    // ตรวจสอบ View ให้ถูกต้อง
     document.getElementById('ship-main-view').style.display = 'block';
     document.getElementById('ship-category-view').style.display = 'none';
 }
