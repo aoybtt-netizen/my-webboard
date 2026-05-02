@@ -5488,59 +5488,77 @@ function upgradeItem() {
 
 
 
-function openShipMenu() {
-    openMenu('ship-menu');
-    document.getElementById('ship-main-view').style.display = 'block';
-    document.getElementById('ship-category-view').style.display = 'none';
+function renderShipMain() {
+    // 1. จัดการรูปยาน
     const shipImgEl = document.getElementById('main-ship-img');
     if (shipImgEl) {
         shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
     }
-}
 
-function renderShipMain() {
-    // 1. จัดการรูปยาน (เริ่มต้นที่ shipM0)
-    const shipImgEl = document.getElementById('main-ship-img');
-    // ในอนาคตถ้ากัปตันมีค่า shipLevel ในฐานข้อมูล ก็เปลี่ยนจาก 'shipM0' เป็นตัวแปรได้ครับ
-    shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
-
-    // 2. คำนวณและแสดงผลสถานะยาน
-    const statsContainer = document.getElementById('stat-list-dynamic');
+    // 2. คำนวณค่า Integrity (HP) ของยาน
+    const integrityPercent = Math.round((shipStats.currentDurability / shipStats.maxDurability) * 100);
+    const integrityColor = integrityPercent > 30 ? 'var(--neon-green)' : 'var(--neon-red)';
     
-    // ดึงค่าสเตตัสจากการติดตั้งอุปกรณ์แต่ละชิ้น
-    const engine = playerEquipped.engine;
-    const drill = playerEquipped.drill;
-    const barrier = playerEquipped.barrier;
+    // อัปเดตตัวเลข Core Integrity ด้านบน
+    const integrityEl = document.querySelector('#ship-overall-stats div:nth-child(2) span');
+    if (integrityEl) {
+        integrityEl.innerText = `${integrityPercent}%`;
+        integrityEl.style.color = integrityColor;
+    }
+
+    // 3. เตรียมข้อมูลสเตตัสรวมจากอุปกรณ์
+    const statsContainer = document.getElementById('stat-list-dynamic');
+    const { engine, drill, barrier, turret } = playerEquipped;
+
+    // ฟังก์ชันช่วยสร้างแถวสเตตัสแบบ 2 คอลัมน์
+    const statRow = (label, value, color = '#fff') => `
+        <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:3px; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="color:rgba(255,255,255,0.5);">${label}</span>
+            <span style="color:${color}; font-weight:bold;">${value}</span>
+        </div>
+    `;
 
     let statsHTML = `
-        <div style="margin-top:10px;">
-            <div style="opacity:0.6; font-size:0.7rem;">INSTALLED MODULES:</div>
-            <div style="display:flex; justify-content:space-between;">
-                <span>ENGINE:</span> 
-                <span>${engine ? engine.name : 'NONE'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between;">
-                <span>DRILL:</span> 
-                <span>${drill ? drill.name : 'NONE'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between;">
-                <span>SHIELD:</span> 
-                <span>${barrier ? barrier.name : 'NONE'}</span>
+        <div style="margin-top:15px;">
+            <!-- 🛠️ ส่วนแสดงอุปกรณ์ที่ติดตั้ง -->
+            <div style="opacity:0.6; font-size:0.65rem; letter-spacing:1px; margin-bottom:5px; color:var(--neon-blue);">INSTALLED MODULES</div>
+            ${statRow('ENGINE', engine ? engine.name.split(' (')[0] : 'EMPTY', engine ? 'var(--neon-blue)' : '#555')}
+            ${statRow('DRILL', drill ? drill.name.split(' (')[0] : 'EMPTY', drill ? 'var(--neon-blue)' : '#555')}
+            ${statRow('SHIELD', barrier ? barrier.name.split(' (')[0] : 'EMPTY', barrier ? 'var(--neon-blue)' : '#555')}
+            ${statRow('TURRET', turret ? turret.name.split(' (')[0] : 'EMPTY', turret ? 'var(--neon-blue)' : '#555')}
+        </div>
+
+        <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+            <div style="opacity:0.6; font-size:0.65rem; letter-spacing:1px; margin-bottom:5px; color:var(--neon-purple);">CORE SPECIFICATIONS</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 15px;">
+                ${statRow('PWR', engine ? engine.power : 0, 'var(--neon-blue)')}
+                ${statRow('CONS', engine ? engine.consumption : 0, 'var(--neon-red)')}
+                ${statRow('SCAN', drill ? drill.scan : 0, '#00ffcc')}
+                ${statRow('SHLD', barrier ? barrier.maxShield : 0, '#00d2ff')}
+                ${statRow('DMG', turret ? turret.damage : 0, 'var(--neon-red)')}
+                ${statRow('RANGE', turret ? turret.range : 0, '#ffcc00')}
             </div>
         </div>
-        
-        <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-            <div>TRAVEL RANGE: <span style="color:var(--neon-blue)">${engine ? engine.power * 10 : 0} light years</span></div>
-            <div>DRILL POWER: <span style="color:var(--neon-blue)">${drill ? drill.scanRate : 0} scan/s</span></div>
-            <div>SHIELD CAPACITY: <span style="color:var(--neon-blue)">${barrier ? barrier.maxShield : 0} pts</span></div>
+
+        <div style="margin-top:15px; background:rgba(0,210,255,0.05); padding:8px; border-radius:5px; border-left:2px solid var(--neon-blue);">
+            <div style="font-size:0.6rem; color:var(--neon-blue); opacity:0.8;">ENERGY CORE STATUS</div>
+            <div style="font-size:0.9rem; font-weight:bold; color:#fff;">
+                ${Math.round(shipStats.currentEnergy)} / ${shipStats.maxEnergy} <span style="font-size:0.6rem; font-weight:normal; opacity:0.5;">GV</span>
+            </div>
         </div>
     `;
 
     statsContainer.innerHTML = statsHTML;
 
-    // ตรวจสอบให้แน่ใจว่าแสดงหน้า Main View และซ่อน Category View
+    // ตรวจสอบ View
     document.getElementById('ship-main-view').style.display = 'block';
     document.getElementById('ship-category-view').style.display = 'none';
+}
+
+// แก้ไขฟังก์ชัน openShipMenu ให้เรียก render ด้วย
+function openShipMenu() {
+    openMenu('ship-menu');
+    renderShipMain(); // 🚩 เรียกฟังก์ชันเรนเดอร์ข้อมูลใหม่ทุกครั้งที่เปิด
 }
 
 
