@@ -1439,8 +1439,10 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
             
             // สเตตัสหลักของยาน
             shipStats: {
-                durability: 100,
+                currentDurability: 100,
                 maxDurability: 100,
+                currentEnergy:100,
+                maxEnergy:100,
 				shipMove: 1,
                 repairCost: { metal: 1, energy: 1, tech: 1 }
             },

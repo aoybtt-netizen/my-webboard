@@ -3167,10 +3167,10 @@ function updateTravel() {
     const bar = playerEquipped.barrier;
 
     // --- 1. การสิ้นเปลืองเชื้อเพลิง (CONSUMPTION) ---
-    if (engine && userData.fuel > 0) {
-        // ยิ่งเครื่องใหญ่ (Consumption สูง) ยิ่งกินน้ำมัน
-        userData.fuel -= (engine.consumption / 3000); 
-        if (userData.fuel < 0) userData.fuel = 0;
+    if (playerEquipped.engine && shipStats.currentEnergy > 0) {
+        // หักจาก shipStats โดยตรง
+        shipStats.currentEnergy -= (playerEquipped.engine.consumption / 3000); 
+        if (shipStats.currentEnergy < 0) shipStats.currentEnergy = 0;
     }
 
     // --- 2. เคลื่อนที่ตามเป้าหมาย (Smooth Follow) ---
@@ -3358,60 +3358,54 @@ function drawWarpEffect() {
 
 function updateTravelHUD() {
     if (!shipStats) return;
-    // --- 1. HP/Durability ---
+
+    // --- 1. Hull Durability (เลือด/ความทนทานยาน) ---
     const hpBar = document.getElementById('ship-hp-bar');
     const hpText = document.getElementById('ship-hp-text');
     if (hpBar && hpText) {
-        const hpCurrent = Math.max(0, shipStats.durability);
-        const hpMax = shipStats.maxDurability || 100;
-        const hpPercent = (hpCurrent / hpMax) * 100;
+        const curHP = Math.max(0, shipStats.currentDurability);
+        const maxHP = shipStats.maxDurability || 100;
+        const hpPercent = (curHP / maxHP) * 100;
         
         hpBar.style.width = `${hpPercent}%`;
-        hpText.innerText = `${Math.round(hpCurrent)}/${hpMax}`;
+        hpText.innerText = `${Math.round(curHP)}/${maxHP}`;
         
-        if (hpPercent < 30) {
-            hpBar.style.animation = "pulse-red 1s infinite";
-        } else {
-            hpBar.style.animation = "none";
-        }
-    }
-    // --- 2. Armor/Shield ---
-    const armorBar = document.getElementById('ship-armor-bar');
-    const armorText = document.getElementById('ship-armor-text');
-    const armorSection = document.querySelector('.armor-section');
-    if (playerEquipped && playerEquipped.barrier) {
-        if (armorSection) armorSection.style.display = 'flex';       
-        const armorCurrent = Math.max(0, playerEquipped.barrier.shield);
-        const armorMax = playerEquipped.barrier.maxShield || 10;
-        const armorPercent = (armorCurrent / armorMax) * 100;
-        if (armorBar && armorText) {
-            armorBar.style.width = `${armorPercent}%`;
-            armorText.innerText = `${Math.round(armorCurrent)}/${armorMax}`;
-        }
-    } else {
-        if (armorSection) armorSection.style.display = 'none';
-    }
-    // --- Travel Progress ---
-    const travelBar = document.getElementById('travel-progress-bar');
-    const travelText = document.getElementById('travel-distance-text');   
-    if (travelBar && travelText && typeof travelDistance !== 'undefined') {
-        const progress = ((totalTravelDistance - travelDistance) / totalTravelDistance) * 100;
-        travelBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
-        travelText.innerText = `${Math.max(0, travelDistance).toFixed(2)}u`;
+        // แจ้งเตือนเมื่อเลือดต่ำ
+        hpBar.style.animation = hpPercent < 30 ? "pulse-red 1s infinite" : "none";
     }
 
+    // --- 2. Energy (พลังงานเชื้อเพลิง) ---
     const energyBar = document.getElementById('ship-energy-bar');
     const energyText = document.getElementById('ship-energy-text');
     if (energyBar && energyText) {
-        const curEnergy = Math.max(0, userData.energy || 0); // หรือ userData.fuel ตามที่กัปตันตั้งชื่อ
-        const maxEnergy = 100; 
+        const curEnergy = Math.max(0, shipStats.currentEnergy);
+        const maxEnergy = shipStats.maxEnergy || 100;
         const energyPercent = (curEnergy / maxEnergy) * 100;
-        
-        energyBar.style.width = `${energyPercent}%`;
-        energyText.innerText = `${Math.round(curEnergy)}/100`;
 
-        // แจ้งเตือนเมื่อพลังงานต่ำกว่า 20%
+        energyBar.style.width = `${energyPercent}%`;
+        energyText.innerText = `${Math.round(curEnergy)}/${maxEnergy}`;
+
+        // แจ้งเตือนเมื่อพลังงานต่ำ
         energyBar.style.animation = energyPercent < 20 ? "pulse-red 0.6s infinite" : "none";
+    }
+
+    // --- 3. Armor/Shield (เกราะบาเรีย - จากอุปกรณ์ติดตั้ง) ---
+    const armorBar = document.getElementById('ship-armor-bar');
+    const armorText = document.getElementById('ship-armor-text');
+    if (playerEquipped.barrier && armorBar && armorText) {
+        const bar = playerEquipped.barrier;
+        const armorPercent = (bar.shield / bar.maxShield) * 100;
+        armorBar.style.width = `${armorPercent}%`;
+        armorText.innerText = `${Math.round(bar.shield)}/${bar.maxShield}`;
+    }
+
+    // --- 4. Travel Progress (ระยะทาง) ---
+    const travelBar = document.getElementById('travel-progress-bar');
+    const travelText = document.getElementById('travel-distance-text');   
+    if (travelBar && travelText) {
+        const progress = ((totalTravelDistance - travelDistance) / totalTravelDistance) * 100;
+        travelBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+        travelText.innerText = `${Math.max(0, travelDistance).toFixed(2)}u`;
     }
 }
 
@@ -3447,12 +3441,10 @@ function triggerDamage(amount) {
 
     // --- 🚩 2. หักลบที่ตัวยาน (Ship Hull) ถ้าเหลือดาเมจ ---
     if (remainingDamage > 0) {
-        shipStats.durability -= remainingDamage;
-        console.log(`Hull hit! HP remaining: ${shipStats.durability}`);
-
-        if (shipStats.durability <= 0) {
-            shipStats.durability = 0;
-            if (typeof handleShipDestroyed === 'function') handleShipDestroyed();
+        shipStats.currentDurability -= remainingDamage;
+        if (shipStats.currentDurability <= 0) {
+            shipStats.currentDurability = 0;
+            handleShipDestroyed(); // ฟังก์ชันเมื่อยานพัง
         }
     }
 
