@@ -1749,6 +1749,8 @@ button:hover { opacity: 0.8; }
 		let selectedHex = null;
 		let travelDangerLevel = 1;
 		let travelParticles = [];
+        let engineChargeFrameCounter = 0;
+        let barrierChargeFrameCounter = 0;
 		let floatingTexts = [];
 		let targetX = window.innerWidth / 2;
 		let shipMoveSpeed = 1.0; // ความเร็วในการขยับยาน (ยิ่งมากยิ่งตามเมาส์ไว)
@@ -3084,6 +3086,18 @@ function startTravel(targetQ, targetR) {
     const dist = getHexDistance(playerQ, playerR, targetQ, targetR);
     if (dist === 0) return;
 
+    // ดึงข้อมูลอุปกรณ์ที่สวมใส่อยู่
+    const engine = playerEquipped.engine;
+    const barrier = playerEquipped.barrier;
+
+    // 🚀 ปรับความเร็วยานตามค่า POWER (Engine)
+    // สูตร: ความเร็วพื้นฐาน 3 + โบนัสจาก Power
+    shipMoveSpeed = 3 + ((engine?.power || 100) / 50);
+
+    // รีเซ็ตตัวนับเวลาชาร์จ
+    engineChargeFrameCounter = 0;
+    barrierChargeFrameCounter = 0;
+
     // ซ่อน HUD
     const mainHud = document.querySelector('.hud-top');
     if (mainHud) mainHud.style.display = 'none';
@@ -3132,30 +3146,39 @@ function updateTravel() {
 
     tctx.clearRect(0, 0, travelCanvas.width, travelCanvas.height);
     drawWarpEffect();
-	
-	// --- เคลื่อนที่ตามเป้าหมาย (Smooth Follow) ---
-    const dx = targetX - shipX; 
-    if (Math.abs(dx) > shipMoveSpeed) {
-        shipX += Math.sign(dx) * shipMoveSpeed; // ขยับเข้าหาเป้าหมายตามความเร็วที่กำหนด
-    } else {
-        shipX = targetX; // ถ้าใกล้มากแล้วให้ทับจุดเป้าหมายเลยกันยานสั่น
+    
+    // ดึงข้อมูลอุปกรณ์มาเตรียมใช้คำนวณ
+    const engine = playerEquipped.engine;
+    const bar = playerEquipped.barrier;
+
+    // --- 1. การสิ้นเปลืองเชื้อเพลิง (CONSUMPTION) ---
+    if (engine && userData.fuel > 0) {
+        // ยิ่งเครื่องใหญ่ (Consumption สูง) ยิ่งกินน้ำมัน
+        userData.fuel -= (engine.consumption / 3000); 
+        if (userData.fuel < 0) userData.fuel = 0;
     }
 
-    // ---  ป้องกันยานไหลออกนอกจอ ---
+    // --- 2. เคลื่อนที่ตามเป้าหมาย (Smooth Follow) ---
+    const dx = targetX - shipX; 
+    if (Math.abs(dx) > shipMoveSpeed) {
+        shipX += Math.sign(dx) * shipMoveSpeed;
+    } else {
+        shipX = targetX;
+    }
+
+    // --- 3. ป้องกันยานไหลออกนอกจอ ---
     const halfShipWidth = 20; 
     if (shipX < halfShipWidth) shipX = halfShipWidth;
     if (shipX > travelCanvas.width - halfShipWidth) shipX = travelCanvas.width - halfShipWidth;
 
-    // ---  ปรับปรุงการสุ่มอุกกาบาตตาม Danger Level ---
+    // --- 4. สุ่มอุกกาบาต (ตาม Danger Level) ---
     const spawnChance = 0.01 + (travelDangerLevel * 0.015);
-
     if (Math.random() < spawnChance) { 
         const type = getWeightedAsteroidType();
         asteroids.push({
             x: Math.random() * travelCanvas.width,
             y: -50,
             size: 20 + Math.random() * 20,
-            // แถม: ถ้ายากขึ้น อุกกาบาตจะบินเร็วขึ้นนิดหน่อยด้วย
             speed: (1.5 + Math.random() * 2) + (travelDangerLevel * 0.2), 
             type: type,
             rotation: Math.random() * Math.PI * 2,
@@ -3163,139 +3186,118 @@ function updateTravel() {
         });
     }
 
+    // --- 5. อัปเดตและวาดอุกกาบาต ---
     asteroids.forEach((ast, index) => {
         ast.y += ast.speed;
-		ast.rotation += ast.rotationSpeed;
+        ast.rotation += ast.rotationSpeed;
         
-        // --- ส่วนการวาดภาพอุตกาบาต ---
         const imgKey = `ast${ast.type}`;
         const astImg = images[imgKey];
 
         if (astImg && astImg.complete) {
-			tctx.save();
-			tctx.translate(ast.x, ast.y);
-			tctx.rotate(ast.rotation);
-            tctx.drawImage(
-                astImg, 
-				-ast.size / 2, 
-				-ast.size / 2, 
-				ast.size, 
-				ast.size
-            );
-			tctx.restore();
+            tctx.save();
+            tctx.translate(ast.x, ast.y);
+            tctx.rotate(ast.rotation);
+            tctx.drawImage(astImg, -ast.size/2, -ast.size/2, ast.size, ast.size);
+            tctx.restore();
         } else {
-            // กรณีรูปโหลดยังไม่เสร็จ ให้วาดวงกลมสีเทาสำรองไว้
             tctx.fillStyle = "#555";
             tctx.beginPath();
             tctx.arc(ast.x, ast.y, ast.size / 2, 0, Math.PI * 2);
             tctx.fill();
         }
 
-        // --- 🚩 ปรับปรุงส่วนเช็คการชนใหม่ ---
-		// 1. หาจุดศูนย์กลางของยาน (Center of Ship)
-		const shipCenterX = shipX;
-		const shipCenterY = travelCanvas.height - 120; // คำนวณจาก (height - 150) + (ขนาดภาพ 60/2)
+        // เช็คการชน (Hitbox)
+        const shipCenterX = shipX;
+        const shipCenterY = travelCanvas.height - 120;
+        const dist = Math.sqrt((ast.x - shipCenterX)**2 + (ast.y - shipCenterY)**2);
+        const shipHitboxRadius = 25; 
 
-		// 2. หาระยะห่างระหว่างจุดศูนย์กลางอุกกาบาตกับยาน
-		const dx = ast.x - shipCenterX;
-		const dy = ast.y - shipCenterY;
-		const distance = Math.sqrt(dx * dx + dy * dy);
-
-		// 3. กำหนดรัศมีการชน (Hitbox Radius)
-		// อุกกาบาต = ast.size / 2
-		// ยาน = ประมาณ 25-30 พิกเซล (จากภาพขนาด 60)
-		const shipHitboxRadius = 25; 
-		const asteroidHitboxRadius = ast.size / 2;
-
-		// --- 🚩 ส่วนเช็คการชนใน updateTravel ---
-		if (distance < (shipHitboxRadius + asteroidHitboxRadius)) {
-			// 1. คำนวณดาเมจ
-			let dmg = Math.round(1 + ((ast.size - 20) / 20) * 9);
-			triggerDamage(dmg); 
-
-			// เอฟเฟกต์อื่นๆ
-			createExplosion(ast.x, ast.y, ast.size);
-			createFloatingText(shipX, travelCanvas.height - 150, `-${dmg}`);
-
-			// ลบอุกกาบาต
-			asteroids.splice(index, 1);
-		}
+        if (dist < (shipHitboxRadius + ast.size/2)) {
+            let dmg = Math.round(1 + ((ast.size - 20) / 20) * 9);
+            triggerDamage(dmg); 
+            createExplosion(ast.x, ast.y, ast.size);
+            createFloatingText(shipX, travelCanvas.height - 150, `-${dmg}`);
+            asteroids.splice(index, 1);
+        }
         if (ast.y > travelCanvas.height + 50) asteroids.splice(index, 1);
     });
-	
-		travelParticles.forEach((p, index) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.04; // หายไปในเวลาประมาณ 25 เฟรม
-        if (p.life <= 0) {
-            travelParticles.splice(index, 1);
-        } else {
+
+    // --- 6. เอฟเฟกต์ระเบิดและดาเมจ ---
+    travelParticles.forEach((p, index) => {
+        p.x += p.vx; p.y += p.vy; p.life -= 0.04;
+        if (p.life <= 0) travelParticles.splice(index, 1);
+        else {
             tctx.globalAlpha = p.life;
             tctx.fillStyle = p.color;
-            tctx.beginPath();
-            tctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            tctx.fill();
+            tctx.beginPath(); tctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); tctx.fill();
         }
     });
 
-    // --- 🚩 ส่วนที่เพิ่มใหม่: วาดและอัปเดตตัวเลขดาเมจ ---
     floatingTexts.forEach((ft, index) => {
-        ft.y += ft.vy;   // ลอยขึ้น
-        ft.life -= 0.02; // จางหายช้ากว่าระเบิดนิดนึง
-        if (ft.life <= 0) {
-            floatingTexts.splice(index, 1);
-        } else {
+        ft.y += ft.vy; ft.life -= 0.02;
+        if (ft.life <= 0) floatingTexts.splice(index, 1);
+        else {
             tctx.globalAlpha = ft.life;
-            tctx.fillStyle = "#ff4b2b"; // สีแดงเนออน
-            tctx.font = `bold ${20 + (1 - ft.life) * 10}px Orbitron`; // ขนาดจะขยายขึ้นนิดนึงตอนจาง
+            tctx.fillStyle = "#ff4b2b";
+            tctx.font = `bold ${20 + (1 - ft.life) * 10}px Orbitron`;
             tctx.textAlign = "center";
             tctx.fillText(ft.text, ft.x, ft.y);
         }
     });
-    tctx.globalAlpha = 1.0; // รีเซ็ตค่าความโปร่งใส
+    tctx.globalAlpha = 1.0;
 
     // วาดรูปยาน
     const shipImg = images['ship1'];
     if (shipImg && shipImg.complete) {
-        const shake = Math.random() * 2; // สั่น 0-2 พิกเซล
-        tctx.drawImage(
-            shipImg, 
-            (shipX - 25) + shake,             // เลื่อนจุดเริ่มวาดตามความกว้าง (ปรับจาก 25 เป็น 30 ถ้าภาพใหญ่ขึ้น)
-            (travelCanvas.height - 150) + shake, // ปรับระดับความสูงให้พ้นขอบล่างนิดหน่อย
-            40,                     // ความกว้าง (Width)
-            60                      // ความสูง (Height)
-        );
+        const shake = Math.random() * 2;
+        tctx.drawImage(shipImg, (shipX - 25) + shake, (travelCanvas.height - 150) + shake, 40, 60);
     }
-	
-	if (playerEquipped.barrier) {
-        const bar = playerEquipped.barrier;
+    
+    // --- 7. ระบบชาร์จเกราะ และการลด DURABILITY อุปกรณ์ ---
+    if (bar) {
         const now = Date.now();
-        
-        // 1. เช็คว่าเวลาผ่านไปเกินค่า Delay หรือยัง (เปลี่ยนวินาทีเป็นมิลลิวินาที)
         const isCooldownOver = (now - lastHitTime) > (bar.rechargeDelay * 1000);
-        
-        // 2. เช็คว่าเกราะยังไม่เต็ม
         const isShieldNotFull = bar.shield < bar.maxShield;
 
         if (isCooldownOver && isShieldNotFull) {
-            // ฟื้นฟูเกราะตามค่า recharge (หาร 60 เพราะรันประมาณ 60 fps)
             bar.shield += (bar.recharge / 60);
-            
-            // ป้องกันไม่ให้เกราะเกินค่าสูงสุด
             if (bar.shield > bar.maxShield) bar.shield = bar.maxShield;
-            
-            // อัปเดตหน้าจอ HUD ให้หลอดเกราะขยับขึ้น
+
+            // นับเวลาเพื่อลดความทนทาน (Durability Tax)
+            engineChargeFrameCounter++;
+            barrierChargeFrameCounter++;
+
+            // เครื่องยนต์ลด 1 ทุก 5 วินาที (300 เฟรม)
+            if (engine && engineChargeFrameCounter >= 300) {
+                if (engine.durability > 0) engine.durability -= 1;
+                engineChargeFrameCounter = 0;
+                createFloatingText(shipX - 20, travelCanvas.height - 180, "ENG DUR -1");
+            }
+            // บาเรียลด 1 ทุก 10 วินาที (600 เฟรม)
+            if (barrierChargeFrameCounter >= 600) {
+                if (bar.durability > 0) bar.durability -= 1;
+                barrierChargeFrameCounter = 0;
+                createFloatingText(shipX + 20, travelCanvas.height - 180, "BAR DUR -1");
+            }
             updateTravelHUD();
         }
     }
-	
 
-    // อัปเดตระยะทาง
-    travelDistance -= 0.0005;
-    updateTravelHUD(); // 🚀 เรียกใช้ฟังก์ชันเดียวเพื่ออัปเดตทุกอย่าง (เกราะ/เลือด/ระยะทาง)
+    // --- 8. อัปเดตระยะทาง (ความเร็วขึ้นอยู่กับ POWER) ---
+    // สูตร: ระยะทางลดลงเร็วขึ้นตาม Power
+    const powerBonus = (engine?.power || 100) / 100;
+    travelDistance -= (0.0005 * powerBonus);
+    updateTravelHUD();
 
+    // เช็คเงื่อนไขสิ้นสุด
     if (travelDistance <= 0) {
         endTravel();
+    } else if (engine && engine.durability <= 0) {
+        // กรณีเครื่องยนต์พังกลางทาง
+        travelGameActive = false;
+        alert("ENGINE FAILURE! เครื่องยนต์พังกลางทาง ยานหยุดทำงาน");
+        location.reload(); 
     } else {
         requestAnimationFrame(updateTravel);
     }
