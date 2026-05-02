@@ -464,13 +464,9 @@ button:hover { opacity: 0.8; }
 
 
 .hangar-panel {
-    width: 95%; 
-    max-width: 850px;
-    min-height: 550px;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    box-sizing: border-box;
+    overflow-x: hidden; /* ซ่อนแถบเลื่อนแนวนอน */
+    overflow-y: hidden; /* กรอบนอกสุดไม่ควรเลื่อนเอง */
+    box-sizing: border-box; /* สำคัญมาก: กัน Padding ดันกรอบล้น */
 }
 
 .ship-main-layout {
@@ -671,9 +667,12 @@ button:hover { opacity: 0.8; }
 }
 
 /* หน้าจัดการไอเทม (Category View) */
-#ship-main-view, #ship-category-view {
-    overflow-y: auto; /* ถ้าเนื้อหายาวเกิน ให้เลื่อนขึ้นลงได้ในหน้าต่างเดิม */
-    padding-bottom: 20px;
+#ship-main-view, 
+#ship-category-view {
+    width: 100%;
+    overflow-x: hidden; /* บังคับไม่ให้มีแถบเลื่อนซ้ายขวา */
+    overflow-y: auto;   /* ให้เลื่อนขึ้นลงได้ถ้าเนื้อหายาว */
+    padding-right: 5px; /* เผื่อพื้นที่ให้แถบเลื่อนแนวตั้งเล็กน้อย */
 }
 
 .equipped-detail-area {
