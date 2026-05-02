@@ -1558,7 +1558,7 @@ button:hover { opacity: 0.8; }
 
 
     <script>
-	// --- 🚩 ส่วนการตั้งค่าระบบ (Config) ---
+        
 	const urlParams = new URLSearchParams(window.location.search);
 	const isDevMode = urlParams.has('dev');
 	const gameMode = isDevMode ? 'test' : 'main';
@@ -2185,7 +2185,23 @@ async function syncStaticStars() {
             safeSetText('prof-energy', (data.energy || 0) + "%");
 
             // --- [2] โหลดระบบไอเทม & Cargo ---
-            if (data.shipStats) shipStats = data.shipStats;
+            if (data.shipStats) {
+                // โหลดเข้าตัวแปร global
+                shipStats = data.shipStats; 
+    
+                // อัปเดต HUD ทันที (สมมติว่ากัปตันมีฟังก์ชัน updateTravelHUD หรือคล้ายกัน)
+                const hpCurrent = shipStats.currentDurability || 0;
+                const hpMax = shipStats.maxDurability || 100;
+                const energyCurrent = shipStats.currentEnergy || 0;
+                const energyMax = shipStats.maxEnergy || 100;
+
+                // อัปเดตตัวเลขในหน้า Profile หรือ HUD
+                const hpEl = document.getElementById('ship-hp-text');
+                if(hpEl) hpEl.innerText = `${Math.round(hpCurrent)}/${hpMax}`;
+    
+                const energyEl = document.getElementById('ship-energy-text');
+                if(energyEl) energyEl.innerText = `${Math.round(energyCurrent)}/${energyMax}`;
+            }
             if (data.equipped) playerEquipped = data.equipped;
             
             // 🚩 [POINT 1] โหลด Inventory และคำนวณน้ำหนักรวม
@@ -3586,20 +3602,19 @@ async function endTravel() {
 }
 
 function syncEquippedToInventory() {
-    // วนลูปเช็คทุก Slot ที่ติดตั้งอยู่ (engine, barrier, turret, drill)
     Object.keys(playerEquipped).forEach(slot => {
         const equippedItem = playerEquipped[slot];
         if (equippedItem && equippedItem.id) {
-            // หาไอเท็มชิ้นเดียวกันในคลังหลัก
             const invItem = playerInventory.find(i => i.id === equippedItem.id);
             if (invItem) {
-                // 🚩 อัปเดตค่าความทนทานล่าสุดกลับเข้าไป
-                invItem.durability = equippedItem.durability;
-                
-                // หากมีการเก็บค่าพลังงานในแผ่นการ์ดบาเรียด้วย ให้ซิงค์ไปด้วยครับ
-                if (equippedItem.shield !== undefined) invItem.shield = equippedItem.shield;
-                
-                console.log(`Syncing ${slot}: Durability updated to ${invItem.durability}`);
+                // ซิงค์ค่าความทนทานปัจจุบันและพลังงานอุปกรณ์กลับเข้าคลัง
+                invItem.currentDurability = equippedItem.currentDurability;
+                if (equippedItem.currentEnergy !== undefined) {
+                    invItem.currentEnergy = equippedItem.currentEnergy;
+                }
+                if (equippedItem.shield !== undefined) {
+                    invItem.shield = equippedItem.shield;
+                }
             }
         }
     });
@@ -5139,53 +5154,41 @@ function openItemPopup(item, directImgSrc = null) {
     // 🚩 แยกการแสดงผลตามประเภท (Type-Specific Logic)
     const type = item.type;
     const lvStatus = `${item.level || 1}/${item.maxUpgrades || 1}`;
+    // 🚩 เปลี่ยนการแสดงผล Durability ให้เป็นแบบเศษส่วน
+    const durStatus = `${Math.round(item.currentDurability || 0)}/${item.maxDurability || 100}`;
 
     if (type === 'energy chip') {
         detailHTML += row('ENERGY VALUE', item.energyValue, 'fa-bolt', 'var(--neon-green)');
     } 
-    else if (type === 'blueprint') {
-        const r = item.recipe || {};
-        detailHTML += `<div style="font-size:0.75rem; color:#aaa; margin-bottom:5px;">RECIPE DATA:</div>`;
-        detailHTML += row('METAL REQ', r.metal, 'fa-cube', '#b0b0b0');
-        detailHTML += row('ENERGY REQ', r.energy, 'fa-bolt', 'var(--neon-blue)');
-        detailHTML += row('TECH REQ', r.tech, 'fa-microchip', '#a326ff');
-        detailHTML += row('MAX POTENTIAL', r.maxrecipe, 'fa-chart-line', 'var(--neon-green)');
-        detailHTML += row('CRAFT COST', `${(r.craftprice || 0).toLocaleString()} GC`, 'fa-coins', '#ffcc00');
-    }
-    else if (['metal', 'energy', 'technology'].includes(type)) {
-        const propKey = type === 'technology' ? 'tech' : type;
-        const propVal = item.properties ? item.properties[propKey] : (item[propKey] || 0);
-        detailHTML += row('PROPERTY', `${type.toUpperCase()} +${propVal}`, 'fa-atom');
-        detailHTML += row('MARKET VALUE', `${item.value || 0} GC`, 'fa-coins', '#ffcc00');
-    }
     else if (type === 'ship engine') {
         detailHTML += row('UPGRADES', lvStatus, 'fa-level-up-alt', '#ffcc00');
-        detailHTML += row('DURABILITY', item.durability, 'fa-shield-alt', 'var(--neon-green)');
+        detailHTML += row('DURABILITY', durStatus, 'fa-shield-alt', 'var(--neon-green)');
         detailHTML += row('CONSUMPTION', item.consumption, 'fa-gas-pump', 'var(--neon-red)');
         detailHTML += row('POWER', item.power, 'fa-bolt');
     }
     else if (type === 'drill engine') {
+        const enStatus = `${Math.round(item.currentEnergy || 0)}/${item.energyMax || 100}`;
         detailHTML += row('UPGRADES', lvStatus, 'fa-level-up-alt', '#ffcc00');
-        detailHTML += row('DURABILITY', item.durability, 'fa-shield-alt');
-        detailHTML += row('CONSUMPTION', item.consumption, 'fa-gas-pump', 'var(--neon-red)');
-        detailHTML += row('ENERGY MAX', item.energyMax, 'fa-battery-full');
+        detailHTML += row('DURABILITY', durStatus, 'fa-shield-alt');
+        detailHTML += row('ENERGY', enStatus, 'fa-battery-full', '#00ffcc');
         detailHTML += row('HEAT RESIST', item.heatResist, 'fa-fire', '#ff8800');
         detailHTML += row('ACID RESIST', item.acidResist, 'fa-flask', '#a1ff00');
         detailHTML += row('SCAN RANGE', item.scan, 'fa-satellite-dish', '#00ffcc');
     }
     else if (type === 'card barrier') {
         detailHTML += row('UPGRADES', lvStatus, 'fa-level-up-alt', '#ffcc00');
+        detailHTML += row('DURABILITY', durStatus, 'fa-shield-alt');
         detailHTML += row('MAX SHIELD', item.maxShield, 'fa-shield-alt', '#00d2ff');
         detailHTML += row('RECHARGE', item.recharge, 'fa-sync-alt');
         detailHTML += row('DELAY', `${item.rechargeDelay}s`, 'fa-clock');
     }
     else if (type === 'turret') {
+        const enStatus = `${Math.round(item.currentEnergy || 0)}/${item.energyMax || 100}`;
         detailHTML += row('UPGRADES', lvStatus, 'fa-level-up-alt', '#ffcc00');
         detailHTML += row('DAMAGE', item.damage, 'fa-skull', 'var(--neon-red)');
-        detailHTML += row('FIRE RATE', item.fireRate, 'fa-tachometer-alt');
+        detailHTML += row('DURABILITY', durStatus, 'fa-shield-alt');
+        detailHTML += row('ENERGY', enStatus, 'fa-battery-full');
         detailHTML += row('RANGE', item.range, 'fa-arrows-alt');
-        detailHTML += row('DURABILITY', item.durability, 'fa-shield-alt');
-        detailHTML += row('ENERGY MAX', item.energyMax, 'fa-battery-full');
     }
 
     // 🚩 3. แสดงค่าซ่อม (Repair Cost) เฉพาะไอเท็มที่มีค่านี้

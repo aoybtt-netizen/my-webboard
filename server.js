@@ -1533,7 +1533,13 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
             equipped: user.equipped || {},
             inventory: user.inventory || [],
             cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 },
-            shipStats: user.shipStats || { durability: 100, maxDurability: 100, repairCost: { metal: 1, energy: 1, tech: 1 } },
+            shipStats: user.shipStats || { 
+                currentDurability: 100, 
+                maxDurability: 100, 
+                currentEnergy: 100, 
+                maxEnergy: 100,
+                repairCost: { metal: 1, energy: 1, tech: 1 } 
+            },
             
             // 🚩 [แทรกบรรทัดนี้] ส่ง Object stats กลับไปด้วย
             stats: user.stats || { planetsDiscovered: 0, totalDiscoveries: 0 } 
@@ -2468,132 +2474,6 @@ app.post('/api/:mode/game/upgrade-item', async (req, res) => {
         res.status(500).json({ success: false, error: e.message });
     }
 });
-
-
-async function renderBlueprintWorkshop() {
-    const mainView = document.getElementById('ship-main-view');
-    const categoryView = document.getElementById('ship-category-view');
-    if(mainView) mainView.style.display = 'none';
-    if(categoryView) categoryView.style.display = 'block';
-
-    const equippedBox = document.getElementById('equipped-box');
-    const listArea = document.getElementById('inventory-list-area');
-
-    listArea.classList.add('workshop-mode'); 
-    listArea.innerHTML = ""; 
-
-    if (equippedBox) {
-        equippedBox.innerHTML = `
-            <div style="text-align:center; padding:10px; background:rgba(163, 71, 255, 0.1); border:1px solid var(--neon-purple); border-radius:10px; width:100%;">
-                <h4 style="color:var(--neon-purple); margin:0; letter-spacing:1px;"><i class="fas fa-tools"></i> BLUEPRINT WORKSHOP</h4>
-            </div>
-        `;
-    }
-
-    const blueprints = playerInventory.filter(i => i.type === 'blueprint');
-
-    if (blueprints.length === 0) {
-        listArea.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5; color:#fff; width:100%;">ไม่พบแบบแปลนในคลังของคุณ</div>`;
-        return;
-    }
-
-    // 🚩 1. ดึงเงินปัจจุบันจาก UI (เหมือนฟังก์ชัน Upgrade)
-    const currentCoinsText = document.getElementById('prof-gc').innerText;
-    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
-
-    blueprints.forEach(bp => {
-        const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0, maxrecipe: 0 };
-
-        // 2. เช็คจำนวนแร่
-        const curMetal = countItemInInv('metal');
-        const curEnergy = countItemInInv('energy');
-        const curTech = countItemInInv('technology');
-
-        // 3. เช็คเงื่อนไข
-        const craftCost = Number(r.craftprice || 0);
-        const hasMetal = curMetal >= (r.metal || 0);
-        const hasEnergy = curEnergy >= (r.energy || 0);
-        const hasTech = curTech >= (r.tech || 0);
-        const hasCoins = currentCoins >= craftCost; // 🚩 ใช้ค่าที่ดึงจาก UI
-
-        // 🚩 ปุ่มจะปลดล็อกเมื่อ "ทุกอย่าง" เป็นจริง
-        const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
-
-        const card = document.createElement('div');
-        card.className = "blueprint-craft-card"; 
-        card.style.cssText = `
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid ${canCraft ? 'var(--neon-purple)' : '#444'};
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            width: 100%;
-            box-sizing: border-box;
-        `;
-
-        card.innerHTML = `
-            <div style="position:relative; flex-shrink: 0;">
-                <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
-                     style="width:60px; height:60px; border-radius:8px; border:1px solid rgba(163,71,255,0.3); background:#000; object-fit: contain;">
-                <div style="position:absolute; top:-5px; left:-5px; background:var(--neon-blue); color:#000; font-size:10px; padding:2px 5px; border-radius:3px; font-weight:bold;">BP</div>
-            </div>
-            
-            <div style="flex:1;">
-                <div style="color:var(--neon-blue); font-weight:bold; font-size:0.9rem; margin-bottom:5px;">${bp.name}</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:0.7rem;">
-                    <span style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-cube"></i> Metal: ${curMetal}/${r.metal}</span>
-                    <span style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-bolt"></i> Energy: ${curEnergy}/${r.energy}</span>
-                    <span style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-microchip"></i> Tech: ${curTech}/${r.tech}</span>
-                    <span style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}"><i class="fas fa-coins"></i> Cost: ${craftCost.toLocaleString()} GC</span>
-                </div>
-            </div>
-
-            <button class="btn-buy" 
-                style="padding:10px 15px; min-width:90px; background:${canCraft ? 'linear-gradient(135deg, #a347ff, #6a11cb)' : '#333'}; 
-                       color:${canCraft ? 'white' : '#777'}; border-radius:5px; border:none; 
-                       cursor:${canCraft ? 'pointer' : 'not-allowed'}; font-weight:bold;"
-                onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
-                ${!canCraft ? 'disabled' : ''}>
-                ${canCraft ? 'CRAFT' : 'LOCKED'}
-            </button>
-        `;
-        listArea.appendChild(card);
-    });
-}
-
-// ฟังก์ชันช่วยนับจำนวนแร่ในคลัง
-function countItemInInv(type) {
-    return playerInventory
-        .filter(i => i.type === type)
-        .reduce((sum, i) => sum + (i.quantity || 1), 0);
-}
-
-// ส่งคำสั่งสร้างไอเท็มไปหลังบ้าน
-async function executeCraft(blueprintId) {
-    if(!confirm("ยืนยันการใช้ Blueprint และทรัพยากรเพื่อสร้างไอเท็ม?")) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/game/craft-item`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: currentUser,
-                blueprintId: blueprintId
-            })
-        });
-        const result = await response.json();
-        if(result.success) {
-            showMiningToast("สร้างไอเท็มสำเร็จ! ตรวจสอบที่คลังอุปกรณ์", "#a347ff");
-            playerInventory = result.inventory; // อัปเดตคลัง
-            renderBlueprintWorkshop(); // วาดหน้าจอใหม่
-        } else {
-            alert(result.message);
-        }
-    } catch(e) { console.error(e); }
-}
 
 
 //15. Blueprint Crafting
