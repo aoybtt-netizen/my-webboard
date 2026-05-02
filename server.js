@@ -1382,8 +1382,10 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
 				name: 'STD BARRIER SHIELD CARD', 
 				type: 'card barrier', 
 				imgKey: 'shield0',
-				level: 1, 
-				maxUpgrades: 5, // ตามที่กัปตันกำหนด
+				level: 1,
+				maxUpgrades: 3, // ตามที่กัปตันกำหนด
+                consumption: 100,
+                durability: 100,
 				shield: 10,     // ค่าเกราะปัจจุบัน
 				maxShield: 10,  // 🚩 เพิ่ม: ค่าเกราะสูงสุด (ใช้ตอนรีชาร์จ)
 				recharge: 0.5,  // รีชาร์จต่อวินาที
@@ -1395,10 +1397,13 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
 				id: `start_turret_${now}`, 
 				name: 'STANDARD TURRET', 
 				type: 'turret', 
-				imgKey: 'turret1', // อย่าลืมเตรียมคีย์รูปภาพไว้ใน imageSources
+				imgKey: 'turret2', // อย่าลืมเตรียมคีย์รูปภาพไว้ใน imageSources
 				level: 1, 
-				maxUpgrades: 5, 
+				maxUpgrades: 3, 
+                consumption: 100,
 				durability: 100, 
+                energyMax: 100,
+                energyShoot: 3,
 				damage: 5,         // พลังโจมตีเริ่มต้น
 				fireRate: 1.0,     // ความเร็วในการยิง (วินาทีต่อครั้ง)
 				range: 150,
@@ -2450,6 +2455,133 @@ app.post('/api/:mode/game/upgrade-item', async (req, res) => {
     }
 });
 
+
+async function renderBlueprintWorkshop() {
+    const mainView = document.getElementById('ship-main-view');
+    const categoryView = document.getElementById('ship-category-view');
+    if(mainView) mainView.style.display = 'none';
+    if(categoryView) categoryView.style.display = 'block';
+
+    const equippedBox = document.getElementById('equipped-box');
+    const listArea = document.getElementById('inventory-list-area');
+
+    listArea.classList.add('workshop-mode'); 
+    listArea.innerHTML = ""; 
+
+    if (equippedBox) {
+        equippedBox.innerHTML = `
+            <div style="text-align:center; padding:10px; background:rgba(163, 71, 255, 0.1); border:1px solid var(--neon-purple); border-radius:10px; width:100%;">
+                <h4 style="color:var(--neon-purple); margin:0; letter-spacing:1px;"><i class="fas fa-tools"></i> BLUEPRINT WORKSHOP</h4>
+            </div>
+        `;
+    }
+
+    const blueprints = playerInventory.filter(i => i.type === 'blueprint');
+
+    if (blueprints.length === 0) {
+        listArea.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5; color:#fff; width:100%;">ไม่พบแบบแปลนในคลังของคุณ</div>`;
+        return;
+    }
+
+    // 🚩 1. ดึงเงินปัจจุบันจาก UI (เหมือนฟังก์ชัน Upgrade)
+    const currentCoinsText = document.getElementById('prof-gc').innerText;
+    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
+
+    blueprints.forEach(bp => {
+        const r = bp.recipe || { metal: 0, energy: 0, tech: 0, craftprice: 0, maxrecipe: 0 };
+
+        // 2. เช็คจำนวนแร่
+        const curMetal = countItemInInv('metal');
+        const curEnergy = countItemInInv('energy');
+        const curTech = countItemInInv('technology');
+
+        // 3. เช็คเงื่อนไข
+        const craftCost = Number(r.craftprice || 0);
+        const hasMetal = curMetal >= (r.metal || 0);
+        const hasEnergy = curEnergy >= (r.energy || 0);
+        const hasTech = curTech >= (r.tech || 0);
+        const hasCoins = currentCoins >= craftCost; // 🚩 ใช้ค่าที่ดึงจาก UI
+
+        // 🚩 ปุ่มจะปลดล็อกเมื่อ "ทุกอย่าง" เป็นจริง
+        const canCraft = hasMetal && hasEnergy && hasTech && hasCoins;
+
+        const card = document.createElement('div');
+        card.className = "blueprint-craft-card"; 
+        card.style.cssText = `
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid ${canCraft ? 'var(--neon-purple)' : '#444'};
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            box-sizing: border-box;
+        `;
+
+        card.innerHTML = `
+            <div style="position:relative; flex-shrink: 0;">
+                <img src="${imageSources[bp.imgKey] || 'images/items/blueprint.png'}" 
+                     style="width:60px; height:60px; border-radius:8px; border:1px solid rgba(163,71,255,0.3); background:#000; object-fit: contain;">
+                <div style="position:absolute; top:-5px; left:-5px; background:var(--neon-blue); color:#000; font-size:10px; padding:2px 5px; border-radius:3px; font-weight:bold;">BP</div>
+            </div>
+            
+            <div style="flex:1;">
+                <div style="color:var(--neon-blue); font-weight:bold; font-size:0.9rem; margin-bottom:5px;">${bp.name}</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:0.7rem;">
+                    <span style="color:${hasMetal ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-cube"></i> Metal: ${curMetal}/${r.metal}</span>
+                    <span style="color:${hasEnergy ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-bolt"></i> Energy: ${curEnergy}/${r.energy}</span>
+                    <span style="color:${hasTech ? '#38ef7d' : '#ff4b2b'}"><i class="fas fa-microchip"></i> Tech: ${curTech}/${r.tech}</span>
+                    <span style="color:${hasCoins ? '#ffcc00' : '#ff4b2b'}"><i class="fas fa-coins"></i> Cost: ${craftCost.toLocaleString()} GC</span>
+                </div>
+            </div>
+
+            <button class="btn-buy" 
+                style="padding:10px 15px; min-width:90px; background:${canCraft ? 'linear-gradient(135deg, #a347ff, #6a11cb)' : '#333'}; 
+                       color:${canCraft ? 'white' : '#777'}; border-radius:5px; border:none; 
+                       cursor:${canCraft ? 'pointer' : 'not-allowed'}; font-weight:bold;"
+                onclick="${canCraft ? `executeCraft('${bp.id}')` : ''}"
+                ${!canCraft ? 'disabled' : ''}>
+                ${canCraft ? 'CRAFT' : 'LOCKED'}
+            </button>
+        `;
+        listArea.appendChild(card);
+    });
+}
+
+// ฟังก์ชันช่วยนับจำนวนแร่ในคลัง
+function countItemInInv(type) {
+    return playerInventory
+        .filter(i => i.type === type)
+        .reduce((sum, i) => sum + (i.quantity || 1), 0);
+}
+
+// ส่งคำสั่งสร้างไอเท็มไปหลังบ้าน
+async function executeCraft(blueprintId) {
+    if(!confirm("ยืนยันการใช้ Blueprint และทรัพยากรเพื่อสร้างไอเท็ม?")) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/game/craft-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                blueprintId: blueprintId
+            })
+        });
+        const result = await response.json();
+        if(result.success) {
+            showMiningToast("สร้างไอเท็มสำเร็จ! ตรวจสอบที่คลังอุปกรณ์", "#a347ff");
+            playerInventory = result.inventory; // อัปเดตคลัง
+            renderBlueprintWorkshop(); // วาดหน้าจอใหม่
+        } else {
+            alert(result.message);
+        }
+    } catch(e) { console.error(e); }
+}
+
+
 //15. Blueprint Crafting
 app.post('/api/:mode/game/craft-item', async (req, res) => {
     const { mode } = req.params;
@@ -2476,7 +2608,7 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             return res.json({ success: false, message: "ทรัพยากรหรือเงินไม่เพียงพอ" });
         }
 
-        // 2. หักทรัพยากรและคำนวณ Status
+        // 2. หักทรัพยากรและคำนวณ TV (Total Value)
         const processResources = (inv, type, targetAmount) => {
             let remain = targetAmount;
             let totalStatValue = 0;
@@ -2486,8 +2618,6 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
                     let q = inv[i].quantity || 1;
                     let take = Math.min(q, remain);
                     let orePower = 0;
-                    
-                    // ดึงค่าตามชื่อ Property ในแร่
                     if (type === 'metal') orePower = inv[i].metal || 0;
                     else if (type === 'energy') orePower = inv[i].energy || 0;
                     else if (type === 'technology') orePower = inv[i].tech || 0;
@@ -2495,7 +2625,6 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
                     totalStatValue += (take * orePower);
                     totalQtyUsed += take;
                     remain -= take;
-                    
                     if (q <= take) inv.splice(i, 1);
                     else inv[i].quantity -= take;
                 }
@@ -2514,7 +2643,7 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         const totalStatusSum = TV_metal + TV_energy + TV_tech;
 
         if (totalStatusSum > r.maxrecipe) {
-            return res.json({ success: false, message: `คุณภาพแร่รวม (${totalStatusSum}) เกินขีดจำกัดสูงสุด (${r.maxrecipe})` });
+            return res.json({ success: false, message: `คุณภาพแร่รวม (${totalStatusSum}) เกินขีดจำกัดที่ Blueprint รองรับ (${r.maxrecipe})` });
         }
 
         // 3. หัก Blueprint
@@ -2522,56 +2651,84 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
         if (inventory[bpIdx].quantity > 1) inventory[bpIdx].quantity -= 1;
         else inventory.splice(bpIdx, 1);
 
-        // 4. คำนวณ Status
-        // ฟังก์ชันช่วยสุ่มค่า +- 1
-const v = () => Math.floor(Math.random() * 3) - 1;
+        // 4. คำนวณ Status (The Omni-Formula)
+        const v = () => Math.floor(Math.random() * 3) - 1; // สุ่ม +- 1
+        const v5 = () => Math.floor(Math.random() * 11) - 5; // สุ่ม +- 5
 
-// 4. คำนวณ Status ตามสูตรใหม่
-let dynamicStats = {};
-const isShipEngine = blueprint.name.includes("ADV. ENGINE");
+        let dynamicStats = {};
+        let finalType = "";
+        let finalImg = "";
+        let finalItemName = "";
 
-// สูตรคำนวณพื้นฐาน
-// Max Upgrades: round(จำนวนแร่ metal / 50) +- 1
-const calcMaxUpg = Math.round(resMetal.totalQtyUsed / 50) + v();
-// Durability: 100 + (round(TV_metal / 100) * 5) +- 1
-const calcDur = 100 + (Math.round(TV_metal / 100) * 5) + v();
-// Consumption: 100 - (round(TV_energy / 100) * 2) +- 1
-const calcCons = 100 - (Math.round(TV_energy / 100) * 2) + v();
+        // สูตรคำนวณพื้นฐาน (Shared Formulas)
+        const calcMaxUpg = Math.round(resMetal.totalQtyUsed / 50) + v();
+        const calcDur = 100 + (Math.round(TV_metal / 100) * 5) + v();
+        const calcCons = 100 - (Math.round(TV_energy / 100) * 2) + v();
+        const techFactor = Math.round(TV_tech / 100);
 
-if (isShipEngine) {
-    dynamicStats = {
-        maxUpgrades: Math.max(1, calcMaxUpg),
-        durability: Math.max(10, calcDur),
-        consumption: Math.max(5, calcCons),
-        // Power: 100 + (round(TV_tech / 100) * 2) +- 1
-        power: 100 + (Math.round(TV_tech / 100) * 2) + v()
-    };
-} else {
-    // สำหรับ Drill Engine
-    const techFactor = Math.round(TV_tech / 100);
-    dynamicStats = {
-        maxUpgrades: Math.max(1, calcMaxUpg),
-        durability: Math.max(10, calcDur),
-        consumption: Math.max(5, calcCons),
-        // EnergyMax: 100 + (round(TV_tech / 100) * 5) +- 1
-        energyMax: 100 + (techFactor * 5) + v(),
-        // Heat, Acid, Scan: (round(TV_tech / 100) * 3) +- 1
-        heatResist: Math.max(0, (techFactor * 3) + v()),
-        acidResist: Math.max(0, (techFactor * 3) + v()),
-        scan: Math.max(0, (techFactor * 3) + v())
-    };
-}
+        if (blueprint.name.includes("ADV. ENGINE")) {
+            finalItemName = "ADVANCED SHIP ENGINE";
+            finalType = "ship engine";
+            finalImg = "engineShip2";
+            dynamicStats = {
+                maxUpgrades: Math.max(1, calcMaxUpg),
+                durability: Math.max(10, calcDur),
+                consumption: Math.max(5, calcCons),
+                power: 100 + (techFactor * 2) + v()
+            };
+        } 
+        else if (blueprint.name.includes("HEAVY DRILL")) {
+            finalItemName = "HEAVY DRILL ENGINE";
+            finalType = "drill engine";
+            finalImg = "engineDrill2";
+            dynamicStats = {
+                maxUpgrades: Math.max(1, calcMaxUpg),
+                durability: Math.max(10, calcDur),
+                consumption: Math.max(5, calcCons),
+                energyMax: 100 + (techFactor * 5) + v(),
+                heatResist: Math.max(0, (techFactor * 3) + v()),
+                acidResist: Math.max(0, (techFactor * 3) + v()),
+                scan: Math.max(0, (techFactor * 3) + v())
+            };
+        }
+        else if (blueprint.name.includes("TITAN SHIELD")) {
+            finalItemName = "TITAN SHIELD CARD";
+            finalType = "card barrier";
+            finalImg = "shield0"; // ตามคีย์รูปภาพ
+            const mShield = (techFactor * 10) + v5();
+            dynamicStats = {
+                maxUpgrades: Math.max(1, calcMaxUpg),
+                durability: Math.max(10, calcDur),
+                consumption: Math.max(5, calcCons),
+                maxShield: Math.max(1, mShield),
+                shield: Math.max(1, mShield), // ค่าเริ่มต้นเท่ากับ Max
+                recharge: (TV_energy / 500) + 0.5,
+                rechargeDelay: Math.max(1.0, 5 - (TV_tech / 500))
+            };
+        }
+        else if (blueprint.name.includes("TURRET")) {
+            finalItemName = "ELITE DEFENSE TURRET";
+            finalType = "turret";
+            finalImg = "turret2";
+            dynamicStats = {
+                maxUpgrades: Math.max(1, calcMaxUpg),
+                durability: Math.max(10, calcDur),
+                consumption: Math.max(5, calcCons),
+                energyMax: 100 + (techFactor * 5) + v(),
+                energyShoot: Math.max(0.5, 3 - (TV_tech / 1000)),
+                damage: Math.round((TV_energy + TV_metal) / 100) + 5,
+                fireRate: 1.0,
+                range: 150
+            };
+        }
 
-        // ประทับชื่อผู้สร้าง
         const makerName = user.gameNickname || user.username || "Unknown Captain";
-        const baseItemName = isShipEngine ? 'ADVANCED SHIP ENGINE' : 'HEAVY DRILL ENGINE';
-
         const resultItem = {
             id: `crafted_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-            name: `${baseItemName} (${makerName})`,
-            createdBy: makerName, 
-            type: isShipEngine ? 'ship engine' : 'drill engine',
-            imgKey: isShipEngine ? 'engineShip2' : 'engineDrill2',
+            name: `${finalItemName} (${makerName})`,
+            createdBy: makerName,
+            type: finalType,
+            imgKey: finalImg,
             level: 1,
             ...dynamicStats,
             repairCost: {
@@ -2584,7 +2741,7 @@ if (isShipEngine) {
 
         inventory.push(resultItem);
 
-        // 5. บันทึกและหักเงิน (Cost)
+        // 5. บันทึกลง Database
         await db.updateOne(
             { username },
             { 
@@ -2593,7 +2750,7 @@ if (isShipEngine) {
             }
         );
 
-        res.json({ success: true, message: `ผลิตสำเร็จ! คุณได้รับ ${resultItem.name}`, inventory });
+        res.json({ success: true, message: `ผลิต ${resultItem.name} สำเร็จ!`, inventory });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
