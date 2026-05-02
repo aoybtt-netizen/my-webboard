@@ -5358,34 +5358,40 @@ function getItemStatusHTML(item) {
     const upgText = `${item.level || 1} / ${item.maxUpgrades || 1}`;
     const stats = [];
 
+    // สร้างค่า String มาตรฐานสำหรับ Durability และ Energy (ปัจจุบัน / สูงสุด)
+    const durStr = `${Math.round(item.currentDurability || 0)} / ${item.maxDurability || 100}`;
+    const energyStr = `${Math.round(item.currentEnergy || 0)} / ${item.energyMax || 100}`;
+
     // ดึงค่าตามประเภทไอเท็ม
     if (type === 'ship engine') {
-        stats.push({ label: 'DURABILITY', val: item.durability, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'DURABILITY', val: durStr, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
         stats.push({ label: 'CONSUMPTION', val: item.consumption, icon: 'fa-gas-pump', color: 'var(--neon-red)' });
         stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
         stats.push({ label: 'POWER', val: item.power, icon: 'fa-bolt', color: 'var(--neon-blue)' });
     } 
     else if (type === 'drill engine') {
-        stats.push({ label: 'DURABILITY', val: item.durability, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'DURABILITY', val: durStr, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'ENERGY', val: energyStr, icon: 'fa-bolt', color: '#00ffcc' });
         stats.push({ label: 'CONSUMPTION', val: item.consumption, icon: 'fa-gas-pump', color: 'var(--neon-red)' });
         stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
-        stats.push({ label: 'ENERGY MAX', val: item.energyMax, icon: 'fa-battery-full', color: '#00ffcc' });
         stats.push({ label: 'HEAT RESIST', val: item.heatResist, icon: 'fa-fire', color: '#ff8800' });
         stats.push({ label: 'ACID RESIST', val: item.acidResist, icon: 'fa-flask', color: '#a1ff00' });
-        stats.push({ label: 'SCAN RANGE', val: item.scan, icon: 'fa-satellite-dish', color: '#00d2ff' });
+        stats.push({ label: 'SCAN RANGE', val: item.scan || item.scanRate, icon: 'fa-satellite-dish', color: '#00d2ff' });
     }
     else if (type === 'card barrier') {
+        stats.push({ label: 'DURABILITY', val: durStr, icon: 'fa-shield-alt', color: 'var(--neon-green)' }); // 🚩 เพิ่มตามสั่ง
+        stats.push({ label: 'SHIELD', val: `${Math.round(item.shield || 0)} / ${item.maxShield || 0}`, icon: 'fa-shield-virus', color: '#00d2ff' });
         stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
-        stats.push({ label: 'MAX SHIELD', val: item.maxShield, icon: 'fa-shield-alt', color: '#00d2ff' });
         stats.push({ label: 'RECHARGE', val: item.recharge, icon: 'fa-sync-alt', color: 'var(--neon-green)' });
         stats.push({ label: 'DELAY', val: `${item.rechargeDelay}s`, icon: 'fa-clock', color: 'var(--neon-red)' });
     }
     else if (type === 'turret') {
+        stats.push({ label: 'DURABILITY', val: durStr, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'ENERGY', val: energyStr, icon: 'fa-bolt', color: 'var(--neon-blue)' }); // 🚩 เพิ่มตามสั่ง
         stats.push({ label: 'DAMAGE', val: item.damage, icon: 'fa-skull', color: 'var(--neon-red)' });
         stats.push({ label: 'FIRE RATE', val: item.fireRate, icon: 'fa-tachometer-alt', color: '#ff8800' });
         stats.push({ label: 'UPGRADES', val: upgText, icon: 'fa-level-up-alt', color: '#ffcc00' });
-        stats.push({ label: 'POWER', val: item.power, icon: 'fa-bolt', color: 'var(--neon-blue)' });
-        stats.push({ label: 'DURABILITY', val: item.durability, icon: 'fa-shield-alt', color: 'var(--neon-green)' });
+        stats.push({ label: 'RANGE', val: item.range, icon: 'fa-arrows-alt', color: '#00d2ff' });
     }
 
     // เริ่มสร้างโครงสร้าง HTML แบบ Grid (2 Columns)
@@ -5405,9 +5411,9 @@ function getItemStatusHTML(item) {
     });
     html += `</div>`;
 
-    // ส่วนล่าง: Maker และ Repair Info (แบบซ้าย-ขวา)
+    // ส่วนล่าง: Maker และ Repair Info
     html += `
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); pt: 5px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
             <div style="font-size: 0.6rem; color: #aaa;">
                 ${item.createdBy ? `<i class="fas fa-hammer" style="font-size:0.55rem; color:var(--neon-purple);"></i> MAKER: <span style="color:#fff;">${item.createdBy.toUpperCase()}</span>` : ''}
             </div>
