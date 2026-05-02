@@ -5541,53 +5541,70 @@ function renderShipMain() {
         shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
     }
 
-    // 2. ดึงค่าจาก shipStats มาแสดงผล
+    // 2. คำนวณน้ำหนักรวมปัจจุบัน (Total Weight) จาก Inventory
+    const totalWeight = playerInventory.reduce((sum, item) => {
+        const qty = item.quantity || 1;
+        const weight = item.weightPerUnit || 0;
+        return sum + (qty * weight);
+    }, 0);
+
+    // 3. ดึงค่าจาก shipStats มาแสดงผล
     const overallStatsContainer = document.getElementById('ship-overall-stats');
     const { currentDurability, maxDurability, currentEnergy, maxEnergy, cargoCapacity, repairCost } = shipStats;
+    
+    const maxCap = cargoCapacity || 500;
+    const cargoPercent = Math.min(100, (totalWeight / maxCap) * 100);
     const repairString = `M:${repairCost.metal} | E:${repairCost.energy} | T:${repairCost.tech}`;
+
+    // วาดส่วน Configuration ใหม่ทั้งหมด
     overallStatsContainer.innerHTML = `
         <div style="color:var(--neon-blue); border-bottom:1px solid #333; margin-bottom:5px;">SHIP CONFIGURATION</div>
         <div style="font-size: 0.85rem; line-height: 1.5;">
             <div>INTEGRITY: <span style="color:${(currentDurability/maxDurability) > 0.3 ? 'var(--neon-green)' : 'var(--neon-red)'}">${currentDurability} / ${maxDurability}</span></div>
             <div>ENERGY: <span style="color:#ffcc00">${Math.round(currentEnergy)} / ${maxEnergy}</span></div>
             
-            <!-- 🚩 แก้ไขจุดที่ 2: เปลี่ยนจาก MOVEMENT เป็น CARGO CAPACITY -->
-            <div>CARGO CAPACITY: <span style="color:var(--neon-blue)">${cargoCapacity || 500} KG</span></div>
+            <!-- 🚩 ส่วน CARGO CAPACITY แบบมี Progress Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+                <span>CARGO:</span>
+                <div style="text-align: right;">
+                    <span style="color:var(--neon-blue); font-weight:bold;">${totalWeight.toLocaleString()} / ${maxCap.toLocaleString()} <span style="font-size:0.6rem;">KG</span></span>
+                    <div style="width: 120px; height: 4px; background: #222; border-radius: 2px; margin-top: 2px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width: ${cargoPercent}%; height: 100%; background: ${cargoPercent > 90 ? 'var(--neon-red)' : 'var(--neon-blue)'}; border-radius: 2px; transition: 0.3s; box-shadow: 0 0 5px ${cargoPercent > 90 ? 'var(--neon-red)' : 'var(--neon-blue)'};"></div>
+                    </div>
+                </div>
+            </div>
             
-            <div style="font-size: 0.7rem; color: #888; margin-top: 3px;">
+            <div style="font-size: 0.7rem; color: #888; margin-top: 5px;">
                 REPAIR: <span style="color:#aaa">${repairString}</span>
             </div>
         </div>
         <div id="stat-list-dynamic"></div>
     `;
 
-    // 3. แสดงรายการอุปกรณ์ที่ติดตั้ง
+    // 4. แสดงรายการอุปกรณ์ที่ติดตั้ง (คงเดิม)
     const statsContainer = document.getElementById('stat-list-dynamic');
     const { engine, drill, barrier, turret } = playerEquipped;
 
     let modulesHTML = `
         <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
             <div style="opacity:0.6; font-size:0.7rem; margin-bottom:5px;">ACTIVE MODULES:</div>
-            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom:2px;">
-                <span>ENGINE:</span> 
-                <span style="color:${engine ? 'var(--neon-blue)' : '#555'}">${engine ? engine.name.split(' (')[0] : 'NONE'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom:2px;">
-                <span>DRILL:</span> 
-                <span style="color:${drill ? 'var(--neon-blue)' : '#555'}">${drill ? drill.name.split(' (')[0] : 'NONE'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom:2px;">
-                <span>TURRET:</span> 
-                <span style="color:${turret ? 'var(--neon-blue)' : '#555'}">${turret ? turret.name.split(' (')[0] : 'NONE'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size: 0.75rem;">
-                <span>SHIELD:</span> 
-                <span style="color:${barrier ? 'var(--neon-blue)' : '#555'}">${barrier ? barrier.name.split(' (')[0] : 'NONE'}</span>
-            </div>
+            ${moduleRow('ENGINE', engine)}
+            ${moduleRow('DRILL', drill)}
+            ${moduleRow('TURRET', turret)}
+            ${moduleRow('SHIELD', barrier)}
         </div>
     `;
-
     statsContainer.innerHTML = modulesHTML;
+
+    // Helper function สำหรับวาดแถวโมดูล (ให้โค้ดสะอาดขึ้น)
+    function moduleRow(label, item) {
+        return `
+            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom:2px;">
+                <span>${label}:</span> 
+                <span style="color:${item ? 'var(--neon-blue)' : '#555'}">${item ? item.name.split(' (')[0] : 'NONE'}</span>
+            </div>
+        `;
+    }
 
     document.getElementById('ship-main-view').style.display = 'block';
     document.getElementById('ship-category-view').style.display = 'none';
