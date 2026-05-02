@@ -462,35 +462,38 @@ button:hover { opacity: 0.8; }
     color: white;
 }
 
+
 .hangar-panel {
-    max-height: 90vh; /* ไม่ให้สูงเกินจอ */
+    width: 95%; 
+    max-width: 850px;
+    min-height: 550px;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* กันส่วนประกอบอื่นแลบออก */
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 .ship-main-layout {
     display: flex;
-    gap: 15px;
-    height: 100%;
-    width: 100%;
+    flex-direction: row; 
+    gap: 20px;
+    flex: 1;
+    margin-top: 15px;
 }
 
 .sidebar-categories {
-    flex: 0 0 160px;
+    width: 200px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .ship-display-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: rgba(0,0,0,0.3);
-    border-radius: 15px;
-    padding: 10px;
-    border: 1px solid rgba(0,210,255,0.1);
+    gap: 15px;
 }
 
 .ship-image-frame {
