@@ -3299,19 +3299,19 @@ function updateTravel() {
             bar.shield += (bar.recharge / 60);
             if (bar.shield > bar.maxShield) bar.shield = bar.maxShield;
 
-            // นับเวลาเพื่อลดความทนทาน (Durability Tax)
             engineChargeFrameCounter++;
             barrierChargeFrameCounter++;
 
-            // เครื่องยนต์ลด 1 ทุก 5 วินาที (300 เฟรม)
+            // 🚩 เปลี่ยนจาก .durability เป็น .currentDurability
             if (engine && engineChargeFrameCounter >= 300) {
-                if (engine.durability > 0) engine.durability -= 1;
+                if (engine.currentDurability > 0) engine.currentDurability -= 1;
                 engineChargeFrameCounter = 0;
                 createFloatingText(shipX - 20, travelCanvas.height - 180, "ENG DUR -1");
             }
-            // บาเรียลด 1 ทุก 10 วินาที (600 เฟรม)
+            
+            // 🚩 เปลี่ยนจาก .durability เป็น .currentDurability
             if (barrierChargeFrameCounter >= 600) {
-                if (bar.durability > 0) bar.durability -= 1;
+                if (bar.currentDurability > 0) bar.currentDurability -= 1;
                 barrierChargeFrameCounter = 0;
                 createFloatingText(shipX + 20, travelCanvas.height - 180, "BAR DUR -1");
             }
@@ -3319,17 +3319,14 @@ function updateTravel() {
         }
     }
 
-    // --- 8. อัปเดตระยะทาง (ความเร็วขึ้นอยู่กับ POWER) ---
-    // สูตร: ระยะทางลดลงเร็วขึ้นตาม Power
+    // --- 8. อัปเดตระยะทาง ---
     const powerBonus = (engine?.power || 100) / 100;
     travelDistance -= (0.0005 * powerBonus);
     updateTravelHUD();
 
-    // เช็คเงื่อนไขสิ้นสุด
     if (travelDistance <= 0) {
         endTravel();
-    } else if (engine && engine.durability <= 0) {
-        // กรณีเครื่องยนต์พังกลางทาง
+    } else if (engine && engine.currentDurability <= 0) { // 🚩 เปลี่ยนชื่อตัวแปร
         travelGameActive = false;
         alert("ENGINE FAILURE! เครื่องยนต์พังกลางทาง ยานหยุดทำงาน");
         location.reload(); 
@@ -3607,11 +3604,15 @@ function syncEquippedToInventory() {
         if (equippedItem && equippedItem.id) {
             const invItem = playerInventory.find(i => i.id === equippedItem.id);
             if (invItem) {
-                // ซิงค์ค่าความทนทานปัจจุบันและพลังงานอุปกรณ์กลับเข้าคลัง
+                // 🚩 ซิงค์ค่าตามชื่อมาตรฐานใหม่
                 invItem.currentDurability = equippedItem.currentDurability;
+                invItem.maxDurability = equippedItem.maxDurability;
+                
+                // สำหรับ Drill และ Turret ที่มีค่า Energy ของตัวเอง
                 if (equippedItem.currentEnergy !== undefined) {
                     invItem.currentEnergy = equippedItem.currentEnergy;
                 }
+                // สำหรับ Barrier ที่มีค่า Shield ปัจจุบัน
                 if (equippedItem.shield !== undefined) {
                     invItem.shield = equippedItem.shield;
                 }
