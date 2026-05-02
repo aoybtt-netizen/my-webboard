@@ -464,9 +464,17 @@ button:hover { opacity: 0.8; }
 
 
 .hangar-panel {
-    overflow-x: hidden; /* ซ่อนแถบเลื่อนแนวนอน */
-    overflow-y: hidden; /* กรอบนอกสุดไม่ควรเลื่อนเอง */
-    box-sizing: border-box; /* สำคัญมาก: กัน Padding ดันกรอบล้น */
+    width: 900px; /* 🚩 ล็อคความกว้างให้คงที่ที่ 900px หรือตามความเหมาะสม */
+    max-width: 95vw; /* กันล้นจอในมือถือ */
+    min-height: 580px; /* ล็อคความสูงขั้นต่ำ */
+    display: flex;
+    flex-direction: column;
+    padding: 25px;
+    background: rgba(10, 15, 20, 0.95); /* สีพื้นหลังเข้มๆ แบบยานรบ */
+    border: 2px solid var(--neon-blue);
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);
+    overflow: hidden; /* 🚩 สำคัญ: ลบแถบเลื่อนซ้ายขวาที่กวนใจออก */
 }
 
 .ship-main-layout {
