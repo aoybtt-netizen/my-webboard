@@ -1805,10 +1805,14 @@ button:hover { opacity: 0.8; }
 			localStorage.setItem(`visited_${currentUser}`, JSON.stringify(visitedTiles));
 		}
 		let shipStats = {
-			durability: 100,
-			maxDurability: 100,
-			repairCost: { metal: 1, energy: 1, tech: 1 }
-		};
+            currentDurability: 100,
+            maxDurability: 100,
+            currentEnergy: 100,
+            maxEnergy: 100,
+            shipMove: 1,
+            cargoCapacity: 500,
+            repairCost: { metal: 1, energy: 1, tech: 1 }
+        };
 		let lastHitTime = 0;
 		let miningCanvas;
 		let mctx;
@@ -1897,8 +1901,8 @@ button:hover { opacity: 0.8; }
         id: 'f001', 
         name: 'ENERGY CELL (100)', 
         type: 'fuel', 
-        price: 50, 
-        icon: 'fas fa-bolt', 
+        price: 1, 
+        icon: 'fas fa-charging-station', 
         isIcon: true 
     },
 
@@ -2984,6 +2988,59 @@ async function buyItem(itemId) {
         }
     } catch (err) {
         console.error("Purchase Error:", err);
+    }
+}
+
+async function buyRefillEnergy() {
+    // 1. คำนวณจำนวนที่ต้องเติม (Max - Current)
+    const needed = Math.ceil(shipStats.maxEnergy - shipStats.currentEnergy);
+    const cost = needed; // ราคา 1:1 ตามที่กัปตันกำหนด
+
+    if (needed <= 0) {
+        alert("พลังงานเต็มถังอยู่แล้วครับกัปตัน!");
+        return;
+    }
+
+    // 2. ดึงจำนวนเงินปัจจุบันจาก UI (ป้องกัน Error ถ้าไม่ได้ตั้งตัวแปร Global)
+    const gcElement = document.getElementById('display-gc');
+    const currentCoins = gcElement ? parseInt(gcElement.innerText.replace(/,/g, '')) : 0;
+
+    if (currentCoins < cost) {
+        alert(`Credits ไม่พอครับ! ต้องการ ${cost} แต่กัปตันมี ${currentCoins}`);
+        return;
+    }
+
+    // 3. ยืนยันการเติม
+    if (confirm(`เติมพลังงาน ${needed} หน่วย ใช้ ${cost} Credits ใช่หรือไม่?`)) {
+        try {
+            const response = await fetch(`${API_BASE}/game/buy-refill`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: currentUser,
+                    cost: cost,
+                    newEnergy: shipStats.maxEnergy // เติมให้เต็ม Max เสมอ
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // อัปเดตค่าในเครื่องทันทีไม่ต้องรอโหลดใหม่
+                shipStats.currentEnergy = shipStats.maxEnergy;
+                
+                // อัปเดต UI ทั้งหมด
+                await checkGameProfile(); // รีเฟรชตัวเลขเงินและพลังงานใน HUD
+                renderBuyItems();         // วาดปุ่มในร้านค้าใหม่ (เพื่อให้ขึ้นว่า FULL)
+                
+                alert("✨ พลังงานเต็มพิกัด! ออกเดินทางต่อได้!");
+            } else {
+                alert("เกิดข้อผิดพลาด: " + result.message);
+            }
+        } catch (err) {
+            console.error("Refill error:", err);
+            alert("ระบบสื่อสารขัดข้อง ไม่สามารถเติมพลังงานได้");
+        }
     }
 }
 

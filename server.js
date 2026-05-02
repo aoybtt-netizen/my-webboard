@@ -2055,8 +2055,31 @@ app.post('/api/:mode/game/buy-item', async (req, res) => {
         res.status(500).json({ success: false, error: e.message });
     }
 });
+//9.1
+app.post('/api/:mode/game/buy-refill', async (req, res) => {
+    const { username, cost, newEnergy } = req.body;
+    const db = getDB(req.params.mode);
 
-//9.1 API สำหรับการขาย
+    try {
+        const user = await db.findOne({ username });
+        if (user.coinsgc < cost) return res.json({ success: false, message: "เงินไม่พอ" });
+
+        // หักเงิน และ เซ็ตค่าพลังงานใน shipStats
+        await db.updateOne(
+            { username },
+            { 
+                $inc: { coinsgc: -cost },
+                $set: { "shipStats.currentEnergy": newEnergy }
+            }
+        );
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+//9.2 API สำหรับการขาย
 app.post('/api/:mode/game/sell-item', async (req, res) => {
     const { mode } = req.params;
     const { username, itemName, sellPrice, quantity } = req.body; // เปลี่ยนจาก itemId เป็น itemName
