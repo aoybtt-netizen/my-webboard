@@ -5488,74 +5488,87 @@ function upgradeItem() {
 
 
 
-function renderShipMain() {
-    // 1. จัดการรูปยาน
+function openShipMenu() {
+    openMenu('ship-menu');
+    document.getElementById('ship-main-view').style.display = 'block';
+    document.getElementById('ship-category-view').style.display = 'none';
     const shipImgEl = document.getElementById('main-ship-img');
     if (shipImgEl) {
         shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
     }
+}
 
-    // 2. เตรียมคอนเทนเนอร์และข้อมูล
-    const statsContainer = document.getElementById('stat-list-dynamic');
-    // ดึงค่าจาก Object shipStats โดยตรงตามที่กัปตันกำหนด
-    const { currentDurability, maxDurability, currentEnergy, maxEnergy, shipMove, repairCost } = shipStats;
+function renderShipMain() {
+    // 1. จัดการรูปยาน
+    const shipImgEl = document.getElementById('main-ship-img');
+    shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
 
-    const integrityPercent = Math.round((currentDurability / maxDurability) * 100);
-    
-    // อัปเดต CORE INTEGRITY ด้านบน
-    const integrityEl = document.querySelector('#ship-overall-stats div:nth-child(2) span');
-    if (integrityEl) {
-        integrityEl.innerText = `${integrityPercent}%`;
-        integrityEl.style.color = integrityPercent > 30 ? 'var(--neon-green)' : 'var(--neon-red)';
+    // 2. คำนวณเปอร์เซ็นต์ CORE INTEGRITY
+    const integrityPercent = Math.floor((shipStats.currentDurability / shipStats.maxDurability) * 100);
+    const integritySpan = document.querySelector('#ship-overall-stats div:nth-child(2) span');
+    if (integritySpan) {
+        integritySpan.innerText = `${integrityPercent}%`;
+        // เปลี่ยนสีตามสถานะเลือด
+        integritySpan.style.color = integrityPercent > 30 ? 'var(--neon-green)' : 'var(--neon-red)';
     }
 
-    // ฟังก์ชันช่วยสร้างแถวสเตตัส
-    const statRow = (label, value, color = '#fff') => `
-        <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:2px;">
-            <span style="color:rgba(255,255,255,0.5);">${label}</span>
-            <span style="color:${color}; font-weight:bold;">${value}</span>
-        </div>
-    `;
+    // 3. เตรียม Container สำหรับสเตตัสส่วนต่อขยาย
+    const statsContainer = document.getElementById('stat-list-dynamic');
+    
+    const engine = playerEquipped.engine;
+    const drill = playerEquipped.drill;
+    const barrier = playerEquipped.barrier;
 
+    // ดึงค่าจาก shipStats มาโชว์ทั้งหมด
     let statsHTML = `
-        <!-- 🛰️ ยูนิตสเตตัสหลักของยาน (Core Stats) -->
-        <div style="margin-top:10px; background:rgba(0,210,255,0.03); padding:8px; border-radius:5px;">
-            <div style="opacity:0.6; font-size:0.65rem; color:var(--neon-blue); margin-bottom:5px; letter-spacing:1px;">BASE SHIP STATS</div>
-            ${statRow('HULL DURABILITY', `${currentDurability} / ${maxDurability}`, 'var(--neon-green)')}
-            ${statRow('ENERGY CORE', `${currentEnergy} / ${maxEnergy}`, '#ffcc00')}
-            ${statRow('MANEUVERABILITY', `${shipMove} UNIT`, 'var(--neon-blue)')}
-        </div>
-
-        <!-- 🔧 ค่าซ่อมพื้นฐาน (Base Repair Cost) -->
-        <div style="margin-top:12px; padding:0 5px;">
-            <div style="opacity:0.5; font-size:0.6rem; margin-bottom:3px;">BASE REPAIR REQUIREMENTS:</div>
-            <div style="display:flex; justify-content:space-around; font-size:0.7rem; background:rgba(0,0,0,0.2); padding:5px; border-radius:3px;">
-                <span style="color:#b0b0b0;"><i class="fas fa-cube"></i> M: ${repairCost.metal}</span>
-                <span style="color:var(--neon-blue);"><i class="fas fa-bolt"></i> E: ${repairCost.energy}</span>
-                <span style="color:#a326ff;"><i class="fas fa-microchip"></i> T: ${repairCost.tech}</span>
+        <!-- ⚡ พลังงานยาน -->
+        <div style="margin-bottom: 2px;">ENERGY CORE: <span style="color:#ffcc00">${shipStats.currentEnergy} / ${shipStats.maxEnergy}</span></div>
+        
+        <!-- 🚀 การเคลื่อนที่ -->
+        <div style="margin-bottom: 5px;">SHIP MOVEMENT: <span style="color:var(--neon-blue)">${shipStats.shipMove} UNIT</span></div>
+        
+        <!-- 🔧 ค่าซ่อมบำรุงพื้นฐาน -->
+        <div style="margin-top:8px; padding:6px; background: rgba(0,0,0,0.3); border:1px solid #333; border-radius:4px; font-size:0.7rem;">
+            <div style="color:#888; margin-bottom:4px; font-size:0.6rem; letter-spacing:1px;">BASE REPAIR COST:</div>
+            <div style="display:flex; justify-content: space-between;">
+                <span style="color:#b0b0b0;">METAL: ${shipStats.repairCost.metal}</span>
+                <span style="color:var(--neon-blue);">ENERGY: ${shipStats.repairCost.energy}</span>
+                <span style="color:#a326ff;">TECH: ${shipStats.repairCost.tech}</span>
             </div>
         </div>
 
-        <!-- 📦 สรุปโมดูลที่ติดตั้ง (Installed Modules Summary) -->
-        <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-            <div style="opacity:0.6; font-size:0.65rem; color:var(--neon-purple); margin-bottom:5px;">ACTIVE MODULES</div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 10px;">
-                ${statRow('ENG', playerEquipped.engine ? 'ONLINE' : 'OFFLINE', playerEquipped.engine ? 'var(--neon-blue)' : '#555')}
-                ${statRow('BARR', playerEquipped.barrier ? 'ONLINE' : 'OFFLINE', playerEquipped.barrier ? 'var(--neon-blue)' : '#555')}
-                ${statRow('DRILL', playerEquipped.drill ? 'ONLINE' : 'OFFLINE', playerEquipped.drill ? 'var(--neon-blue)' : '#555')}
-                ${statRow('TURR', playerEquipped.turret ? 'ONLINE' : 'OFFLINE', playerEquipped.turret ? 'var(--neon-blue)' : '#555')}
-            </div>
+        <hr style="border:0; border-top:1px solid #333; margin:12px 0;">
+
+        <!-- 📦 ข้อมูลอุปกรณ์ที่ติดตั้ง (Installed Modules) -->
+        <div style="opacity:0.6; font-size:0.7rem; margin-bottom:5px;">INSTALLED MODULES:</div>
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
+            <span>ENGINE:</span> 
+            <span style="color:${engine ? 'var(--neon-blue)' : '#555'}">${engine ? engine.name.split(' (')[0] : 'NOT INSTALLED'}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
+            <span>DRILL:</span> 
+            <span style="color:${drill ? 'var(--neon-blue)' : '#555'}">${drill ? drill.name.split(' (')[0] : 'NOT INSTALLED'}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:10px;">
+            <span>SHIELD:</span> 
+            <span style="color:${barrier ? 'var(--neon-blue)' : '#555'}">${barrier ? barrier.name.split(' (')[0] : 'NOT INSTALLED'}</span>
+        </div>
+        
+        <!-- 📊 ประสิทธิภาพรวม -->
+        <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; font-size:0.75rem;">
+            <div>TRAVEL RANGE: <span style="color:var(--neon-blue)">${engine ? engine.power * 10 : 0} LY</span></div>
+            <div>DRILL POWER: <span style="color:var(--neon-blue)">${drill ? (drill.scan || drill.scanRate || 0) : 0} SCAN/S</span></div>
+            <div>SHIELD CAPACITY: <span style="color:var(--neon-blue)">${barrier ? barrier.maxShield : 0} PTS</span></div>
         </div>
     `;
 
     statsContainer.innerHTML = statsHTML;
+
+    // แสดงหน้า Main View
+    document.getElementById('ship-main-view').style.display = 'block';
+    document.getElementById('ship-category-view').style.display = 'none';
 }
 
-// แก้ไขฟังก์ชัน openShipMenu ให้เรียก render ด้วย
-function openShipMenu() {
-    openMenu('ship-menu');
-    renderShipMain(); // 🚩 เรียกฟังก์ชันเรนเดอร์ข้อมูลใหม่ทุกครั้งที่เปิด
-}
 
 
 //ระบบอัพเกรด
