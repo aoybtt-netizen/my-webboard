@@ -1366,7 +1366,7 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
                 name: 'STANDARD SHIP ENGINE', 
                 type: 'ship engine', 
                 imgKey: 'engineShip1',
-                level: 1, maxUpgrades: 2, durability: 100, power: 100, consumption: 100,
+                level: 1, maxUpgrades: 2, maxDurability: 100, currentDurability: 100, power: 100, consumption: 100,
                 repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
             },
             drill: { 
@@ -1374,8 +1374,8 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
                 name: 'STANDARD DRILL ENGINE', 
                 type: 'drill engine', 
                 imgKey: 'engineDrill1',
-                level: 1, maxUpgrades: 2, durability: 100, heatResist: 0, acidResist: 0, scanRate: 0, 
-                energyMax: 100, consumption: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
+                level: 1, maxUpgrades: 2, maxDurability: 100, currentDurability: 100, heatResist: 0, acidResist: 0, scanRate: 0, 
+                energyMax: 100, currentEnergy: 100, consumption: 100, repairCost: { metal: 1, energy: 1, tech: 1 }, isLocked: true 
             },
             barrier: { 
 				id: `start_bar_${now}`, 
@@ -1385,7 +1385,8 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
 				level: 1,
 				maxUpgrades: 3, // ตามที่กัปตันกำหนด
                 consumption: 100,
-                durability: 100,
+                maxDurability: 100,
+                currentDurability: 100,
 				shield: 10,     // ค่าเกราะปัจจุบัน
 				maxShield: 10,  // 🚩 เพิ่ม: ค่าเกราะสูงสุด (ใช้ตอนรีชาร์จ)
 				recharge: 0.5,  // รีชาร์จต่อวินาที
@@ -1401,8 +1402,10 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
 				level: 1, 
 				maxUpgrades: 3, 
                 consumption: 100,
-				durability: 100, 
+				maxDurability: 100,
+                currentDurability: 100, 
                 energyMax: 100,
+                currentEnergy: 100,
                 energyShoot: 3,
 				damage: 5,         // พลังโจมตีเริ่มต้น
 				fireRate: 1.0,     // ความเร็วในการยิง (วินาทีต่อครั้ง)
@@ -1486,14 +1489,23 @@ function generateRandomCallsign() {
 // 3. API อัปเดตตำแหน่งปัจจุบันของผู้เล่น
 app.post('/api/:mode/game/update-location', async (req, res) => {
     const { mode } = req.params;
-    const { username, q, r } = req.body;
+    const { username, q, r, shipStats, inventory } = req.body; // 🚩 รับค่าที่ส่งมาจากหน้าบ้าน
     const db = getDB(mode);
 
     try {
+        const updatePayload = {
+            currentQ: q,
+            currentR: r
+        };
+
+        if (shipStats) updatePayload.shipStats = shipStats;
+        if (inventory) updatePayload.inventory = inventory;
+
         await db.updateOne(
             { username: username },
-            { $set: { currentQ: q, currentR: r } }
+            { $set: updatePayload }
         );
+
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -2674,7 +2686,8 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             finalImg = "engineShip2";
             dynamicStats = {
                 maxUpgrades: Math.max(1, calcMaxUpg),
-                durability: Math.max(10, calcDur),
+                maxDurability: Math.max(10, calcDur),
+                currentDurability: Math.max(10, calcDur),
                 consumption: Math.max(5, calcCons),
                 power: 100 + (techFactor * 2) + v()
             };
@@ -2685,9 +2698,11 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             finalImg = "engineDrill2";
             dynamicStats = {
                 maxUpgrades: Math.max(1, calcMaxUpg),
-                durability: Math.max(10, calcDur),
+                maxDurability: Math.max(10, calcDur),
+                currentDurability: Math.max(10, calcDur),
                 consumption: Math.max(5, calcCons),
                 energyMax: 100 + (techFactor * 5) + v(),
+                currentEnergy: 100 + (techFactor * 5) + v(),
                 heatResist: Math.max(0, (techFactor * 3) + v()),
                 acidResist: Math.max(0, (techFactor * 3) + v()),
                 scan: Math.max(0, (techFactor * 3) + v())
@@ -2700,7 +2715,8 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             const mShield = (techFactor * 10) + v5();
             dynamicStats = {
                 maxUpgrades: Math.max(1, calcMaxUpg),
-                durability: Math.max(10, calcDur),
+                maxDurability: Math.max(10, calcDur),
+                currentDurability: Math.max(10, calcDur),
                 consumption: Math.max(5, calcCons),
                 maxShield: Math.max(1, mShield),
                 shield: Math.max(1, mShield), // ค่าเริ่มต้นเท่ากับ Max
@@ -2714,9 +2730,11 @@ app.post('/api/:mode/game/craft-item', async (req, res) => {
             finalImg = "turret2";
             dynamicStats = {
                 maxUpgrades: Math.max(1, calcMaxUpg),
-                durability: Math.max(10, calcDur),
+                maxDurability: Math.max(10, calcDur),
+                currentDurability: Math.max(10, calcDur),
                 consumption: Math.max(5, calcCons),
                 energyMax: 100 + (techFactor * 5) + v(),
+                currentEnergy: 100 + (techFactor * 5) + v(),
                 energyShoot: Math.max(0.5, 3 - (TV_tech / 1000)),
                 damage: Math.round((TV_energy + TV_metal) / 100) + 5,
                 fireRate: 1.0,
