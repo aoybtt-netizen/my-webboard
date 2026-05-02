@@ -1447,6 +1447,7 @@ app.post('/api/:mode/auth/guest-init', async (req, res) => {
                 currentEnergy:100,
                 maxEnergy:100,
 				shipMove: 1,
+                cargoCapacity: 500,
                 repairCost: { metal: 1, energy: 1, tech: 1 }
             },
 
@@ -1521,6 +1522,23 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
         const user = await db.findOne({ username: username });
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        // 1. ดึงข้อมูล shipStats หรือใช้ค่า Default
+        const currentShipStats = user.shipStats || { 
+            currentDurability: 100, 
+            maxDurability: 100, 
+            currentEnergy: 100, 
+            maxEnergy: 100,
+            shipMove: 1,
+            cargoCapacity: 500,
+            repairCost: { metal: 1, energy: 1, tech: 1 } 
+        };
+
+        // 2. 🚩 กำหนดให้ cargoStats ดึงค่า capacity จาก shipStats.cargoCapacity
+        const mappedCargoStats = {
+            ...(user.cargoStats || { level: 1, maxUpgrades: 10 }),
+            capacity: currentShipStats.cargoCapacity || 500
+        };
+
         res.json({
             gameNickname: user.gameNickname,
             metal: user.metal ?? 0,
@@ -1532,16 +1550,9 @@ app.get('/api/:mode/game/stats/:username', async (req, res) => {
             minedTiles: user.minedTiles || [],
             equipped: user.equipped || {},
             inventory: user.inventory || [],
-            cargoStats: user.cargoStats || { capacity: 10, level: 1, maxUpgrades: 10 },
-            shipStats: user.shipStats || { 
-                currentDurability: 100, 
-                maxDurability: 100, 
-                currentEnergy: 100, 
-                maxEnergy: 100,
-                repairCost: { metal: 1, energy: 1, tech: 1 } 
-            },
+            cargoStats: mappedCargoStats, 
+            shipStats: currentShipStats,
             
-            // 🚩 [แทรกบรรทัดนี้] ส่ง Object stats กลับไปด้วย
             stats: user.stats || { planetsDiscovered: 0, totalDiscoveries: 0 } 
         });
     } catch (e) {
