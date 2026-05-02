@@ -5490,8 +5490,11 @@ function upgradeItem() {
 
 function openShipMenu() {
     openMenu('ship-menu');
+    renderShipMain(); 
+
     document.getElementById('ship-main-view').style.display = 'block';
     document.getElementById('ship-category-view').style.display = 'none';
+    
     const shipImgEl = document.getElementById('main-ship-img');
     if (shipImgEl) {
         shipImgEl.src = imageSources['shipM0'] || 'images/shipmenu/ship0.png';
