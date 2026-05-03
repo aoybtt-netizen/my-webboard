@@ -2190,8 +2190,8 @@ app.post('/api/:mode/game/sell-item', async (req, res) => {
 });
 
 //9.3
-app.post('/api/:mode/game/repair-equipped', async (req, res) => {
-    const { username, slotName, coinCost, needed, minGrades } = req.body; // 🚩 รับ minGrades เพิ่ม
+app.post('/api/:mode/game/repair-unified', async (req, res) => {
+    const { username, isShip, slotName, repairAmt, cost, usedIds } = req.body;
     const db = getDB(req.params.mode);
 
     try {
@@ -2199,111 +2199,45 @@ app.post('/api/:mode/game/repair-equipped', async (req, res) => {
         if (!user) return res.status(404).json({ success: false });
 
         let inventory = user.inventory || [];
-        
-        const deductMineral = (types, amount, minGrade) => {
-            if (amount <= 0) return;
-            
-            // กำหนด key ที่ใช้เช็คค่าพลัง (tech หรือประเภทแร่)
-            const propKey = (types.includes('tech') || types.includes('technology')) ? 'tech' : types[0];
 
-            for (let i = 0; i < inventory.length && amount > 0; i++) {
-                const item = inventory[i];
-                if (types.includes(item.type)) {
-                    // 🚩 เช็คเกรดแร่ให้เหมือนหน้าบ้าน (Root หรือ Properties)
-                    const gradeFromRoot = item[propKey];
-                    const gradeFromProps = item.properties ? item.properties[propKey] : 0;
-                    const finalGrade = Number(gradeFromRoot || gradeFromProps || 0);
-
-                    if (finalGrade >= minGrade) {
-                        let q = item.quantity !== undefined ? Number(item.quantity) : 1;
-                        let take = Math.min(q, amount);
-                        
-                        item.quantity = q - take;
-                        amount -= take;
-                    }
-                }
+        // 1. ฟังก์ชันหักแร่ด้วย ID (แม่นยำและปลอดภัยสุดๆ)
+        const deductById = (id, amount) => {
+            if (!id || amount <= 0) return;
+            const idx = inventory.findIndex(i => i.id === id);
+            if (idx > -1) {
+                inventory[idx].quantity = Number(inventory[idx].quantity || 1) - amount;
             }
         };
 
-        // 1. เริ่มหักแร่โดยเช็คเกรดด้วย
-        deductMineral(['metal'], needed.metal, minGrades.metal);
-        deductMineral(['energy'], needed.energy, minGrades.energy);
-        deductMineral(['tech', 'technology'], needed.tech, minGrades.tech);
+        // หักแร่ตาม ID ที่ผู้เล่นเลือกมาจำนวนเท่ากับ repairAmt
+        deductById(usedIds.metal, repairAmt);
+        deductById(usedIds.energy, repairAmt);
+        deductById(usedIds.tech, repairAmt);
 
-        // 🚩 2. ตัวกรองที่ปลอดภัย (Safe Filter)
-        // ลบเฉพาะ "แร่" ที่เหลือ 0 | ส่วน "อุปกรณ์" หรือไอเทมที่ไม่มี quantity ให้เก็บไว้
+        // Filter ล้างแร่ที่เหลือ 0
         inventory = inventory.filter(i => {
-            const isMineral = ['metal', 'energy', 'technology'].includes(i.type);
-            if (isMineral) {
-                return i.quantity > 0; // ถ้าเป็นแร่ ต้องมากกว่า 0 ถึงจะเก็บ
-            }
-            return true; // ถ้าไม่ใช่แร่ (เช่น turret, engine) ให้เก็บไว้เสมอ
+            const isResource = ['metal', 'energy', 'tech', 'technology'].includes(i.type);
+            return isResource ? i.quantity > 0 : true;
         });
 
-        await db.updateOne(
-            { username },
-            { 
-                $inc: { coinsgc: -coinCost },
-                $set: { 
-                    inventory: inventory,
-                    [`equipped.${slotName}.currentDurability`]: user.equipped[slotName].maxDurability 
-                }
-            }
-        );
+        // 2. อัปเดตข้อมูล (แยกว่าเป็นยาน หรือ เป็นไอเทม)
+        let updateQuery = { 
+            $inc: { coinsgc: -cost },
+            $set: { inventory: inventory } 
+        };
+
+        if (isShip) {
+            updateQuery.$inc["shipStats.currentDurability"] = repairAmt;
+        } else {
+            updateQuery.$inc[`equipped.${slotName}.currentDurability`] = repairAmt;
+        }
+
+        await db.updateOne({ username }, updateQuery);
 
         res.json({ success: true, inventory });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: e.message }); 
     }
-});
-
-//9.4
-app.post('/api/:mode/game/repair-ship', async (req, res) => {
-    const { username, coinCost, needed, minGrades } = req.body;
-    const db = getDB(req.params.mode);
-
-    try {
-        const user = await db.findOne({ username });
-        let inventory = user.inventory || [];
-
-        // 🚩 ใช้ Logic หักแร่ตัวเดิมที่เราแก้ให้ Safe Filter แล้ว
-        const deductMineral = (types, amount, minGrade) => {
-            const propKey = (types.includes('tech') || types.includes('technology')) ? 'tech' : types[0];
-            for (let i = 0; i < inventory.length && amount > 0; i++) {
-                const item = inventory[i];
-                if (types.includes(item.type)) {
-                    const grade = item.properties ? (item.properties[propKey] || 0) : (item[propKey] || 0);
-                    if (grade >= minGrade) {
-                        let take = Math.min(item.quantity || 1, amount);
-                        item.quantity = (item.quantity || 1) - take;
-                        amount -= take;
-                    }
-                }
-            }
-        };
-
-        deductMineral(['metal'], needed.metal, minGrades.metal);
-        deductMineral(['energy'], needed.energy, minGrades.energy);
-        deductMineral(['tech', 'technology'], needed.tech, minGrades.tech);
-
-        inventory = inventory.filter(i => {
-            const isMineral = ['metal', 'energy', 'technology'].includes(i.type);
-            return isMineral ? i.quantity > 0 : true;
-        });
-
-        await db.updateOne(
-            { username },
-            { 
-                $inc: { coinsgc: -coinCost },
-                $set: { 
-                    inventory: inventory,
-                    "shipStats.currentDurability": user.shipStats.maxDurability // ซ่อมเต็ม!
-                }
-            }
-        );
-
-        res.json({ success: true, inventory });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // 10. API สำหรับติดตั้งไอเทม (Swap Item)

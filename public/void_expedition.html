@@ -3115,6 +3115,7 @@ async function buyItem(itemId) {
     }
 }
 
+// 🚩 1. ฟังก์ชันเปิดหน้าต่างโรงซ่อม (ยุบรวมเงื่อนไขแล้ว)
 function openRepairMenu() {
     const container = document.getElementById('repair-list-container');
     const overlay = document.getElementById('repair-overlay');
@@ -3122,218 +3123,157 @@ function openRepairMenu() {
 
     container.innerHTML = "";
     let repairableItems = [];
+    const ship = typeof shipStats !== 'undefined' ? shipStats : (userData ? userData.shipStats : null);
 
-    // 🚩 1. เช็คสเตตัสตัวยานหลัก (Ship Stats)
-    // สมมติว่ากัปตันเก็บ shipStats ไว้ในตัวแปร userData.shipStats
-    const ship = shipStats;
-    if (ship && ship.currentDurability < (ship.maxDurability - 2)) {
+    // เช็คยานแม่
+    if (ship && ship.currentDurability < ship.maxDurability) {
         repairableItems.push({
-            id: 'MAIN_SHIP',
-            name: 'HULL INTEGRITY (MAIN SHIP)',
-            currentDurability: ship.currentDurability,
-            maxDurability: ship.maxDurability,
-            repairCost: ship.repairCost,
-            isShip: true // มาร์คไว้ว่าเป็นยาน
+            id: 'MAIN_SHIP', name: 'HULL INTEGRITY (MAIN SHIP)',
+            currentDurability: ship.currentDurability, maxDurability: ship.maxDurability,
+            repairCost: ship.repairCost, isShip: true
         });
     }
 
-    // 2. เช็คไอเทมที่ติดตั้ง (Equipped) - โค้ดเดิมของกัปตัน
+    // เช็คไอเทมสวมใส่
     for (let slot in playerEquipped) {
         const item = playerEquipped[slot];
-        if (item && item.currentDurability < (item.maxDurability - 2)) {
+        if (item && item.currentDurability < item.maxDurability) {
             repairableItems.push({ ...item, isEquipped: true, slotName: slot });
         }
     }
 
-    // ... (ส่วนการแสดงผล HTML เหมือนเดิม แต่ปรับปุ่มกด) ...
     repairableItems.forEach(item => {
         const n = Math.ceil(item.maxDurability - item.currentDurability);
-        const coinCost = n * 10;
         
-        // 🚩 ถ้าเป็นยานให้เรียก requestShipRepair ถ้าเป็นไอเทมให้เรียก requestRepair
-        const clickAction = item.isShip 
-            ? `requestShipRepair()` 
-            : `requestRepair('${item.id}', '${item.slotName}')`;
-
+        // 🚩 ส่งข้อมูลไปหน้าต่าง "เลือกแร่" แทนการซ่อมทันที
         container.innerHTML += `
             <div style="background:rgba(0,210,255,0.05); border:1px solid #00d2ff44; padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <div style="flex:1;">
-                    <div style="font-size:0.75rem; font-weight:bold; color:${item.isShip ? '#38ef7d' : '#00d2ff'};">
-                        ${item.name}
-                    </div>
+                    <div style="font-size:0.75rem; font-weight:bold; color:${item.isShip ? '#38ef7d' : '#00d2ff'};">${item.name}</div>
                     <div style="font-size:0.65rem; color:#aaa;">INTEGRITY: ${item.currentDurability}/${item.maxDurability} (-${n})</div>
-                    <div style="font-size:0.6rem; color:#ffcc00; margin-top:4px;">
-                        COST: ${coinCost} Coins + Minerals (M:${item.repairCost.metal*n}, E:${item.repairCost.energy*n}, T:${item.repairCost.tech*n})
-                    </div>
+                    <div style="font-size:0.6rem; color:#ffcc00; margin-top:4px;">REQUIRES: Grade M:${item.repairCost.metal}+, E:${item.repairCost.energy}+, T:${item.repairCost.tech}+</div>
                 </div>
-                <button onclick="${clickAction}" 
-                        style="background:#ff4b2b; color:#fff; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-size:0.7rem; font-family:'Orbitron';">
-                    REPAIR
+                <button onclick="openMineralSelector('${item.id}', '${item.slotName || ''}', ${item.isShip || false})" 
+                        style="background:var(--neon-blue); color:#000; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; font-size:0.7rem;">
+                    SELECT ORES
                 </button>
             </div>
         `;
     });
-    console.log("Checking Ship Stats:", userData ? userData.shipStats : "userData not found");
     overlay.style.display = 'flex';
 }
 
-async function requestShipRepair() {
-    const ship = userData.shipStats;
-    if (!ship) return;
+// 🚩 2. ฟังก์ชันหน้าต่างเลือกแร่ & คำนวณ (Partial Repair Logic)
+function openMineralSelector(itemId, slotName, isShip) {
+    const ship = typeof shipStats !== 'undefined' ? shipStats : userData.shipStats;
+    const target = isShip ? ship : playerEquipped[slotName];
+    if (!target) return;
 
-    const countQualifiedMinerals = (type, minGrade) => {
-        return playerInventory.filter(i => {
-            const isType = (i.type === type || (type === 'tech' && i.type === 'technology') || (type === 'technology' && i.type === 'technology'));
-            if (!isType) return false;
+    const n = Math.ceil(target.maxDurability - target.currentDurability);
+    const r = target.repairCost;
 
-            const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
-            const gradeFromRoot = i[propKey]; 
-            const gradeFromProps = i.properties ? i.properties[propKey] : 0;
-            const finalGrade = Number(gradeFromRoot || gradeFromProps || 0);
+    // หาแร่ในคลังที่เกรดผ่านเงื่อนไข (เพื่อเอามาใส่ Dropdown)
+    const getValidOres = (type, minGrade) => playerInventory.filter(i => {
+        const isType = (i.type === type || (type === 'tech' && i.type === 'technology') || (type === 'technology' && i.type === 'technology'));
+        if(!isType) return false;
+        const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
+        const grade = i.properties ? i.properties[propKey] : i[propKey];
+        return Number(grade || 0) >= Number(minGrade);
+    });
 
-            return finalGrade >= Number(minGrade);
-        }).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
-    };
+    const validMetal = r.metal > 0 ? getValidOres('metal', r.metal) : [];
+    const validEnergy = r.energy > 0 ? getValidOres('energy', r.energy) : [];
+    const validTech = r.tech > 0 ? getValidOres('technology', r.tech) : [];
 
-    const n = Math.ceil(ship.maxDurability - ship.currentDurability);
-    const coinCost = n * 10;
-    const r = ship.repairCost;
-    const currentCoinsText = document.getElementById('prof-gc').innerText;
-    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
-    const curMetal = countQualifiedMinerals('metal', r.metal);
-    const curEnergy = countQualifiedMinerals('energy', r.energy);
-    const curTech = countQualifiedMinerals('technology', r.tech);
+    // สร้าง Dropdown Options
+    const makeOptions = (list) => list.length > 0 
+        ? list.map(i => `<option value="${i.id}" data-qty="${i.quantity || 1}">${i.name} (Qty: ${i.quantity || 1})</option>`).join('')
+        : `<option value="">-- ไม่มีแร่ที่เกรดถึง --</option>`;
 
-    if (currentCoins < coinCost) return showMiningToast(`CoinsGC ไม่พอ! (ต้องการ ${coinCost})`, "#ff4b2b");
-    if (curMetal < n) return showMiningToast(`แร่ Metal เกรด ${r.metal}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
-    if (curEnergy < n) return showMiningToast(`แร่ Energy เกรด ${r.energy}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
-    if (curTech < n) return showMiningToast(`แร่ Tech เกรด ${r.tech}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
+    // ลบ Popup เดิมถ้ามี แล้วสร้างใหม่
+    const existing = document.getElementById('ore-selector-popup');
+    if(existing) existing.remove();
 
+    const popup = document.createElement('div');
+    popup.id = 'ore-selector-popup';
+    popup.style.cssText = "position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#111; border:2px solid var(--neon-blue); padding:20px; z-index:10005; width:300px; border-radius:10px; color:white;";
+
+    popup.innerHTML = `
+        <h3 style="margin-top:0; color:var(--neon-blue); text-align:center;">ALLOCATE RESOURCES</h3>
+        <p style="font-size:0.7rem; text-align:center; color:#aaa;">เป้าหมาย: ซ่อมสูงสุด ${n} หน่วย</p>
+        
+        ${r.metal > 0 ? `<label style="font-size:0.7rem;">METAL (Grade ${r.metal}+):</label><select id="sel-m" style="width:100%; margin-bottom:10px; background:#222; color:#fff;">${makeOptions(validMetal)}</select>` : ''}
+        ${r.energy > 0 ? `<label style="font-size:0.7rem;">ENERGY (Grade ${r.energy}+):</label><select id="sel-e" style="width:100%; margin-bottom:10px; background:#222; color:#fff;">${makeOptions(validEnergy)}</select>` : ''}
+        ${r.tech > 0 ? `<label style="font-size:0.7rem;">TECH (Grade ${r.tech}+):</label><select id="sel-t" style="width:100%; margin-bottom:10px; background:#222; color:#fff;">${makeOptions(validTech)}</select>` : ''}
+
+        <div style="display:flex; justify-content:space-between; margin-top:15px;">
+            <button onclick="document.getElementById('ore-selector-popup').remove()" style="padding:8px 15px; background:#444; border:none; color:white; border-radius:5px;">CANCEL</button>
+            <button onclick="executeUnifiedRepair('${itemId}', '${slotName}', ${isShip}, ${n}, ${r.metal}, ${r.energy}, ${r.tech})" style="padding:8px 15px; background:#38ef7d; border:none; color:black; border-radius:5px; font-weight:bold;">CONFIRM REPAIR</button>
+        </div>
+    `;
+    document.body.appendChild(popup);
+}
+
+// 🚩 3. ฟังก์ชันส่งคำสั่งซ่อม (รวม ยาน + ไอเทม ไว้ที่เดียว)
+async function executeUnifiedRepair(itemId, slotName, isShip, maxNeeded, reqM, reqE, reqT) {
+    // ดึง ID ไอเทมที่ผู้เล่นเลือกจาก Dropdown
+    const selM = document.getElementById('sel-m');
+    const selE = document.getElementById('sel-e');
+    const selT = document.getElementById('sel-t');
+
+    const mId = selM ? selM.value : null;
+    const eId = selE ? selE.value : null;
+    const tId = selT ? selT.value : null;
+
+    // เช็คว่าถ้าต้องใช้แร่ แต่ไม่มีแร่ให้เลือก
+    if ((reqM > 0 && !mId) || (reqE > 0 && !eId) || (reqT > 0 && !tId)) {
+        return showMiningToast("ทรัพยากรไม่ครบตามเงื่อนไข!", "#ff4b2b");
+    }
+
+    // คำนวณจำนวนที่ซ่อมได้จริง (หลักการ: ค่าน้อยสุดของ n, mQty, eQty, tQty)
+    let limits = [maxNeeded];
+    if (mId) limits.push(Number(selM.options[selM.selectedIndex].dataset.qty));
+    if (eId) limits.push(Number(selE.options[selE.selectedIndex].dataset.qty));
+    if (tId) limits.push(Number(selT.options[selT.selectedIndex].dataset.qty));
+
+    const repairAmt = Math.min(...limits); // หาค่าน้อยสุด
+    if (repairAmt <= 0) return showMiningToast("แร่ไม่เพียงพอสำหรับการซ่อม!", "#ff4b2b");
+
+    const cost = repairAmt * 10;
+    const currentCoins = parseInt(document.getElementById('prof-gc').innerText.replace(/,/g, '')) || 0;
+    if (currentCoins < cost) return showMiningToast(`CoinsGC ไม่พอ (ต้องการ ${cost})`, "#ff4b2b");
+
+    // โยนไปให้ Server จัดการ
     try {
-        showMiningToast("HULL REPAIRING...", "#ffcc00");
-        const response = await fetch(`${API_BASE}/game/repair-ship`, {
+        document.getElementById('ore-selector-popup').remove();
+        showMiningToast(`กำลังฟื้นฟู ${repairAmt} หน่วย...`, "#ffcc00");
+
+        const response = await fetch(`${API_BASE}/game/repair-unified`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: currentUser,
-                coinCost: coinCost,
-                needed: { metal: n, energy: n, tech: n },
-                minGrades: r
+                isShip: isShip,
+                slotName: slotName,
+                repairAmt: repairAmt,
+                cost: cost,
+                usedIds: { metal: mId, energy: eId, tech: tId } // ส่ง ID แร่ไปหักตรงๆ
             })
         });
 
         const result = await response.json();
         if (result.success) {
-            ship.currentDurability = ship.maxDurability;
+            // อัปเดตข้อมูลฝั่งเครื่อง
+            if (isShip) {
+                shipStats.currentDurability += repairAmt;
+            } else {
+                playerEquipped[slotName].currentDurability += repairAmt;
+            }
             playerInventory = result.inventory;
-            userData.coinsgc -= coinCost;
+            userData.coinsgc -= cost;
             
-            showMiningToast("โครงสร้างยานซ่อมแซมเสร็จสิ้น!", "#38ef7d");
-            openRepairMenu();
-            if (typeof updateTopHUD === 'function') updateTopHUD();
-        }
-    } catch (e) { 
-        console.error("Repair Error:", e);
-        showMiningToast("เกิดข้อผิดพลาดในการซ่อม", "#ff4b2b");
-    }
-}
-
-// 🚩 แก้ไข: รับทั้ง itemId และ slotName
-async function requestRepair(itemId, slotName) {
-    // 1. ดึงไอเทมที่จะซ่อม
-    let item = slotName ? playerEquipped[slotName] : playerInventory.find(i => i.id === itemId);
-    if (!item) return;
-
-    // n = จำนวน HP ที่หายไป (1 HP = แร่ 1 ก้อน)
-    const n = Math.ceil(item.maxDurability - item.currentDurability);
-    if (n <= 0) return;
-
-    const r = item.repairCost || { metal: 0, energy: 0, tech: 0 };
-    const craftCost = n * 10; // ค่าซ่อมหน่วยละ 10 Coins
-
-    // 🚩 2. ดึงเงินจาก UI เหมือนฟังก์ชันคราฟต์ของกัปตัน
-    const currentCoinsText = document.getElementById('prof-gc').innerText;
-    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
-
-    // 🚩 3. ฟังก์ชันนับแร่แบบเช็คเกรด (ปรับปรุงจาก countItemInInv ของกัปตัน)
-    const countQualifiedMinerals = (type, minGrade) => {
-    return playerInventory.filter(i => {
-        // 1. เช็คประเภทแร่ (Mapping tech -> technology)
-        const isType = (i.type === type || (type === 'tech' && i.type === 'technology') || (type === 'technology' && i.type === 'technology'));
-        if (!isType) return false;
-
-        // 2. ดึงค่าพลังแร่ (เช็คทั้ง Root และใน properties)
-        const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
-        
-        // ลองดึงจาก Root ก่อน ถ้าไม่มีค่อยดึงจาก properties
-        const gradeFromRoot = i[propKey]; 
-        const gradeFromProps = i.properties ? i.properties[propKey] : 0;
-        const finalGrade = Number(gradeFromRoot || gradeFromProps || 0);
-
-        const isQualified = finalGrade >= Number(minGrade);
-
-        // 🚩 Console Log เพื่อดูว่าแร่ก้อนไหนผ่านหรือไม่ผ่าน
-        if (isType && !isQualified) {
-            console.log(`❌ แร่ ${i.name} ตกเกรด: มีพลัง ${finalGrade} แต่ต้องการ ${minGrade}`);
-        } else if (isType && isQualified) {
-            console.log(`✅ แร่ ${i.name} ผ่าน: มีพลัง ${finalGrade} (ต้องการ ${minGrade}) จำนวน ${i.quantity || 1}`);
-        }
-
-        return isQualified;
-    }).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
-};
-
-    // 4. เช็คจำนวนแร่ที่มี (เกรดต้องถึง)
-    const curMetal = countQualifiedMinerals('metal', r.metal);
-    const curEnergy = countQualifiedMinerals('energy', r.energy);
-    const curTech = countQualifiedMinerals('technology', r.tech);
-
-    // 5. ตรวจสอบเงื่อนไข (ซ่อม n หน่วย ใช้แร่ n ก้อน)
-    // 🚩 แก้ไข: ไม่เอาเกรดมาคูณจำนวนแร่แล้ว
-    const hasMetal = r.metal > 0 ? curMetal >= n : true;
-    const hasEnergy = r.energy > 0 ? curEnergy >= n : true;
-    const hasTech = r.tech > 0 ? curTech >= n : true;
-    const hasCoins = currentCoins >= craftCost;
-
-    // --- ส่วน Debug ---
-    console.log(`--- REPAIR CHECK ---`);
-    console.log(`HP missing (n): ${n}`);
-    console.log(`Metal: ${curMetal}/${n} (Grade ${r.metal}+) -> ${hasMetal}`);
-    console.log(`Energy: ${curEnergy}/${n} (Grade ${r.energy}+) -> ${hasEnergy}`);
-    console.log(`Tech: ${curTech}/${n} (Grade ${r.tech}+) -> ${hasTech}`);
-
-    // 6. แจ้งเตือน
-    if (!hasMetal) return showMiningToast(`แร่ Metal เกรด ${r.metal}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
-    if (!hasEnergy) return showMiningToast(`แร่ Energy เกรด ${r.energy}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
-    if (!hasTech) return showMiningToast(`แร่ Tech เกรด ${r.tech}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
-    if (!hasCoins) return showMiningToast(`CoinsGC ไม่พอ (ต้องการ ${craftCost})`, "#ff4b2b");
-
-    // 7. ถ้าผ่านทุกอย่าง ส่งไปหลังบ้าน
-    try {
-        showMiningToast("SYSTEM REPAIRING...", "#ffcc00");
-        const response = await fetch(`${API_BASE}/game/repair-equipped`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        username: currentUser,
-        slotName: slotName,
-        itemId: itemId,
-        coinCost: craftCost,
-        needed: { 
-            metal: r.metal > 0 ? n : 0, 
-            energy: r.energy > 0 ? n : 0, 
-            tech: r.tech > 0 ? n : 0 
-        },
-        minGrades: r // 🚩 ส่งเกรดที่ต้องการ { metal, energy, tech } ไปด้วย
-    })
-});
-
-        const result = await response.json();
-        if (result.success) {
-            item.currentDurability = item.maxDurability;
-            playerInventory = result.inventory;
-            showMiningToast("ซ่อมแซมเสร็จสิ้น!", "#38ef7d");
-            openRepairMenu();
+            showMiningToast(`ฟื้นฟูเสร็จสิ้น +${repairAmt} HP!`, "#38ef7d");
+            openRepairMenu(); 
             if (typeof updateTopHUD === 'function') updateTopHUD();
         }
     } catch (e) { console.error(e); }
