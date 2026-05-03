@@ -3184,13 +3184,34 @@ async function requestRepair(slotName) {
     if (coinsgc < coinCost) return showMiningToast("CoinsGC ไม่พอ!", "#ff4b2b");
 
     // ตรวจสอบแร่ในคลัง (รวมจำนวนจาก stackable items)
-    const checkOwned = (type) => playerInventory
-        .filter(i => i.type === type || (type === 'tech' && i.type === 'technology'))
-        .reduce((sum, i) => sum + (i.quantity || 0), 0);
+    const checkOwned = (type, minPropValue) => {
+    return playerInventory
+        .filter(i => {
+            // 1. เช็คประเภทแร่ (Mapping tech -> technology)
+            const typeMatch = (i.type === type || (type === 'tech' && i.type === 'technology'));
+            if (!typeMatch) return false;
 
-    if (checkOwned('metal') < needed.metal) return showMiningToast("แร่ Metal ไม่พอ!", "#ff4b2b");
-    if (checkOwned('energy') < needed.energy) return showMiningToast("แร่ Energy ไม่พอ!", "#ff4b2b");
-    if (checkOwned('tech') < needed.tech) return showMiningToast("แร่ Technology ไม่พอ!", "#ff4b2b");
+            // 2. เช็คคุณภาพแร่ตามเงื่อนไข (ต้องมีค่าพลังใน properties >= ที่ป้อมต้องการ)
+            // ถ้าเป็น metal ต้องดู i.properties.metal
+            // ถ้าเป็น tech ต้องดู i.properties.tech (ตามโครงสร้าง res_t001 ของกัปตัน)
+            const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
+            const qualityMatch = i.properties && (i.properties[propKey] >= minPropValue);
+
+            return qualityMatch;
+        })
+        .reduce((sum, i) => sum + (i.quantity || 0), 0);
+};
+
+// --- การเรียกใช้ใน requestRepair ---
+// กัปตันต้องส่งค่าความต้องการขั้นต่ำ (RepairCost) เข้าไปเช็คด้วย
+if (checkOwned('metal', item.repairCost.metal) < needed.metal) 
+    return showMiningToast(`แร่ Metal (เกรด ${item.repairCost.metal}+) ไม่พอ!`, "#ff4b2b");
+
+if (checkOwned('energy', item.repairCost.energy) < needed.energy) 
+    return showMiningToast(`แร่ Energy (เกรด ${item.repairCost.energy}+) ไม่พอ!`, "#ff4b2b");
+
+if (checkOwned('tech', item.repairCost.tech) < needed.tech) 
+    return showMiningToast(`แร่ Tech (เกรด ${item.repairCost.tech}+) ไม่พอ!`, "#ff4b2b");
 
     try {
         const response = await fetch(`${API_BASE}/game/repair-equipped`, {
