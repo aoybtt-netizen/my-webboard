@@ -3181,23 +3181,33 @@ async function requestShipRepair() {
     const ship = userData.shipStats;
     if (!ship) return;
 
+    const countQualifiedMinerals = (type, minGrade) => {
+        return playerInventory.filter(i => {
+            const isType = (i.type === type || (type === 'tech' && i.type === 'technology') || (type === 'technology' && i.type === 'technology'));
+            if (!isType) return false;
+
+            const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
+            const gradeFromRoot = i[propKey]; 
+            const gradeFromProps = i.properties ? i.properties[propKey] : 0;
+            const finalGrade = Number(gradeFromRoot || gradeFromProps || 0);
+
+            return finalGrade >= Number(minGrade);
+        }).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+    };
+
     const n = Math.ceil(ship.maxDurability - ship.currentDurability);
     const coinCost = n * 10;
     const r = ship.repairCost;
-
-    // ดึงเงินปัจจุบัน
     const currentCoinsText = document.getElementById('prof-gc').innerText;
     const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
-
-    // เช็คแร่ (ใช้ฟังก์ชันเดิมที่เราจูนไว้แล้ว)
     const curMetal = countQualifiedMinerals('metal', r.metal);
     const curEnergy = countQualifiedMinerals('energy', r.energy);
     const curTech = countQualifiedMinerals('technology', r.tech);
 
-    if (currentCoins < coinCost) return showMiningToast("CoinsGC ไม่พอ!", "#ff4b2b");
-    if (curMetal < n) return showMiningToast(`แร่ Metal เกรด ${r.metal}+ ไม่พอ`, "#ff4b2b");
-    if (curEnergy < n) return showMiningToast(`แร่ Energy เกรด ${r.energy}+ ไม่พอ`, "#ff4b2b");
-    if (curTech < n) return showMiningToast(`แร่ Tech เกรด ${r.tech}+ ไม่พอ`, "#ff4b2b");
+    if (currentCoins < coinCost) return showMiningToast(`CoinsGC ไม่พอ! (ต้องการ ${coinCost})`, "#ff4b2b");
+    if (curMetal < n) return showMiningToast(`แร่ Metal เกรด ${r.metal}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
+    if (curEnergy < n) return showMiningToast(`แร่ Energy เกรด ${r.energy}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
+    if (curTech < n) return showMiningToast(`แร่ Tech เกรด ${r.tech}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
 
     try {
         showMiningToast("HULL REPAIRING...", "#ffcc00");
@@ -3222,7 +3232,10 @@ async function requestShipRepair() {
             openRepairMenu();
             if (typeof updateTopHUD === 'function') updateTopHUD();
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error("Repair Error:", e);
+        showMiningToast("เกิดข้อผิดพลาดในการซ่อม", "#ff4b2b");
+    }
 }
 
 // 🚩 แก้ไข: รับทั้ง itemId และ slotName
