@@ -4863,6 +4863,46 @@ function updateMiningUI() {
     }
 }
 
+// ฟังก์ชันสำหรับวาดและอัปเดตเอฟเฟกต์ทั้งหมด (Particles และ Damage Numbers)
+function updateEffects(ctx) {
+    // 1. จัดการละอองดาว/อนุภาค (Particles)
+    miningParticles.forEach((p, index) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.03; // ค่อยๆ จางหาย
+
+        if (p.life <= 0) {
+            miningParticles.splice(index, 1);
+        } else {
+            ctx.save();
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    });
+
+    // 2. จัดการตัวเลขความเสียหาย (Damage Texts)
+    damageTexts.forEach((dt, index) => {
+        dt.y += dt.vy;
+        dt.life -= 0.02;
+        
+        if (dt.life <= 0) {
+            damageTexts.splice(index, 1);
+        } else {
+            ctx.save();
+            ctx.globalAlpha = dt.life;
+            ctx.fillStyle = "#ff4b2b"; // สีแดงนีออน
+            ctx.font = "bold 24px Orbitron"; 
+            ctx.textAlign = "center";
+            ctx.fillText(dt.text, dt.x, dt.y);
+            ctx.restore();
+        }
+    });
+}
+
 // F. เมื่อตั้งเครื่องเสร็จ
 function completeSetup() {
     // 1. หยุดลูปการทำงานของสเตปตั้งเครื่อง
