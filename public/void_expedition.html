@@ -1113,6 +1113,48 @@ button:hover { opacity: 0.8; }
 }
 
 
+/* ตกแต่งปุ่ม Refill ในหน้าขุดแร่ */
+.btn-mining-refill {
+    position: absolute;
+    right: -80px; /* ขยับออกไปนอกขอบ Canvas ฝั่งขวา */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: rgba(255, 204, 0, 0.1);
+    border: 2px solid #ffcc00;
+    color: #ffcc00;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    gap: 4px;
+    transition: 0.3s;
+    z-index: 100;
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.2);
+}
+
+.btn-mining-refill:hover {
+    background: #ffcc00;
+    color: #000;
+    box-shadow: 0 0 25px #ffcc00;
+}
+
+/* ปรับให้รองรับจอที่แคบลง */
+@media (max-width: 600px) {
+    .btn-mining-refill {
+        right: 10px; /* ถ้าจอมือถือ ให้เข้ามาอยู่ในขอบ */
+        top: auto;
+        bottom: 20px;
+        transform: none;
+    }
+}
+
+
     </style>
 </head>
 <body>
@@ -1340,16 +1382,21 @@ button:hover { opacity: 0.8; }
 	
 
     <div id="view-mining" class="view" style="background: #000; display: none;">
-    <div class="mining-game-container">
+    <div class="mining-game-container" style="position: relative;"> <!-- เพิ่ม relative เพื่อให้ปุ่มลอยได้ -->
         
         <div class="mining-hud-top">
-            <h2 id="mining-status">PREPARING DRILL...</h2>
-            <div class="progress-container">
-                <div id="mining-bar" class="progress-bar"></div>
-            </div>
+            <!-- 🚩 ส่วนนี้จะกลายเป็นที่อยู่ของ 3 เกจ (Integrity, Progress, Power) -->
+            <div id="mining-status">PREPARING DRILL...</div>
         </div>
 
+        <!-- 🚩 Canvas เกมขุดแร่ -->
         <canvas id="mining-canvas" width="400" height="600"></canvas>
+
+        <!-- ⚡ ปุ่มเติมพลังงานฝั่งขวา (แทรกตรงนี้) -->
+        <button class="btn-mining-refill" onclick="buyRefillEnergy()">
+            <i class="fas fa-bolt"></i>
+            <span>REFILL</span>
+        </button>
 
     </div>
 </div>
@@ -4826,41 +4873,57 @@ function updateMining(currentTime) {
 }
 
 function updateMiningUI() {
-    const bar = document.getElementById('mining-bar');
-    if (bar) bar.style.width = `${setupProgress}%`;
-
-    const statusText = document.getElementById('mining-status');
     const turret = playerEquipped.turret;
-    
-    if (statusText && turret) {
-        // คำนวณเปอร์เซ็นต์สำหรับเกจ
-        const durPercent = (turret.currentDurability / turret.maxDurability) * 100;
-        const nrgPercent = (turret.currentEnergy / turret.energyMax) * 100;
+    const statusText = document.getElementById('mining-status');
+    if (!statusText || !turret) return;
 
-        statusText.innerHTML = `
-            <div style="margin-bottom:8px;">PREPARING DRILL... ${Math.floor(setupProgress)}%</div>
-            <div style="display:flex; flex-direction:column; gap:5px; font-size:0.7rem; font-family:Orbitron, sans-serif;">
-                <!-- เกจความทนทานป้อม (Durability) -->
-                <div style="display:flex; justify-content:space-between;">
-                    <span>TURRET INTEGRITY:</span>
-                    <span style="color:var(--neon-green)">${turret.currentDurability}/${turret.maxDurability}</span>
+    // คำนวณเปอร์เซ็นต์
+    const durPercent = (turret.currentDurability / turret.maxDurability) * 100;
+    const setupPercent = Math.min(100, setupProgress);
+    const nrgPercent = (turret.currentEnergy / turret.energyMax) * 100;
+
+    statusText.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:0.7rem; font-family:'Orbitron', sans-serif; width: 100%;">
+            
+            <!-- 1. เกจความทนทานป้อม (TURRET INTEGRITY) - สีเขียว -->
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                    <span>TURRET INTEGRITY</span>
+                    <span style="color:var(--neon-green)">${Math.floor(turret.currentDurability)} / ${turret.maxDurability}</span>
                 </div>
                 <div style="width:100%; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; border:1px solid #333;">
-                    <div style="width:${durPercent}%; height:100%; background:var(--neon-green); border-radius:3px; transition:0.3s;"></div>
-                </div>
-
-                <!-- เกจพลังงานป้อม (Energy) -->
-                <div style="display:flex; justify-content:space-between; margin-top:2px;">
-                    <span>TURRET POWER:</span>
-                    <span style="color:#ffcc00">${Math.floor(turret.currentEnergy)}/${turret.energyMax}</span>
-                </div>
-                <div style="width:100%; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; border:1px solid #333;">
-                    <div style="width:${nrgPercent}%; height:100%; background:#ffcc00; border-radius:3px; transition:0.3s;"></div>
+                    <div style="width:${durPercent}%; height:100%; background:var(--neon-green); border-radius:3px; transition:0.3s; box-shadow: 0 0 5px var(--neon-green);"></div>
                 </div>
             </div>
-            
-        `;
-    }
+
+            <!-- 2. เกจความคืบหน้าการติดตั้ง (DRILL PROGRESS) - สีฟ้า -->
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                    <span>PREPARING DRILL</span>
+                    <span style="color:var(--neon-blue)">${Math.floor(setupPercent)}%</span>
+                </div>
+                <div style="width:100%; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; border:1px solid #333;">
+                    <div style="width:${setupPercent}%; height:100%; background:var(--neon-blue); border-radius:3px; transition:0.3s; box-shadow: 0 0 5px var(--neon-blue);"></div>
+                </div>
+            </div>
+
+            <!-- 3. เกจพลังงานป้อม (TURRET POWER) - สีเหลือง -->
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                    <span>TURRET POWER</span>
+                    <span style="color:#ffcc00">${Math.floor(turret.currentEnergy)} / ${turret.energyMax}</span>
+                </div>
+                <div style="width:100%; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; border:1px solid #333;">
+                    <div style="width:${nrgPercent}%; height:100%; background:#ffcc00; border-radius:3px; transition:0.3s; box-shadow: 0 0 5px #ffcc00;"></div>
+                </div>
+            </div>
+
+        </div>
+    `;
+
+    // อัปเดตหลอดความคืบหน้าหลัก (ถ้ายังมีใช้อยู่)
+    const bar = document.getElementById('mining-bar');
+    if (bar) bar.style.width = `${setupProgress}%`;
 }
 
 // ฟังก์ชันสำหรับวาดและอัปเดตเอฟเฟกต์ทั้งหมด (Particles และ Damage Numbers)
