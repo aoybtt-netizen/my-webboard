@@ -2257,6 +2257,55 @@ app.post('/api/:mode/game/repair-equipped', async (req, res) => {
     }
 });
 
+//9.4
+app.post('/api/:mode/game/repair-ship', async (req, res) => {
+    const { username, coinCost, needed, minGrades } = req.body;
+    const db = getDB(req.params.mode);
+
+    try {
+        const user = await db.findOne({ username });
+        let inventory = user.inventory || [];
+
+        // 🚩 ใช้ Logic หักแร่ตัวเดิมที่เราแก้ให้ Safe Filter แล้ว
+        const deductMineral = (types, amount, minGrade) => {
+            const propKey = (types.includes('tech') || types.includes('technology')) ? 'tech' : types[0];
+            for (let i = 0; i < inventory.length && amount > 0; i++) {
+                const item = inventory[i];
+                if (types.includes(item.type)) {
+                    const grade = item.properties ? (item.properties[propKey] || 0) : (item[propKey] || 0);
+                    if (grade >= minGrade) {
+                        let take = Math.min(item.quantity || 1, amount);
+                        item.quantity = (item.quantity || 1) - take;
+                        amount -= take;
+                    }
+                }
+            }
+        };
+
+        deductMineral(['metal'], needed.metal, minGrades.metal);
+        deductMineral(['energy'], needed.energy, minGrades.energy);
+        deductMineral(['tech', 'technology'], needed.tech, minGrades.tech);
+
+        inventory = inventory.filter(i => {
+            const isMineral = ['metal', 'energy', 'technology'].includes(i.type);
+            return isMineral ? i.quantity > 0 : true;
+        });
+
+        await db.updateOne(
+            { username },
+            { 
+                $inc: { coinsgc: -coinCost },
+                $set: { 
+                    inventory: inventory,
+                    "shipStats.currentDurability": user.shipStats.maxDurability // ซ่อมเต็ม!
+                }
+            }
+        );
+
+        res.json({ success: true, inventory });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // 10. API สำหรับติดตั้งไอเทม (Swap Item)
 app.post('/api/:mode/game/install-item', async (req, res) => {
     const { mode } = req.params;

@@ -3123,7 +3123,21 @@ function openRepairMenu() {
     container.innerHTML = "";
     let repairableItems = [];
 
-    // 1. ดึงจากไอเทมที่ติดตั้ง (Equipped)
+    // 🚩 1. เช็คสเตตัสตัวยานหลัก (Ship Stats)
+    // สมมติว่ากัปตันเก็บ shipStats ไว้ในตัวแปร userData.shipStats
+    const ship = userData.shipStats; 
+    if (ship && ship.currentDurability < (ship.maxDurability - 2)) {
+        repairableItems.push({
+            id: 'MAIN_SHIP',
+            name: 'HULL INTEGRITY (MAIN SHIP)',
+            currentDurability: ship.currentDurability,
+            maxDurability: ship.maxDurability,
+            repairCost: ship.repairCost,
+            isShip: true // มาร์คไว้ว่าเป็นยาน
+        });
+    }
+
+    // 2. เช็คไอเทมที่ติดตั้ง (Equipped) - โค้ดเดิมของกัปตัน
     for (let slot in playerEquipped) {
         const item = playerEquipped[slot];
         if (item && item.currentDurability < (item.maxDurability - 2)) {
@@ -3131,39 +3145,84 @@ function openRepairMenu() {
         }
     }
 
-    // 2. ดึงจากคลัง (Inventory)
-    const brokenInInventory = playerInventory.filter(item => 
-        item.maxDurability && item.currentDurability < (item.maxDurability - 2)
-    );
-    repairableItems = repairableItems.concat(brokenInInventory);
+    // ... (ส่วนการแสดงผล HTML เหมือนเดิม แต่ปรับปุ่มกด) ...
+    repairableItems.forEach(item => {
+        const n = Math.ceil(item.maxDurability - item.currentDurability);
+        const coinCost = n * 10;
+        
+        // 🚩 ถ้าเป็นยานให้เรียก requestShipRepair ถ้าเป็นไอเทมให้เรียก requestRepair
+        const clickAction = item.isShip 
+            ? `requestShipRepair()` 
+            : `requestRepair('${item.id}', '${item.slotName}')`;
 
-    if (repairableItems.length === 0) {
-        container.innerHTML = `<div style="text-align:center; color:#888; font-size:0.8rem; margin-top:20px;">อุปกรณ์ทุกอย่างปกติดี กัปตัน!</div>`;
-    } else {
-        repairableItems.forEach(item => {
-            // คำนวณจำนวนที่ต้องซ่อม (N)
-            const n = item.maxDurability - item.currentDurability;
-            const coinCost = n * 10;
-            
-            container.innerHTML += `
-                <div style="background:rgba(255,255,255,0.05); border:1px solid #444; padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="flex:1;">
-                        <div style="font-size:0.75rem; font-weight:bold; color:#00d2ff;">${item.name} ${item.isEquipped ? '<span style="color:#38ef7d;">[EQUIPPED]</span>' : ''}</div>
-                        <div style="font-size:0.65rem; color:#aaa;">INTEGRITY: ${item.currentDurability}/${item.maxDurability} (-${n})</div>
-                        <div style="font-size:0.6rem; color:#ffcc00; margin-top:4px;">
-                            COST: ${coinCost} Coins + Minerals (M:${item.repairCost.metal*n}, E:${item.repairCost.energy*n}, T:${item.repairCost.tech*n})
-                        </div>
+        container.innerHTML += `
+            <div style="background:rgba(0,210,255,0.05); border:1px solid #00d2ff44; padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div style="flex:1;">
+                    <div style="font-size:0.75rem; font-weight:bold; color:${item.isShip ? '#38ef7d' : '#00d2ff'};">
+                        ${item.name}
                     </div>
-                    <button onclick="requestRepair('${item.id}', ${item.isEquipped ? `'${item.slotName}'` : 'null'})" 
-                            style="background:#ff4b2b; color:#fff; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-size:0.7rem; font-family:'Orbitron';">
-                        REPAIR
-                    </button>
+                    <div style="font-size:0.65rem; color:#aaa;">INTEGRITY: ${item.currentDurability}/${item.maxDurability} (-${n})</div>
+                    <div style="font-size:0.6rem; color:#ffcc00; margin-top:4px;">
+                        COST: ${coinCost} Coins + Minerals (M:${item.repairCost.metal*n}, E:${item.repairCost.energy*n}, T:${item.repairCost.tech*n})
+                    </div>
                 </div>
-            `;
-        });
-    }
+                <button onclick="${clickAction}" 
+                        style="background:#ff4b2b; color:#fff; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-size:0.7rem; font-family:'Orbitron';">
+                    REPAIR
+                </button>
+            </div>
+        `;
+    });
 
     overlay.style.display = 'flex';
+}
+
+async function requestShipRepair() {
+    const ship = userData.shipStats;
+    if (!ship) return;
+
+    const n = Math.ceil(ship.maxDurability - ship.currentDurability);
+    const coinCost = n * 10;
+    const r = ship.repairCost;
+
+    // ดึงเงินปัจจุบัน
+    const currentCoinsText = document.getElementById('prof-gc').innerText;
+    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
+
+    // เช็คแร่ (ใช้ฟังก์ชันเดิมที่เราจูนไว้แล้ว)
+    const curMetal = countQualifiedMinerals('metal', r.metal);
+    const curEnergy = countQualifiedMinerals('energy', r.energy);
+    const curTech = countQualifiedMinerals('technology', r.tech);
+
+    if (currentCoins < coinCost) return showMiningToast("CoinsGC ไม่พอ!", "#ff4b2b");
+    if (curMetal < n) return showMiningToast(`แร่ Metal เกรด ${r.metal}+ ไม่พอ`, "#ff4b2b");
+    if (curEnergy < n) return showMiningToast(`แร่ Energy เกรด ${r.energy}+ ไม่พอ`, "#ff4b2b");
+    if (curTech < n) return showMiningToast(`แร่ Tech เกรด ${r.tech}+ ไม่พอ`, "#ff4b2b");
+
+    try {
+        showMiningToast("HULL REPAIRING...", "#ffcc00");
+        const response = await fetch(`${API_BASE}/game/repair-ship`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                coinCost: coinCost,
+                needed: { metal: n, energy: n, tech: n },
+                minGrades: r
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            ship.currentDurability = ship.maxDurability;
+            playerInventory = result.inventory;
+            userData.coinsgc -= coinCost;
+            
+            showMiningToast("โครงสร้างยานซ่อมแซมเสร็จสิ้น!", "#38ef7d");
+            openRepairMenu();
+            if (typeof updateTopHUD === 'function') updateTopHUD();
+        }
+    } catch (e) { console.error(e); }
 }
 
 // 🚩 แก้ไข: รับทั้ง itemId และ slotName
