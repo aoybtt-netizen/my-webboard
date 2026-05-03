@@ -3172,53 +3172,84 @@ async function requestRepair(itemId, slotName) {
     let item = slotName ? playerEquipped[slotName] : playerInventory.find(i => i.id === itemId);
     if (!item) return;
 
-    // คำนวณจำนวนหน่วย (N) และทรัพยากรที่ต้องใช้
+    // n = จำนวน HP ที่หายไป (1 HP = แร่ 1 ก้อน)
     const n = Math.ceil(item.maxDurability - item.currentDurability);
     if (n <= 0) return;
 
-    const craftCost = n * 10;
-    const r = item.repairCost; // { metal: 1, energy: 1, tech: 1 }
+    const r = item.repairCost || { metal: 0, energy: 0, tech: 0 };
+    const craftCost = n * 10; // ค่าซ่อมหน่วยละ 10 Coins
 
-    // 🚩 2. ฟังก์ชันนับแร่แบบ "เกรดต้องถึง" (ถอดแบบมาจากฟังก์ชันคราฟของกัปตัน)
+    // 🚩 2. ดึงเงินจาก UI เหมือนฟังก์ชันคราฟต์ของกัปตัน
+    const currentCoinsText = document.getElementById('prof-gc').innerText;
+    const currentCoins = parseInt(currentCoinsText.replace(/,/g, '')) || 0;
+
+    // 🚩 3. ฟังก์ชันนับแร่แบบเช็คเกรด (ปรับปรุงจาก countItemInInv ของกัปตัน)
     const countQualifiedMinerals = (type, minGrade) => {
         return playerInventory
             .filter(i => {
-                // เช็คประเภท (รองรับ tech/technology)
-                const isType = (i.type === type || (type === 'tech' && i.type === 'technology'));
+                // เช็คประเภท (รองรับทั้ง tech และ technology)
+                const isType = (i.type === type || (type === 'technology' && i.type === 'technology') || (type === 'tech' && i.type === 'technology'));
                 if (!isType) return false;
 
-                // เช็คเกรดแร่ (Properties) - อิงตามโครงสร้างแร่ที่กัปตันส่งมา
+                // เช็คเกรด (Properties) 
+                // metal ดู i.properties.metal | tech ดู i.properties.tech
                 const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
-                const grade = i.properties ? (i.properties[propKey] || 0) : 0;
+                const grade = i.properties ? (Number(i.properties[propKey]) || 0) : 0;
                 
-                return grade >= minGrade; // 🚩 เงื่อนไข: ค่าพลังแร่ต้อง >= ที่ป้อมต้องการ
+                return grade >= Number(minGrade); // ต้องเกรดเท่ากับหรือมากกว่า
             })
             .reduce((sum, i) => sum + (i.quantity || 1), 0);
     };
 
-    // 3. ตรวจสอบเงื่อนไขทรัพยากร
+    // 4. เช็คจำนวนแร่ที่มี (เกรดต้องถึง)
     const curMetal = countQualifiedMinerals('metal', r.metal);
     const curEnergy = countQualifiedMinerals('energy', r.energy);
-    const curTech = countQualifiedMinerals('tech', r.tech);
-    
-    // ดึงเงินจากระบบ (ใช้ค่าจาก userData หรือ UI ตามที่กัปตันถนัด)
-    const hasCoins = userData.coinsgc >= craftCost;
-    const hasMetal = curMetal >= (r.metal * n);
-    const hasEnergy = curEnergy >= (r.energy * n);
-    const hasTech = curTech >= (r.tech * n);
+    const curTech = countQualifiedMinerals('technology', r.tech);
 
-    // --- ส่วนการ Debug (กัปตันดูที่ Console ได้เลย) ---
-    console.log(`[REPAIR] Needed: M:${r.metal*n}, E:${r.energy*n}, T:${r.tech*n}`);
-    console.log(`[REPAIR] In Stock (Qualified): M:${curMetal}, E:${curEnergy}, T:${curTech}`);
+    // 5. ตรวจสอบเงื่อนไข (ซ่อม n หน่วย ใช้แร่ n ก้อน)
+    // 🚩 แก้ไข: ไม่เอาเกรดมาคูณจำนวนแร่แล้ว
+    const hasMetal = r.metal > 0 ? curMetal >= n : true;
+    const hasEnergy = r.energy > 0 ? curEnergy >= n : true;
+    const hasTech = r.tech > 0 ? curTech >= n : true;
+    const hasCoins = currentCoins >= craftCost;
 
-    // 4. แจ้งเตือนถ้าทรัพยากรไม่พอ
-    if (!hasMetal) return showMiningToast(`ขาดแร่ Metal เกรด ${r.metal}+`, "#ff4b2b");
-    if (!hasEnergy) return showMiningToast(`ขาดแร่ Energy เกรด ${r.energy}+`, "#ff4b2b");
-    if (!hasTech) return showMiningToast(`ขาดแร่ Tech เกรด ${r.tech}+`, "#ff4b2b");
-    if (!hasCoins) return showMiningToast("CoinsGC ไม่เพียงพอ!", "#ff4b2b");
+    // --- ส่วน Debug ---
+    console.log(`--- REPAIR CHECK ---`);
+    console.log(`HP missing (n): ${n}`);
+    console.log(`Metal: ${curMetal}/${n} (Grade ${r.metal}+) -> ${hasMetal}`);
+    console.log(`Energy: ${curEnergy}/${n} (Grade ${r.energy}+) -> ${hasEnergy}`);
+    console.log(`Tech: ${curTech}/${n} (Grade ${r.tech}+) -> ${hasTech}`);
 
-    // 5. ส่งไปหลังบ้าน (ถ้าผ่านทุกอย่าง)
-    executeRepair(itemId, slotName, craftCost, n, r);
+    // 6. แจ้งเตือน
+    if (!hasMetal) return showMiningToast(`แร่ Metal เกรด ${r.metal}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
+    if (!hasEnergy) return showMiningToast(`แร่ Energy เกรด ${r.energy}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
+    if (!hasTech) return showMiningToast(`แร่ Tech เกรด ${r.tech}+ ไม่พอ (ต้องการ ${n} ก้อน)`, "#ff4b2b");
+    if (!hasCoins) return showMiningToast(`CoinsGC ไม่พอ (ต้องการ ${craftCost})`, "#ff4b2b");
+
+    // 7. ถ้าผ่านทุกอย่าง ส่งไปหลังบ้าน
+    try {
+        showMiningToast("SYSTEM REPAIRING...", "#ffcc00");
+        const response = await fetch(`${API_BASE}/game/repair-equipped`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                slotName: slotName,
+                itemId: itemId,
+                coinCost: craftCost,
+                needed: { metal: r.metal > 0 ? n : 0, energy: r.energy > 0 ? n : 0, tech: r.tech > 0 ? n : 0 }
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            item.currentDurability = item.maxDurability;
+            playerInventory = result.inventory;
+            showMiningToast("ซ่อมแซมเสร็จสิ้น!", "#38ef7d");
+            openRepairMenu();
+            if (typeof updateTopHUD === 'function') updateTopHUD();
+        }
+    } catch (e) { console.error(e); }
 }
 
 async function buyRefillEnergy() {
