@@ -3732,29 +3732,24 @@ function startMiningProcess() {
     if (!playerEquipped) playerEquipped = {}; // กันเหนียวถ้าตัวแปรว่าง
 
     if (!playerEquipped.turret) {
-        console.warn("Missing Turret! Deploying Standard Laser Turret...");
-        
-        // สร้างค่ามาตรฐาน (Standard Stats)
         playerEquipped.turret = { 
             id: 'emergency_turret', 
-            name: 'STANDARD LASER TURRET', 
-            type: 'ship turret', 
-            imgKey: 'turret1', // คีย์รูปภาพพื้นฐาน
+            name: 'STANDARD LASER', 
+            type: 'turret', 
+            imgKey: 'turret1',
             level: 1, 
             maxUpgrades: 5, 
-            durability: 100, 
-            damage: 5,         
-            fireRate: 1.0,     
+            currentDurability: 100,  // ✅ เปลี่ยนจาก durability เฉยๆ
+            maxDurability: 100,      // ✅ เพิ่มค่า Max
+            currentEnergy: 100,      // ✅ เพิ่มพลังงานป้อม
+            energyMax: 100,          // ✅ เพิ่มค่า Max พลังงาน
+            energyShoot: 3,          // ✅ ค่าพลังงานที่ใช้ต่อการยิง 1 นัด
+            damage: 5,          
+            fireRate: 1.0,      
             repairCost: { metal: 1, energy: 1, tech: 1 }, 
-            isLocked: true,
-            rotation: 0,       // ค่าเริ่มต้นมุม
-            lastShot: 0        // ค่าเริ่มต้นเวลาที่ยิง
+            rotation: 0,
+            lastShot: 0
         };
-
-        // แจ้งเตือนผู้เล่นแบบ Soft Warning (สีส้ม)
-        if (typeof showMiningToast === 'function') {
-            showMiningToast("EMERGENCY: Standard Turret Deployed!", "#ffca28");
-        }
     }
 
     // --- จัดการ UI (เหมือนเดิม) ---
