@@ -3187,7 +3187,7 @@ async function requestRepair(itemId, slotName) {
     };
 
     // 2. ตรวจสอบเงิน
-    if (coinsgc < coinCost) return showMiningToast("CoinsGC ไม่พอ!", "#ff4b2b");
+    if (userData.coinsgc < coinCost) return showMiningToast("CoinsGC ไม่พอ!", "#ff4b2b");
 
     // 3. ฟังก์ชันเช็คแร่ (ย้ายมาประกาศข้างบนเพื่อให้เรียกใช้ง่ายๆ)
     const checkOwned = (type, minPropValue) => {
@@ -3231,19 +3231,21 @@ async function requestRepair(itemId, slotName) {
 
         const result = await response.json();
         if (result.success) {
-            // อัปเดตค่าในเครื่อง
             item.currentDurability = item.maxDurability;
-            coinsgc -= coinCost;
+            
+            // 🚩 อย่าลืมหักเงินใน Object เดิมด้วยครับ
+            userData.coinsgc -= coinCost; 
+            
             if (result.inventory) playerInventory = result.inventory; 
             
             showMiningToast(`${item.name} ซ่อมแซมเสร็จสิ้น!`, "#38ef7d");
-            openRepairMenu(); // รีเฟรชหน้าจอซ่อม
-        } else {
-            showMiningToast(result.message || "ซ่อมไม่สำเร็จ", "#ff4b2b");
+            openRepairMenu(); 
+            
+            // อัปเดตหน้าจอเงิน (ถ้ามีฟังก์ชัน)
+            if (typeof updateTopHUD === 'function') updateTopHUD(); 
         }
     } catch (e) { 
         console.error("Repair error:", e);
-        showMiningToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "#ff4b2b");
     }
 }
 
