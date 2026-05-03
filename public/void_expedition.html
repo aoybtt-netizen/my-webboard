@@ -3185,21 +3185,31 @@ async function requestRepair(itemId, slotName) {
 
     // 🚩 3. ฟังก์ชันนับแร่แบบเช็คเกรด (ปรับปรุงจาก countItemInInv ของกัปตัน)
     const countQualifiedMinerals = (type, minGrade) => {
-        return playerInventory
-            .filter(i => {
-                // เช็คประเภท (รองรับทั้ง tech และ technology)
-                const isType = (i.type === type || (type === 'technology' && i.type === 'technology') || (type === 'tech' && i.type === 'technology'));
-                if (!isType) return false;
+    return playerInventory.filter(i => {
+        // 1. เช็คประเภทแร่ (Mapping tech -> technology)
+        const isType = (i.type === type || (type === 'tech' && i.type === 'technology') || (type === 'technology' && i.type === 'technology'));
+        if (!isType) return false;
 
-                // เช็คเกรด (Properties) 
-                // metal ดู i.properties.metal | tech ดู i.properties.tech
-                const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
-                const grade = i.properties ? (Number(i.properties[propKey]) || 0) : 0;
-                
-                return grade >= Number(minGrade); // ต้องเกรดเท่ากับหรือมากกว่า
-            })
-            .reduce((sum, i) => sum + (i.quantity || 1), 0);
-    };
+        // 2. ดึงค่าพลังแร่ (เช็คทั้ง Root และใน properties)
+        const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
+        
+        // ลองดึงจาก Root ก่อน ถ้าไม่มีค่อยดึงจาก properties
+        const gradeFromRoot = i[propKey]; 
+        const gradeFromProps = i.properties ? i.properties[propKey] : 0;
+        const finalGrade = Number(gradeFromRoot || gradeFromProps || 0);
+
+        const isQualified = finalGrade >= Number(minGrade);
+
+        // 🚩 Console Log เพื่อดูว่าแร่ก้อนไหนผ่านหรือไม่ผ่าน
+        if (isType && !isQualified) {
+            console.log(`❌ แร่ ${i.name} ตกเกรด: มีพลัง ${finalGrade} แต่ต้องการ ${minGrade}`);
+        } else if (isType && isQualified) {
+            console.log(`✅ แร่ ${i.name} ผ่าน: มีพลัง ${finalGrade} (ต้องการ ${minGrade}) จำนวน ${i.quantity || 1}`);
+        }
+
+        return isQualified;
+    }).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+};
 
     // 4. เช็คจำนวนแร่ที่มี (เกรดต้องถึง)
     const curMetal = countQualifiedMinerals('metal', r.metal);
