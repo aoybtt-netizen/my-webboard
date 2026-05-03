@@ -2190,34 +2190,50 @@ app.post('/api/:mode/game/sell-item', async (req, res) => {
 });
 
 //9.3
-app.post('/api/:mode/game/repair-item', async (req, res) => {
-    const { username, itemId, slotName, repairAmount, coinCost, reqMinerals } = req.body;
+app.post('/api/:mode/game/repair-equipped', async (req, res) => {
+    const { username, slotName, coinCost, needed } = req.body;
     const db = getDB(req.params.mode);
 
     try {
         const user = await db.findOne({ username });
+        if (!user) return res.status(404).json({ success: false });
+
+        let inventory = user.inventory || [];
         
-        // 1. หักเงิน
-        let updateOps = { $inc: { coinsgc: -coinCost } };
+        // 🚩 ฟังก์ชันช่วยหักจำนวนไอเทมในคลัง (แบบกองรวมหรือกองแยก)
+        const deductMineral = (types, amount) => {
+            for (let i = 0; i < inventory.length && amount > 0; i++) {
+                if (types.includes(inventory[i].type)) {
+                    let canTake = Math.min(inventory[i].quantity, amount);
+                    inventory[i].quantity -= canTake;
+                    amount -= canTake;
+                }
+            }
+            // ลบไอเทมที่เหลือ 0 ออกจากคลัง
+            inventory = inventory.filter(i => i.quantity > 0);
+        };
 
-        // 2. อัปเดต HP ไอเทม
-        if (slotName) {
-            updateOps.$set = { [`equipped.${slotName}.currentDurability`]: user.equipped[slotName].maxDurability };
-        } else {
-            // ถ้าอยู่ใน Inventory (ต้องใช้ arrayFilters)
-            updateOps.$set = { "inventory.$[elem].currentDurability": repairAmount }; // ในที่นี้คือเซ็ตให้เต็ม
-        }
+        // เริ่มหักแร่ตามประเภท
+        deductMineral(['metal'], needed.metal);
+        deductMineral(['energy'], needed.energy);
+        deductMineral(['tech', 'technology'], needed.tech);
 
-        // 3. หักแร่ (ตัวอย่างแบบหักตามลำดับ)
-        // หมายเหตุ: กัปตันต้องเขียน Logic หักแร่จาก Inventory เพิ่มเติมตรงนี้
-        // โดยวนลูปหักแร่ประเภทที่ต้องการจนครบจำนวน reqMinerals
+        // อัปเดตข้อมูลผู้ใช้
+        await db.updateOne(
+            { username },
+            { 
+                $inc: { coinsgc: -coinCost }, // หักเงิน
+                $set: { 
+                    inventory: inventory, // คลังแร่อัปเดตล่าสุด
+                    [`equipped.${slotName}.currentDurability`]: user.equipped[slotName].maxDurability // เลือดเต็ม!
+                }
+            }
+        );
 
-        await db.updateOne({ username }, updateOps, {
-            arrayFilters: [{ "elem.id": itemId }]
-        });
-
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
+        res.json({ success: true, inventory });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // 10. API สำหรับติดตั้งไอเทม (Swap Item)
