@@ -1720,6 +1720,42 @@ app.post('/api/:mode/game/use-item', async (req, res) => {
     }
 });
 
+// 4.3 เมื่อเริ่มเกม: หักชิป และเซ็ตค่าป้อมใน DB เป็น 0 ทันที (Lock)
+app.post('/api/:mode/game/start-defense', async (req, res) => {
+    const { username, itemId } = req.body;
+    const db = getDB(req.params.mode);
+    try {
+        await db.updateOne(
+            { username },
+            { 
+                $inc: { "inventory.$.quantity": -1 }, // หักชิป
+                $set: { 
+                    "turret.currentDurability": 0, // Lock เลือดเป็น 0
+                    "turret.currentEnergy": 0      // Lock พลังงานเป็น 0
+                }
+            },
+            { arrayFilters: [{ "item.id": itemId }] }
+        );
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 4.4 เมื่อจบเกม (สำเร็จ/ล้มเหลว): บันทึกค่าที่เหลือจริงทับลงไป
+app.post('/api/:mode/game/save-turret-status', async (req, res) => {
+    const { username, durability, energy } = req.body;
+    const db = getDB(req.params.mode);
+    try {
+        await db.updateOne(
+            { username },
+            { $set: { 
+                "turret.currentDurability": durability,
+                "turret.currentEnergy": energy 
+            }}
+        );
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
 
 // 5. ระบบฟื้นฟูพลังงาน
 setInterval(async () => {

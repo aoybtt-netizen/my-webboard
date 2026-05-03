@@ -3869,13 +3869,41 @@ function openChipSelection() {
     overlay.style.display = 'flex';
 }
 
-// 🚩 ขั้นตอนที่ 2: เมื่อเลือกชิปแล้ว ถึงจะเริ่มรันระบบ Canvas (startMiningProcess เดิม)
-function confirmChipSelection(name) {
+async function confirmChipSelection(name) {
     activeChipName = name;
-    document.getElementById('chip-selection-overlay').style.display = 'none';
+    const chipToUse = playerInventory.find(i => i.name === name && i.quantity > 0);
     
-    // เริ่มระบบตั้งป้อมทันที
-    startMiningProcess(); 
+    // 🚩 ส่งคำสั่ง Lock สถานะป้อมไปที่ Server ก่อนเริ่มเล่น
+    try {
+        const res = await fetch(`${API_BASE}/game/start-defense`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser, itemId: chipToUse.id })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            chipToUse.quantity -= 1; // หักในเครื่อง
+            document.getElementById('chip-selection-overlay').style.display = 'none';
+            startMiningProcess(); // เข้าสู่การป้องกันโดยใช้ค่า Client เดิมที่มีอยู่
+        }
+    } catch (e) { console.error("Lock error:", e); }
+}
+
+async function syncTurretStatsToServer() {
+    const turret = playerEquipped.turret;
+    try {
+        await fetch(`${API_BASE}/game/save-turret-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                durability: turret.currentDurability,
+                energy: turret.currentEnergy
+            })
+        });
+        console.log("Turret stats synced to server.");
+    } catch (e) { console.error("Sync error:", e); }
 }
 
 
@@ -4872,18 +4900,6 @@ function drawAlien(ctx, alien) {
     ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
 }
 
-
-// D. ระบบรับดาเมจ
-function takeDamage(amount) {
-    drillHealth -= amount;
-    if (drillHealth <= 0) {
-        drillHealth = 0;
-        miningGameActive = false;
-        alert("MISSION FAILED: เครื่องขุดถูกทำลาย!");
-        exitMining();
-    }
-}
-
 // 🩸 ฟังก์ชันสร้างคราบเลือด/สะเก็ด
 function createBloodSplatter(x, y, color = "#800404") {
     for (let i = 0; i < 5; i++) {
@@ -4995,12 +5011,20 @@ function updateMining(currentTime) {
     // เงื่อนไขจบเกม
     if (setupProgress < 100 && miningGameActive && drillHealth > 0 && currentTurret.currentDurability > 0) {
         requestAnimationFrame(updateMining);
-    } else if (setupProgress >= 100) {
+    } 
+    else if (setupProgress >= 100) {
+        // 🚩 กรณีสำเร็จ: ฟังก์ชัน completeSetup จะเป็นตัวเรียก sync อีกทีหนึ่ง
         if (typeof completeSetup === 'function') completeSetup();
-    } else {
-        // กรณีป้อมพังหรือเครื่องขุดพัง
+    } 
+    else {
+        // 🚩 กรณีล้มเหลว (ป้อมพัง หรือ เครื่องเจาะพัง)
         miningGameActive = false;
         showMiningToast("SYSTEM FAILURE: DEFENSE BREACHED", "#ff4b2b");
+
+        // ✅ แทรกตรงนี้ครับ: บันทึกสถานะปัจจุบัน (ที่พังแล้ว) ลงเซิร์ฟเวอร์ทันที
+        if (typeof syncTurretStatsToServer === 'function') {
+            syncTurretStatsToServer();
+        }
     }
 }
 
@@ -5099,14 +5123,12 @@ function updateEffects(ctx) {
 
 // F. เมื่อตั้งเครื่องเสร็จ
 function completeSetup() {
-    // 1. หยุดลูปการทำงานของสเตปตั้งเครื่อง
     miningGameActive = false; 
+    showMiningToast("SET-UP COMPLETE: SAVING STATUS...", "#38ef7d");
 
-    // 2. แจ้งเตือนผู้เล่น (เปลี่ยนจาก alert เป็นการเตรียมเข้าสู่โหมดขุดจริง)
-    showMiningToast("SET-UP COMPLETE: STARTING EXTRACTION", "#38ef7d");
+    // 🚩 บันทึกค่าป้อมที่เหลือจากการสู้รบลงเซิร์ฟเวอร์ก่อนไปขั้นตอนขุด
+    syncTurretStatsToServer(); 
 
-    // 3. เรียกฟังก์ชันเริ่มการขุดสเตป 2 ทันที
-    // เราใส่ setTimeout เล็กน้อย (500ms) เพื่อให้ผู้เล่นมีจังหวะเตรียมตัวก่อนเปลี่ยนหน้าจอ
     setTimeout(() => {
         startMiningProcess2();
     }, 500);
