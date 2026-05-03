@@ -3240,16 +3240,21 @@ async function requestRepair(itemId, slotName) {
     try {
         showMiningToast("SYSTEM REPAIRING...", "#ffcc00");
         const response = await fetch(`${API_BASE}/game/repair-equipped`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: currentUser,
-                slotName: slotName,
-                itemId: itemId,
-                coinCost: craftCost,
-                needed: { metal: r.metal > 0 ? n : 0, energy: r.energy > 0 ? n : 0, tech: r.tech > 0 ? n : 0 }
-            })
-        });
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        username: currentUser,
+        slotName: slotName,
+        itemId: itemId,
+        coinCost: craftCost,
+        needed: { 
+            metal: r.metal > 0 ? n : 0, 
+            energy: r.energy > 0 ? n : 0, 
+            tech: r.tech > 0 ? n : 0 
+        },
+        minGrades: r // 🚩 ส่งเกรดที่ต้องการ { metal, energy, tech } ไปด้วย
+    })
+});
 
         const result = await response.json();
         if (result.success) {

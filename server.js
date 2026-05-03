@@ -2191,7 +2191,7 @@ app.post('/api/:mode/game/sell-item', async (req, res) => {
 
 //9.3
 app.post('/api/:mode/game/repair-equipped', async (req, res) => {
-    const { username, slotName, coinCost, needed } = req.body;
+    const { username, slotName, coinCost, needed, minGrades } = req.body; // 🚩 รับ minGrades เพิ่ม
     const db = getDB(req.params.mode);
 
     try {
@@ -2200,32 +2200,53 @@ app.post('/api/:mode/game/repair-equipped', async (req, res) => {
 
         let inventory = user.inventory || [];
         
-        // 🚩 ฟังก์ชันช่วยหักจำนวนไอเทมในคลัง (แบบกองรวมหรือกองแยก)
-        const deductMineral = (types, amount) => {
+        const deductMineral = (types, amount, minGrade) => {
+            if (amount <= 0) return;
+            
+            // กำหนด key ที่ใช้เช็คค่าพลัง (tech หรือประเภทแร่)
+            const propKey = (types.includes('tech') || types.includes('technology')) ? 'tech' : types[0];
+
             for (let i = 0; i < inventory.length && amount > 0; i++) {
-                if (types.includes(inventory[i].type)) {
-                    let canTake = Math.min(inventory[i].quantity, amount);
-                    inventory[i].quantity -= canTake;
-                    amount -= canTake;
+                const item = inventory[i];
+                if (types.includes(item.type)) {
+                    // 🚩 เช็คเกรดแร่ให้เหมือนหน้าบ้าน (Root หรือ Properties)
+                    const gradeFromRoot = item[propKey];
+                    const gradeFromProps = item.properties ? item.properties[propKey] : 0;
+                    const finalGrade = Number(gradeFromRoot || gradeFromProps || 0);
+
+                    if (finalGrade >= minGrade) {
+                        let q = item.quantity !== undefined ? Number(item.quantity) : 1;
+                        let take = Math.min(q, amount);
+                        
+                        item.quantity = q - take;
+                        amount -= take;
+                    }
                 }
             }
-            // ลบไอเทมที่เหลือ 0 ออกจากคลัง
-            inventory = inventory.filter(i => i.quantity > 0);
         };
 
-        // เริ่มหักแร่ตามประเภท
-        deductMineral(['metal'], needed.metal);
-        deductMineral(['energy'], needed.energy);
-        deductMineral(['tech', 'technology'], needed.tech);
+        // 1. เริ่มหักแร่โดยเช็คเกรดด้วย
+        deductMineral(['metal'], needed.metal, minGrades.metal);
+        deductMineral(['energy'], needed.energy, minGrades.energy);
+        deductMineral(['tech', 'technology'], needed.tech, minGrades.tech);
 
-        // อัปเดตข้อมูลผู้ใช้
+        // 🚩 2. ตัวกรองที่ปลอดภัย (Safe Filter)
+        // ลบเฉพาะ "แร่" ที่เหลือ 0 | ส่วน "อุปกรณ์" หรือไอเทมที่ไม่มี quantity ให้เก็บไว้
+        inventory = inventory.filter(i => {
+            const isMineral = ['metal', 'energy', 'technology'].includes(i.type);
+            if (isMineral) {
+                return i.quantity > 0; // ถ้าเป็นแร่ ต้องมากกว่า 0 ถึงจะเก็บ
+            }
+            return true; // ถ้าไม่ใช่แร่ (เช่น turret, engine) ให้เก็บไว้เสมอ
+        });
+
         await db.updateOne(
             { username },
             { 
-                $inc: { coinsgc: -coinCost }, // หักเงิน
+                $inc: { coinsgc: -coinCost },
                 $set: { 
-                    inventory: inventory, // คลังแร่อัปเดตล่าสุด
-                    [`equipped.${slotName}.currentDurability`]: user.equipped[slotName].maxDurability // เลือดเต็ม!
+                    inventory: inventory,
+                    [`equipped.${slotName}.currentDurability`]: user.equipped[slotName].maxDurability 
                 }
             }
         );
