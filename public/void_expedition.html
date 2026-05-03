@@ -4451,15 +4451,13 @@ function testMiningSystem() {
 }
 
 
-
-
 function updateTurretLogic(currentTime, equippedTurret) {
-    if (!equippedTurret) return;
+    if (!equippedTurret || equippedTurret.currentDurability <= 0) return; // ป้อมพังยิงไม่ได้
 
     let target = null;
-    let minDistance = 500; // ระยะยิงสูงสุด
+    let minDistance = 500; 
 
-    // 1. ค้นหาเอเลี่ยนที่ใกล้ที่สุด (ใช้พิกัดจากป้อมที่ติดตั้ง)
+    // 1. ค้นหาเอเลี่ยนที่ใกล้ที่สุด
     aliens.forEach(alien => {
         const dist = Math.hypot(alien.x - equippedTurret.x, alien.y - equippedTurret.y);
         if (dist < minDistance) {
@@ -4469,24 +4467,25 @@ function updateTurretLogic(currentTime, equippedTurret) {
     });
 
     if (target) {
-        // 2. คำนวณมุมการหันป้อม
+        // 2. หันหน้าป้อมไปหาเป้าหมาย
         const dx = target.x - equippedTurret.x;
         const dy = target.y - equippedTurret.y;
-        // บันทึกมุมไว้ในตัวแปรป้อม เพื่อให้ drawTurretWithBase ดึงไปวาด
         equippedTurret.rotation = Math.atan2(dy, dx) + Math.PI / 2;
 
-        // 3. ตรวจสอบจังหวะการยิง (Fire Rate)
-        // ถ้า lastShot ยังไม่มีค่า ให้ตั้งเป็น 0
+        // 3. ตรวจสอบจังหวะการยิง และ พลังงาน
         if (!equippedTurret.lastShot) equippedTurret.lastShot = 0;
-
-        // แปลง fireRate จากวินาที เป็น มิลลิวินาที (คูณ 1000)
-        // เช่น fireRate 0.5 คือยิงทุกๆ 500ms (2 นัดต่อวิ)
         const fireDelay = equippedTurret.fireRate * 1000;
 
         if (currentTime - equippedTurret.lastShot > fireDelay) {
-            // ส่งข้อมูลความแรง (damage) ไปกับกระสุนด้วย
-            fireBullet(target, equippedTurret.damage); 
-            equippedTurret.lastShot = currentTime;
+            // 🚩 ตรวจสอบว่าพลังงานพอให้ยิงหรือไม่
+            if (equippedTurret.currentEnergy >= equippedTurret.energyShoot) {
+                
+                // หักพลังงานตามค่า energyShoot
+                equippedTurret.currentEnergy -= equippedTurret.energyShoot;
+                
+                fireBullet(target, equippedTurret.damage); 
+                equippedTurret.lastShot = currentTime;
+            }
         }
     }
 }
@@ -4747,6 +4746,7 @@ function createDamageText(x, y, text) {
 // E. อัปเดต UI (Progress Bar)
 function updateMining(currentTime) {
     if (!miningGameActive) return;
+    const currentTurret = playerEquipped.turret; // ดึงป้อมมาใช้
 
     if (!mctx) {
         miningCanvas = document.getElementById('mining-canvas');
@@ -4757,122 +4757,109 @@ function updateMining(currentTime) {
     try {
         mctx.fillStyle = "#0a1a2f";
         mctx.fillRect(0, 0, miningCanvas.width, miningCanvas.height);
-		
-		bloodPools.forEach((pool, index) => {
+        
+        // วาดเลือดเอเลี่ยน (Blood Pools)
+        bloodPools.forEach((pool, index) => {
             pool.life -= pool.fadeRate;
-            if (pool.life <= 0) {
-                bloodPools.splice(index, 1);
-            } else {
+            if (pool.life <= 0) bloodPools.splice(index, 1);
+            else {
                 mctx.save();
                 mctx.globalAlpha = pool.life;
-                mctx.fillStyle = "#520203"; // สีเลือดที่กัปตันตั้งไว้
+                mctx.fillStyle = "#520203";
                 mctx.beginPath();
                 mctx.arc(pool.x, pool.y, pool.size, 0, Math.PI * 2);
                 mctx.fill();
                 mctx.restore();
             }
         });
-        mctx.globalAlpha = 1.0;
 
-        // --- 3.1 สั่งเกิดเอเลี่ยน (Logic เดิมของคุณ) ---
+        // 3.1 สั่งเกิดเอเลี่ยน
         const spawnChance = 0.01 + (currentMiningDist * 0.005);
         if (Math.random() < spawnChance) {
             if (typeof spawnAlien === 'function') spawnAlien();
         }
 
-        // --- 🚩 3.2 สั่งขยับและวาดเอเลี่ยน (ส่วนที่หายไป!) ---
+        // 3.2 ขยับเอเลี่ยนและเช็คการชน
         aliens.forEach((alien, index) => {
             alien.y += alien.speed;
             if (typeof drawAlien === 'function') drawAlien(mctx, alien);
             
-            // เช็คโจมตี
+            // 🚩 เมื่อเอเลี่ยนถึงระยะประชิด (ฐาน/ป้อม)
             if (alien.y > miningCanvas.height - 110) {
-                if (typeof takeDamage === 'function') takeDamage(5);
+                // ลดเลือดป้อมแทน
+                currentTurret.currentDurability -= 5;
+                if (currentTurret.currentDurability < 0) currentTurret.currentDurability = 0;
+                
+                drillHealth -= 2; // แรงกระแทกส่งผลถึงเครื่องขุดเล็กน้อย
                 aliens.splice(index, 1);
             }
         });
 
-        // --- 4. จัดการป้อม (เหมือนเดิม) ---
-        const currentTurret = playerEquipped.turret;
-        if (currentTurret) {
-            if (typeof updateTurretLogic === 'function') {
-                updateTurretLogic(currentTime, currentTurret);
-            }
-            if (typeof drawTurretWithBase === 'function') {
-                drawTurretWithBase(mctx, currentTurret);
-            }
-            if (typeof updateBullets === 'function') {
-                updateBullets(mctx, currentTurret.damage);
-            }
+        // 4. จัดการป้อม
+        if (currentTurret && currentTurret.currentDurability > 0) {
+            updateTurretLogic(currentTime, currentTurret);
+            if (typeof drawTurretWithBase === 'function') drawTurretWithBase(mctx, currentTurret);
+            if (typeof updateBullets === 'function') updateBullets(mctx, currentTurret.damage);
         }
-		
-		miningParticles.forEach((p, index) => {
-			p.x += p.vx;
-			p.y += p.vy;
-			p.life -= 0.03; // ค่อยๆ จางหาย
 
-			if (p.life <= 0) {
-				miningParticles.splice(index, 1);
-			} else {
-				mctx.globalAlpha = p.life;
-				mctx.fillStyle = p.color;
-				mctx.beginPath();
-				mctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-				mctx.fill();
-			}
-		});
+        // วาด Particles และ Damage Text
+        updateEffects(mctx); 
 
-		// 2. วาดและอัปเดตตัวเลขดาเมจ
-		damageTexts.forEach((dt, index) => {
-            dt.y += dt.vy;
-            dt.life -= 0.02;
-            if (dt.life <= 0) {
-                damageTexts.splice(index, 1);
-            } else {
-                mctx.globalAlpha = dt.life;
-                mctx.fillStyle = "#ff4b2b"; // 🚩 สีแดงเนออน
-                mctx.font = "bold 24px Orbitron"; // 🚩 ปรับขนาดใหญ่ขึ้น (จาก 16px เป็น 24px)
-                mctx.textAlign = "center";
-                mctx.fillText(dt.text, dt.x, dt.y);
-            }
-        });
-        mctx.globalAlpha = 1.0;
-		
-
-        // --- 5. อัปเดต UI ---
+        // 5. อัปเดต UI
         setupProgress += 0.05; 
-        if (typeof updateMiningUI === 'function') updateMiningUI();
+        updateMiningUI();
 
     } catch (err) {
-        console.error("ข้ามเฟรมนี้ไปเนื่องจาก Error:", err);
+        console.error("Frame Error:", err);
     }
 
-    if (setupProgress < 100 && miningGameActive && drillHealth > 0) {
+    // เงื่อนไขจบเกม
+    if (setupProgress < 100 && miningGameActive && drillHealth > 0 && currentTurret.currentDurability > 0) {
         requestAnimationFrame(updateMining);
     } else if (setupProgress >= 100) {
         if (typeof completeSetup === 'function') completeSetup();
+    } else {
+        // กรณีป้อมพังหรือเครื่องขุดพัง
+        miningGameActive = false;
+        showMiningToast("SYSTEM FAILURE: DEFENSE BREACHED", "#ff4b2b");
     }
 }
 
 function updateMiningUI() {
-    // 1. อัปเดตหลอดความคืบหน้า (Progress Bar)
     const bar = document.getElementById('mining-bar');
-    if (bar) {
-        bar.style.width = `${setupProgress}%`;
-    }
+    if (bar) bar.style.width = `${setupProgress}%`;
 
-    // 2. อัปเดตข้อความสถานะและเลือดเครื่องขุด
     const statusText = document.getElementById('mining-status');
-    if (statusText) {
-        // แสดงเปอร์เซ็นต์ และ HP ของเครื่องขุด
-        statusText.innerText = `PREPARING DRILL... ${Math.floor(setupProgress)}% (HP: ${drillHealth})`;
-        
-        // ถ้าเลือดเหลือน้อย ให้เปลี่ยนเป็นสีแดงเตือน
-        if (drillHealth < 30) {
-            statusText.style.color = "#ff4b2b"; // neon-red
-        } else {
-            statusText.style.color = "#00d2ff"; // neon-blue
-        }
+    const turret = playerEquipped.turret;
+    
+    if (statusText && turret) {
+        // คำนวณเปอร์เซ็นต์สำหรับเกจ
+        const durPercent = (turret.currentDurability / turret.maxDurability) * 100;
+        const nrgPercent = (turret.currentEnergy / turret.energyMax) * 100;
+
+        statusText.innerHTML = `
+            <div style="margin-bottom:8px;">PREPARING DRILL... ${Math.floor(setupProgress)}%</div>
+            <div style="display:flex; flex-direction:column; gap:5px; font-size:0.7rem; font-family:Orbitron, sans-serif;">
+                <!-- เกจความทนทานป้อม (Durability) -->
+                <div style="display:flex; justify-content:space-between;">
+                    <span>TURRET INTEGRITY:</span>
+                    <span style="color:var(--neon-green)">${turret.currentDurability}/${turret.maxDurability}</span>
+                </div>
+                <div style="width:100%; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; border:1px solid #333;">
+                    <div style="width:${durPercent}%; height:100%; background:var(--neon-green); border-radius:3px; transition:0.3s;"></div>
+                </div>
+
+                <!-- เกจพลังงานป้อม (Energy) -->
+                <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                    <span>TURRET POWER:</span>
+                    <span style="color:#ffcc00">${Math.floor(turret.currentEnergy)}/${turret.energyMax}</span>
+                </div>
+                <div style="width:100%; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; border:1px solid #333;">
+                    <div style="width:${nrgPercent}%; height:100%; background:#ffcc00; border-radius:3px; transition:0.3s;"></div>
+                </div>
+            </div>
+            <div style="margin-top:10px; font-size:0.65rem; color:#888;">DRILL STATUS: HP ${drillHealth}</div>
+        `;
     }
 }
 
