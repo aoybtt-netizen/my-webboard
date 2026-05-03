@@ -3872,7 +3872,10 @@ function openChipSelection() {
 async function confirmChipSelection(name) {
     activeChipName = name;
     const chipToUse = playerInventory.find(i => i.name === name && i.quantity > 0);
-    
+    if (!chipToUse) {
+        alert("ไม่พบชิปที่เลือกในคลังสินค้า!");
+        return;
+    }
     // 🚩 ส่งคำสั่ง Lock สถานะป้อมไปที่ Server ก่อนเริ่มเล่น
     try {
         const res = await fetch(`${API_BASE}/game/start-defense`, {

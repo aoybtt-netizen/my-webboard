@@ -1724,20 +1724,32 @@ app.post('/api/:mode/game/use-item', async (req, res) => {
 app.post('/api/:mode/game/start-defense', async (req, res) => {
     const { username, itemId } = req.body;
     const db = getDB(req.params.mode);
+    
     try {
-        await db.updateOne(
-            { username },
+        // 🚩 แก้ไขจุดนี้: ใส่ "inventory.id": itemId เข้าไปในเงื่อนไขค้นหา
+        const result = await db.updateOne(
             { 
-                $inc: { "inventory.$.quantity": -1 }, // หักชิป
+                username: username, 
+                "inventory.id": itemId  // ระบุเพื่อให้ $ ข้างล่างทำงานได้
+            }, 
+            { 
+                $inc: { "inventory.$.quantity": -1 }, // หักจำนวนชิปชิ้นที่ค้นเจอ
                 $set: { 
-                    "turret.currentDurability": 0, // Lock เลือดเป็น 0
-                    "turret.currentEnergy": 0      // Lock พลังงานเป็น 0
+                    "turret.currentDurability": 0,    // Lock เลือดป้อม
+                    "turret.currentEnergy": 0         // Lock พลังงานป้อม
                 }
-            },
-            { arrayFilters: [{ "item.id": itemId }] }
+            }
         );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, message: "User or Item not found" });
+        }
+
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) { 
+        console.error("Database Error:", e); // ช่วยให้ดู Error ใน Log ของเซิร์ฟเวอร์ได้
+        res.status(500).json({ success: false, error: e.message }); 
+    }
 });
 
 // 4.4 เมื่อจบเกม (สำเร็จ/ล้มเหลว): บันทึกค่าที่เหลือจริงทับลงไป
