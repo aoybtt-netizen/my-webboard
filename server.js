@@ -1722,33 +1722,32 @@ app.post('/api/:mode/game/use-item', async (req, res) => {
 
 // 4.3 เมื่อเริ่มเกม: หักชิป และเซ็ตค่าป้อมใน DB เป็น 0 ทันที (Lock)
 app.post('/api/:mode/game/start-defense', async (req, res) => {
-    const { username, itemId } = req.body;
+    const { username, itemId } = req.body; // itemId ของ Energy Chip
     const db = getDB(req.params.mode);
-    
+
     try {
-        // 🚩 แก้ไขจุดนี้: ใส่ "inventory.id": itemId เข้าไปในเงื่อนไขค้นหา
         const result = await db.updateOne(
             { 
                 username: username, 
-                "inventory.id": itemId  // ระบุเพื่อให้ $ ข้างล่างทำงานได้
+                "inventory.id": itemId // ค้นหา User และชิปในคลัง
             }, 
             { 
-                $inc: { "inventory.$.quantity": -1 }, // หักจำนวนชิปชิ้นที่ค้นเจอ
+                $inc: { "inventory.$.quantity": -1 }, // หักจำนวนชิปพลังงาน
                 $set: { 
-                    "turret.currentDurability": 0,    // Lock เลือดป้อม
-                    "turret.currentEnergy": 0         // Lock พลังงานป้อม
+                    // 🚩 ปรับให้ตรงตามโครงสร้าง equipped ของกัปตัน
+                    "equipped.turret.currentDurability": 0, 
+                    "equipped.turret.currentEnergy": 0 
                 }
             }
         );
 
         if (result.matchedCount === 0) {
-            return res.status(404).json({ success: false, message: "User or Item not found" });
+            return res.json({ success: false, message: "ไม่พบผู้ใช้หรือไอเทม" });
         }
 
         res.json({ success: true });
-    } catch (e) { 
-        console.error("Database Error:", e); // ช่วยให้ดู Error ใน Log ของเซิร์ฟเวอร์ได้
-        res.status(500).json({ success: false, error: e.message }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
@@ -1756,16 +1755,22 @@ app.post('/api/:mode/game/start-defense', async (req, res) => {
 app.post('/api/:mode/game/save-turret-status', async (req, res) => {
     const { username, durability, energy } = req.body;
     const db = getDB(req.params.mode);
+
     try {
         await db.updateOne(
-            { username },
-            { $set: { 
-                "turret.currentDurability": durability,
-                "turret.currentEnergy": energy 
-            }}
+            { username: username },
+            { 
+                $set: { 
+                    // 🚩 บันทึกลงในช่องสวมใส่ (Slot) turret
+                    "equipped.turret.currentDurability": durability,
+                    "equipped.turret.currentEnergy": energy 
+                }
+            }
         );
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 
