@@ -3166,60 +3166,64 @@ function openRepairMenu() {
     overlay.style.display = 'flex';
 }
 
-async function requestRepair(slotName) {
-    const item = playerEquipped[slotName]; // ดึงจากไอเทมที่ติดตั้งอยู่
-    if (!item) return;
+// 🚩 แก้ไข: รับทั้ง itemId และ slotName
+async function requestRepair(itemId, slotName) {
+    // 1. ตรวจสอบก่อนว่าซ่อมชิ้นไหน (รองรับทั้งที่ใส่ไว้ และอาจจะเผื่อในคลังในอนาคต)
+    let item = slotName ? playerEquipped[slotName] : playerInventory.find(i => i.id === itemId);
+    
+    if (!item) {
+        console.error("ไม่พบไอเทมที่จะซ่อม:", itemId, slotName);
+        return;
+    }
 
     const n = item.maxDurability - item.currentDurability; // จำนวนหน่วยที่ต้องซ่อม
-    const coinCost = n * 10; // ค่าซ่อมหน่วยละ 10
+    const coinCost = n * 10;
 
-    // คำนวณแร่ที่ต้องใช้จริง (repairCost x n)
+    // คำนวณแร่ที่ต้องใช้จริง
     const needed = {
         metal: (item.repairCost.metal || 1) * n,
         energy: (item.repairCost.energy || 1) * n,
         tech: (item.repairCost.tech || 1) * n
     };
 
-    // ตรวจสอบเงิน
+    // 2. ตรวจสอบเงิน
     if (coinsgc < coinCost) return showMiningToast("CoinsGC ไม่พอ!", "#ff4b2b");
 
-    // ตรวจสอบแร่ในคลัง (รวมจำนวนจาก stackable items)
+    // 3. ฟังก์ชันเช็คแร่ (ย้ายมาประกาศข้างบนเพื่อให้เรียกใช้ง่ายๆ)
     const checkOwned = (type, minPropValue) => {
-    return playerInventory
-        .filter(i => {
-            // 1. เช็คประเภทแร่ (Mapping tech -> technology)
-            const typeMatch = (i.type === type || (type === 'tech' && i.type === 'technology'));
-            if (!typeMatch) return false;
+        return playerInventory
+            .filter(i => {
+                const typeMatch = (i.type === type || (type === 'tech' && i.type === 'technology'));
+                if (!typeMatch) return false;
 
-            // 2. เช็คคุณภาพแร่ตามเงื่อนไข (ต้องมีค่าพลังใน properties >= ที่ป้อมต้องการ)
-            // ถ้าเป็น metal ต้องดู i.properties.metal
-            // ถ้าเป็น tech ต้องดู i.properties.tech (ตามโครงสร้าง res_t001 ของกัปตัน)
-            const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
-            const qualityMatch = i.properties && (i.properties[propKey] >= minPropValue);
+                const propKey = (type === 'technology' || type === 'tech') ? 'tech' : type;
+                return i.properties && (i.properties[propKey] >= minPropValue);
+            })
+            .reduce((sum, i) => sum + (i.quantity || 0), 0);
+    };
 
-            return qualityMatch;
-        })
-        .reduce((sum, i) => sum + (i.quantity || 0), 0);
-};
+    // 4. ตรวจสอบแร่รายประเภท
+    if (checkOwned('metal', item.repairCost.metal) < needed.metal) 
+        return showMiningToast(`แร่ Metal (เกรด ${item.repairCost.metal}+) ไม่พอ!`, "#ff4b2b");
 
-// --- การเรียกใช้ใน requestRepair ---
-// กัปตันต้องส่งค่าความต้องการขั้นต่ำ (RepairCost) เข้าไปเช็คด้วย
-if (checkOwned('metal', item.repairCost.metal) < needed.metal) 
-    return showMiningToast(`แร่ Metal (เกรด ${item.repairCost.metal}+) ไม่พอ!`, "#ff4b2b");
+    if (checkOwned('energy', item.repairCost.energy) < needed.energy) 
+        return showMiningToast(`แร่ Energy (เกรด ${item.repairCost.energy}+) ไม่พอ!`, "#ff4b2b");
 
-if (checkOwned('energy', item.repairCost.energy) < needed.energy) 
-    return showMiningToast(`แร่ Energy (เกรด ${item.repairCost.energy}+) ไม่พอ!`, "#ff4b2b");
+    if (checkOwned('tech', item.repairCost.tech) < needed.tech) 
+        return showMiningToast(`แร่ Tech (เกรด ${item.repairCost.tech}+) ไม่พอ!`, "#ff4b2b");
 
-if (checkOwned('tech', item.repairCost.tech) < needed.tech) 
-    return showMiningToast(`แร่ Tech (เกรด ${item.repairCost.tech}+) ไม่พอ!`, "#ff4b2b");
-
+    // 5. ส่งข้อมูลซ่อมไปที่ Server
     try {
+        // โชว์ Loading หรือสถานะเบื้องต้น
+        showMiningToast("กำลังซ่อมบำรุง...", "#ffcc00");
+
         const response = await fetch(`${API_BASE}/game/repair-equipped`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: currentUser,
-                slotName: slotName,
+                slotName: slotName, // ส่ง slotName ไปเพื่อให้ server รู้ว่าซ่อมของที่ใส่อยู่
+                itemId: itemId,     // ส่ง itemId ไปเผื่อกรณีซ่อมของในคลัง
                 coinCost: coinCost,
                 needed: needed
             })
@@ -3227,14 +3231,20 @@ if (checkOwned('tech', item.repairCost.tech) < needed.tech)
 
         const result = await response.json();
         if (result.success) {
+            // อัปเดตค่าในเครื่อง
             item.currentDurability = item.maxDurability;
             coinsgc -= coinCost;
-            // อัปเดตคลังแร่ในเครื่อง (ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์มาทับจะแม่นยำที่สุด)
-            playerInventory = result.inventory; 
+            if (result.inventory) playerInventory = result.inventory; 
+            
             showMiningToast(`${item.name} ซ่อมแซมเสร็จสิ้น!`, "#38ef7d");
-            openRepairMenu(); // รีเฟรชหน้าต่างซ่อม
+            openRepairMenu(); // รีเฟรชหน้าจอซ่อม
+        } else {
+            showMiningToast(result.message || "ซ่อมไม่สำเร็จ", "#ff4b2b");
         }
-    } catch (e) { console.error("Repair error:", e); }
+    } catch (e) { 
+        console.error("Repair error:", e);
+        showMiningToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "#ff4b2b");
+    }
 }
 
 async function buyRefillEnergy() {
