@@ -2305,7 +2305,7 @@ async function syncStaticStars() {
         }
         
         const data = await res.json();
-        
+        userData = data;
         if (!data.gameNickname) {
             const nickModal = document.getElementById('nickname-modal');
             if(nickModal) nickModal.style.display = 'flex';
@@ -3125,7 +3125,7 @@ function openRepairMenu() {
 
     // 🚩 1. เช็คสเตตัสตัวยานหลัก (Ship Stats)
     // สมมติว่ากัปตันเก็บ shipStats ไว้ในตัวแปร userData.shipStats
-    const ship = userData.shipStats; 
+    const ship = shipStats;
     if (ship && ship.currentDurability < (ship.maxDurability - 2)) {
         repairableItems.push({
             id: 'MAIN_SHIP',
