@@ -1661,6 +1661,22 @@ button:hover { opacity: 0.8; }
 </div>
 
 
+<div id="repair-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; align-items:center; justify-content:center; flex-direction:column; backdrop-filter: blur(8px);">
+    <h3 style="color:#ff4b2b; letter-spacing:2px; margin-bottom:5px;">REPAIR STATION</h3>
+    <p style="font-size:0.7rem; color:rgba(255,255,255,0.6); margin-bottom:20px;">ซ่อมบำรุงอุปกรณ์ด้วยแร่และ Coins</p>
+
+    <div id="repair-list-container" style="width:90%; max-width:400px; max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:10px;">
+        <!-- รายการไอเทมที่จะซ่อมจะเด้งขึ้นตรงนี้ -->
+    </div>
+
+    <button onclick="document.getElementById('repair-overlay').style.display='none'" 
+            style="margin-top:20px; background:transparent; border:1px solid #666; color:#aaa; padding:8px 25px; cursor:pointer; border-radius:5px; font-family:'Orbitron';">
+        CLOSE
+    </button>
+</div>
+
+
+
 
 <div id="shop-modal" class="menu-overlay" onclick="closeShop(event)">
     <div class="glass-panel shop-panel" onclick="event.stopPropagation()">
@@ -2782,13 +2798,17 @@ async function openStarDetail() {
     if (q === 0 && r === 0) {
         // ✅ อยู่ที่สถานีหลัก (0,0): โชว์ข้อความ และ "ปุ่มเข้าร้านค้า"
         actionBtn = `
-            <p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
-                <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
-            </p>
-            <button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="openShop()">
-                <i class="fas fa-shopping-cart"></i> ENTER MARKET STATION
-            </button>
-        `;
+        <p style="font-size:0.7rem; color:var(--neon-green); margin-top:15px; text-align:center;">
+            <i class="fas fa-home"></i> คุณอยู่ที่สถานีฐานหลัก
+        </p>
+        <button class="auth-btn" style="margin-top:10px; background:var(--neon-blue); color:#000;" onclick="openShop()">
+            <i class="fas fa-shopping-cart"></i> ENTER MARKET STATION
+        </button>
+        <!-- 🚩 เพิ่มปุ่มซ่อมตรงนี้ -->
+        <button class="auth-btn" style="margin-top:8px; background:#ff4b2b; color:#fff;" onclick="openRepairMenu()">
+            <i class="fas fa-tools"></i> REPAIR STATION
+        </button>
+    `;
     } else {
         // ⚒️ อยู่ที่ดาวดวงอื่นที่ไม่ใช่ (0,0): โชว์ปุ่มขุดแร่ และปุ่มวาร์ปกลับบ้าน
         actionBtn = `<button class="auth-btn" style="margin-top:15px; background:#ffcc00; color:#000;" onclick="openChipSelection()">
@@ -3093,6 +3113,116 @@ async function buyItem(itemId) {
     } catch (err) {
         console.error("Purchase Error:", err);
     }
+}
+
+function openRepairMenu() {
+    const container = document.getElementById('repair-list-container');
+    const overlay = document.getElementById('repair-overlay');
+    if (!container || !overlay) return;
+
+    container.innerHTML = "";
+    let repairableItems = [];
+
+    // 1. ดึงจากไอเทมที่ติดตั้ง (Equipped)
+    for (let slot in playerEquipped) {
+        const item = playerEquipped[slot];
+        if (item && item.currentDurability < (item.maxDurability - 2)) {
+            repairableItems.push({ ...item, isEquipped: true, slotName: slot });
+        }
+    }
+
+    // 2. ดึงจากคลัง (Inventory)
+    const brokenInInventory = playerInventory.filter(item => 
+        item.maxDurability && item.currentDurability < (item.maxDurability - 2)
+    );
+    repairableItems = repairableItems.concat(brokenInInventory);
+
+    if (repairableItems.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color:#888; font-size:0.8rem; margin-top:20px;">อุปกรณ์ทุกอย่างปกติดี กัปตัน!</div>`;
+    } else {
+        repairableItems.forEach(item => {
+            // คำนวณจำนวนที่ต้องซ่อม (N)
+            const n = item.maxDurability - item.currentDurability;
+            const coinCost = n * 10;
+            
+            container.innerHTML += `
+                <div style="background:rgba(255,255,255,0.05); border:1px solid #444; padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="flex:1;">
+                        <div style="font-size:0.75rem; font-weight:bold; color:#00d2ff;">${item.name} ${item.isEquipped ? '<span style="color:#38ef7d;">[EQUIPPED]</span>' : ''}</div>
+                        <div style="font-size:0.65rem; color:#aaa;">INTEGRITY: ${item.currentDurability}/${item.maxDurability} (-${n})</div>
+                        <div style="font-size:0.6rem; color:#ffcc00; margin-top:4px;">
+                            COST: ${coinCost} Coins + Minerals (M:${item.repairCost.metal*n}, E:${item.repairCost.energy*n}, T:${item.repairCost.tech*n})
+                        </div>
+                    </div>
+                    <button onclick="requestRepair('${item.id}', ${item.isEquipped ? `'${item.slotName}'` : 'null'})" 
+                            style="background:#ff4b2b; color:#fff; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-size:0.7rem; font-family:'Orbitron';">
+                        REPAIR
+                    </button>
+                </div>
+            `;
+        });
+    }
+
+    overlay.style.display = 'flex';
+}
+
+async function requestRepair(itemId, slotName) {
+    // 1. หาไอเทมตัวที่จะซ่อม
+    let item;
+    if (slotName) item = playerEquipped[slotName];
+    else item = playerInventory.find(i => i.id === itemId);
+
+    if (!item) return;
+
+    const n = item.maxDurability - item.currentDurability;
+    const coinCost = n * 10;
+
+    // 2. ตรวจสอบทรัพยากร (แร่)
+    // คัดกรองแร่จาก Inventory
+    const getMineralCount = (types) => playerInventory
+        .filter(i => types.includes(i.type))
+        .reduce((sum, i) => sum + (i.quantity || 0), 0);
+
+    const metalOwned = getMineralCount(['metal']);
+    const energyOwned = getMineralCount(['energy']);
+    const techOwned = getMineralCount(['tech', 'technology']);
+
+    // ตรวจสอบเงื่อนไข
+    if (coinsgc < coinCost) return alert("เงินไม่พอซ่อมครับกัปตัน!");
+    if (metalOwned < item.repairCost.metal * n) return alert("แร่ Metal ไม่พอ!");
+    if (energyOwned < item.repairCost.energy * n) return alert("แร่ Energy ไม่พอ!");
+    if (techOwned < item.repairCost.tech * n) return alert("แร่ Technology ไม่พอ!");
+
+    // 3. ส่งไปที่ Server เพื่อหักทรัพยากรและซ่อมจริง
+    try {
+        const response = await fetch(`${API_BASE}/game/repair-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser,
+                itemId: itemId,
+                slotName: slotName, // ส่ง slotName ไปถ้าเป็นของที่ติดตั้งอยู่
+                repairAmount: n,
+                coinCost: coinCost,
+                reqMinerals: {
+                    metal: item.repairCost.metal * n,
+                    energy: item.repairCost.energy * n,
+                    tech: item.repairCost.tech * n
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            // อัปเดต Client ทันที
+            item.currentDurability = item.maxDurability;
+            coinsgc -= coinCost;
+            
+            // (ต้องไปเขียนโค้ดหักแร่ใน Inventory ฝั่ง Client เพิ่มด้วยเพื่อให้ UI ตรงกัน)
+            showMiningToast("REPAIR COMPLETED: INTEGRITY 100%", "#38ef7d");
+            openRepairMenu(); // รีเฟรชรายการ
+        }
+    } catch (e) { console.error("Repair error:", e); }
 }
 
 async function buyRefillEnergy() {

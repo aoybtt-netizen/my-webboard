@@ -2189,6 +2189,37 @@ app.post('/api/:mode/game/sell-item', async (req, res) => {
     }
 });
 
+//9.3
+app.post('/api/:mode/game/repair-item', async (req, res) => {
+    const { username, itemId, slotName, repairAmount, coinCost, reqMinerals } = req.body;
+    const db = getDB(req.params.mode);
+
+    try {
+        const user = await db.findOne({ username });
+        
+        // 1. หักเงิน
+        let updateOps = { $inc: { coinsgc: -coinCost } };
+
+        // 2. อัปเดต HP ไอเทม
+        if (slotName) {
+            updateOps.$set = { [`equipped.${slotName}.currentDurability`]: user.equipped[slotName].maxDurability };
+        } else {
+            // ถ้าอยู่ใน Inventory (ต้องใช้ arrayFilters)
+            updateOps.$set = { "inventory.$[elem].currentDurability": repairAmount }; // ในที่นี้คือเซ็ตให้เต็ม
+        }
+
+        // 3. หักแร่ (ตัวอย่างแบบหักตามลำดับ)
+        // หมายเหตุ: กัปตันต้องเขียน Logic หักแร่จาก Inventory เพิ่มเติมตรงนี้
+        // โดยวนลูปหักแร่ประเภทที่ต้องการจนครบจำนวน reqMinerals
+
+        await db.updateOne({ username }, updateOps, {
+            arrayFilters: [{ "elem.id": itemId }]
+        });
+
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
 // 10. API สำหรับติดตั้งไอเทม (Swap Item)
 app.post('/api/:mode/game/install-item', async (req, res) => {
     const { mode } = req.params;
