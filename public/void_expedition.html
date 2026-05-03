@@ -1450,8 +1450,9 @@ button:hover { opacity: 0.8; }
         <button class="btn-mining-action btn-left" onclick="console.log('BOMB!')">
             <i class="fas fa-bomb"></i> <span>BOMB</span>
         </button>
-        <button class="btn-mining-action btn-right" onclick="buyRefillEnergy()">
-            <i class="fas fa-bolt"></i> <span>REFILL</span>
+        <button id="mining-refill-btn" class="btn-mining-action btn-right" onclick="useEnergyChipInGame()">
+            <i class="fas fa-bolt"></i>
+            <span id="refill-btn-text">REFILL</span>
         </button>
 
     </div>
@@ -3828,6 +3829,55 @@ function showArrivalUI(starData, q, r) {
     }
 }
 
+function openChipSelection() {
+    const container = document.getElementById('chip-choices-container');
+    const overlay = document.getElementById('chip-selection-overlay');
+    if (!container || !overlay) return;
+
+    // กรองเฉพาะ Energy Chip ที่มีจำนวนมากกว่า 0
+    const allChips = playerInventory.filter(item => item.type === 'energy chip' && (item.quantity || 0) > 0);
+
+    // รวมกลุ่มชิปชื่อเดียวกัน
+    const groupedChips = allChips.reduce((acc, chip) => {
+        if (!acc[chip.name]) {
+            acc[chip.name] = { ...chip, totalQuantity: 0 };
+        }
+        acc[chip.name].totalQuantity += chip.quantity;
+        return acc;
+    }, {});
+
+    const uniqueChips = Object.values(groupedChips);
+
+    if (uniqueChips.length === 0) {
+        alert("คุณไม่มี Energy Chip! กรุณาไปซื้อที่ Shop ก่อนเริ่มภารกิจป้องกัน");
+        return;
+    }
+
+    container.innerHTML = "";
+    uniqueChips.forEach(chip => {
+        container.innerHTML += `
+            <div class="mining-chip-card" onclick="confirmChipSelection('${chip.name}')" 
+                 style="background:rgba(0,210,255,0.1); border:1px solid #00d2ff; padding:15px; border-radius:10px; text-align:center; cursor:pointer; width:120px; transition:0.3s;">
+                <img src="images/energy/${chip.imgKey}.png" onerror="this.src='images/EnergyChip0.png'" style="width:40px;">
+                <div style="font-size:0.75rem; margin-top:5px; font-weight:bold; color:#fff;">${chip.name}</div>
+                <div style="color:#38ef7d; font-size:0.65rem;">+${chip.energyValue} Energy</div>
+                <div style="font-size:0.6rem; color:rgba(255,255,255,0.6);">คลัง: ${chip.totalQuantity}</div>
+            </div>
+        `;
+    });
+
+    overlay.style.display = 'flex';
+}
+
+// 🚩 ขั้นตอนที่ 2: เมื่อเลือกชิปแล้ว ถึงจะเริ่มรันระบบ Canvas (startMiningProcess เดิม)
+function confirmChipSelection(name) {
+    activeChipName = name;
+    document.getElementById('chip-selection-overlay').style.display = 'none';
+    
+    // เริ่มระบบตั้งป้อมทันที
+    startMiningProcess(); 
+}
+
 
 function startMiningProcess() {
     currentMiningDist = getHexDistance(0, 0, playerQ, playerR);
@@ -4124,48 +4174,78 @@ function backToMap() {
 async function useEnergyChipInGame() {
     if (!activeChipName) return;
 
-    // 🚩 1. ค้นหาไอเทมชิ้นแรกในคลังที่มีชื่อตรงกับที่เลือกไว้
+    // 1. ค้นหาชิปที่เลือกไว้
     const chipToUse = playerInventory.find(i => i.name === activeChipName && i.quantity > 0);
-
     if (!chipToUse) {
-        showMiningToast(`${activeChipName} หมดเกลี้ยงแล้ว!`, "#ff4b2b");
+        showMiningToast(`${activeChipName} หมดคลังแล้ว!`, "#ff4b2b");
         return;
     }
 
+    // 2. ตรวจสอบสถานะ: เติม "ป้อม" หรือ เติม "เครื่องขุด"
+    let targetSystem = "";
+    const refillAmount = chipToUse.energyValue || 50;
+
+    if (setupProgress < 100) {
+        // --- อยู่ในขั้นตอนตั้งป้อม ---
+        const turret = playerEquipped.turret;
+        if (turret.currentEnergy >= turret.energyMax) {
+            showMiningToast("TURRET ENERGY FULL", "#ffcc00");
+            return;
+        }
+        turret.currentEnergy = Math.min(turret.energyMax, turret.currentEnergy + refillAmount);
+        targetSystem = "TURRET";
+    } else {
+        // --- อยู่ในขั้นตอนการขุดแร่ (Phase 2) ---
+        // สมมติว่ากัปตันใช้ตัวแปร drillEnergy ในขั้นตอนที่ 2
+        if (typeof drillEnergy !== 'undefined') {
+            if (drillEnergy >= 100) {
+                showMiningToast("DRILL ENERGY FULL", "#ffcc00");
+                return;
+            }
+            drillEnergy = Math.min(100, drillEnergy + refillAmount);
+            targetSystem = "DRILL";
+        }
+    }
+
+    // 3. ส่งไปหักไอเทมที่ Server
     try {
         const response = await fetch(`${API_BASE}/game/use-item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                username: currentUser, 
-                itemId: chipToUse.id // ส่ง ID ของชิ้นที่เจอไปหัก
-            })
+            body: JSON.stringify({ username: currentUser, itemId: chipToUse.id })
         });
 
         const result = await response.json();
         if (result.success) {
-            // 2. อัปเดตพลังงาน
-            drillEnergy = Math.min(100, drillEnergy + (chipToUse.energyValue || 50));
+            chipToUse.quantity -= 1; // หักในเครื่อง
+            showMiningToast(`RECHARGED ${targetSystem}: +${refillAmount}`, "#38ef7d");
             
-            // 3. หักจำนวนใน Local Inventory
-            chipToUse.quantity -= 1;
-            
-            // 4. คำนวณยอดรวมที่เหลือของชื่อนี้เพื่ออัปเดต UI
-            const remainingTotal = playerInventory
-                .filter(i => i.name === activeChipName)
-                .reduce((sum, i) => sum + i.quantity, 0);
-
-            document.getElementById('refill-text').innerText = `USE ${activeChipName} (${remainingTotal})`;
-            
-            if (remainingTotal <= 0) {
-                document.getElementById('refill-btn').style.opacity = "0.4";
-            }
-
-            showMiningToast(`RECHARGED: +${chipToUse.energyValue}`, "#00d2ff");
-            updateActiveMiningUI();
+            // อัปเดต UI ของปุ่มและเกจ
+            updateRefillButtonUI();
+            if (setupProgress < 100) updateMiningUI(); // อัปเดตเกจ 3 เส้น
+            else if (typeof updateActiveMiningUI === 'function') updateActiveMiningUI(); // อัปเดต UI โหมดขุด
         }
     } catch (e) {
         console.error("Refill error:", e);
+    }
+}
+
+// ฟังก์ชันอัปเดตจำนวนคงเหลือที่ปุ่ม
+function updateRefillButtonUI() {
+    const remainingTotal = playerInventory
+        .filter(i => i.name === activeChipName)
+        .reduce((sum, i) => sum + i.quantity, 0);
+
+    const btnText = document.getElementById('refill-btn-text');
+    const btn = document.getElementById('mining-refill-btn');
+    
+    if (btnText) {
+        btnText.innerText = `${activeChipName.split(' ')[0]} (${remainingTotal})`;
+    }
+
+    if (remainingTotal <= 0 && btn) {
+        btn.style.opacity = "0.4";
+        btn.style.pointerEvents = "none";
     }
 }
 
@@ -4976,6 +5056,9 @@ function updateMiningUI() {
 
         </div>
     `;
+    if (activeChipName) {
+        updateRefillButtonUI();
+    }
 }
 
 // ฟังก์ชันสำหรับวาดและอัปเดตเอฟเฟกต์ทั้งหมด (Particles และ Damage Numbers)
