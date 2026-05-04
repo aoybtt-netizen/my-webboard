@@ -4201,25 +4201,36 @@ function startMiningProcess2() {
 function selectChipGroupName(chipName) {
     activeChipName = chipName;
     
-    // หาข้อมูลตัวอย่างเพื่อเอารูปและค่าพลังงานมาโชว์
     const sampleChip = playerInventory.find(i => i.name === chipName);
     if (!sampleChip) return;
 
     document.getElementById('chip-selection-overlay').style.display = 'none';
     
-    // อัปเดตรูปปุ่มในเกม
     const chipImg = document.getElementById('active-chip-icon');
-    if (chipImg) chipImg.src = `images/${sampleChip.imgKey}.png`;
+    if (chipImg) chipImg.src = `images/energy/${sampleChip.imgKey}.png`; // 🚩 แก้ path ให้ถูก
     
-    // นับจำนวนรวมทั้งหมดของชื่อนี้เพื่อโชว์ที่ปุ่ม
     const totalQty = playerInventory
         .filter(i => i.name === chipName)
-        .reduce((sum, i) => sum + i.quantity, 0);
+        .reduce((sum, i) => sum + (i.quantity || 1), 0);
         
     document.getElementById('refill-text').innerText = `USE ${chipName} (${totalQty})`;
 
-    // เริ่มขุด
-    drillEnergy = 100;
+    // 🚩 [NEW] ดึงข้อมูลสว่านที่ใส่อยู่มาคำนวณพลังงาน
+    const myDrill = playerEquipped['drill'];
+    if (!myDrill) {
+        alert("SYSTEM ERROR: ไม่พบเครื่องขุดแร่ที่ติดตั้งไว้!");
+        return;
+    }
+
+    // เติมพลังงาน: (พลังงานปัจจุบัน + พลังงานชิป) แต่ต้องไม่เกินค่า Max ของสว่าน
+    const currentE = myDrill.currentEnergy || 0;
+    const maxE = myDrill.energyMax || 100;
+    const chipPower = sampleChip.energyValue || 50;
+
+    drillEnergy = Math.min(maxE, currentE + chipPower);
+    
+    // ⚠️ ทริควิศวกร: ในอนาคตกัปตันต้องเรียก API หัก Chip 1 อันออกจากคลังตรงนี้ด้วยนะครับ!
+
     miningActive = true;
     lastEnergyTick = Date.now();
     enterMiningView();
@@ -4228,7 +4239,6 @@ function selectChipGroupName(chipName) {
 function enterMiningView() {
     console.log("🚀 Entering Deep-Core Extraction View...");
 
-    // 1. ซ่อนทุกหน้าจอ (View) และเปิดหน้าจอขุดแร่จริง
     document.querySelectorAll('.view').forEach(v => {
         v.classList.remove('active');
         v.style.display = 'none';
@@ -4240,15 +4250,15 @@ function enterMiningView() {
         miningView.classList.add('active');
     }
 
-    // 2. ตั้งค่าสถานะเริ่มต้นของเครื่องมือ
-    drillHP = 100;
+    // 🚩 [NEW] โหลด Status สว่านปัจจุบัน
+    const myDrill = playerEquipped['drill'];
+    
+    drillHP = myDrill.currentDurability || 100; // เลือดปัจจุบัน
+    drillMaxHP = myDrill.maxDurability || 100;  // เลือดสูงสุด (เผื่อเอาไปทำหลอดเลือด UI)
     drillHeat = 0;
     miningProgress = 0;
 
-    // 3. อัปเดต UI ทันทีหนึ่งครั้งเพื่อให้ค่าโชว์ถูกต้อง
     updateActiveMiningUI();
-
-    // 4. 🚩 เริ่มต้น Loop เกมขุดแร่ (updateMining2)
     requestAnimationFrame(updateMining2);
 }
 
@@ -4256,60 +4266,73 @@ function enterMiningView() {
 function updateMining2() {
     if (!miningActive) return;
 
-    // 1. ความร้อนและกรดเพิ่มขึ้นตามเวลา
+    // 🚩 ดึงสเตตัสของสว่านมากาง
+    const myDrill = playerEquipped['drill'];
+    const acidResist = myDrill.acidResist || 0;
+    const heatResist = myDrill.heatResist || 0;
+    
+    // อัตรากินไฟ (consumption ยิ่งน้อยยิ่งดี สมมติสเปค 100 คือกินปกติวิละ 1)
+    const powerDrain = (myDrill.consumption || 100) / 100; 
+    
+    // ความเร็วการขุด (scanRate ยิ่งเยอะยิ่งเสร็จไว สมมติฐานคือ 0.02)
+    const baseMineSpeed = 0.02 + ((myDrill.scanRate || 0) * 0.001);
+
+    // 1. ความร้อนและกรดเพิ่มขึ้นตามเวลา (หักล้างด้วย Resist ของสว่าน)
     if (!isShieldActive) {
-        if (currentStarTemp > 0) drillHeat += (currentStarTemp / 1500);
-        if (currentStarAcid > 0) drillHP -= (currentStarAcid / 3000);
+        // สูตร: (ความร้อนดาว - กันความร้อนสว่าน) ถ้าติดลบให้เป็น 0
+        const netHeat = Math.max(0, currentStarTemp - heatResist);
+        drillHeat += (netHeat / 1500);
+
+        // สูตร: (กรดดาว - กันกรดสว่าน) ถ้าติดลบให้เป็น 0
+        const netAcid = Math.max(0, currentStarAcid - acidResist);
+        drillHP -= (netAcid / 3000);
     }
     
     // ความร้อนธรรมชาติ (เครื่องรัน)
     drillHeat += 0.05;
-    if (drillHeat > 80) drillHP -= 0.1;
+    if (drillHeat > 80) drillHP -= 0.1; // โอเวอร์ฮีท เลือดลด
 
-    // ลดพลังงาน 1 หน่วยต่อ 1 วินาที
+    // 2. ลดพลังงานตามค่า Consumption สว่าน
     const now = Date.now();
     if (now - lastEnergyTick >= 1000) {
-		drillEnergy -= 1;
-		lastEnergyTick = now;
+        drillEnergy -= powerDrain; // 🚩 ใช้ค่าสเตตัสกินไฟ
+        lastEnergyTick = now;
 
-		if (drillEnergy <= 0) {
-			drillEnergy = 0;
-			miningActive = false;
-			alert("ENERGY DEPLETED: การเจาะล้มเหลว ระบบหยุดทำงาน!");
-			backToMap(); // เรียกใช้ฟังก์ชันที่เราเพิ่งเพิ่ม
-			return;
-		}
-		updateActiveMiningUI();
-	}
+        if (drillEnergy <= 0) {
+            drillEnergy = 0;
+            miningActive = false;
+            alert("ENERGY DEPLETED: การเจาะล้มเหลว ระบบหยุดทำงาน!");
+            backToMap(); 
+            return;
+        }
+        updateActiveMiningUI();
+    }
 
-    // 3. ระบบสุ่มแร่โผล่มา (นับถอยหลัง)
-    miningProgress += 0.02; 
+    // 3. ระบบความคืบหน้าการขุด 🚩 (ความเร็วตามสเปคสว่าน)
+    miningProgress += baseMineSpeed; 
     nextMineralScanTime -= 0.016; 
     if (nextMineralScanTime <= 0) {
         showMineralChoices(); 
         nextMineralScanTime = 10 + Math.random() * 5; 
     }
 
-    // 4. วาดภาพเครื่องขุดลงบน Canvas ---
+    // 4. วาดภาพเครื่องขุด (โค้ดเดิมกัปตัน)
     const mCanvas = document.getElementById('active-mining-canvas');
     if (mCanvas) {
         const mctx = mCanvas.getContext('2d');
-        // ปรับขนาด Canvas ให้เต็มจอเสมอ
         if (mCanvas.width !== window.innerWidth) {
             mCanvas.width = window.innerWidth;
             mCanvas.height = window.innerHeight;
         }
         mctx.clearRect(0, 0, mCanvas.width, mCanvas.height);
         
-        // ส่งค่า isInZone เป็น true ถ้าความร้อนยังไม่เกิน 80 (ถ้าเกินสว่านจะสั่นแรงและมีไฟลุก)
         const isSafe = drillHeat < 80;
         drawDrillScene(mctx, mCanvas, isSafe);
     }
 
-    // 5. อัปเดต UI อื่นๆ
     updateActiveMiningUI(); 
     
-    // เช็คแพ้ชนะ และรัน Loop ต่อ
+    // 5. เช็คแพ้ชนะ
     if (drillHP <= 0) {
         finishMining(false);
     } else if (miningProgress >= 100) {
