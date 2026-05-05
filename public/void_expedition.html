@@ -1614,7 +1614,7 @@ button:hover { opacity: 0.8; }
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <button class="mining-skill-btn" onclick="useCoolant()" style="border-color:#ffaa00; color:#ffaa00;">
-            <i class="fas fa-snowflake"></i> COOLANT (-30 HEAT)
+            <i class="fas fa-snowflake"></i> COOLANT (-10 HEAT)
         </button>
         <button class="mining-skill-btn" onclick="useShield()" style="border-color:#38ef7d; color:#38ef7d;">
             <i class="fas fa-shield-alt"></i> SHIELD (5s PROTECT)
@@ -4511,18 +4511,21 @@ function updateActiveMiningUI() {
 }
 
 function useCoolant() {
-    if (drillEnergy >= 30) {
-        drillEnergy -= 30;
-        drillHeat = Math.max(0, drillHeat - 30);
-        showToast("COOLANT DEPLOYED", "#ffaa00");
+    const myDrill = playerEquipped['drill'];
+    const hResist = myDrill ? (myDrill.heatResist || 0) : 0;
+    const coolingPower = 10 + hResist;
+    if (drillEnergy >= 10) {
+        drillEnergy -= 10;
+        drillHeat = Math.max(0, drillHeat - coolingPower);
+        showToast(`COOLANT DEPLOYED: -${coolingPower.toFixed(1)}°C`, "#ffaa00");
     } else {
         showToast("NOT ENOUGH ENERGY", "#ff0000");
     }
 }
 
 function useShield() {
-    if (drillEnergy >= 50) {
-        drillEnergy -= 50;
+    if (drillEnergy >= 10) {
+        drillEnergy -= 10;
         isShieldActive = true;
         showToast("SHIELD ACTIVE", "#38ef7d");
         setTimeout(() => { isShieldActive = false; }, 5000); // กันดาเมจ 5 วิ
