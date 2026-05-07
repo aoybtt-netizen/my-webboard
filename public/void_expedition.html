@@ -4289,7 +4289,8 @@ function updateMining2() {
     }
     
     // ความร้อนธรรมชาติ (เครื่องรัน)
-    drillHeat += 0.05;
+    const passiveHeat = Math.max(0.01, 0.05 - (hResist * 0.001));
+    drillHeat += passiveHeat;
     if (drillHeat > 80) drillHP -= 0.1; // โอเวอร์ฮีท เลือดลด
 
     // 2. ลดพลังงานตามค่า Consumption สว่าน
