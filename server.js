@@ -1860,12 +1860,24 @@ app.post('/api/:mode/map/explore', async (req, res) => {
             updateData.name = uniqueName;
             // 🚩 -----------------------------------
 
+            // --- ส่วนสุ่มสภาพแวดล้อมใน Explore API ---
             if (starNum <= 14) {
+                // สายกรด (เหมือนเดิม)
                 updateData.corrosionAcid = Math.random() < 0.65 ? Math.floor(Math.random() * 91) + 10 : 0;
             } else {
-                if (starNum <= 16) updateData.temperature = Math.floor(Math.random() * 101) + 100;
-                else if (starNum <= 18) updateData.temperature = Math.floor(Math.random() * 201) + 200;
-                else updateData.temperature = Math.floor(Math.random() * 201) + 400;
+                // 🚩 สายความร้อน (ปรับสเกลใหม่ตามบัญชีกัปตัน)
+                if (starNum <= 16) {
+                // สุ่มช่วง 50 - 100
+                updateData.temperature = Math.floor(Math.random() * 51) + 50;
+                } 
+                else if (starNum <= 18) {
+                // สุ่มช่วง 101 - 150
+                updateData.temperature = Math.floor(Math.random() * 50) + 101;
+                } 
+                else {
+                // starNum 19 (ดาวแรร์): สุ่มช่วง 151 - 200
+                updateData.temperature = Math.floor(Math.random() * 50) + 151;
+                }
             }
 
             const getDist = (q1, r1, q2, r2) => {

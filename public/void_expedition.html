@@ -2790,7 +2790,7 @@ async function openStarDetail() {
         }
     }
 
-    // --- 3. คำนวณระยะทางและปุ่ม (คงเดิม) ---
+    // --- 3. คำนวณระยะทางและปุ่ม 
     const dist = getHexDistance(playerQ, playerR, q, r);
     let actionBtn = "";
     if (dist === 0) {
@@ -3510,8 +3510,9 @@ function startTravel(targetQ, targetR) {
     if (mainHud) mainHud.style.display = 'none';
 
     // คำนวณความยาก
-    const distFromStation = getHexDistance(0, 0, targetQ, targetR); 
-    travelDangerLevel = Math.min(distFromStation, 10); 
+    const distFromStation = getHexDistance(0, 0, targetQ, targetR);
+    let calculatedDanger = Math.floor(distFromStation / 10) + 1;
+    travelDangerLevel = Math.min(calculatedDanger, 10);
     if (travelDangerLevel < 1) travelDangerLevel = 1;
 
     // เซ็ตค่าเริ่มต้นการเดินทาง
