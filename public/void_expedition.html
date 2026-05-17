@@ -3620,11 +3620,16 @@ function renderInventoryGrid() {
 
 
 
-// ปรับฟังก์ชันปิดให้กันการคลิกโดนแผงข้างในแล้วปิดเอง
-function closeStarDetail(e) {
-    if (!e || e.target.id === 'star-detail-modal' || e.target.className.includes('fa-times') || e.target.className.includes('auth-btn')) {
-        document.getElementById('star-detail-modal').style.display = 'none';
-    }
+function closeStarDetail(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const starModal = document.getElementById('star-detail-modal');
+    if (starModal) starModal.style.display = 'none';
+
+    const mainSidebar = document.querySelector('.left-command-sidebar');
+    if (mainSidebar) mainSidebar.style.display = 'flex';
+    
+    const topHud = document.querySelector('.hud-top');
+    if (topHud) topHud.style.display = 'flex';
 }
 
 
