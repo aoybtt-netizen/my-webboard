@@ -3781,8 +3781,11 @@ function selectItemToAnalyze(item, imgSrc) {
     let statHTML = "";
     let isModule = false;
 
+    // ดึงชื่อผู้สร้างออกมารอไว้ใช้ด้านบน (ถ้าไม่มีให้ขึ้นดักไว้ว่าเป็น Unknown)
+    const creatorName = item.createdBy || 'Unknown Captain';
+
     // ====================================================================
-    // 1. แตกข้อมูลตามพิมพ์เขียว 4 ชนิดหลักของกัปตัน (Dynamic Module Stats)
+    // 🚩 1. แตกข้อมูลตามพิมพ์เขียว 4 ชนิดหลัก (Dynamic Module Stats)
     // ====================================================================
     if (item.type === "ship engine") {
         isModule = true;
@@ -3823,26 +3826,31 @@ function selectItemToAnalyze(item, imgSrc) {
     }
 
     // ====================================================================
-    // 2. แฝงสเตตัสโครงสร้างส่วนกลาง (ถ้าไอเทมนั้นเป็นอุปกรณ์สวมใส่)
+    // 🚩 2. ประกอบสเตตัสโครงสร้างส่วนกลาง (ปรับการแสดงผลเป็น x/x ตามสั่ง)
     // ====================================================================
     if (isModule) {
+        // เปลี่ยนคำสั่งแสดงผลเลเวลรวบยอดเป็นรูปแบบ LV. x / x ตามดีไซน์ที่ต้องการ
         let commonHTML = `
-            <div class="detail-row"><span class="detail-label">MODULE TIER:</span> <span class="detail-value" style="color:#ffcc00;">LV.${item.level || 1}</span></div>
-            <div class="detail-row"><span class="detail-label">MAX UPGRADES:</span> <span class="detail-value">${item.maxUpgrades || 1}</span></div>
-            <div class="detail-row"><span class="detail-label">INTEGRITY:</span> <span class="detail-value" style="color:${(item.currentDurability / item.maxDurability) > 0.3 ? 'var(--neon-green)' : 'var(--neon-red)'};">${item.currentDurability} / ${item.maxDurability} HP</span></div>
+            <div class="detail-row">
+                <span class="detail-label">UPGRADE TIER:</span> 
+                <span class="detail-value" style="color:#ffcc00;">LV. ${item.level || 1} / ${item.maxUpgrades || 1}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">INTEGRITY:</span> 
+                <span class="detail-value" style="color:${(item.currentDurability / item.maxDurability) > 0.3 ? 'var(--neon-green)' : 'var(--neon-red)'};">${item.currentDurability} / ${item.maxDurability} HP</span>
+            </div>
             <hr style="border:0; border-top:1px solid rgba(0,210,255,0.15); margin:4px 0;">
         `;
         
         let repairString = item.repairCost ? `M:${item.repairCost.metal} E:${item.repairCost.energy} T:${item.repairCost.tech}` : "NONE";
         let footerHTML = `
             <hr style="border:0; border-top:1px solid rgba(0,210,255,0.15); margin:4px 0;">
-            <div class="detail-row"><span class="detail-label">MANUFACTURER:</span> <span class="detail-value" style="color:rgba(255,255,255,0.6); font-size:0.65rem;">${item.createdBy || 'Unknown'}</span></div>
             <div class="detail-row"><span class="detail-label">MAINTENANCE:</span> <span class="detail-value" style="color:#aaa; font-size:0.65rem;">${repairString}</span></div>
         `;
         
         statHTML = commonHTML + statHTML + footerHTML;
     } 
-    // Fallback กรณีเป็นแร่ทรัพยากรทั่วไป
+    // Fallback กรณีเป็นแร่ทรัพยากรดิบทั่วไป
     else {
         if (item.quantity) {
             statHTML += `<div class="detail-row"><span class="detail-label">TOTAL CARGO QTY:</span> <span class="detail-value" style="color:var(--neon-green);">${item.quantity.toLocaleString()} UNITS</span></div>`;
@@ -3853,7 +3861,7 @@ function selectItemToAnalyze(item, imgSrc) {
     }
 
     // ====================================================================
-    // 3. ประกอบอินเตอร์เฟสปุ่มควบคุม (Action Buttons)
+    // 🚩 3. ประกอบอินเตอร์เฟสปุ่มควบคุม (Action Buttons)
     // ====================================================================
     let actionButtons = `<button class="btn-wire btn-blue" style="width:100%; padding:10px;" onclick="closeShipInventory()">CLOSE REPORT</button>`;
     
@@ -3866,11 +3874,19 @@ function selectItemToAnalyze(item, imgSrc) {
         `;
     }
 
-    // 🚩 4. พ่นข้อมูลเข้าบล็อก คอนโทรลด้วยคลาสครอบสกรอลล์ .analyzer-scroll-box
+    // ====================================================================
+    // 🚩 4. พ่นอินเตอร์เฟสออกสู่หน้าจอ
+    // ====================================================================
+    const cleanItemName = item.name.split(' (')[0];
+
     analyzer.innerHTML = `
-        <h3 style="margin-top:0; margin-bottom:5px; color:var(--neon-blue); letter-spacing:1px; font-size:0.95rem; text-transform:uppercase;">${item.name.split(' (')[0]}</h3>
+        <h3 style="margin-top:0; margin-bottom:2px; color:var(--neon-blue); letter-spacing:1px; font-size:0.95rem; text-transform:uppercase;">${cleanItemName}</h3>
         
-        <div class="img-square" style="width:75px; height:75px; margin:10px auto; background:rgba(255,255,255,0.03); border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(0,210,255,0.15); flex-shrink:0;">
+        <div style="font-size:0.65rem; color:rgba(255,255,255,0.4); font-family:'Orbitron', monospace; margin-bottom:10px; letter-spacing:0.5px;">
+            BY: <span style="color:var(--neon-green); opacity:0.8;">${creatorName.toUpperCase()}</span>
+        </div>
+        
+        <div class="img-square" style="width:75px; height:75px; margin:0 auto 10px auto; background:rgba(255,255,255,0.03); border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(0,210,255,0.15); flex-shrink:0;">
             <img src="${imgSrc}" style="max-width:80%; max-height:80%; object-fit:contain;" onerror="this.src='images/meteorite/meteor0.png'">
         </div>
         
