@@ -3618,16 +3618,67 @@ function closeShop(e) {
 
 
 //ITEM
+// ฟังก์ชันตอนกดเปิดคลังสินค้า
 function openShipInventory() {
+    // 1. สั่งซ่อนเมนูฝั่งซ้าย และหน้าต่างโปรไฟล์หลักทันทีเพื่อเคลียร์จอ
+    const mainSidebar = document.querySelector('.left-command-sidebar');
+    if (mainSidebar) mainSidebar.style.display = 'none';
     const profileModal = document.getElementById('profile-modal');
-    if (profileModal) {
-        profileModal.style.display = 'none';
+    if (profileModal) profileModal.style.display = 'none';
+
+    // 2. สั่งวาดรายการกรดไอเทมฝั่งซ้าย (เรียกฟังก์ชันเรนเดอร์เดิมของกัปตัน)
+    if (typeof updateInventoryGrid === 'function') {
+        updateInventoryGrid(); 
+    } else {
+        // กรณีเทสโครงสร้างเปล่าๆ ให้ล้างตัวขวาไว้รอ
+        resetCargoAnalyzer();
     }
-    const inventoryModal = document.getElementById('ship-inventory-modal');
-    if (inventoryModal) {
-        inventoryModal.style.display = 'flex';
-    }
-    renderInventoryGrid();
+
+    // 3. เปิดหน้าต่างคลัง
+    document.getElementById('ship-inventory-modal').style.display = 'flex';
+}
+
+// ฟังก์ชันล้างหน้าจอฝั่งขวาให้กลับไปเป็นสถานะว่าง
+function resetCargoAnalyzer() {
+    document.getElementById('cargo-item-analyzer').innerHTML = `
+        <div style="margin: auto; opacity: 0.3;">
+            <i class="fas fa-radiation" style="font-size: 3rem; margin-bottom: 15px; color: var(--neon-blue);"></i>
+            <div style="font-size: 0.75rem; font-family: 'Orbitron';">NO ITEM SELECTED</div>
+            <div style="font-size: 0.6rem; margin-top: 5px;">Awaiting Cargo Scanner Signal...</div>
+        </div>`;
+}
+
+// ฟังก์ชันตอนกดยกเลิก/ปิด คลังสินค้า
+function closeShipInventory(event) {
+    if (event && event.target !== event.currentTarget) return;
+
+    document.getElementById('ship-inventory-modal').style.display = 'none';
+
+    // 🚩 เรียกแผงควบคุมหลักฝั่งซ้ายกลับคืนสู่หน้าจอ
+    const mainSidebar = document.querySelector('.left-command-sidebar');
+    if (mainSidebar) mainSidebar.style.display = 'flex';
+}
+
+// 💡 ทริคเสริม: ตอนกัปตันเขียนฟังก์ชันจิ้มไอเทม ให้ยิง HTML ไปแสดงที่ฝั่งขวาตรงๆ ได้เลยแบบนี้ครับ
+function selectItemToAnalyze(item) {
+    const analyzer = document.getElementById('cargo-item-analyzer');
+    
+    // คำนวณความสามารถย่อย หรือดึงค่าพลังมาโชว์
+    let statHTML = `<div>TYPE: ${item.type.toUpperCase()}</div>`;
+    if(item.quantity) statHTML += `<div>QTY: ${item.quantity}</div>`;
+    
+    analyzer.innerHTML = `
+        <h3 style="margin-top: 0; color: var(--neon-blue); letter-spacing: 1px; font-size:1rem;">${item.name}</h3>
+        <div class="img-square" style="width: 100px; height: 100px; margin: 15px auto; background: rgba(255,255,255,0.05); border-radius: 10px; display: flex; align-items: center; justify-content: center; border:1px solid rgba(0,210,255,0.2);">
+            <img src="${item.imgKey || 'images/ore/default.png'}" style="max-width:80%; max-height:80%; object-fit:contain;">
+        </div>
+        <div style="text-align: left; width: 100%; font-size: 0.75rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; font-family: monospace; flex:1; overflow-y:auto;">
+            ${statHTML}
+        </div>
+        <div style="width:100%; margin-top:15px; display:flex; gap:10px;">
+            <button class="btn-wire btn-green" style="padding:10px; flex:1;">USE / EQUIP</button>
+        </div>
+    `;
 }
 
 function renderInventoryGrid() {
