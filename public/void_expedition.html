@@ -1515,10 +1515,6 @@ button:hover { opacity: 0.8; }
 
 
         <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px; display: flex; flex-direction: column; gap: 12px;">
-            <div class="detail-row" onclick="openShipInventory()" style="cursor:pointer; border: 1px solid rgba(0,210,255,0.1); padding: 8px; border-radius: 8px;">
-				<span class="detail-label"><i class="fas fa-boxes"></i> คลังไอเทมในยาน</span>
-				<span class="detail-value" id="prof-inv-count" style="color: var(--neon-blue);">0 ชิ้น</span>
-			</div>
 
             <div class="detail-row" style="align-items: flex-start;">
                 <span class="detail-label">งบประมาณส่วนตัว</span>
@@ -1639,6 +1635,11 @@ button:hover { opacity: 0.8; }
             <div class="sidebar-nav-btn" onclick="openShipMenu()">
                 <i class="fas fa-rocket"></i>
                 <span>Ship System</span>
+            </div>
+
+            <div class="sidebar-nav-btn" onclick="openShipInventory()">
+                <i class="fas fa-boxes"></i>
+                <span>Item</span>
             </div>
             
             <div class="sidebar-nav-btn" id="btn-map" onclick="toggleMapMode()">
