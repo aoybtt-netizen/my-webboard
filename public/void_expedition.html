@@ -65,21 +65,8 @@
         .bg-dimmed { filter: brightness(0.2) blur(3px); }
         #hex-canvas { position: fixed; top: 0; left: 0; z-index: 5; opacity: 0; transition: opacity 0.4s ease; pointer-events: auto; }
     
-	.hud-top {
-    position: fixed;
-    top: calc(10px + env(safe-area-inset-top)); /* รองรับรอยบากมือถือ */
-    left: 15px;
-    right: 15px;
-    display: flex;
-    justify-content: space-between; /* แยกซ้าย-ขวา */
-    align-items: flex-start;
-    z-index: 1000;
-    pointer-events: none; /* เพื่อไม่ให้ขวางการคลิกแผนที่ในจุดที่ไม่มีปุ่ม */
-}
+	
 
-.hud-top > * {
-    pointer-events: auto; /* เปิดให้ปุ่มใน HUD คลิกได้ปกติ */
-}
 
     /* ฝั่งแสดงทรัพยากร (ขวาบน) */
 .resource-bar {
@@ -103,14 +90,92 @@
 
 
         /* --- Left Side Navigation (Sci-Fi Vertical Sidebar) --- */
-        .left-nav { 
-            position: fixed; 
-            top: 100px; /* เยื้องลงมาจากหลอดโปรไฟล์ด้านบนพอดี */
-            left: 15px; 
-            display: flex; 
-            flex-direction: column; /* เปลี่ยนจากเรียงแนวนอนเป็นแนวตั้ง */
-            gap: 12px; 
-            z-index: 1000; 
+        /* --- Integrated Command Sidebar --- */
+        .left-command-sidebar {
+            position: fixed;
+            top: calc(15px + env(safe-area-inset-top)); /* รองรับรอยบากมือถือ */
+            left: 15px;
+            width: 220px; /* ความกว้างที่เหมาะสำหรับจัดวางข้อมูลโปรไฟล์คู่กับปุ่ม */
+            background: var(--glass);
+            border: 1px solid rgba(0, 210, 255, 0.25);
+            border-left: 4px solid var(--neon-blue); /* เส้นนีออนหลักฝั่งซ้ายของแถบ */
+            border-radius: 16px;
+            z-index: 4500;
+            box-shadow: 5px 5px 25px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            overflow: hidden; /* 🚩 สำคัญมาก: เพื่อให้เหลี่ยมปุ่มไม่ล้นกรอบโค้งมน */
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+        }
+
+        /* ส่วนหัว: ข้อมูลนักบิน (Profile Header) */
+        .sidebar-profile-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid rgba(0, 210, 255, 0.2);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .sidebar-profile-header:hover {
+            background: rgba(0, 210, 255, 0.08);
+        }
+
+        /* กลุ่มแถบตัวเลือกที่ติดกัน (Connected Button Group) */
+        .sidebar-nav-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ปุ่มเมนูที่เชื่อมติดกัน */
+        .sidebar-nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px; /* ไอคอนอยู่ข้าง ข้อความอยู่ขวา */
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(0, 210, 255, 0.1); /* เส้นคั่นบางๆ ระหว่างตัวเลือก */
+            color: var(--neon-blue);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+
+        /* ลบเส้นใต้ปุ่มของตัวเลือกอันสุดท้าย */
+        .sidebar-nav-btn:last-child {
+            border-bottom: none;
+        }
+
+        /* ตั้งค่าความกว้างไอคอนให้เท่ากันเพื่อความตรงแนว */
+        .sidebar-nav-btn i {
+            width: 20px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        /* เอฟเฟกต์ดีดสไลด์เมื่อผู้เล่นนำเมาส์ไปชี้ */
+        .sidebar-nav-btn:hover {
+            background: rgba(0, 210, 255, 0.12);
+            color: #fff;
+            padding-left: 22px; /* ดันข้อความไปขวาเล็กน้อยแบบสมูท */
+        }
+
+        /* สไตล์ปุ่มตัดการเชื่อมต่อ (Logout) */
+        .sidebar-nav-btn.btn-danger-zone {
+            color: var(--neon-red);
+            border-top: 1px solid rgba(255, 75, 43, 0.15); /* เพิ่มเส้นแยกให้ชัดเจน */
+        }
+        .sidebar-nav-btn.btn-danger-zone:hover {
+            background: rgba(255, 75, 43, 0.15);
+            color: #fff;
         }
         
         .nav-btn { 
@@ -1294,25 +1359,7 @@ button:hover { opacity: 0.8; }
 
 
 
-<div class="hud-top">
-    <div class="profile-trigger" onclick="openMenu('profile-modal')">
-        <div class="profile-icon">
-            <i class="fas fa-user-astronaut"></i>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 2px;">
-            <span id="display-nickname" style="font-weight: bold; font-size: 0.85rem; letter-spacing: 1px; line-height: 1.1;">LOADING...</span>
-            
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <span style="font-size: 0.65rem; color: #ffca28; display: flex; align-items: center; gap: 3px;">
-                    <i class="fas fa-coins"></i> <span id="display-gc">0</span>
-                </span>
-                <span style="font-size: 0.65rem; color: var(--neon-green); display: flex; align-items: center; gap: 3px;">
-                    <i class="fas fa-bolt"></i> <span id="display-energy-small">0%</span>
-                </span>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 
 <div id="profile-modal" class="menu-overlay" onclick="closeMenus(event)">
@@ -1422,24 +1469,49 @@ button:hover { opacity: 0.8; }
         <div id="game-background"></div>
         <canvas id="hex-canvas"></canvas>
         
-        <div class="left-nav">
-            <div class="nav-btn" onclick="openShipMenu()">
-                <i class="fas fa-rocket" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
-                <span>ship</span>
+        <div class="left-command-sidebar">
+        
+        <div class="sidebar-profile-header" onclick="openMenu('profile-modal')">
+            <div class="profile-icon">
+                <i class="fas fa-user-astronaut"></i>
             </div>
-            <div class="nav-btn" id="btn-map" onclick="toggleMapMode()">
-                <i class="fas fa-map-marked-alt" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
-                <span>map</span>
-            </div>
-            <div class="nav-btn" onclick="document.getElementById('shop-modal').style.display='flex'">
-                <i class="fas fa-shopping-cart" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
-                <span>market</span>
-            </div>
-            <div class="nav-btn" onclick="handleLogout()" style="border-color: var(--neon-red); border-left-color: var(--neon-red); color: var(--neon-red);">
-                <i class="fas fa-power-off" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
-                <span>logout</span>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span id="display-nickname" style="font-weight: bold; font-size: 0.85rem; letter-spacing: 1px; line-height: 1.1;">LOADING...</span>
+                
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="font-size: 0.65rem; color: #ffca28; display: flex; align-items: center; gap: 3px;">
+                        <i class="fas fa-coins"></i> <span id="display-gc">0</span>
+                    </span>
+                    <span style="font-size: 0.65rem; color: var(--neon-green); display: flex; align-items: center; gap: 3px;">
+                        <i class="fas fa-bolt"></i> <span id="display-energy-small">0%</span>
+                    </span>
+                </div>
             </div>
         </div>
+
+        <div class="sidebar-nav-group">
+            <div class="sidebar-nav-btn" onclick="openShipMenu()">
+                <i class="fas fa-rocket"></i>
+                <span>Ship System</span>
+            </div>
+            
+            <div class="sidebar-nav-btn" id="btn-map" onclick="toggleMapMode()">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>Galaxy Map</span>
+            </div>
+            
+            <div class="sidebar-nav-btn" onclick="document.getElementById('shop-modal').style.display='flex'">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Market Station</span>
+            </div>
+            
+            <div class="sidebar-nav-btn btn-danger-zone" onclick="handleLogout()">
+                <i class="fas fa-power-off"></i>
+                <span>Disconnect</span>
+            </div>
+        </div>
+
+    </div>
 		
 		<div id="map-coordinate-display" 
      onclick="openStarDetail()" 
