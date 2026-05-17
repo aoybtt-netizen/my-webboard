@@ -3781,17 +3781,18 @@ function selectItemToAnalyze(item, imgSrc) {
     let statHTML = "";
     let isModule = false;
 
-    // ร่างตัวแปรสำหรับป้าย Subtitle ใต้ชื่อไอเทมหลัก
+    // ร่างตัวแปรสำหรับป้าย Subtitle ใต้ชื่อไอเทมหลัก และตัวแปรดักเช็ครายชื่อ
     let subtitleHTML = "";
+    let rawOwnerName = "";
+    let ownerType = ""; // 'craft' หรือ 'mine'
 
     // ====================================================================
     // 🚩 1. แตกข้อมูลตามพิมพ์เขียว 4 ชนิดหลัก (Dynamic Module Stats)
     // ====================================================================
     if (item.type === "ship engine") {
         isModule = true;
-        // จัดเตรียมป้ายผู้สร้างสำหรับฝั่งโมดูล
-        const creatorName = item.createdBy || 'Unknown Captain';
-        subtitleHTML = `BY: <span style="color:var(--neon-green); opacity:0.8;">${creatorName.toUpperCase()}</span>`;
+        rawOwnerName = item.createdBy || 'Unknown';
+        ownerType = 'craft';
 
         statHTML += `
             <div class="detail-row"><span class="detail-label">ENGINE POWER:</span> <span class="detail-value" style="color:var(--neon-blue);">${item.power} Pw</span></div>
@@ -3800,8 +3801,8 @@ function selectItemToAnalyze(item, imgSrc) {
     } 
     else if (item.type === "drill engine" || item.type === "drill") {
         isModule = true;
-        const creatorName = item.createdBy || 'Unknown Captain';
-        subtitleHTML = `BY: <span style="color:var(--neon-green); opacity:0.8;">${creatorName.toUpperCase()}</span>`;
+        rawOwnerName = item.createdBy || 'Unknown';
+        ownerType = 'craft';
 
         statHTML += `
             <div class="detail-row"><span class="detail-label">DRILL ENERGY:</span> <span class="detail-value" style="color:#00d2ff;">${item.currentEnergy} / ${item.energyMax} EN</span></div>
@@ -3813,8 +3814,8 @@ function selectItemToAnalyze(item, imgSrc) {
     } 
     else if (item.type === "card barrier") {
         isModule = true;
-        const creatorName = item.createdBy || 'Unknown Captain';
-        subtitleHTML = `BY: <span style="color:var(--neon-green); opacity:0.8;">${creatorName.toUpperCase()}</span>`;
+        rawOwnerName = item.createdBy || 'Unknown';
+        ownerType = 'craft';
 
         statHTML += `
             <div class="detail-row"><span class="detail-label">SHIELD BARRIER:</span> <span class="detail-value" style="color:var(--neon-blue);">${item.shield} / ${item.maxShield} SP</span></div>
@@ -3825,8 +3826,8 @@ function selectItemToAnalyze(item, imgSrc) {
     } 
     else if (item.type === "turret") {
         isModule = true;
-        const creatorName = item.createdBy || 'Unknown Captain';
-        subtitleHTML = `BY: <span style="color:var(--neon-green); opacity:0.8;">${creatorName.toUpperCase()}</span>`;
+        rawOwnerName = item.createdBy || 'Unknown';
+        ownerType = 'craft';
 
         statHTML += `
             <div class="detail-row"><span class="detail-label">AMMO ENERGY:</span> <span class="detail-value" style="color:#ffcc00;">${item.currentEnergy} / ${item.energyMax} JE</span></div>
@@ -3863,12 +3864,11 @@ function selectItemToAnalyze(item, imgSrc) {
         statHTML = commonHTML + statHTML + footerHTML;
     } 
     // ====================================================================
-    // 🚩 3. ระบบกรองกรณีดึงแร่ทรัพยากร (ดึงค่าฝั่งแร่ดิบ พร้อมสแกนหาผู้ค้นพบ)
+    // 🚩 3. ระบบกรองกรณีดึงแร่ทรัพยากร (ฝั่งแร่ดิบ)
     // ====================================================================
     else {
-        // ดึงตัวแปรอ้างอิงคนเจาะคนแรกตาม Schema หลังบ้าน (item.firstMinedBy)
-        const discovererName = item.firstMinedBy || 'Unknown Surveyor';
-        subtitleHTML = `DISCOVERED BY: <span style="color:#ffcc00; opacity:0.9;">${discovererName.toUpperCase()}</span>`;
+        rawOwnerName = item.firstMinedBy || 'Unknown';
+        ownerType = 'mine';
 
         if (item.quantity) {
             statHTML += `<div class="detail-row"><span class="detail-label">TOTAL CARGO QTY:</span> <span class="detail-value" style="color:var(--neon-green);">${item.quantity.toLocaleString()} UNITS</span></div>`;
@@ -3877,7 +3877,6 @@ function selectItemToAnalyze(item, imgSrc) {
         if (item.energy > 0) statHTML += `<div class="detail-row"><span class="detail-label">ENERGY VALUE:</span> <span class="detail-value" style="color:#00d2ff;">+${item.energy} TV</span></div>`;
         if (item.tech > 0) statHTML += `<div class="detail-row"><span class="detail-label">TECH VALUE:</span> <span class="detail-value" style="color:#a326ff;">+${item.tech} TV</span></div>`;
         
-        // แนบวันที่ขุดเจอลงกล่องข้อมูลแร่ด้วยเพื่อความสมบูรณ์แบบ
         if (item.minedAt) {
             const dateStr = new Date(item.minedAt).toLocaleDateString();
             statHTML += `
@@ -3888,7 +3887,29 @@ function selectItemToAnalyze(item, imgSrc) {
     }
 
     // ====================================================================
-    // 🚩 4. ประกอบอินเตอร์เฟสปุ่มควบคุม (Action Buttons)
+    // 🚩 4. [NEW LOGIC] ตรวจเช็กชื่อแบบชาญฉลาด ถ้าเจอคำว่า UNKNOWN ให้ซ่อนทิ้งเลย
+    // ====================================================================
+    const lowerName = rawOwnerName.toLowerCase();
+    
+    // ถ้าไม่มีคำว่า unknown อยู่ในชื่อเลย (แปลว่าเป็นชื่อคนจริงๆ) ให้สร้างป้ายข้อมูลประกอบ
+    if (!lowerName.includes('unknown')) {
+        if (ownerType === 'craft') {
+            subtitleHTML = `<div style="font-size:0.6rem; color:rgba(255,255,255,0.4); font-family:'Orbitron', monospace; margin-bottom:10px; letter-spacing:0.5px;">
+                                BY: <span style="color:var(--neon-green); opacity:0.8;">${rawOwnerName.toUpperCase()}</span>
+                            </div>`;
+        } else if (ownerType === 'mine') {
+            subtitleHTML = `<div style="font-size:0.6rem; color:rgba(255,255,255,0.4); font-family:'Orbitron', monospace; margin-bottom:10px; letter-spacing:0.5px;">
+                                DISCOVERED BY: <span style="color:#ffcc00; opacity:0.9;">${rawOwnerName.toUpperCase()}</span>
+                            </div>`;
+        }
+    } else {
+        // 🔒 กรณีเป็น Unknown: ปล่อยให้ตัวแปร subtitleHTML ว่างไว้ (เพื่อซ่อนระยะบรรทัดและตัวหนังสือออกไปจากจอ)
+        // และเพื่อความสวยงาม เราแอบเติม margin-bottom สั้นๆ ให้ชื่อไอเทมหลักไม่ติดกับรูปภาพเกินไป
+        subtitleHTML = `<div style="margin-bottom:10px;"></div>`;
+    }
+
+    // ====================================================================
+    // 🚩 5. ประกอบอินเตอร์เฟสปุ่มควบคุม (Action Buttons)
     // ====================================================================
     let actionButtons = `<button class="btn-wire btn-blue" style="width:100%; padding:10px;" onclick="closeShipInventory()">CLOSE REPORT</button>`;
     
@@ -3902,16 +3923,14 @@ function selectItemToAnalyze(item, imgSrc) {
     }
 
     // ====================================================================
-    // 🚩 5. พ่นอินเตอร์เฟสออกสู่หน้าจอ
+    // 🚩 6. พ่นอินเตอร์เฟสออกสู่หน้าจอ
     // ====================================================================
     const cleanItemName = item.name.split(' (')[0];
 
     analyzer.innerHTML = `
         <h3 style="margin-top:0; margin-bottom:2px; color:var(--neon-blue); letter-spacing:1px; font-size:0.95rem; text-transform:uppercase;">${cleanItemName}</h3>
         
-        <div style="font-size:0.6rem; color:rgba(255,255,255,0.4); font-family:'Orbitron', monospace; margin-bottom:10px; letter-spacing:0.5px;">
-            ${subtitleHTML}
-        </div>
+        ${subtitleHTML}
         
         <div class="img-square" style="width:75px; height:75px; margin:0 auto 10px auto; background:rgba(255,255,255,0.03); border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(0,210,255,0.15); flex-shrink:0;">
             <img src="${imgSrc}" style="max-width:80%; max-height:80%; object-fit:contain;" onerror="this.src='images/meteorite/meteor0.png'">
