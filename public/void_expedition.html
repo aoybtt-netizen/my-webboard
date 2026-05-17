@@ -3024,6 +3024,12 @@ async function openStarDetail() {
         ${mineralHTML}
         ${actionBtn}
     `;
+
+    const mainSidebar = document.querySelector('.left-command-sidebar');
+    if (mainSidebar) mainSidebar.style.display = 'none';
+    
+    const topHud = document.querySelector('.hud-top');
+    if (topHud) topHud.style.display = 'none';
     
     document.getElementById('star-detail-modal').style.display = 'flex';
 }
