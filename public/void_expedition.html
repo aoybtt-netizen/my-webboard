@@ -3743,41 +3743,103 @@ function selectItemToAnalyze(item, imgSrc) {
     const analyzer = document.getElementById('cargo-item-analyzer');
     if (!analyzer) return;
 
-    // ร่างข้อมูลพื้นฐาน
-    let statHTML = `
-        <div class="detail-row"><span class="detail-label">MODULE TYPE:</span> <span class="detail-value">${item.type.toUpperCase()}</span></div>
-    `;
-    if (item.quantity) {
-        statHTML += `<div class="detail-row"><span class="detail-label">TOTAL QUANTITY:</span> <span class="detail-value" style="color:var(--neon-green);">${item.quantity.toLocaleString()} UNITS</span></div>`;
+    let typeLabel = (item.type || '').toUpperCase();
+    let statHTML = "";
+    let isModule = false;
+
+    // ====================================================================
+    // 🚩 1. แตกข้อมูลตามพิมพ์เขียว 4 ชนิดหลักของกัปตัน (Dynamic Module Stats)
+    // ====================================================================
+
+    if (item.type === "ship engine") {
+        isModule = true;
+        statHTML += `
+            <div class="detail-row"><span class="detail-label">ENGINE POWER:</span> <span class="detail-value" style="color:var(--neon-blue);">${item.power} Pw</span></div>
+            <div class="detail-row"><span class="detail-label">CONSUMPTION:</span> <span class="detail-value">${item.consumption} /sec</span></div>
+        `;
+    } 
+    else if (item.type === "drill engine" || item.type === "drill") {
+        isModule = true;
+        statHTML += `
+            <div class="detail-row"><span class="detail-label">DRILL ENERGY:</span> <span class="detail-value" style="color:#00d2ff;">${item.currentEnergy} / ${item.energyMax} EN</span></div>
+            <div class="detail-row"><span class="detail-label">HEAT RESIST:</span> <span class="detail-value" style="color:#ffaa00;">${item.heatResist}%</span></div>
+            <div class="detail-row"><span class="detail-label">ACID RESIST:</span> <span class="detail-value" style="color:var(--neon-green);">${item.acidResist}%</span></div>
+            <div class="detail-row"><span class="detail-label">SCANNING INDEX:</span> <span class="detail-value" style="color:#a326ff;">+${item.scan} Rate</span></div>
+            <div class="detail-row"><span class="detail-label">CONSUMPTION:</span> <span class="detail-value">${item.consumption} /sec</span></div>
+        `;
+    } 
+    else if (item.type === "card barrier") {
+        isModule = true;
+        statHTML += `
+            <div class="detail-row"><span class="detail-label">SHIELD BARRIER:</span> <span class="detail-value" style="color:var(--neon-blue);">${item.shield} / ${item.maxShield} SP</span></div>
+            <div class="detail-row"><span class="detail-label">RECHARGE RATE:</span> <span class="detail-value" style="color:var(--neon-green);">+${Number(item.recharge).toFixed(1)} /s</span></div>
+            <div class="detail-row"><span class="detail-label">RECHARGE DELAY:</span> <span class="detail-value" style="color:#ff4b2b;">${Number(item.rechargeDelay).toFixed(1)}s</span></div>
+            <div class="detail-row"><span class="detail-label">ENERGY DRAIN:</span> <span class="detail-value">${item.consumption} /sec</span></div>
+        `;
+    } 
+    else if (item.type === "turret") {
+        isModule = true;
+        statHTML += `
+            <div class="detail-row"><span class="detail-label">AMMO ENERGY:</span> <span class="detail-value" style="color:#ffcc00;">${item.currentEnergy} / ${item.energyMax} JE</span></div>
+            <div class="detail-row"><span class="detail-label">FIREPOWER DMG:</span> <span class="detail-value" style="color:#ff4b2b;">${item.damage} DMG</span></div>
+            <div class="detail-row"><span class="detail-label">ENERGY / SHOT:</span> <span class="detail-value" style="color:#00d2ff;">-${Number(item.energyShoot).toFixed(1)}</span></div>
+            <div class="detail-row"><span class="detail-label">FIRE RATE:</span> <span class="detail-value">${Number(item.fireRate).toFixed(1)}s</span></div>
+            <div class="detail-row"><span class="detail-label">ENGAGE RANGE:</span> <span class="detail-value">${item.range}m</span></div>
+            <div class="detail-row"><span class="detail-label">BASE DRAIN:</span> <span class="detail-value">${item.consumption} /sec</span></div>
+        `;
     }
 
-    // เจาะรายละเอียดกรณีเป็นแร่ทรัพยากร (เช็คเกรดพลังงาน)
-    if (item.metal > 0) statHTML += `<div class="detail-row"><span class="detail-label">METAL VALUE:</span> <span class="detail-value" style="color:#b0b0b0;">+${item.metal} Pw</span></div>`;
-    if (item.energy > 0) statHTML += `<div class="detail-row"><span class="detail-label">ENERGY VALUE:</span> <span class="detail-value" style="color:#00d2ff;">+${item.energy} Pw</span></div>`;
-    if (item.tech > 0) statHTML += `<div class="detail-row"><span class="detail-label">TECH VALUE:</span> <span class="detail-value" style="color:#a326ff;">+${item.tech} Pw</span></div>`;
-
-    // เจาะรายละเอียดกรณีเป็นโมดูลสวมใส่ (เครื่องยนต์/เครื่องเจาะ/ป้อมปืน)
-    if (item.currentDurability !== undefined) {
-        statHTML += `<div class="detail-row"><span class="detail-label">INTEGRITY:</span> <span class="detail-value">${item.currentDurability} / ${item.maxDurability} HP</span></div>`;
-    }
-    if (item.level) {
-        statHTML += `<div class="detail-row"><span class="detail-label">UPGRADE LEVEL:</span> <span class="detail-value" style="color:#ffcc00;">Tier ${item.level}</span></div>`;
-    }
-
-    // กำหนดปุ่มคำสั่งด้านล่างตัววิเคราะห์ตามประเภทไอเทม
-    let actionButtons = `<button class="btn-wire btn-blue" style="width:100%; padding:10px;" onclick="closeShipInventory()">CONFIRM</button>`;
+    // ====================================================================
+    // 🚩 2. แฝงสเตตัสโครงสร้างส่วนกลาง (ถ้าไอเทมนั้นเป็นอุปกรณ์สวมใส่)
+    // ====================================================================
+    if (isModule) {
+        // แทรกรวมข้อมูล ความทนทาน, เลเวลการอัปเกรด, และผู้สร้างไว้ด้านบนสเตตัสเฉพาะทาง
+        let commonHTML = `
+            <div class="detail-row"><span class="detail-label">MODULE TIER:</span> <span class="detail-value" style="color:#ffcc00;">LV.${item.level || 1}</span></div>
+            <div class="detail-row"><span class="detail-label">MAX UPGRADES:</span> <span class="detail-value">${item.maxUpgrades || 1}</span></div>
+            <div class="detail-row"><span class="detail-label">INTEGRITY:</span> <span class="detail-value" style="color:${(item.currentDurability / item.maxDurability) > 0.3 ? 'var(--neon-green)' : 'var(--neon-red)'};">${item.currentDurability} / ${item.maxDurability} HP</span></div>
+            <hr style="border:0; border-top:1px solid rgba(0,210,255,0.15); margin:6px 0;">
+        `;
+        
+        // แทรกข้อมูลผู้คราฟต์และค่าใช้จ่ายในการซ่อมไว้ด้านล่างสเตตัสเฉพาะทาง
+        let repairString = item.repairCost ? `M:${item.repairCost.metal} E:${item.repairCost.energy} T:${item.repairCost.tech}` : "NONE";
+        let footerHTML = `
+            <hr style="border:0; border-top:1px solid rgba(0,210,255,0.15); margin:6px 0;">
+            <div class="detail-row"><span class="detail-label">MANUFACTURER:</span> <span class="detail-value" style="color:rgba(255,255,255,0.6); font-size:0.65rem;">${item.createdBy || 'Unknown'}</span></div>
+            <div class="detail-row"><span class="detail-label">REPAIR MAINTENANCE:</span> <span class="detail-value" style="color:#aaa; font-size:0.65rem;">${repairString}</span></div>
+        `;
+        
+        statHTML = commonHTML + statHTML + footerHTML;
+    } 
     
-    // หากเป็นไอเทมจำพวกโมดูลอุปกรณ์ ยื่นปุ่มติดตั้งให้กัปตันทันที
-    const equippableTypes = ['ship engine', 'drill engine', 'card barrier', 'turret', 'drill', 'ship engine'];
+    // ====================================================================
+    // 🚩 3. ระบบกรองกรณีดึงแร่ทรัพยากรทั่วไป (Fallback ส่วนแร่ดิบ)
+    // ====================================================================
+    else {
+        if (item.quantity) {
+            statHTML += `<div class="detail-row"><span class="detail-label">TOTAL CARGO QTY:</span> <span class="detail-value" style="color:var(--neon-green);">${item.quantity.toLocaleString()} UNITS</span></div>`;
+        }
+        if (item.metal > 0) statHTML += `<div class="detail-row"><span class="detail-label">METAL VALUE:</span> <span class="detail-value" style="color:#b0b0b0;">+${item.metal} TV</span></div>`;
+        if (item.energy > 0) statHTML += `<div class="detail-row"><span class="detail-label">ENERGY VALUE:</span> <span class="detail-value" style="color:#00d2ff;">+${item.energy} TV</span></div>`;
+        if (item.tech > 0) statHTML += `<div class="detail-row"><span class="detail-label">TECH VALUE:</span> <span class="detail-value" style="color:#a326ff;">+${item.tech} TV</span></div>`;
+    }
+
+    // ====================================================================
+    // 🚩 4. ประกอบอินเตอร์เฟสปุ่มควบคุม (Action Buttons)
+    // ====================================================================
+    let actionButtons = `<button class="btn-wire btn-blue" style="width:100%; padding:10px;" onclick="closeShipInventory()">CLOSE REPORT</button>`;
+    
+    // หากเป็นกล่องโมดูล ให้ติดปุ่มติดตั้งเข้ากับตัวระบบสล็อตยาน
+    const equippableTypes = ['ship engine', 'drill engine', 'card barrier', 'turret', 'drill'];
     if (equippableTypes.includes(item.type)) {
         actionButtons = `
             <div style="display:flex; gap:10px; width:100%;">
-                <button class="btn-wire btn-green" style="padding:10px; flex:1;" onclick="console.log('Equip Triggered for ID:', '${item.id}')">INSTALL MODULE</button>
+                <button class="btn-wire btn-green" style="padding:10px; flex:1;" onclick="console.log('Equip Triggered for ID:', '${item.id}')">INSTALL INTO SHIP SLOT</button>
             </div>
         `;
     }
 
-    // วาดอินเตอร์เฟสลงในบล็อกอนาไลเซอร์ฝั่งขวา
+    // ทำการวาดส่งผลลัพธ์ข้อมูลทั้งหมดเข้าบล็อกวิเคราะห์ฝั่งขวา
     analyzer.innerHTML = `
         <h3 style="margin-top:0; color:var(--neon-blue); letter-spacing:1px; font-size:0.95rem; text-transform:uppercase;">${item.name.split(' (')[0]}</h3>
         
@@ -3786,6 +3848,8 @@ function selectItemToAnalyze(item, imgSrc) {
         </div>
         
         <div style="text-align:left; width:100%; background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:2px; font-family:'Consolas', monospace;">
+            <div class="detail-row"><span class="detail-label">CLASSIFICATION:</span> <span class="detail-value" style="font-size:0.65rem;">${typeLabel}</span></div>
+            <hr style="border:0; border-top:1px solid rgba(0,210,255,0.15); margin:6px 0;">
             ${statHTML}
         </div>
         
