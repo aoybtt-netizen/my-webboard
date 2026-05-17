@@ -102,9 +102,52 @@
 }
 
 
-        .bottom-nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 1000; }
-        .nav-btn { width: 65px; height: 65px; background: var(--glass); border: 1px solid var(--neon-blue); border-radius: 12px; color: var(--neon-blue); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; }
+        /* --- Left Side Navigation (Sci-Fi Vertical Sidebar) --- */
+        .left-nav { 
+            position: fixed; 
+            top: 100px; /* เยื้องลงมาจากหลอดโปรไฟล์ด้านบนพอดี */
+            left: 15px; 
+            display: flex; 
+            flex-direction: column; /* เปลี่ยนจากเรียงแนวนอนเป็นแนวตั้ง */
+            gap: 12px; 
+            z-index: 1000; 
+        }
         
+        .nav-btn { 
+            width: 65px; 
+            height: 65px; 
+            background: var(--glass); 
+            border: 1px solid var(--neon-blue); 
+            border-left: 4px solid var(--neon-blue); /* เพิ่มเส้นหนาฝั่งซ้ายแบบอินเตอร์เฟสยานรบ */
+            border-radius: 8px; 
+            color: var(--neon-blue); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            font-size: 0.65rem; 
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+        }
+
+        /* เอฟเฟกต์โฮเวอร์เท่ๆ ตอนเมาส์ชี้ปุ่ม */
+        .nav-btn:hover {
+            background: rgba(0, 210, 255, 0.15);
+            border-color: #fff;
+            border-left-color: var(--neon-green); /* ชี้แล้วเปลี่ยนเป็นไฮไลท์สีเขียว */
+            color: #fff;
+            transform: translateX(4px); /* เขยิบออกขวาเล็กน้อยตอนชี้ */
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95) translateX(4px);
+        }
+
+
         /* Mining View */
         #view-mining {
 			display: none;
@@ -1379,12 +1422,23 @@ button:hover { opacity: 0.8; }
         <div id="game-background"></div>
         <canvas id="hex-canvas"></canvas>
         
-        <div class="bottom-nav">
+        <div class="left-nav">
             <div class="nav-btn" onclick="openShipMenu()">
-                <i class="fas fa-rocket"></i><span>ship</span>
+                <i class="fas fa-rocket" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
+                <span>ship</span>
             </div>
-            <div class="nav-btn" id="btn-map" onclick="toggleMapMode()"><i class="fas fa-map-marked-alt"></i><span>map</span></div>
-            <div class="nav-btn" onclick="handleLogout()" style="border-color:var(--neon-red); color:var(--neon-red);"><i class="fas fa-power-off"></i><span>logout</span></div>
+            <div class="nav-btn" id="btn-map" onclick="toggleMapMode()">
+                <i class="fas fa-map-marked-alt" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
+                <span>map</span>
+            </div>
+            <div class="nav-btn" onclick="document.getElementById('shop-modal').style.display='flex'">
+                <i class="fas fa-shopping-cart" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
+                <span>market</span>
+            </div>
+            <div class="nav-btn" onclick="handleLogout()" style="border-color: var(--neon-red); border-left-color: var(--neon-red); color: var(--neon-red);">
+                <i class="fas fa-power-off" style="font-size: 1.1rem; margin-bottom: 4px;"></i>
+                <span>logout</span>
+            </div>
         </div>
 		
 		<div id="map-coordinate-display" 
